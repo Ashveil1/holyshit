@@ -17,9 +17,10 @@ SUBSET_ERR = "x64 backend subset"
 
 
 class Gen:
-    def __init__(self, prog, main_path="<main>"):
+    def __init__(self, prog, main_path="<main>", freestanding=False):
         self.prog = prog
         self.main_path = main_path
+        self.freestanding = freestanding
         self.a = Asm()
         self.modules = []
         self.mod_by_path = {}
@@ -512,15 +513,23 @@ class Gen:
         a.pop_r("r15")
         a.add_ri32("rsp", 8 * (len(e["args"]) + 1))
 
+    def emit_write(self):
+        # rsi=ptr, rdx=len already set -> write to stdout (hosted) or serial (fs)
+        a = self.a
+        if self.freestanding:
+            self.k_write()
+        else:
+            a.mov_ri32("rdi", 1)
+            a.mov_ri32("rax", 1)
+            a.syscall()
+
     def ev_print(self, args, sc, mod, ln):
         a = self.a
         for i, ar in enumerate(args):
             if i > 0:
                 a.lea_rip("rsi", "sp_")
                 a.mov_ri32("rdx", 1)
-                a.mov_ri32("rdi", 1)
-                a.mov_ri32("rax", 1)
-                a.syscall()
+                self.emit_write()
             if ar["t"] == "str":
                 lab = self.rstr(ar["val"])
                 a.lea_rip("rsi", lab)
@@ -531,14 +540,10 @@ class Gen:
                 a.call("print_int")
                 a.add_ri32("rsp", 8)
                 continue
-            a.mov_ri32("rdi", 1)
-            a.mov_ri32("rax", 1)
-            a.syscall()
+            self.emit_write()
         a.lea_rip("rsi", "nl_")
         a.mov_ri32("rdx", 1)
-        a.mov_ri32("rdi", 1)
-        a.mov_ri32("rax", 1)
-        a.syscall()
+        self.emit_write()
 
     # ----- unsafe subset -----
     def sev(self, e, sc, mod):
@@ -936,9 +941,7 @@ class Gen:
                         lab = self.rstr(v)
                         a.lea_rip("rsi", lab)
                         a.mov_ri32("rdx", len(v.encode()))
-                        a.mov_ri32("rdi", 1)
-                        a.mov_ri32("rax", 1)
-                        a.syscall()
+                        self.emit_write()
                     else:
                         self.sev(v, sc, mod)
                         a.push_r("rax")
@@ -1006,12 +1009,16 @@ class Gen:
         lab = self.rstr(msg + "\n")
         a.lea_rip("rsi", lab)
         a.mov_ri32("rdx", len((msg + "\n").encode()))
-        a.mov_ri32("rdi", 2)
-        a.mov_ri32("rax", 1)
-        a.syscall()
-        a.mov_ri32("rdi", 1)
-        a.mov_ri32("rax", 60)
-        a.syscall()
+        if self.freestanding:
+            self.k_write()
+            a.call("k_halt")
+        else:
+            a.mov_ri32("rdi", 2)
+            a.mov_ri32("rax", 1)
+            a.syscall()
+            a.mov_ri32("rdi", 1)
+            a.mov_ri32("rax", 60)
+            a.syscall()
 
     # ----- functions / main / link -----
     def emit_func(self, label, node, fscope, mod):
@@ -1038,12 +1045,20 @@ class Gen:
     def emit_main(self, mod):
         a = self.a
         ms = mod["scope"]
-        a.label("hs_main")
+        if self.freestanding:
+            self.emit_longmode_tail(mod)
+        a.label("hs_kernel_main" if self.freestanding else "hs_main")
         a.push_r("rbp")
         a.mov_rr("rbp", "rsp")
         if ms.nloc:
             a.sub_ri32("rsp", 8 * ms.nloc)
         self.ex_body(mod["prog"], ms, mod, 0)
+        if self.freestanding:
+            # return to the boot trampoline, which halts
+            a.mov_rr("rsp", "rbp")
+            a.pop_r("rbp")
+            a.ret()
+            return
         a.mov_ri32("rax", 0)
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
@@ -1056,6 +1071,29 @@ class Gen:
         a.mov_ri32("rax", 60)
         a.syscall()
 
+    def emit_longmode_tail(self, mod):
+        # 64-bit entry reached via far jmp from boot32: set segments + stack,
+        # init COM1, call hs_kernel_main, halt. STACK_TOP patched by builder.
+        a = self.a
+        a.label("long_mode")
+        a.mov_ax_imm16(0x10)
+        for seg in (3, 0, 4, 5, 2):  # ds es fs gs ss
+            a.mov_seg16(seg, 0)  # ax
+        a.mov_ri64("rsp", 0)  # patched: STACK_TOP (abs64 placeholder)
+        self._stack_patch_pos = len(a.code) - 8
+        for port, val in ((0x3F9, 0x00), (0x3FB, 0x80), (0x3F8, 0x03),
+                          (0x3F9, 0x00), (0x3FB, 0x03), (0x3FA, 0xC7),
+                          (0x3FC, 0x0B)):
+            a.mov_ri16("dx", port)
+            a.mov_ri32("rax", val)
+            a.out_dx_al()
+        a.call("hs_kernel_main")
+        a.cli()
+        lab_h = self.new_tmp("kh")
+        a.label(lab_h)
+        a.hlt()
+        a.jmp(lab_h)
+
     def build_image(self, mod):
         # assign function labels, collect, emit everything, link
         ms = mod["scope"]
@@ -1064,7 +1102,10 @@ class Gen:
             self.flabels[id(fs)] = f"hsF_{i}"
         self.finalize(mod)
         self.emit_data(mod)
-        self.emit_runtime()
+        if self.freestanding:
+            self.emit_runtime_fs()
+        else:
+            self.emit_runtime()
         for s in self._def_nodes(mod):
             self.emit_func(self.flabels[id(s["_fs"])], s, s["_fs"], mod)
         self.emit_main(mod)
@@ -1073,16 +1114,30 @@ class Gen:
         self.a.code += b" "
         self.a.label("nl_")
         self.a.code += b"\n"
+        if self.freestanding:
+            self.a.label("oom_")
+            self.a.code += b"out of memory\0"
+            self.a.label("dzm_")
+            self.a.code += b"division by zero\0"
         self.emit_str_table()
         # print buffer + bump allocator state in data
         self.a.data_label("pbuf_")
         self.a.data_bytes(b"\0" * 32)
         self.a.data_label("pbuf_e")
         self.a.data_label("bump_ptr_")
-        self.a.data_qword(0)
+        if self.freestanding:
+            self.a.data_qword(Gen.KHEAP_BASE)
+        else:
+            self.a.data_qword(0)
         self.a.data_label("bump_end_")
-        self.a.data_qword(0)
+        if self.freestanding:
+            self.a.data_qword(Gen.KHEAP_BASE + Gen.KHEAP_SIZE)
+        else:
+            self.a.data_qword(0)
         from x64 import layout, pack
+        if self.freestanding:
+            # kernel link done by build_xkernel (needs raw Asm + labels)
+            return self.a
         lo = layout(len(self.a.code), len(self.a.data))
         code = self.a.resolve(lo["text_vaddr"], lo["data_vaddr"])
         start_off = self.a.labels["_start"]
@@ -1107,23 +1162,188 @@ class Gen:
         walk(mod["prog"])
         return out
 
+    def k_write(self):
+        # rsi=ptr, rdx=len -> serial bytes; clobbers rax rcx rdx rsi
+        a = self.a
+        a.mov_rr("rcx", "rdx")
+        lab_l, lab_d = self.new_tmp("kw"), self.new_tmp("kw")
+        a.label(lab_l)
+        a.test_rr("rcx", "rcx")
+        a.jcc("e", lab_d)
+        a.movzx_eax_m8("rsi", 0)
+        a.push_r("rsi")
+        a.push_r("rcx")
+        a.call("x_putc")
+        a.pop_r("rcx")
+        a.pop_r("rsi")
+        a.add_ri32("rsi", 1)
+        a.sub_ri32("rcx", 1)
+        a.jmp(lab_l)
+        a.label(lab_d)
+
     def rt_space(self):
         a = self.a
-        a.lea_rip("rsi", "sp_")
-        a.mov_ri32("rdx", 1)
-        a.mov_ri32("rdi", 1)
-        a.mov_ri32("rax", 1)
-        a.syscall()
+        if self.freestanding:
+            a.mov_ri32("rax", 32)  # x_putc reads al
+            a.call("x_putc")
+        else:
+            a.lea_rip("rsi", "sp_")
+            a.mov_ri32("rdx", 1)
+            a.mov_ri32("rdi", 1)
+            a.mov_ri32("rax", 1)
+            a.syscall()
 
     def rt_nl(self):
         a = self.a
-        a.lea_rip("rsi", "nl_")
-        a.mov_ri32("rdx", 1)
-        a.mov_ri32("rdi", 1)
-        a.mov_ri32("rax", 1)
-        a.syscall()
+        if self.freestanding:
+            a.mov_ri32("rax", 10)
+            a.call("x_putc")
+        else:
+            a.lea_rip("rsi", "nl_")
+            a.mov_ri32("rdx", 1)
+            a.mov_ri32("rdi", 1)
+            a.mov_ri32("rax", 1)
+            a.syscall()
 
-    # ----- runtime (leaf routines; clobber only rax rcx rdx rsi rdi r8-r11) -----
+    # ----- freestanding runtime (serial COM1, fixed bump heap, halt) -----
+    KHEAP_BASE = 0x2000000
+    KHEAP_SIZE = 16 << 20
+
+    def emit_runtime_fs(self):
+        a = self.a
+        # x_putc: al = char
+        a.label("x_putc")
+        a.push_r("rax")
+        a.mov_ri16("dx", 0x3FD)
+        lab_w = self.new_tmp("sw")
+        a.label(lab_w)
+        a.in_al_dx()
+        a.test_al_imm8(0x20)
+        a.jcc("e", lab_w)
+        a.mov_ri16("dx", 0x3F8)
+        a.pop_r("rax")
+        a.out_dx_al()
+        a.ret()
+        # k_halt: cli; hlt forever
+        a.label("k_halt")
+        a.cli()
+        lab_h = self.new_tmp("hh")
+        a.label(lab_h)
+        a.hlt()
+        a.jmp(lab_h)
+        # print_int: [rsp+8] = i64 -> serial decimal
+        a.label("print_int")
+        a.mov_rm("rax", "rsp", 8)
+        a.lea_rip("rsi", "pbuf_e")
+        a.test_rr("rax", "rax")
+        lab_nz, lab_lp, lab_dn = self.new_tmp("pi"), self.new_tmp("pi"), self.new_tmp("pi")
+        a.jcc("ne", lab_nz)
+        a.sub_ri32("rsi", 1)
+        a.mov_ri32("rax", 48)
+        a.mov_mr8("rsi", 0, 0)
+        a.jmp(lab_dn)
+        a.label(lab_nz)
+        a.mov_ri32("rcx", 0)
+        a.jcc("ns", lab_lp)
+        a.neg_r("rax")
+        a.mov_ri32("rcx", 1)
+        a.label(lab_lp)
+        a.mov_ri32("r8", 10)
+        a.mov_ri32("rdx", 0)
+        a.div_r("r8")
+        a.add_ri8("rdx", 48)
+        a.push_r("rax")
+        a.mov_rr("rax", "rdx")
+        a.sub_ri32("rsi", 1)
+        a.mov_mr8("rsi", 0, 0)
+        a.pop_r("rax")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", lab_lp)
+        a.test_rr("rcx", "rcx")
+        a.jcc("e", lab_dn)
+        a.sub_ri32("rsi", 1)
+        a.mov_ri32("rax", 45)
+        a.mov_mr8("rsi", 0, 0)
+        a.label(lab_dn)
+        a.push_r("rsi")
+        a.lea_rip("rcx", "pbuf_e")
+        a.pop_r("rsi")
+        a.sub_rr("rcx", "rsi")
+        lab_pl = self.new_tmp("pl")
+        a.label(lab_pl)
+        a.test_rr("rcx", "rcx")
+        lab_pe = self.new_tmp("pl")
+        a.jcc("e", lab_pe)
+        a.movzx_eax_m8("rsi", 0)
+        a.push_r("rsi")
+        a.push_r("rcx")
+        a.call("x_putc")
+        a.pop_r("rcx")
+        a.pop_r("rsi")
+        a.add_ri32("rsi", 1)
+        a.sub_ri32("rcx", 1)
+        a.jmp(lab_pl)
+        a.label(lab_pe)
+        a.ret()
+        # x_malloc: rdi = bytes -> fixed bump heap; halts on exhaustion
+        a.label("x_malloc")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.mov_rr("rax", "rdi")
+        a.add_ri32("rax", 15)
+        a.and_ri32("rax", -16)
+        a.push_r("rax")
+        a.lea_rip("rcx", "bump_ptr_")
+        a.mov_rm("rcx", "rcx", 0)
+        a.mov_rm("rax", "rbp", -8)
+        a.add_rr("rax", "rcx")
+        a.push_r("rax")
+        a.push_r("rcx")
+        a.lea_rip("rdx", "bump_end_")
+        a.mov_rm("rdx", "rdx", 0)
+        a.pop_r("rcx")
+        a.pop_r("rax")
+        a.cmp_rr("rax", "rdx")
+        lab_fit = self.new_tmp("ba")
+        a.jcc("be", lab_fit)
+        a.lea_rip("rsi", "oom_")
+        a.call("k_puts_cstr")
+        a.call("k_halt")
+        a.label(lab_fit)
+        a.lea_rip("rdx", "bump_ptr_")
+        a.mov_mr("rdx", "rax", 0)
+        a.mov_rr("rax", "rcx")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # k_puts_cstr: rsi = NUL-terminated cstr -> serial; clobbers rax rcx rdx
+        a.label("k_puts_cstr")
+        a.push_r("rsi")
+        lab_kl = self.new_tmp("kc")
+        a.label(lab_kl)
+        a.movzx_eax_m8("rsi", 0)
+        a.test_rr("rax", "rax")
+        lab_kd = self.new_tmp("kc")
+        a.jcc("e", lab_kd)
+        a.push_r("rsi")
+        a.call("x_putc")
+        a.pop_r("rsi")
+        a.add_ri32("rsi", 1)
+        a.jmp(lab_kl)
+        a.label(lab_kd)
+        a.pop_r("rsi")
+        a.ret()
+        # x_alloc wrapper
+        a.label("x_alloc")
+        a.mov_rm("rdi", "rsp", 8)
+        a.call("x_malloc")
+        a.ret()
+        # divzero trap
+        a.label("divzero")
+        a.lea_rip("rsi", "dzm_")
+        a.call("k_puts_cstr")
+        a.call("k_halt")
+        # oom_ / dzm_ cstrs emitted with rodata below
     def emit_runtime(self):
         a = self.a
         # print_int: [rsp+8] = i64 -> decimal to stdout (pbuf_ 32B in data)
@@ -1280,3 +1500,176 @@ def build_x64(prog_path, out_path):
     _os.chmod(out_path, 0o755)
     print(f"ok: x64 -> {out_path} ({len(img)} bytes, no gcc)")
     return 0
+
+
+# ---------- freestanding kernel link ----------
+KBASE = 0x100000
+KSTACK_SIZE = 16384
+KTABLE_PAGES = 3
+
+
+def build_xkernel(prog_path, out_path):
+    import os as _os
+    import struct as _st
+    from x64 import Asm32, link_elf32
+    interp.reset_parse_state()
+    try:
+        with open(prog_path, encoding="utf-8") as f:
+            src = f.read()
+    except OSError as e:
+        print(f"error: cannot read {prog_path}: {e.strerror or e}", file=sys.stderr)
+        return 1
+    try:
+        prog = interp.parse_program(src)
+    except HSErr as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    g = Gen(prog, prog_path, freestanding=True)
+    mod = {"name": "<main>", "prog": prog, "pfx": "",
+           "scope": Gen.Scope(),
+           "dir": _os.path.dirname(_os.path.abspath(prog_path))}
+    try:
+        ms = mod["scope"]
+        g.collect(mod["prog"], ms)
+        for i, fs in enumerate(g.all_fs):
+            g.flabels[id(fs)] = f"hsF_{i}"
+        g.finalize(mod)
+        g.emit_data(mod)
+        g.emit_runtime_fs()
+        for s in g._def_nodes(mod):
+            g.emit_func(g.flabels[id(s["_fs"])], s, s["_fs"], mod)
+        g.emit_main(mod)
+        g.a.label("sp_")
+        g.a.code += b" "
+        g.a.label("nl_")
+        g.a.code += b"\n"
+        g.a.label("oom_")
+        g.a.code += b"out of memory\0"
+        g.a.label("dzm_")
+        g.a.code += b"division by zero\0"
+        g.emit_str_table()
+        g.a.data_label("pbuf_")
+        g.a.data_bytes(b"\0" * 32)
+        g.a.data_label("pbuf_e")
+        g.a.data_label("bump_ptr_")
+        g.a.data_qword(Gen.KHEAP_BASE)
+        g.a.data_label("bump_end_")
+        g.a.data_qword(Gen.KHEAP_BASE + Gen.KHEAP_SIZE)
+        asm64 = g.a
+    except HSErr as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    # ---- layout (file offset == vaddr offset from KBASE) ----
+    HDR = 52 + 2 * 32
+    mb2 = _st.pack("<IIII", 0xE85250D6, 0, 24, (-(0xE85250D6 + 24)) & 0xFFFFFFFF)
+    mb2 += _st.pack("<HHI", 0, 0, 8)
+    mb1 = _st.pack("<III", 0x1BADB002, 0, (-0x1BADB002) & 0xFFFFFFFF)
+    off = HDR
+    while off % 8:
+        off += 1
+    mb_off, off = off, off + len(mb2)
+    mb1_off, off = off, off + len(mb1)
+    boot_off = off
+    # assemble boot32 (labels relative; abs resolved at link)
+    b = Asm32()
+    b.label("_start")
+    b.cli()
+    b.mov_ri32_abs(4, "STACK_TOP")  # esp; patched below (abs32 to constant)
+    b.mov_rr(6, 0)   # esi = eax (magic)
+    b.mov_rr(2, 3)   # edx = ebx (info)
+    b.mov_ri32_abs(0, "PML4")
+    b.mov_cr(3, 0)
+    b.mov_rcr(0, 4)
+    b.or_ri32(0, 0x620)
+    b.mov_cr(4, 0)
+    b.mov_ri32(1, 0xC0000080)
+    b.rdmsr()
+    b.or_ri32(0, 0x100)
+    b.wrmsr()
+    b.mov_rcr(0, 0)
+    b.or_ri32(0, 0x80000001)
+    b.mov_cr(0, 0)
+    b.lgdt_abs("GDT_PTR")
+    b.jmp_far_abs(0x08, 0)  # patched below
+    boot_len = None  # filled after resolve
+    # gdt + payload + data + tables + stack
+    gdt = (b"\0" * 8 + _st.pack("<Q", 0x00209A0000000000)
+           + _st.pack("<Q", 0x0000920000000000))
+    # payload/data/table/stack offsets computed after boot assembled
+    boot_code = b.code  # labels relative; resolve later with abs map
+    off = boot_off + len(boot_code)
+    while off % 8:
+        off += 1
+    gdt_off, off = off, off + len(gdt) + 10  # + gdt_ptr (limit16+base64)
+    pay_off = off
+    pay_len = len(asm64.code)
+    off += pay_len
+    dat_off = off
+    dat_len = len(asm64.data)
+    off += dat_len
+    while off % 4096:
+        off += 1
+    tbl_off, off = off, off + 4096 * KTABLE_PAGES
+    stack_size = KSTACK_SIZE
+    stack_top = KBASE + off + stack_size
+    # absolute addresses
+    A = lambda o: KBASE + o
+    # patch boot32 symbolic constants: use abs32 labels mapped to constants
+    b.labels["STACK_TOP"] = stack_top - KBASE  # abs32 -> base + this
+    b.labels["PML4"] = (A(tbl_off) - KBASE)
+    b.labels["GDT_PTR"] = (A(gdt_off + len(gdt)) - KBASE)
+    boot_bin = b.resolve(KBASE)
+    # far jmp target: long_mode at payload start
+    lm_addr = A(pay_off) + asm64.labels["long_mode"]
+    # jmp_far_abs emitted with addr 0; patch last 6 bytes
+    boot_bin = boot_bin[:-6] + _st.pack("<IH", lm_addr, 0x08)
+    # stack_top mov: patch abs32
+    # (mov_ri32_abs STACK_TOP already resolved via labels map above)
+    # gdt_ptr bytes
+    gdt_ptr = _st.pack("<H", len(gdt) + 10 - 1 - 10 + 24 - 1)  # limit = 24-1
+    gdt_ptr = _st.pack("<H", 23) + _st.pack("<Q", A(gdt_off))
+    # page tables (prefilled): PML4[0]->PDPT, PDPT[0]->PD, PD identity 1GB
+    tbl = bytearray(4096 * KTABLE_PAGES)
+    pdpt_a, pd_a = A(tbl_off + 4096), A(tbl_off + 8192)
+    _st.pack_into("<Q", tbl, 0, pdpt_a | 3)
+    _st.pack_into("<Q", tbl, 4096, pd_a | 3)
+    for i in range(512):
+        _st.pack_into("<Q", tbl, 8192 + 8 * i, (i * 0x200000) | 0x83)
+    # resolve payload rip-relative labels, then patch stack_top placeholder
+    pay_vaddr, dat_vaddr = A(pay_off), A(dat_off)
+    code = bytearray(asm64.resolve(pay_vaddr, dat_vaddr))
+    code[g._stack_patch_pos:g._stack_patch_pos + 8] = _st.pack("<Q", stack_top)
+    code = bytes(code)
+    data = bytes(asm64.data)
+    # text segment: headers area + mb + boot + gdt + payload, ending at dat_off
+    # ---- assemble file: seg1 RX covers [0, T), seg2 RW covers [T, ...) ----
+    # vaddr == KBASE + fileoff everywhere (single identity space).
+    text = b"\0" * (mb_off - 116)
+    text += mb2 + mb1
+    text += b"\0" * (boot_off - (mb_off + len(mb2) + len(mb1)))
+    text += boot_bin
+    text += b"\0" * (gdt_off - 116 - len(text))
+    text += gdt + gdt_ptr
+    text += b"\0" * (pay_off - 116 - len(text))
+    text += code
+    text += b"\0" * (dat_off - 116 - len(text))
+    assert 116 + len(text) == dat_off
+    file_data = data + b"\0" * (tbl_off - dat_off - len(data)) + bytes(tbl)
+    assert dat_off + len(file_data) == tbl_off + 4096 * KTABLE_PAGES
+    t_filesz = 116 + len(text)
+    d_off = t_filesz
+    eh = _st.pack("<16sHHIIIIIHHHHHH", b"\x7fELF\x01\x01\x01" + b"\0" * 9,
+                  2, 3, 1, KBASE + boot_off, 52, 0, 0, 52, 32, 2, 0, 0, 0)
+    ph1 = _st.pack("<IIIIIIII", 1, 0, KBASE, KBASE,
+                   t_filesz, t_filesz, 5, 0x1000)
+    ph2 = _st.pack("<IIIIIIII", 1, d_off, KBASE + d_off, KBASE + d_off,
+                   len(file_data), len(file_data) + stack_size, 6, 0x1000)
+    img = bytearray()
+    img += eh + ph1 + ph2
+    assert len(img) == 116
+    img += text + file_data
+    with open(out_path, "wb") as f:
+        f.write(bytes(img))
+    print(f"ok: xkernel -> {out_path} ({len(img)} bytes, no gcc/as/ld)")
+    return 0
+

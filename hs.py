@@ -1833,11 +1833,11 @@ def main(argv):
         as_json = True
         argv = [a for a in argv if a != "--json"]
     if len(argv) < 3 or argv[1] not in ("build", "run", "kernel", "check", "fmt",
-                                     "xbuild", "xrun"):
+                                     "xbuild", "xrun", "xkernel"):
         print("usage: hs.py [--json] build prog.hs [-o prog] | hs.py run prog.hs [args...] "
               "| hs.py check prog.hs | hs.py fmt prog.hs [-w|--check] "
               "| hs.py xbuild prog.hs [-o prog] | hs.py xrun prog.hs "
-              "| hs.py kernel prog.hs -o kernel.elf",
+              "| hs.py xkernel prog.hs -o kernel.elf | hs.py kernel prog.hs -o kernel.elf",
               file=sys.stderr)
         return 2
     if argv[1] == "fmt":
@@ -1911,6 +1911,13 @@ def main(argv):
         if "-o" in argv:
             out = argv[argv.index("-o") + 1]
         return _x64.build_x64(prog, out)
+    if argv[1] == "xkernel":
+        import x64gen as _x64
+        prog = argv[2]
+        out = "kernel.elf"
+        if "-o" in argv:
+            out = argv[argv.index("-o") + 1]
+        return _x64.build_xkernel(prog, out)
     if argv[1] == "xrun":
         import tempfile as _tf
         import x64gen as _x64

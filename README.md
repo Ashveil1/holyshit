@@ -9,6 +9,7 @@ python3 hs.py build prog.hs [-o prog] # เป็น native binary (gcc + Boehm 
 python3 hs.py run prog.hs [args...]   # build ลง temp แล้วรันทันที
 python3 hs.py fmt prog.hs [-w|--check] # จัดรูป canonical (2-space, ตัดคอมเมนต์)
 python3 hs.py xbuild prog.hs [-o prog] # machine code ตรง ไม่ใช้ gcc (subset)
+python3 hs.py xkernel prog.hs -o k.elf # kernel freestanding ไม่ใช้ gcc/as/ld
 python3 hs.py kernel prog.hs -o k.elf # kernel บูตจริง (QEMU -kernel k.elf)
 python3 hs.py --version
 ```
@@ -62,6 +63,7 @@ python3 tests/test.py          # interpreter (35 ชุด)
 python3 tests/test_native.py   # native binary (36 ชุด, ผลต้องตรง interp)
 python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec เท่าเดิม)
 python3 tests/test_x64.py      # backend x86-64 ตรง (static ELF, ไม่ใช้ gcc)
+python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU
 python3 tests/test_kernel.py   # บูตจริงบน QEMU (ช้า ~2 นาที)
 ```
 

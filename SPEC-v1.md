@@ -275,3 +275,14 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 - ยังไม่มี: Float/List/Dict, import, try, extern, string ops, argv, slice/attr,
   `for`, `asm()` (ใช้ไม่ได้กับ encoder ของตัวเอง) — เป็น compile error ชัดเจน
 - `hs.py xbuild prog.hs [-o prog]` / `hs.py xrun prog.hs`, เทส `tests/test_x64.py`
+
+## 14. Kernel freestanding ด้วย x64 backend ล้วน (เฟส 6b — ไม่ใช้ gcc/as/ld)
+
+- `hs.py xkernel prog.hs -o k.elf`: encoder 32-bit (`Asm32`) + trampoline
+  (cli → cr3/cr4/EFER/cr0 → lgdt → far jmp) + page table prefill ใน Python
+  (identity 1GB) + payload 64-bit + ELF32 writer — ผลลัพธ์บูต QEMU ได้จริง
+- freestanding runtime: serial COM1, bump heap คงที่ 16MB ที่ 32MB, halt;
+  `print`/unsafe/alloc/struct ครบ, float/list/dict/import/try/extern ไม่มี
+- `kernel/xdemo.hs` + `tests/test_xkernel.py`: **6/6 ผ่าน** (serial: boot, fib 55,
+  sum 45, alloc readback 7, halted)
+- เหลือ: IDT/PIC/timer/keyboard/paging แบบไดนามิก, scheduler, filesystem
