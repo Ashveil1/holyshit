@@ -1,0 +1,12 @@
+base = "/tmp/opencode/hs_fs_test"
+mkdir(base)
+write_text(base + "/a.txt", "hello")
+append_text(base + "/a.txt", " world")
+print read_text(base + "/a.txt")
+print exists(base + "/a.txt")
+print exists(base + "/nope.txt")
+write_text(base + "/b.json", json_str({"x": [1, 2]}))
+print json_load(base + "/b.json")
+print ls(base)
+json_save(base + "/c.json", {"k": "v"})
+print read_text(base + "/c.json")

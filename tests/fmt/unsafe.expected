@@ -1,0 +1,12 @@
+unsafe:
+  struct Node:
+    I64 val
+    Node* next
+    U64 tags[2]
+  Node* n = alloc(sizeof(Node))
+  n.val = 1 + 2
+  print n.val
+  print n.tags[0 + 1]
+extern from "m":
+  F64 sin(F64 x)
+print sin(0.0)

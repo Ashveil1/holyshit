@@ -1,0 +1,7 @@
+ok1
+cannot add Int and Str at line 10
+unknown variable 'nosuchvar' at line 2
+index out of range at line 22
+inner-done
+0
+loop-done

@@ -1,0 +1,75 @@
+# holyshit (hs) — v0.4.0
+
+ภาษา dynamic เขียนง่ายแบบ Python, รันได้ 2 โหมด, ต่อ C ได้, ลง bare metal ได้
+
+```sh
+python3 interp.py prog.hs [args...]   # รันทันที (tree-walk)
+python3 hs.py check prog.hs           # ตรวจ syntax/scope อย่างเดียว
+python3 hs.py build prog.hs [-o prog] # เป็น native binary (gcc + Boehm GC)
+python3 hs.py run prog.hs [args...]   # build ลง temp แล้วรันทันที
+python3 hs.py fmt prog.hs [-w|--check] # จัดรูป canonical (2-space, ตัดคอมเมนต์)
+python3 hs.py xbuild prog.hs [-o prog] # machine code ตรง ไม่ใช้ gcc (subset)
+python3 hs.py kernel prog.hs -o k.elf # kernel บูตจริง (QEMU -kernel k.elf)
+python3 hs.py --version
+```
+
+## ตัวอย่าง 30 วินาที
+
+```
+def fib(n):
+  if n < 2:
+    return n
+  return fib(n - 1) + fib(n - 2)
+
+print fib(10)
+
+extern from "m":
+  F64 sin(F64 x)
+
+print sin(0.0)
+```
+
+## โครงโปรเจกต์
+
+| ส่วน | ไฟล์ |
+|---|---|
+| สเปกภาษา | `SPEC-v1.md` |
+| interpreter | `interp.py` |
+| native backend (AST→C→gcc) | `hs.py` + `native/rt.{h,c}` |
+| x86-64 backend ตรง (subset, ไม่ใช้ gcc) | `x64.py` + `x64gen.py` |
+| kernel runtime (freestanding) | `kernel/` |
+| ไลบรารีมาตรฐาน (เขียนด้วย hs) | `std/` |
+| ตัวอย่างตามหัวข้อ | `examples/` |
+| เทส (interp+native ตรงกัน) | `tests/test.py`, `tests/test_native.py`, `tests/test_kernel.py` |
+| ของเก่า v0.3 (WASM) | `legacy/` |
+
+## หัวข้อหลักในภาษา
+
+ดู `SPEC-v1.md` ฉบับเต็ม — ไล่จากง่ายไปยาก:
+`examples/hello.hs` → `fib.hs` → `closure.hs` → `ffi.hs`
+
+- dynamic types: Int Float Str Bool Null List Dict Func (+ first-class)
+- `def if/while/for try/except import` — syntax indent แบบ Python
+  (`import std.str` แบบ dotted ได้, std อยู่ใน `std/`)
+- `unsafe:` — I64/U64/Ptr + `asm` ตรง (static subset ในภาษาเดียวกัน)
+- `extern [from ...]:` — เรียก C/.so/ภาษาไหนก็ได้ผ่าน C ABI
+- closure (copy semantics), JSON, socket/HTTP client, argv/env/system
+
+## เทส
+
+```sh
+python3 tests/test.py          # interpreter (35 ชุด)
+python3 tests/test_native.py   # native binary (36 ชุด, ผลต้องตรง interp)
+python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec เท่าเดิม)
+python3 tests/test_x64.py      # backend x86-64 ตรง (static ELF, ไม่ใช้ gcc)
+python3 tests/test_kernel.py   # บูตจริงบน QEMU (ช้า ~2 นาที)
+```
+
+กติกาเทส: `tests/<name>.hs` + `.expected` (stdout), `.stdin` (input),
+`.args` (argv ทีละบรรทัด), `.env` (KEY=VAL ต่อบรรทัด), `.fail` (error ที่คาด,
+เทียบ stderr), `mod_*` = helper (ไม่รันตรง), `.nativeonly` = ข้ามฝั่ง interp
+
+## สำหรับ AI agent
+
+อ่าน `AGENTS.md` ก่อนเขียน `.hs` เสมอ — reference กระชับครบกฎทั้งหมด
+รวม gotchas และ fix loop (`check` → `interp` → `build`, error มี `--json`)

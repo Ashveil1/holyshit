@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gargantua — Interstellar-style Black Hole</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#dfe6ee}
+  #c{position:fixed;inset:0;display:block;cursor:grab}
+  #c:active{cursor:grabbing}
+  #ui{position:fixed;top:12px;left:12px;background:rgba(8,10,14,.62);backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;min-width:240px;font-size:12px}
+  #ui h1{margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.4px;color:#ffd9a0}
+  #ui label{display:grid;grid-template-columns:110px 1fr 40px;gap:8px;align-items:center;margin:4px 0}
+  #ui input[type=range]{width:100%}
+  #hint{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);font-size:11px;color:#9aa7b5;background:rgba(0,0,0,.35);padding:4px 10px;border-radius:999px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <h1>BLACK HOLE · INTERSTELLAR STYLE</h1>
+  <label>spin <input id="spin" type="range" min="0" max="0.99" step="0.01" value="0.85"><span id="spinV">0.85</span></label>
+  <label>brightness <input id="bright" type="range" min="0" max="4" step="0.05" value="2.6"><span id="brightV">2.6</span></label>
+  <label>disk inner <input id="inner" type="range" min="1.6" max="3.2" step="0.05" value="1.9"><span id="innerV">1.9</span></label>
+  <label>disk outer <input id="outer" type="range" min="3" max="11" step="0.1" value="4.6"><span id="outerV">4.6</span></label>
+  <label>disk tilt <input id="tilt" type="range" min="0" max="1.4" step="0.01" value="0.0"><span id="tiltV">0.0</span></label>
+  <label>bloom <input id="bloom" type="range" min="0" max="3" step="0.05" value="1.6"><span id="bloomV">1.6</span></label>
+  <label>render scale <input id="scale" type="range" min="0.4" max="1" step="0.05" value="0.8"><span id="scaleV">0.8</span></label>
+</div>
+<div id="hint">drag = orbit · wheel = zoom</div>
+<script>
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl', {antialias:false, alpha:false});
+if(!gl){document.body.innerHTML='<p style="color:#fff;padding:2em">WebGL not available</p>'; throw new Error('no webgl');}
+
+const VS = `attribute vec2 aPos; void main(){ gl_Position = vec4(aPos,0.0,1.0); }`;
+const FS = `
+precision highp float;
+uniform vec2 uRes;
+uniform float uTime;
+uniform vec3 uCamPos;
+uniform vec3 uForward;
+uniform vec3 uRight;
+uniform vec3 uUp;
+uniform float uSpin;
+uniform float uDiskBright;
+uniform float uDiskInner;
+uniform float uDiskOuter;
+uniform float uTilt;
+uniform float uBloom;
+
+float hash(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+vec3 background(vec3 d){
+  vec3 col = vec3(0.0);
+  float band = exp(-pow(dot(d, normalize(vec3(0.25,0.7,0.55))), 2.0)*10.0);
+  col += vec3(0.045,0.055,0.085) * band;
+  vec2 uv = vec2(atan(d.z,d.x)/6.2831853+0.5, asin(clamp(d.y,-1.0,1.0))/3.1415926+0.5);
+  vec2 g = uv * vec2(260.0, 140.0);
+  vec2 cell = floor(g);
+  vec2 f = fract(g);
+  float h = hash(vec3(cell, 1.0));
+  if(h > 0.93){
+    vec2 sp = vec2(hash(vec3(cell,2.0)), hash(vec3(cell,3.0)));
+    float dist = length(f - sp);
+    float star = smoothstep(0.10, 0.0, dist) * (h - 0.93) / 0.07;
+    vec3 tint = mix(vec3(0.7,0.85,1.0), vec3(1.0,0.9,0.75), hash(vec3(cell,4.0)));
+    col += tint * star * (0.35 + 0.65*hash(vec3(cell,5.0)));
+  }
+  float bandStars = hash(vec3(cell,6.0));
+  if(h > 0.90 && h <= 0.93){
+    vec2 sp = vec2(hash(vec3(cell,7.0)), hash(vec3(cell,8.0)));
+    float dist = length(f - sp);
+    float star = smoothstep(0.13, 0.0, dist) * band * 0.35;
+    col += vec3(0.8,0.85,1.0)*star;
+  }
+  return col;
+}
+
+void main(){
+  vec2 ndc = (gl_FragCoord.xy*2.0 - uRes) / uRes.y;
+  vec3 dir = normalize(uForward + ndc.x*uRight + ndc.y*uUp);
+  vec3 pos = uCamPos;
+  vec3 prev = pos;
+  vec3 diskCol = vec3(0.0);
+  float captured = 0.0;
+  float minR = 1e9;
+  float dt = 0.035;
+  vec3 n = normalize(vec3(0.0, cos(uTilt), sin(uTilt)));
+  vec3 ref = abs(n.x) < 0.9 ? vec3(1.0,0.0,0.0) : vec3(0.0,0.0,1.0);
+  vec3 bu = normalize(cross(ref, n));
+  vec3 bv = cross(n, bu);
+  float ca = cos(uTime*0.4); float sa = sin(uTime*0.4);
+  vec3 u2 = bu*ca + bv*sa;
+  vec3 v2 = -bu*sa + bv*ca;
+
+  for(int i=0;i<260;i++){
+    if(captured > 0.5) break;
+    prev = pos;
+    float r2 = dot(pos,pos);
+    float r = sqrt(r2);
+    minR = min(minR, r);
+    if(r < 1.0){ captured = 1.0; break; }
+    vec3 acc = -2.1 * pos / pow(r2, 2.5);
+    vec3 swirl = normalize(cross(vec3(0.0,1.0,0.0), pos));
+    acc += uSpin * 0.35 * swirl / (r*r*r + 0.15);
+    dir = normalize(dir + acc*dt);
+    pos += dir * dt;
+
+    float d = dot(pos, n);
+    float thick = 0.05;
+    if(abs(d) < thick){
+      float a = dot(pos, u2);
+      float b = dot(pos, v2);
+      float rad = length(vec2(a,b));
+      if(rad > uDiskInner && rad < uDiskOuter){
+        float x = (rad - uDiskInner)/(uDiskOuter - uDiskInner);
+        float edge = smoothstep(0.0,0.06,x) * smoothstep(1.0,0.85,x);
+        float temp_t = pow(1.0 - x, 1.4);
+        vec3 temp = mix(vec3(1.0,0.45,0.12), vec3(1.0,0.95,0.85), temp_t);
+        vec3 radialDir = normalize(pos - n*dot(pos,n));
+        vec3 vel = normalize(cross(n, radialDir));
+        vec3 toCam = normalize(uCamPos - pos);
+        float beam = pow(clamp(dot(vel,toCam)*0.5+0.5, 0.0, 1.0), 3.0);
+        beam = 0.25 + 1.9*beam;
+        float ang = atan(b, a);
+        float streak = 0.65 + 0.6*hash(vec3(floor(ang*22.0), floor(rad*4.0), floor(uTime*2.0)));
+        float streak2 = 0.8 + 0.4*hash(vec3(floor(ang*7.0)+31.0, floor(rad*2.0), floor(uTime*1.3)));
+        float through = 1.0 - abs(d)/thick;
+        float bright = uDiskBright * edge * beam * streak * streak2 * through * (1.4 - x) / (0.25 + rad*0.35);
+        diskCol += temp * bright * 0.16;
+      }
+    }
+  }
+
+  vec3 col;
+  if(captured > 0.5){
+    col = diskCol;
+  } else {
+    col = background(dir) + diskCol;
+    float ring = smoothstep(2.0, 1.0, minR);
+    col += vec3(1.0,0.8,0.55) * ring * uBloom * 2.2;
+    float innerGlow = smoothstep(2.4, 1.0, minR);
+    col += vec3(1.0,0.7,0.4) * innerGlow * uBloom * 0.3;
+  }
+
+  col *= 1.15;
+  col = 1.0 - exp(-col * 1.6);
+  col = pow(col, vec3(0.85));
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+function compile(type, src){
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){ console.error(gl.getShaderInfoLog(s)); }
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, 'aPos');
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+const U = {};
+for(const k of ['uRes','uTime','uCamPos','uForward','uRight','uUp','uSpin','uDiskBright','uDiskInner','uDiskOuter','uTilt','uBloom']) U[k] = gl.getUniformLocation(prog, k);
+
+let yaw=0.6, pitch=0.025, dist=8.0;
+let dragging=false, px=0, py=0;
+canvas.addEventListener('pointerdown', e=>{dragging=true; px=e.clientX; py=e.clientY; canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  yaw   -= (e.clientX-px)*0.005;
+  pitch += (e.clientY-py)*0.005;
+  pitch = Math.max(-1.35, Math.min(1.35, pitch));
+  px=e.clientX; py=e.clientY;
+});
+canvas.addEventListener('pointerup', ()=> dragging=false);
+canvas.addEventListener('wheel', e=>{ e.preventDefault(); dist *= (1 + e.deltaY*0.001); dist=Math.max(3.0, Math.min(14.0, dist)); }, {passive:false});
+
+const $ = id => document.getElementById(id);
+const inputs = {spin:$('spin'), bright:$('bright'), inner:$('inner'), outer:$('outer'), tilt:$('tilt'), bloom:$('bloom'), scale:$('scale')};
+for(const k in inputs) inputs[k].addEventListener('input', ()=>{ $(k+'V').textContent = inputs[k].value; resize(); });
+
+function resize(){
+  const s = parseFloat(inputs.scale.value);
+  const w = Math.max(1, Math.floor(window.innerWidth * s));
+  const h = Math.max(1, Math.floor(window.innerHeight * s));
+  canvas.width = w; canvas.height = h;
+  canvas.style.width = window.innerWidth+'px';
+  canvas.style.height = window.innerHeight+'px';
+  gl.viewport(0,0,w,h);
+}
+window.addEventListener('resize', resize);
+resize();
+
+function norm(v){ const l=Math.hypot(...v); return [v[0]/l,v[1]/l,v[2]/l]; }
+function cross(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+function sub(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+
+let t0 = performance.now();
+function frame(now){
+  const t = (now - t0)/1000;
+  const cp = [Math.cos(pitch)*Math.sin(yaw)*dist, Math.sin(pitch)*dist, Math.cos(pitch)*Math.cos(yaw)*dist];
+  const fwd = norm([-cp[0],-cp[1],-cp[2]]);
+  const right = norm(cross(fwd,[0,1,0]));
+  const up = cross(right,fwd);
+  gl.uniform2f(U.uRes, canvas.width, canvas.height);
+  gl.uniform1f(U.uTime, t);
+  gl.uniform3fv(U.uCamPos, cp);
+  gl.uniform3fv(U.uForward, fwd);
+  gl.uniform3fv(U.uRight, right);
+  gl.uniform3fv(U.uUp, up);
+  gl.uniform1f(U.uSpin, parseFloat(inputs.spin.value));
+  gl.uniform1f(U.uDiskBright, parseFloat(inputs.bright.value));
+  gl.uniform1f(U.uDiskInner, parseFloat(inputs.inner.value));
+  gl.uniform1f(U.uDiskOuter, parseFloat(inputs.outer.value));
+  gl.uniform1f(U.uTilt, parseFloat(inputs.tilt.value));
+  gl.uniform1f(U.uBloom, parseFloat(inputs.bloom.value));
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

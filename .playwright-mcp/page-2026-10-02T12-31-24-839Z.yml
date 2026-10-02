@@ -1,0 +1,32 @@
+- generic [active] [ref=f13e1]:
+  - generic [ref=f13e3]:
+    - heading "BLACK HOLE · INTERSTELLAR STYLE" [level=1] [ref=f13e4]
+    - generic [ref=f13e5]:
+      - text: spin
+      - slider "spin 0.85" [ref=f13e6]: "0.85"
+      - generic [ref=f13e7]: "0.85"
+    - generic [ref=f13e8]:
+      - text: brightness
+      - slider "brightness 2.6" [ref=f13e9]: "2.6"
+      - generic [ref=f13e10]: "2.6"
+    - generic [ref=f13e11]:
+      - text: disk inner
+      - slider "disk inner 1.9" [ref=f13e12]: "1.9"
+      - generic [ref=f13e13]: "1.9"
+    - generic [ref=f13e14]:
+      - text: disk outer
+      - slider "disk outer 4.6" [ref=f13e15]: "4.6"
+      - generic [ref=f13e16]: "4.6"
+    - generic [ref=f13e17]:
+      - text: disk tilt
+      - slider "disk tilt 0.0" [ref=f13e18]: "0"
+      - generic [ref=f13e19]: "0.0"
+    - generic [ref=f13e20]:
+      - text: bloom
+      - slider "bloom 1.6" [ref=f13e21]: "1.6"
+      - generic [ref=f13e22]: "1.6"
+    - generic [ref=f13e23]:
+      - text: render scale
+      - slider "render scale 0.8" [ref=f13e24]: "0.8"
+      - generic [ref=f13e25]: "0.8"
+  - generic [ref=f13e26]: drag = orbit · wheel = zoom

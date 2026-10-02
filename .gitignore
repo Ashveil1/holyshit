@@ -1,0 +1,10 @@
+*.hs.c
+*.o
+*.elf
+*.k64
+.hs_*.o
+.hs_*.S
+.hs_*.ld
+.hs_payload.bin
+.hs_kernel_gen.c
+__pycache__/
