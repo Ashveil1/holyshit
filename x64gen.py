@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """x64gen: holyshit subset -> x86-64 machine code (no gcc/as/ld/libc).
 
-Subset (compile error otherwise): Int values, Str literals (print only),
+Subset (compile error otherwise): Int/Str/List/Bool/Null values,
 def/call/recursion (closures supported via caps), if/while/for/break/continue,
 try/except/finally is BANNED, modules/import, unsafe I64/U64/Ptr + structs,
-print/int()/argv(), no Float/List/Dict/extern/slice/attr.
+print/int()/argv(), no Float/Dict/extern/slice/attr.
 `/` is truncating int division (differs from main backends: documented).
 
 Values are tagged with the low 2 bits (see TAG_* below):
   00 heap object ptr (8-aligned) | 01 Int (62-bit payload, value = word >> 2)
   10 Bool: 0x02 false, 0x0A true | 11 Null 0x03 / Unbound 0x0B
-  Heap obj: [kind:u64][payload...]; kind 0 = Str{len,bytes}, 1 = Func{code,caps}.
+  Heap obj: [kind:u64][payload...]; kind 0 = Str{len,bytes},
+  1 = Func{code,caps}, 2 = List{len,cap,buf}.
   GC: bump-only arena (grows, never frees) -- documented.
 """
 import sys
@@ -73,7 +74,7 @@ class Gen:
     # ----- value representation (low 2 bits are the tag) -----
     TAG_HEAP, TAG_INT, TAG_BOOL, TAG_NULL = 0, 1, 2, 3
     HS_FALSE, HS_TRUE, HS_NULL, HS_UNBOUND = 0x02, 0x0A, 0x03, 0x0B
-    K_STR, K_FUNC = 0, 1
+    K_STR, K_FUNC, K_LIST = 0, 1, 2
 
     class Scope:
         def __init__(self, parent=None, is_func=False):
@@ -134,6 +135,10 @@ class Gen:
             elif t == "return":
                 if s["val"] is not None:
                     self.ann_expr(s["val"], sc)
+            elif t == "setindex":
+                self.ann_expr(s["obj"], sc)
+                self.ann_expr(s["idx"], sc)
+                self.ann_expr(s["val"], sc)
             elif t == "print":
                 for ar in s["args"]:
                     self.ann_expr(ar, sc)
@@ -209,7 +214,15 @@ class Gen:
             for ar in e["args"]:
                 self.ann_expr(ar, sc, ux)
             return
-        if t in ("index", "slice", "attr", "list", "dict"):
+        if t == "list":
+            for x in e["items"]:
+                self.ann_expr(x, sc, ux)
+            return
+        if t == "index":
+            self.ann_expr(e["obj"], sc, ux)
+            self.ann_expr(e["idx"], sc, ux)
+            return
+        if t in ("slice", "attr", "dict"):
             raise HSErr(f"{t} not in x64 subset", e["line"])
         if t == "sizeof":
             st = e["stype"]
@@ -258,7 +271,8 @@ class Gen:
             return
         sc.loc[name] = self.slot(sc)
 
-    XBUILTINS = {"print", "int", "alloc", "load8", "load32", "store8",
+    XBUILTINS = {"print", "int", "len", "str", "range", "append",
+                 "alloc", "load8", "load32", "store8",
                  "store32", "as_ptr", "as_int"}
 
     def finalize(self, mod):
@@ -333,8 +347,21 @@ class Gen:
         if t == "var":
             self.var_get(e["name"], sc, mod, ln)
             return
-        if t in ("list", "dict"):
-            raise HSErr(f"{t} not in x64 subset", ln)
+        if t == "list":
+            items = e["items"]
+            for it in items:
+                self.ev(it, sc, mod)
+                a.push_r("rax")
+            a.mov_ri32("rdi", len(items))
+            a.call("x_list_new")
+            if items:
+                a.mov_rm("rdx", "rax", 24)  # buf
+                for i in reversed(range(len(items))):
+                    a.pop_r("rcx")
+                    a.mov_mr("rdx", "rcx", 8 * i)
+            return
+        if t == "dict":
+            raise HSErr("dict not in x64 subset", ln)
         if t == "neg":
             self.ev(e["val"], sc, mod)
             self.tag_check_int()
@@ -354,7 +381,10 @@ class Gen:
         if t == "call":
             self.ev_call(e, sc, mod)
             return
-        if t in ("index", "slice", "attr"):
+        if t == "index":
+            self.ev_index(e, sc, mod)
+            return
+        if t in ("slice", "attr"):
             raise HSErr(f"{t} not in x64 subset", ln)
         if t in ("deref", "sizeof", "field"):
             self.sev(e, sc, mod)
@@ -453,15 +483,18 @@ class Gen:
         if op in ("and", "or"):
             # hs returns the operand itself, not a Bool
             self.ev(e["l"], sc, mod)
-            self.truthy()
+            a.push_r("rax")            # save left (tagged)
+            self.truthy()              # rax = 0/1, flags set
             lab_keep, lab_end = self.new_tmp("bo"), self.new_tmp("bo")
             if op == "and":
                 a.jcc("e", lab_keep)    # falsy left -> result is the left value
             else:
                 a.jcc("ne", lab_keep)   # truthy left -> result is the left value
+            a.add_ri32("rsp", 8)       # drop saved left
             self.ev(e["r"], sc, mod)
             a.jmp(lab_end)
             a.label(lab_keep)
+            a.pop_r("rax")             # restore left
             a.label(lab_end)
             return
         if op in ("==", "!="):
@@ -559,7 +592,8 @@ class Gen:
         a.jcc("ne", lab_err)
         a.mov_rm("r11", "rax", 0)
         a.cmp_ri32("r11", Gen.K_STR)
-        a.jcc("ne", lab_err)
+        lab_list = self.new_tmp("ad")
+        a.jcc("ne", lab_list)
         a.mov_rm("r11", "rcx", 0)
         a.cmp_ri32("r11", Gen.K_STR)
         a.jcc("ne", lab_err)
@@ -567,9 +601,83 @@ class Gen:
         a.mov_rr("rsi", "rcx")
         a.call("x_str_cat")
         a.jmp(lab_end)
+        a.label(lab_list)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("ne", lab_err)
+        a.mov_rm("r11", "rcx", 0)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("ne", lab_err)
+        a.mov_rr("rdi", "rax")
+        a.mov_rr("rsi", "rcx")
+        a.call("x_list_cat")
+        a.jmp(lab_end)
         a.label(lab_err)
         self.type_err()
         a.label(lab_end)
+
+    def ev_index(self, e, sc, mod):
+        """obj[idx] for Str (1-char Str) and List (item)."""
+        ln = e["line"]
+        a = self.a
+        self.ev(e["obj"], sc, mod)
+        a.push_r("rax")
+        self.ev(e["idx"], sc, mod)
+        a.mov_rr("rcx", "rax")  # idx (tagged)
+        a.pop_r("rax")          # obj
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        lab_ok = self.new_tmp("ix")
+        a.jcc("e", lab_ok)
+        self.type_err()
+        a.label(lab_ok)
+        a.sar_ri8("rcx", 2)     # raw idx
+        lab_heap, lab_bad = self.new_tmp("ix"), self.new_tmp("ix")
+        lab_str, lab_list = self.new_tmp("ix"), self.new_tmp("ix")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_bad)
+        a.mov_rm("r11", "rax", 0)  # kind
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_str)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_list)
+        a.label(lab_bad)
+        self.type_err()
+        a.label(lab_str)
+        a.mov_rm("r11", "rax", 8)  # len
+        a.cmp_ri32("rcx", 0)
+        lab_pos = self.new_tmp("ix")
+        a.jcc("ge", lab_pos)
+        a.add_rr("rcx", "r11")
+        a.label(lab_pos)
+        a.cmp_ri32("rcx", 0)
+        a.jcc("l", lab_heap)    # reuse as idx-fail label
+        a.cmp_rr("rcx", "r11")
+        a.jcc("ae", lab_heap)
+        a.lea_m("rdi", "rax", 16, "rcx", 1)
+        a.mov_ri32("rsi", 1)
+        a.call("x_str_at")
+        lab_done = self.new_tmp("ix")
+        a.jmp(lab_done)
+        a.label(lab_list)
+        a.mov_rm("r11", "rax", 8)  # len
+        a.cmp_ri32("rcx", 0)
+        lab_pos2 = self.new_tmp("ix")
+        a.jcc("ge", lab_pos2)
+        a.add_rr("rcx", "r11")
+        a.label(lab_pos2)
+        a.cmp_ri32("rcx", 0)
+        a.jcc("l", lab_heap)
+        a.cmp_rr("rcx", "r11")
+        a.jcc("ae", lab_heap)
+        a.mov_rm("rdx", "rax", 24)  # buf
+        a.mov_rmx("rax", "rdx", "rcx", 8, 0)
+        a.jmp(lab_done)
+        a.label(lab_heap)
+        a.jmp("idx_err")
+        a.label(lab_done)
 
     def ev_call(self, e, sc, mod):
         ln = e["line"]
@@ -597,9 +705,34 @@ class Gen:
                 "as_ptr", "as_int"):
             self.sev_call(fn["name"], e["args"], sc, mod, ln)
             return
+        if fn["t"] == "var" and fn["name"] == "range":
+            if len(e["args"]) == 1:
+                self.ev(e["args"][0], sc, mod)
+                a.mov_rr("rdi", "rax")
+                a.call("x_range1")
+            elif len(e["args"]) == 2:
+                self.ev(e["args"][0], sc, mod)
+                a.push_r("rax")
+                self.ev(e["args"][1], sc, mod)
+                a.mov_rr("rsi", "rax")
+                a.pop_r("rdi")
+                a.call("x_range2")
+            else:
+                raise HSErr("range wants range(n) or range(a, b)", ln)
+            return
+        if fn["t"] == "var" and fn["name"] == "append":
+            if len(e["args"]) != 2:
+                raise HSErr("append wants append(list, x)", ln)
+            self.ev(e["args"][0], sc, mod)
+            a.push_r("rax")
+            self.ev(e["args"][1], sc, mod)
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            a.call("x_append")
+            return
         if fn["t"] == "var" and fn["name"] in (
-                "range", "float", "input", "open", "read",
-                "write", "close", "argv", "env", "system", "append", "split",
+                "float", "input", "open", "read",
+                "write", "close", "argv", "env", "system", "split",
                 "find", "join", "ticks", "readkey", "pmm_alloc", "pmm_total",
                 "pmm_free", "meminfo",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
@@ -610,8 +743,6 @@ class Gen:
                     "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
-            if fn["name"] == "range":
-                raise HSErr("range() only works directly in for (x64)", ln)
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
         # user function: indirect through value (uniform caps in r15)
         self.ev(fn, sc, mod)  # rax = func struct ptr
@@ -1066,16 +1197,67 @@ class Gen:
         if t == "for":
             self.ex_for(s, sc, mod, depth)
             return
+        if t == "setindex":
+            self.ex_setindex(s, sc, mod)
+            return
         if t in ("global", "import", "extern", "try", "unsafe", "struct",
-                 "udecl", "store", "fstore", "raise", "setindex", "setattr"):
+                 "udecl", "store", "fstore", "raise", "setattr"):
             raise HSErr(f"{t} handled elsewhere or not in x64 subset", ln)
         raise HSErr(f"bad stmt {t}", ln)
 
+    def ex_setindex(self, s, sc, mod):
+        """lst[i] = v (List only; Str/Dict assignment is a runtime error)."""
+        ln = s["line"]
+        a = self.a
+        self.ev(s["obj"], sc, mod)
+        a.push_r("rax")
+        self.ev(s["idx"], sc, mod)
+        a.push_r("rax")
+        self.ev(s["val"], sc, mod)
+        a.mov_rr("rdx", "rax")  # val
+        a.pop_r("rcx")          # idx (tagged)
+        a.pop_r("rax")          # obj
+        lab_ok = self.new_tmp("sx")
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("e", lab_ok)
+        self.type_err()
+        a.label(lab_ok)
+        a.sar_ri8("rcx", 2)     # raw idx
+        lab_bad, lab_list = self.new_tmp("sx"), self.new_tmp("sx")
+        lab_pos, lab_oob, lab_done = (self.new_tmp("sx"), self.new_tmp("sx"),
+                                      self.new_tmp("sx"))
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_bad)
+        a.mov_rm("r11", "rax", 0)  # kind
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_list)
+        a.label(lab_bad)
+        self.type_err()
+        a.label(lab_list)
+        a.mov_rm("r11", "rax", 8)  # len
+        a.cmp_ri32("rcx", 0)
+        a.jcc("ge", lab_pos)
+        a.add_rr("rcx", "r11")
+        a.label(lab_pos)
+        a.cmp_ri32("rcx", 0)
+        a.jcc("l", lab_oob)
+        a.cmp_rr("rcx", "r11")
+        a.jcc("ae", lab_oob)
+        a.mov_rm("r11", "rax", 24)  # buf
+        a.mov_mrx("r11", "rcx", 8, 0, "rdx")
+        a.jmp(lab_done)
+        a.label(lab_oob)
+        a.jmp("idx_err")
+        a.label(lab_done)
+
     def ex_for(self, s, sc, mod, depth):
-        """for var in range([a,] b) | for var in <Str expr>.
-        range() lowers to a raw counter loop (no List object needed);
-        Str iterates 1-char Str values. List/Dict iteration waits for
-        the List/Dict track (runtime type error until then)."""
+        """for var in range([a,] b) | for var in <Str/List expr>.
+        range() lowers to a raw counter loop; Str yields 1-char Str
+        values, List yields items. Anything else is a runtime error."""
         ln = s["line"]
         a = self.a
         it = s["iter"]
@@ -1121,28 +1303,32 @@ class Gen:
             a.jmp(lab_top)
             a.label(lab_brk)
             return
-        # Str iteration: obj -> _f0, index (raw) -> _f1
+        # Str/List iteration: obj -> _f0, index (raw) -> _f1.
+        # The element load dispatches on the object kind every pass.
         self.ev(it, sc, mod)
-        lab_ok = self.new_tmp("fs")
-        lab_bad = self.new_tmp("fs")
+        a.mov_mr("rbp", "rax", s["_f0"])
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", s["_f1"])
+        lab_top, lab_step, lab_brk = (self.new_tmp("fs"), self.new_tmp("fs"),
+                                      self.new_tmp("fs"))
+        lab_bad, lab_str, lab_list, lab_elem = (self.new_tmp("fs"),
+                                                self.new_tmp("fs"),
+                                                self.new_tmp("fs"),
+                                                self.new_tmp("fs"))
+        a.label(lab_top)
+        a.mov_rm("rax", "rbp", s["_f0"])  # obj
         a.mov_rr("r11", "rax")
         a.and_ri32("r11", 3)
         a.test_rr("r11", "r11")   # heap object?
         a.jcc("ne", lab_bad)
         a.mov_rm("r11", "rax", 0)  # kind
         a.cmp_ri32("r11", Gen.K_STR)
-        a.jcc("e", lab_ok)
+        a.jcc("e", lab_str)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_list)
         a.label(lab_bad)
         self.type_err()
-        a.label(lab_ok)
-        a.mov_mr("rbp", "rax", s["_f0"])
-        a.mov_ri32("rax", 0)
-        a.mov_mr("rbp", "rax", s["_f1"])
-        lab_top = self.new_tmp("fs")
-        lab_step = self.new_tmp("fs")
-        lab_brk = self.new_tmp("fs")
-        a.label(lab_top)
-        a.mov_rm("rax", "rbp", s["_f0"])  # obj
+        a.label(lab_str)
         a.mov_rm("rcx", "rax", 8)         # len
         a.mov_rm("rdx", "rbp", s["_f1"])  # idx
         a.cmp_rr("rdx", "rcx")
@@ -1150,6 +1336,15 @@ class Gen:
         a.lea_m("rdi", "rax", 16, "rdx", 1)  # src = data + idx
         a.mov_ri32("rsi", 1)
         a.call("x_str_at")
+        a.jmp(lab_elem)
+        a.label(lab_list)
+        a.mov_rm("rcx", "rax", 8)         # len
+        a.mov_rm("rdx", "rbp", s["_f1"])  # idx
+        a.cmp_rr("rdx", "rcx")
+        a.jcc("ae", lab_brk)
+        a.mov_rm("rax", "rax", 24)        # buf
+        a.mov_rmx("rax", "rax", "rdx", 8, 0)  # item
+        a.label(lab_elem)
         self.var_set(s["var"], sc, mod, ln)
         self.loop_stack.append((lab_brk, lab_step))
         self.ex_body(s["body"], sc, mod, depth + 1)
@@ -1368,10 +1563,11 @@ class Gen:
         a.label(lab_ok)
 
     def truthy(self):
-        """rax = tagged value -> al = 0/1 truthiness (hs rules)."""
+        """rax = tagged value -> rax = 0/1 truthiness, flags set (hs rules)."""
         a = self.a
         a.mov_rr("rdi", "rax")
         a.call("x_truth")
+        a.test_rr("rax", "rax")
 
     def truthy_br(self, lab_false):
         """rax = tagged value; jump lab_false when falsy (Int fast path)."""
@@ -1941,6 +2137,18 @@ class Gen:
             a.mov_ri32("rdi", 1)
             a.mov_ri32("rax", 60)
             a.syscall()
+        # idx_err: out-of-range index (List/Str read and write)
+        a.label("idx_err")
+        lab = self.rstr("index out of range\n")
+        a.lea_rip("rdi", lab)
+        a.mov_ri32("rsi", 19)
+        self.rt_out(2)
+        if self.freestanding:
+            a.call("k_halt")
+        else:
+            a.mov_ri32("rdi", 1)
+            a.mov_ri32("rax", 60)
+            a.syscall()
         # x_truth: rdi = tagged -> rax = 0/1
         a.label("x_truth")
         a.mov_rr("rax", "rdi")
@@ -1950,6 +2158,7 @@ class Gen:
                                                  self.new_tmp("tr"),
                                                  self.new_tmp("tr"))
         lab_bad_truth = self.new_tmp("tr")
+        lab_heap_len = self.new_tmp("tr")
         a.cmp_ri32("rax", I)
         a.jcc("e", lab_int)
         a.cmp_ri32("rax", B)
@@ -1977,7 +2186,10 @@ class Gen:
         a.label(lab_heap)
         a.mov_rm("rax", "rdi", 0)       # kind
         a.cmp_ri32("rax", KS)
+        a.jcc("e", lab_heap_len)
+        a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("ne", lab_bad_truth)
+        a.label(lab_heap_len)
         a.mov_rm("rax", "rdi", 8)       # len
         a.test_rr("rax", "rax")
         a.setcc_al("ne")
@@ -1996,6 +2208,7 @@ class Gen:
                                                 self.new_tmp("pv"))
         lab_pv_unb, lab_pv_bad = self.new_tmp("pv"), self.new_tmp("pv")
         lab_pv_done = self.new_tmp("pv")
+        lab_pv_str = self.new_tmp("pv")
         a.cmp_ri32("rax", I)
         a.jcc("e", lab_pv_int)
         a.cmp_ri32("rax", B)
@@ -2033,7 +2246,13 @@ class Gen:
         a.label(lab_pv_heap)
         a.mov_rm("rax", "r10", 0)
         a.cmp_ri32("rax", KS)
+        a.jcc("e", lab_pv_str)
+        a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("ne", lab_pv_bad)
+        a.mov_rr("rdi", "r10")
+        a.call("x_print_list")
+        a.ret()
+        a.label(lab_pv_str)
         a.mov_rm("rsi", "r10", 8)      # len
         a.mov_rr("rdi", "r10")
         a.add_ri32("rdi", 16)          # bytes
@@ -2190,7 +2409,17 @@ class Gen:
         a.cmp_rr("rax", "rcx")
         a.jcc("ne", "eq_raw")
         a.cmp_ri32("rax", KS)
+        a.jcc("e", "eq_str")
+        a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("ne", "eq_raw")
+        a.mov_rr("rdi", "r10")
+        a.mov_rr("rsi", "r11")
+        a.call("x_list_eq")
+        a.test_rr("rax", "rax")
+        a.setcc_al("e")
+        a.movzx_eax_al()
+        a.ret()
+        a.label("eq_str")
         a.mov_rr("rdi", "r10")
         a.mov_rr("rsi", "r11")
         a.call("x_str_cmp")
@@ -2250,6 +2479,7 @@ class Gen:
         # x_len: rdi = Str -> rax = tagged Int
         a.label("x_len")
         lab_len_bad = self.new_tmp("ln")
+        lab_len_ok = self.new_tmp("ln")
         a.mov_rr("r10", "rdi")
         a.mov_rr("rax", "r10")
         a.and_ri32("rax", 3)
@@ -2257,7 +2487,10 @@ class Gen:
         a.jcc("ne", lab_len_bad)
         a.mov_rm("rcx", "r10", 0)
         a.cmp_ri32("rcx", KS)
+        a.jcc("e", lab_len_ok)
+        a.cmp_ri32("rcx", Gen.K_LIST)
         a.jcc("ne", lab_len_bad)
+        a.label(lab_len_ok)
         a.mov_rm("rax", "r10", 8)
         a.shl_ri8("rax", 2)
         a.or_ri8("rax", 1)
@@ -2279,7 +2512,13 @@ class Gen:
         a.jcc("ne", "st_bad")
         a.mov_rm("rax", "r10", 0)
         a.cmp_ri32("rax", KS)
+        a.jcc("e", "st_same")
+        a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("ne", "st_bad")
+        a.mov_rr("rdi", "r10")
+        a.call("x_list_str")
+        a.ret()
+        a.label("st_same")
         a.mov_rr("rax", "r10")
         a.ret()
         a.label("st_int")
@@ -2320,6 +2559,402 @@ class Gen:
         a.mov_rr("rdi", "rsi")
         a.mov_rr("rsi", "rdx")
         a.call("x_str_at")
+        a.ret()
+        # ----- List runtime (header [kind=2][len][cap][buf], items are tags) -----
+        # x_list_new: rdi = raw count -> rax = List{len=cap=n}
+        a.label("x_list_new")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)     # n
+        a.mov_rr("rax", "rdi")
+        a.shl_ri8("rax", 3)            # buf bytes
+        a.mov_mr("rbp", "rax", -16)
+        a.test_rr("rax", "rax")
+        lab_nb = self.new_tmp("lq")
+        a.jcc("e", lab_nb)
+        a.mov_rr("rdi", "rax")
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -16)    # buf
+        a.label(lab_nb)
+        a.mov_ri32("rdi", 32)
+        a.call("x_malloc")             # header
+        a.mov_mr("rbp", "rax", -24)    # obj
+        a.mov_ri32("rcx", Gen.K_LIST)
+        a.mov_mr("rax", "rcx", 0)
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_mr("rax", "rcx", 8)      # len = n
+        a.mov_mr("rax", "rcx", 16)     # cap = n
+        a.mov_rm("rcx", "rbp", -16)
+        a.mov_mr("rax", "rcx", 24)     # buf
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_append: rdi = List, rsi = val -> rax = Null (grows buf as needed;
+        # the header address never moves, so aliases keep working)
+        a.label("x_append")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)     # obj
+        a.mov_mr("rbp", "rsi", -16)    # val
+        a.mov_rr("r10", "rdi")
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        a.test_rr("rax", "rax")
+        lab_ap_bad, lab_ap_fit = self.new_tmp("lq"), self.new_tmp("lq")
+        a.jcc("ne", lab_ap_bad)
+        a.mov_rm("rax", "r10", 0)
+        a.cmp_ri32("rax", Gen.K_LIST)
+        a.jcc("ne", lab_ap_bad)
+        a.mov_rm("rax", "r10", 8)      # len
+        a.mov_mr("rbp", "rax", -24)
+        a.mov_rm("rax", "r10", 16)     # cap
+        a.mov_mr("rbp", "rax", -32)
+        a.mov_rm("rcx", "rbp", -24)
+        a.cmp_rr("rcx", "rax")
+        a.jcc("l", lab_ap_fit)
+        # grow: newcap = 4 if cap == 0 else cap * 2
+        a.test_rr("rax", "rax")
+        lab_ap_nz = self.new_tmp("lq")
+        a.jcc("ne", lab_ap_nz)
+        a.mov_ri32("rax", 4)
+        lab_ap_grow = self.new_tmp("lq")
+        a.jmp(lab_ap_grow)
+        a.label(lab_ap_nz)
+        a.shl_ri8("rax", 1)
+        a.label(lab_ap_grow)
+        a.mov_mr("rbp", "rax", -40)    # newcap
+        a.shl_ri8("rax", 3)
+        a.mov_rr("rdi", "rax")
+        a.call("x_malloc")             # new buf
+        a.mov_rm("rcx", "rbp", -8)     # obj
+        a.mov_rm("rsi", "rcx", 24)     # old buf
+        a.mov_rm("rdx", "rbp", -40)    # newcap
+        a.mov_mr("rcx", "rdx", 16)     # cap = newcap
+        a.mov_mr("rcx", "rax", 24)     # buf = newbuf
+        a.mov_rm("rdx", "rbp", -24)    # len
+        a.mov_rr("rdi", "rax")         # dst
+        a.mov_rr("rcx", "rdx")
+        a.shl_ri8("rcx", 3)            # bytes
+        self.copy_bytes()
+        a.jmp(lab_ap_fit)
+        a.label(lab_ap_bad)
+        a.jmp("type_err")
+        a.label(lab_ap_fit)
+        a.mov_rm("rax", "rbp", -8)     # obj
+        a.mov_rm("rdx", "rax", 24)     # buf
+        a.mov_rm("rcx", "rbp", -24)    # len
+        a.mov_rm("rsi", "rbp", -16)    # val
+        a.mov_mrx("rdx", "rcx", 8, 0, "rsi")
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rcx", "rbp", -24)
+        a.mov_mr("rax", "rcx", 8)      # len++
+        a.mov_ri64("rax", Gen.HS_NULL)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_list_cat: rdi = a, rsi = b (both List) -> rax = new List
+        a.label("x_list_cat")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 40)
+        a.mov_mr("rbp", "rdi", -8)
+        a.mov_mr("rbp", "rsi", -16)
+        a.mov_rm("rax", "rdi", 8)      # la
+        a.mov_rm("rcx", "rsi", 8)      # lb
+        a.mov_mr("rbp", "rax", -24)
+        a.mov_mr("rbp", "rcx", -32)
+        a.add_rr("rax", "rcx")         # total
+        a.mov_rr("rdi", "rax")
+        a.call("x_list_new")
+        a.mov_mr("rbp", "rax", -40)    # obj
+        # copy a
+        a.mov_rm("rsi", "rbp", -8)
+        a.mov_rm("rsi", "rsi", 24)     # bufa
+        a.mov_rm("rdi", "rbp", -40)
+        a.mov_rm("rdi", "rdi", 24)     # buf
+        a.mov_rm("rcx", "rbp", -24)
+        a.shl_ri8("rcx", 3)
+        self.copy_bytes()
+        # copy b at buf + la*8
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rm("rax", "rax", 24)     # buf
+        a.mov_rm("rcx", "rbp", -24)    # la
+        a.lea_m("rdi", "rax", 0, "rcx", 8)
+        a.mov_rm("rsi", "rbp", -16)
+        a.mov_rm("rsi", "rsi", 24)     # bufb
+        a.mov_rm("rcx", "rbp", -32)
+        a.shl_ri8("rcx", 3)
+        self.copy_bytes()
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_list_eq: rdi = a, rsi = b (both List) -> rax = 1/0
+        a.label("x_list_eq")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)
+        a.mov_mr("rbp", "rsi", -16)
+        a.mov_rm("rax", "rdi", 8)
+        a.mov_rm("rcx", "rsi", 8)
+        a.cmp_rr("rax", "rcx")
+        lab_lq_ne, lab_lq_eq = self.new_tmp("lq"), self.new_tmp("lq")
+        a.jcc("ne", lab_lq_ne)
+        a.mov_mr("rbp", "rax", -32)    # len
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -24)    # idx
+        lab_lq_top = self.new_tmp("lq")
+        a.label(lab_lq_top)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -32)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_lq_eq)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)     # bufa
+        a.mov_rm("rcx", "rbp", -24)    # idx
+        a.mov_rmx("rdi", "rax", "rcx", 8, 0)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rax", "rax", 24)     # bufb
+        a.mov_rmx("rsi", "rax", "rcx", 8, 0)
+        a.call("x_eq")
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_lq_ne)
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_lq_top)
+        a.label(lab_lq_eq)
+        a.mov_ri32("rax", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_lq_ne)
+        a.mov_ri32("rax", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_range1: rdi = end(tagged) | x_range2: rdi = start, rsi = end
+        a.label("x_range1")
+        a.mov_rr("r11", "rdi")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("ne", "rg_bad")
+        a.sar_ri8("rdi", 2)
+        a.mov_rr("rsi", "rdi")
+        a.mov_ri32("rdi", 0)
+        a.jmp("x_range_core")
+        a.label("x_range2")
+        a.mov_rr("r11", "rdi")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("ne", "rg_bad")
+        a.mov_rr("r11", "rsi")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("ne", "rg_bad")
+        a.sar_ri8("rdi", 2)
+        a.sar_ri8("rsi", 2)
+        a.label("x_range_core")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)     # start
+        a.mov_rr("rax", "rsi")
+        a.sub_rr("rax", "rdi")         # end - start
+        a.mov_ri32("rcx", 0)
+        a.cmp_ri32("rax", 0)
+        lab_rg0 = self.new_tmp("lq")
+        a.jcc("le", lab_rg0)
+        a.mov_rr("rcx", "rax")
+        a.label(lab_rg0)
+        a.mov_mr("rbp", "rcx", -24)    # len
+        a.mov_rr("rdi", "rcx")
+        a.call("x_list_new")
+        a.mov_mr("rbp", "rax", -32)    # obj
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -16)    # idx
+        lab_rg_top = self.new_tmp("lq")
+        a.label(lab_rg_top)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rcx", "rbp", -24)
+        a.cmp_rr("rax", "rcx")
+        lab_rg_dn = self.new_tmp("lq")
+        a.jcc("ae", lab_rg_dn)
+        a.mov_rm("rcx", "rbp", -8)     # start
+        a.add_rr("rax", "rcx")         # raw value
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)             # tag
+        a.mov_rm("rcx", "rbp", -32)    # obj
+        a.mov_rm("rcx", "rcx", 24)     # buf
+        a.mov_rm("rdx", "rbp", -16)    # idx
+        a.mov_mrx("rcx", "rdx", 8, 0, "rax")
+        a.mov_rm("rax", "rbp", -16)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)
+        a.jmp(lab_rg_top)
+        a.label(lab_rg_dn)
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("rg_bad")
+        a.jmp("type_err")
+        # x_list_str: rdi = List -> rax = Str like [1, x]
+        a.label("x_list_str")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)     # obj
+        a.mov_rm("rax", "rdi", 8)      # len
+        a.mov_mr("rbp", "rax", -32)
+        a.test_rr("rax", "rax")
+        lab_ls_mt = self.new_tmp("lq")
+        a.jcc("e", lab_ls_mt)
+        # pass 1: total = 2 + sum(item lens) + 2 * (len - 1)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -16)    # idx
+        a.mov_mr("rbp", "rax", -24)    # sum
+        lab_ls_t1 = self.new_tmp("lq")
+        a.label(lab_ls_t1)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rcx", "rbp", -32)
+        a.cmp_rr("rax", "rcx")
+        lab_ls_t2 = self.new_tmp("lq")
+        a.jcc("ae", lab_ls_t2)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)     # buf
+        a.mov_rm("rcx", "rbp", -16)
+        a.mov_rmx("rdi", "rax", "rcx", 8, 0)
+        a.call("x_str")
+        a.mov_mr("rbp", "rax", -40)    # item str
+        a.mov_rm("rcx", "rax", 8)
+        a.mov_rm("rax", "rbp", -24)
+        a.add_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -24)
+        a.mov_rm("rax", "rbp", -16)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)
+        a.jmp(lab_ls_t1)
+        a.label(lab_ls_t2)
+        a.mov_rm("rax", "rbp", -24)    # sum
+        a.add_ri32("rax", 2)
+        a.mov_rm("rcx", "rbp", -32)
+        a.sub_ri32("rcx", 1)
+        a.shl_ri8("rcx", 1)            # 2 * (len - 1)
+        a.add_rr("rax", "rcx")
+        a.mov_rr("rdi", "rax")         # total
+        a.add_ri32("rdi", 16)          # + header
+        a.call("x_malloc")
+        a.mov_ri32("rcx", Gen.K_STR)
+        a.mov_mr("rax", "rcx", 0)
+        a.mov_rm("rcx", "rbp", -24)
+        a.mov_rm("rdx", "rbp", -32)
+        a.sub_ri32("rdx", 1)
+        a.shl_ri8("rdx", 1)
+        a.add_rr("rcx", "rdx")
+        a.add_ri32("rcx", 2)           # recompute total (sum+2+2*(n-1))
+        a.mov_mr("rax", "rcx", 8)
+        a.mov_mr("rbp", "rax", -40)    # out str
+        a.lea_m("rdx", "rax", 16)      # dst
+        a.mov_ri32("rax", 0x5B)        # '['
+        a.mov_mr8("rdx", 0, 0)
+        a.add_ri32("rdx", 1)
+        a.mov_mr("rbp", "rdx", -48)    # dst cursor... (48 < 48? sub was 48: -48 ok)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -16)    # idx = 0
+        lab_ls_t3, lab_ls_dn = self.new_tmp("lq"), self.new_tmp("lq")
+        a.label(lab_ls_t3)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rcx", "rbp", -32)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_ls_dn)
+        a.test_rr("rax", "rax")
+        lab_ls_ns = self.new_tmp("lq")
+        a.jcc("e", lab_ls_ns)
+        a.mov_rm("rdx", "rbp", -48)
+        a.mov_ri32("rax", 0x2C)        # ','
+        a.mov_mr8("rdx", 0, 0)
+        a.mov_ri32("rax", 0x20)        # ' '
+        a.mov_mr8("rdx", 0, 1)
+        a.add_ri32("rdx", 2)
+        a.mov_mr("rbp", "rdx", -48)
+        a.label(lab_ls_ns)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)
+        a.mov_rm("rcx", "rbp", -16)
+        a.mov_rmx("rdi", "rax", "rcx", 8, 0)
+        a.call("x_str")
+        a.mov_rm("rcx", "rax", 8)      # item len
+        a.lea_m("rsi", "rax", 16)      # item bytes
+        a.mov_rm("rdi", "rbp", -48)    # dst cursor
+        self.copy_bytes()              # rdi ends at dst + len
+        a.mov_mr("rbp", "rdi", -48)    # save cursor
+        a.mov_rm("rax", "rbp", -16)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)
+        a.jmp(lab_ls_t3)
+        a.label(lab_ls_dn)
+        a.mov_rm("rdx", "rbp", -48)
+        a.mov_ri32("rax", 0x5D)        # ']'
+        a.mov_mr8("rdx", 0, 0)
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_ls_mt)
+        a.lea_rip("rdi", self.rstr("[]"))
+        a.mov_ri32("rsi", 2)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_print_list: rdi = List -> prints [a, b] (no newline)
+        a.label("x_print_list")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)     # obj
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -16)    # idx
+        a.lea_rip("rdi", self.rstr("["))
+        a.mov_ri32("rsi", 1)
+        self.rt_out()
+        lab_pl_top, lab_pl_dn = self.new_tmp("lq"), self.new_tmp("lq")
+        a.label(lab_pl_top)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rcx", "rax", 8)      # len
+        a.mov_rm("rax", "rbp", -16)    # idx
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_pl_dn)
+        a.test_rr("rax", "rax")
+        lab_pl_ns = self.new_tmp("lq")
+        a.jcc("e", lab_pl_ns)
+        a.lea_rip("rdi", self.rstr(", "))
+        a.mov_ri32("rsi", 2)
+        self.rt_out()
+        a.label(lab_pl_ns)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)     # buf
+        a.mov_rm("rcx", "rbp", -16)
+        a.mov_rmx("rdi", "rax", "rcx", 8, 0)
+        a.call("print_val")
+        a.mov_rm("rax", "rbp", -16)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)
+        a.jmp(lab_pl_top)
+        a.label(lab_pl_dn)
+        a.lea_rip("rdi", self.rstr("]"))
+        a.mov_ri32("rsi", 1)
+        self.rt_out()
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
         a.ret()
 
 

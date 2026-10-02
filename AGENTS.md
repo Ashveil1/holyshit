@@ -119,15 +119,18 @@ Kernel-surface (xkernel freestanding): `ticks readkey pmm_alloc pmm_total pmm_fr
 
 ### x64 backend subset (`hs.py xbuild` / `xkernel`)
 
-Has: Int (62-bit), Str values (literals, `+` concat, `len`, `==`, `<`), Bool, `null`,
+Has: Int (62-bit), Str values (literals, `+` concat, `len`, `==`, `<`),
+List values (literals, `+` concat, `len`, `append`, `==`, indexing incl.
+negative, `l[i] = v`, `range()` materializes a List), Bool, `null`,
 `not/and/or`, `if/elif/else`, `while`, `for` (`for i in range([a,] b)` lowers to a
-counter loop — no List allocated; `for c in <str>` yields 1-char Str),
-`break`/`continue`, `def` (recursion + closures), `str()`, `int()`, `len()`,
-`print`, `unsafe:` I64/U64/Ptr + structs, kernel builtins above.
+counter loop; `for x in <str|list>` yields elements), `break`/`continue`,
+`def` (recursion + closures), `str()` (incl. lists → `[1, x]`), `int()`,
+`len()`, `print` (lists print as `[a, b]`, nested), `unsafe:` I64/U64/Ptr +
+structs, kernel builtins above.
 
-Missing (compile error, on purpose): Float, List, Dict, `try`, `import`,
-slicing, attribute access, `extern`. Standalone `range()` outside `for` is also
-an error (it never materializes a list). `/` truncates like C here, not hs.
+Missing (compile error, on purpose): Float, Dict, `try`, `import`,
+slicing, attribute access, `extern`, `split`/`find`/`join`. `/` truncates like C
+here, not hs. Out-of-range indexing reports `index out of range`.
 
 Value representation: low 2 bits are the tag — `01` Int (`v<<2|1`),
 `10` Bool (0x02/0x0A), `11` Null (0x03)/Unbound (0x0B), `00` heap object

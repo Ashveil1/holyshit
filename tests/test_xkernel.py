@@ -96,6 +96,15 @@ with tempfile.TemporaryDirectory() as d:
                      "zero is false", "kstr-done"):
             check(f"kxstr serial has {line!r}", line in out, out[-800:])
         check("kxstr len", "4" in out and "2" in out, out[-800:])
+    # List values on bare metal
+    kl = os.path.join(d, "kl.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kxlist.hs"), kl)
+    check("kxlist build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kl, timeout=8)
+        for line in ("[1, 2, 3]", "[1, 2, 3, 4]", "[99, 2, 3, 4]",
+                     "108", "[0, 1, 2]", "klist-done"):
+            check(f"kxlist serial has {line!r}", line in out, out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")
