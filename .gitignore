@@ -8,3 +8,6 @@
 .hs_payload.bin
 .hs_kernel_gen.c
 __pycache__/
+.playwright-mcp/
+blackhole_*.html
+blackhole_*.png
