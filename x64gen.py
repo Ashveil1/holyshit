@@ -73,6 +73,7 @@ class Gen:
             self.uloc = {}  # unsafe static name -> rbp offset (negative)
             self.utypes = {}  # unsafe static name -> I64/U64/Ptr/Ptr:X
             self.globs = set()  # names declared global here
+            self.strvars = set()  # dynamic names holding Str* (readkey results)
             self.nloc = 0
 
     def slot(self, sc):
@@ -96,6 +97,10 @@ class Gen:
             elif t == "set":
                 self.ann_expr(s["val"], sc)
                 self.decl(sc, s["name"])
+                if self.is_readkey_call(s["val"]):
+                    sc.strvars.add(s["name"])
+                else:
+                    sc.strvars.discard(s["name"])
             elif t == "for":
                 raise HSErr("for not in x64 subset (use while)", s["line"])
             elif t == "try":
@@ -379,6 +384,16 @@ class Gen:
     def glabel(self, mod, name):
         return f"g_{mod['pfx']}{name}"
 
+    def reserve(self, name, nbytes):
+        # zeroed data region for builder-filled tables (returns data offset)
+        a = self.a
+        if name in a.data_labels:
+            raise HSErr(f"dup data reserve {name}")
+        off = len(a.data)
+        a.data_labels[name] = off
+        a.data += b"\0" * nbytes
+        return off
+
     def var_get(self, name, sc, mod, ln):
         a = self.a
         kind, ref = self.resolve_var(name, sc, mod, ln)
@@ -451,12 +466,14 @@ class Gen:
             a.imul_rr("rax", "rcx")
         elif op in ("/", "%"):
             a.push_r("rdx")
-            a.test_rr("rcx", "rcx")
-            lab_dz = self.new_tmp("dz")
-            a.jcc("ne", lab_dz)
-            a.add_ri32("rsp", 8)  # drop saved rdx; divzero never returns
-            a.jmp("divzero")
-            a.label(lab_dz)
+            if not self.freestanding:
+                # hosted: clean divide error; freestanding: hardware #DE
+                a.test_rr("rcx", "rcx")
+                lab_dz = self.new_tmp("dz")
+                a.jcc("ne", lab_dz)
+                a.add_ri32("rsp", 8)  # drop saved rdx; divzero never returns
+                a.jmp("divzero")
+                a.label(lab_dz)
             a.cqo()
             a.idiv_r("rcx")
             if op == "%":
@@ -492,11 +509,16 @@ class Gen:
         if fn["t"] == "var" and fn["name"] in (
                 "len", "range", "str", "float", "input", "open", "read",
                 "write", "close", "argv", "env", "system", "append", "split",
-                "find", "join", "ticks", "readkey", "pmm_alloc", "meminfo",
+                "find", "join", "ticks", "readkey", "pmm_alloc", "pmm_total",
+                "pmm_free", "meminfo",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "read_text", "write_text", "append_text",
                 "exists", "ls", "mkdir", "json_load", "json_save", "asm"):
+            if self.freestanding and fn["name"] in (
+                    "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free"):
+                self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
+                return
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
         # user function: indirect through value (uniform caps in r15)
         self.ev(fn, sc, mod)  # rax = func struct ptr
@@ -513,6 +535,90 @@ class Gen:
         a.pop_r("r15")
         a.add_ri32("rsp", 8 * (len(e["args"]) + 1))
 
+    def ev_kdev(self, name, args, sc, mod, ln):
+        # freestanding kernel device builtins -> rax (Str* for readkey, 0=Null)
+        a = self.a
+        if name == "ticks":
+            if args:
+                raise HSErr("ticks takes no args", ln)
+            a.lea_rip("rax", "ticks_")
+            a.mov_rm("rax", "rax", 0)
+            return
+        if name == "readkey":
+            if args:
+                raise HSErr("readkey takes no args", ln)
+            lab_no = self.new_tmp("rk")
+            a.lea_rip("rax", "keyflag_")
+            a.mov_rm("rax", "rax", 0)
+            a.test_rr("rax", "rax")
+            a.jcc("e", lab_no)
+            a.lea_rip("rcx", "keycode_")
+            a.movzx_eax_m8("rcx", 0)  # eax = scancode
+            a.push_r("rax")  # save code
+            a.mov_ri32("rdi", 16)
+            a.call("x_malloc")  # rax = Str
+            a.mov_ri32("rcx", 1)
+            a.mov_mr("rax", "rcx", 0)  # len = 1
+            a.pop_r("rcx")  # code
+            a.mov_mr8("rax", 1, 8)  # data = cl
+            a.push_r("rax")  # save str
+            a.mov_ri32("rcx", 0)
+            a.lea_rip("rdx", "keyflag_")
+            a.mov_mr("rdx", "rcx", 0)  # clear flag
+            a.pop_r("rax")  # str
+            lab_done = self.new_tmp("rk")
+            a.jmp(lab_done)
+            a.label(lab_no)
+            a.mov_ri32("rax", 0)  # Null
+            a.label(lab_done)
+            return
+        if name == "pmm_alloc":
+            if len(args) != 1:
+                raise HSErr("pmm_alloc wants pmm_alloc(npages)", ln)
+            self.ev(args[0], sc, mod)  # rax = npages
+            a.push_r("rax")
+            a.lea_rip("rcx", "pmm_free_")
+            a.mov_rm("rcx", "rcx", 0)
+            a.pop_r("rax")
+            a.cmp_rr("rcx", "rax")
+            lab_pa = self.new_tmp("pa")
+            a.jcc("ae", lab_pa)
+            a.lea_rip("rsi", "oom_")
+            a.call("k_puts_cstr")
+            a.call("k_halt")
+            a.label(lab_pa)
+            # addr = PMM_BASE + next*4096
+            a.lea_rip("rcx", "pmm_next_")
+            a.mov_rm("rcx", "rcx", 0)
+            a.push_r("rax")  # npages
+            a.push_r("rcx")  # next
+            a.mov_ri32("rax", 0x4000000)
+            a.mov_rr("rdx", "rcx")
+            a.shl_ri8("rdx", 12)
+            a.add_rr("rax", "rdx")  # addr
+            a.pop_r("rcx")  # next
+            a.pop_r("rdx")  # npages
+            a.push_r("rax")  # save addr
+            a.add_rr("rcx", "rdx")  # next += n
+            a.lea_rip("rax", "pmm_next_")
+            a.mov_mr("rax", "rcx", 0)
+            a.lea_rip("rax", "pmm_free_")
+            a.mov_rm("rcx", "rax", 0)
+            a.sub_rr("rcx", "rdx")  # free -= n
+            a.mov_mr("rax", "rcx", 0)
+            a.pop_r("rax")  # addr
+            return
+        if name in ("pmm_total", "pmm_free"):
+            if args:
+                raise HSErr(f"{name} takes no args", ln)
+            if name == "pmm_total":
+                a.mov_ri32("rax", 32768)
+            else:
+                a.lea_rip("rax", "pmm_free_")
+                a.mov_rm("rax", "rax", 0)
+            return
+        raise HSErr(f"bad kdev {name}", ln)
+
     def emit_write(self):
         # rsi=ptr, rdx=len already set -> write to stdout (hosted) or serial (fs)
         a = self.a
@@ -522,6 +628,22 @@ class Gen:
             a.mov_ri32("rdi", 1)
             a.mov_ri32("rax", 1)
             a.syscall()
+
+    def is_readkey_call(self, e):
+        return (e["t"] == "call" and e["fn"]["t"] == "var"
+                and e["fn"]["name"] == "readkey")
+
+    def is_str_valued(self, e, sc):
+        # static Str detection (freestanding readkey results only)
+        if self.is_readkey_call(e):
+            return True
+        if e["t"] == "var":
+            s = sc
+            while s is not None:
+                if e["name"] in s.strvars:
+                    return True
+                s = s.parent
+        return False
 
     def ev_print(self, args, sc, mod, ln):
         a = self.a
@@ -534,6 +656,12 @@ class Gen:
                 lab = self.rstr(ar["val"])
                 a.lea_rip("rsi", lab)
                 a.mov_ri32("rdx", len(ar["val"].encode()))
+            elif self.freestanding and self.is_str_valued(ar, sc):
+                # heap Str {len, data}: rsi=data, rdx=len
+                self.ev(ar, sc, mod)
+                a.mov_rr("rsi", "rax")
+                a.mov_rm("rdx", "rsi", 0)
+                a.add_ri32("rsi", 8)
             else:
                 self.ev(ar, sc, mod)
                 a.push_r("rax")
@@ -621,11 +749,13 @@ class Gen:
             raise HSErr(f"struct '{xs}' has no field '{e['name']}'", ln)
         ft, off, count = f
         a.pop_r("rax")
-        lab_nn = self.new_tmp("nn")
-        a.test_rr("rax", "rax")
-        a.jcc("ne", lab_nn)
-        self.rt_die("null pointer dereference")
-        a.label(lab_nn)
+        if not self.freestanding:
+            # hosted: clean null error; freestanding: hardware #PF
+            lab_nn = self.new_tmp("nn")
+            a.test_rr("rax", "rax")
+            a.jcc("ne", lab_nn)
+            self.rt_die("null pointer dereference")
+            a.label(lab_nn)
         if count > 1:
             if e["idx"] is None:
                 raise HSErr(f"array field '{e['name']}' needs an index", ln)
@@ -633,11 +763,12 @@ class Gen:
             self.sev(e["idx"], sc, mod)
             a.mov_rr("rcx", "rax")
             a.pop_r("rax")  # base
-            a.cmp_ri32("rcx", count)  # unsigned: negatives fail too
-            lab_ok = self.new_tmp("bd")
-            a.jcc("b", lab_ok)
-            self.rt_die(f"index out of range for '{e['name']}'")
-            a.label(lab_ok)
+            if not self.freestanding:
+                a.cmp_ri32("rcx", count)  # unsigned: negatives fail too
+                lab_ok = self.new_tmp("bd")
+                a.jcc("b", lab_ok)
+                self.rt_die(f"index out of range for '{e['name']}'")
+                a.label(lab_ok)
             a.mov_rmx("rax", "rax", "rcx", 8, off)
             return
         if e["idx"] is not None:
@@ -689,12 +820,14 @@ class Gen:
             a.imul_rr("rax", "rcx")
         elif op in ("/", "%"):
             a.push_r("rdx")
-            a.test_rr("rcx", "rcx")
-            lab_dz = self.new_tmp("dz")
-            a.jcc("ne", lab_dz)
-            a.add_ri32("rsp", 8)  # drop saved rdx; divzero never returns
-            a.jmp("divzero")
-            a.label(lab_dz)
+            if not self.freestanding:
+                # hosted: clean divide error; freestanding: hardware #DE
+                a.test_rr("rcx", "rcx")
+                lab_dz = self.new_tmp("dz")
+                a.jcc("ne", lab_dz)
+                a.add_ri32("rsp", 8)  # drop saved rdx; divzero never returns
+                a.jmp("divzero")
+                a.label(lab_dz)
             a.cqo()
             a.idiv_r("rcx")
             if op == "%":
@@ -894,11 +1027,12 @@ class Gen:
                 ft, off, count = f
                 self.sev(x["obj"], sc, mod)
                 a.push_r("rax")
-                lab_nn = self.new_tmp("nn")
-                a.test_rr("rax", "rax")
-                a.jcc("ne", lab_nn)
-                self.rt_die("null pointer dereference")
-                a.label(lab_nn)
+                if not self.freestanding:
+                    lab_nn = self.new_tmp("nn")
+                    a.test_rr("rax", "rax")
+                    a.jcc("ne", lab_nn)
+                    self.rt_die("null pointer dereference")
+                    a.label(lab_nn)
                 a.pop_r("rax")  # base; the single pop for the push above
                 if count > 1:
                     if x["idx"] is None:
@@ -907,11 +1041,12 @@ class Gen:
                     self.sev(x["idx"], sc, mod)
                     a.mov_rr("rcx", "rax")
                     a.pop_r("rax")  # base
-                    a.cmp_ri32("rcx", count)
-                    lab_ok = self.new_tmp("bd")
-                    a.jcc("b", lab_ok)
-                    self.rt_die(f"index out of range for '{x['name']}'")
-                    a.label(lab_ok)
+                    if not self.freestanding:
+                        a.cmp_ri32("rcx", count)
+                        lab_ok = self.new_tmp("bd")
+                        a.jcc("b", lab_ok)
+                        self.rt_die(f"index out of range for '{x['name']}'")
+                        a.label(lab_ok)
                     a.lea_m("rax", "rax", off, "rcx", 8)
                 else:
                     if x["idx"] is not None:
@@ -941,6 +1076,12 @@ class Gen:
                         lab = self.rstr(v)
                         a.lea_rip("rsi", lab)
                         a.mov_ri32("rdx", len(v.encode()))
+                        self.emit_write()
+                    elif self.freestanding and v["t"] == "var" and self.is_str_valued(v, sc):
+                        self.sev(v, sc, mod)
+                        a.mov_rr("rsi", "rax")
+                        a.mov_rm("rdx", "rsi", 0)
+                        a.add_ri32("rsi", 8)
                         self.emit_write()
                     else:
                         self.sev(v, sc, mod)
@@ -1087,6 +1228,21 @@ class Gen:
             a.mov_ri16("dx", port)
             a.mov_ri32("rax", val)
             a.out_dx_al()
+        # PIC remap: master 0x20, slave 0x28, 8086 mode, unmask IRQ0+1
+        for port, val in ((0x20, 0x11), (0xA0, 0x11), (0x21, 0x20),
+                          (0xA1, 0x28), (0x21, 0x04), (0xA1, 0x02),
+                          (0x21, 0x01), (0xA1, 0x01), (0x21, 0xFC),
+                          (0xA1, 0xFF)):
+            a.mov_ri16("dx", port)
+            a.mov_ri32("rax", val)
+            a.out_dx_al()
+        # PIT ch0, mode 3, 100Hz
+        for port, val in ((0x43, 0x36), (0x40, 0x9B), (0x40, 0x2E)):
+            a.mov_ri16("dx", port)
+            a.mov_ri32("rax", val)
+            a.out_dx_al()
+        a.lidt_rip("idtr_")
+        a.sti()
         a.call("hs_kernel_main")
         a.cli()
         lab_h = self.new_tmp("kh")
@@ -1106,6 +1262,8 @@ class Gen:
             self.emit_runtime_fs()
         else:
             self.emit_runtime()
+        if self.freestanding:
+            self.emit_irq_stubs()
         for s in self._def_nodes(mod):
             self.emit_func(self.flabels[id(s["_fs"])], s, s["_fs"], mod)
         self.emit_main(mod)
@@ -1119,6 +1277,23 @@ class Gen:
             self.a.code += b"out of memory\0"
             self.a.label("dzm_")
             self.a.code += b"division by zero\0"
+            self.a.label("exc_")
+            self.a.code += b"EXC "
+            self.a.label("kbdmap_")
+            # set-1 make-code -> ascii (0 = ignore)
+            kb = bytearray(256)
+            for code, ch in ((0x02, "1"), (0x03, "2"), (0x04, "3"), (0x05, "4"),
+                             (0x06, "5"), (0x07, "6"), (0x08, "7"), (0x09, "8"),
+                             (0x0A, "9"), (0x0B, "0"), (0x10, "q"), (0x11, "w"),
+                             (0x12, "e"), (0x13, "r"), (0x14, "t"), (0x15, "y"),
+                             (0x16, "u"), (0x17, "i"), (0x18, "o"), (0x19, "p"),
+                             (0x1E, "a"), (0x1F, "s"), (0x20, "d"), (0x21, "f"),
+                             (0x22, "g"), (0x23, "h"), (0x24, "j"), (0x25, "k"),
+                             (0x26, "l"), (0x2C, "z"), (0x2D, "x"), (0x2E, "c"),
+                             (0x2F, "v"), (0x30, "b"), (0x31, "n"), (0x32, "m"),
+                             (0x39, " "), (0x1C, "\n")):
+                kb[code] = ord(ch)
+            self.a.code += bytes(kb)
         self.emit_str_table()
         # print buffer + bump allocator state in data
         self.a.data_label("pbuf_")
@@ -1127,12 +1302,20 @@ class Gen:
         self.a.data_label("bump_ptr_")
         if self.freestanding:
             self.a.data_qword(Gen.KHEAP_BASE)
+            self.a.data_label("bump_end_")
+            self.a.data_qword(Gen.KHEAP_BASE + Gen.KHEAP_SIZE)
+            # kernel device state: timer ticks, keyboard slot+flag, pmm
+            for nm in ("ticks_", "keycode_", "keyflag_", "pmm_next_"):
+                self.a.data_label(nm)
+                self.a.data_qword(0)
+            self.a.data_label("pmm_free_")
+            self.a.data_qword(32768)
+            # IDT (48 gates) + IDTR filled by build_xkernel
+            self.reserve("idt_", 48 * 16)
+            self.reserve("idtr_", 10)
         else:
             self.a.data_qword(0)
-        self.a.data_label("bump_end_")
-        if self.freestanding:
-            self.a.data_qword(Gen.KHEAP_BASE + Gen.KHEAP_SIZE)
-        else:
+            self.a.data_label("bump_end_")
             self.a.data_qword(0)
         from x64 import layout, pack
         if self.freestanding:
@@ -1180,6 +1363,72 @@ class Gen:
         a.sub_ri32("rcx", 1)
         a.jmp(lab_l)
         a.label(lab_d)
+
+    GPREGS = ("rax", "rcx", "rdx", "rbx", "rbp", "rsi", "rdi",
+              "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15")
+
+    def emit_irq_stubs(self):
+        # IDT stubs for vectors 0..47. Timer(32)/keyboard(33) handled inline;
+        # everything else reports EXC <n> and halts. Error-code vectors pop it.
+        a = self.a
+        ERRCODE = {8, 10, 11, 12, 13, 14, 17, 21, 29, 30}
+        # common exception entry: rdi = vector (all GPRs already pushed)
+        a.label("k_exc")
+        a.lea_rip("rsi", "exc_")
+        a.mov_ri32("rdx", 4)
+        self.k_write()
+        a.push_r("rdi")
+        a.call("print_int")
+        a.add_ri32("rsp", 8)
+        a.mov_ri32("rax", 10)
+        a.call("x_putc")
+        a.call("k_halt")
+        for vec in range(48):
+            if vec in (32, 33):
+                continue
+            a.label(f"irq_stub_{vec}")
+            if vec in ERRCODE:
+                # drop CPU-pushed error code first (sits above our pushes)
+                a.add_ri32("rsp", 8)
+            for r in Gen.GPREGS:
+                a.push_r(r)
+            a.mov_ri32("rdi", vec)
+            a.call("k_exc")
+            # unreachable (k_exc halts)
+        # timer IRQ0 -> vec 32: ticks_++, EOI, iret
+        a.label("irq_stub_32")
+        a.push_r("rax")
+        a.inc_mrip("ticks_")
+        a.mov_ri32("rax", 0x20)
+        a.mov_ri16("dx", 0x20)
+        a.out_dx_al()
+        a.pop_r("rax")
+        a.iretq()
+        # keyboard IRQ1 -> vec 33: map scancode, store, EOI, iret
+        a.label("irq_stub_33")
+        for r in Gen.GPREGS:
+            a.push_r(r)
+        a.mov_ri16("dx", 0x60)
+        a.in_al_dx()
+        a.push_r("rax")  # save scancode
+        a.lea_rip("rcx", "kbdmap_")
+        a.pop_r("rax")
+        a.movzx_eax_mx("rcx", "rax", 1, 0)  # al = map[scancode] (0 = unknown)
+        a.test_rr("rax", "rax")
+        lab_ign = self.new_tmp("kb")
+        a.jcc("e", lab_ign)
+        a.lea_rip("rcx", "keycode_")
+        a.mov_mr8("rcx", 0, 0)  # keycode_ = al
+        a.mov_ri32("rax", 1)
+        a.lea_rip("rcx", "keyflag_")
+        a.mov_mr("rcx", "rax", 0)  # flag = 1
+        a.label(lab_ign)
+        a.mov_ri32("rax", 0x20)
+        a.mov_ri16("dx", 0x20)
+        a.out_dx_al()  # EOI (al = 0x20)
+        for r in reversed(Gen.GPREGS):
+            a.pop_r(r)
+        a.iretq()
 
     def rt_space(self):
         a = self.a
@@ -1529,32 +1778,8 @@ def build_xkernel(prog_path, out_path):
            "scope": Gen.Scope(),
            "dir": _os.path.dirname(_os.path.abspath(prog_path))}
     try:
-        ms = mod["scope"]
-        g.collect(mod["prog"], ms)
-        for i, fs in enumerate(g.all_fs):
-            g.flabels[id(fs)] = f"hsF_{i}"
-        g.finalize(mod)
-        g.emit_data(mod)
-        g.emit_runtime_fs()
-        for s in g._def_nodes(mod):
-            g.emit_func(g.flabels[id(s["_fs"])], s, s["_fs"], mod)
-        g.emit_main(mod)
-        g.a.label("sp_")
-        g.a.code += b" "
-        g.a.label("nl_")
-        g.a.code += b"\n"
-        g.a.label("oom_")
-        g.a.code += b"out of memory\0"
-        g.a.label("dzm_")
-        g.a.code += b"division by zero\0"
-        g.emit_str_table()
-        g.a.data_label("pbuf_")
-        g.a.data_bytes(b"\0" * 32)
-        g.a.data_label("pbuf_e")
-        g.a.data_label("bump_ptr_")
-        g.a.data_qword(Gen.KHEAP_BASE)
-        g.a.data_label("bump_end_")
-        g.a.data_qword(Gen.KHEAP_BASE + Gen.KHEAP_SIZE)
+        asm64 = g.build_image(mod)
+    except HSErr as e:
         asm64 = g.a
     except HSErr as e:
         print(str(e), file=sys.stderr)
@@ -1637,6 +1862,18 @@ def build_xkernel(prog_path, out_path):
         _st.pack_into("<Q", tbl, 8192 + 8 * i, (i * 0x200000) | 0x83)
     # resolve payload rip-relative labels, then patch stack_top placeholder
     pay_vaddr, dat_vaddr = A(pay_off), A(dat_off)
+    # IDT (48 gates) + IDTR into reserved payload data
+    idt_off = asm64.data_labels["idt_"]
+    idtr_off = asm64.data_labels["idtr_"]
+    idt = bytearray(48 * 16)
+    for vec in range(48):
+        addr = pay_vaddr + asm64.labels[f"irq_stub_{vec}"]
+        idt[vec * 16:vec * 16 + 16] = _st.pack(
+            "<HHBBHI", addr & 0xFFFF, 0x08, 0, 0x8E,
+            (addr >> 16) & 0xFFFF, (addr >> 32) & 0xFFFFFFFF) + b"\0\0\0\0"
+    asm64.data[idt_off:idt_off + 768] = idt
+    asm64.data[idtr_off:idtr_off + 10] = (
+        _st.pack("<H", 48 * 16 - 1) + _st.pack("<Q", dat_vaddr + idt_off))
     code = bytearray(asm64.resolve(pay_vaddr, dat_vaddr))
     code[g._stack_patch_pos:g._stack_patch_pos + 8] = _st.pack("<Q", stack_top)
     code = bytes(code)

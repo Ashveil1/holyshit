@@ -245,18 +245,14 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 - ต่างภาษา = ต่างแค่ต้นทาง: Rust/Zig/C++/Go(cgo) ที่ export C ABI เอา `.so`/`.a`/`.o`
   มา `from` ได้หมด; ซอร์ส C ของ kernel เอามาลิงก์ตรงได้แบบ `helper.c` ข้างบน
 
-## 12. Kernel bare-metal (เฟส 5a — เสร็จ + บูตจริงแล้ว)
-- `kernel/boot.S`: multiboot1+2 header คู่, entry 32-bit → identity map 1GB (2MB pages) →
-  PAE + SSE enable + long mode → GDT64 → `hs_kernel_main(magic, info)`
-- `kernel/krt.{h,c}`: freestanding runtime — Val เต็มชุด (Int/Float/Str/Bool/List/Dict),
-  bump heap 16MB (ไม่ free), serial COM1 + VGA, mini-printf, `input/file` = error ชัดเจน
-- `hs.py kernel prog.hs -o kernel.elf`: codegen โหมด kernel + `as` + `gcc -ffreestanding` +
-  `ld` เป็น payload 64-bit แล้วห่อด้วย **loader ELF32** (ก็อปไป 1MB + zero bss + jmp entry)
-  เพราะ QEMU `-kernel` รับแค่ ELF32 (`Cannot load x86-64 image`)
-- `tests/test_kernel.py`: **ALL PASS** — build สะอาด, checksum mb1/mb2, no-libc,
-  บูตจริงบน QEMU: demo ครบ, timer ~200 ticks/2s, keyboard ผ่าน monitor sendkey,
-  PMM total 32768 pages + alloc(3) ลดตรง 3, exception #PF/#DE รายงาน+halt
-- เหลือเฟสถัดไป: paging/user mode, scheduler/preemption, filesystem, drivers (net/disk)
+## 12. Kernel (xkernel freestanding ล้วน — สาย gcc ถูกลบออกแล้ว)
+
+- ประวัติ: เฟส 5a ใช้ gcc/as/ld + krt.c (C runtime) — ถูกลบทั้งหมดเมื่อ xkernel
+  ครอบคลุมพฤติกรรมครบ (ดู git history) ตอนนี้ kernel มาจาก `.hs` + encoder ล้วน
+- `kernel/` เหลือแต่ `.hs` (xdemo/kx2/kxexc_*); `tests/test_xkernel.py` **18/18**
+  (boot, fib, timer ~200 ticks, keyboard, PMM 32768/-3, EXC 14/0)
+- runtime kernel = hs subset + asm ใน `x64gen.py` (serial, bump heap, IDT/PIC/PIT,
+  ticks/readkey/pmm) — ไม่มี C เหลือในสาย kernel เลย
 
 ## 13. Backend x86-64 ตรง (เฟส 6a — hosted subset, ไม่ใช้ gcc/as/ld/libc)
 

@@ -349,6 +349,45 @@ class Asm:
     def test_al_imm8(self, imm):
         self.code += bytes([0xA8, imm & 0xFF])
 
+    def lidt_rip(self, label):
+        self.code += bytes([0x0F, 0x01])
+        self._modrm(0, 3, 5)
+        self.fixups.append((len(self.code), label, "riprel"))
+        self.code += b"\0\0\0\0"
+
+    def inc_mrip(self, label):
+        # inc qword [rip+label]
+        self.code += bytes([0x48, 0xFF])
+        self._modrm(0, 0, 5)
+        self.fixups.append((len(self.code), label, "riprel"))
+        self.code += b"\0\0\0\0"
+
+    def iretq(self):
+        self.code += bytes([0x48, 0xCF])
+
+    def sti(self):
+        self.code.append(0xFB)
+
+    def movzx_eax_mx(self, base, index, scale, disp=0):
+        # movzx eax, byte [base + index*scale + disp]
+        self.code += bytes([0x0F, 0xB6])
+        bn, bb = _rn(base)
+        xn, xb = _rn(index)
+        assert scale in (1, 2, 4, 8)
+        sc = {1: 0, 2: 1, 4: 2, 8: 3}[scale]
+        if bb or xb:
+            self.code.insert(-2, 0x40 | (xb << 2) | bb)
+        import struct as _st
+        if disp == 0:
+            self._modrm(0, 0, 4)
+        elif -128 <= disp <= 127:
+            self._modrm(1, 0, 4)
+            self.code.append(disp & 0xFF)
+        else:
+            self._modrm(2, 0, 4)
+            self.code += _st.pack("<i", disp)
+        self.code.append((sc << 6) | ((xn & 7) << 3) | bn)
+
     def test_ri8(self, base, imm, disp=0):
         # test byte [base+disp], imm8  (F6 /0 ib)
         bn, bb = _rn(base)

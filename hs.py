@@ -104,9 +104,8 @@ FCTYPE = {"I64": "int64_t", "U64": "uint64_t", "F64": "double",
 
 
 class Gen:
-    def __init__(self, prog, kernel=False, main_path="<main>"):
+    def __init__(self, prog, main_path="<main>"):
         self.prog = prog
-        self.kernel = kernel
         self.main_path = main_path
         self.main_mod = Module("<main>", "<main>", prog)
         self.mod = self.main_mod.scope
@@ -130,12 +129,6 @@ class Gen:
         self._deferred_attrs = []  # (node, scope) resolved after full scan
         self._func_stack = []  # scopes of funcs currently being scanned
 
-    KERNEL_BANNED = {"open", "read", "write", "close", "input",
-                     "argv", "env", "system", "tcp_connect", "tcp_send",
-                     "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
-                     "http_get", "json_parse", "json_str",
-                     "read_text", "write_text", "append_text", "exists", "ls",
-                     "mkdir", "json_load", "json_save"}
 
     # ----- scope scan -----
     def scan_body(self, body, scope, ux=False):
@@ -297,8 +290,6 @@ class Gen:
                 self.scan_expr(s["val"], scope, ux)
             return
         if t == "extern":
-            if self.kernel:
-                raise HSErr("extern needs hosted libc (not available in kernel)", s["line"])
             if ux:
                 raise HSErr("extern not allowed in unsafe (declare at top level)", s["line"])
             for d in s["decls"]:
@@ -412,8 +403,6 @@ class Gen:
         from interp import UNSAFE_BUILTINS
         t = e["t"]
         if t in ("num", "str"):
-            if t == "num" and self.kernel and isinstance(e["val"], float):
-                raise HSErr("float not available in kernel (use Int)", e["line"])
             return
         if t == "var":
             e["_res"] = self.resolve(e["name"], scope, e["line"])
@@ -439,8 +428,6 @@ class Gen:
             else:
                 if fn["t"] == "var" and fn["name"] == "asm":
                     raise HSErr("asm only allowed in unsafe", e["line"])
-                if self.kernel and fn["t"] == "var" and fn["name"] in self.KERNEL_BANNED:
-                    raise HSErr(f"'{fn['name']}' needs an OS (not available in kernel)", e["line"])
                 self.scan_expr(fn, scope, ux)
                 if fn["t"] == "var" and fn.get("_res", (None,))[0] == "E":
                     sig = fn["_res"][1]
@@ -615,10 +602,6 @@ class Gen:
         else:
             self.file_dir = _os.getcwd()
         self.scan_body(self.prog, self.main_mod.scope)
-        if self.kernel:
-            for _, node, fs in self.funcs:
-                if getattr(fs, "caplist", []):
-                    raise HSErr("closures need hosted runtime (use global)", node["line"])
         # every module-level assigned name needs a static Val slot, even if
         # nothing references it (resolve() only registers on reference)
         for mod in self.modules:
@@ -1516,8 +1499,7 @@ class Gen:
 
     def build(self):
         self.scan()
-        hdr = '"krt.h"' if self.kernel else '"rt.h"'
-        parts = [f'#include {hdr}', "#include <stddef.h>", "#include <stdint.h>",
+        parts = ['#include "rt.h"', "#include <stddef.h>", "#include <stdint.h>",
                  "#include <stdio.h>", ""]
         from interp import HS_STRUCTS
         for sname in sorted(HS_STRUCTS):
@@ -1575,37 +1557,31 @@ class Gen:
             parts.append("}")
             parts.append("")
         out = []
-        if self.kernel:
-            parts.append("void hs_kernel_main(uint32_t hs_mb_magic, uint32_t hs_mb_info) {")
-            parts.append("hs_kinit(hs_mb_magic, hs_mb_info);")
-            self.emit_body(self.prog, self.mod, out, 0)
-            parts.extend(out)
-            parts.append("}")
-        else:
-            parts.append("int main(int hsAC, char **hsAV) {")
-            parts.append("hs_argc = hsAC - 1; hs_argv = hsAV + 1;")
-            out.append("/* ffi init */")
-            for i, lib in enumerate(ffi_libs):
-                kind, val = lib
-                if kind in ("default", "src"):
-                    out.append(f"hsXlib_{i} = hs_ffi_lib(NULL, 0);")
-                else:
-                    out.append(f"hsXlib_{i} = hs_ffi_lib(\"{c_esc(val)}\", 0);")
-            for _, sig in self.ffi_all:
-                li = ffi_libs.index(sig["lib"])
-                params = ", ".join(FCTYPE[ft] for _, ft in sig["ptypes"]) or "void"
-                out.append(f"{sig['x']} = ({FCTYPE[sig['rtype']]}(*)({params}))"
-                           f"hs_ffi_sym(hsXlib_{li}, \"{sig['cname']}\", 0);")
-            self.emit_body(self.prog, self.mod, out, 0)
-            parts.extend(out)
-            parts.append("return 0;")
-            parts.append("}")
+        # hosted userland (freestanding kernel goes through x64gen)
+        parts.append("int main(int hsAC, char **hsAV) {")
+        parts.append("hs_argc = hsAC - 1; hs_argv = hsAV + 1;")
+        out.append("/* ffi init */")
+        for i, lib in enumerate(ffi_libs):
+            kind, val = lib
+            if kind in ("default", "src"):
+                out.append(f"hsXlib_{i} = hs_ffi_lib(NULL, 0);")
+            else:
+                out.append(f"hsXlib_{i} = hs_ffi_lib(\"{c_esc(val)}\", 0);")
+        for _, sig in self.ffi_all:
+            li = ffi_libs.index(sig["lib"])
+            params = ", ".join(FCTYPE[ft] for _, ft in sig["ptypes"]) or "void"
+            out.append(f"{sig['x']} = ({FCTYPE[sig['rtype']]}(*)({params}))"
+                       f"hs_ffi_sym(hsXlib_{li}, \"{sig['cname']}\", 0);")
+        self.emit_body(self.prog, self.mod, out, 0)
+        parts.extend(out)
+        parts.append("return 0;")
+        parts.append("}")
         return "\n".join(parts) + "\n"
 
 
-def gen_c(src, kernel=False, main_path="<main>"):
+def gen_c(src, main_path="<main>"):
     prog = interp.parse_program(src)
-    return Gen(prog, kernel, main_path).build()
+    return Gen(prog, main_path).build()
 
 
 def build(prog_path, out_path, as_json=False):
@@ -1623,7 +1599,7 @@ def build(prog_path, out_path, as_json=False):
     except OSError as e:
         return fail(f"cannot read {prog_path}: {e.strerror or e}", None)
     try:
-        gen = Gen(interp.parse_program(src), False, prog_path)
+        gen = Gen(interp.parse_program(src), prog_path)
         code = gen.build()
     except HSErr as e:
         return fail(e.msg, e.line)
@@ -1671,159 +1647,6 @@ def build(prog_path, out_path, as_json=False):
     return 0
 
 
-KDIR = os.path.join(HERE, "kernel")
-KCFLAGS = ["-ffreestanding", "-m64", "-mno-red-zone",
-           "-fno-pic", "-fno-pie", "-fno-stack-protector", "-O2", "-Wall"]
-# QEMU -kernel multiboot loader only accepts 32-bit ELF, so the final
-# image is a 32-bit loader that copies the 64-bit kernel to 1MB and jumps.
-LOADER_BASE = 0x20000
-
-
-def elf_info(path):
-    import struct
-    with open(path, "rb") as f:
-        img = f.read()
-    e_entry = struct.unpack_from("<Q", img, 24)[0]
-    e_phoff = struct.unpack_from("<Q", img, 32)[0]
-    e_phentsize, e_phnum = struct.unpack_from("<HH", img, 54)
-    lo, filesz_end, memsz_end = None, 0, 0
-    for i in range(e_phnum):
-        o = e_phoff + i * e_phentsize
-        p_type, p_flags, p_off, p_vaddr, p_paddr, p_filesz, p_memsz, p_align = \
-            struct.unpack_from("<IIQQQQQQ", img, o)
-        if p_type != 1:
-            continue
-        if lo is None or p_paddr < lo:
-            lo = p_paddr
-        filesz_end = max(filesz_end, p_paddr + p_filesz)
-        memsz_end = max(memsz_end, p_paddr + p_memsz)
-    return e_entry, lo, filesz_end, memsz_end
-
-
-LOADER_SRC = """// generated 32-bit multiboot loader: copies the 64-bit kernel
-// from here to {dest} (zeroing bss) and jumps to its entry.
-.code32
-.section .mbh, "a", @progbits
-.align 4
-.long 0x1BADB002, 0x0, -(0x1BADB002)
-.section .text
-.globl _start32
-_start32:
-    cli
-    cld
-    mov $0x15000, %esp
-    mov $payload_start, %esi
-    mov ${dest}, %edi
-    mov $payload_size, %ecx
-    rep movsb
-    mov ${dest}, %edi
-    add $payload_size, %edi
-    mov ${memsz}, %ecx
-    sub $payload_size, %ecx
-    xor %eax, %eax
-    rep stosb
-    mov ${entry}, %eax
-    jmp *%eax
-.section .payload, "a", @progbits
-payload_start:
-.incbin "{payload}"
-payload_size = . - payload_start
-"""
-
-LOADER_LD = """OUTPUT_FORMAT("elf32-i386")
-OUTPUT_ARCH(i386)
-ENTRY(_start32)
-SECTIONS {{ . = {base}; .boot : {{ *(.mbh) *(.text) }} .payload : {{ *(.payload) }} }}
-"""
-
-
-def build_kernel(prog_path, out_path):
-    import struct
-    interp.reset_parse_state()
-    with open(prog_path, encoding="utf-8") as f:
-        src = f.read()
-    try:
-        code = gen_c(src, kernel=True, main_path=prog_path)
-    except HSErr as e:
-        print(str(e), file=sys.stderr)
-        return 1
-    d = os.path.dirname(os.path.abspath(out_path))
-    tmp_c = os.path.join(d, ".hs_kernel_gen.c")
-    boot_o = os.path.join(d, ".hs_boot.o")
-    idt_o = os.path.join(d, ".hs_idt.o")
-    krt_o = os.path.join(d, ".hs_krt.o")
-    gen_o = os.path.join(d, ".hs_gen.o")
-    k64 = out_path + ".k64"
-    with open(tmp_c, "w", encoding="utf-8") as f:
-        f.write(code)
-    steps = [
-        ["as", os.path.join(KDIR, "boot.S"), "-o", boot_o],
-        ["as", os.path.join(KDIR, "idt.S"), "-o", idt_o],
-        ["gcc"] + KCFLAGS + ["-I", KDIR, "-c", os.path.join(KDIR, "krt.c"),
-                             "-o", krt_o],
-        ["gcc"] + KCFLAGS + ["-I", KDIR, "-c", tmp_c, "-o", gen_o],
-        ["ld", "-T", os.path.join(KDIR, "link.ld"), "-o", k64,
-         boot_o, idt_o, krt_o, gen_o],
-    ]
-    for cmd in steps:
-        r = subprocess.run(cmd, capture_output=True, text=True)
-        if r.returncode != 0:
-            print(f"failed: {' '.join(cmd)}\n{r.stderr}", file=sys.stderr)
-            print(f"(kept {tmp_c} for inspection)", file=sys.stderr)
-            return 1
-    # wrap kernel64 in a 32-bit multiboot loader (QEMU -kernel needs ELF32)
-    e_entry, lo, filesz_end, memsz_end = elf_info(k64)
-    dest = lo
-    filesz = filesz_end - lo
-    memsz = memsz_end - lo
-    payload = os.path.join(d, ".hs_payload.bin")
-    r = subprocess.run(["objcopy", "-O", "binary", k64, payload],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        print(r.stderr, file=sys.stderr)
-        return 1
-    if os.path.getsize(payload) != filesz:
-        # objcopy omits trailing zeros: pad so the copy covers all file-backed
-        # bytes (otherwise .data tails would be garbage at runtime)
-        with open(payload, "ab") as f:
-            f.write(b"\0" * (filesz - os.path.getsize(payload)))
-    loader_s = os.path.join(d, ".hs_loader.S")
-    with open(loader_s, "w", encoding="utf-8") as f:
-        f.write(LOADER_SRC.format(dest=hex(dest), memsz=hex(memsz),
-                                  entry=hex(e_entry), payload=payload))
-    loader_ld = os.path.join(d, ".hs_loader.ld")
-    with open(loader_ld, "w", encoding="utf-8") as f:
-        f.write(LOADER_LD.format(base=hex(LOADER_BASE)))
-    loader_o = os.path.join(d, ".hs_loader.o")
-    steps2 = [
-        ["as", "--32", loader_s, "-o", loader_o],
-        ["ld", "-m", "elf_i386", "-T", loader_ld, "-o", out_path, loader_o],
-    ]
-    for cmd in steps2:
-        r = subprocess.run(cmd, capture_output=True, text=True)
-        if r.returncode != 0:
-            print(f"failed: {' '.join(cmd)}\n{r.stderr}", file=sys.stderr)
-            return 1
-    for p in (tmp_c, boot_o, idt_o, krt_o, gen_o, loader_s, loader_ld, loader_o, payload):
-        if os.path.exists(p):
-            os.remove(p)
-    print(f"ok: kernel -> {out_path} (64-bit payload at {dest:#x}, entry {e_entry:#x})")
-    return 0
-
-
-def _version():
-    try:
-        with open(os.path.join(HERE, "VERSION"), encoding="utf-8") as f:
-            return f.read().strip()
-    except OSError:
-        return "unknown"
-
-
-def _jerr(prog, msg, line):
-    import json as _json
-    print(_json.dumps({"file": prog, "line": line, "message": msg}), file=sys.stderr)
-
-
 def main(argv):
     if "--version" in argv or "-V" in argv:
         print(f"hs {_version()}")
@@ -1832,12 +1655,12 @@ def main(argv):
     if "--json" in argv:
         as_json = True
         argv = [a for a in argv if a != "--json"]
-    if len(argv) < 3 or argv[1] not in ("build", "run", "kernel", "check", "fmt",
+    if len(argv) < 3 or argv[1] not in ("build", "run", "check", "fmt",
                                      "xbuild", "xrun", "xkernel"):
         print("usage: hs.py [--json] build prog.hs [-o prog] | hs.py run prog.hs [args...] "
               "| hs.py check prog.hs | hs.py fmt prog.hs [-w|--check] "
               "| hs.py xbuild prog.hs [-o prog] | hs.py xrun prog.hs "
-              "| hs.py xkernel prog.hs -o kernel.elf | hs.py kernel prog.hs -o kernel.elf",
+              "| hs.py xkernel prog.hs -o kernel.elf",
               file=sys.stderr)
         return 2
     if argv[1] == "fmt":
@@ -1894,7 +1717,7 @@ def main(argv):
             return 1
         try:
             interp.reset_parse_state()
-            Gen(interp.parse_program(src), False, argv[2]).scan()
+            Gen(interp.parse_program(src), argv[2]).scan()
         except HSErr as e:
             if as_json:
                 _jerr(argv[2], e.msg, e.line)
@@ -1929,12 +1752,6 @@ def main(argv):
                 return rc
             r = subprocess.run([out])
             return r.returncode
-    if argv[1] == "kernel":
-        prog = argv[2]
-        out = "kernel.elf"
-        if "-o" in argv:
-            out = argv[argv.index("-o") + 1]
-        return build_kernel(prog, out)
     if argv[1] == "build":
         prog = argv[2]
         out = prog.rsplit(".", 1)[0]

@@ -107,7 +107,7 @@ extern from "helper.c":
 - Top level only. Safe code only (not `unsafe:`, not kernel).
 - No structs, callbacks, or variadics — write a C wrapper for those.
 
-## Builtins (both backends, kernel bans most)
+## Builtins (both hosted backends; x64 freestanding has its own subset)
 
 Core: `print len range str int float input open read write close`
 Text/containers: `append split find join`
@@ -115,7 +115,7 @@ Files (agent kit): `read_text write_text append_text exists ls mkdir`
 JSON: `json_parse json_str json_load json_save`
 Process: `argv()→List` (no prog name) `env(name)→Str|Null` `system(cmd)→Int status`
 Net (http only): `tcp_connect/send/recv/close tcp_listen/accept http_get(url)→body`
-Kernel-surface: `ticks readkey pmm_alloc meminfo` (+ unsafe alloc/load/store/as_*)
+Kernel-surface (xkernel freestanding): `ticks readkey pmm_alloc pmm_total pmm_free` (+ unsafe alloc/load/store/as_*)
 
 ## Gotchas (read twice)
 
