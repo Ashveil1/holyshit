@@ -71,7 +71,7 @@ class Asm:
             xn, xb = _rn(index)
             assert scale in (1, 2, 4, 8)
             sc = {1: 0, 2: 1, 4: 2, 8: 3}[scale]
-            sib = (sc << 6) | ((xn & 7) << 3) | bn
+            sib = (sc << 6) | ((xn & 7) << 3) | (bn & 7)
             rm = 4
         elif bn == 4:  # rsp/r12 need SIB even without index
             sib = (4 << 3) | bn
@@ -211,6 +211,18 @@ class Asm:
 
     def mov_mrx(self, base, index, scale, disp, s):
         self._rm(0x89, s, base, disp, index, scale)
+
+    def or_ri8(self, d, imm):
+        # or r/m64, imm8
+        dn, db = _rn(d)
+        self._rex(True, b=db)
+        self.code.append(0x83)
+        self._modrm(3, 1, dn)
+        self.code.append(imm & 0xFF)
+
+    def mov_rr32_to_mem(self, base, s32, disp=0):
+        # mov qword [base+disp], s32 (zero-extended 32-bit source)
+        self._rm(0x89, s32, base, disp)
 
     def lea_rip(self, d, label):
         self._rm(0x8D, d, "rip", rip_label=label)
@@ -368,25 +380,29 @@ class Asm:
     def sti(self):
         self.code.append(0xFB)
 
-    def movzx_eax_mx(self, base, index, scale, disp=0):
-        # movzx eax, byte [base + index*scale + disp]
-        self.code += bytes([0x0F, 0xB6])
+    def movzx_rm8x(self, dst, base, index, scale, disp=0):
+        # movzx dst32, byte [base + index*scale + disp]  (no REX.W)
+        dn, db_ = _rn(dst)
         bn, bb = _rn(base)
         xn, xb = _rn(index)
         assert scale in (1, 2, 4, 8)
         sc = {1: 0, 2: 1, 4: 2, 8: 3}[scale]
-        if bb or xb:
-            self.code.insert(-2, 0x40 | (xb << 2) | bb)
-        import struct as _st
-        if disp == 0:
-            self._modrm(0, 0, 4)
-        elif -128 <= disp <= 127:
-            self._modrm(1, 0, 4)
+        if bb or xb or db_:
+            self.code.append(0x40 | (db_ << 2) | (xb << 1) | bb)
+        self.code += bytes([0x0F, 0xB6])
+        # x86 order: modrm, SIB, then displacement
+        self._modrm(1 if -128 <= disp <= 127 else 2, dn, 4)
+        self.code.append((sc << 6) | ((xn & 7) << 3) | (bn & 7))
+        if -128 <= disp <= 127:
             self.code.append(disp & 0xFF)
         else:
-            self._modrm(2, 0, 4)
-            self.code += _st.pack("<i", disp)
-        self.code.append((sc << 6) | ((xn & 7) << 3) | bn)
+            self.code += struct.pack("<i", disp)
+
+    def movzx_eax_mx(self, base, index, scale, disp=0):
+        self.movzx_rm8x("rax", base, index, scale, disp)
+
+    def movzx_edx_mx(self, base, index, scale, disp=0):
+        self.movzx_rm8x("rdx", base, index, scale, disp)
 
     def test_ri8(self, base, imm, disp=0):
         # test byte [base+disp], imm8  (F6 /0 ib)

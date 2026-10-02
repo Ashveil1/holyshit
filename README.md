@@ -36,7 +36,7 @@ print sin(0.0)
 | สเปกภาษา | `SPEC-v1.md` |
 | interpreter | `interp.py` |
 | native backend (AST→C→gcc) | `hs.py` + `native/rt.{h,c}` |
-| x86-64 backend ตรง (subset, ไม่ใช้ gcc) | `x64.py` + `x64gen.py` |
+| x86-64 backend ตรง (subset, ไม่ใช้ gcc, ค่าแบบ tagged) | `x64.py` + `x64gen.py` |
 | kernel runtime (freestanding) | `kernel/` |
 | ไลบรารีมาตรฐาน (เขียนด้วย hs) | `std/` |
 | ตัวอย่างตามหัวข้อ | `examples/` |
@@ -61,8 +61,8 @@ print sin(0.0)
 python3 tests/test.py          # interpreter (35 ชุด)
 python3 tests/test_native.py   # native binary (36 ชุด, ผลต้องตรง interp)
 python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec เท่าเดิม)
-python3 tests/test_x64.py      # backend x86-64 ตรง (static ELF, ไม่ใช้ gcc)
-python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU
+python3 tests/test_x64.py      # backend x86-64 ตรง (7 ชุด, static ELF, ไม่ใช้ gcc)
+python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (27 เคส)
 ```
 
 กติกาเทส: `tests/<name>.hs` + `.expected` (stdout), `.stdin` (input),

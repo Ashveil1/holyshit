@@ -6,6 +6,12 @@ def/call/recursion (closures supported via caps), if/while/for/break/continue,
 try/except/finally is BANNED, modules/import, unsafe I64/U64/Ptr + structs,
 print/int()/argv(), no Float/List/Dict/extern/slice/attr.
 `/` is truncating int division (differs from main backends: documented).
+
+Values are tagged with the low 2 bits (see TAG_* below):
+  00 heap object ptr (8-aligned) | 01 Int (62-bit payload, value = word >> 2)
+  10 Bool: 0x02 false, 0x0A true | 11 Null 0x03 / Unbound 0x0B
+  Heap obj: [kind:u64][payload...]; kind 0 = Str{len,bytes}, 1 = Func{code,caps}.
+  GC: bump-only arena (grows, never frees) -- documented.
 """
 import sys
 
@@ -64,6 +70,11 @@ class Gen:
         return mod
 
     # ----- scopes -----
+    # ----- value representation (low 2 bits are the tag) -----
+    TAG_HEAP, TAG_INT, TAG_BOOL, TAG_NULL = 0, 1, 2, 3
+    HS_FALSE, HS_TRUE, HS_NULL, HS_UNBOUND = 0x02, 0x0A, 0x03, 0x0B
+    K_STR, K_FUNC = 0, 1
+
     class Scope:
         def __init__(self, parent=None, is_func=False):
             self.parent = parent
@@ -73,7 +84,6 @@ class Gen:
             self.uloc = {}  # unsafe static name -> rbp offset (negative)
             self.utypes = {}  # unsafe static name -> I64/U64/Ptr/Ptr:X
             self.globs = set()  # names declared global here
-            self.strvars = set()  # dynamic names holding Str* (readkey results)
             self.nloc = 0
 
     def slot(self, sc):
@@ -97,10 +107,6 @@ class Gen:
             elif t == "set":
                 self.ann_expr(s["val"], sc)
                 self.decl(sc, s["name"])
-                if self.is_readkey_call(s["val"]):
-                    sc.strvars.add(s["name"])
-                else:
-                    sc.strvars.discard(s["name"])
             elif t == "for":
                 raise HSErr("for not in x64 subset (use while)", s["line"])
             elif t == "try":
@@ -301,16 +307,23 @@ class Gen:
         if t == "num":
             v = e["val"]
             if v is True:
-                a.mov_ri32("rax", 1)
-            elif v is False or v is None:
-                a.mov_ri32("rax", 0)
+                a.mov_ri64("rax", Gen.HS_TRUE)
+            elif v is False:
+                a.mov_ri64("rax", Gen.HS_FALSE)
+            elif v is None:
+                a.mov_ri64("rax", Gen.HS_NULL)
             elif isinstance(v, float):
                 raise HSErr("Float not in x64 subset", ln)
             else:
-                a.mov_ri64("rax", v & ((1 << 64) - 1) if v >= 0 else v)
+                a.mov_ri64("rax", self.tag_int(v))
             return
         if t == "str":
-            raise HSErr("bare Str only allowed in print", ln)
+            b = e["val"].encode()
+            lab = self.rstr(e["val"])
+            a.lea_rip("rdi", lab)
+            a.mov_ri32("rsi", len(b))
+            a.call("x_str_at")
+            return
         if t == "var":
             self.var_get(e["name"], sc, mod, ln)
             return
@@ -318,13 +331,16 @@ class Gen:
             raise HSErr(f"{t} not in x64 subset", ln)
         if t == "neg":
             self.ev(e["val"], sc, mod)
+            self.tag_check_int()
+            a.sar_ri8("rax", 2)     # untag before negating
             a.neg_r("rax")
+            self.tag_box()
             return
         if t == "not":
             self.ev(e["val"], sc, mod)
-            a.test_rr("rax", "rax")
+            self.truthy()
             a.setcc_al("e")
-            a.movzx_eax_al()
+            self.box_bool_al()
             return
         if t == "bin":
             self.ev_bin(e, sc, mod)
@@ -429,38 +445,64 @@ class Gen:
         op, ln = e["op"], e["line"]
         a = self.a
         if op in ("and", "or"):
+            # hs returns the operand itself, not a Bool
             self.ev(e["l"], sc, mod)
-            a.test_rr("rax", "rax")
-            lab1, lab2 = self.new_tmp("and"), self.new_tmp("and")
+            self.truthy()
+            lab_keep, lab_end = self.new_tmp("bo"), self.new_tmp("bo")
             if op == "and":
-                a.jcc("e", lab1)
-                self.ev(e["r"], sc, mod)
-                a.test_rr("rax", "rax")
-                a.setcc_al("ne")
-                a.movzx_eax_al()
-                a.jmp(lab2)
-                a.label(lab1)
-                a.mov_ri32("rax", 0)
-                a.label(lab2)
+                a.jcc("e", lab_keep)    # falsy left -> result is the left value
             else:
-                a.jcc("ne", lab1)
-                self.ev(e["r"], sc, mod)
-                a.test_rr("rax", "rax")
-                a.setcc_al("ne")
-                a.movzx_eax_al()
-                a.jmp(lab2)
-                a.label(lab1)
-                a.mov_ri32("rax", 1)
-                a.label(lab2)
+                a.jcc("ne", lab_keep)   # truthy left -> result is the left value
+            self.ev(e["r"], sc, mod)
+            a.jmp(lab_end)
+            a.label(lab_keep)
+            a.label(lab_end)
             return
+        if op in ("==", "!="):
+            self.ev(e["l"], sc, mod)
+            a.push_r("rax")
+            self.ev(e["r"], sc, mod)
+            a.mov_rr("rcx", "rax")
+            a.pop_r("rax")
+            a.mov_rr("rdi", "rax")
+            a.mov_rr("rsi", "rcx")
+            a.call("x_eq")           # al = 0/1
+            self.box_bool_al()
+            if op == "!=":
+                a.code += bytes([0x48, 0x83, 0xF0, 0x08])  # xor rax, 8
+            return
+        if op in ("<", ">", "<=", ">="):
+            self.ev(e["l"], sc, mod)
+            a.push_r("rax")
+            self.ev(e["r"], sc, mod)
+            a.mov_rr("rcx", "rax")
+            a.pop_r("rax")
+            a.mov_rr("rdi", "rax")
+            a.mov_rr("rsi", "rcx")
+            a.call("x_cmp")
+            a.cmp_ri32("rax", 0)
+            a.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
+            self.box_bool_al()
+            return
+        if op == "+":
+            self.ev(e["l"], sc, mod)
+            a.push_r("rax")
+            self.ev(e["r"], sc, mod)
+            a.mov_rr("rcx", "rax")
+            a.pop_r("rax")
+            self.emit_add()
+            return
+        # - * / % : Int only
         self.ev(e["l"], sc, mod)
+        self.tag_check_int()
+        a.sar_ri8("rax", 2)
         a.push_r("rax")
         self.ev(e["r"], sc, mod)
+        self.tag_check_int()
+        a.sar_ri8("rax", 2)
         a.mov_rr("rcx", "rax")
         a.pop_r("rax")
-        if op == "+":
-            a.add_rr("rax", "rcx")
-        elif op == "-":
+        if op == "-":
             a.sub_rr("rax", "rcx")
         elif op == "*":
             a.imul_rr("rax", "rcx")
@@ -471,7 +513,7 @@ class Gen:
                 a.test_rr("rcx", "rcx")
                 lab_dz = self.new_tmp("dz")
                 a.jcc("ne", lab_dz)
-                a.add_ri32("rsp", 8)  # drop saved rdx; divzero never returns
+                a.add_ri32("rsp", 8)  # drop saved rdx; never returns
                 a.jmp("divzero")
                 a.label(lab_dz)
             a.cqo()
@@ -479,14 +521,49 @@ class Gen:
             if op == "%":
                 a.mov_rr("rax", "rdx")
             a.pop_r("rdx")
-        elif op in ("==", "!=", "<", ">", "<=", ">="):
-            a.cmp_rr("rax", "rcx")
-            cc = {"==": "e", "!=": "ne", "<": "l", ">": "g",
-                  "<=": "le", ">=": "ge"}[op]
-            a.setcc_al(cc)
-            a.movzx_eax_al()
         else:
             raise HSErr(f"bad operator {op}", ln)
+        self.tag_box()
+
+    def emit_add(self):
+        """rax/rcx tagged -> rax = Int+Int or Str+Str, else type error."""
+        a = self.a
+        lab_str, lab_err, lab_end = (self.new_tmp("ad"), self.new_tmp("ad"),
+                                     self.new_tmp("ad"))
+        # Int + Int (fast path)
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("ne", lab_str)
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("ne", lab_str)
+        a.sar_ri8("rax", 2)
+        a.sar_ri8("rcx", 2)
+        a.add_rr("rax", "rcx")
+        self.tag_box()
+        a.jmp(lab_end)
+        a.label(lab_str)
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.jcc("ne", lab_err)
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.jcc("ne", lab_err)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("ne", lab_err)
+        a.mov_rm("r11", "rcx", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("ne", lab_err)
+        a.mov_rr("rdi", "rax")
+        a.mov_rr("rsi", "rcx")
+        a.call("x_str_cat")
+        a.jmp(lab_end)
+        a.label(lab_err)
+        self.type_err()
+        a.label(lab_end)
 
     def ev_call(self, e, sc, mod):
         ln = e["line"]
@@ -500,6 +577,14 @@ class Gen:
             if len(e["args"]) != 1:
                 raise HSErr("int wants 1 arg", ln)
             self.ev(e["args"][0], sc, mod)
+            self.tag_check_int()
+            return
+        if fn["t"] == "var" and fn["name"] in ("str", "len"):
+            if len(e["args"]) != 1:
+                raise HSErr(f"{fn['name']} wants 1 arg", ln)
+            self.ev(e["args"][0], sc, mod)
+            a.mov_rr("rdi", "rax")
+            a.call("x_str" if fn["name"] == "str" else "x_len")
             return
         if fn["t"] == "var" and fn["name"] in (
                 "alloc", "load8", "load32", "store8", "store32",
@@ -507,7 +592,7 @@ class Gen:
             self.sev_call(fn["name"], e["args"], sc, mod, ln)
             return
         if fn["t"] == "var" and fn["name"] in (
-                "len", "range", "str", "float", "input", "open", "read",
+                "range", "float", "input", "open", "read",
                 "write", "close", "argv", "env", "system", "append", "split",
                 "find", "join", "ticks", "readkey", "pmm_alloc", "pmm_total",
                 "pmm_free", "meminfo",
@@ -526,11 +611,11 @@ class Gen:
         for ar in reversed(e["args"]):
             self.ev(ar, sc, mod)
             a.push_r("rax")
-        a.mov_rm("rax", "rsp", 8 * len(e["args"]))  # reload struct
+        a.mov_rm("rax", "rsp", 8 * len(e["args"]))  # reload func object
         a.push_r("r15")
         a.mov_rr("r15", "rax")
-        a.add_ri32("r15", 8)  # r15 = &caps (lea, no deref)
-        a.mov_rm("rax", "rax", 0)  # code addr
+        a.add_ri32("r15", 16)  # r15 = &caps (lea, no deref)
+        a.mov_rm("rax", "rax", 8)  # code addr
         a.call_rax()
         a.pop_r("r15")
         a.add_ri32("rsp", 8 * (len(e["args"]) + 1))
@@ -543,39 +628,42 @@ class Gen:
                 raise HSErr("ticks takes no args", ln)
             a.lea_rip("rax", "ticks_")
             a.mov_rm("rax", "rax", 0)
+            self.tag_box()
             return
         if name == "readkey":
             if args:
                 raise HSErr("readkey takes no args", ln)
-            lab_no = self.new_tmp("rk")
+            lab_no, lab_done = self.new_tmp("rk"), self.new_tmp("rk")
             a.lea_rip("rax", "keyflag_")
             a.mov_rm("rax", "rax", 0)
             a.test_rr("rax", "rax")
             a.jcc("e", lab_no)
-            a.lea_rip("rcx", "keycode_")
-            a.movzx_eax_m8("rcx", 0)  # eax = scancode
-            a.push_r("rax")  # save code
-            a.mov_ri32("rdi", 16)
-            a.call("x_malloc")  # rax = Str
+            # Str object: [kind=0][len=1][byte]
+            a.mov_ri32("rdi", 32)
+            a.call("x_malloc")
+            a.mov_rr("r10", "rax")
+            a.mov_ri32("rcx", 0)
+            a.mov_mr("r10", "rcx", 0)          # kind = K_STR
             a.mov_ri32("rcx", 1)
-            a.mov_mr("rax", "rcx", 0)  # len = 1
-            a.pop_r("rcx")  # code
-            a.mov_mr8("rax", 1, 8)  # data = cl
-            a.push_r("rax")  # save str
+            a.mov_mr("r10", "rcx", 8)          # len = 1
+            a.lea_rip("rcx", "keycode_")
+            a.movzx_eax_m8("rcx", 0)           # al = ascii
+            a.mov_mr8("r10", 0, 16)            # byte[0] = al
             a.mov_ri32("rcx", 0)
             a.lea_rip("rdx", "keyflag_")
-            a.mov_mr("rdx", "rcx", 0)  # clear flag
-            a.pop_r("rax")  # str
-            lab_done = self.new_tmp("rk")
+            a.mov_mr("rdx", "rcx", 0)          # clear flag
+            a.mov_rr("rax", "r10")
             a.jmp(lab_done)
             a.label(lab_no)
-            a.mov_ri32("rax", 0)  # Null
+            a.mov_ri64("rax", Gen.HS_NULL)
             a.label(lab_done)
             return
         if name == "pmm_alloc":
             if len(args) != 1:
                 raise HSErr("pmm_alloc wants pmm_alloc(npages)", ln)
-            self.ev(args[0], sc, mod)  # rax = npages
+            self.ev(args[0], sc, mod)  # rax = npages (tagged)
+            self.tag_check_int()
+            a.sar_ri8("rax", 2)
             a.push_r("rax")
             a.lea_rip("rcx", "pmm_free_")
             a.mov_rm("rcx", "rcx", 0)
@@ -606,7 +694,8 @@ class Gen:
             a.mov_rm("rcx", "rax", 0)
             a.sub_rr("rcx", "rdx")  # free -= n
             a.mov_mr("rax", "rcx", 0)
-            a.pop_r("rax")  # addr
+            a.pop_r("rax")  # addr (raw)
+            self.tag_box()
             return
         if name in ("pmm_total", "pmm_free"):
             if args:
@@ -616,62 +705,30 @@ class Gen:
             else:
                 a.lea_rip("rax", "pmm_free_")
                 a.mov_rm("rax", "rax", 0)
+            self.tag_box()
             return
         raise HSErr(f"bad kdev {name}", ln)
-
-    def emit_write(self):
-        # rsi=ptr, rdx=len already set -> write to stdout (hosted) or serial (fs)
-        a = self.a
-        if self.freestanding:
-            self.k_write()
-        else:
-            a.mov_ri32("rdi", 1)
-            a.mov_ri32("rax", 1)
-            a.syscall()
-
-    def is_readkey_call(self, e):
-        return (e["t"] == "call" and e["fn"]["t"] == "var"
-                and e["fn"]["name"] == "readkey")
-
-    def is_str_valued(self, e, sc):
-        # static Str detection (freestanding readkey results only)
-        if self.is_readkey_call(e):
-            return True
-        if e["t"] == "var":
-            s = sc
-            while s is not None:
-                if e["name"] in s.strvars:
-                    return True
-                s = s.parent
-        return False
 
     def ev_print(self, args, sc, mod, ln):
         a = self.a
         for i, ar in enumerate(args):
             if i > 0:
-                a.lea_rip("rsi", "sp_")
-                a.mov_ri32("rdx", 1)
-                self.emit_write()
+                a.lea_rip("rdi", "sp_")
+                a.mov_ri32("rsi", 1)
+                self.rt_out()
             if ar["t"] == "str":
+                b = ar["val"].encode()
                 lab = self.rstr(ar["val"])
-                a.lea_rip("rsi", lab)
-                a.mov_ri32("rdx", len(ar["val"].encode()))
-            elif self.freestanding and self.is_str_valued(ar, sc):
-                # heap Str {len, data}: rsi=data, rdx=len
-                self.ev(ar, sc, mod)
-                a.mov_rr("rsi", "rax")
-                a.mov_rm("rdx", "rsi", 0)
-                a.add_ri32("rsi", 8)
+                a.lea_rip("rdi", lab)
+                a.mov_ri32("rsi", len(b))
+                self.rt_out()
             else:
                 self.ev(ar, sc, mod)
-                a.push_r("rax")
-                a.call("print_int")
-                a.add_ri32("rsp", 8)
-                continue
-            self.emit_write()
-        a.lea_rip("rsi", "nl_")
-        a.mov_ri32("rdx", 1)
-        self.emit_write()
+                a.mov_rr("rdi", "rax")
+                a.call("print_val")
+        a.lea_rip("rdi", "nl_")
+        a.mov_ri32("rsi", 1)
+        self.rt_out()
 
     # ----- unsafe subset -----
     def sev(self, e, sc, mod):
@@ -842,6 +899,17 @@ class Gen:
         else:
             raise HSErr(f"bad operator {op}", ln)
 
+    def is_raw_expr(self, e):
+        """True when the expression is already an untagged machine value."""
+        t = e["t"]
+        if t in ("num", "deref", "field", "sizeof", "bin", "neg", "not"):
+            return True
+        if t == "call" and e["fn"]["t"] == "var" and e["fn"]["name"] in (
+                "alloc", "load8", "load32", "store8", "store32",
+                "as_ptr", "as_int"):
+            return True
+        return False
+
     def sev_call(self, name, args, sc, mod, ln):
         a = self.a
         if name == "alloc":
@@ -880,6 +948,24 @@ class Gen:
             if len(args) != 1:
                 raise HSErr(f"{name} wants 1 arg", ln)
             self.sev(args[0], sc, mod)
+            if self.is_raw_expr(args[0]):
+                return  # already a machine value (literal / unsafe expression)
+            # tagged Int -> raw payload; heap Str/Func -> raw address
+            lab_heap, lab_bad, lab_done = (self.new_tmp("az"), self.new_tmp("az"),
+                                           self.new_tmp("az"))
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("ne", lab_heap)
+            a.sar_ri8("rax", 2)
+            a.jmp(lab_done)
+            a.label(lab_heap)
+            a.test_rr("r11", "r11")   # low bits clear -> heap pointer
+            a.jcc("ne", lab_bad)
+            a.jmp(lab_done)
+            a.label(lab_bad)
+            self.type_err()
+            a.label(lab_done)
             return
         raise HSErr(f"{name} not in x64 subset", ln)
 
@@ -906,7 +992,7 @@ class Gen:
             if s["val"] is not None:
                 self.ev(s["val"], sc, mod)
             else:
-                a.mov_ri32("rax", 0)
+                a.mov_ri64("rax", Gen.HS_NULL)
             a.mov_rr("rsp", "rbp")
             a.pop_r("rbp")
             a.ret()
@@ -928,13 +1014,15 @@ class Gen:
             for nm in fs.caplist:
                 self.var_get(nm, sc, mod, ln)
                 a.push_r("rax")
-            a.mov_ri32("rdi", 8 * (1 + n))
+            a.mov_ri32("rdi", 8 * (2 + n))
             a.call("x_malloc")
             for i in reversed(range(n)):
                 a.pop_r("rcx")
-                a.mov_mr("rax", "rcx", 8 * (i + 1))
+                a.mov_mr("rax", "rcx", 8 * (i + 2))
+            a.mov_ri32("rcx", 1)
+            a.mov_mr("rax", "rcx", 0)          # kind = K_FUNC
             a.lea_rip("rcx", lab)
-            a.mov_mr("rax", "rcx", 0)
+            a.mov_mr("rax", "rcx", 8)          # code address
             self.var_set(s["name"], sc, mod, ln)
             return
         if t == "if":
@@ -942,15 +1030,13 @@ class Gen:
             n = len(s["elifs"])
             labs = [self.new_tmp("if") for _ in range(n)]
             self.ev(s["cond"], sc, mod)
-            a.test_rr("rax", "rax")
-            a.jcc("e", labs[0] if n else lab_e)
+            self.truthy_br(labs[0] if n else lab_e)
             self.ex_body(s["then"], sc, mod, depth)
             a.jmp(lab_x)
             for i, (ec, eb) in enumerate(s["elifs"]):
                 a.label(labs[i])
                 self.ev(ec, sc, mod)
-                a.test_rr("rax", "rax")
-                a.jcc("e", labs[i + 1] if i + 1 < n else lab_e)
+                self.truthy_br(labs[i + 1] if i + 1 < n else lab_e)
                 self.ex_body(eb, sc, mod, depth)
                 a.jmp(lab_x)
             a.label(lab_e)
@@ -962,8 +1048,7 @@ class Gen:
             lab_t, lab_c, lab_x = (self.new_tmp("w"), self.new_tmp("w"), self.new_tmp("w"))
             a.label(lab_t)
             self.ev(s["cond"], sc, mod)
-            a.test_rr("rax", "rax")
-            a.jcc("e", lab_x)
+            self.truthy_br(lab_x)
             self.loop_stack.append((lab_x, lab_t))
             self.ex_body(s["body"], sc, mod, depth + 1)
             self.loop_stack.pop()
@@ -1062,33 +1147,26 @@ class Gen:
             elif t == "expr":
                 self.sev(x["val"], sc, mod)
             elif t == "print":
-                # print with static args: box to dynamic-ish (ints pass through)
-                parts = []
-                for ar in x["args"]:
-                    if ar["t"] == "str":
-                        parts.append(("s", ar["val"]))
-                    else:
-                        parts.append(("e", ar))
-                for i, (k, v) in enumerate(parts):
+                # unsafe print: raw Int / Str literal (no value tagging)
+                for i, ar in enumerate(x["args"]):
                     if i > 0:
-                        self.rt_space()
-                    if k == "s":
-                        lab = self.rstr(v)
-                        a.lea_rip("rsi", lab)
-                        a.mov_ri32("rdx", len(v.encode()))
-                        self.emit_write()
-                    elif self.freestanding and v["t"] == "var" and self.is_str_valued(v, sc):
-                        self.sev(v, sc, mod)
-                        a.mov_rr("rsi", "rax")
-                        a.mov_rm("rdx", "rsi", 0)
-                        a.add_ri32("rsi", 8)
-                        self.emit_write()
+                        a.lea_rip("rdi", "sp_")
+                        a.mov_ri32("rsi", 1)
+                        self.rt_out()
+                    if ar["t"] == "str":
+                        b = ar["val"].encode()
+                        lab = self.rstr(ar["val"])
+                        a.lea_rip("rdi", lab)
+                        a.mov_ri32("rsi", len(b))
+                        self.rt_out()
                     else:
-                        self.sev(v, sc, mod)
+                        self.sev(ar, sc, mod)
                         a.push_r("rax")
                         a.call("print_int")
                         a.add_ri32("rsp", 8)
-                self.rt_nl()
+                a.lea_rip("rdi", "nl_")
+                a.mov_ri32("rsi", 1)
+                self.rt_out()
             elif t in ("if", "while"):
                 # static conditions
                 if t == "if":
@@ -1161,6 +1239,61 @@ class Gen:
             a.mov_ri32("rax", 60)
             a.syscall()
 
+    # ----- tagged-value codegen helpers -----
+    def tag_int(self, v):
+        """Python int -> tagged 64-bit pattern (62-bit payload)."""
+        return ((v * 4) + 1) & ((1 << 64) - 1)
+
+    def tag_box(self):
+        """rax = raw int -> rax = tagged Int"""
+        a = self.a
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)
+
+    def box_bool_al(self):
+        """al = 0/1 -> rax = tagged Bool (HS_FALSE / HS_TRUE)"""
+        a = self.a
+        a.movzx_eax_al()
+        a.shl_ri8("rax", 3)
+        a.or_ri8("rax", 2)
+
+    def tag_check_int(self, reg="rax"):
+        """Die with a type error unless reg holds a tagged Int."""
+        a = self.a
+        lab_ok = self.new_tmp("tc")
+        a.mov_rr("r11", reg)
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("e", lab_ok)
+        a.jmp("type_err")
+        a.label(lab_ok)
+
+    def truthy(self):
+        """rax = tagged value -> al = 0/1 truthiness (hs rules)."""
+        a = self.a
+        a.mov_rr("rdi", "rax")
+        a.call("x_truth")
+
+    def truthy_br(self, lab_false):
+        """rax = tagged value; jump lab_false when falsy (Int fast path)."""
+        a = self.a
+        lab_int, lab_true, lab_slow = (self.new_tmp("tb"), self.new_tmp("tb"),
+                                       self.new_tmp("tb"))
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("ne", lab_slow)
+        a.cmp_ri32("rax", 1)      # tagged zero is 0<<2|1 == 1
+        a.jcc("ne", lab_true)
+        a.jmp(lab_false)
+        a.label(lab_true)
+        a.label(lab_slow)
+        self.truthy()
+        a.jcc("e", lab_false)
+
+    def type_err(self):
+        self.a.jmp("type_err")
+
     # ----- functions / main / link -----
     def emit_func(self, label, node, fscope, mod):
         a = self.a
@@ -1171,7 +1304,7 @@ class Gen:
         if n:
             a.sub_ri32("rsp", 8 * n)
         self.ex_body(node["body"], fscope, mod, 1)
-        a.mov_ri32("rax", 0)
+        a.mov_ri64("rax", Gen.HS_NULL)
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
         a.ret()
@@ -1181,7 +1314,7 @@ class Gen:
         ms = mod["scope"]
         for name in sorted(set(ms.loc) | set(ms.uloc)):
             a.data_label(self.glabel(mod, name))
-            a.data_qword(0)
+            a.data_qword(Gen.HS_UNBOUND if name in ms.loc else 0)
 
     def emit_main(self, mod):
         a = self.a
@@ -1299,6 +1432,9 @@ class Gen:
         self.a.data_label("pbuf_")
         self.a.data_bytes(b"\0" * 32)
         self.a.data_label("pbuf_e")
+        self.a.data_label("nbuf_")
+        self.a.data_bytes(b"\0" * 32)
+        self.a.data_label("nbuf_e")
         self.a.data_label("bump_ptr_")
         if self.freestanding:
             self.a.data_qword(Gen.KHEAP_BASE)
@@ -1430,31 +1566,35 @@ class Gen:
             a.pop_r(r)
         a.iretq()
 
-    def rt_space(self):
+    # ----- output primitives -----
+    def rt_out(self, fd=1):
+        """rdi = ptr, rsi = len -> write(fd). Clobbers caller-saved regs."""
         a = self.a
+        a.mov_rr("rdx", "rsi")   # len
+        a.mov_rr("rsi", "rdi")   # buf
         if self.freestanding:
-            a.mov_ri32("rax", 32)  # x_putc reads al
-            a.call("x_putc")
+            self.k_write()
         else:
-            a.lea_rip("rsi", "sp_")
-            a.mov_ri32("rdx", 1)
-            a.mov_ri32("rdi", 1)
+            a.mov_ri32("rdi", fd)
             a.mov_ri32("rax", 1)
             a.syscall()
 
-    def rt_nl(self):
+    def copy_bytes(self):
+        """rsi = src, rdi = dst, rcx = len -> copy. Clobbers rax."""
         a = self.a
-        if self.freestanding:
-            a.mov_ri32("rax", 10)
-            a.call("x_putc")
-        else:
-            a.lea_rip("rsi", "nl_")
-            a.mov_ri32("rdx", 1)
-            a.mov_ri32("rdi", 1)
-            a.mov_ri32("rax", 1)
-            a.syscall()
+        lab_top, lab_done = self.new_tmp("cp"), self.new_tmp("cp")
+        a.label(lab_top)
+        a.test_rr("rcx", "rcx")
+        a.jcc("e", lab_done)
+        a.movzx_eax_m8("rsi", 0)
+        a.mov_mr8("rdi", 0, 0)
+        a.add_ri32("rsi", 1)
+        a.add_ri32("rdi", 1)
+        a.sub_ri32("rcx", 1)
+        a.jmp(lab_top)
+        a.label(lab_done)
 
-    # ----- freestanding runtime (serial COM1, fixed bump heap, halt) -----
+    # ----- freestanding base runtime (serial COM1, fixed bump heap, halt) -----
     KHEAP_BASE = 0x2000000
     KHEAP_SIZE = 16 << 20
 
@@ -1480,60 +1620,6 @@ class Gen:
         a.label(lab_h)
         a.hlt()
         a.jmp(lab_h)
-        # print_int: [rsp+8] = i64 -> serial decimal
-        a.label("print_int")
-        a.mov_rm("rax", "rsp", 8)
-        a.lea_rip("rsi", "pbuf_e")
-        a.test_rr("rax", "rax")
-        lab_nz, lab_lp, lab_dn = self.new_tmp("pi"), self.new_tmp("pi"), self.new_tmp("pi")
-        a.jcc("ne", lab_nz)
-        a.sub_ri32("rsi", 1)
-        a.mov_ri32("rax", 48)
-        a.mov_mr8("rsi", 0, 0)
-        a.jmp(lab_dn)
-        a.label(lab_nz)
-        a.mov_ri32("rcx", 0)
-        a.jcc("ns", lab_lp)
-        a.neg_r("rax")
-        a.mov_ri32("rcx", 1)
-        a.label(lab_lp)
-        a.mov_ri32("r8", 10)
-        a.mov_ri32("rdx", 0)
-        a.div_r("r8")
-        a.add_ri8("rdx", 48)
-        a.push_r("rax")
-        a.mov_rr("rax", "rdx")
-        a.sub_ri32("rsi", 1)
-        a.mov_mr8("rsi", 0, 0)
-        a.pop_r("rax")
-        a.test_rr("rax", "rax")
-        a.jcc("ne", lab_lp)
-        a.test_rr("rcx", "rcx")
-        a.jcc("e", lab_dn)
-        a.sub_ri32("rsi", 1)
-        a.mov_ri32("rax", 45)
-        a.mov_mr8("rsi", 0, 0)
-        a.label(lab_dn)
-        a.push_r("rsi")
-        a.lea_rip("rcx", "pbuf_e")
-        a.pop_r("rsi")
-        a.sub_rr("rcx", "rsi")
-        lab_pl = self.new_tmp("pl")
-        a.label(lab_pl)
-        a.test_rr("rcx", "rcx")
-        lab_pe = self.new_tmp("pl")
-        a.jcc("e", lab_pe)
-        a.movzx_eax_m8("rsi", 0)
-        a.push_r("rsi")
-        a.push_r("rcx")
-        a.call("x_putc")
-        a.pop_r("rcx")
-        a.pop_r("rsi")
-        a.add_ri32("rsi", 1)
-        a.sub_ri32("rcx", 1)
-        a.jmp(lab_pl)
-        a.label(lab_pe)
-        a.ret()
         # x_malloc: rdi = bytes -> fixed bump heap; halts on exhaustion
         a.label("x_malloc")
         a.push_r("rbp")
@@ -1587,60 +1673,20 @@ class Gen:
         a.mov_rm("rdi", "rsp", 8)
         a.call("x_malloc")
         a.ret()
-        # divzero trap
+        # divzero trap (freestanding: #DE is caught by the IDT stub)
         a.label("divzero")
         a.lea_rip("rsi", "dzm_")
         a.call("k_puts_cstr")
         a.call("k_halt")
-        # oom_ / dzm_ cstrs emitted with rodata below
+        self.emit_fmt_int()
+        self.emit_print_int()
+        self.emit_val_runtime()
+        # oom_ / dzm_ cstrs emitted with rodata in build_image
+
     def emit_runtime(self):
         a = self.a
-        # print_int: [rsp+8] = i64 -> decimal to stdout (pbuf_ 32B in data)
-        a.label("print_int")
-        a.mov_rm("rax", "rsp", 8)
-        a.lea_rip("rsi", "pbuf_e")  # write backwards from buffer end
-        a.test_rr("rax", "rax")
-        lab_nz, lab_lp, lab_dn = self.new_tmp("pi"), self.new_tmp("pi"), self.new_tmp("pi")
-        a.jcc("ne", lab_nz)
-        a.sub_ri32("rsi", 1)
-        a.mov_ri32("rax", 48)  # '0'
-        a.mov_mr8("rsi", 0, 0)  # [rsi] = al
-        a.jmp(lab_dn)
-        a.label(lab_nz)
-        a.mov_ri32("rcx", 0)  # sign flag
-        a.jcc("ns", lab_lp)
-        a.neg_r("rax")
-        a.mov_ri32("rcx", 1)
-        a.label(lab_lp)
-        a.mov_ri32("r8", 10)
-        a.mov_ri32("rdx", 0)
-        a.div_r("r8")  # rax=q, rdx=digit
-        a.add_ri8("rdx", 48)
-        a.push_r("rax")
-        a.mov_rr("rax", "rdx")
-        a.sub_ri32("rsi", 1)
-        a.mov_mr8("rsi", 0, 0)  # [rsi] = al
-        a.pop_r("rax")
-        a.test_rr("rax", "rax")
-        a.jcc("ne", lab_lp)
-        a.test_rr("rcx", "rcx")
-        a.jcc("e", lab_dn)
-        a.sub_ri32("rsi", 1)
-        a.mov_ri32("rax", 45)  # '-'
-        a.mov_mr8("rsi", 0, 0)
-        a.label(lab_dn)
-        # write(1, rsi, pbuf_e - rsi)
-        a.push_r("rsi")
-        a.lea_rip("rcx", "pbuf_e")
-        a.pop_r("rsi")
-        a.sub_rr("rcx", "rsi")
-        a.mov_rr("rdx", "rcx")
-        a.mov_ri32("rdi", 1)
-        a.mov_ri32("rax", 1)
-        a.syscall()
-        a.ret()
         # x_malloc: rdi = bytes -> bump pointer over 16MB mmap arenas.
-        # Never frees (arena semantics, like kernel heap). Dies 99 on mmap failure.
+        # Never frees (arena semantics, like the kernel heap). exit(99) on failure.
         a.label("x_malloc")
         a.push_r("rbp")
         a.mov_rr("rbp", "rsp")
@@ -1660,7 +1706,7 @@ class Gen:
         a.jcc("ae", lab_mg)
         a.mov_ri32("rsi", 16777216)
         a.label(lab_mg)
-        a.push_r("rsi")  # save mapped len
+        a.push_r("rsi")  # mapped len
         a.mov_ri32("rdi", 0)
         a.mov_ri32("rdx", 3)
         a.mov_ri32("r10", 0x22)
@@ -1682,7 +1728,7 @@ class Gen:
         a.mov_mr("rdx", "rcx", 0)
         a.lea_rip("rdx", "bump_ptr_")
         a.mov_mr("rdx", "rax", 0)
-        a.mov_rr("rcx", "rax")  # rcx = base for have path
+        a.mov_rr("rcx", "rax")  # rcx = base for the have path
         a.label(lab_have)
         a.mov_rm("rax", "rbp", -8)  # size
         a.add_rr("rax", "rcx")  # rax = base + size
@@ -1695,7 +1741,7 @@ class Gen:
         a.cmp_rr("rax", "rdx")
         lab_fit = self.new_tmp("ba")
         a.jcc("be", lab_fit)
-        a.jmp("new_arena_")  # abandon old arena (size still at [rbp-8])
+        a.jmp("new_arena_")  # abandon the old arena (size still at [rbp-8])
         a.label(lab_fit)
         a.lea_rip("rdx", "bump_ptr_")
         a.mov_mr("rdx", "rax", 0)
@@ -1703,22 +1749,477 @@ class Gen:
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
         a.ret()
-        # x_alloc: [rsp+8] = bytes (user calling convention)
+        # x_alloc: [rsp+8] = bytes (unsafe calling convention)
         a.label("x_alloc")
         a.mov_rm("rdi", "rsp", 8)
         a.call("x_malloc")
         a.ret()
-        # divzero: shared division-by-zero trap
+        # divzero: clean division-by-zero trap
         a.label("divzero")
         lab_dz = self.rstr("division by zero\n")
-        a.lea_rip("rsi", lab_dz)
-        a.mov_ri32("rdx", 17)
-        a.mov_ri32("rdi", 2)
-        a.mov_ri32("rax", 1)
-        a.syscall()
+        a.lea_rip("rdi", lab_dz)
+        a.mov_ri32("rsi", 17)
+        self.rt_out(2)
         a.mov_ri32("rdi", 1)
         a.mov_ri32("rax", 60)
         a.syscall()
+        self.emit_fmt_int()
+        self.emit_print_int()
+        self.emit_val_runtime()
+
+    def emit_fmt_int(self):
+        """fmt_int: rdi = i64, rsi = buf_end -> rsi = start, rdx = length."""
+        a = self.a
+        a.label("fmt_int")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.push_r("rsi")            # [rbp-8] = buf_end
+        a.mov_rr("rax", "rdi")
+        a.test_rr("rax", "rax")
+        lab_nz, lab_lp, lab_dn = (self.new_tmp("fi"), self.new_tmp("fi"),
+                                  self.new_tmp("fi"))
+        a.jcc("ne", lab_nz)
+        a.sub_ri32("rsi", 1)
+        a.mov_ri32("rcx", 48)      # '0'
+        a.mov_mr8("rsi", 1, 0)     # [rsi] = cl
+        a.jmp(lab_dn)
+        a.label(lab_nz)
+        a.mov_ri32("rcx", 0)       # sign flag
+        a.jcc("ns", lab_lp)
+        a.neg_r("rax")
+        a.mov_ri32("rcx", 1)
+        a.label(lab_lp)
+        a.mov_ri32("r8", 10)
+        a.mov_ri32("rdx", 0)
+        a.div_r("r8")              # rax = q, rdx = digit
+        a.add_ri8("rdx", 48)
+        a.push_r("rax")
+        a.mov_rr("rax", "rdx")
+        a.sub_ri32("rsi", 1)
+        a.mov_mr8("rsi", 0, 0)     # [rsi] = al (the digit)
+        a.pop_r("rax")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", lab_lp)
+        a.test_rr("rcx", "rcx")
+        a.jcc("e", lab_dn)
+        a.sub_ri32("rsi", 1)
+        a.mov_ri32("rcx", 45)      # '-'
+        a.mov_mr8("rsi", 1, 0)
+        a.label(lab_dn)
+        a.mov_rm("rdx", "rbp", -8)
+        a.sub_rr("rdx", "rsi")     # length
+        a.add_ri32("rsp", 8)
+        a.pop_r("rbp")
+        a.ret()                    # rsi = start, rdx = length
+
+    def emit_print_int(self):
+        """print_int: [rsp+8] = i64 -> decimal to stdout (or serial)."""
+        a = self.a
+        a.label("print_int")
+        a.mov_rm("rdi", "rsp", 8)
+        a.lea_rip("rsi", "pbuf_e")
+        a.call("fmt_int")
+        a.mov_rr("rdi", "rsi")
+        a.mov_rr("rsi", "rdx")
+        self.rt_out()
+        a.ret()
+
+    # ----- tagged-value runtime (shared: hosted stdout + freestanding serial) -----
+    def emit_val_runtime(self):
+        a = self.a
+        I, B, N, KS = Gen.TAG_INT, Gen.TAG_BOOL, Gen.TAG_NULL, Gen.K_STR
+        # type_err: report then die
+        a.label("type_err")
+        lab = self.rstr("type error\n")
+        a.lea_rip("rdi", lab)
+        a.mov_ri32("rsi", 11)
+        self.rt_out(2)
+        if self.freestanding:
+            a.call("k_halt")
+        else:
+            a.mov_ri32("rdi", 1)
+            a.mov_ri32("rax", 60)
+            a.syscall()
+        # x_truth: rdi = tagged -> rax = 0/1
+        a.label("x_truth")
+        a.mov_rr("rax", "rdi")
+        a.and_ri32("rax", 3)
+        lab_int, lab_bool, lab_null, lab_heap = (self.new_tmp("tr"),
+                                                 self.new_tmp("tr"),
+                                                 self.new_tmp("tr"),
+                                                 self.new_tmp("tr"))
+        lab_bad_truth = self.new_tmp("tr")
+        a.cmp_ri32("rax", I)
+        a.jcc("e", lab_int)
+        a.cmp_ri32("rax", B)
+        a.jcc("e", lab_bool)
+        a.cmp_ri32("rax", N)
+        a.jcc("e", lab_null)
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_heap)
+        a.jmp("type_err")
+        a.label(lab_int)
+        a.mov_rr("rax", "rdi")
+        a.sar_ri8("rax", 2)
+        a.test_rr("rax", "rax")
+        a.setcc_al("ne")
+        a.movzx_eax_al()
+        a.ret()
+        a.label(lab_bool)
+        a.mov_rr("rax", "rdi")
+        a.and_ri32("rax", 8)
+        a.shr_ri8("rax", 3)
+        a.ret()
+        a.label(lab_null)
+        a.xor_rr("rax", "rax")
+        a.ret()
+        a.label(lab_heap)
+        a.mov_rm("rax", "rdi", 0)       # kind
+        a.cmp_ri32("rax", KS)
+        a.jcc("ne", lab_bad_truth)
+        a.mov_rm("rax", "rdi", 8)       # len
+        a.test_rr("rax", "rax")
+        a.setcc_al("ne")
+        a.movzx_eax_al()
+        a.ret()
+        a.label(lab_bad_truth)
+        a.jmp("type_err")
+        # print_val: rdi = tagged -> prints without newline
+        a.label("print_val")
+        a.mov_rr("r10", "rdi")
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        lab_pv_int, lab_pv_bool = self.new_tmp("pv"), self.new_tmp("pv")
+        lab_pv_null, lab_pv_heap, lab_pv_out = (self.new_tmp("pv"),
+                                                self.new_tmp("pv"),
+                                                self.new_tmp("pv"))
+        lab_pv_unb, lab_pv_bad = self.new_tmp("pv"), self.new_tmp("pv")
+        lab_pv_done = self.new_tmp("pv")
+        a.cmp_ri32("rax", I)
+        a.jcc("e", lab_pv_int)
+        a.cmp_ri32("rax", B)
+        a.jcc("e", lab_pv_bool)
+        a.cmp_ri32("rax", N)
+        a.jcc("e", lab_pv_null)
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_pv_heap)
+        a.jmp("type_err")
+        a.label(lab_pv_int)
+        a.mov_rr("rdi", "r10")
+        a.sar_ri8("rdi", 2)
+        a.push_r("rdi")
+        a.call("print_int")
+        a.add_ri32("rsp", 8)
+        a.ret()
+        a.label(lab_pv_bool)
+        a.lea_rip("rdi", self.rstr("false"))
+        a.mov_ri32("rsi", 5)
+        a.cmp_ri32("r10", Gen.HS_TRUE)
+        a.jcc("ne", lab_pv_out)
+        a.lea_rip("rdi", self.rstr("true"))
+        a.mov_ri32("rsi", 4)
+        a.jmp(lab_pv_out)
+        a.label(lab_pv_null)
+        a.lea_rip("rdi", self.rstr("null"))
+        a.mov_ri32("rsi", 4)
+        a.cmp_ri32("r10", Gen.HS_NULL)
+        a.jcc("ne", lab_pv_unb)
+        a.jmp(lab_pv_out)
+        a.label(lab_pv_unb)
+        a.lea_rip("rdi", self.rstr("unbound"))
+        a.mov_ri32("rsi", 7)
+        a.jmp(lab_pv_out)
+        a.label(lab_pv_heap)
+        a.mov_rm("rax", "r10", 0)
+        a.cmp_ri32("rax", KS)
+        a.jcc("ne", lab_pv_bad)
+        a.mov_rm("rsi", "r10", 8)      # len
+        a.mov_rr("rdi", "r10")
+        a.add_ri32("rdi", 16)          # bytes
+        a.label(lab_pv_out)
+        a.test_rr("rsi", "rsi")
+        a.jcc("e", lab_pv_done)
+        self.rt_out()
+        a.label(lab_pv_done)
+        a.ret()
+        a.label(lab_pv_bad)
+        a.jmp("type_err")
+        # x_str_at: rdi = bytes, rsi = len -> rax = Str object
+        a.label("x_str_at")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)     # src
+        a.mov_mr("rbp", "rsi", -16)    # len
+        a.mov_rr("rax", "rsi")
+        a.add_ri32("rax", 48)          # 16 header + payload + slack
+        a.and_ri32("rax", -16)
+        a.mov_rr("rdi", "rax")
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -24)    # obj
+        a.mov_ri32("rcx", 0)
+        a.mov_mr("rax", "rcx", 0)      # kind = K_STR
+        a.mov_rm("rcx", "rbp", -16)
+        a.mov_mr("rax", "rcx", 8)      # len
+        a.lea_m("rdi", "rax", 16)
+        a.mov_rm("rsi", "rbp", -8)
+        a.mov_rm("rcx", "rbp", -16)
+        self.copy_bytes()
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_str_cat: rdi = a, rsi = b -> rax = Str
+        a.label("x_str_cat")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 40)
+        a.mov_mr("rbp", "rdi", -8)
+        a.mov_mr("rbp", "rsi", -16)
+        a.mov_rm("rax", "rdi", 8)      # len a
+        a.mov_rm("rcx", "rsi", 8)      # len b
+        a.mov_mr("rbp", "rcx", -24)    # len b
+        a.mov_mr("rbp", "rax", -32)    # len a
+        a.add_rr("rax", "rcx")
+        a.add_ri32("rax", 48)
+        a.and_ri32("rax", -16)
+        a.mov_rr("rdi", "rax")
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -40)    # obj
+        a.mov_ri32("rcx", 0)
+        a.mov_mr("rax", "rcx", 0)
+        a.mov_rm("rcx", "rbp", -32)
+        a.mov_rm("r11", "rbp", -24)
+        a.add_rr("rcx", "r11")
+        a.mov_mr("rax", "rcx", 8)      # len = la + lb
+        # copy a: src = a.data (obj + 16), dst = new + 16
+        a.lea_m("rdi", "rax", 16)
+        a.mov_rm("rsi", "rbp", -8)
+        a.add_ri32("rsi", 16)
+        a.mov_rm("rcx", "rbp", -32)
+        self.copy_bytes()
+        # copy b: src = b.data, dst = new + 16 + len_a
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rm("rcx", "rbp", -32)
+        a.lea_m("rdi", "rax", 16, "rcx", 1)
+        a.mov_rm("rsi", "rbp", -16)
+        a.add_ri32("rsi", 16)
+        a.mov_rm("rcx", "rbp", -24)
+        self.copy_bytes()
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_str_cmp: rdi = a, rsi = b -> eax in {-1, 0, 1}
+        a.label("x_str_cmp")
+        a.mov_rr("r10", "rdi")
+        a.mov_rr("r11", "rsi")
+        a.mov_rm("rax", "r10", 8)      # len a
+        a.mov_rm("rcx", "r11", 8)      # len b
+        a.cmp_rr("rax", "rcx")
+        lab_len, lab_eq = self.new_tmp("sm"), self.new_tmp("sm")
+        lab_loop, lab_diff = self.new_tmp("sm"), self.new_tmp("sm")
+        lab_fin = self.new_tmp("sm")
+        a.jcc("ne", lab_len)
+        a.mov_ri32("rcx", 0)
+        a.label(lab_loop)
+        a.cmp_rr("rcx", "rax")
+        a.jcc("ae", lab_eq)
+        a.movzx_eax_mx("r10", "rcx", 1, 16)
+        a.movzx_edx_mx("r11", "rcx", 1, 16)
+        a.code += bytes([0x38, 0xD0])  # cmp al, dl
+        a.jcc("ne", lab_diff)
+        a.add_ri32("rcx", 1)
+        a.jmp(lab_loop)
+        a.label(lab_diff)
+        a.code += bytes([0x38, 0xD0])  # cmp al, dl (flags again)
+        a.mov_ri32("rax", 1)
+        a.jcc("g", lab_fin)           # al > dl -> 1
+        a.mov_ri32("rax", -1)
+        a.jmp(lab_fin)
+        a.label(lab_eq)
+        a.mov_ri32("rax", 0)
+        a.jmp(lab_fin)
+        a.label(lab_len)
+        a.mov_rm("rax", "r10", 8)
+        a.mov_rm("rcx", "r11", 8)
+        a.cmp_rr("rax", "rcx")
+        a.mov_ri32("rax", 1)
+        a.jcc("a", lab_fin)           # len a > len b -> 1
+        a.mov_ri32("rax", -1)
+        a.label(lab_fin)
+        a.ret()
+        # x_eq: rdi = a, rsi = b -> al = 0/1
+        a.label("x_eq")
+        a.mov_rr("r10", "rdi")
+        a.mov_rr("r11", "rsi")
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        a.cmp_ri32("rax", I)
+        lab_eq_h1, lab_eq_h2 = self.new_tmp("eq"), self.new_tmp("eq")
+        a.jcc("ne", lab_eq_h1)
+        a.mov_rr("rax", "r11")
+        a.and_ri32("rax", 3)
+        a.cmp_ri32("rax", I)
+        a.jcc("ne", lab_eq_h2)
+        a.mov_rr("rax", "r10")
+        a.sar_ri8("rax", 2)
+        a.mov_rr("rcx", "r11")
+        a.sar_ri8("rcx", 2)
+        a.cmp_rr("rax", "rcx")
+        a.setcc_al("e")
+        a.movzx_eax_al()
+        a.ret()
+        a.label(lab_eq_h1)
+        a.mov_rr("rax", "r11")
+        a.and_ri32("rax", 3)
+        a.cmp_ri32("rax", I)
+        a.jcc("ne", lab_eq_h2)
+        a.mov_ri32("rax", 0)   # Int vs non-Int
+        a.ret()
+        a.label(lab_eq_h2)
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        a.jcc("ne", "eq_raw")      # not a heap value -> raw tag compare
+        a.mov_rr("rax", "r11")
+        a.and_ri32("rax", 3)
+        a.jcc("ne", "eq_raw")
+        a.mov_rm("rax", "r10", 0)
+        a.mov_rm("rcx", "r11", 0)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ne", "eq_raw")
+        a.cmp_ri32("rax", KS)
+        a.jcc("ne", "eq_raw")
+        a.mov_rr("rdi", "r10")
+        a.mov_rr("rsi", "r11")
+        a.call("x_str_cmp")
+        a.test_rr("rax", "rax")
+        a.setcc_al("e")
+        a.movzx_eax_al()
+        a.ret()
+        a.label("eq_raw")
+        a.cmp_rr("r10", "r11")
+        a.setcc_al("e")
+        a.movzx_eax_al()
+        a.ret()
+        # x_cmp: rdi = a, rsi = b -> eax in {-1, 0, 1} (Int or Str only)
+        a.label("x_cmp")
+        a.mov_rr("r10", "rdi")
+        a.mov_rr("r11", "rsi")
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        a.cmp_ri32("rax", I)
+        a.jcc("ne", "cm_str")
+        a.mov_rr("rax", "r11")
+        a.and_ri32("rax", 3)
+        a.cmp_ri32("rax", I)
+        a.jcc("ne", "cm_str")
+        a.mov_rr("rax", "r10")
+        a.sar_ri8("rax", 2)
+        a.mov_rr("rcx", "r11")
+        a.sar_ri8("rcx", 2)
+        a.cmp_rr("rax", "rcx")
+        a.mov_ri32("rax", 1)
+        a.jcc("g", "cm_fin")
+        a.mov_ri32("rax", 0)
+        a.jcc("e", "cm_fin")
+        a.mov_ri32("rax", -1)
+        a.jmp("cm_fin")
+        a.label("cm_str")
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        a.jcc("ne", "cm_bad")
+        a.mov_rr("rax", "r11")
+        a.and_ri32("rax", 3)
+        a.jcc("ne", "cm_bad")
+        a.mov_rm("rax", "r10", 0)
+        a.mov_rm("rcx", "r11", 0)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ne", "cm_bad")
+        a.cmp_ri32("rax", KS)
+        a.jcc("ne", "cm_bad")
+        a.mov_rr("rdi", "r10")
+        a.mov_rr("rsi", "r11")
+        a.call("x_str_cmp")
+        a.jmp("cm_fin")
+        a.label("cm_bad")
+        a.jmp("type_err")
+        a.label("cm_fin")
+        a.ret()
+        # x_len: rdi = Str -> rax = tagged Int
+        a.label("x_len")
+        lab_len_bad = self.new_tmp("ln")
+        a.mov_rr("r10", "rdi")
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        a.test_rr("rax", "rax")
+        a.jcc("ne", lab_len_bad)
+        a.mov_rm("rcx", "r10", 0)
+        a.cmp_ri32("rcx", KS)
+        a.jcc("ne", lab_len_bad)
+        a.mov_rm("rax", "r10", 8)
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)
+        a.ret()
+        a.label(lab_len_bad)
+        a.jmp("type_err")
+        # x_str: rdi = any tagged value -> rax = Str
+        a.label("x_str")
+        a.mov_rr("r10", "rdi")
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        a.cmp_ri32("rax", I)
+        a.jcc("e", "st_int")
+        a.cmp_ri32("rax", B)
+        a.jcc("e", "st_bool")
+        a.cmp_ri32("rax", N)
+        a.jcc("e", "st_null")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "st_bad")
+        a.mov_rm("rax", "r10", 0)
+        a.cmp_ri32("rax", KS)
+        a.jcc("ne", "st_bad")
+        a.mov_rr("rax", "r10")
+        a.ret()
+        a.label("st_int")
+        a.mov_rr("rdi", "r10")
+        a.sar_ri8("rdi", 2)
+        a.lea_rip("rsi", "nbuf_e")
+        a.call("fmt_int")
+        a.mov_rr("rdi", "rsi")
+        a.mov_rr("rsi", "rdx")
+        a.jmp("st_make")
+        a.label("st_bool")
+        a.lea_rip("rdi", self.rstr("false"))
+        a.mov_ri32("rsi", 5)
+        a.cmp_ri32("r10", Gen.HS_TRUE)
+        a.jcc("ne", "st_make")
+        a.lea_rip("rdi", self.rstr("true"))
+        a.mov_ri32("rsi", 4)
+        a.jmp("st_make")
+        a.label("st_null")
+        a.lea_rip("rdi", self.rstr("null"))
+        a.mov_ri32("rsi", 4)
+        a.cmp_ri32("r10", Gen.HS_NULL)
+        a.jcc("ne", "st_ub")
+        a.jmp("st_make")
+        a.label("st_ub")
+        a.lea_rip("rdi", self.rstr("unbound"))
+        a.mov_ri32("rsi", 7)
+        a.jmp("st_make")
+        a.label("st_make")
+        a.call("x_str_at")
+        a.ret()
+        a.label("st_bad")
+        a.jmp("type_err")
+        # x_num_to_str: rdi = raw i64 -> rax = Str
+        a.label("x_num_to_str")
+        a.lea_rip("rsi", "nbuf_e")
+        a.call("fmt_int")
+        a.mov_rr("rdi", "rsi")
+        a.mov_rr("rsi", "rdx")
+        a.call("x_str_at")
+        a.ret()
 
 
 def build_x64(prog_path, out_path):
@@ -1779,8 +2280,6 @@ def build_xkernel(prog_path, out_path):
            "dir": _os.path.dirname(_os.path.abspath(prog_path))}
     try:
         asm64 = g.build_image(mod)
-    except HSErr as e:
-        asm64 = g.a
     except HSErr as e:
         print(str(e), file=sys.stderr)
         return 1

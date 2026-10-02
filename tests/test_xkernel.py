@@ -86,6 +86,16 @@ with tempfile.TemporaryDirectory() as d:
         check("pmm alloc(3) addr", "67108864" in out, out[-800:])
         check("pmm free delta -3", "32765" in out, out[-800:])
         check("kdone", "kdone" in out, out[-800:])
+    # Str / Bool / Null values on bare metal
+    ks = os.path.join(d, "ks.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kxstr.hs"), ks)
+    check("kxstr build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(ks, timeout=8)
+        for line in ("ab", "abcd", "true", "false", "null",
+                     "zero is false", "kstr-done"):
+            check(f"kxstr serial has {line!r}", line in out, out[-800:])
+        check("kxstr len", "4" in out and "2" in out, out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

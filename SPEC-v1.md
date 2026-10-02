@@ -258,27 +258,42 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 
 - `x64.py`: assembler + static ELF64 writer เขียนเอง (REX/ModRM/SIB, rel32/rip-rel,
   2 segments RX+RW, entry `_start`)
-- `x64gen.py`: hs subset → machine code; runtime ใน asm (`print_int`, `x_alloc` ผ่าน
-  mmap, `divzero`, `_start`+exit) — binary 4KB ไม่พึ่ง libc เลย
-- subset: Int, Str literal (print อย่างเดียว), def/call/recursion/closure (caps ผ่าน r15),
-  if/while, unsafe I64/U64/Ptr + struct, `print`/`int()`; `/` ตัดทศนิยมแบบ C
+- `x64gen.py`: hs subset → machine code; runtime เขียนเป็น machine code ล้วน
+  (print_int/fmt_int, bump malloc ผ่าน mmap, type_err, divzero, `_start`+exit)
+- **ค่าแบบ tagged (v2)**: low 2 bits = tag — `01` Int (payload 62-bit, `v<<2|1`),
+  `10` Bool (0x02 false / 0x0A true), `11` Null 0x03 / Unbound 0x0B, `00` heap object
+  (`[kind][len][bytes]` = Str, `[kind][code][caps…]` = Func) → Str/Bool/Null เป็นค่าเต็ม
+  ไม่ใช่แค่ int; `print` เลือกเองจาก tag, type error = `type error` + exit(1)/halt
+- runtime ฝั่งค่า: `x_str_at` (สร้าง Str จาก rodata), `x_str_cat`, `x_str_cmp`
+  (ใช้ทั้ง `==`/`!=` และ `<`/`>`), `x_str`, `x_num_to_str`, `x_len`, `x_truth`,
+  `print_val`, `x_eq`, `x_cmp` — ทั้งหมดประกอบด้วย instruction ที่ encoder เขียนเอง
+- subset: Int, Str (literal เป็นค่าได้, `+` ต่อสาย, `len`, เทียบซ้ำกันได้), Bool, null,
+  not/and/or (คืน operand ตาม hs), if/elif/else, while, def/call/recursion/closure
+  (caps ผ่าน r15), `str()`/`int()`/`len()`, `print`, unsafe I64/U64/Ptr + struct;
+  `/` ตัดทศนิยมแบบ C
 - runtime: bump allocator บน mmap arena 16MB (align 16, ไม่ free — แบบ kernel heap),
   ขยาย arena อัตโนมัติเมื่อเต็ม, `alloc` ใหญ่กว่า 16MB ได้ arena ของตัวเอง
-- วัดจริงบน i7-6700HQ (TSC 2592MHz): fib(25) 0.003s (gcc-Val 0.021s, interp 3.79s),
+- วัดจริงบน i7-6700HQ (TSC 2592MHz): fib(25) 0.005s (gcc-Val 0.021s, interp 3.79s),
   binary 4KB เทียบ 77KB; timer-IRQ latency (SIGALRM, `scripts/irq_lat.py`):
   @2ms med 2000us p99 +100us max +116us, @500us p99 +37us max +70us
   (เลขนี้คือ Linux shared laptop ไม่ใช่ bare metal — bare metal ควรอยู่ระดับ ~1-5us)
-- ยังไม่มี: Float/List/Dict, import, try, extern, string ops, argv, slice/attr,
-  `for`, `asm()` (ใช้ไม่ได้กับ encoder ของตัวเอง) — เป็น compile error ชัดเจน
+  (fib เพิ่มจาก 0.003s เป็น 0.005s หลังเพิ่ม tag arithmetic — จ่ายค่า representation)
+- ยังไม่มี: Float/List/Dict, import, try, extern, slice/attr, argv, `for`,
+  `asm()` (ใช้ไม่ได้กับ encoder ของตัวเอง) — เป็น compile error ชัดเจน
+- ใน `unsafe:` ค่ายังเป็น machine word ดิบ (literal ไม่ถูก tag) — ใช้ `as_ptr(x)` /
+  `as_int(x)` เป็นสะพานจากค่า dynamic
 - `hs.py xbuild prog.hs [-o prog]` / `hs.py xrun prog.hs`, เทส `tests/test_x64.py`
+  (**7/7**: alloc, err_divzero, err_null, err_subset, fib, strval, unsafe)
 
 ## 14. Kernel freestanding ด้วย x64 backend ล้วน (เฟส 6b — ไม่ใช้ gcc/as/ld)
 
 - `hs.py xkernel prog.hs -o k.elf`: encoder 32-bit (`Asm32`) + trampoline
   (cli → cr3/cr4/EFER/cr0 → lgdt → far jmp) + page table prefill ใน Python
   (identity 1GB) + payload 64-bit + ELF32 writer — ผลลัพธ์บูต QEMU ได้จริง
-- freestanding runtime: serial COM1, bump heap คงที่ 16MB ที่ 32MB, halt;
-  `print`/unsafe/alloc/struct ครบ, float/list/dict/import/try/extern ไม่มี
-- `kernel/xdemo.hs` + `tests/test_xkernel.py`: **6/6 ผ่าน** (serial: boot, fib 55,
-  sum 45, alloc readback 7, halted)
-- เหลือ: IDT/PIC/timer/keyboard/paging แบบไดนามิก, scheduler, filesystem
+- freestanding runtime: serial COM1, bump heap คงที่ 16MB ที่ 32MB, halt,
+  IDT 48 gates + PIC remap + PIT 100Hz + keyboard scancode map, `ticks/readkey/pmm_*`,
+  ค่าแบบ tagged ชุดเดียวกับ hosted (Str/Bool/Null ใช้ได้จริงบน bare metal)
+- `kernel/xdemo.hs`, `kx2.hs` (timer/keyboard/PMM), `kxstr.hs` (Str บน serial),
+  `kxexc_pf/de.hs` (EXC 14 / EXC 0) + `tests/test_xkernel.py`: **27/27 ผ่าน**
+- เหลือ: paging แบบไดนามิก (map/unmap page), frame allocator + `std.heap` ใน kernel,
+  scheduler, filesystem, user mode
