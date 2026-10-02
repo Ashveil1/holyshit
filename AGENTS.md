@@ -120,11 +120,14 @@ Kernel-surface (xkernel freestanding): `ticks readkey pmm_alloc pmm_total pmm_fr
 ### x64 backend subset (`hs.py xbuild` / `xkernel`)
 
 Has: Int (62-bit), Str values (literals, `+` concat, `len`, `==`, `<`), Bool, `null`,
-`not/and/or`, `if/elif/else`, `while`, `def` (recursion + closures), `str()`,
-`int()`, `print`, `unsafe:` I64/U64/Ptr + structs, kernel builtins above.
+`not/and/or`, `if/elif/else`, `while`, `for` (`for i in range([a,] b)` lowers to a
+counter loop — no List allocated; `for c in <str>` yields 1-char Str),
+`break`/`continue`, `def` (recursion + closures), `str()`, `int()`, `len()`,
+`print`, `unsafe:` I64/U64/Ptr + structs, kernel builtins above.
 
-Missing (compile error, on purpose): Float, List, Dict, `for`, `try`, `import`,
-slicing, attribute access, `extern`. `/` truncates like C here, not hs.
+Missing (compile error, on purpose): Float, List, Dict, `try`, `import`,
+slicing, attribute access, `extern`. Standalone `range()` outside `for` is also
+an error (it never materializes a list). `/` truncates like C here, not hs.
 
 Value representation: low 2 bits are the tag — `01` Int (`v<<2|1`),
 `10` Bool (0x02/0x0A), `11` Null (0x03)/Unbound (0x0B), `00` heap object

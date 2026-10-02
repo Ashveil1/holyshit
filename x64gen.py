@@ -108,7 +108,13 @@ class Gen:
                 self.ann_expr(s["val"], sc)
                 self.decl(sc, s["name"])
             elif t == "for":
-                raise HSErr("for not in x64 subset (use while)", s["line"])
+                self.ann_expr(s["iter"], sc)
+                self.decl(sc, s["var"])
+                # hidden loop state (frame slots, allocated now so the
+                # function prologue reserves them): range end / str obj+idx
+                s["_f0"] = self.slot(sc)
+                s["_f1"] = self.slot(sc)
+                self.collect(s["body"], sc)
             elif t == "try":
                 raise HSErr("try not in x64 subset", s["line"])
             elif t == "if":
@@ -604,6 +610,8 @@ class Gen:
                     "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
+            if fn["name"] == "range":
+                raise HSErr("range() only works directly in for (x64)", ln)
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
         # user function: indirect through value (uniform caps in r15)
         self.ev(fn, sc, mod)  # rax = func struct ptr
@@ -1056,11 +1064,102 @@ class Gen:
             a.label(lab_x)
             return
         if t == "for":
-            raise HSErr("for not in x64 subset (use while)", ln)
+            self.ex_for(s, sc, mod, depth)
+            return
         if t in ("global", "import", "extern", "try", "unsafe", "struct",
                  "udecl", "store", "fstore", "raise", "setindex", "setattr"):
             raise HSErr(f"{t} handled elsewhere or not in x64 subset", ln)
         raise HSErr(f"bad stmt {t}", ln)
+
+    def ex_for(self, s, sc, mod, depth):
+        """for var in range([a,] b) | for var in <Str expr>.
+        range() lowers to a raw counter loop (no List object needed);
+        Str iterates 1-char Str values. List/Dict iteration waits for
+        the List/Dict track (runtime type error until then)."""
+        ln = s["line"]
+        a = self.a
+        it = s["iter"]
+        if (it["t"] == "call" and it["fn"]["t"] == "var"
+                and it["fn"]["name"] == "range"
+                and len(it["args"]) in (1, 2)):
+            args = it["args"]
+            start_e = None if len(args) == 1 else args[0]
+            end_e = args[0] if len(args) == 1 else args[1]
+            # end (raw) -> _f0, counter (raw) -> _f1 (evaluated once,
+            # like Python's iter). The loop var is assigned from the
+            # counter each pass, so after the loop it keeps the last
+            # value (interp parity) instead of the end value.
+            self.ev(end_e, sc, mod)
+            self.tag_check_int()
+            a.sar_ri8("rax", 2)
+            a.mov_mr("rbp", "rax", s["_f0"])
+            # counter = start (raw)
+            if start_e is None:
+                a.mov_ri32("rax", 0)
+            else:
+                self.ev(start_e, sc, mod)
+                self.tag_check_int()
+                a.sar_ri8("rax", 2)
+            a.mov_mr("rbp", "rax", s["_f1"])
+            lab_top = self.new_tmp("fr")
+            lab_step = self.new_tmp("fr")
+            lab_brk = self.new_tmp("fr")
+            a.label(lab_top)
+            a.mov_rm("rax", "rbp", s["_f1"])
+            a.mov_rm("rcx", "rbp", s["_f0"])
+            a.cmp_rr("rax", "rcx")
+            a.jcc("ge", lab_brk)
+            self.tag_box()
+            self.var_set(s["var"], sc, mod, ln)
+            self.loop_stack.append((lab_brk, lab_step))
+            self.ex_body(s["body"], sc, mod, depth + 1)
+            self.loop_stack.pop()
+            a.label(lab_step)
+            a.mov_rm("rax", "rbp", s["_f1"])
+            a.add_ri32("rax", 1)
+            a.mov_mr("rbp", "rax", s["_f1"])
+            a.jmp(lab_top)
+            a.label(lab_brk)
+            return
+        # Str iteration: obj -> _f0, index (raw) -> _f1
+        self.ev(it, sc, mod)
+        lab_ok = self.new_tmp("fs")
+        lab_bad = self.new_tmp("fs")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")   # heap object?
+        a.jcc("ne", lab_bad)
+        a.mov_rm("r11", "rax", 0)  # kind
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_ok)
+        a.label(lab_bad)
+        self.type_err()
+        a.label(lab_ok)
+        a.mov_mr("rbp", "rax", s["_f0"])
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", s["_f1"])
+        lab_top = self.new_tmp("fs")
+        lab_step = self.new_tmp("fs")
+        lab_brk = self.new_tmp("fs")
+        a.label(lab_top)
+        a.mov_rm("rax", "rbp", s["_f0"])  # obj
+        a.mov_rm("rcx", "rax", 8)         # len
+        a.mov_rm("rdx", "rbp", s["_f1"])  # idx
+        a.cmp_rr("rdx", "rcx")
+        a.jcc("ae", lab_brk)
+        a.lea_m("rdi", "rax", 16, "rdx", 1)  # src = data + idx
+        a.mov_ri32("rsi", 1)
+        a.call("x_str_at")
+        self.var_set(s["var"], sc, mod, ln)
+        self.loop_stack.append((lab_brk, lab_step))
+        self.ex_body(s["body"], sc, mod, depth + 1)
+        self.loop_stack.pop()
+        a.label(lab_step)
+        a.mov_rm("rax", "rbp", s["_f1"])
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", s["_f1"])
+        a.jmp(lab_top)
+        a.label(lab_brk)
 
     def var_set(self, name, sc, mod, ln):
         # value in rax
@@ -1475,6 +1574,8 @@ class Gen:
                         walk(eb)
                     walk(s["els"])
                 elif s["t"] == "while":
+                    walk(s["body"])
+                elif s["t"] == "for":
                     walk(s["body"])
                 elif s["t"] == "unsafe":
                     walk(s["body"])

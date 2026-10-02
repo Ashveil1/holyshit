@@ -268,7 +268,9 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
   (ใช้ทั้ง `==`/`!=` และ `<`/`>`), `x_str`, `x_num_to_str`, `x_len`, `x_truth`,
   `print_val`, `x_eq`, `x_cmp` — ทั้งหมดประกอบด้วย instruction ที่ encoder เขียนเอง
 - subset: Int, Str (literal เป็นค่าได้, `+` ต่อสาย, `len`, เทียบซ้ำกันได้), Bool, null,
-  not/and/or (คืน operand ตาม hs), if/elif/else, while, def/call/recursion/closure
+  not/and/or (คืน operand ตาม hs), if/elif/else, while, `for` (`for i in range([a,] b)`
+  lower เป็น counter loop ไม่จอง List; `for c in <str>` ได้ Str ทีละตัวอักษร),
+  break/continue (ใช้ได้ทั้ง while/for ซ้อนกัน), def/call/recursion/closure
   (caps ผ่าน r15), `str()`/`int()`/`len()`, `print`, unsafe I64/U64/Ptr + struct;
   `/` ตัดทศนิยมแบบ C
 - runtime: bump allocator บน mmap arena 16MB (align 16, ไม่ free — แบบ kernel heap),
@@ -278,12 +280,14 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
   @2ms med 2000us p99 +100us max +116us, @500us p99 +37us max +70us
   (เลขนี้คือ Linux shared laptop ไม่ใช่ bare metal — bare metal ควรอยู่ระดับ ~1-5us)
   (fib เพิ่มจาก 0.003s เป็น 0.005s หลังเพิ่ม tag arithmetic — จ่ายค่า representation)
-- ยังไม่มี: Float/List/Dict, import, try, extern, slice/attr, argv, `for`,
-  `asm()` (ใช้ไม่ได้กับ encoder ของตัวเอง) — เป็น compile error ชัดเจน
+- ยังไม่มี: Float/List/Dict, import, try, extern, slice/attr, argv,
+  `asm()` (ใช้ไม่ได้กับ encoder ของตัวเอง) — เป็น compile error ชัดเจน;
+  `range()` เรียกลอยนอก `for` ก็ error (ไม่ materialize list — ต้องรอ List track)
 - ใน `unsafe:` ค่ายังเป็น machine word ดิบ (literal ไม่ถูก tag) — ใช้ `as_ptr(x)` /
   `as_int(x)` เป็นสะพานจากค่า dynamic
 - `hs.py xbuild prog.hs [-o prog]` / `hs.py xrun prog.hs`, เทส `tests/test_x64.py`
-  (**7/7**: alloc, err_divzero, err_null, err_subset, fib, strval, unsafe)
+  (**9/9**: alloc, err_divzero, err_null, err_range, err_subset, fib, for_range,
+  strval, unsafe)
 
 ## 14. Kernel freestanding ด้วย x64 backend ล้วน (เฟส 6b — ไม่ใช้ gcc/as/ld)
 
