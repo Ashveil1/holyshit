@@ -119,9 +119,10 @@ Kernel-surface (xkernel freestanding): `ticks readkey pmm_alloc pmm_total pmm_fr
 
 ### x64 backend subset (`hs.py xbuild` / `xkernel`)
 
-Has: Int (62-bit), Str values (literals, `+` concat, `len`, `==`, `<`),
+Has: Int (62-bit), Str values (literals, `+` concat, `len`, `==`, `<`,
+slicing `s[a:b]` byte-based, `split`/`find`/`join`),
 List values (literals, `+` concat, `len`, `append`, `==`, indexing incl.
-negative, `l[i] = v`, `range()` materializes a List), Bool, `null`,
+negative, `l[i] = v`, slicing `l[a:b]`, `range()` materializes a List), Bool, `null`,
 `not/and/or`, `if/elif/else`, `while`, `for` (`for i in range([a,] b)` lowers to a
 counter loop; `for x in <str|list>` yields elements), `break`/`continue`,
 `def` (recursion + closures), `try`/`except`/`finally`/`raise` (full interp
@@ -136,8 +137,8 @@ are a compile error), `global` (module/function globals from functions),
 structs, kernel builtins above.
 
 Missing (compile error, on purpose): Float, Dict,
-slicing, attribute access on values (only modules have attrs), `extern`,
-`split`/`find`/`join`. Modules are compile-time only: passing a module as a
+attribute access on values (only modules have attrs), `extern`.
+Modules are compile-time only: passing a module as a
 value (`f = mymod`, `x = pkg.mod`) is an error — use `mod.attr`. `/` truncates
 like C here, not hs. Out-of-range indexing reports `index out of range`.
 
@@ -147,6 +148,8 @@ the runtime types, unknown reads report `unknown variable 'x'`; exotic combos
 (Str vs Func compare, `str(func)`) fall back to generic `type error`. Locals
 start UNBOUND; call arity is unchecked (documented gap). Freestanding integer
 divide hits hardware #DE (`EXC 0`, halt) instead of a catchable error.
+Str index/slice/split are byte-based (non-ASCII diverges from interp);
+`split` with empty separator raises (interp/native crash instead).
 
 Value representation: low 2 bits are the tag — `01` Int (`v<<2|1`),
 `10` Bool (0x02/0x0A), `11` Null (0x03)/Unbound (0x0B), `00` heap object

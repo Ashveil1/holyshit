@@ -292,7 +292,14 @@ class Gen:
             # attribute itself resolves statically at emit time
             self.ann_expr(e["obj"], sc, ux)
             return
-        if t in ("slice", "dict"):
+        if t == "slice":
+            self.ann_expr(e["obj"], sc, ux)
+            if e["start"] is not None:
+                self.ann_expr(e["start"], sc, ux)
+            if e["stop"] is not None:
+                self.ann_expr(e["stop"], sc, ux)
+            return
+        if t == "dict":
             raise HSErr(f"{t} not in x64 subset", e["line"])
         if t == "sizeof":
             st = e["stype"]
@@ -342,6 +349,7 @@ class Gen:
         sc.loc[name] = self.slot(sc)
 
     XBUILTINS = {"print", "int", "len", "str", "range", "append",
+                 "split", "find", "join",
                  "alloc", "load8", "load32", "store8",
                  "store32", "as_ptr", "as_int"}
 
@@ -464,11 +472,59 @@ class Gen:
             a.mov_rm("rax", "rax", 0)
             return
         if t == "slice":
-            raise HSErr("slice not in x64 subset", ln)
+            self.ev_slice(e, sc, mod)
+            return
         if t in ("deref", "sizeof", "field"):
             self.sev(e, sc, mod)
             return
         raise HSErr(f"{t} not in x64 subset", ln)
+
+    def ev_slice(self, e, sc, mod):
+        """s[a:b] / s[a:] / s[:b] / s[:] for Str (bytes) and List.
+        Bounds clamp like interp; a missing bound defaults (0 / len)."""
+        ln = e["line"]
+        a = self.a
+        self.ev(e["obj"], sc, mod)
+        a.push_r("rax")                # obj
+        mask = 0
+        if e["start"] is not None:
+            self.ev(e["start"], sc, mod)
+            self.check_int(lambda: self.raise_static("slice index must be Int", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")
+            mask |= 1
+        else:
+            a.mov_ri32("rax", 0)
+            a.push_r("rax")
+        if e["stop"] is not None:
+            self.ev(e["stop"], sc, mod)
+            self.check_int(lambda: self.raise_static("slice index must be Int", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")
+            mask |= 2
+        else:
+            a.mov_ri32("rax", 0)
+            a.push_r("rax")
+        a.pop_r("rdx")                 # b (raw)
+        a.pop_r("rsi")                 # a (raw)
+        a.pop_r("rdi")                 # obj
+        # obj must be Str or List here (else "cannot slice X")
+        lab_sok, lab_sbad = self.new_tmp("sl"), self.new_tmp("sl")
+        a.mov_rr("r11", "rdi")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_sbad)
+        a.mov_rm("r11", "rdi", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_sok)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_sok)
+        a.label(lab_sbad)
+        a.mov_rr("rax", "rdi")
+        self.raise_unop(7, ln)
+        a.label(lab_sok)
+        a.mov_ri32("rcx", mask)
+        a.call("x_slice")
 
     def resolve_var(self, name, sc, mod, ln):
         """(kind, ref). Module-scope names use data labels. Names bound in an
@@ -1008,10 +1064,99 @@ class Gen:
             a.pop_r("rdi")
             a.call("x_append")
             return
+        if fn["t"] == "var" and fn["name"] == "split":
+            if len(e["args"]) not in (1, 2):
+                raise HSErr("split wants split(s) or split(s, sep)", ln)
+            self.ev(e["args"][0], sc, mod)
+            lab_spok, lab_spbad = self.new_tmp("sp"), self.new_tmp("sp")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_spbad)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_spok)
+            a.label(lab_spbad)
+            self.raise_static("split wants split(s) or split(s, sep)", ln)
+            a.label(lab_spok)
+            if len(e["args"]) == 1:
+                a.mov_rr("rdi", "rax")
+                a.call("x_split1")
+            else:
+                a.push_r("rax")
+                self.ev(e["args"][1], sc, mod)
+                lab_spok2, lab_spbad2 = self.new_tmp("sp"), self.new_tmp("sp")
+                a.mov_rr("r11", "rax")
+                a.and_ri32("r11", 3)
+                a.test_rr("r11", "r11")
+                a.jcc("ne", lab_spbad2)
+                a.mov_rm("r11", "rax", 0)
+                a.cmp_ri32("r11", Gen.K_STR)
+                a.jcc("e", lab_spok2)
+                a.label(lab_spbad2)
+                self.raise_static("split wants split(s) or split(s, sep)", ln)
+                a.label(lab_spok2)
+                a.mov_rr("rsi", "rax")
+                a.pop_r("rdi")
+                a.mov_ri32("rdx", ln)
+                a.call("x_split2")
+            return
+        if fn["t"] == "var" and fn["name"] == "find":
+            if len(e["args"]) != 2:
+                raise HSErr("find wants find(s, sub)", ln)
+            self.ev(e["args"][0], sc, mod)
+            a.push_r("rax")
+            self.ev(e["args"][1], sc, mod)
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            lab_fok, lab_fbad = self.new_tmp("fn"), self.new_tmp("fn")
+            for rr in ("rdi", "rsi"):
+                a.mov_rr("r11", rr)
+                a.and_ri32("r11", 3)
+                a.test_rr("r11", "r11")
+                a.jcc("ne", lab_fbad)
+                a.mov_rm("r11", rr, 0)
+                a.cmp_ri32("r11", Gen.K_STR)
+                a.jcc("ne", lab_fbad)
+            a.jmp(lab_fok)
+            a.label(lab_fbad)
+            self.raise_static("find wants find(s, sub)", ln)
+            a.label(lab_fok)
+            a.call("x_find")
+            return
+        if fn["t"] == "var" and fn["name"] == "join":
+            if len(e["args"]) != 2:
+                raise HSErr("join wants join(sep, list)", ln)
+            self.ev(e["args"][0], sc, mod)
+            a.push_r("rax")
+            self.ev(e["args"][1], sc, mod)
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            lab_jok, lab_jbad = self.new_tmp("jn"), self.new_tmp("jn")
+            a.mov_rr("r11", "rdi")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_jbad)
+            a.mov_rm("r11", "rdi", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("ne", lab_jbad)
+            a.mov_rr("r11", "rsi")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_jbad)
+            a.mov_rm("r11", "rsi", 0)
+            a.cmp_ri32("r11", Gen.K_LIST)
+            a.jcc("e", lab_jok)
+            a.label(lab_jbad)
+            self.raise_static("join wants join(sep, list)", ln)
+            a.label(lab_jok)
+            a.mov_ri32("rdx", ln)
+            a.call("x_join")
+            return
         if fn["t"] == "var" and fn["name"] in (
                 "float", "input", "open", "read",
-                "write", "close", "argv", "env", "system", "split",
-                "find", "join", "ticks", "readkey", "pmm_alloc", "pmm_total",
+                "write", "close", "argv", "env", "system", "ticks",
+                "readkey", "pmm_alloc", "pmm_total",
                 "pmm_free", "meminfo",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
@@ -2055,6 +2200,14 @@ class Gen:
         a.mov_ri32("rdx", ln)
         a.call("hs_raise_raw")
 
+    def raise_static_rdx(self, msg):
+        """Raise a static message; line already in rdx."""
+        a = self.a
+        lab = self.rstr(msg)
+        a.lea_rip("rdi", lab)
+        a.mov_ri32("rsi", len(msg.encode()))
+        a.call("hs_raise_raw")
+
     def raise_unop(self, code, ln):
         """rax = tagged value -> hs_unop_err(code, val, ln)."""
         a = self.a
@@ -2298,6 +2451,13 @@ class Gen:
         self.a.code += b" "
         self.a.label("nl_")
         self.a.code += b"\n"
+        # wspace_: 1 for split() separators (" \t\n\v\f\r" + \x1c-\x1f,
+        # matching interp; bytes >= 0x80 never split: ASCII-only)
+        self.a.label("wspace_")
+        ws = bytearray(256)
+        for c in b" \t\n\v\f\r\x1c\x1d\x1e\x1f":
+            ws[c] = 1
+        self.a.code += bytes(ws)
         if self.freestanding:
             self.a.label("oom_")
             self.a.code += b"out of memory\0"
@@ -2858,7 +3018,7 @@ class Gen:
         # hs_unop_err(rdi=code, rsi=val, rdx=line): prefix + tname + suffix.
         # code: 0 "len of ", 1 "cannot index ", 2 "cannot assign into ",
         # 3 "not callable: ", 4 "cannot convert "/" to Int", 5 "not iterable: ",
-        # 6 "cannot negate ".
+        # 6 "cannot negate ", 7 "cannot slice ".
         a.label("hs_unop_err")
         a.push_r("rbp")
         a.mov_rr("rbp", "rsp")
@@ -2868,7 +3028,7 @@ class Gen:
         a.mov_mr("rbp", "rdx", -24)
         lab_u0, lab_u1, lab_u2 = self.new_tmp("ue"), self.new_tmp("ue"), self.new_tmp("ue")
         lab_u3, lab_u4, lab_u5 = self.new_tmp("ue"), self.new_tmp("ue"), self.new_tmp("ue")
-        lab_u6 = self.new_tmp("ue")
+        lab_u6, lab_u7 = self.new_tmp("ue"), self.new_tmp("ue")
         lab_ugo = self.new_tmp("ue")
         a.cmp_ri32("rdi", 0)
         a.jcc("e", lab_u0)
@@ -2882,13 +3042,16 @@ class Gen:
         a.jcc("e", lab_u4)
         a.cmp_ri32("rdi", 5)
         a.jcc("e", lab_u5)
-        a.jmp(lab_u6)
+        a.cmp_ri32("rdi", 6)
+        a.jcc("e", lab_u6)
+        a.jmp(lab_u7)
         for lab_u, txt in ((lab_u0, "len of "), (lab_u1, "cannot index "),
                            (lab_u2, "cannot assign into "),
                            (lab_u3, "not callable: "),
                            (lab_u4, "cannot convert "),
                            (lab_u5, "not iterable: "),
-                           (lab_u6, "cannot negate ")):
+                           (lab_u6, "cannot negate "),
+                           (lab_u7, "cannot slice ")):
             a.label(lab_u)
             a.lea_rip("rdi", self.rstr(txt))
             a.mov_ri32("rsi", len(txt))
@@ -3392,8 +3555,9 @@ class Gen:
         lab_fin = self.new_tmp("sm")
         a.jcc("ne", lab_len)
         a.mov_ri32("rcx", 0)
+        a.mov_rm("rbx", "r10", 8)      # len a (movzx clobbers rax below)
         a.label(lab_loop)
-        a.cmp_rr("rcx", "rax")
+        a.cmp_rr("rcx", "rbx")
         a.jcc("ae", lab_eq)
         a.movzx_eax_mx("r10", "rcx", 1, 16)
         a.movzx_edx_mx("r11", "rcx", 1, 16)
@@ -3787,6 +3951,471 @@ class Gen:
         a.ret()
         a.label(lab_lq_ne)
         a.mov_ri32("rax", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_slice(rdi=obj, rsi=a_raw, rdx=b_raw, rcx=mask bit0=a bit1=b).
+        # Str (bytes) and List; bounds clamp like interp; empty if a >= b.
+        a.label("x_slice")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)     # obj
+        a.mov_rm("rax", "rdi", 8)
+        a.mov_mr("rbp", "rax", -16)    # n
+        a.mov_rr("rax", "rcx")
+        a.and_ri32("rax", 1)
+        a.test_rr("rax", "rax")
+        lab_sna = self.new_tmp("sl")
+        a.jcc("e", lab_sna)
+        a.mov_mr("rbp", "rsi", -24)    # a
+        lab_sha = self.new_tmp("sl")
+        a.jmp(lab_sha)
+        a.label(lab_sna)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -24)
+        a.label(lab_sha)
+        a.mov_rr("rax", "rcx")
+        a.and_ri32("rax", 2)
+        a.test_rr("rax", "rax")
+        lab_snb = self.new_tmp("sl")
+        a.jcc("e", lab_snb)
+        a.mov_mr("rbp", "rdx", -32)    # b
+        lab_shb = self.new_tmp("sl")
+        a.jmp(lab_shb)
+        a.label(lab_snb)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_mr("rbp", "rax", -32)
+        a.label(lab_shb)
+        # negatives wrap, then clamp to [0, n]
+        a.mov_rm("rax", "rbp", -24)
+        a.cmp_ri32("rax", 0)
+        lab_sap = self.new_tmp("sl")
+        a.jcc("ge", lab_sap)
+        a.mov_rm("rcx", "rbp", -16)
+        a.add_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -24)
+        a.label(lab_sap)
+        a.mov_rm("rax", "rbp", -32)
+        a.cmp_ri32("rax", 0)
+        lab_sbp = self.new_tmp("sl")
+        a.jcc("ge", lab_sbp)
+        a.mov_rm("rcx", "rbp", -16)
+        a.add_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -32)
+        a.label(lab_sbp)
+        a.mov_rm("rax", "rbp", -24)
+        a.cmp_ri32("rax", 0)
+        lab_saz = self.new_tmp("sl")
+        a.jcc("ge", lab_saz)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -24)
+        a.label(lab_saz)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        lab_sah = self.new_tmp("sl")
+        a.jcc("le", lab_sah)
+        a.mov_mr("rbp", "rcx", -24)
+        a.label(lab_sah)
+        a.mov_rm("rax", "rbp", -32)
+        a.cmp_ri32("rax", 0)
+        lab_sbz = self.new_tmp("sl")
+        a.jcc("ge", lab_sbz)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -32)
+        a.label(lab_sbz)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        lab_sbh = self.new_tmp("sl")
+        a.jcc("le", lab_sbh)
+        a.mov_mr("rbp", "rcx", -32)
+        a.label(lab_sbh)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -32)
+        a.cmp_rr("rax", "rcx")
+        lab_sempty = self.new_tmp("sl")
+        a.jcc("ae", lab_sempty)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 0)      # kind
+        a.cmp_ri32("rax", Gen.K_STR)
+        lab_sstr = self.new_tmp("sl")
+        a.jcc("e", lab_sstr)
+        # list path: new list of b - a, copy buf[a*8..]
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rm("rcx", "rbp", -24)
+        a.sub_rr("rax", "rcx")
+        a.mov_rr("rdi", "rax")
+        a.call("x_list_new")
+        a.mov_mr("rbp", "rax", -40)    # obj2
+        a.mov_rm("rcx", "rbp", -24)    # a
+        a.shl_ri8("rcx", 3)            # a*8
+        a.mov_rm("rdx", "rbp", -32)    # b
+        a.mov_rm("rax", "rbp", -24)
+        a.sub_rr("rdx", "rax")
+        a.shl_ri8("rdx", 3)            # bytes
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)     # buf
+        a.add_rr("rax", "rcx")
+        a.mov_rr("rsi", "rax")         # src
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rm("rax", "rax", 24)     # buf2
+        a.mov_rr("rdi", "rax")         # dst
+        a.mov_rr("rcx", "rdx")
+        self.copy_bytes()
+        a.mov_rm("rax", "rbp", -40)
+        lab_sdone = self.new_tmp("sl")
+        a.jmp(lab_sdone)
+        a.label(lab_sstr)
+        a.mov_rm("rax", "rbp", -8)
+        a.lea_m("rsi", "rax", 16)      # data
+        a.mov_rm("rcx", "rbp", -24)    # a
+        a.add_rr("rsi", "rcx")
+        a.mov_rm("rcx", "rbp", -32)    # b
+        a.mov_rm("rax", "rbp", -24)
+        a.sub_rr("rcx", "rax")
+        a.mov_rr("rdi", "rsi")
+        a.mov_rr("rsi", "rcx")
+        a.call("x_str_at")
+        a.jmp(lab_sdone)
+        a.label(lab_sempty)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 0)
+        a.cmp_ri32("rax", Gen.K_STR)
+        lab_sempty_s = self.new_tmp("sl")
+        a.jcc("e", lab_sempty_s)
+        a.mov_ri32("rdi", 0)
+        a.call("x_list_new")
+        a.jmp(lab_sdone)
+        a.label(lab_sempty_s)
+        a.mov_rm("rax", "rbp", -8)
+        a.lea_m("rdi", "rax", 16)
+        a.mov_ri32("rsi", 0)
+        a.call("x_str_at")
+        a.label(lab_sdone)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_isspace_bit(rcx=byte) -> al = 0/1 via the wspace_ table.
+        # Clobbers rax/r10.
+        # (inlined at use sites; table covers " \t\n\v\f\r\x1c-\x1f")
+        # x_split1(rdi=Str) -> rax = List of words (whitespace runs).
+        a.label("x_split1")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)     # obj
+        a.mov_rm("rax", "rdi", 8)
+        a.mov_mr("rbp", "rax", -16)    # len
+        a.mov_ri32("rdi", 0)
+        a.call("x_list_new")
+        a.mov_mr("rbp", "rax", -32)    # res
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -24)    # i
+        lab_sp1_top, lab_sp1_sk = self.new_tmp("sp"), self.new_tmp("sp")
+        lab_sp1_wd, lab_sp1_em = self.new_tmp("sp"), self.new_tmp("sp")
+        a.label(lab_sp1_top)
+        a.mov_rm("rax", "rbp", -24)    # i
+        a.mov_rm("rcx", "rbp", -16)    # len
+        a.cmp_rr("rax", "rcx")
+        lab_sp1_dn = self.new_tmp("sp")
+        a.jcc("ae", lab_sp1_dn)
+        a.mov_rm("rdx", "rbp", -8)
+        a.lea_m("rdx", "rdx", 16)      # data (bytes are inline)
+        a.add_rr("rdx", "rax")         # data + i
+        a.movzx_eax_m8("rdx", 0)       # byte
+        a.lea_rip("rdx", "wspace_")
+        a.movzx_edx_mx("rdx", "rax", 1, 0)
+        a.test_rr("rdx", "rdx")
+        a.jcc("e", lab_sp1_wd)         # non-space -> word
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_sp1_top)
+        a.label(lab_sp1_wd)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_mr("rbp", "rax", -40)    # start
+        a.label(lab_sp1_sk)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_sp1_em)
+        a.mov_rm("rdx", "rbp", -8)
+        a.lea_m("rdx", "rdx", 16)      # data (bytes are inline)
+        a.add_rr("rdx", "rax")
+        a.movzx_eax_m8("rdx", 0)
+        a.lea_rip("rdx", "wspace_")
+        a.movzx_edx_mx("rdx", "rax", 1, 0)
+        a.test_rr("rdx", "rdx")
+        a.jcc("ne", lab_sp1_em)        # space -> emit
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_sp1_sk)
+        a.label(lab_sp1_em)
+        a.mov_rm("rax", "rbp", -8)
+        a.lea_m("rsi", "rax", 16)
+        a.mov_rm("rcx", "rbp", -40)
+        a.add_rr("rsi", "rcx")         # data + start
+        a.mov_rm("rax", "rbp", -24)
+        a.sub_rr("rax", "rcx")         # i - start
+        a.mov_rr("rdi", "rsi")
+        a.mov_rr("rsi", "rax")
+        a.call("x_str_at")             # word
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -32)
+        a.call("x_append")
+        a.jmp(lab_sp1_top)
+        a.label(lab_sp1_dn)
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_split2(rdi=s, rsi=sep, rdx=line) -> rax = List of pieces.
+        a.label("x_split2")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 64)
+        a.mov_mr("rbp", "rdi", -8)     # s
+        a.mov_mr("rbp", "rsi", -16)    # sep
+        a.mov_mr("rbp", "rdx", -64)    # line
+        a.mov_rm("rax", "rdi", 8)
+        a.mov_mr("rbp", "rax", -24)    # slen
+        a.mov_rm("rax", "rsi", 8)
+        a.mov_mr("rbp", "rax", -32)    # seplen
+        a.test_rr("rax", "rax")
+        lab_sp2_ok = self.new_tmp("sp")
+        a.jcc("ne", lab_sp2_ok)
+        a.mov_rm("rdx", "rbp", -64)    # line
+        self.raise_static_rdx("split with empty separator")
+        a.label(lab_sp2_ok)
+        a.mov_ri32("rdi", 0)
+        a.call("x_list_new")
+        a.mov_mr("rbp", "rax", -48)    # res
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -40)    # i
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -56)    # start
+        lab_sp2_top = self.new_tmp("sp")
+        a.label(lab_sp2_top)
+        a.mov_rm("rax", "rbp", -40)    # i
+        a.mov_rm("rcx", "rbp", -32)    # seplen
+        a.add_rr("rax", "rcx")
+        a.mov_rm("rcx", "rbp", -24)    # slen
+        a.cmp_rr("rax", "rcx")
+        lab_sp2_tail = self.new_tmp("sp")
+        a.jcc("a", lab_sp2_tail)
+        # memcmp(sdata+i, sepdata, seplen)
+        a.mov_rm("rax", "rbp", -8)
+        a.lea_m("rax", "rax", 16)      # sdata (bytes are inline)
+        a.mov_rm("rcx", "rbp", -40)    # i
+        a.add_rr("rax", "rcx")         # sdata + i
+        a.mov_rm("rcx", "rbp", -16)
+        a.lea_m("rcx", "rcx", 16)      # sepdata (bytes are inline)
+        a.mov_rr("r8", "rax")          # p
+        a.mov_rr("r9", "rcx")          # q
+        a.mov_ri32("rcx", 0)           # j
+        lab_sp2_in = self.new_tmp("sp")
+        a.label(lab_sp2_in)
+        a.mov_rm("rax", "rbp", -32)
+        a.cmp_rr("rcx", "rax")
+        lab_sp2_mt = self.new_tmp("sp")
+        a.jcc("ae", lab_sp2_mt)
+        a.movzx_eax_mx("r8", "rcx", 1, 0)
+        a.movzx_edx_mx("r9", "rcx", 1, 0)
+        a.code += bytes([0x38, 0xD0])  # cmp al, dl
+        lab_sp2_nm = self.new_tmp("sp")
+        a.jcc("ne", lab_sp2_nm)
+        a.add_ri32("rcx", 1)
+        a.jmp(lab_sp2_in)
+        a.label(lab_sp2_nm)
+        a.mov_rm("rax", "rbp", -40)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -40)    # i++
+        a.jmp(lab_sp2_top)
+        a.label(lab_sp2_mt)
+        # emit s[start:i], then i += seplen, start = i
+        a.mov_rm("rax", "rbp", -8)
+        a.lea_m("rsi", "rax", 16)
+        a.mov_rm("rcx", "rbp", -56)
+        a.add_rr("rsi", "rcx")
+        a.mov_rm("rax", "rbp", -40)
+        a.sub_rr("rax", "rcx")
+        a.mov_rr("rdi", "rsi")
+        a.mov_rr("rsi", "rax")
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -48)
+        a.call("x_append")
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rm("rcx", "rbp", -32)
+        a.add_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -40)
+        a.mov_mr("rbp", "rax", -56)
+        a.jmp(lab_sp2_top)
+        a.label(lab_sp2_tail)
+        a.mov_rm("rax", "rbp", -8)
+        a.lea_m("rsi", "rax", 16)
+        a.mov_rm("rcx", "rbp", -56)
+        a.add_rr("rsi", "rcx")
+        a.mov_rm("rax", "rbp", -24)
+        a.sub_rr("rax", "rcx")
+        a.mov_rr("rdi", "rsi")
+        a.mov_rr("rsi", "rax")
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -48)
+        a.call("x_append")
+        a.mov_rm("rax", "rbp", -48)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_find(rdi=s, rsi=sub) -> tagged Int (byte index or -1).
+        # No calls inside: frameless, values stay in regs.
+        a.label("x_find")
+        a.mov_rm("rax", "rsi", 8)      # sublen
+        a.test_rr("rax", "rax")
+        lab_fn0 = self.new_tmp("fn")
+        a.jcc("ne", lab_fn0)
+        a.mov_ri32("rax", 1)           # tag(0)
+        a.ret()
+        a.label(lab_fn0)
+        a.mov_rm("r11", "rdi", 8)      # slen
+        a.mov_rm("rbx", "rsi", 8)      # sublen (rbx: movzx edx must not clobber it)
+        a.lea_m("r8", "rdi", 16)       # sdata
+        a.lea_m("r9", "rsi", 16)       # subdata
+        a.mov_ri32("r10", 0)           # i
+        lab_fn_top, lab_fn_in = self.new_tmp("fn"), self.new_tmp("fn")
+        lab_fn_mt, lab_fn_nm = self.new_tmp("fn"), self.new_tmp("fn")
+        lab_fn_nf = self.new_tmp("fn")
+        a.label(lab_fn_top)
+        a.mov_rr("rax", "r10")
+        a.add_rr("rax", "rbx")         # i + sublen
+        a.cmp_rr("rax", "r11")
+        a.jcc("a", lab_fn_nf)
+        a.mov_rr("rax", "r8")
+        a.add_rr("rax", "r10")         # p = sdata + i
+        a.mov_rr("rdi", "rax")
+        a.mov_ri32("rcx", 0)           # j
+        a.label(lab_fn_in)
+        a.cmp_rr("rcx", "rbx")         # j vs sublen
+        a.jcc("ae", lab_fn_mt)
+        a.movzx_eax_mx("rdi", "rcx", 1, 0)
+        a.movzx_edx_mx("r9", "rcx", 1, 0)
+        a.code += bytes([0x38, 0xD0])  # cmp al, dl
+        a.jcc("ne", lab_fn_nm)
+        a.add_ri32("rcx", 1)
+        a.jmp(lab_fn_in)
+        a.label(lab_fn_nm)
+        a.add_ri32("r10", 1)
+        a.jmp(lab_fn_top)
+        a.label(lab_fn_mt)
+        a.mov_rr("rax", "r10")
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)             # tag(i)
+        a.ret()
+        a.label(lab_fn_nf)
+        a.mov_ri32("rax", -1)
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)             # tag(-1)
+        a.ret()
+        # x_join(rdi=sep, rsi=list, rdx=line) -> rax = Str.
+        a.label("x_join")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 64)
+        a.mov_mr("rbp", "rdi", -8)     # sep
+        a.mov_mr("rbp", "rsi", -16)    # list
+        a.mov_mr("rbp", "rdx", -56)    # line
+        a.mov_rm("rax", "rsi", 8)
+        a.mov_mr("rbp", "rax", -24)    # n
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -32)    # total
+        a.mov_mr("rbp", "rax", -48)    # idx
+        lab_jn_top, lab_jn_dn = self.new_tmp("jn"), self.new_tmp("jn")
+        lab_jn_bad = self.new_tmp("jn")
+        a.label(lab_jn_top)
+        a.mov_rm("rax", "rbp", -48)
+        a.mov_rm("rcx", "rbp", -24)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_jn_dn)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rax", "rax", 24)     # buf
+        a.mov_rm("rcx", "rbp", -48)
+        a.mov_rmx("rax", "rax", "rcx", 8, 0)  # item
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_jn_bad)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("ne", lab_jn_bad)
+        a.mov_rm("rcx", "rax", 8)
+        a.mov_rm("rax", "rbp", -32)
+        a.add_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -32)
+        a.mov_rm("rax", "rbp", -48)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -48)
+        a.jmp(lab_jn_top)
+        a.label(lab_jn_bad)
+        a.mov_rm("rdx", "rbp", -56)
+        self.raise_static_rdx("join needs a list of Str")
+        a.label(lab_jn_dn)
+        a.mov_rm("rax", "rbp", -32)    # total = sum
+        a.mov_rm("rcx", "rbp", -24)    # n
+        a.cmp_ri32("rcx", 1)
+        lab_jn_nosep = self.new_tmp("jn")
+        a.jcc("be", lab_jn_nosep)
+        a.mov_rm("rdx", "rbp", -8)
+        a.mov_rm("rdx", "rdx", 8)      # seplen
+        a.sub_ri32("rcx", 1)
+        a.imul_rr("rcx", "rdx")
+        a.add_rr("rax", "rcx")
+        a.label(lab_jn_nosep)
+        a.mov_mr("rbp", "rax", -40)    # total
+        a.mov_rr("rdi", "rax")
+        a.add_ri32("rdi", 16)
+        a.call("x_malloc")
+        a.mov_ri32("rcx", Gen.K_STR)
+        a.mov_mr("rax", "rcx", 0)
+        a.mov_rm("rcx", "rbp", -40)
+        a.mov_mr("rax", "rcx", 8)      # len
+        a.mov_mr("rbp", "rax", -40)    # out
+        a.lea_m("rdx", "rax", 16)
+        a.mov_mr("rbp", "rdx", -48)    # dst
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -32)    # idx
+        lab_jn_tp2, lab_jn_dn2 = self.new_tmp("jn"), self.new_tmp("jn")
+        a.label(lab_jn_tp2)
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rm("rcx", "rbp", -24)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_jn_dn2)
+        a.test_rr("rax", "rax")
+        lab_jn_nsp = self.new_tmp("jn")
+        a.jcc("e", lab_jn_nsp)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rcx", "rax", 8)      # seplen
+        a.lea_m("rsi", "rax", 16)      # sepdata
+        a.mov_rm("rdi", "rbp", -48)    # dst
+        self.copy_bytes()
+        a.mov_mr("rbp", "rdi", -48)
+        a.label(lab_jn_nsp)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rax", "rax", 24)     # buf
+        a.mov_rm("rcx", "rbp", -32)
+        a.mov_rmx("rax", "rax", "rcx", 8, 0)  # item
+        a.mov_rm("rcx", "rax", 8)      # item len
+        a.lea_m("rsi", "rax", 16)      # item bytes
+        a.mov_rm("rdi", "rbp", -48)    # dst
+        self.copy_bytes()
+        a.mov_mr("rbp", "rdi", -48)
+        a.mov_rm("rax", "rbp", -32)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -32)
+        a.jmp(lab_jn_tp2)
+        a.label(lab_jn_dn2)
+        a.mov_rm("rax", "rbp", -40)
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
         a.ret()

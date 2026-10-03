@@ -61,8 +61,8 @@ print sin(0.0)
 python3 tests/test.py          # interpreter (35 ชุด)
 python3 tests/test_native.py   # native binary (36 ชุด, ผลต้องตรง interp)
 python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec เท่าเดิม)
-python3 tests/test_x64.py      # backend x86-64 ตรง (19 ชุด, static ELF, ไม่ใช้ gcc)
-python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (47 เคส)
+python3 tests/test_x64.py      # backend x86-64 ตรง (25 ชุด, static ELF, ไม่ใช้ gcc)
+python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (58 เคส)
 ```
 
 กติกาเทส: `tests/<name>.hs` + `.expected` (stdout), `.stdin` (input),

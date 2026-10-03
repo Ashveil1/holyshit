@@ -269,8 +269,11 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 - runtime ฝั่งค่า: `x_str_at` (สร้าง Str จาก rodata), `x_str_cat`, `x_str_cmp`
   (ใช้ทั้ง `==`/`!=` และ `<`/`>`), `x_str` (รวม List → `[1, x]` ผ่าน `x_list_str`),
   `x_num_to_str`, `x_len` (Str/List), `x_truth`, `print_val` (+ `x_print_list`
-  พิมพ์ `[a, b]` ซ้อนกันได้), `x_eq` (+ `x_list_eq` เทียบลึก), `x_cmp`
-- subset: Int, Str (literal เป็นค่าได้, `+` ต่อสาย, `len`, เทียบซ้ำกันได้),
+  พิมพ์ `[a, b]` ซ้อนกันได้), `x_eq` (+ `x_list_eq` เทียบลึก), `x_cmp`,
+  `x_slice`, `x_split1/2`, `x_find`, `x_join` และตาราง whitespace 256-byte —
+  ทั้งหมดประกอบด้วย instruction ที่ encoder เขียนเอง
+- subset: Int, Str (literal เป็นค่าได้, `+` ต่อสาย, `len`, เทียบซ้ำกันได้,
+  slicing `s[a:b]` แบบ byte, `split`/`find`/`join`),
   List (`[..]`, `+` ต่อกัน, `len`, `append` (header อยู่กับที่ เติบโตแค่ buf —
   alias เห็นตรงกัน), `==` เทียบลึก, `l[i]`/`l[-1]`/`l[i] = v`, `range()` คืน List
   จริง, `for x in <list>`), Bool, null, not/and/or (คืน operand ตาม hs),
@@ -300,13 +303,14 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
   @2ms med 2000us p99 +100us max +116us, @500us p99 +37us max +70us
   (เลขนี้คือ Linux shared laptop ไม่ใช่ bare metal — bare metal ควรอยู่ระดับ ~1-5us)
   (fib เพิ่มจาก 0.003s เป็น 0.005s หลังเพิ่ม tag arithmetic — จ่ายค่า representation)
-- ยังไม่มี: Float/Dict, extern, slice, attr บนค่า (มี attr ได้เฉพาะโมดูล),
+- ยังไม่มี: Float/Dict, extern, attr บนค่า (มี attr ได้เฉพาะโมดูล),
   argv, `split`/`find`/`join`, `asm()` (ใช้ไม่ได้กับ encoder ของตัวเอง) —
   เป็น compile error ชัดเจน
 - ใน `unsafe:` ค่ายังเป็น machine word ดิบ (literal ไม่ถูก tag) — ใช้ `as_ptr(x)` /
   `as_int(x)` เป็นสะพานจากค่า dynamic
 - `hs.py xbuild prog.hs [-o prog]` / `hs.py xrun prog.hs`, เทส `tests/test_x64.py`
-  (**19/19**: + try, err_raise/raisetype; `mod_*` = helper ไม่รันตรง)
+  (**25/25**: + slice, textops, err_slice_idx/obj, err_split/join;
+  `mod_*` = helper ไม่รันตรง)
 
 ## 14. Kernel freestanding ด้วย x64 backend ล้วน (เฟส 6b — ไม่ใช้ gcc/as/ld)
 
@@ -320,6 +324,7 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
   `kxlist.hs` (List: literal/append/index/`==`/`for`/`str()` บน serial),
   `kimp.hs`+`kmod_h.hs` (import + `mod.attr` บน bare metal),
   `kxexc_pf/de.hs` (EXC 14 / EXC 0), `ktry.hs` (try/except/finally/raise บน serial)
-  + `tests/test_xkernel.py`: **47/47 ผ่าน**
+  `kxslice.hs` (slicing + split/find/join บน serial)
+  + `tests/test_xkernel.py`: **58/58 ผ่าน**
 - เหลือ: paging แบบไดนามิก (map/unmap page), frame allocator + `std.heap` ใน kernel,
   scheduler, filesystem, user mode

@@ -113,6 +113,15 @@ with tempfile.TemporaryDirectory() as d:
         out = boot(ki, timeout=8)
         for line in ("42", "kmod", "kimp-done"):
             check(f"kimp serial has {line!r}", line in out, out[-800:])
+    # slicing + split/find/join on bare metal
+    kc = os.path.join(d, "kc.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kxslice.hs"), kc)
+    check("kxslice build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kc, timeout=8)
+        for line in ("hello", "world", "[a, b, c]", "[x, , y]", "2", "-1",
+                     "a-b", "[20, 30]", "[30, 40]", "kslice-done"):
+            check(f"kxslice serial has {line!r}", line in out, out[-800:])
     # try/except/finally/raise on bare metal
     kt = os.path.join(d, "kt.elf")
     rc = build_xkernel(os.path.join(ROOT, "kernel", "ktry.hs"), kt)
