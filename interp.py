@@ -385,17 +385,21 @@ KEYWORDS = {"def", "if", "elif", "else", "while", "for", "in", "return",
 RESERVED = {"module"}
 UTYPES = {"I64", "U64", "Ptr"}
 FFTYPE = {"U0", "I64", "U64", "F64", "Str", "Ptr"}
-UNSAFE_BUILTINS = {"alloc", "load8", "load32", "store8", "store32",
-                   "as_ptr", "as_int", "asm"}
+UNSAFE_BUILTINS = {"alloc", "load8", "load32", "load64", "store8", "store32",
+                   "store64", "as_ptr", "as_int", "asm"}
+UNSAFE_SIZES = {"load8": 1, "load32": 4, "load64": 8,
+                "store8": 1, "store32": 4, "store64": 8}
 
 
 class Tok:
-    __slots__ = ("k", "v", "line")
+    # raw keeps the source spelling of a literal (0xAB stays 0xAB in fmt)
+    __slots__ = ("k", "v", "line", "raw")
 
-    def __init__(self, k, v, line):
+    def __init__(self, k, v, line, raw=None):
         self.k = k
         self.v = v
         self.line = line
+        self.raw = raw
 
     def __repr__(self):
         return f"Tok({self.k},{self.v!r},{self.line})"
@@ -450,7 +454,7 @@ def lex_line(content, line):
         elif g == "float":
             toks.append(Tok("NUM", float(v), line))
         elif g == "hex":
-            toks.append(Tok("NUM", int(v, 16), line))
+            toks.append(Tok("NUM", int(v, 16), line, raw=v))
         elif g == "int":
             toks.append(Tok("NUM", int(v), line))
         elif g == "id":
@@ -1079,7 +1083,7 @@ def parse_atom(p):
     t = p.peek()
     if t.k == "NUM":
         p.next()
-        return N("num", t.line, val=t.v)
+        return N("num", t.line, val=t.v, raw=t.raw)
     if t.k == "STR":
         p.next()
         return N("str", t.line, val=t.v)
@@ -1548,14 +1552,14 @@ def sev_call(e, env):
         at, av = sev(args[0], env)
         n = coerce(at, av, "I64", ln)
         return ("Ptr", us_alloc(n, ln))
-    if name in ("load8", "load32"):
+    if name in ("load8", "load32", "load64"):
         if len(args) != 1:
             raise HSErr(f"{name} wants {name}(p)", ln)
         pt, pv = sev(args[0], env)
         if not is_ptr(pt):
             raise HSErr(f"{name} needs Ptr, got {pt}", ln)
-        return ("I64", us_load(pv, 1 if name == "load8" else 4, ln))
-    if name in ("store8", "store32"):
+        return ("I64", wrap_i64(us_load(pv, UNSAFE_SIZES[name], ln)))
+    if name in ("store8", "store32", "store64"):
         if len(args) != 2:
             raise HSErr(f"{name} wants {name}(p, v)", ln)
         pt, pv = sev(args[0], env)
@@ -1563,9 +1567,9 @@ def sev_call(e, env):
             raise HSErr(f"{name} needs Ptr, got {pt}", ln)
         vt, vv = sev(args[1], env)
         vv = coerce(vt, vv, "I64", ln)
-        size = 1 if name == "store8" else 4
+        size = UNSAFE_SIZES[name]
         us_store(pv, size, vv, ln)
-        return ("I64", vv & ((1 << (size * 8)) - 1))
+        return ("I64", wrap_i64(vv & ((1 << (size * 8)) - 1)))
     if name == "as_ptr":
         if len(args) != 1:
             raise HSErr("as_ptr wants as_ptr(int)", ln)
@@ -2074,6 +2078,11 @@ def b_load32(args, ln):
     return us_load(p, 4, ln)
 
 
+def b_load64(args, ln):
+    (p,) = u_int_arg(args, ["p"], ln)
+    return wrap_i64(us_load(p, 8, ln))
+
+
 def b_store8(args, ln):
     p, v = u_int_arg(args, ["p", "v"], ln)
     us_store(p, 1, v, ln)
@@ -2084,6 +2093,12 @@ def b_store32(args, ln):
     p, v = u_int_arg(args, ["p", "v"], ln)
     us_store(p, 4, v, ln)
     return v & 0xFFFFFFFF
+
+
+def b_store64(args, ln):
+    p, v = u_int_arg(args, ["p", "v"], ln)
+    us_store(p, 8, v, ln)
+    return wrap_i64(v)
 
 
 def b_as_ptr(args, ln):
@@ -2457,7 +2472,8 @@ BUILTINS = {
     "int": b_int, "float": b_float, "input": b_input, "open": b_open,
     "read": b_read, "write": b_write, "close": b_close,
     "alloc": b_alloc, "load8": b_load8, "load32": b_load32,
-    "store8": b_store8, "store32": b_store32,
+    "load64": b_load64,
+    "store8": b_store8, "store32": b_store32, "store64": b_store64,
     "as_ptr": b_as_ptr, "as_int": b_as_int,
     "ticks": b_ticks, "readkey": b_readkey,
     "pmm_alloc": b_pmm_alloc, "meminfo": b_meminfo,

@@ -47,6 +47,8 @@
 | | length of Str/List/Dict |||||
 | `load32` | `load32(p)` | ✓ | ✓ | ✓ | ✓ |
 | | load 4 bytes (unsafe only) |||||
+| `load64` | `load64(p)` | ✓ | ✓ | ✓ | ✓ |
+| | load 8 bytes raw (unsafe only; page tables) |||||
 | `load8` | `load8(p)` | ✓ | ✓ | ✓ | ✓ |
 | | load byte (unsafe only) |||||
 | `ls` | `ls(path)` | ✓ | ✓ |   |   |
@@ -77,6 +79,8 @@
 | | split Str to List |||||
 | `store32` | `store32(p, v)` | ✓ | ✓ | ✓ | ✓ |
 | | store 4 bytes (unsafe only) |||||
+| `store64` | `store64(p, v)` | ✓ | ✓ | ✓ | ✓ |
+| | store 8 bytes raw (unsafe only; page tables) |||||
 | `store8` | `store8(p, v)` | ✓ | ✓ | ✓ | ✓ |
 | | store byte (unsafe only) |||||
 | `str` | `str(x)` | ✓ | ✓ | ✓ | ✓ |

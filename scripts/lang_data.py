@@ -91,8 +91,11 @@ BUILTINS = {
     "alloc": ("alloc(n)", "zeroed n bytes (unsafe only)", ALL),
     "load8": ("load8(p)", "load byte (unsafe only)", ALL),
     "load32": ("load32(p)", "load 4 bytes (unsafe only)", ALL),
+    "load64": ("load64(p)", "load 8 bytes raw (unsafe only; page tables)", ALL),
     "store8": ("store8(p, v)", "store byte (unsafe only)", ALL),
     "store32": ("store32(p, v)", "store 4 bytes (unsafe only)", ALL),
+    "store64": ("store64(p, v)", "store 8 bytes raw (unsafe only; page tables)",
+                ALL),
     "as_ptr": ("as_ptr(x)", "Int value -> Ptr (unsafe only)", ALL),
     "as_int": ("as_int(p)", "Ptr -> Int value (unsafe only)", ALL),
     # kernel surface (interp fakes PMM hosted; xkernel is real)

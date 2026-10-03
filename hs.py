@@ -22,8 +22,8 @@ from interp import HSErr
 RT_DIR = os.path.join(HERE, "native")
 BUILTINS = {"print", "len", "range", "str", "int", "float",
             "input", "open", "read", "write", "close",
-            "alloc", "load8", "load32", "store8", "store32",
-            "as_ptr", "as_int",
+            "alloc", "load8", "load32", "load64", "store8", "store32",
+            "store64", "as_ptr", "as_int",
             "ticks", "readkey", "pmm_alloc", "meminfo",
             "append", "split", "find", "join",
             "argv", "env", "system",
@@ -934,7 +934,7 @@ class Gen:
             at, ac, av = self.emit_sexpr(args[0], scope, out)
             ac = self.coerce_c(at, ac, av, "I64", out, ln)
             return ("Ptr", f"(hs_alloc({ac}, {ln}))", None)
-        if name in ("load8", "load32"):
+        if name in ("load8", "load32", "load64"):
             if len(args) != 1:
                 raise HSErr(f"{name} wants {name}(p)", ln)
             pt, pc, _ = self.emit_sexpr(args[0], scope, out)
@@ -942,7 +942,7 @@ class Gen:
             if not is_ptr(pt):
                 raise HSErr(f"{name} needs Ptr, got {pt}", ln)
             return ("I64", f"(hs_{name}({pc}, {ln}))", None)
-        if name in ("store8", "store32"):
+        if name in ("store8", "store32", "store64"):
             if len(args) != 2:
                 raise HSErr(f"{name} wants {name}(p, v)", ln)
             pt, pc, _ = self.emit_sexpr(args[0], scope, out)

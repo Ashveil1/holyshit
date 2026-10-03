@@ -111,7 +111,9 @@ unsafe:
 - `/` `%` truncate like C (unlike safe `/` which returns Float).
 - `and/or/not` return I64 0/1. `p + n` moves bytes (scaled by sizeof for struct
   pointers). `as_ptr(int)` / `as_int(p)` accept struct pointers too.
-- `load8/load32/store8/store32`, `alloc(n)` (zeroed, GC'd, no free).
+- `load8/load32/load64/store8/store32/store64`, `alloc(n)` (zeroed, GC'd, no free).
+  `load64`/`store64` are raw untagged 64-bit access -- what the kernel uses to
+  read/write page-table entries and pointers.
 - `struct Name:` with scalar/`Struct*`/array fields (all 8 bytes, no padding).
   `Name* p = alloc(sizeof(Name))`, `p.field`, `p.arr[i]`, `p.field = v`
   (bounds+null checked, volatile in native). `sizeof(I64)` is 8.

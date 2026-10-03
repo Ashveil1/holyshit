@@ -522,7 +522,8 @@ Val v_builtin(const char *name) {
         {b_input, "input"}, {b_open, "open"}, {b_read, "read"},
         {b_write, "write"}, {b_close, "close"},
         {b_alloc, "alloc"}, {b_load8, "load8"}, {b_load32, "load32"},
-        {b_store8, "store8"}, {b_store32, "store32"},
+        {b_load64, "load64"},
+        {b_store8, "store8"}, {b_store32, "store32"}, {b_store64, "store64"},
         {b_as_ptr, "as_ptr"}, {b_as_int, "as_int"},
         {b_ticks, "ticks"}, {b_readkey, "readkey"},
         {b_pmm_alloc, "pmm_alloc"}, {b_meminfo, "meminfo"},
@@ -985,6 +986,20 @@ int64_t hs_store32(uint8_t *p, int64_t v, int line) {
     return (int64_t)w;
 }
 
+int64_t hs_load64(uint8_t *p, int line) {
+    hs_ptr_check(p, line);
+    uint64_t v;
+    memcpy(&v, p, 8);
+    return (int64_t)v;
+}
+
+int64_t hs_store64(uint8_t *p, int64_t v, int line) {
+    hs_ptr_check(p, line);
+    uint64_t w = (uint64_t)v;
+    memcpy(p, &w, 8);
+    return (int64_t)w;
+}
+
 int64_t hs_unbox_I64(Val v, int line) {
     if (v.tag == T_INT)
         return v.u.i;
@@ -1129,6 +1144,12 @@ Val b_load32(Val *args, int nargs, int line) {
     return v_int(hs_load32((uint8_t *)(uintptr_t)(uint64_t)b_addr_arg(args[0], "load32", line), line));
 }
 
+Val b_load64(Val *args, int nargs, int line) {
+    if (nargs != 1)
+        hs_err(line, "load64 arg count mismatch");
+    return v_int(hs_load64((uint8_t *)(uintptr_t)(uint64_t)b_addr_arg(args[0], "load64", line), line));
+}
+
 Val b_store8(Val *args, int nargs, int line) {
     if (nargs != 2)
         hs_err(line, "store8 arg count mismatch");
@@ -1147,6 +1168,16 @@ Val b_store32(Val *args, int nargs, int line) {
         hs_err(line, "store32 needs Int, got %s", hs_tname(args[1]));
     int64_t v = args[1].tag == T_INT ? args[1].u.i : args[1].u.b;
     return v_int(hs_store32((uint8_t *)(uintptr_t)(uint64_t)p, v, line));
+}
+
+Val b_store64(Val *args, int nargs, int line) {
+    if (nargs != 2)
+        hs_err(line, "store64 arg count mismatch");
+    int64_t p = b_addr_arg(args[0], "store64", line);
+    if (args[1].tag != T_INT && args[1].tag != T_BOOL)
+        hs_err(line, "store64 needs Int, got %s", hs_tname(args[1]));
+    int64_t v = args[1].tag == T_INT ? args[1].u.i : args[1].u.b;
+    return v_int(hs_store64((uint8_t *)(uintptr_t)(uint64_t)p, v, line));
 }
 
 Val b_as_ptr(Val *args, int nargs, int line) {

@@ -350,8 +350,8 @@ class Gen:
 
     XBUILTINS = {"print", "int", "len", "str", "range", "append",
                  "split", "find", "join",
-                 "alloc", "load8", "load32", "store8",
-                 "store32", "as_ptr", "as_int"}
+                 "alloc", "load8", "load32", "load64", "store8",
+                 "store32", "store64", "as_ptr", "as_int"}
 
     def finalize(self, mod):
         ms = mod["scope"]
@@ -660,7 +660,8 @@ class Gen:
                         "http_get", "json_parse", "json_str", "read_text",
                         "write_text", "append_text", "exists", "ls", "mkdir",
                         "json_load", "json_save", "alloc", "load8", "load32",
-                        "store8", "store32", "as_ptr", "as_int", "asm"):
+                        "load64", "store8", "store32", "store64",
+                        "as_ptr", "as_int", "asm"):
                 raise HSErr(f"builtin '{name}' is not a value (call it)", ln)
             if self.find_binding(name, sc) is not None:
                 raise HSErr(f"module '{name}' is not a first-class value"
@@ -1018,8 +1019,8 @@ class Gen:
             a.call("x_str" if fn["name"] == "str" else "x_len")
             return
         if fn["t"] == "var" and fn["name"] in (
-                "alloc", "load8", "load32", "store8", "store32",
-                "as_ptr", "as_int"):
+                "alloc", "load8", "load32", "load64", "store8", "store32",
+                "store64", "as_ptr", "as_int"):
             self.sev_call(fn["name"], e["args"], sc, mod, ln)
             return
         if fn["t"] == "var" and fn["name"] == "range":
@@ -1370,8 +1371,8 @@ class Gen:
         if t == "call":
             fn = e["fn"]
             if fn["t"] == "var" and fn["name"] in (
-                    "alloc", "load8", "load32", "store8", "store32",
-                    "as_ptr", "as_int"):
+                    "alloc", "load8", "load32", "load64", "store8",
+                    "store32", "store64", "as_ptr", "as_int"):
                 self.sev_call(fn["name"], e["args"], sc, mod, ln)
                 return
             raise HSErr("only alloc/load/store/as_* calls allowed in unsafe (x64)", ln)
@@ -1490,8 +1491,8 @@ class Gen:
         if t in ("num", "deref", "field", "sizeof", "bin", "neg", "not"):
             return True
         if t == "call" and e["fn"]["t"] == "var" and e["fn"]["name"] in (
-                "alloc", "load8", "load32", "store8", "store32",
-                "as_ptr", "as_int"):
+                "alloc", "load8", "load32", "load64", "store8", "store32",
+                "store64", "as_ptr", "as_int"):
             return True
         return False
 
@@ -1505,18 +1506,21 @@ class Gen:
             a.call("x_alloc")
             a.add_ri32("rsp", 8)
             return
-        if name in ("load8", "load32"):
+        if name in ("load8", "load32", "load64"):
             if len(args) != 1:
                 raise HSErr(f"{name} wants {name}(p)", ln)
             self.sev(args[0], sc, mod)
             if name == "load8":
                 # movzx rax, byte [rax]
                 a.code += bytes([0x48, 0x0F, 0xB6, 0x00])
-            else:
+            elif name == "load32":
                 # mov eax, [rax] (zero-extends)
                 a.code += bytes([0x8B, 0x00])
+            else:
+                # mov rax, [rax] -- raw 64-bit, no tagging
+                a.code += bytes([0x48, 0x8B, 0x00])
             return
-        if name in ("store8", "store32"):
+        if name in ("store8", "store32", "store64"):
             if len(args) != 2:
                 raise HSErr(f"{name} wants {name}(p, v)", ln)
             self.sev(args[1], sc, mod)
@@ -1525,8 +1529,10 @@ class Gen:
             a.pop_r("rcx")
             if name == "store8":
                 a.code += bytes([0x88, 0x08])  # mov [rax], cl
-            else:
+            elif name == "store32":
                 a.code += bytes([0x89, 0x08])  # mov [rax], ecx
+            else:
+                a.code += bytes([0x48, 0x89, 0x08])  # mov [rax], rcx
             a.mov_rr("rax", "rcx")
             return
         if name in ("as_ptr", "as_int"):

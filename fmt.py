@@ -52,7 +52,7 @@ def esc(s):
     return "".join(out)
 
 
-def fmt_num(v):
+def fmt_num(v, raw=None):
     if v is True:
         return "true"
     if v is False:
@@ -61,13 +61,15 @@ def fmt_num(v):
         return "null"
     if isinstance(v, float):
         return repr(v)
+    if raw and isinstance(v, int) and not isinstance(v, bool):
+        return raw  # keep 0xAB as written (page-table flags stay readable)
     return str(v)
 
 
 def fmt_expr(e):
     t = e["t"]
     if t == "num":
-        return fmt_num(e["val"])
+        return fmt_num(e["val"], e.get("raw"))
     if t == "str":
         return '"' + esc(e["val"]) + '"'
     if t == "var":

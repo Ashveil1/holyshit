@@ -1,6 +1,6 @@
 {
  "language": "holyshit",
- "version": "0.6.0",
+ "version": "0.6.1",
  "keywords": {
   "def": "define a function: `def name(params):` + indented body",
   "if": "conditional branch (with `elif` / `else`)",
@@ -360,6 +360,16 @@
     "xkernel"
    ]
   },
+  "load64": {
+   "sig": "load64(p)",
+   "desc": "load 8 bytes raw (unsafe only; page tables)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
   "store8": {
    "sig": "store8(p, v)",
    "desc": "store byte (unsafe only)",
@@ -373,6 +383,16 @@
   "store32": {
    "sig": "store32(p, v)",
    "desc": "store 4 bytes (unsafe only)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "store64": {
+   "sig": "store64(p, v)",
+   "desc": "store 8 bytes raw (unsafe only; page tables)",
    "backends": [
     "interp",
     "native",

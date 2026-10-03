@@ -108,6 +108,7 @@ unsafe:
 
 - ใช้ได้: typed decl (`I64 U64 Ptr Name*`), `*p = v`, struct, `p.f`, `p.arr[i]`,
   `sizeof(T)` (ทุกช่อง 8 bytes ไม่มี padding), `if/while`, `print`
+- raw 64-bit: `load64(p)` / `store64(p, v)` (ไม่ tag — ใช้กับ page table entry)
 - ใช้ไม่ได้: `def`, `for`, `try`, `Str/List/Float`, extern, string
 - ค่าใน `unsafe:` เป็น machine word ดิบ — ข้ามฝั่งด้วย `as_ptr`/`as_int`
 

@@ -429,3 +429,16 @@ printer พิมพ์คอมเมนต์ไม่ได้ — lexer ท�
 `test.py` 35 · `test_native.py` 36 · `test_fmt.py` 4 · `test_x64.py` 25 ·
 `test_xkernel.py` 62 · `test_examples.py` 17 · `test_lsp.py` 25 ·
 `test_docs.py` 38 (รันครบทุกชุด: `python3 tests/run_all.py`)
+
+### 15.8 เตรียม OS: `load64`/`store64` (v0.6.1)
+
+ฐานของงาน OS คืออ่าน/เขียน page-table entry ขนาด 64-bit จาก `.hs` ได้ — ก่อนนี้
+`unsafe:` มีแค่ `load8/load32/store8/store32` ซึ่งตัดครึ่ง 64-bit ทิ้ง
+
+- `load64(p)` / `store64(p, v)` ใน `interp.py` (ผ่าน `us_load/us_store` ที่เป็น
+  size-generic อยู่แล้ว), `native/rt.c` (`hs_load64/hs_store64`) และ
+  `x64gen.py` (`mov rax,[rax]` / `mov [rax],rcx` ไม่ผ่าน tag) — ทั้ง 3 backend
+  ให้ผลเหมือนกัน เทส `tests/t_load64.hs` + `tests/x64/load64.hs`
+- `hs fmt` เก็บการเขียนเลขฐานสิบหกไว้ (`0x83` ไม่กลายเป็น `131`) เพราะ flag ของ
+  page table ต้องอ่านออก — parser เก็บ `raw` ของ literal, printer ใช้ตัวนั้น
+- เทส: interp 36 · native 37 · x64 26 (เพิ่มไฟล์ใหม่ทั้งคู่)
