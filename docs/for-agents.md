@@ -43,7 +43,10 @@ python3 scripts/lsp_client.py --symbols prog.hs       # def/ตัวแปร�
 python3 scripts/lsp_client.py --hover prog.hs 3 5     # builtin/keyword/ตัวแปร
 python3 scripts/lsp_client.py --def prog.hs 2 10      # ไปที่จุดที่นิยาม
 python3 scripts/lsp_client.py --complete prog.hs 1 4  # keyword+builtin+ชื่อในไฟล์
-python3 scripts/lsp_client.py --format prog.hs -w    # เขียนกลับ canonical
+python3 scripts/lsp_client.py --refs prog.hs 2 10     # ทุกจุดที่เรียก (ข้ามไฟล์)
+python3 scripts/lsp_client.py --sig prog.hs 4 9       # signature ของที่กำลังเรียก
+python3 scripts/lsp_client.py --wsym prog.hs name    # ค้นชื่อทั้งโปรเจกต์
+python3 scripts/lsp_client.py --format prog.hs --write  # เขียนกลับ canonical
 ```
 
 (line/col เริ่มที่ 1 — human-friendly)

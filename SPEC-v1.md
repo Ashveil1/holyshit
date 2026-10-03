@@ -370,14 +370,16 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 - stdio + JSON-RPC เขียนด้วย stdlib ล้วน (ไม่มี pip dependency) เข้าผ่าน
   `python3 hs.py lsp` หรือ `python3 lsp.py`
 - ฟีเจอร์: `textDocument/publishDiagnostics` (parse + scope check ทุกครั้ง
-  ที่แก้ไฟล์), `hover` (builtin พร้อม backend, keyword, def/param/ตัวแปร),
-  `completion` (keyword + builtin + ชื่อในไฟล์), `definition` (ในไฟล์และ
-  ข้ามไฟล์ผ่าน `import mod` / `mod.attr` รวมถึง submodule ที่ re-export),
-  `documentSymbol`, `formatting` (เรียก `fmt.py`)
+  ที่แก้ไฟล์/บันทึก), `hover` (builtin พร้อม backend, keyword, def/param/ตัวแปร,
+  `mod.attr` พร้อมชี้ไฟล์ที่นิยาม), `completion` (keyword + builtin + ชื่อในไฟล์
+  และเฉพาะชื่อระดับบนของโมดูลเมื่อพิมพ์ `mod.`), `definition`,
+  `references` (ข้ามไฟล์ในโฟลเดอร์เดียวกัน + `HSPATH`),
+  `documentHighlight`, `signatureHelp` (ผู้ใช้ + builtin, มี activeParameter),
+  `documentSymbol`, `workspace/symbol`, `formatting` (เรียก `fmt.py`)
 - ตำแหน่งใช้ UTF-16 code unit ตามสเปก LSP (ไทย/อีโมจิไม่เพี้ยน)
 - `scripts/lsp_client.py` เป็น client แบบ one-shot เพื่อให้ agent เรียกใช้
   ได้โดยไม่ต้องค้าง server (`--diag/--hover/--def/--complete/--symbols/--format`)
-- `tests/test_lsp.py` (**11/11**) ยิง protocol จริงผ่าน pipe
+- `tests/test_lsp.py` (**25/25**) ยิง protocol จริงผ่าน pipe
 
 ### 15.4 editor
 
@@ -388,4 +390,4 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 ### 15.5 สถานะเทสหลังเฟส 7
 
 `test.py` 35 · `test_native.py` 36 · `test_fmt.py` 2 · `test_x64.py` 25 ·
-`test_xkernel.py` 58 · `test_lsp.py` 11 · `test_docs.py` 33
+`test_xkernel.py` 58 · `test_lsp.py` 25 · `test_docs.py` 33

@@ -106,6 +106,21 @@ class Doc:
         except Exception:
             pass
 
+    @classmethod
+    def from_module_doc(cls, path, mdoc):
+        """Wrap an already-parsed module (load_module_doc) without re-parsing."""
+        d = cls.__new__(cls)
+        d.uri = "file://" + path
+        d.text = mdoc["text"]
+        d.version = 0
+        d.path = path
+        d.ast = mdoc["ast"]
+        d.perr = None
+        d.serr = None
+        d.symbols = mdoc["symbols"]
+        d.uses = mdoc["uses"]
+        return d
+
 
 def uri_to_path(uri):
     if uri.startswith("file://"):
@@ -168,8 +183,9 @@ def _collect(body, doc):
             st = s.get("t")
             if st == "def":
                 params = s.get("params", [])
-                bind(sc, s["name"], "function", s["line"],
-                     "(%s)" % ", ".join(params))
+                sym = bind(sc, s["name"], "function", s["line"],
+                           "(%s)" % ", ".join(params))
+                sym["params"] = list(params)
                 fs = _Scope(sc, True)
                 for p in params:
                     bind(fs, p, "param", s["line"])
@@ -421,7 +437,12 @@ class Server:
                         "hoverProvider": True,
                         "completionProvider": {"triggerCharacters": ["."]},
                         "definitionProvider": True,
+                        "referencesProvider": True,
+                        "documentHighlightProvider": True,
+                        "signatureHelpProvider": {"triggerCharacters":
+                                                  ["(", ",", ")"]},
                         "documentSymbolProvider": True,
+                        "workspaceSymbolProvider": True,
                         "documentFormattingProvider": True,
                     },
                     "serverInfo": {"name": "holyshit-lsp", "version": "0.5.0"},
@@ -454,6 +475,24 @@ class Server:
                 self.reply(mid, self.complete(params))
             elif method == "textDocument/definition":
                 self.reply(mid, self.definition(params))
+            elif method == "textDocument/references":
+                ctx = params.get("context") or {}
+                self.reply(mid, self.references(params,
+                                               ctx.get("includeDeclaration",
+                                                       True)))
+            elif method == "textDocument/documentHighlight":
+                self.reply(mid, self.document_highlight(params))
+            elif method == "textDocument/signatureHelp":
+                self.reply(mid, self.signature_help(params))
+            elif method == "workspace/symbol":
+                self.reply(mid, self.workspace_symbol(params))
+            elif method == "textDocument/didSave":
+                uri = params["textDocument"]["uri"]
+                # editors that send includeText give us the freshest buffer
+                if "text" in params:
+                    self.docs[uri] = Doc(uri, params["text"],
+                                        params["textDocument"].get("version", 0))
+                self.push_diagnostics(uri)
             elif method == "textDocument/documentSymbol":
                 self.reply(mid, self.symbols(params))
             elif method == "textDocument/formatting":
@@ -514,33 +553,81 @@ class Server:
         if doc is None or not word:
             return None
         base = word.split(".")[0]
-        if word in lang_data.BUILTINS:
-            sig, desc, be = lang_data.BUILTINS[word]
-            return {"contents": {"kind": "markdown",
-                                 "value": f"**`{sig}`**\n\n{desc}\n\n_backends:_ "
-                                 + ", ".join(sorted(be))}}
-        if word in lang_data.KEYWORDS:
-            return {"contents": {"kind": "markdown",
-                                 "value": f"**`{word}`** (keyword)\n\n"
-                                 + lang_data.KEYWORDS[word]}}
-        # user symbol: resolve through scope chain
-        line1 = span[0] + 1
-        occ = self.occ_index(doc, span, idx, base if "." in word else word)
-        use = find_use(doc, line1, base if "." in word else word, occ)
-        if use is not None:
-            sym = resolve_use(use)
-            if sym is not None:
+        if "." not in word:
+            if word in lang_data.BUILTINS:
+                sig, desc, be = lang_data.BUILTINS[word]
                 return {"contents": {"kind": "markdown",
-                                     "value": self.sym_hover(sym)}}
-        # dotted module attribute: describe the module part
-        if "." in word:
-            use = find_use(doc, line1, base, occ)
-            if use is not None:
-                sym = resolve_use(use)
-                if sym is not None and sym["kind"] == "module":
-                    return {"contents": {"kind": "markdown",
-                                         "value": self.sym_hover(sym)}}
+                                     "value": f"**`{sig}`**\n\n{desc}\n\n"
+                                              f"_backends:_ "
+                                              + ", ".join(sorted(be))}}
+            if word in lang_data.KEYWORDS:
+                return {"contents": {"kind": "markdown",
+                                     "value": f"**`{word}`** (keyword)\n\n"
+                                              + lang_data.KEYWORDS[word]}}
+        sym, path = self.resolve_parts(doc, word.split("."), span[0] + 1,
+                                       self.occ_index(doc, span, idx, base))
+        if sym is not None:
+            txt = self.sym_hover(sym)
+            if path and doc.path and \
+                    os.path.abspath(path) != os.path.abspath(doc.path):
+                txt += f"\n\n_defined in_ `{os.path.basename(path)}`"
+            return {"contents": {"kind": "markdown", "value": txt}}
         return None
+
+    def resolve_parts(self, doc, parts, line1, occ):
+        """Resolve a (possibly dotted) name -> (symbol, defining file).
+
+        Returns (None, None) when nothing is found. The returned path is the
+        file the symbol lives in; for `mod.attr` that is the module file, for a
+        local variable it is the current document.
+        """
+        base = parts[0]
+        use = find_use(doc, line1, base, occ)
+        sym = resolve_use(use) if use is not None else None
+        if sym is None:
+            # cursor sits on the definition itself (no `use` recorded there)
+            kinds = ("function", "module", "variable")
+            cands = [s for s in doc.symbols
+                     if s["name"] == base and s["line"] == line1
+                     and s["kind"] in kinds]
+            if not cands:
+                cands = [s for s in doc.symbols
+                         if s["kind"] == "module" and s["name"] == base
+                         and s["line"] <= line1]
+            sym = cands[-1] if cands else None
+        if sym is None:
+            return None, None
+        if len(parts) == 1:
+            if sym["kind"] == "module":
+                return sym, self.module_path(doc, sym.get("detail") or
+                                             sym["name"])
+            return sym, doc.path
+        if sym["kind"] != "module":
+            return None, None
+        cur = self.module_path(doc, sym.get("detail") or sym["name"])
+        for i, attr in enumerate(parts[1:]):
+            if cur is None:
+                return None, None
+            mdoc = load_module_doc(cur)
+            if mdoc is None:
+                return None, None
+            tgt = top_symbol(mdoc["symbols"], attr)
+            if tgt is None:
+                return None, None
+            last = (i == len(parts) - 2)
+            if tgt["kind"] == "module":
+                sub = (self.submodule_path(cur, attr)
+                       or self.reexport_path(mdoc, attr))
+                if last:
+                    return tgt, sub
+                if sub is None:
+                    return None, None
+                cur = sub
+                continue
+            if last:
+                return tgt, cur
+            return None, None
+        return None, None
 
     def occ_index(self, doc, span, idx, name):
         # which occurrence of `name` on this line is the cursor on?
@@ -570,6 +657,11 @@ class Server:
 
     def complete(self, params):
         doc, word, span, idx = self.pos_word(params)
+        # `mod.` / `mod.pre` -> complete the module's top-level names only
+        if doc is not None and "." in word:
+            members = self.member_items(doc, word, span, idx)
+            if members is not None:
+                return {"isIncomplete": False, "items": members}
         items = []
         for kw, desc in sorted(lang_data.KEYWORDS.items()):
             items.append({"label": kw, "kind": 14, "detail": "keyword",
@@ -588,66 +680,246 @@ class Server:
                               "detail": f"{s['kind']} (line {s['line']})"})
         return {"isIncomplete": False, "items": items}
 
+    def member_items(self, doc, word, span, idx):
+        """Completion items for `mod.attr...`. None = not a module path."""
+        parts = word.split(".")
+        parent = parts[:-1]
+        if not parent or not all(parent):
+            return None
+        sym, path = self.resolve_parts(doc, parent, span[0] + 1,
+                                       self.occ_index(doc, span, idx,
+                                                      parent[0]))
+        if path is None or sym is None:
+            return None
+        mdoc = load_module_doc(path)
+        if mdoc is None:
+            return None
+        items = []
+        seen = set()
+        for s in mdoc["symbols"]:
+            # top-level names only: params/locals are not `mod.attr`
+            if s["kind"] == "param" or s["name"] in seen:
+                continue
+            seen.add(s["name"])
+            items.append({
+                "label": s["name"],
+                "kind": {"function": 3, "module": 9, "param": 6}.get(s["kind"],
+                                                                    6),
+                "detail": (f"{s['kind']} ({os.path.basename(path)}:"
+                           f"{s['line']})"),
+                "documentation": {"kind": "markdown",
+                                  "value": self.sym_hover(s)},
+            })
+        return items
+
+    # ----- references / highlights / signature help / workspace symbols -----
+
+    def _index_docs(self, doc):
+        """Open documents plus every .hs file next to this one (bounded)."""
+        out = list(self.docs.values())
+        if not doc.path:
+            return out
+        root = os.path.dirname(os.path.abspath(doc.path))
+        for base in [root] + [d for d in
+                              os.environ.get("HSPATH", "").split(":") if d]:
+            if not os.path.isdir(base):
+                continue
+            for dirpath, dirnames, filenames in os.walk(base):
+                dirnames[:] = [d for d in dirnames
+                               if not d.startswith(".") and d != "legacy"
+                               and d != "__pycache__"]
+                for fn in sorted(filenames):
+                    if not fn.endswith(".hs"):
+                        continue
+                    full = os.path.join(dirpath, fn)
+                    if any(d.path == full for d in out):
+                        continue
+                    mdoc = load_module_doc(full)
+                    if mdoc is not None:
+                        out.append(Doc.from_module_doc(full, mdoc))
+                    if len(out) > 400:
+                        return out
+        return out
+
+    def references(self, params, include_declaration=True):
+        doc, word, span, idx = self.pos_word(params)
+        if doc is None or not word:
+            return []
+        parts = word.split(".")
+        sym, path = self.resolve_parts(doc, parts, span[0] + 1,
+                                       self.occ_index(doc, span, idx,
+                                                      parts[0]))
+        if sym is None or path is None:
+            return []
+        target = (os.path.abspath(path), sym["name"])
+        out = []
+        for d in self._index_docs(doc):
+            if d.ast is None:
+                continue
+            for u in d.uses:
+                if u["name"] != parts[0]:
+                    continue
+                s, p = self.resolve_parts(d, parts, u["line"], u["occ"])
+                if s is None or p is None:
+                    continue
+                if (os.path.abspath(p), s["name"]) != target:
+                    continue
+                rng = self.word_range(d, u["line"] - 1, u["occ"], u["name"])
+                if rng:
+                    out.append({"uri": "file://" + d.path, "range": rng})
+        if include_declaration:
+            rng = self.word_range_file(path, sym["line"] - 1, sym["name"])
+            if rng:
+                decl = {"uri": "file://" + path, "range": rng}
+                if decl not in out:
+                    out.append(decl)
+        # de-dup
+        seen = set()
+        uniq = []
+        for r in out:
+            k = (r["uri"], r["range"]["start"]["line"],
+                 r["range"]["start"]["character"])
+            if k not in seen:
+                seen.add(k)
+                uniq.append(r)
+        return uniq
+
+    def word_range(self, doc, line0, occ, name):
+        """Range of the occ-th `name` on line0 of an open document."""
+        if line0 >= len(doc.lines()):
+            return None
+        return self._range_in(doc.lines()[line0], occ, name, line0)
+
+    def word_range_file(self, path, line0, name):
+        try:
+            with open(path, encoding="utf-8") as f:
+                text = f.read().split("\n")
+        except OSError:
+            return None
+        if line0 >= len(text):
+            return None
+        return self._range_in(text[line0], 0, name, line0)
+
+    def _range_in(self, text, occ, name, line0):
+        seen = 0
+        for mm in re.finditer(r"[A-Za-z_][A-Za-z0-9_]*", text):
+            if mm.group(0) != name:
+                continue
+            if seen == occ:
+                return {"start": {"line": line0,
+                                  "character": col_from_idx(text, mm.start())},
+                        "end": {"line": line0,
+                                "character": col_from_idx(text, mm.end())}}
+            seen += 1
+        return None
+
+    def document_highlight(self, params):
+        doc, word, span, idx = self.pos_word(params)
+        if doc is None or not word:
+            return []
+        base = word.split(".")[0]
+        sym, path = self.resolve_parts(doc, word.split("."), span[0] + 1,
+                                       self.occ_index(doc, span, idx, base))
+        out = []
+        lines = [span[0]]
+        if sym is not None and path and doc.path and \
+                os.path.abspath(path) == os.path.abspath(doc.path or ""):
+            lines.append(sym["line"] - 1)
+        for ln in lines:
+            if ln >= len(doc.lines()):
+                continue
+            text = doc.lines()[ln]
+            for mm in re.finditer(r"\b%s\b" % re.escape(base), text):
+                out.append({"range": {
+                    "start": {"line": ln,
+                              "character": col_from_idx(text, mm.start())},
+                    "end": {"line": ln,
+                            "character": col_from_idx(text, mm.end())}},
+                    "kind": 1 if (ln == sym["line"] - 1) else 2})
+        return out
+
+    def signature_help(self, params):
+        doc, word, span, idx = self.pos_word(params)
+        if doc is None:
+            return None
+        text = doc.lines()[span[0]]
+        prefix = text[:idx]
+        op = prefix.rfind("(")
+        if op < 0:
+            return None
+        depth = 0
+        active = 0
+        for ch in prefix[op:]:
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            elif ch == "," and depth == 1:
+                active += 1
+        m = re.search(r"([A-Za-z_][A-Za-z0-9_.]*)\s*$", prefix[:op])
+        if not m:
+            return None
+        callee = m.group(1)
+        params_list, label, doc_txt = None, None, None
+        if callee in lang_data.BUILTINS:
+            sig, desc, _be = lang_data.BUILTINS[callee]
+            label = sig.split("|")[0].strip()
+            inner = label[len(callee):].strip()
+            if inner.startswith("(") and inner.endswith(")"):
+                params_list = [p.strip() for p in inner[1:-1].split(",")
+                               if p.strip()]
+            doc_txt = desc
+        else:
+            sym, _p = self.resolve_parts(doc, callee.split("."), span[0] + 1,
+                                         self.occ_index(doc, span, idx,
+                                                        callee.split(".")[0]))
+            if sym is None or sym["kind"] != "function":
+                return None
+            params_list = sym.get("params") or []
+            label = f"{sym['name']}({', '.join(params_list)})"
+        sig = {"label": label,
+               "parameters": [{"label": p} for p in params_list]}
+        if doc_txt:
+            sig["documentation"] = {"kind": "markdown", "value": doc_txt}
+        if params_list:
+            sig["activeParameter"] = min(active, len(params_list) - 1)
+        return {"signatures": [sig], "activeSignature": 0,
+                "activeParameter": sig.get("activeParameter", 0)}
+
+    def workspace_symbol(self, params):
+        query = (params.get("query") or "").lower()
+        out = []
+        first = list(self.docs.values())[0] if self.docs else None
+        for d in self._index_docs(first):
+            if d.ast is None:
+                continue
+            for s in d.symbols:
+                if query and query not in s["name"].lower():
+                    continue
+                kind = {"function": 12, "module": 2, "param": 13}.get(s["kind"],
+                                                                       13)
+                ln = max(0, s["line"] - 1)
+                rng = self.word_range(d, ln, 0, s["name"]) or {
+                    "start": {"line": ln, "character": 0},
+                    "end": {"line": ln, "character": 0}}
+                out.append({"name": s["name"], "kind": kind,
+                            "location": {"uri": "file://" + d.path,
+                                         "range": rng},
+                            "containerName": os.path.basename(d.path)})
+        return out[:500]
+
     def definition(self, params):
         doc, word, span, idx = self.pos_word(params)
         if doc is None or not word:
             return None
-        line1 = span[0] + 1
-        parts = word.split(".")
-        base = parts[0]
-        occ = self.occ_index(doc, span, idx, base)
-        use = find_use(doc, line1, base, occ)
-        if use is None:
-            # maybe the cursor is on the import binding itself
-            for s in doc.symbols:
-                if s["kind"] == "module" and s["name"] == base \
-                        and s["line"] <= line1:
-                    path = self.module_path(doc, s.get("detail") or base)
-                    if path:
-                        return self.loc(path, 0)
-                    return None
+        base = word.split(".")[0]
+        sym, path = self.resolve_parts(doc, word.split("."), span[0] + 1,
+                                       self.occ_index(doc, span, idx, base))
+        if sym is None or not path:
             return None
-        sym = resolve_use(use)
-        if sym is None:
-            return None
-        if len(parts) == 1:
-            if sym["kind"] == "module":
-                path = self.module_path(doc, sym.get("detail") or sym["name"])
-                if path:
-                    return self.loc(path, 0)
-                return None
-            return self.loc(doc.path, sym["line"] - 1, sym["name"])
-        # mod.attr[.attr...]: walk into module files
-        names = parts[1:]
-        cur_path = self.module_path(doc, sym.get("detail") or sym["name"])
-        for i, attr in enumerate(names):
-            if cur_path is None:
-                return None
-            mdoc = load_module_doc(cur_path)
-            if mdoc is None:
-                return None
-            target = top_symbol(mdoc["symbols"], attr)
-            last = (i == len(names) - 1)
-            if target is None:
-                return None
-            if not last:
-                # intermediate must be a submodule: mod.attr where attr is module
-                sub = self.submodule_path(cur_path, attr)
-                if sub is None:
-                    # re-exported import inside the module file
-                    sub = self.reexport_path(mdoc, attr)
-                    if sub is None:
-                        return None
-                cur_path = sub
-                continue
-            if target["kind"] == "module":
-                sub = (self.submodule_path(cur_path, attr)
-                       or self.reexport_path(mdoc, attr))
-                if sub is None:
-                    return None
-                return self.loc(sub, 0)
-            return self.loc(cur_path, target["line"] - 1, target["name"])
-        return None
+        if sym["kind"] == "module":
+            return self.loc(path, 0)
+        return self.loc(path, sym["line"] - 1, sym["name"])
 
     def module_path(self, doc, dotted):
         basedir = None

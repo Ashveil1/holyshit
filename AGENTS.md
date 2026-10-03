@@ -29,6 +29,9 @@ python3 scripts/lsp_client.py --diag prog.hs          # errors + lines (no serve
 python3 scripts/lsp_client.py --symbols prog.hs       # every def/var/import in a file
 python3 scripts/lsp_client.py --hover prog.hs 3 5     # builtin sig, keyword, or variable
 python3 scripts/lsp_client.py --def prog.hs 2 10      # jump to definition (cross-file)
+python3 scripts/lsp_client.py --refs prog.hs 2 10     # every use of that name
+python3 scripts/lsp_client.py --sig prog.hs 4 9       # signature of the call in progress
+python3 scripts/lsp_client.py --wsym prog.hs name    # search symbols project-wide
 python3 scripts/lsp_client.py --complete prog.hs 1 4  # keyword + builtin + local names
 python3 scripts/lsp_client.py --format prog.hs --write
 python3 scripts/gen_api.py                            # regenerate docs/api.json

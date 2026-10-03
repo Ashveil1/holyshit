@@ -4,7 +4,12 @@
     python3 scripts/lsp_client.py --diag prog.hs
     python3 scripts/lsp_client.py --hover prog.hs 3 5
     python3 scripts/lsp_client.py --complete prog.hs 1 4
+    python3 scripts/lsp_client.py --complete prog.hs 2 9      # after "mod."
     python3 scripts/lsp_client.py --def prog.hs 2 10
+    python3 scripts/lsp_client.py --refs prog.hs 2 10
+    python3 scripts/lsp_client.py --highlight prog.hs 2 10
+    python3 scripts/lsp_client.py --sig prog.hs 4 9
+    python3 scripts/lsp_client.py --wsym prog.hs double
     python3 scripts/lsp_client.py --symbols prog.hs
     python3 scripts/lsp_client.py --format prog.hs [--write]
     Lines/cols are 1-based for humans; converted to LSP 0-based here.
@@ -117,6 +122,28 @@ def main(argv):
                           {"textDocument": {"uri": uri},
                            "position": {"line": ln, "character": col}})
             print(json.dumps([i["label"] for i in r["items"]]))
+        elif mode == "--refs":
+            ln, col = int(argv[3]) - 1, int(argv[4]) - 1
+            print(json.dumps(c.request(
+                "textDocument/references",
+                {"textDocument": {"uri": uri},
+                 "position": {"line": ln, "character": col},
+                 "context": {"includeDeclaration": True}}), indent=1))
+        elif mode == "--highlight":
+            ln, col = int(argv[3]) - 1, int(argv[4]) - 1
+            print(json.dumps(c.request(
+                "textDocument/documentHighlight",
+                {"textDocument": {"uri": uri},
+                 "position": {"line": ln, "character": col}}), indent=1))
+        elif mode == "--sig":
+            ln, col = int(argv[3]) - 1, int(argv[4]) - 1
+            print(json.dumps(c.request(
+                "textDocument/signatureHelp",
+                {"textDocument": {"uri": uri},
+                 "position": {"line": ln, "character": col}}), indent=1))
+        elif mode == "--wsym":
+            print(json.dumps(c.request("workspace/symbol",
+                                       {"query": argv[3]}), indent=1))
         elif mode == "--def":
             ln, col = int(argv[3]) - 1, int(argv[4]) - 1
             print(json.dumps(c.request(

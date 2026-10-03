@@ -9,7 +9,7 @@ Suites:
   test_fmt.py      2  formatter canonical + idempotent + same behavior
   test_x64.py     25  x86-64 backend, static ELF, no gcc
   test_xkernel.py 58  freestanding kernel booting on QEMU
-  test_lsp.py     11  language server over stdio
+  test_lsp.py     25  language server over stdio
   test_docs.py    33  doc examples really run, links + api.json stay in sync
 """
 import os

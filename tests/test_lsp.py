@@ -172,9 +172,9 @@ with tempfile.TemporaryDirectory() as d:
     mdir = os.path.join(d, "pkg")
     os.mkdir(mdir)
     with open(os.path.join(mdir, "mymod.hs"), "w") as f:
-        f.write("def double(x):\n  return x * 2\n")
+        f.write("def double(x):\n  return x * 2\n\nPI = 3\n")
     main = os.path.join(mdir, "main.hs")
-    msrc = "import mymod\n\nprint mymod.double(2)\n"
+    msrc = "import mymod\n\nprint mymod.double(2)\nprint mymod.PI\n"
     with open(main, "w") as f:
         f.write(msrc)
     c = Client()
@@ -192,7 +192,114 @@ with tempfile.TemporaryDirectory() as d:
           loc and loc["uri"].endswith("mymod.hs"), loc)
     c.close()
 
-    # 8. formatting canonicalizes
+    # 8. module members: hover + completion after "mymod."
+    c = Client()
+    uri = c.open(main, msrc)
+    h = c.request("textDocument/hover",
+                  {"textDocument": {"uri": uri},
+                   "position": {"line": 2, "character": 8}})
+    check("hover mod.attr function",
+          h and "def double(x)" in h["contents"]["value"]
+          and "mymod.hs" in h["contents"]["value"], h)
+    h = c.request("textDocument/hover",
+                  {"textDocument": {"uri": uri},
+                   "position": {"line": 3, "character": 8}})
+    check("hover mod.attr variable",
+          h and "`PI`" in h["contents"]["value"], h)
+    r = c.request("textDocument/completion",
+                  {"textDocument": {"uri": uri},
+                   "position": {"line": 2, "character": 7}})
+    labels = [i["label"] for i in r["items"]]
+    check("member completion", "double" in labels and "PI" in labels, labels)
+    check("member completion excludes params", "x" not in labels, labels)
+    c.close()
+
+    # 9. references: same file + cross file, with declaration
+    c = Client()
+    rsrc = ("def add(a, b):\n  return a + b\n\n"
+            "def twice(x):\n  return add(x, x)\n\nprint add(1, 2)\n")
+    rpath = os.path.join(mdir, "refs.hs")
+    with open(rpath, "w") as f:
+        f.write(rsrc)
+    uri = c.open(rpath, rsrc)
+    refs = c.request("textDocument/references",
+                     {"textDocument": {"uri": uri},
+                      "position": {"line": 6, "character": 6},
+                      "context": {"includeDeclaration": True}})
+    lines = sorted(r["range"]["start"]["line"] for r in refs)
+    check("references same file", lines == [0, 4, 6], lines)
+    # references on mymod.double: declared in mymod.hs, used in main.hs
+    refs = c.request("textDocument/references",
+                     {"textDocument": {"uri": uri},
+                      "position": {"line": 0, "character": 5},
+                      "context": {"includeDeclaration": True}})
+    check("references own declaration",
+          any(r["uri"].endswith("refs.hs") and
+              r["range"]["start"]["line"] == 0 for r in refs), refs)
+    c.close()
+
+    c = Client()
+    uri = c.open(main, msrc)
+    refs = c.request("textDocument/references",
+                     {"textDocument": {"uri": uri},
+                      "position": {"line": 2, "character": 8},
+                      "context": {"includeDeclaration": True}})
+    check("references cross file",
+          any(r["uri"].endswith("main.hs") for r in refs)
+          and any(r["uri"].endswith("mymod.hs") for r in refs), refs)
+    c.close()
+
+    # 10. document highlight: definition line + current line
+    c = Client()
+    uri = c.open(rpath, rsrc)
+    hl = c.request("textDocument/documentHighlight",
+                   {"textDocument": {"uri": uri},
+                    "position": {"line": 4, "character": 10}})
+    lines = sorted(h["range"]["start"]["line"] for h in hl)
+    check("document highlight", lines == [0, 4], lines)
+    kinds = {h["range"]["start"]["line"]: h["kind"] for h in hl}
+    check("highlight marks definition read-only", kinds.get(0) == 1
+          and kinds.get(4) == 2, kinds)
+    c.close()
+
+    # 11. signature help for builtin and user function
+    c = Client()
+    uri = c.open(rpath, rsrc)
+    sig = c.request("textDocument/signatureHelp",
+                    {"textDocument": {"uri": uri},
+                     "position": {"line": 6, "character": 11}})
+    labels = [s["label"] for s in sig["signatures"]]
+    check("signature help user fn", "add(a, b)" in labels, labels)
+    sig2 = c.request("textDocument/signatureHelp",
+                     {"textDocument": {"uri": uri},
+                      "position": {"line": 4, "character": 15}})
+    check("signature help after comma",
+          sig2 and sig2["signatures"][0]["activeParameter"] == 1, sig2)
+    c.close()
+
+    # 11b. signature help for a builtin
+    c = Client()
+    bsrc = "print range(10)\n"
+    bpath = os.path.join(d, "bi.hs")
+    with open(bpath, "w") as f:
+        f.write(bsrc)
+    uri = c.open(bpath, bsrc)
+    sig = c.request("textDocument/signatureHelp",
+                    {"textDocument": {"uri": uri},
+                     "position": {"line": 0, "character": 12}})
+    check("signature help builtin",
+          sig and "range(n)" in sig["signatures"][0]["label"], sig)
+    c.close()
+
+    # 12. workspace symbols across the directory
+    c = Client()
+    uri = c.open(main, msrc)
+    syms = c.request("workspace/symbol", {"query": "double"})
+    files = {s["location"]["uri"].split("/")[-1] for s in syms}
+    check("workspace symbol", files == {"mymod.hs"}, files)
+    c.close()
+
+    # 13. formatting canonicalizes
     c = Client()
     ugly = os.path.join(d, "ugly.hs")
     with open(ugly, "w") as f:
@@ -203,6 +310,21 @@ with tempfile.TemporaryDirectory() as d:
                    "options": {"tabSize": 2, "insertSpaces": True}})
     check("formatting", r and r[0]["newText"] == "def add(a, b):\n  return a + b\n",
           r)
+    c.close()
+
+    # 14. didSave re-publishes diagnostics
+    c = Client()
+    with open(good, "w") as f:
+        f.write(src)
+    uri = c.open(good, src)
+    c.diags.clear()
+    c.notify("textDocument/didSave",
+             {"textDocument": {"uri": uri}, "text": "print 1 +\n"})
+    r = c.request("textDocument/documentSymbol",
+                  {"textDocument": {"uri": uri}})
+    msgs = [x["message"] for p in c.diags for x in p["diagnostics"]]
+    check("didSave republishes diagnostics",
+          any("expression expected" in m for m in msgs), msgs)
     c.close()
 
 print(f"{total - fails}/{total} passed")
