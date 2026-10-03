@@ -194,6 +194,13 @@ allocator, never frees. Type errors print `type error` and exit(1)/halt.
 Inside `unsafe:` values stay raw machine words (literals untagged);
 use `as_ptr(x)` / `as_int(x)` to cross from tagged dynamic values.
 
+Crossing the boundary (x64):
+- safe -> unsafe: pass a **tagged Int**; `as_ptr(n)` yields a raw pointer.
+- unsafe -> safe: `return <raw>` and `as_int(p)` re-box into a tagged Int, so
+  the value can be printed/compared outside `unsafe:`.
+- a raw pointer parked in a safe variable is NOT printable (its low bits read
+  as a heap tag): convert with `as_int` first.
+
 ## Gotchas (read twice)
 
 1. `//` starts a comment. Always.

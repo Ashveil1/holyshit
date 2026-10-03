@@ -324,7 +324,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (68)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (69)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -376,6 +376,7 @@
 - `set_cr3 wants set_cr3(pml4)`
 - `split wants split(s) or split(s, sep)`
 - `strings not allowed in unsafe`
+- `strings not allowed in unsafe (use unsafe: outside)`
 - `struct '{xs}' has no field '{e['name']}'`
 - `struct '{xs}' has no field '{obj['name']}'`
 - `struct '{xs}' has no field '{x['name']}'`
@@ -400,4 +401,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 360 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 361 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

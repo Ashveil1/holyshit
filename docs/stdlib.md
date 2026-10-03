@@ -48,6 +48,25 @@ print std.str.starts_with("holyshit", "holy")
 
 รันบน x64 ได้ (โชว์ closure ด้วย)
 
+## std.bitmap — bit set บน byte (สำหรับ frame allocator, GDT/IDT slot)
+
+bit `i` อยู่ที่ byte `i / 8` mask `1 << (i % 8)` — ทุกฟังก์ชันรับ base เป็น
+Int address (จาก `alloc()`) และใช้แค่ `load8/store8` จึงรันได้ทุก backend
+
+| ฟังก์ชัน | ทำอะไร |
+|---|---|
+| `bit_get/set/clear/toggle(base, i)` | อ่าน/เขียน/สลับบิตเดียว |
+| `bit_reserve(base, start, count)` / `bit_release(...)` | ทำเครื่องหมายช่วงบิต |
+| `bit_count_used(base, nbits)` | นับบิตที่ใช้ |
+| `bit_find(base, nbits)` / `bit_find_from(..., start)` | บิตว่างแรก, `-1` ถ้าเต็ม |
+| `bit_run_free(base, start, want)` | จำนวนบิตว่างติดกันจาก `start` |
+| `bit_alloc_run(base, nbits, want, start)` | หาช่วงว่าง `want` ติดกัน, `-1` ถ้าไม่พอ |
+| `bit_take(base, nbits, start, want)` | `alloc_run` + ทำเครื่องหมายทันที |
+| `bitmap_bytes(nbits)` | จำนวน byte ที่ต้องใช้ |
+
+> หมายเหตุ x64: ชื่อระดับโมดูลถูก resolve แบบ static — **ต้องนิยามฟังก์ชันที่ถูกเรียก
+> ก่อนตัวที่เรียกมัน** (เรียงลำดับในไฟล์ให้ถูก)
+
 ## std.heap — malloc/free บน unsafe (สไตล์ K&R)
 
 | ฟังก์ชัน | ทำอะไร |

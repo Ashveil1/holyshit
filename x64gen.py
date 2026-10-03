@@ -1034,9 +1034,15 @@ class Gen:
             a.mov_rr("rdi", "rax")
             a.call("x_str" if fn["name"] == "str" else "x_len")
             return
+        if fn["t"] == "var" and fn["name"] == "as_int" and e["args"]:
+            # dynamic as_int yields a real Int (tagged); inside unsafe it stays
+            # a raw machine word
+            self.sev_call("as_int", e["args"], sc, mod, ln)
+            self.tag_box()
+            return
         if fn["t"] == "var" and fn["name"] in (
                 "alloc", "load8", "load32", "load64", "store8", "store32",
-                "store64", "as_ptr", "as_int"):
+                "store64", "as_ptr"):
             self.sev_call(fn["name"], e["args"], sc, mod, ln)
             return
         if fn["t"] == "var" and fn["name"] == "range":
@@ -1337,6 +1343,22 @@ class Gen:
             return
         raise HSErr(f"bad kdev {name}", ln)
 
+    def print_unsafe(self, args, sc, mod, ln):
+        """print inside unsafe: operands are raw machine words -> box each as
+        a dynamic Int (an unsafe value has no tag of its own)."""
+        a = self.a
+        for i, ar in enumerate(args):
+            if i > 0:
+                a.lea_rip("rdi", "sp_")
+                a.mov_ri32("rsi", 1)
+                self.rt_out()
+            if ar["t"] == "str":
+                raise HSErr("strings not allowed in unsafe (use unsafe: outside)",
+                            ln)
+            self.sev(ar, sc, mod)
+            self.tag_box()
+            a.call("print_val")
+
     def ev_print(self, args, sc, mod, ln):
         a = self.a
         for i, ar in enumerate(args):
@@ -1384,7 +1406,13 @@ class Gen:
         if t == "str":
             raise HSErr("strings not allowed in unsafe", ln)
         if t == "var":
+            # a parameter slot holds a tagged dynamic value (the caller wrote
+            # it), so unsafe code must unbox it; unsafe locals (`I64 x = ...`)
+            # hold raw machine words and are read as-is
+            kind, _ref = self.resolve_var(e["name"], sc, mod, ln)
             self.var_get(e["name"], sc, mod, ln)
+            if kind == "param":
+                self.unbox_int_here(ln)
             return
         if t == "deref":
             self.sev(e["val"], sc, mod)
@@ -1690,7 +1718,8 @@ class Gen:
         raise HSErr(f"{name} not in x64 subset", ln)
 
     # ----- statements -----
-    def ex(self, s, sc, mod, depth):
+    def ex(self, s, sc, mod, depth, ux=False):
+        """ux=True: inside `unsafe:` -- values are raw machine words."""
         t = s["t"]
         ln = s["line"]
         a = self.a
@@ -1700,7 +1729,10 @@ class Gen:
             self.ev(s["val"], sc, mod)
             return
         if t == "print":
-            self.ev_print(s["args"], sc, mod, ln)
+            if ux:
+                self.print_unsafe(s["args"], sc, mod, ln)
+            else:
+                self.ev_print(s["args"], sc, mod, ln)
             return
         if t == "set":
             self.ev(s["val"], sc, mod)
@@ -1710,7 +1742,13 @@ class Gen:
             if depth == 0:
                 raise HSErr("return outside function", ln)
             if s["val"] is not None:
-                self.ev(s["val"], sc, mod)
+                if ux:
+                    # unsafe values are raw: evaluate statically, then box the
+                    # machine word as the dynamic Int the caller expects
+                    self.sev(s["val"], sc, mod)
+                    self.tag_box()
+                else:
+                    self.ev(s["val"], sc, mod)
             else:
                 a.mov_ri64("rax", Gen.HS_NULL)
             # value first (interp order), then unwind this function's trys
@@ -2259,7 +2297,7 @@ class Gen:
                     a.jmp(lab_t)
                     a.label(lab_x)
             elif t in ("return", "break", "continue"):
-                self.ex(x, sc, mod, depth)
+                self.ex(x, sc, mod, depth, ux=True)
             elif t == "raise":
                 # raise is always dynamic: same codegen inside unsafe
                 self.ex(x, sc, mod, depth)
@@ -2301,6 +2339,35 @@ class Gen:
         a.movzx_eax_al()
         a.shl_ri8("rax", 3)
         a.or_ri8("rax", 2)
+
+    def unbox_int_here(self, ln):
+        """rax = tagged value -> raw Int payload (raise when not an Int)."""
+        a = self.a
+        lab_bad, lab_end = self.new_tmp("ub"), self.new_tmp("ub")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("ne", lab_bad)
+        a.sar_ri8("rax", 2)
+        a.jmp(lab_end)
+        a.label(lab_bad)
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr("cannot use "))
+        a.mov_ri32("rsi", 11)
+        a.call("x_str_at")
+        a.pop_r("rcx")
+        a.call("x_tname")
+        a.mov_rr("rsi", "rax")
+        a.lea_rip("rdi", self.rstr("cannot use "))
+        a.mov_ri32("rdx", 11)
+        a.call("x_str_cat")
+        a.lea_rip("rdi", self.rstr(" as I64"))
+        a.mov_ri32("rdx", 7)
+        a.call("x_str_cat")
+        a.mov_rr("rdi", "rax")
+        a.mov_ri32("rsi", ln)
+        a.jmp("hs_raise_msg")
+        a.label(lab_end)
 
     def check_int(self, err, reg="rax"):
         """If reg is not a tagged Int, run err() (a zero-arg callable emitting
@@ -3208,7 +3275,7 @@ class Gen:
         a.lea_rip("rcx", self.rstr("+-*/"))
         a.add_rr("rax", "rcx")
         a.mov_mr("rbp", "rax", -40)    # op ptr
-        a.lea_rip("rdi", self.rstr("ZZZMARKZZZ"))
+        a.lea_rip("rdi", self.rstr("operator '"))
         a.mov_ri32("rsi", 10)
         a.call("x_str_at")
         a.mov_mr("rbp", "rax", -48)    # t
