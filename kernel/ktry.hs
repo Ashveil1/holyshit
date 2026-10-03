@@ -43,3 +43,27 @@ while i < 3:
   finally:
     print "k-it"
 print "ktry-done"
+
+# error inside an except must still run that try's finally before unwinding
+try:
+  try:
+    raise "k-inner"
+  except as e:
+    print e
+    raise "k-outer"
+  finally:
+    print "k-fin-before-rethrow"
+except as e:
+  print e
+
+try:
+  try:
+    raise "k-inner2"
+  except as e:
+    print e
+    y = 1 + "a"
+  finally:
+    print "k-fin-before-typeerror"
+except as e:
+  print e
+print "k-end"

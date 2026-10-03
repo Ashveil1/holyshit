@@ -109,3 +109,27 @@ try:
 except as e:
   print e
 print "done"
+
+# a raise inside an except must still run that try's finally (interp parity)
+try:
+  try:
+    raise "boom"
+  except as e:
+    print "saw", e
+    raise "rethrown"
+  finally:
+    print "fin-before-rethrow"
+except as e:
+  print "outer saw", e
+
+try:
+  try:
+    raise "boom"
+  except as e:
+    print "saw", e
+    q = 1 + "a"
+  finally:
+    print "fin-before-typeerror"
+except as e:
+  print "outer saw", e
+print "end"

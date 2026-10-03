@@ -321,12 +321,16 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 - freestanding runtime: serial COM1, bump heap คงที่ 16MB ที่ 32MB, halt,
   IDT 48 gates + PIC remap + PIT 100Hz + keyboard scancode map, `ticks/readkey/pmm_*`,
   ค่าแบบ tagged ชุดเดียวกับ hosted (Str/Bool/Null/List ใช้ได้จริงบน bare metal)
+- `finally` รันทุกทางออกรวมถึง **error ที่เกิดใน `except` ของ try ตัวเดิม** — ทั้ง
+  native (`hs.py build`) และ x64 (`hs_try_push0` ซ้อนเป็น handler ชั้นที่สอง
+  แล้ว `hs_reraise`) ทำให้ตรงกับ interp; เทส regression อยู่ใน
+  `tests/t_finally.hs`, `tests/x64/try.hs`, `kernel/ktry.hs`
 - `kernel/xdemo.hs`, `kx2.hs` (timer/keyboard/PMM), `kxstr.hs` (Str บน serial),
   `kxlist.hs` (List: literal/append/index/`==`/`for`/`str()` บน serial),
   `kimp.hs`+`kmod_h.hs` (import + `mod.attr` บน bare metal),
   `kxexc_pf/de.hs` (EXC 14 / EXC 0), `ktry.hs` (try/except/finally/raise บน serial)
   `kxslice.hs` (slicing + split/find/join บน serial)
-  + `tests/test_xkernel.py`: **58/58 ผ่าน**
+  + `tests/test_xkernel.py`: **62/62 ผ่าน**
 - เหลือ: paging แบบไดนามิก (map/unmap page), frame allocator + `std.heap` ใน kernel,
   scheduler, filesystem, user mode
 
@@ -390,4 +394,4 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 ### 15.5 สถานะเทสหลังเฟส 7
 
 `test.py` 35 · `test_native.py` 36 · `test_fmt.py` 2 · `test_x64.py` 25 ·
-`test_xkernel.py` 58 · `test_lsp.py` 25 · `test_docs.py` 33
+`test_xkernel.py` 62 · `test_lsp.py` 25 · `test_docs.py` 33

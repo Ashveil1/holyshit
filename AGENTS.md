@@ -81,7 +81,8 @@ def fib(n):
 
 `if/elif/else`, `while`, `for x in LIST|range()|dict-keys`, `break`/`continue`.
 `try:` / [`except:` [`as e`]] / [`finally:`] — need at least one of except/finally.
-`e` is a Str `"msg at line N"`. `finally` runs on every exit (native too).
+`e` is a Str `"msg at line N"`. `finally` runs on every exit — including when
+the `except` handler itself raises (all backends: interp, gcc, x64, kernel).
 `raise "msg"` throws (Str only); bare `raise` re-throws inside `except`
 (function boundaries reset it — don't rely on bare `raise` across calls).
 

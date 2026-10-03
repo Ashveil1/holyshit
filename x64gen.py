@@ -1921,6 +1921,15 @@ class Gen:
             a.label(lab_handler)
             # the error sits on top of the exception value stack
             if has_except:
+                lab_hfail = lab_hok = None
+                if has_finally:
+                    # an error inside the handler must still run this try's
+                    # finally: guard the handler with its own frame, run the
+                    # finally, then rethrow (interp parity)
+                    lab_hfail, lab_hok = self.new_tmp("tr"), self.new_tmp("tr")
+                    a.call("hs_try_push0")
+                    a.test_rr("rax", "rax")
+                    a.jcc("ne", lab_hfail)
                 self._except_stack.append(lab_handler)
                 try:
                     if ename is not None:
@@ -1941,6 +1950,15 @@ class Gen:
                             self.var_set(ename, sc, mod, ln)
                 finally:
                     self._except_stack.pop()
+                if has_finally:
+                    a.call("hs_try_pop")
+                    a.jmp(lab_hok)
+                    a.label(lab_hfail)
+                    # the stale original error below the new one is dropped by
+                    # the rethrow's stack truncation; no explicit pop needed
+                    self._emit_fbody(sc, mod, depth, s["fbody"])
+                    a.call("hs_reraise")
+                    a.label(lab_hok)
                 a.call("hs_exc_pop")
                 if has_finally:
                     self._emit_fbody(sc, mod, depth, s["fbody"])

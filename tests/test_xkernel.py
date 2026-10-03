@@ -129,8 +129,15 @@ with tempfile.TemporaryDirectory() as d:
     if rc == 0 and QEMU is not None:
         out = boot(kt, timeout=8)
         for line in ("k-try", "cannot add Int and Str", "k-boom",
-                     "k-fin", "k-zero", "k-clean", "k-after", "ktry-done"):
+                     "k-fin", "k-zero", "k-clean", "k-after", "ktry-done",
+                     "k-fin-before-rethrow", "k-fin-before-typeerror",
+                     "k-end"):
             check(f"ktry serial has {line!r}", line in out, out[-800:])
+        # finally must run before the error keeps unwinding
+        order = [out.find(x) for x in ("k-fin-before-rethrow",
+                                       "k-outer at line")]
+        check("ktry finally runs before rethrow unwinds",
+              all(i >= 0 for i in order) and order[0] < order[1], order)
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

@@ -27,4 +27,4 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
   (ดู `SPEC-v1.md` หัวข้อ OS)
 - `ticks` เริ่มนับหลังบูต; keyboard คือ scancode ชุด 1 (ไม่มี shift)
 
-เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (58 เคส)
+เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (62 เคส)

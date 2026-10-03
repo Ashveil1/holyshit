@@ -24,3 +24,10 @@ unsafe-boom at line 100
 inner-fin
 deep at line 106
 done
+saw boom at line 116
+fin-before-rethrow
+outer saw rethrown at line 119
+saw boom at line 127
+fin-before-typeerror
+outer saw cannot add Int and Str at line 130
+end

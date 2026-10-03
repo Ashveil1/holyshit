@@ -42,6 +42,7 @@ except as e:               # e เป็น Str "msg at line N"
   print e
 finally:
   cleanup()                 # ต้องมี except หรือ finally อย่างน้อยตัวหนึ่ง
+                            # finally รันแม้ handler จะ raise ต่อ
 
 raise "msg"                 # Str เท่านั้น; ใน except ใช้ raise ซ้ำได้
 import mod.sub              # หาใน: โฟลเดอร์โปรแกรม -> HSPATH -> cwd
