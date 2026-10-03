@@ -124,7 +124,10 @@ List values (literals, `+` concat, `len`, `append`, `==`, indexing incl.
 negative, `l[i] = v`, `range()` materializes a List), Bool, `null`,
 `not/and/or`, `if/elif/else`, `while`, `for` (`for i in range([a,] b)` lowers to a
 counter loop; `for x in <str|list>` yields elements), `break`/`continue`,
-`def` (recursion + closures), `import` (real file or dotted package; module
+`def` (recursion + closures), `try`/`except`/`finally`/`raise` (full interp
+parity incl. dynamic messages with line numbers; `except as e` binds
+`"msg at line N"`; bare `raise` re-raises lexically; setjmp/longjmp over a
+fixed 256-frame handler stack), `import` (real file or dotted package; module
 body runs once via guarded init, parent-first; `mod.attr` read + write,
 `print mod` → `<module name>`; HSPATH + program-dir lookup; circular imports
 are a compile error), `global` (module/function globals from functions),
@@ -132,11 +135,18 @@ are a compile error), `global` (module/function globals from functions),
 `len()`, `print` (lists print as `[a, b]`, nested), `unsafe:` I64/U64/Ptr +
 structs, kernel builtins above.
 
-Missing (compile error, on purpose): Float, Dict, `try`,
+Missing (compile error, on purpose): Float, Dict,
 slicing, attribute access on values (only modules have attrs), `extern`,
 `split`/`find`/`join`. Modules are compile-time only: passing a module as a
 value (`f = mymod`, `x = pkg.mod`) is an error — use `mod.attr`. `/` truncates
 like C here, not hs. Out-of-range indexing reports `index out of range`.
+
+Errors: every dynamic failure carries `message at line N` (uncaught prints
+`error: message at line N`, exit 1) — operator/index/len/call messages name
+the runtime types, unknown reads report `unknown variable 'x'`; exotic combos
+(Str vs Func compare, `str(func)`) fall back to generic `type error`. Locals
+start UNBOUND; call arity is unchecked (documented gap). Freestanding integer
+divide hits hardware #DE (`EXC 0`, halt) instead of a catchable error.
 
 Value representation: low 2 bits are the tag — `01` Int (`v<<2|1`),
 `10` Bool (0x02/0x0A), `11` Null (0x03)/Unbound (0x0B), `00` heap object

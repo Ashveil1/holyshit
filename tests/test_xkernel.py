@@ -113,6 +113,15 @@ with tempfile.TemporaryDirectory() as d:
         out = boot(ki, timeout=8)
         for line in ("42", "kmod", "kimp-done"):
             check(f"kimp serial has {line!r}", line in out, out[-800:])
+    # try/except/finally/raise on bare metal
+    kt = os.path.join(d, "kt.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "ktry.hs"), kt)
+    check("ktry build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kt, timeout=8)
+        for line in ("k-try", "cannot add Int and Str", "k-boom",
+                     "k-fin", "k-zero", "k-clean", "k-after", "ktry-done"):
+            check(f"ktry serial has {line!r}", line in out, out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

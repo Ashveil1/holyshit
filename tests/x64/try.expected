@@ -1,0 +1,26 @@
+ok1
+cannot add Int and Str at line 10
+unknown variable 'nosuchvar' at line 2
+index out of range at line 22
+inner-done
+division by zero at line 30
+not callable: Int at line 35
+0
+loop-done
+body
+fin
+x at line 56
+fin2
+cleanup
+zero
+1
+cleanup
+after
+5
+negative! at line 76
+caught
+inner at line 92
+unsafe-boom at line 100
+inner-fin
+deep at line 106
+done

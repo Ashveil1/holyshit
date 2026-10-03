@@ -374,6 +374,13 @@ class Asm:
         self.fixups.append((len(self.code), label, "riprel"))
         self.code += b"\0\0\0\0"
 
+    def dec_mrip(self, label):
+        # dec qword [rip+label]
+        self.code += bytes([0x48, 0xFF])
+        self._modrm(0, 1, 5)
+        self.fixups.append((len(self.code), label, "riprel"))
+        self.code += b"\0\0\0\0"
+
     def iretq(self):
         self.code += bytes([0x48, 0xCF])
 
@@ -446,6 +453,13 @@ class Asm:
 
     def call_rax(self):
         self.code += bytes([0xFF, 0xD0])
+
+    def jmp_r(self, r):
+        # jmp r64 (FF /4)
+        rn, rb = _rn(r)
+        self._rex(False, b=rb)
+        self.code.append(0xFF)
+        self._modrm(3, 4, rn)
 
     def ret(self):
         self.code.append(0xC3)

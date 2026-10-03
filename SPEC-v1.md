@@ -284,21 +284,29 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
   `int()`/`len()`, `print` (List ซ้อนกันได้), unsafe I64/U64/Ptr + struct;
   `/` ตัดทศนิยมแบบ C; index เกินขอบ = `index out of range`;
   โมดูลเป็น compile-time only (ส่งโมดูลเป็น value ไม่ได้ — ใช้ `mod.attr`)
+- exceptions แบบเต็ม (`try`/`except`/`finally`/`raise`): setjmp/longjmp เขียนเอง
+  บน handler stack คงที่ 256 เฟรม (ไม่ใช้ libc), error ทุกจุดมี message + line
+  ตรง interp (`cannot add Int and Str`, `unknown variable 'x'`, `not callable`,
+  `len of`, `not iterable` ฯลฯ ผ่าน `x_tname` + ตัวสร้าง string);
+  `except as e` ผูก `"msg at line N"`, bare `raise` re-raise แบบ lexical;
+  `break`/`continue`/`return` ใน try รัน finally + pop handler ถูกต้อง;
+  uncaught พิมพ์ `error: msg at line N` exit 1; reads ที่ไม่เคย assign เป็น
+  UNBOUND แล้ว error ตอนอ่าน (ไม่ใช่ขยะจาก stack)
 - runtime: bump allocator บน mmap arena 16MB (align 16, ไม่ free — แบบ kernel heap),
   ขยาย arena อัตโนมัติเมื่อเต็ม, `alloc` ใหญ่กว่า 16MB ได้ arena ของตัวเอง
-- วัดจริงบน i7-6700HQ (TSC 2592MHz): fib(25) 0.005s (gcc-Val 0.021s, interp 3.79s),
+- วัดจริงบน i7-6700HQ (TSC 2592MHz): fib(25) ~0.007-0.012s (gcc-Val 0.021s, interp 3.79s),
+  (เคย 0.005s ก่อนใส่ error-check + unbound-check ทุกจุด — จ่ายค่า diagnostics),
   binary 4KB เทียบ 77KB; timer-IRQ latency (SIGALRM, `scripts/irq_lat.py`):
   @2ms med 2000us p99 +100us max +116us, @500us p99 +37us max +70us
   (เลขนี้คือ Linux shared laptop ไม่ใช่ bare metal — bare metal ควรอยู่ระดับ ~1-5us)
   (fib เพิ่มจาก 0.003s เป็น 0.005s หลังเพิ่ม tag arithmetic — จ่ายค่า representation)
-- ยังไม่มี: Float/Dict, try, extern, slice, attr บนค่า (มี attr ได้เฉพาะโมดูล),
+- ยังไม่มี: Float/Dict, extern, slice, attr บนค่า (มี attr ได้เฉพาะโมดูล),
   argv, `split`/`find`/`join`, `asm()` (ใช้ไม่ได้กับ encoder ของตัวเอง) —
   เป็น compile error ชัดเจน
 - ใน `unsafe:` ค่ายังเป็น machine word ดิบ (literal ไม่ถูก tag) — ใช้ `as_ptr(x)` /
   `as_int(x)` เป็นสะพานจากค่า dynamic
 - `hs.py xbuild prog.hs [-o prog]` / `hs.py xrun prog.hs`, เทส `tests/test_x64.py`
-  (**16/16**: + modimport, modpkg, err_mod_nofind/circ/attr/value;
-  `mod_*` = helper ไม่รันตรง)
+  (**19/19**: + try, err_raise/raisetype; `mod_*` = helper ไม่รันตรง)
 
 ## 14. Kernel freestanding ด้วย x64 backend ล้วน (เฟส 6b — ไม่ใช้ gcc/as/ld)
 
@@ -311,6 +319,7 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 - `kernel/xdemo.hs`, `kx2.hs` (timer/keyboard/PMM), `kxstr.hs` (Str บน serial),
   `kxlist.hs` (List: literal/append/index/`==`/`for`/`str()` บน serial),
   `kimp.hs`+`kmod_h.hs` (import + `mod.attr` บน bare metal),
-  `kxexc_pf/de.hs` (EXC 14 / EXC 0) + `tests/test_xkernel.py`: **38/38 ผ่าน**
+  `kxexc_pf/de.hs` (EXC 14 / EXC 0), `ktry.hs` (try/except/finally/raise บน serial)
+  + `tests/test_xkernel.py`: **47/47 ผ่าน**
 - เหลือ: paging แบบไดนามิก (map/unmap page), frame allocator + `std.heap` ใน kernel,
   scheduler, filesystem, user mode
