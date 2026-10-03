@@ -60,6 +60,10 @@ Editor configs (VS Code / Neovim / Helix / Zed) live in `editors/`.
 `List` (mixed ok) `Dict` (Str keys only) `Func` (first-class).
 
 - `+`: numbers (Int+Float→Float), Str+Str concat, List+List concat. Else runtime error.
+- `& | ^ << >>` and `~x` are **bitwise, Int only** (Bool is not an Int), shift
+  count must be 0..63, `>>` is arithmetic. Bitwise binds tighter than `+ -`
+  and looser than `* / %`. x64 Int is 62-bit signed, so bit 61 is the sign
+  bit: `1 << 61` is negative there and positive on interp.
 - `== !=` work across types (just false). `< > <= >=` need same kind (Str ok).
 - Truthiness: `false null 0 "" [] {}` are false, everything else true.
 - Index: `a[i]` (negative ok), `d["k"]`, slice `s[a:b]`/`s[:b]`/`s[a:]` (Str+List).

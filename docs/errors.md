@@ -28,7 +28,7 @@
 | `dict not in x64 subset` | ใช้ Dict ฝั่ง x64/kernel | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (203)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (208)
 
 - `'{d['name']}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -77,6 +77,8 @@
 - `cannot assign into {tname(obj)}`
 - `cannot assign to this`
 - `cannot assign to this in unsafe (use *p = v for memory)`
+- `cannot bitwise-not Ptr`
+- `cannot bitwise-not {tname(v)}`
 - `cannot call '{name}' from unsafe (only: {', '.join(sorted(UNSAFE_BUILTINS))})`
 - `cannot call result of expression from unsafe`
 - `cannot compare I64 and U64 (convert explicitly)`
@@ -176,6 +178,7 @@
 - `open failed: {e.strerror or e}`
 - `open mode must be "r" or "w"`
 - `open wants open(path, mode)`
+- `operator '{op}' needs Ints, got {tname(l)} and {tname(r)}`
 - `operator '{op}' needs numbers, got {tname(l)} and {tname(r)}`
 - `pmm_alloc wants pmm_alloc(npages)`
 - `pmm_alloc: out of memory`
@@ -188,6 +191,8 @@
 - `read_text failed: {e.strerror or e}`
 - `readkey takes no args`
 - `scalar type '{ft.v}' cannot use '*'`
+- `shift count {b} out of range (0..63)`
+- `shift count {r} out of range (0..63)`
 - `sizeof wants a type, got '{tn.v}'`
 - `slice index must be Int`
 - `slicing not allowed in unsafe`
@@ -234,7 +239,7 @@
 - `{want} arg count mismatch`
 - `{what} wants an open socket`
 
-## hs.py — native backend ผ่าน gcc (81)
+## hs.py — native backend ผ่าน gcc (82)
 
 - `'{n}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -265,6 +270,7 @@
 - `cannot access field of {pt} (need a struct pointer)`
 - `cannot apply '{op}' to pointers`
 - `cannot assign to extern '{s['name']}'`
+- `cannot bitwise-not Ptr`
 - `cannot box {t}`
 - `cannot call '{got}' from unsafe (only: {', '.join(sorted(UNSAFE_BUILTINS))})`
 - `cannot compare I64 and U64 (convert explicitly)`
@@ -318,7 +324,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (65)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (68)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -354,7 +360,9 @@
 - `float not in x64 subset`
 - `in module '{name}': {e.msg}`
 - `int wants 1 arg`
+- `invlpg wants invlpg(vaddr)`
 - `join wants join(sep, list)`
+- `mb_info takes no args`
 - `module '{m['name']}' has no attribute '{e['name']}'`
 - `module '{m['name']}' has no attribute '{name}'`
 - `module '{name}' is not a first-class value in x64 subset (use mod.attr)`
@@ -365,6 +373,7 @@
 - `range wants range(n) or range(a, b)`
 - `readkey takes no args`
 - `return outside function`
+- `set_cr3 wants set_cr3(pml4)`
 - `split wants split(s) or split(s, sep)`
 - `strings not allowed in unsafe`
 - `struct '{xs}' has no field '{e['name']}'`
@@ -391,4 +400,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 351 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 360 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

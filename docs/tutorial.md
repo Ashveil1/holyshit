@@ -94,6 +94,19 @@ print not ""
 # => true
 ```
 
+bitwise ใช้ได้กับ Int เท่านั้น (Bool ไม่นับ):
+
+```hs
+mask = 0xFF
+v = 0x1234
+print v & mask
+print v | 0xF0
+print v ^ 0xFFFF
+print ~v
+print 1 << 10
+print 1024 >> 3
+```
+
 ## 5. error กับ try
 
 ```hs

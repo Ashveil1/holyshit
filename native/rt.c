@@ -290,6 +290,52 @@ Val v_mod(Val a, Val b, int line) {
     return v_int(r);
 }
 
+static void need_ints(const char *op, Val a, Val b, int line) {
+    // bitwise is Int-only (Bool is not an Int, matching interp)
+    if (a.tag != T_INT || b.tag != T_INT)
+        hs_err(line, "operator '%s' needs Ints, got %s and %s", op,
+               hs_tname(a), hs_tname(b));
+}
+
+static int64_t shift_count(Val b, const char *op, int line) {
+    need_ints(op, v_int(0), b, line);
+    int64_t n = b.tag == T_INT ? b.u.i : b.u.b;
+    if (n < 0 || n > 63)
+        hs_err(line, "shift count %lld out of range (0..63)", (long long)n);
+    return n;
+}
+
+Val v_and(Val a, Val b, int line) {
+    need_ints("&", a, b, line);
+    return v_int(a.u.i & b.u.i);
+}
+
+Val v_or(Val a, Val b, int line) {
+    need_ints("|", a, b, line);
+    return v_int(a.u.i | b.u.i);
+}
+
+Val v_xor(Val a, Val b, int line) {
+    need_ints("^", a, b, line);
+    return v_int(a.u.i ^ b.u.i);
+}
+
+Val v_shl(Val a, Val b, int line) {
+    need_ints("<<", a, b, line);
+    return v_int(a.u.i << shift_count(b, "<<", line));
+}
+
+Val v_shr(Val a, Val b, int line) {
+    need_ints(">>", a, b, line);
+    return v_int(a.u.i >> shift_count(b, ">>", line));  // arithmetic, like C
+}
+
+Val v_bnot(Val v, int line) {
+    if (v.tag == T_INT)
+        return v_int(~v.u.i);
+    hs_err(line, "cannot bitwise-not %s", hs_tname(v));
+}
+
 Val v_neg(Val v, int line) {
     if (v.tag == T_INT)
         return v_int(-v.u.i);

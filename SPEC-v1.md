@@ -426,7 +426,7 @@ printer พิมพ์คอมเมนต์ไม่ได้ — lexer ท�
 
 ### 15.7 สถานะเทสหลังเฟส 7
 
-`test.py` 35 · `test_native.py` 36 · `test_fmt.py` 4 · `test_x64.py` 25 ·
+`test.py` 37 · `test_native.py` 38 · `test_fmt.py` 4 · `test_x64.py` 27 ·
 `test_xkernel.py` 62 · `test_examples.py` 17 · `test_lsp.py` 25 ·
 `test_docs.py` 38 (รันครบทุกชุด: `python3 tests/run_all.py`)
 
@@ -442,3 +442,18 @@ printer พิมพ์คอมเมนต์ไม่ได้ — lexer ท�
 - `hs fmt` เก็บการเขียนเลขฐานสิบหกไว้ (`0x83` ไม่กลายเป็น `131`) เพราะ flag ของ
   page table ต้องอ่านออก — parser เก็บ `raw` ของ literal, printer ใช้ตัวนั้น
 - เทส: interp 36 · native 37 · x64 26 (เพิ่มไฟล์ใหม่ทั้งคู่)
+
+### 15.9 bitwise operators (v0.6.1)
+
+OS ต้องบิดขวดบิต (bitmap, page flags) ภาษาเดิมทำไม่ได้เลย รอบนี้เพิ่ม
+`& | ^ << >>` กับ unary `~`
+
+- ทั้ง 3 backend + error เดียวกัน: `operator 'OP' needs Ints, got A and B`,
+  `shift count N out of range (0..63)`, `cannot bitwise-not T` (Bool ไม่ใช่ Int)
+- ความสำคัญ: `or` < `and` < เทียบ < `+ -` < `* / %` < bitwise — bitwise ผูก
+  แน่นกว่า `+ -` (ตรงกับ C) และ parser มีชั้น `parse_bits` แยก
+- x64: `shl/sar` ตาม cl, ตัดผลให้เหลือ 62-bit signed (bit 61 เป็นบิตเครื่องหมาย)
+  จึงมี divergence ที่บันทึกไว้: `1 << 61` เป็นลบบน x64 แต่เป็นบวกบน interp
+- `hs fmt` เพิ่ม precedence + เว้นวรรคให้ `& | ^ << >>` และเก็บวงเล็บเมื่อ
+  จำเป็น (`a & (b | c)`) — กฎเดิมคือ flatten ได้เฉพาะ `+`/`*` ฝั่งขวา
+- เทส: `tests/t_bits.hs` (interp+native), `tests/x64/bits.hs` (x64)

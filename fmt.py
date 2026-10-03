@@ -17,7 +17,10 @@ from interp import HSErr
 _BIN_PREC = {
     "or": 1, "and": 2,
     "==": 3, "!=": 3, "<": 3, ">": 3, "<=": 3, ">=": 3,
-    "+": 4, "-": 4, "*": 5, "/": 5, "%": 5,
+    "+": 4, "-": 4,
+    "*": 5, "/": 5, "%": 5,
+    # bitwise binds tighter than +- and looser than */ (same as interp)
+    "<<": 6, ">>": 6, "&": 6, "|": 6, "^": 6,
 }
 
 
@@ -25,10 +28,12 @@ def _prec(e):
     if e["t"] == "bin":
         return _BIN_PREC[e["op"]]
     if e["t"] == "not":
-        return 6
-    if e["t"] == "neg":
         return 7
-    return 8  # atoms, calls, index, ...
+    if e["t"] == "neg":
+        return 8
+    if e["t"] == "unot":
+        return 8
+    return 9  # atoms, calls, index, ...
 
 
 def esc(s):
@@ -79,9 +84,11 @@ def fmt_expr(e):
     if t == "dict":
         return "{" + ", ".join(f"{fmt_expr(k)}: {fmt_expr(v)}" for k, v in e["pairs"]) + "}"
     if t == "neg":
-        return "-" + _atom(e["val"], 7)
+        return "-" + _atom(e["val"], 8)
     if t == "not":
-        return "not " + _atom(e["val"], 6)
+        return "not " + _atom(e["val"], 7)
+    if t == "unot":
+        return "~" + _atom(e["val"], 8)
     if t == "bin":
         p = _BIN_PREC[e["op"]]
         l = _side(e["l"], p, "l", e["op"])
@@ -90,15 +97,15 @@ def fmt_expr(e):
     if t == "call":
         return fmt_expr(e["fn"]) + "(" + ", ".join(fmt_expr(a) for a in e["args"]) + ")"
     if t == "index":
-        return f"{_atom(e['obj'], 8)}[{fmt_expr(e['idx'])}]"
+        return f"{_atom(e['obj'], 9)}[{fmt_expr(e['idx'])}]"
     if t == "slice":
         s = "" if e["start"] is None else fmt_expr(e["start"])
         p = "" if e["stop"] is None else fmt_expr(e["stop"])
-        return f"{_atom(e['obj'], 8)}[{s}:{p}]"
+        return f"{_atom(e['obj'], 9)}[{s}:{p}]"
     if t == "attr":
-        return f"{_atom(e['obj'], 8)}.{e['name']}"
+        return f"{_atom(e['obj'], 9)}.{e['name']}"
     if t == "field":
-        s = f"{_atom(e['obj'], 8)}.{e['name']}"
+        s = f"{_atom(e['obj'], 9)}.{e['name']}"
         if e["idx"] is not None:
             s += f"[{fmt_expr(e['idx'])}]"
         return s
@@ -120,7 +127,9 @@ def _side(e, parent, side, op):
     c = _prec(e)
     if c < parent:
         return f"({fmt_expr(e)})"
-    if c == parent and side == "r" and op in ("-", "/", "%", "<", ">", "<=", ">="):
+    # right operand at equal precedence: only + and * are safe to flatten
+    # (a & (b | c) must keep its parens, as must a - (b - c))
+    if c == parent and side == "r" and op not in ("+", "*"):
         return f"({fmt_expr(e)})"
     return fmt_expr(e)
 

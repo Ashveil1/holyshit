@@ -267,7 +267,7 @@ class Gen:
         if t == "var":
             self.reads.append((sc, e["name"]))
             return
-        if t in ("neg", "not", "deref"):
+        if t in ("neg", "not", "unot", "deref"):
             self.ann_expr(e["val"], sc, ux)
             return
         if t == "bin":
@@ -452,6 +452,19 @@ class Gen:
             self.truthy()
             a.setcc_al("e")
             self.box_bool_al()
+            return
+        if t == "unot":
+            self.ev(e["val"], sc, mod)
+            lab_bad, lab_done = self.new_tmp("un"), self.new_tmp("un")
+            self.check_int(lambda: a.jmp(lab_bad))
+            a.sar_ri8("rax", 2)
+            a.not_rr("rax")
+            self.trunc62()
+            self.tag_box()
+            a.jmp(lab_done)
+            a.label(lab_bad)
+            self.raise_unop(9, ln)  # 9 = "cannot bitwise-not T"
+            a.label(lab_done)
             return
         if t == "bin":
             self.ev_bin(e, sc, mod)
@@ -822,6 +835,9 @@ class Gen:
             a.pop_r("rax")
             self.emit_add(ln)
             return
+        if op in ("<<", ">>", "&", "|", "^"):
+            self.emit_bitop(op, e, sc, mod, ln, True)
+            return
         # - * / % : Int only (else "operator OP needs numbers, got A and B")
         opcodes = {"-": 1, "*": 2, "/": 3, "%": 4}
         self.ev(e["l"], sc, mod)
@@ -1158,13 +1174,15 @@ class Gen:
                 "float", "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
                 "readkey", "pmm_alloc", "pmm_total",
-                "pmm_free", "meminfo",
+                "pmm_free", "meminfo", "mb_info", "cr2", "cr3",
+                "set_cr3", "invlpg",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "read_text", "write_text", "append_text",
                 "exists", "ls", "mkdir", "json_load", "json_save", "asm"):
             if self.freestanding and fn["name"] in (
-                    "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free"):
+                    "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
+                    "mb_info", "cr2", "cr3", "set_cr3", "invlpg"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
@@ -1287,6 +1305,36 @@ class Gen:
                 a.mov_rm("rax", "rax", 0)
             self.tag_box()
             return
+        # --- memory introspection / paging primitives (raw machine words) ---
+        if name == "mb_info":
+            if args:
+                raise HSErr("mb_info takes no args", ln)
+            # physical address of the multiboot info struct saved by the
+            # 32-bit stub before it switched modes
+            a.lea_rip("rax", "mbinfo_")
+            a.mov_rm("rax", "rax", 0)
+            self.tag_box()
+            return
+        if name in ("cr2", "cr3"):
+            if args:
+                raise HSErr(f"{name} takes no args", ln)
+            a.mov_rcr64("rax", 2 if name == "cr2" else 3)
+            self.tag_box()
+            return
+        if name == "set_cr3":
+            if len(args) != 1:
+                raise HSErr("set_cr3 wants set_cr3(pml4)", ln)
+            self.sev(args[0], sc, mod)  # raw pointer value
+            a.mov_cr64(3, "rax")
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "invlpg":
+            if len(args) != 1:
+                raise HSErr("invlpg wants invlpg(vaddr)", ln)
+            self.sev(args[0], sc, mod)  # raw vaddr in rax
+            a.code += bytes([0x0F, 0x01, 0x38])  # invlpg [rax]
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
         raise HSErr(f"bad kdev {name}", ln)
 
     def ev_print(self, args, sc, mod, ln):
@@ -1351,6 +1399,10 @@ class Gen:
             a.test_rr("rax", "rax")
             a.setcc_al("e")
             a.movzx_eax_al()
+            return
+        if t == "unot":
+            self.sev(e["val"], sc, mod)
+            a.not_rr("rax")
             return
         if t == "sizeof":
             st = e["stype"]
@@ -1423,9 +1475,85 @@ class Gen:
         self.sev(e, sc, mod)
         self.a.push_r("rax")
 
+    BIT_OPS = ("<<", ">>", "&", "|", "^")
+
+    def trunc62(self):
+        """Keep the low 62 bits of rax as a signed value (x64 Int payload).
+        shl 2 drops the top two bits; sar 2 re-sign-extends from bit 61."""
+        a = self.a
+        a.shl_ri8("rax", 2)
+        a.sar_ri8("rax", 2)
+
+    def emit_bitop(self, op, e, sc, mod, ln, dynamic):
+        """bitwise on Ints.
+
+        dynamic=True  -> operands/results are tagged Ints (safe code path)
+        dynamic=False -> operands/results are raw machine words (unsafe path)
+        Type and shift-count errors use interp's wording.
+        """
+        a = self.a
+        evalfn = self.ev if dynamic else self.sev
+        evalfn(e["l"], sc, mod)
+        a.push_r("rax")
+        evalfn(e["r"], sc, mod)
+        a.mov_rr("rcx", "rax")
+        a.pop_r("rax")               # rax = l, rcx = r
+        if dynamic:
+            lab_body, lab_err = self.new_tmp("be"), self.new_tmp("be")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("ne", lab_err)
+            a.mov_rr("r11", "rcx")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("ne", lab_err)
+            a.jmp(lab_body)
+            a.label(lab_err)         # never returns
+            a.lea_rip("rdi", self.rstr(op))
+            a.mov_ri32("r8", len(op))
+            a.mov_rr("rsi", "rax")
+            a.mov_rr("rdx", "rcx")
+            a.mov_ri32("r9", ln)
+            a.jmp("hs_bitop_err")
+            a.label(lab_body)
+            a.sar_ri8("rax", 2)
+            a.sar_ri8("rcx", 2)
+        if op in ("<<", ">>"):
+            lab_sh, lab_bad = self.new_tmp("be"), self.new_tmp("be")
+            a.cmp_ri32("rcx", 63)      # interp range: 0..63
+            a.jcc("le", lab_sh)
+            a.jmp(lab_bad)
+            a.label(lab_sh)
+            a.test_rr("rcx", "rcx")
+            a.jcc("s", lab_bad)        # negative count -> interp's error
+            lab_end = self.new_tmp("be")
+            if op == "<<":
+                a.shl_cl("rax")
+                self.trunc62()
+            else:
+                a.sar_cl("rax")       # arithmetic, like C on signed Int
+            a.jmp(lab_end)
+            a.label(lab_bad)
+            a.mov_rr("rdi", "rcx")     # raw count -> build the message
+            a.mov_ri32("rsi", ln)
+            a.jmp("hs_shift_err")     # never returns
+            a.label(lab_end)
+        elif op == "&":
+            a.and_rr("rax", "rcx")
+        elif op == "|":
+            a.or_rr("rax", "rcx")
+        else:
+            a.xor_rr("rax", "rcx")
+        if dynamic:
+            self.tag_box()
+
     def sev_bin(self, e, sc, mod):
         op, ln = e["op"], e["line"]
         a = self.a
+        if op in self.BIT_OPS:
+            self.emit_bitop(op, e, sc, mod, ln, False)
+            return
         if op in ("and", "or"):
             self.sev(e["l"], sc, mod)
             a.test_rr("rax", "rax")
@@ -1488,7 +1616,8 @@ class Gen:
     def is_raw_expr(self, e):
         """True when the expression is already an untagged machine value."""
         t = e["t"]
-        if t in ("num", "deref", "field", "sizeof", "bin", "neg", "not"):
+        if t in ("num", "deref", "field", "sizeof", "bin", "neg", "not",
+                 "unot"):
             return True
         if t == "call" and e["fn"]["t"] == "var" and e["fn"]["name"] in (
                 "alloc", "load8", "load32", "load64", "store8", "store32",
@@ -2523,6 +2652,10 @@ class Gen:
                 self.a.data_qword(0)
             self.a.data_label("pmm_free_")
             self.a.data_qword(32768)
+            # physical address of the multiboot info struct, written by the
+            # 32-bit stub (EBX) before the long-mode jump
+            self.a.data_label("mbinfo_")
+            self.a.data_qword(0)
             # IDT (48 gates) + IDTR filled by build_xkernel
             self.reserve("idt_", 48 * 16)
             self.reserve("idtr_", 10)
@@ -2904,6 +3037,33 @@ class Gen:
             a.jmp("hs_error")
         else:
             a.jmp("hs_fatal_msgline")
+        # hs_shift_err(rdi=raw count, rsi=line): `shift count N out of range
+        # (0..63)` -- never returns.
+        a.label("hs_shift_err")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # count
+        a.mov_mr("rbp", "rsi", -16)     # line
+        a.lea_rip("rdi", self.rstr("shift count "))
+        a.mov_ri32("rsi", 12)
+        a.call("x_str_at")
+        a.mov_mr("rbp", "rax", -24)     # t
+        a.mov_rm("rdi", "rbp", -8)
+        a.call("x_num_to_str")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -24)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -24)
+        a.lea_rip("rdi", self.rstr(" out of range (0..63)"))
+        a.mov_ri32("rsi", 21)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -24)
+        a.call("x_str_cat")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -16)
+        a.jmp("hs_raise_msg")
         # hs_raise_msg(rdi=Str, rsi=line): raise an already-built message.
         a.label("hs_raise_msg")
         a.mov_rr("rdx", "rsi")         # line
@@ -2965,6 +3125,58 @@ class Gen:
         # hs_binop_err(rdi=code, rsi=l, rdx=r, rcx=line): dynamic binop message.
         # code: 0 = "cannot add A and B"; 1..4 = "operator 'OP' needs numbers,
         # got A and B" (OP from "+-*/"); 5 = "cannot compare A and B".
+        # hs_bitop_err(rdi=op ptr, r8=op len, rsi=l, rdx=r, r9=line):
+        # `operator 'OP' needs Ints, got L and R` -- never returns.
+        a.label("hs_bitop_err")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 80)
+        a.mov_mr("rbp", "rdi", -8)      # op ptr
+        a.mov_mr("rbp", "r8", -16)      # op len
+        a.mov_mr("rbp", "rsi", -24)     # l
+        a.mov_mr("rbp", "rdx", -32)     # r
+        a.mov_mr("rbp", "r9", -40)      # line
+        # "operator '" + op + "' needs Ints, got " + tname(l) + " and " + tname(r)
+        # built exactly like hs_binop_err: one live Str kept in a stack slot
+        a.lea_rip("rdi", self.rstr("operator '"))
+        a.mov_ri32("rsi", 10)
+        a.call("x_str_at")
+        a.mov_mr("rbp", "rax", -48)     # t
+        a.mov_rm("rdi", "rbp", -8)      # op
+        a.mov_rm("rsi", "rbp", -16)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -48)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -48)
+        a.lea_rip("rdi", self.rstr("' needs Ints, got "))
+        a.mov_ri32("rsi", 18)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -48)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -48)
+        a.mov_rm("rdi", "rbp", -24)
+        a.call("x_tname")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -48)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -48)
+        a.lea_rip("rdi", self.rstr(" and "))
+        a.mov_ri32("rsi", 5)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -48)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -48)
+        a.mov_rm("rdi", "rbp", -32)
+        a.call("x_tname")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -48)
+        a.call("x_str_cat")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -40)
+        a.jmp("hs_raise_msg")
         a.label("hs_binop_err")
         a.push_r("rbp")
         a.mov_rr("rbp", "rsp")
@@ -2996,7 +3208,7 @@ class Gen:
         a.lea_rip("rcx", self.rstr("+-*/"))
         a.add_rr("rax", "rcx")
         a.mov_mr("rbp", "rax", -40)    # op ptr
-        a.lea_rip("rdi", self.rstr("operator '"))
+        a.lea_rip("rdi", self.rstr("ZZZMARKZZZ"))
         a.mov_ri32("rsi", 10)
         a.call("x_str_at")
         a.mov_mr("rbp", "rax", -48)    # t
@@ -3053,6 +3265,7 @@ class Gen:
         lab_u0, lab_u1, lab_u2 = self.new_tmp("ue"), self.new_tmp("ue"), self.new_tmp("ue")
         lab_u3, lab_u4, lab_u5 = self.new_tmp("ue"), self.new_tmp("ue"), self.new_tmp("ue")
         lab_u6, lab_u7 = self.new_tmp("ue"), self.new_tmp("ue")
+        lab_u9 = self.new_tmp("ue")
         lab_ugo = self.new_tmp("ue")
         a.cmp_ri32("rdi", 0)
         a.jcc("e", lab_u0)
@@ -3068,6 +3281,8 @@ class Gen:
         a.jcc("e", lab_u5)
         a.cmp_ri32("rdi", 6)
         a.jcc("e", lab_u6)
+        a.cmp_ri32("rdi", 9)
+        a.jcc("e", lab_u9)
         a.jmp(lab_u7)
         for lab_u, txt in ((lab_u0, "len of "), (lab_u1, "cannot index "),
                            (lab_u2, "cannot assign into "),
@@ -3075,7 +3290,8 @@ class Gen:
                            (lab_u4, "cannot convert "),
                            (lab_u5, "not iterable: "),
                            (lab_u6, "cannot negate "),
-                           (lab_u7, "cannot slice ")):
+                           (lab_u7, "cannot slice "),
+                           (lab_u9, "cannot bitwise-not ")):
             a.label(lab_u)
             a.lea_rip("rdi", self.rstr(txt))
             a.mov_ri32("rsi", len(txt))
@@ -4740,6 +4956,8 @@ def build_xkernel(prog_path, out_path):
     b.mov_ri32_abs(4, "STACK_TOP")  # esp; patched below (abs32 to constant)
     b.mov_rr(6, 0)   # esi = eax (magic)
     b.mov_rr(2, 3)   # edx = ebx (info)
+    # stash the multiboot info pointer before edx is reused by rdmsr
+    b.mov_mr_abs("MBINFO", 2)
     b.mov_ri32_abs(0, "PML4")
     b.mov_cr(3, 0)
     b.mov_rcr(0, 4)
@@ -4781,6 +4999,7 @@ def build_xkernel(prog_path, out_path):
     b.labels["STACK_TOP"] = stack_top - KBASE  # abs32 -> base + this
     b.labels["PML4"] = (A(tbl_off) - KBASE)
     b.labels["GDT_PTR"] = (A(gdt_off + len(gdt)) - KBASE)
+    b.labels["MBINFO"] = (A(dat_off + asm64.data_labels["mbinfo_"]) - KBASE)
     boot_bin = b.resolve(KBASE)
     # far jmp target: long_mode at payload start
     lm_addr = A(pay_off) + asm64.labels["long_mode"]

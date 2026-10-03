@@ -70,10 +70,10 @@ print sin(0.0)
 
 ```sh
 python3 tests/run_all.py         # ทุกชุด (ข้าม kernel ด้วย --quick)
-python3 tests/test.py          # interpreter (35 ชุด)
-python3 tests/test_native.py   # native binary (36 ชุด, ผลต้องตรง interp)
+python3 tests/test.py          # interpreter (37 ชุด)
+python3 tests/test_native.py   # native binary (38 ชุด, ผลต้องตรง interp)
 python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec+ทั้ง repo)
-python3 tests/test_x64.py      # backend x86-64 ตรง (25 ชุด, static ELF, ไม่ใช้ gcc)
+python3 tests/test_x64.py      # backend x86-64 ตรง (27 ชุด, static ELF, ไม่ใช้ gcc)
 python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (62 เคส)
 python3 tests/test_examples.py # ตัวอย่างทุกไฟล์ยังรันได้จริง (17)
 python3 tests/test_lsp.py      # language server ผ่าน stdio (25 เคส)

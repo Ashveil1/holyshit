@@ -411,7 +411,7 @@ SC = re.compile(r"""
   | (?P<hex>0[xX][0-9a-fA-F]+)
   | (?P<int>[0-9]+)
   | (?P<id>[A-Za-z_][A-Za-z0-9_]*)
-  | (?P<op>==|!=|<=|>=|[+\-*/%<>=(){}\[\],:.])
+  | (?P<op><<|>>|==|!=|<=|>=|[+\-*/%<>=&|^~(){}\[\],:.])
   | (?P<ws>[ \t]+)
 """, re.X)
 
@@ -996,11 +996,20 @@ def parse_cmp(p):
     return out
 
 
-def parse_add(p):
+def parse_bits(p):
+    # bitwise binds tighter than +- and looser than */: a & b + c == (a & b) + c
     l = parse_mul(p)
-    while p.at("OP") and p.peek().v in ("+", "-"):
+    while p.at("OP") and p.peek().v in ("<<", ">>", "&", "|", "^"):
         t = p.next()
         l = N("bin", t.line, op=t.v, l=l, r=parse_mul(p))
+    return l
+
+
+def parse_add(p):
+    l = parse_bits(p)
+    while p.at("OP") and p.peek().v in ("+", "-"):
+        t = p.next()
+        l = N("bin", t.line, op=t.v, l=l, r=parse_bits(p))
     return l
 
 
@@ -1013,6 +1022,9 @@ def parse_mul(p):
 
 
 def parse_un(p):
+    if p.at("OP", "~"):
+        t = p.next()
+        return N("unot", t.line, val=parse_un(p))
     if p.at("OP", "-"):
         t = p.next()
         return N("neg", t.line, val=parse_un(p))
@@ -1163,6 +1175,10 @@ def is_num(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
+def is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
 def ev(e, env):
     t = e["t"]
     ln = e["line"]
@@ -1188,6 +1204,11 @@ def ev(e, env):
         if is_num(v):
             return -v
         raise HSErr(f"cannot negate {tname(v)}", ln)
+    if t == "unot":
+        v = ev(e["val"], env)
+        if not is_int(v):
+            raise HSErr(f"cannot bitwise-not {tname(v)}", ln)
+        return wrap_i64(~v)
     if t == "not":
         return not ev(e["val"], env)
     if t == "bin":
@@ -1251,6 +1272,21 @@ def ev_bin(e, env):
         return l if l else ev(e["r"], env)
     l = ev(e["l"], env)
     r = ev(e["r"], env)
+    if op in ("<<", ">>", "&", "|", "^"):
+        if not is_int(l) or not is_int(r):
+            raise HSErr(f"operator '{op}' needs Ints, got "
+                        f"{tname(l)} and {tname(r)}", ln)
+        if op == "&":
+            return l & r
+        if op == "|":
+            return l | r
+        if op == "^":
+            return l ^ r
+        if r < 0 or r > 63:
+            raise HSErr(f"shift count {r} out of range (0..63)", ln)
+        if op == "<<":
+            return wrap_i64(l << r)
+        return l >> r      # arithmetic shift, like C on signed Int
     if op == "+":
         if is_num(l) and is_num(r):
             if isinstance(l, float) or isinstance(r, float):
@@ -1395,6 +1431,11 @@ def sev(e, env):
         if st == "I64":
             return ("I64", wrap_i64(-sv))
         return ("U64", wrap_u64(-sv))
+    if t == "unot":
+        st, sv = sev(e["val"], env)
+        if is_ptr(st):
+            raise HSErr("cannot bitwise-not Ptr", ln)
+        return (st, wrap_i64(~sv) if st != "U64" else wrap_u64(~sv))
     if t == "not":
         st, sv = sev(e["val"], env)
         return ("I64", 0 if sv != 0 else 1)
@@ -1532,6 +1573,20 @@ def sev_bin(e, env):
         r = abs(a) % abs(b)
         if a < 0:
             r = -r
+    elif op == "&":
+        r = a & b
+    elif op == "|":
+        r = a | b
+    elif op == "^":
+        r = a ^ b
+    elif op == "<<":
+        if b < 0 or b > 63:
+            raise HSErr(f"shift count {b} out of range (0..63)", ln)
+        r = a << b
+    elif op == ">>":
+        if b < 0 or b > 63:
+            raise HSErr(f"shift count {b} out of range (0..63)", ln)
+        r = a >> b
     else:
         raise HSErr(f"bad operator {op}", ln)
     return (tgt, wrap_i64(r) if tgt == "I64" else wrap_u64(r))

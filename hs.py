@@ -407,7 +407,7 @@ class Gen:
         if t == "var":
             e["_res"] = self.resolve(e["name"], scope, e["line"])
             return
-        if t in ("neg", "not", "deref"):
+        if t in ("neg", "not", "unot", "deref"):
             self.scan_expr(e["val"], scope, ux)
             return
         if t == "bin":
@@ -752,6 +752,12 @@ class Gen:
         if t == "not":
             st, sc, _ = self.emit_sexpr(e["val"], scope, out)
             return ("I64", f"((int64_t)(!({sc})))", None)
+        if t == "unot":
+            from interp import is_ptr
+            st, sc, _ = self.emit_sexpr(e["val"], scope, out)
+            if is_ptr(st):
+                raise HSErr("cannot bitwise-not Ptr", ln)
+            return (st, f"((int64_t)(~({sc})))", None)
         if t == "sizeof":
             from interp import HS_STRUCTS
             st = e["stype"]
@@ -1070,6 +1076,11 @@ class Gen:
             tmp = self.new_tmp()
             out.append(f"{V}Val {tmp} = v_not({a});")
             return tmp
+        if t == "unot":
+            a = self.emit_expr(e["val"], scope, out)
+            tmp = self.new_tmp()
+            out.append(f"{V}Val {tmp} = v_bnot({a}, {ln});")
+            return tmp
         if t == "deref":
             raise HSErr("deref only allowed in unsafe", ln)
         if t == "bin":
@@ -1097,7 +1108,9 @@ class Gen:
                 return tmp
             fn = {"+": "v_add", "-": "v_sub", "*": "v_mul", "/": "v_div",
                   "%": "v_mod", "<": "v_lt",
-                  ">": "v_gt", "<=": "v_le", ">=": "v_ge"}[op]
+                  ">": "v_gt", "<=": "v_le", ">=": "v_ge",
+                  "&": "v_and", "|": "v_or", "^": "v_xor",
+                  "<<": "v_shl", ">>": "v_shr"}[op]
             out.append(f"{V}Val {tmp} = {fn}({l}, {r}, {ln});")
             return tmp
         if t == "call":

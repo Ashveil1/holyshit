@@ -71,6 +71,19 @@ global x                    # เขียนชื่อระดับ module 
 `and or not` (คืน operand ไม่ใช่ Bool), `a[i]`, `a[i] = v`,
 `s[a:b]` (ค่าติดลบได้), `len(x)`
 
+bitwise (Int เท่านั้น — Bool ไม่ใช่ Int):
+
+```hs
+print 6 & 3, 6 | 3, 6 ^ 3
+print ~0
+print 1 << 10
+print 1024 >> 3
+print 0x83 & ~0x10
+```
+
+ผลคือ `2 7 5` / `-1` / `1024` / `128` / `131`
+bitwise ผูกแน่นกว่า `+ -` แต่หลวมกว่า `* / %`; shift count ต้อง 0..63
+
 - `+` ได้กับ Int+Float, Str+Str, List+List — ผสมชนิด = error
 - `< >` ต้องเป็นชนิดเดียวกัน (Str เทียบกันได้)
 - `str + int` ผิดเสมอ ต้อง `str(x) + str(y)` (ไม่มี implicit)

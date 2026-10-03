@@ -227,6 +227,26 @@ class Asm:
     def lea_rip(self, d, label):
         self._rm(0x8D, d, "rip", rip_label=label)
 
+    # ----- control registers / TLB (long mode only) -----
+
+    def mov_rcr64(self, rd, cr):
+        # mov r64, crX (REX.W; control regs zero-extend into the 64-bit reg)
+        self.code.append(0x48)
+        self.code += bytes([0x0F, 0x20])
+        self._modrm(3, cr & 7, _rn(rd)[0])
+
+    def mov_cr64(self, cr, rs):
+        # mov crX, r64 (the CPU only reads the low 32 bits of rs)
+        self.code.append(0x48)
+        self.code += bytes([0x0F, 0x22])
+        self._modrm(3, cr & 7, _rn(rs)[0])
+
+    def invlpg_r(self, base):
+        # invlpg [base] -- base must not be rsp/r12 (no SIB byte emitted)
+        assert base not in ("rsp", "r12"), "invlpg needs a non-rsp base"
+        self.code += bytes([0x0F, 0x01])
+        self._modrm(0, 7, _rn(base)[0])
+
     def lea_m(self, d, base, disp=0, index=None, scale=1):
         self._rm(0x8D, d, base, disp, index, scale)
 
@@ -324,6 +344,25 @@ class Asm:
 
     def sar_ri8(self, d, imm):
         self._shift_ri8(7, d, imm)
+
+    def _shift_cl(self, ext, d):
+        """shift d by cl (count must already be in cl)"""
+        dn, db = _rn(d)
+        self._rex(True, b=db)
+        self.code.append(0xD3)
+        self._modrm(3, ext, dn)
+
+    def shl_cl(self, d):
+        self._shift_cl(4, d)
+
+    def sar_cl(self, d):
+        self._shift_cl(7, d)
+
+    def not_rr(self, d):
+        dn, db = _rn(d)
+        self._rex(True, b=db)
+        self.code.append(0xF7)
+        self._modrm(3, 2, dn)
 
     def test_rr(self, d, s):
         dn, db = _rn(d)
