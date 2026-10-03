@@ -40,6 +40,8 @@ class Gen:
         self.reads = []  # (scope, name) var reads for capture analysis
         self.all_fs = []  # function scopes in scan order
         self.flabels = {}  # id(fs) -> code label
+        self.mod_bindings = {}  # (id(scope), name) -> mod dict (import bindings)
+        self.shell_mods = {}  # dotted name -> empty package mod (no body)
 
     # ----- modules -----
     def load_module(self, name, from_dir, line):
@@ -80,6 +82,9 @@ class Gen:
         def __init__(self, parent=None, is_func=False):
             self.parent = parent
             self.is_func = is_func
+            self._mod = None  # owning module dict (set by collect/build_image)
+            self.parent = parent
+            self.is_func = is_func
             self.params = []
             self.loc = {}  # dynamic name -> rbp offset (negative)
             self.uloc = {}  # unsafe static name -> rbp offset (negative)
@@ -96,7 +101,9 @@ class Gen:
             t = s["t"]
             if t == "def":
                 self.decl(sc, s["name"])
+                self.drop_binding(sc, s["name"])
                 fs = Gen.Scope(parent=sc, is_func=True)
+                fs._mod = sc._mod
                 fs.params = list(s["params"])
                 for i, pn in enumerate(fs.params):
                     # [rbp+16] holds the func struct (all calls are indirect);
@@ -107,9 +114,11 @@ class Gen:
                 s["_fs"] = fs
             elif t == "set":
                 self.ann_expr(s["val"], sc)
+                self.drop_binding(sc, s["name"])
                 self.decl(sc, s["name"])
             elif t == "for":
                 self.ann_expr(s["iter"], sc)
+                self.drop_binding(sc, s["var"])
                 self.decl(sc, s["var"])
                 # hidden loop state (frame slots, allocated now so the
                 # function prologue reserves them): range end / str obj+idx
@@ -131,13 +140,42 @@ class Gen:
             elif t == "unsafe":
                 self.collect_unsafe(s["body"], sc)
             elif t == "import":
-                raise HSErr("import not in x64 subset yet (single file for now)", s["line"])
+                srcmod = sc._mod
+                from_dir = srcmod["dir"] if srcmod else None
+                topmod, chain = self.ensure_prefixes(s["name"], from_dir, s["line"])
+                for m in chain:
+                    if m.get("collected"):
+                        continue
+                    if m.get("busy"):
+                        raise HSErr(f"circular import '{m['name']}'", s["line"])
+                    m["busy"] = True
+                    msc = Gen.Scope()
+                    msc._mod = m
+                    m["scope"] = msc
+                    try:
+                        self.collect(m["prog"], msc)
+                    finally:
+                        del m["busy"]
+                    m["collected"] = True
+                s["_mods"] = chain  # real mods, parent-first: init in order
+                top = s["name"].split(".")[0]
+                if self.resolve_var(top, sc, srcmod, s["line"])[0] is not None:
+                    raise HSErr(f"cannot import '{s['name']}': '{top}' is already defined",
+                                s["line"])
+                self.mod_bindings[(id(sc), top)] = topmod
+                # mirror interp: the imported name is also visible as an
+                # attribute of the importing module (mid.leaf works)
+                if srcmod is not None:
+                    srcmod.setdefault("imports", {})[top] = topmod
             elif t == "return":
                 if s["val"] is not None:
                     self.ann_expr(s["val"], sc)
             elif t == "setindex":
                 self.ann_expr(s["obj"], sc)
                 self.ann_expr(s["idx"], sc)
+                self.ann_expr(s["val"], sc)
+            elif t == "setattr":
+                self.ann_expr(s["obj"], sc)
                 self.ann_expr(s["val"], sc)
             elif t == "print":
                 for ar in s["args"]:
@@ -222,7 +260,12 @@ class Gen:
             self.ann_expr(e["obj"], sc, ux)
             self.ann_expr(e["idx"], sc, ux)
             return
-        if t in ("slice", "attr", "dict"):
+        if t == "attr":
+            # module attribute: base recorded for capture analysis; the
+            # attribute itself resolves statically at emit time
+            self.ann_expr(e["obj"], sc, ux)
+            return
+        if t in ("slice", "dict"):
             raise HSErr(f"{t} not in x64 subset", e["line"])
         if t == "sizeof":
             st = e["stype"]
@@ -384,8 +427,17 @@ class Gen:
         if t == "index":
             self.ev_index(e, sc, mod)
             return
-        if t in ("slice", "attr"):
-            raise HSErr(f"{t} not in x64 subset", ln)
+        if t == "attr":
+            m = self.resolve_mod_base(e["obj"], sc, mod, ln)
+            target, lab = self.mod_global(m, e["name"], ln)
+            if lab is None:
+                raise HSErr(f"module '{target['name']}' is not a first-class value"
+                            " in x64 subset (use mod.attr)", ln)
+            a.lea_rip("rax", lab)
+            a.mov_rm("rax", "rax", 0)
+            return
+        if t == "slice":
+            raise HSErr("slice not in x64 subset", ln)
         if t in ("deref", "sizeof", "field"):
             self.sev(e, sc, mod)
             return
@@ -426,6 +478,60 @@ class Gen:
                 return ("loc", s.loc[name])
             s = s.parent
         return (None, None)
+
+    def resolve_mod_base(self, e, sc, mod, ln):
+        """Attribute base -> module dict. Base is a var bound by import,
+        or a chained attr through submodules. Anything else is an error:
+        x64 values have no attributes."""
+        if e["t"] == "var":
+            cur = mod if mod is not None else sc._mod
+            if self.resolve_var(e["name"], sc, cur, ln)[0] is not None:
+                raise HSErr("attribute access is only supported on modules (x64)", ln)
+            m = self.find_binding(e["name"], sc)
+            if m is None:
+                raise HSErr(f"unknown variable '{e['name']}'", ln)
+            return m
+        if e["t"] == "attr":
+            m = self.resolve_mod_base(e["obj"], sc, mod, ln)
+            sub = m.get("submods", {}).get(e["name"])
+            if sub is None:
+                sub = m.get("imports", {}).get(e["name"])
+            if sub is None:
+                raise HSErr(f"module '{m['name']}' has no attribute '{e['name']}'", ln)
+            return sub
+        raise HSErr("attribute access is only supported on modules (x64)", ln)
+
+    def mod_global(self, m, name, ln):
+        """(target_mod, global_label) for attribute `name` on module m."""
+        sub = m.get("submods", {}).get(name)
+        if sub is not None:
+            return (sub, None)  # a submodule: first-class use is an error
+        sub = m.get("imports", {}).get(name)
+        if sub is not None:
+            return (sub, None)  # an imported module re-exported as attribute
+        msc = m.get("scope")
+        if msc is not None and (name in msc.loc or name in msc.uloc):
+            return (m, self.glabel(m, name))
+        raise HSErr(f"module '{m['name']}' has no attribute '{name}'", ln)
+
+    def try_mod_value(self, e, sc, mod):
+        """If e is a bare module reference (var/attr chain to a module),
+        return the mod dict, else None. No errors raised."""
+        try:
+            if e["t"] == "var":
+                cur = mod if mod is not None else sc._mod
+                if self.resolve_var(e["name"], sc, cur, e["line"])[0] is not None:
+                    return None
+                return self.find_binding(e["name"], sc)
+            if e["t"] == "attr":
+                m = self.resolve_mod_base(e["obj"], sc, mod, e["line"])
+                sub = m.get("submods", {}).get(e["name"])
+                if sub is not None:
+                    return sub
+                return None
+        except HSErr:
+            return None
+        return None
 
     def cap_index(self, reader, name, ln):
         cl = getattr(reader, "caplist", [])
@@ -470,12 +576,63 @@ class Gen:
                     "json_load", "json_save", "alloc", "load8", "load32",
                     "store8", "store32", "as_ptr", "as_int", "asm"):
             raise HSErr(f"builtin '{name}' is not a value (call it)", ln)
+        if self.find_binding(name, sc) is not None:
+            raise HSErr(f"module '{name}' is not a first-class value"
+                        " in x64 subset (use mod.attr)", ln)
         raise HSErr(f"unknown variable '{name}'", ln)
 
-    def find_global(self, name, sc, mod):
-        # walk to module scope: names assigned at module level live in data
-        m = mod
-        return f"g_{m['pfx']}{name}" if name in m.get("globals", ()) else None
+    def ensure_prefixes(self, fullname, from_dir, line):
+        """Load every dotted prefix of `fullname` (real file or shell package).
+
+        Returns (top_mod, chain): the bound top module and the real (non-shell)
+        modules in prefix order, so the importer can init them parent-first."""
+        if not __import__("re").match(
+                r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$", fullname):
+            raise HSErr(f"bad module name '{fullname}'", line)
+        parts = fullname.split(".")
+        chain = []
+        parent = None
+        for i, part in enumerate(parts):
+            dotted = ".".join(parts[:i + 1])
+            last = (i == len(parts) - 1)
+            try:
+                m = self.load_module(dotted, from_dir, line)
+                is_shell = False
+            except HSErr as e:
+                # only intermediate parents may be virtual packages; the
+                # imported leaf itself must exist (mirrors interp)
+                if last or f"cannot find module '{dotted}'" not in str(e):
+                    raise
+                m = self.shell_mods.get(dotted)
+                if m is None:
+                    m = {"name": dotted, "prog": [], "dir": from_dir,
+                         "pfx": "", "scope": None, "shell": True, "submods": {}}
+                    self.shell_mods[dotted] = m
+                is_shell = True
+            m.setdefault("submods", {})
+            if parent is not None:
+                parent.setdefault("submods", {})[part] = m
+            parent = m
+            if not is_shell:
+                chain.append(m)
+        topmod = self.shell_mods.get(parts[0])
+        if topmod is None:
+            # top prefix was real: find it in chain
+            topmod = next(m for m in chain if m["name"] == parts[0])
+        return topmod, chain
+
+    def find_binding(self, name, sc):
+        """Walk scope chain for an import binding -> mod dict or None."""
+        s = sc
+        while s is not None:
+            m = self.mod_bindings.get((id(s), name))
+            if m is not None:
+                return m
+            s = s.parent
+        return None
+
+    def drop_binding(self, sc, name):
+        self.mod_bindings.pop((id(sc), name), None)
 
     def ev_bin(self, e, sc, mod):
         op, ln = e["op"], e["line"]
@@ -861,6 +1018,13 @@ class Gen:
                 a.lea_rip("rdi", lab)
                 a.mov_ri32("rsi", len(b))
                 self.rt_out()
+            elif self.try_mod_value(ar, sc, mod) is not None:
+                m = self.try_mod_value(ar, sc, mod)
+                disp = f"<module {m['name']}>".encode()
+                lab = self.rstr(f"<module {m['name']}>")
+                a.lea_rip("rdi", lab)
+                a.mov_ri32("rsi", len(disp))
+                self.rt_out()
             else:
                 self.ev(ar, sc, mod)
                 a.mov_rr("rdi", "rax")
@@ -1200,8 +1364,32 @@ class Gen:
         if t == "setindex":
             self.ex_setindex(s, sc, mod)
             return
-        if t in ("global", "import", "extern", "try", "unsafe", "struct",
-                 "udecl", "store", "fstore", "raise", "setattr"):
+        if t == "import":
+            # run each imported module body once (guarded init, parent-first)
+            for m in s["_mods"]:
+                a.call(f"hsM_init_{m['pfx']}")
+            return
+        if t == "global":
+            # declaration only: resolve_var already routes globals to storage
+            return
+        if t == "setattr":
+            # module attribute assignment only (x64 values have no attrs);
+            # the base must statically resolve to a module
+            if s["obj"]["t"] not in ("var", "attr"):
+                raise HSErr("attribute assignment only supported on modules (x64)", ln)
+            m = self.resolve_mod_base(s["obj"], sc, mod, ln)
+            target, lab = self.mod_global(m, s["name"], ln)
+            if lab is None:
+                raise HSErr(f"module '{target['name']}' is not a first-class value"
+                            " in x64 subset (use mod.attr)", ln)
+            self.ev(s["val"], sc, mod)
+            a.push_r("rax")
+            a.lea_rip("rcx", lab)
+            a.pop_r("rax")
+            a.mov_mr("rcx", "rax", 0)
+            return
+        if t in ("extern", "try", "unsafe", "struct",
+                 "udecl", "store", "fstore", "raise"):
             raise HSErr(f"{t} handled elsewhere or not in x64 subset", ln)
         raise HSErr(f"bad stmt {t}", ln)
 
@@ -1604,6 +1792,22 @@ class Gen:
         a.pop_r("rbp")
         a.ret()
 
+    def emit_mod_init(self, m):
+        # guarded one-time module body: first call runs it, later calls ret
+        a = self.a
+        done = f"hsM_done_{m['pfx']}"
+        a.label(f"hsM_init_{m['pfx']}")
+        a.lea_rip("rax", done)
+        a.mov_rm("rcx", "rax", 0)
+        a.test_rr("rcx", "rcx")
+        lab_done = self.new_tmp("mi")
+        a.jcc("ne", lab_done)
+        a.mov_ri32("rcx", 1)
+        a.mov_mr("rax", "rcx", 0)
+        self.ex_body(m["prog"], m["scope"], m, 0)
+        a.label(lab_done)
+        a.ret()
+
     def emit_data(self, mod):
         a = self.a
         ms = mod["scope"]
@@ -1681,19 +1885,26 @@ class Gen:
     def build_image(self, mod):
         # assign function labels, collect, emit everything, link
         ms = mod["scope"]
+        ms._mod = mod
         self.collect(mod["prog"], ms)
         for i, fs in enumerate(self.all_fs):
             self.flabels[id(fs)] = f"hsF_{i}"
         self.finalize(mod)
-        self.emit_data(mod)
+        for m in [mod] + [x for x in self.modules if x.get("collected")]:
+            self.emit_data(m)
+            if m is not mod:
+                self.a.data_label(f"hsM_done_{m['pfx']}")
+                self.a.data_qword(0)
         if self.freestanding:
             self.emit_runtime_fs()
         else:
             self.emit_runtime()
         if self.freestanding:
             self.emit_irq_stubs()
-        for s in self._def_nodes(mod):
-            self.emit_func(self.flabels[id(s["_fs"])], s, s["_fs"], mod)
+        for m in [x for x in self.modules if x.get("collected")]:
+            self.emit_mod_init(m)
+        for s, themod in self._def_nodes(mod):
+            self.emit_func(self.flabels[id(s["_fs"])], s, s["_fs"], themod)
         self.emit_main(mod)
         # rodata: strings + sp/nl (sp_/nl_ labels for separators)
         self.a.label("sp_")
@@ -1759,23 +1970,26 @@ class Gen:
 
     def _def_nodes(self, mod):
         out = []
-        def walk(body):
+        def walk(body, themod):
             for s in body:
                 if s["t"] == "def":
-                    out.append(s)
-                    walk(s["body"])
+                    out.append((s, themod))
+                    walk(s["body"], themod)
                 elif s["t"] == "if":
-                    walk(s["then"])
+                    walk(s["then"], themod)
                     for _, eb in s["elifs"]:
-                        walk(eb)
-                    walk(s["els"])
+                        walk(eb, themod)
+                    walk(s["els"], themod)
                 elif s["t"] == "while":
-                    walk(s["body"])
+                    walk(s["body"], themod)
                 elif s["t"] == "for":
-                    walk(s["body"])
+                    walk(s["body"], themod)
                 elif s["t"] == "unsafe":
-                    walk(s["body"])
-        walk(mod["prog"])
+                    walk(s["body"], themod)
+        walk(mod["prog"], mod)
+        for m in self.modules:
+            if m.get("collected"):
+                walk(m["prog"], m)
         return out
 
     def k_write(self):

@@ -124,13 +124,19 @@ List values (literals, `+` concat, `len`, `append`, `==`, indexing incl.
 negative, `l[i] = v`, `range()` materializes a List), Bool, `null`,
 `not/and/or`, `if/elif/else`, `while`, `for` (`for i in range([a,] b)` lowers to a
 counter loop; `for x in <str|list>` yields elements), `break`/`continue`,
-`def` (recursion + closures), `str()` (incl. lists → `[1, x]`), `int()`,
+`def` (recursion + closures), `import` (real file or dotted package; module
+body runs once via guarded init, parent-first; `mod.attr` read + write,
+`print mod` → `<module name>`; HSPATH + program-dir lookup; circular imports
+are a compile error), `global` (module/function globals from functions),
+`str()` (incl. lists → `[1, x]`), `int()`,
 `len()`, `print` (lists print as `[a, b]`, nested), `unsafe:` I64/U64/Ptr +
 structs, kernel builtins above.
 
-Missing (compile error, on purpose): Float, Dict, `try`, `import`,
-slicing, attribute access, `extern`, `split`/`find`/`join`. `/` truncates like C
-here, not hs. Out-of-range indexing reports `index out of range`.
+Missing (compile error, on purpose): Float, Dict, `try`,
+slicing, attribute access on values (only modules have attrs), `extern`,
+`split`/`find`/`join`. Modules are compile-time only: passing a module as a
+value (`f = mymod`, `x = pkg.mod`) is an error — use `mod.attr`. `/` truncates
+like C here, not hs. Out-of-range indexing reports `index out of range`.
 
 Value representation: low 2 bits are the tag — `01` Int (`v<<2|1`),
 `10` Bool (0x02/0x0A), `11` Null (0x03)/Unbound (0x0B), `00` heap object

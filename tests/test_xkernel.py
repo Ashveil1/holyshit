@@ -105,6 +105,14 @@ with tempfile.TemporaryDirectory() as d:
         for line in ("[1, 2, 3]", "[1, 2, 3, 4]", "[99, 2, 3, 4]",
                      "108", "[0, 1, 2]", "klist-done"):
             check(f"kxlist serial has {line!r}", line in out, out[-800:])
+    # import on bare metal (module init + attr, no OS)
+    ki = os.path.join(d, "ki.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kimp.hs"), ki)
+    check("kimp build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(ki, timeout=8)
+        for line in ("42", "kmod", "kimp-done"):
+            check(f"kimp serial has {line!r}", line in out, out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

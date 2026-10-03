@@ -19,6 +19,8 @@ total = 0
 with tempfile.TemporaryDirectory() as d:
     for prog in sorted(glob.glob(os.path.join(HERE, "x64", "*.hs"))):
         name = os.path.splitext(os.path.basename(prog))[0]
+        if name.startswith("mod_"):
+            continue  # import helpers, built via their importers
         total += 1
         out = os.path.join(d, name)
         import io
