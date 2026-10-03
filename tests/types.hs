@@ -19,5 +19,5 @@ print not false
 print null
 print 1 == 1
 print 1 != "1"
-print 0xFF
+print 255
 print -5 + 8

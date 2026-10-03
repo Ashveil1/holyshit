@@ -6,7 +6,7 @@
 Suites:
   test.py         35  interpreter (reference semantics)
   test_native.py  36  gcc native backend, byte-identical to interp
-  test_fmt.py      2  formatter canonical + idempotent + same behavior
+  test_fmt.py      4  formatter canonical + idempotent + same behavior
   test_x64.py     25  x86-64 backend, static ELF, no gcc
   test_xkernel.py 62  freestanding kernel booting on QEMU
   test_examples.py 17  every examples/*.hs still runs (interp + native)

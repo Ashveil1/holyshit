@@ -34,6 +34,7 @@ python3 tests/run_all.py   # --quick ข้ายส่วนที่ต้อ�
 4. แตะ builtin/error/doc -> รัน `scripts/gen_api.py` / `scripts/gen_errors.py`
    แล้ว `tests/test_docs.py` (มันจะจับ drift ให้เอง)
 5. แก้ `.hs` ภายนอก -> `python3 hs.py fmt <file> -w` ก่อน commit
+   (`--check` ไม่นับคอมเมนต์/บรรทัดว่าง เทสตรวจว่าทั้ง repo canonical แล้ว)
 6. โค้ดใน `docs/*.md` ที่อยู่ในบล็อก ```hs **ถูกรันจริง** โดยเทส ห้ามเขียนตัวอย่างที่รันไม่ผ่าน
 
 ## style

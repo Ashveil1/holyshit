@@ -402,8 +402,17 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 (syntax/vim + `lua/holyshit.lua`), `editors/helix`, `editors/zed` —
 ทุกตัวชี้ไปที่ `python3 <repo>/lsp.py` คำสั่งเดียวกัน
 
-### 15.5 สถานะเทสหลังเฟส 7
+### 15.5 formatter เป็น gate จริง
 
-`test.py` 35 · `test_native.py` 36 · `test_fmt.py` 2 · `test_x64.py` 25 ·
+`hs fmt --check` เทียบเฉพาะ "โครงสร้าง" (ไม่นับคอมเมนต์และบรรทัดว่าง เพราะ
+printer พิมพ์คอมเมนต์ไม่ได้ — lexer ทิ้งไปแล้ว) และเปลี่ยนการ parse flag
+ให้รับได้ทั้ง `fmt f.hs --check` กับ `fmt --check f.hs` ตอนนี้ทั้ง repo
+เป็น canonical แล้ว และ `tests/test_fmt.py` ตรวจซ้ำทั้ง repo (ยกเว้น
+`tests/fmt/*.hs` ที่ตั้งใจให้ไม่ canonical) — เทย์ก่อนแก้โค้ดแล้วเทสแดงถ้า
+เพี้ยน
+
+### 15.6 สถานะเทสหลังเฟส 7
+
+`test.py` 35 · `test_native.py` 36 · `test_fmt.py` 4 · `test_x64.py` 25 ·
 `test_xkernel.py` 62 · `test_examples.py` 17 · `test_lsp.py` 25 ·
 `test_docs.py` 38 (รันครบทุกชุด: `python3 tests/run_all.py`)

@@ -253,6 +253,53 @@ def fmt_program(prog):
     return "\n".join(fmt_block(prog, 0)) + "\n"
 
 
+def strip_comments(src):
+    """Blank out `#` and `//` comments (string-aware), keeping line structure.
+
+    The lexer drops comments, so the printer cannot reproduce them. This lets
+    `--check` compare structure only instead of failing on every comment.
+    """
+    out = []
+    i = 0
+    n = len(src)
+    in_str = False
+    while i < n:
+        c = src[i]
+        if in_str:
+            out.append(c)
+            if c == "\\" and i + 1 < n:
+                out.append(src[i + 1])
+                i += 2
+                continue
+            if c == '"':
+                in_str = False
+            i += 1
+            continue
+        if c == '"':
+            in_str = True
+            out.append(c)
+            i += 1
+            continue
+        if c == "#" or (c == "/" and i + 1 < n and src[i + 1] == "/"):
+            while i < n and src[i] != "\n":
+                out.append(" ")
+                i += 1
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def squash(text):
+    """Canonical comparison form: comments and blank lines do not count."""
+    return "\n".join(ln.rstrip() for ln in text.split("\n") if ln.strip()) + "\n"
+
+
+def is_canonical(src, out):
+    """Would formatting change anything meaningful? (comments/blanks ignored)"""
+    return squash(strip_comments(src)) == squash(out)
+
+
 def main(argv):
     if len(argv) < 2 or argv[1] in ("-h", "--help"):
         print("usage: fmt.py prog.hs [-w]", file=sys.stderr)

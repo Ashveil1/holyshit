@@ -1683,21 +1683,9 @@ def main(argv):
         return 2
     if argv[1] == "fmt":
         import fmt as _fmt
-        if "--check" in argv:
-            with open(argv[2], encoding="utf-8") as f:
-                src = f.read()
-            try:
-                interp.reset_parse_state()
-                out = _fmt.fmt_program(interp.parse_program(src))
-            except HSErr as e:
-                print(str(e), file=sys.stderr)
-                return 1
-            if out != src:
-                print(f"unformatted: {argv[2]}", file=sys.stderr)
-                return 1
-            return 0
         write = "-w" in argv
-        files = [a for a in argv[2:] if a != "-w"]
+        check = "--check" in argv
+        files = [a for a in argv[2:] if not a.startswith("-")]
         if not files:
             print("usage: hs.py fmt prog.hs [-w|--check]", file=sys.stderr)
             return 2
@@ -1715,6 +1703,13 @@ def main(argv):
             except OSError as e:
                 print(f"{path}: cannot read: {e.strerror or e}", file=sys.stderr)
                 rc = 1
+                continue
+            if check:
+                # comments and blank lines are not reproduced by the printer,
+                # so only structure/spacing is compared
+                if not _fmt.is_canonical(src, out):
+                    print(f"unformatted: {path}", file=sys.stderr)
+                    rc = 1
                 continue
             if write:
                 with open(path, "w", encoding="utf-8") as f:

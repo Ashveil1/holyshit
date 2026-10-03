@@ -22,7 +22,7 @@ def malloc(nbytes):
   global free_head
   unsafe:
     U64 n = nbytes
-    U64 size = ((n + 7) / 8) * 8
+    U64 size = (n + 7) / 8 * 8
     Block* prev = null
     Block* cur = as_ptr(free_head)
     while cur != null:

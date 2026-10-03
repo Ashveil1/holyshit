@@ -59,5 +59,55 @@ for prog in sorted(glob.glob(os.path.join(HERE, "fmt", "*.hs"))):
         continue
     print(f"ok   {name}")
 
+# every .hs in the repo must already be canonical (comments and blank lines
+# do not count — the printer cannot reproduce them)
+total += 1
+bad = []
+# tests/fmt/*.hs are deliberately unformatted fixtures
+for sub in ("examples", "std", "tests", "tests/x64", "kernel"):
+    d = os.path.join(ROOT, sub)
+    if not os.path.isdir(d):
+        continue
+    for path in sorted(glob.glob(os.path.join(d, "*.hs"))):
+        if path.endswith(".formatted.hs"):
+            continue
+        with open(path, encoding="utf-8") as f:
+            src = f.read()
+        try:
+            interp.reset_parse_state()
+            out = _fmt.fmt_program(interp.parse_program(src))
+        except interp.HSErr:
+            continue  # syntax-error fixtures are exempt
+        if not _fmt.is_canonical(src, out):
+            bad.append(os.path.relpath(path, ROOT))
+if bad:
+    print(f"FAIL repo canonical form: {', '.join(bad)}")
+    fails += 1
+else:
+    print("ok   repo canonical form")
+
+# --check must agree with is_canonical, including odd argument order
+total += 1
+import tempfile
+with tempfile.TemporaryDirectory() as d:
+    good = os.path.join(d, "good.hs")
+    with open(good, "w", encoding="utf-8") as f:
+        f.write('# comment kept\n\ndef f(a, b):\n  return a + b\n')
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"), "fmt",
+                        good, "--check"], capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"FAIL fmt --check false positive: {r.stderr.strip()}")
+        fails += 1
+    else:
+        with open(good, "w", encoding="utf-8") as f:
+            f.write("def  f( a,b ):\n    return a  +  b\n")
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"), "fmt",
+                            "--check", good], capture_output=True, text=True)
+        if r.returncode != 0:
+            print("ok   fmt --check flags bad spacing")
+        else:
+            print("FAIL fmt --check missed bad spacing")
+            fails += 1
+
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
