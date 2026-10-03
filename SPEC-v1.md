@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.5.0 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.0 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -334,7 +334,7 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 - เหลือ: paging แบบไดนามิก (map/unmap page), frame allocator + `std.heap` ใน kernel,
   scheduler, filesystem, user mode
 
-## 15. เอกสาร + tooling (เฟส 7 — v0.5.0)
+## 15. เอกสาร + tooling (เฟส 7 — v0.5.0 → v0.6.0)
 
 เป้าหมายเฟสนี้: **ทุกคนและทุก AI เขียนภาษานี้เป็น** — เอกสารต้องไม่หลอก
 (ทุกตัวอย่างต้องรันจริงได้) และ editor ต้องช่วยได้โดยไม่ต้องลง dependency
@@ -411,7 +411,20 @@ printer พิมพ์คอมเมนต์ไม่ได้ — lexer ท�
 `tests/fmt/*.hs` ที่ตั้งใจให้ไม่ canonical) — เทย์ก่อนแก้โค้ดแล้วเทสแดงถ้า
 เพี้ยน
 
-### 15.6 สถานะเทสหลังเฟส 7
+### 15.6 v0.6.0 — ขยาย LSP + เอกสารที่ generate ได้
+
+- `resolve_parts()` ใน `lsp.py` เป็นตัวแก้ทางเดียวของชื่อแบบ dotted
+  (hover/definition/completion/references/highlight/signature ใช้ร่วมกัน)
+- เพิ่ม `references` (ข้ามไฟล์), `documentHighlight`, `signatureHelp`,
+  `workspace/symbol`, completion หลัง `mod.`, hover บน `mod.attr` ที่ชี้ไฟล์
+- บั๊ก parity 2 ตัวที่ตัวอย่างใหม่เผย: `finally` ถูกข้ามเมื่อ `except` handler
+  raise — แก้ทั้ง native (`hs.py`) และ x64/kernel (`x64gen.py`)
+- `docs/errors.md` generate จาก AST ของ source (351 ข้อความ)
+- `tests/test_examples.py` บังคับให้ตัวอย่างทุกไฟล์รันได้จริง
+- `hs fmt --check` ใช้งานได้จริง (เทียบโครงสร้าง ไม่นับคอมเมนต์) และทั้ง repo
+  ต้อง canonical
+
+### 15.7 สถานะเทสหลังเฟส 7
 
 `test.py` 35 · `test_native.py` 36 · `test_fmt.py` 4 · `test_x64.py` 25 ·
 `test_xkernel.py` 62 · `test_examples.py` 17 · `test_lsp.py` 25 ·

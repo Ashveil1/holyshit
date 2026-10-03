@@ -445,7 +445,7 @@ class Server:
                         "workspaceSymbolProvider": True,
                         "documentFormattingProvider": True,
                     },
-                    "serverInfo": {"name": "holyshit-lsp", "version": "0.5.0"},
+                    "serverInfo": {"name": "holyshit-lsp", "version": "0.6.0"},
                 })
             elif method == "initialized":
                 pass
