@@ -35,8 +35,11 @@ python3 scripts/lsp_client.py --wsym prog.hs name    # search symbols project-wi
 python3 scripts/lsp_client.py --complete prog.hs 1 4  # keyword + builtin + local names
 python3 scripts/lsp_client.py --format prog.hs --write
 python3 scripts/gen_api.py                            # regenerate docs/api.json
+python3 scripts/gen_errors.py                         # regenerate docs/errors.md
 ```
 
+`docs/errors.md` lists every error message in the language (auto-extracted from
+the sources) — look a message up there when a program fails.
 `docs/api.json` holds every builtin (signature + backends) in machine form.
 `scripts/lang_data.py` is the single source both the LSP and `tests/test_docs.py`
 read — keep it in sync with `interp.BUILTINS` or the docs test fails.
@@ -208,7 +211,8 @@ use `as_ptr(x)` / `as_int(x)` to cross from tagged dynamic values.
 3. Run `hs fmt` before editing foreign code; keep diffs canonical.
 4. New failing case? Add `tests/<name>.hs` + `.expected`/`.fail` (+`.args`/`.stdin`/`.env`
    as needed) and run `tests/test.py` + `tests/test_native.py` (+`test_fmt.py`).
-5. Touching a builtin list or a doc example? `python3 scripts/gen_api.py`
-   and `python3 tests/test_docs.py` — both fail loudly on drift.
+5. Touching a builtin list, an error message, or a doc example? Run
+   `scripts/gen_api.py` / `scripts/gen_errors.py` then `tests/test_docs.py`
+   — it fails loudly on drift.
 6. Lost? `python3 scripts/lsp_client.py --diag prog.hs` gives the same error
    with a 0-based line, no rebuild needed.

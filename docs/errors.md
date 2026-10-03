@@ -1,0 +1,394 @@
+# error catalog (generated — do not edit by hand)
+
+> จาก `scripts/gen_errors.py` โดยอ่าน `HSErr(...)` ทุกตัวใน
+> `interp.py`, `hs.py`, `x64gen.py`, `fmt.py`
+> (regen: `python3 scripts/gen_errors.py`, เทสตรวจด้วย `tests/test_docs.py`)
+
+ทุก error เป็น Str `"<message> at line N"` — ไม่มี exception object,
+จับได้ด้วย `try/except as e`, ไม่จับ = พิมพ์ `error: <msg> at line N`
+ที่ stderr แล้ว exit 1. `{...}` ในตารางคือค่าที่แทนที่ตอนรัน
+
+หา error ของตัวเอง: `python3 scripts/lsp_client.py --diag prog.hs`
+(0-based line) หรือ `python3 hs.py --json check prog.hs`
+
+## error ที่เจอบ่อยที่สุด
+
+| ข้อความ | แปลว่า | แก้ยังไง |
+|---|---|---|
+| `cannot add Int and Str` | ผสมชนิดใน `+` | แปลงเอง: `str(x) + str(y)` |
+| `index out of range` | `a[i]` นอกช่วง | เช็ค `len(a)` ก่อน |
+| `key '<k>' not found` | อ่าน Dict key ที่ไม่มี | ใช้ `exists`-like logic หรือ default |
+| `unknown variable '<n>'` | ยังไม่เคย assign | สร้างก่อนใช้ (โดยเฉพาะฝั่ง x64) |
+| `not callable: <t>` | เรียกค่าที่ไม่ใช่ฟังก์ชัน | ตรวจชนิดก่อนเรียก |
+| `expression expected` | syntax ขาด/ผิดบรรทัด | ดูเลขบรรทัดใน error |
+| `expected ':' then an indented block` | ลืม `:` ท้ายบรรทัด | เติม `:` + indent |
+| `unexpected indent` | มีช่องว่างนำหน้าเกิน | จัดรูปด้วย `hs fmt` |
+| `assertion failed at line N` | เงื่อนไขใน `unsafe:` ไม่ผ่าน | เช็คชนิดใน `unsafe:` |
+| `Float not in x64 subset` | ใช้ Float ฝั่ง x64/kernel | ดู `x64-subset.md` |
+| `dict not in x64 subset` | ใช้ Dict ฝั่ง x64/kernel | ดู `x64-subset.md` |
+| `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
+
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (203)
+
+- `'{d['name']}' already defined in this scope`
+- `'{s['name']}' already defined in this scope`
+- `'{v}' is reserved for future use`
+- `U64 value {v} too large for Int`
+- `address too large for Int`
+- `alloc of negative size {n}`
+- `alloc wants alloc(n)`
+- `append wants append(list, x)`
+- `append_text failed: {e.strerror or e}`
+- `append_text wants append_text(path, str)`
+- `argv takes no args`
+- `array field '{e['name']}' needs an index`
+- `array field '{s['name']}' needs an index`
+- `array size must be a positive integer`
+- `as_int needs Ptr, got {pt}`
+- `as_int wants as_int(p)`
+- `as_ptr needs an integer, got {at}`
+- `as_ptr wants as_ptr(int)`
+- `asm only allowed in unsafe`
+- `asm requires native build (hs.py build)`
+- `asm wants asm("...") with a string literal`
+- `attribute access not allowed in unsafe`
+- `bad character {content[j]}`
+- `bad extern name '{nm.v}'`
+- `bad ffi param type '{ft.v}'`
+- `bad ffi type '{rt.v}' (want one of U0 I64 U64 F64 Str Ptr)`
+- `bad field name '{fn.v}'`
+- `bad field type '{ft.v}'`
+- `bad loop variable '{v.v}'`
+- `bad module name '{full}.{part.v}'`
+- `bad module name '{name.v}'`
+- `bad module name '{name}'`
+- `bad node {t}`
+- `bad operator {op}`
+- `bad param name '{pn.v}'`
+- `bad static type {target}`
+- `bad static type {utype}`
+- `bad stmt {t}`
+- `bad struct name '{nm.v}'`
+- `bad unsafe call {name}`
+- `bad unsafe expr {t}`
+- `cannot access field of {st} (need a struct pointer)`
+- `cannot add {tname(l)} and {tname(r)}`
+- `cannot apply '{op}' to pointers`
+- `cannot assign into {tname(obj)}`
+- `cannot assign to this`
+- `cannot assign to this in unsafe (use *p = v for memory)`
+- `cannot call '{name}' from unsafe (only: {', '.join(sorted(UNSAFE_BUILTINS))})`
+- `cannot call result of expression from unsafe`
+- `cannot compare I64 and U64 (convert explicitly)`
+- `cannot compare {lt} and {rt}`
+- `cannot compare {tname(l)} and {tname(r)}`
+- `cannot convert {a} to Float`
+- `cannot convert {a} to Int`
+- `cannot convert {st} to {target}`
+- `cannot convert {tname(a)} to Float`
+- `cannot convert {tname(a)} to Int`
+- `cannot declare global for unsafe variable '{n}'`
+- `cannot dereference {st} (need Ptr)`
+- `cannot find ffi library '{lib}'`
+- `cannot find ffi source '{lib}'`
+- `cannot find module '{name}'`
+- `cannot index {tname(obj)}`
+- `cannot load ffi library '{lib}'`
+- `cannot mix I64 and U64 with '{op}' (convert explicitly)`
+- `cannot negate Ptr`
+- `cannot negate {tname(v)}`
+- `cannot order pointers (use == / !=)`
+- `cannot shadow builtin '{d['name']}'`
+- `cannot slice {tname(obj)}`
+- `cannot store field of {st} (need a struct pointer)`
+- `cannot store through {pt} (need Ptr)`
+- `cannot store {vt} to memory (need integer)`
+- `cannot use {tname(v)} as I64`
+- `cannot use {tname(v)} as {target}`
+- `circular import '{name}'`
+- `close wants close(f)`
+- `collections not allowed in unsafe (use alloc/load/store)`
+- `def not allowed in unsafe`
+- `dict key must be Str`
+- `division by zero`
+- `duplicate field '{fn.v}'`
+- `duplicate param '{a}'`
+- `env wants env(name)`
+- `expected ':' then a new line`
+- `expected 'in', got {it.v}`
+- `expected indented block`
+- `expected {v or k}, got {x.v}`
+- `expression expected, got {t.v}`
+- `extern block is empty`
+- `extern not allowed in unsafe (declare at top level)`
+- `ffi '{self.name}' arg {i + 1} wants {ft}, got {tname(a)}`
+- `ffi '{self.name}' failed: {e}`
+- `ffi '{self.name}' wants {len(self.params)} args, got {len(args)}`
+- `ffi compile failed for '{lib}': {r.stderr.strip()}`
+- `field '{e['name']}' is not an array`
+- `field '{s['name']}' is not an array`
+- `file is closed`
+- `find wants find(s, sub)`
+- `float not allowed in unsafe`
+- `float wants 1 arg, got {len(args)}`
+- `for not allowed in unsafe (use while)`
+- `http status {status}`
+- `http_get bad port in url`
+- `http_get bad url`
+- `http_get connect failed: {e.strerror or e}`
+- `http_get failed: {e.strerror or e}`
+- `http_get got a bad response`
+- `http_get wants an http:// url (no https in v1)`
+- `http_get wants http_get(url)`
+- `in module '{name}': {e.msg}`
+- `inconsistent indent`
+- `index must be Int`
+- `index out of range`
+- `index {i} out of range for '{e['name']}'[{count}]`
+- `index {i} out of range for '{s['name']}'[{count}]`
+- `input takes no args`
+- `input: EOF`
+- `int wants 1 arg, got {len(args)}`
+- `join needs a list of Str`
+- `join wants join(sep, list)`
+- `json got an unsupported value`
+- `json too deeply nested`
+- `json_parse failed: {e.msg}`
+- `json_parse wants json_parse(str)`
+- `json_save wants json_save(path, x)`
+- `json_str failed: {e}`
+- `json_str needs Str keys`
+- `json_str wants json_str(x)`
+- `key {idx} not found`
+- `len of {tname(a)}`
+- `len wants 1 arg, got {len(args)}`
+- `ls failed: {e.strerror or e}`
+- `meminfo takes no args`
+- `mkdir failed: {e.strerror or e}`
+- `module '{obj.name}' has no attribute '{e['name']}'`
+- `negative value {sv} as U64`
+- `negative value {v} as {target}`
+- `not JSON-serializable: {tname(v)}`
+- `not callable: {tname(fn)}`
+- `not iterable: {tname(it)}`
+- `null pointer dereference`
+- `only modules have attributes`
+- `open failed: {e.strerror or e}`
+- `open mode must be "r" or "w"`
+- `open wants open(path, mode)`
+- `operator '{op}' needs numbers, got {tname(l)} and {tname(r)}`
+- `pmm_alloc wants pmm_alloc(npages)`
+- `pmm_alloc: out of memory`
+- `print is a statement, use: print ...`
+- `raise wants Str`
+- `raise without active exception`
+- `range wants range(n) or range(a, b) with Ints`
+- `read failed: {e.strerror or e}`
+- `read wants read(f)`
+- `read_text failed: {e.strerror or e}`
+- `readkey takes no args`
+- `scalar type '{ft.v}' cannot use '*'`
+- `sizeof wants a type, got '{tn.v}'`
+- `slice index must be Int`
+- `slicing not allowed in unsafe`
+- `split wants split(s) or split(s, sep)`
+- `str wants 1 arg, got {len(args)}`
+- `stray '{t.v}'`
+- `strings not allowed in unsafe (use alloc + store8)`
+- `struct '{nm.v}' redefined with a different layout`
+- `struct '{sname}' has no field '{fname}'`
+- `struct needs at least one field`
+- `system wants system(cmd)`
+- `tabs not allowed, use spaces`
+- `tcp_accept failed: {e.strerror or e}`
+- `tcp_accept wants tcp_accept(sock)`
+- `tcp_close wants tcp_close(sock)`
+- `tcp_connect failed: {e.strerror or e}`
+- `tcp_connect wants tcp_connect(host, port)`
+- `tcp_listen failed: {e.strerror or e}`
+- `tcp_listen wants tcp_listen(port)`
+- `tcp_recv failed: {e.strerror or e}`
+- `tcp_recv wants tcp_recv(sock, n)`
+- `tcp_send failed: {e.strerror or e}`
+- `tcp_send wants tcp_send(sock, str)`
+- `ticks takes no args`
+- `try not allowed in unsafe (wrap the unsafe block instead)`
+- `try without except or finally`
+- `unexpected indent`
+- `unknown ffi symbol '{name}'`
+- `unknown struct '{sname}'`
+- `unknown variable '{name}'`
+- `unsafe inside unsafe`
+- `unsafe op needs Int, got {tname(a)}`
+- `unsafe: address out of bounds`
+- `unsafe: out of memory (1MB sim)`
+- `write failed: {e.strerror or e}`
+- `write wants write(f, str)`
+- `write_text failed: {e.strerror or e}`
+- `write_text wants write_text(path, str)`
+- `{fn.name} wants {len(fn.params)} args, got {len(args)}`
+- `{name} needs Ptr, got {pt}`
+- `{name} wants {name}(p)`
+- `{name} wants {name}(p, v)`
+- `{want}`
+- `{want} arg count mismatch`
+- `{what} wants an open socket`
+
+## hs.py — native backend ผ่าน gcc (81)
+
+- `'{n}' already defined in this scope`
+- `'{s['name']}' already defined in this scope`
+- `'{s['name']}' is an imported module (cannot assign)`
+- `'{s['var']}' is an imported module (cannot assign)`
+- `'{top}' already defined in this scope`
+- `address {av} out of range`
+- `alloc wants alloc(n)`
+- `array field '{e['name']}' needs an index`
+- `as_int needs Ptr, got {pt}`
+- `as_int wants as_int(p)`
+- `as_ptr needs an integer, got {at}`
+- `as_ptr wants as_ptr(int)`
+- `asm must be a statement: asm("...")`
+- `asm only allowed in unsafe`
+- `asm wants asm("...") with a string literal`
+- `attribute access not allowed in unsafe`
+- `bad expr {t}`
+- `bad ffi return type {rt}`
+- `bad ffi type {ft}`
+- `bad module name '{name}'`
+- `bad ref {res}`
+- `bad static type {to_t}`
+- `bad stmt {t}`
+- `bad unsafe call {name}`
+- `bad unsafe expr {t}`
+- `break outside loop`
+- `cannot access field of {pt} (need a struct pointer)`
+- `cannot apply '{op}' to pointers`
+- `cannot assign to extern '{s['name']}'`
+- `cannot box {t}`
+- `cannot call '{got}' from unsafe (only: {', '.join(sorted(UNSAFE_BUILTINS))})`
+- `cannot compare I64 and U64 (convert explicitly)`
+- `cannot compare {lt} and {rt}`
+- `cannot convert {t} to {to_t} (use as_ptr/as_int)`
+- `cannot declare global for unsafe variable '{name}'`
+- `cannot declare global for unsafe variable '{n}'`
+- `cannot declare unsafe '{n}' as global`
+- `cannot dereference {pt} (need Ptr)`
+- `cannot find ffi library '{lib}'`
+- `cannot find ffi source '{lib}'`
+- `cannot find module '{name}'`
+- `cannot mix I64 and U64 with '{op}' (convert explicitly)`
+- `cannot negate Ptr`
+- `cannot order pointers (use == / !=)`
+- `cannot store through {pt} (need Ptr)`
+- `cannot use builtin '{e['name']}' as value in unsafe`
+- `circular module reference involving '{mod.name}'`
+- `closure capture of '{name}' not supported yet (use global)`
+- `closure capture of unsafe '{name}' not supported (use global dynamic)`
+- `collections not allowed in unsafe (use alloc/load/store)`
+- `continue outside loop`
+- `def not allowed in unsafe`
+- `deref only allowed in unsafe`
+- `division by zero`
+- `extern '{e['name']}' is not a value (call it)`
+- `extern '{name}' is not a value (call it)`
+- `extern not allowed in unsafe (declare at top level)`
+- `ffi '{sig['cname']}' wants {len(sig['ptypes'])} args, got {len(args)}`
+- `ffi '{sig['cname']}' wants {len(sig['ptypes'])} args, got {len(e['args'])}`
+- `field '{e['name']}' is not an array`
+- `float not allowed in unsafe`
+- `for not allowed in unsafe (use while)`
+- `fstore without value`
+- `in module '{name}': {e.msg}`
+- `integer {v} out of range for U64`
+- `integer {v} too large for I64`
+- `module '{mod.name}' has no attribute '{name}'`
+- `raise without active exception`
+- `return outside function`
+- `slicing not allowed in unsafe`
+- `strings not allowed in unsafe (use alloc + store8)`
+- `struct '{xs}' has no field '{e['name']}'`
+- `try not allowed in unsafe (wrap the unsafe block instead)`
+- `unknown struct '{e['stype']}'`
+- `unknown struct '{sname}'`
+- `unknown struct '{st}'`
+- `use as_ptr() for addresses (only 0/null allowed here)`
+- `{name} needs Ptr, got {pt}`
+- `{name} wants {name}(p)`
+- `{name} wants {name}(p, v)`
+- `{t} not allowed in unsafe`
+
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (65)
+
+- `'{n}' already defined in this scope`
+- `Float not in x64 subset`
+- `alloc wants alloc(n)`
+- `append wants append(list, x)`
+- `array field '{e['name']}' needs an index`
+- `array field '{x['name']}' needs an index`
+- `attribute access is only supported on modules (x64)`
+- `attribute assignment only supported on modules (x64)`
+- `bad kdev {name}`
+- `bad module name '{fullname}'`
+- `bad module name '{name}'`
+- `bad operator {op}`
+- `bad stmt {t}`
+- `bad var kind {kind} for '{name}'`
+- `break outside loop`
+- `builtin '{fn['name']}' not in x64 subset`
+- `builtin '{name}' is not a value (call it)`
+- `cannot access field of dynamic '{obj['name']}'`
+- `cannot access field of {ut}`
+- `cannot capture '{name}' (x64)`
+- `cannot find module '{name}'`
+- `cannot import '{s['name']}': '{top}' is already defined`
+- `circular import '{m['name']}'`
+- `continue outside loop`
+- `dict not in x64 subset`
+- `dup data reserve {name}`
+- `field '{e['name']}' is not an array`
+- `field '{obj['name']}' is not a struct pointer`
+- `field '{x['name']}' is not an array`
+- `field base must be a variable`
+- `find wants find(s, sub)`
+- `float not in x64 subset`
+- `in module '{name}': {e.msg}`
+- `int wants 1 arg`
+- `join wants join(sep, list)`
+- `module '{m['name']}' has no attribute '{e['name']}'`
+- `module '{m['name']}' has no attribute '{name}'`
+- `module '{name}' is not a first-class value in x64 subset (use mod.attr)`
+- `module '{target['name']}' is not a first-class value in x64 subset (use mod.attr)`
+- `only alloc/load/store/as_* calls allowed in unsafe (x64)`
+- `pmm_alloc wants pmm_alloc(npages)`
+- `raise without active exception`
+- `range wants range(n) or range(a, b)`
+- `readkey takes no args`
+- `return outside function`
+- `split wants split(s) or split(s, sep)`
+- `strings not allowed in unsafe`
+- `struct '{xs}' has no field '{e['name']}'`
+- `struct '{xs}' has no field '{obj['name']}'`
+- `struct '{xs}' has no field '{x['name']}'`
+- `struct type unknown (x64)`
+- `ticks takes no args`
+- `unknown struct '{st}'`
+- `unknown variable '{e['name']}'`
+- `unknown variable '{name}'`
+- `unknown variable '{obj['name']}'`
+- `{fn['name']} wants 1 arg`
+- `{name} not in x64 subset`
+- `{name} takes no args`
+- `{name} wants 1 arg`
+- `{name} wants {name}(p)`
+- `{name} wants {name}(p, v)`
+- `{t} handled elsewhere or not in x64 subset`
+- `{t} not allowed in unsafe (x64)`
+- `{t} not in x64 subset`
+
+## fmt.py — formatter (2)
+
+- `fmt: bad expr {t}`
+- `fmt: bad stmt {t}`
+
+รวม 351 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

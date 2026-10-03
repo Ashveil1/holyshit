@@ -132,17 +132,17 @@ check("every keyword documented",
 
 # ---------- 3. generated docs are current ----------
 
-with tempfile.TemporaryDirectory() as state:
-    api = os.path.join(DOCS, "api.json")
-    bi = os.path.join(DOCS, "builtins.md")
-    before = (open(api, encoding="utf-8").read(),
-              open(bi, encoding="utf-8").read())
-    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "gen_api.py")],
+def regenerated(path, script):
+    full = os.path.join(DOCS, path)
+    before = open(full, encoding="utf-8").read()
+    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", script)],
                    capture_output=True, text=True, check=True)
-    after = (open(api, encoding="utf-8").read(),
-             open(bi, encoding="utf-8").read())
-    check("docs/api.json current", before[0] == after[0])
-    check("docs/builtins.md current", before[1] == after[1])
+    return before == open(full, encoding="utf-8").read()
+
+
+check("docs/api.json current", regenerated("api.json", "gen_api.py"))
+check("docs/builtins.md current", regenerated("builtins.md", "gen_api.py"))
+check("docs/errors.md current", regenerated("errors.md", "gen_errors.py"))
 
 data = json.load(open(os.path.join(DOCS, "api.json"), encoding="utf-8"))
 check("api.json has version", bool(data.get("version")))
@@ -171,8 +171,8 @@ def links(md):
 
 for src_doc in ("README.md", "docs/index.md", "docs/lsp.md",
                 "docs/for-agents.md", "docs/stdlib.md", "docs/kernel.md",
-                "docs/x64-subset.md", "docs/tutorial.md", "editors/README.md",
-                "AGENTS.md"):
+                "docs/x64-subset.md", "docs/tutorial.md", "docs/cheatsheet.md",
+                "editors/README.md", "examples/README.md", "AGENTS.md"):
     missing = []
     for t in links(src_doc):
         base = os.path.dirname(os.path.join(ROOT, src_doc))

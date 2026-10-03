@@ -54,10 +54,12 @@ python3 scripts/lsp_client.py --format prog.hs --write  # เขียนกล�
 ## ข้อมูลชิ้นเดียวกันสำหรับโปรแกรมอ่าน
 
 ```sh
-python3 scripts/gen_api.py    # เขียน docs/api.json + docs/builtins.md ใหม่
+python3 scripts/gen_api.py     # เขียน docs/api.json + docs/builtins.md ใหม่
+python3 scripts/gen_errors.py  # เขียน docs/errors.md ใหม่ (ดึงจาก source)
 ```
 
 `docs/api.json` = keywords + builtin (sig/desc/backend ที่รองรับ)
+`docs/errors.md` = ข้อความ error ทุกข้อความในภาษา + ตาราง error ที่เจอบ่อย
 `scripts/lang_data.py` = แหล่งกลางที่ LSP กับเทสใช้ร่วมกัน
 
 ## กับดักที่ทำให้เทสพังบ่อย
@@ -66,9 +68,10 @@ python3 scripts/gen_api.py    # เขียน docs/api.json + docs/builtins.md
 2. `;` `{` `}` ไม่มีในภาษา
 3. `for i in 0..5` ไม่มี — ใช้ `range(5)`
 4. `print (1+2)*3` พัง — เขียน `print ((1+2)*3)`
-5. error ทุกอันหน้าตาเป็น `error: <msg> at line N` (stderr, exit 1)
-6. `print x, y` เว้นวรรค + newline ท้าย — ไม่ใช่ separator แบบ print ของ Python
-7. เทสที่ต้องเขียนไฟล์/argv/stdin ต้องมี `.args`/`.stdin` ด้วย
+5. ไม่รู้ว่า error แปลว่าอะไร → grep ใน `docs/errors.md` (มีครบทุกข้อความ)
+6. error ทุกอันหน้าตาเป็น `error: <msg> at line N` (stderr, exit 1)
+7. `print x, y` เว้นวรรค + newline ท้าย — ไม่ใช่ separator แบบ print ของ Python
+8. เทสที่ต้องเขียนไฟล์/argv/stdin ต้องมี `.args`/`.stdin` ด้วย
    และอย่าใช้ path แบบ absolute
 
 ## เขียนโค้ดชิ้นไหนได้บ้าง

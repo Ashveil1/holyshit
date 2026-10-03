@@ -41,13 +41,14 @@ print sin(0.0)
 | เอกสารทั้งหมด (เริ่มตรงนี้) | `docs/index.md` |
 | กฎสำหรับ AI agent | `AGENTS.md` |
 | สเปกภาษา + เหตุผลออกแบบ | `SPEC-v1.md` |
+| มีส่วนร่วม | `CONTRIBUTING.md` |
 | interpreter (พฤติกรรมอ้างอิง) | `interp.py` |
 | native backend (AST→C→gcc) + CLI | `hs.py` + `native/rt.{h,c}` |
 | x86-64 backend ตรง (subset, ไม่ใช้ gcc, ค่าแบบ tagged) | `x64.py` + `x64gen.py` |
 | kernel runtime (freestanding) | `kernel/` |
 | ไลบรารีมาตรฐาน (เขียนด้วย hs) | `std/` |
 | language server (diagnostics/hover/goto/format) | `lsp.py` + `editors/` |
-| ข้อมูลภาษาแบบเครื่องอ่านได้ | `docs/api.json`, `scripts/lang_data.py` |
+| ข้อมูลภาษาแบบเครื่องอ่านได้ | `docs/api.json`, `docs/errors.md`, `scripts/lang_data.py` |
 | ตัวอย่างตามหัวข้อ | `examples/` |
 | เทส | `tests/` |
 | ของเก่า v0.3 (WASM) | `legacy/` |
@@ -76,7 +77,7 @@ python3 tests/test_x64.py      # backend x86-64 ตรง (25 ชุด, static 
 python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (62 เคส)
 python3 tests/test_examples.py # ตัวอย่างทุกไฟล์ยังรันได้จริง (17)
 python3 tests/test_lsp.py      # language server ผ่าน stdio (25 เคส)
-python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (33)
+python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (38)
 ```
 
 กติกาเทส: `tests/<name>.hs` + `.expected` (stdout), `.stdin` (input),

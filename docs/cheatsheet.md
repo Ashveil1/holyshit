@@ -130,6 +130,8 @@ extern from "helper.c":      # คอมไพล์+ลิงก์ให้
 
 ## error
 
+ข้อความ error ทั้งหมดของภาษาอยู่ที่ [`errors.md`](errors.md) (ดึงจาก source อัตโนมัติ)
+
 ทุก error เป็น Str `"message at line N"` ไม่มี exception object
 ไม่จับ = พิมพ์ `error: <msg> at line N` ที่ stderr แล้ว exit 1
 `hs.py --json check/build` และ `interp.py --json` ให้ผลเป็น JSON

@@ -349,6 +349,9 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 - `scripts/gen_api.py` อ่านสองแหล่งนี้แล้วเขียน `docs/api.json`
   (machine-readable) + `docs/builtins.md` (ตาราง markdown) — regenerate
   ได้ด้วยคำสั่งเดียว และเทสจะ fail ถ้าไฟล์ไม่ตรงกับ generator
+- `scripts/gen_errors.py` ดึง `HSErr(...)` ทุกตัวจาก `interp.py`/`hs.py`/
+  `x64gen.py`/`fmt.py` ด้วย AST แล้วเขียน `docs/errors.md` (351 ข้อความ)
+  พร้อมตาราง "error ที่เจอบ่อย" — AI ใช้ grep หาสาเหตุได้ตรง ๆ
 
 ### 15.2 เอกสาร
 
@@ -356,15 +359,23 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 |---|---|
 | `docs/index.md` | จุดเริ่ม + ตารางเลือกหัวข้อ |
 | `docs/tutorial.md` | เขียนโปรแกรมแรก 10 นาที (ทุกบล็อกถูกรันจริง) |
+| `examples/` | ตัวอย่าง 8 ไฟล์ครอบทั้งภาษา + `.expected` ทุกไฟล์ |
 | `docs/stdlib.md` | `std.str` / `std.list` / `std.heap` |
 | `docs/x64-subset.md` | ขอบเขต + กับดักของ backend ที่ไม่ใช้ gcc |
 | `docs/kernel.md` | kernel freestanding |
+| `docs/cheatsheet.md` | ทั้งภาษาในหน้าเดียว |
+| `docs/errors.md` | ข้อความ error ทุกข้อความ (generate จาก source) |
 | `docs/lsp.md` | language server + การต่อ editor |
 | `docs/for-agents.md` | ทางลัด + เครื่องมือสำหรับ AI |
 | `AGENTS.md` | กฎกระชับ (เป็น reference หลักของ agent) |
+| `CONTRIBUTING.md` | กติกา/ขั้นตอนสำหรับคนที่จะเพิ่มภาษา |
 | `SPEC-v1.md` | เหตุผลออกแบบ (ไฟล์นี้) |
 
-`tests/test_docs.py` (**33/33**) รันทุกบล็อก ```hs ใน `docs/*.md` เทียบกับ
+`tests/test_examples.py` (**17/17**) บังคับว่าทุก `examples/*.hs`
+ต้องรันได้จริง (interp) และตรงกับ native (gcc) — ตัวอย่างที่พังทำให้เทสแดง
+และค้นพบบั๊ก parity จริง 2 บั๊ก (ดู §15.2 ประวัติ)
+
+`tests/test_docs.py` (**38/38**) รันทุกบล็อก ```hs ใน `docs/*.md` เทียบกับ
 บรรทัด `# =>` ตามลำดับ, เช็ค drift ของ `api.json`/`builtins.md`, เช็คว่า
 ลิงก์ทุกอันใน README/`docs/index.md`/`AGENTS.md` มีไฟล์จริง, และสั่งคำสั่ง
 ใน `docs/lsp.md` ว่ารันได้จริง — เอกสารจึงพังตามโค้ด
@@ -394,4 +405,5 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 ### 15.5 สถานะเทสหลังเฟส 7
 
 `test.py` 35 · `test_native.py` 36 · `test_fmt.py` 2 · `test_x64.py` 25 ·
-`test_xkernel.py` 62 · `test_lsp.py` 25 · `test_docs.py` 33
+`test_xkernel.py` 62 · `test_examples.py` 17 · `test_lsp.py` 25 ·
+`test_docs.py` 38 (รันครบทุกชุด: `python3 tests/run_all.py`)
