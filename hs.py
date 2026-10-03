@@ -1655,12 +1655,16 @@ def main(argv):
     if "--json" in argv:
         as_json = True
         argv = [a for a in argv if a != "--json"]
+    if len(argv) >= 2 and argv[1] == "lsp":
+        import lsp as _lsp
+        _lsp.main()
+        return 0
     if len(argv) < 3 or argv[1] not in ("build", "run", "check", "fmt",
                                      "xbuild", "xrun", "xkernel"):
         print("usage: hs.py [--json] build prog.hs [-o prog] | hs.py run prog.hs [args...] "
               "| hs.py check prog.hs | hs.py fmt prog.hs [-w|--check] "
               "| hs.py xbuild prog.hs [-o prog] | hs.py xrun prog.hs "
-              "| hs.py xkernel prog.hs -o kernel.elf",
+              "| hs.py xkernel prog.hs -o kernel.elf | hs.py lsp",
               file=sys.stderr)
         return 2
     if argv[1] == "fmt":

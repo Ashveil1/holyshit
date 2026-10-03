@@ -1,0 +1,455 @@
+{
+ "language": "holyshit",
+ "version": "0.5.0",
+ "keywords": {
+  "def": "define a function: `def name(params):` + indented body",
+  "if": "conditional branch (with `elif` / `else`)",
+  "elif": "else-if branch after `if`",
+  "else": "fallback branch for `if`",
+  "while": "loop while a condition is truthy",
+  "for": "loop `for x in LIST | range() | dict-keys`",
+  "in": "membership in `for x in ...`",
+  "return": "return a value from a function (bare `return` gives Null)",
+  "break": "exit the innermost loop",
+  "continue": "skip to the next loop iteration",
+  "global": "write module-level names from inside a function",
+  "import": "load a module: `import mod`, `import pkg.mod`",
+  "try": "guarded block: needs `except` and/or `finally`",
+  "except": "handler for a `try` block, optional `as e` (Str)",
+  "as": "bind the error string in `except as e`",
+  "finally": "cleanup block: runs on every exit of `try`",
+  "raise": "`raise \"msg\"` throws; bare `raise` re-throws in `except`",
+  "true": "boolean true",
+  "false": "boolean false",
+  "null": "the Null value",
+  "and": "short-circuit and (returns an operand, not Bool)",
+  "or": "short-circuit or (returns an operand, not Bool)",
+  "not": "logical negation",
+  "pass": "do nothing (empty block placeholder)",
+  "unsafe": "low-level static block: I64/U64/Ptr + structs",
+  "struct": "declare a struct layout inside `unsafe:`",
+  "extern": "declare C-ABI functions from libc/.so/.c",
+  "from": "used in `extern from \"lib\":`"
+ },
+ "builtins": {
+  "print": {
+   "sig": "print x, y, ...",
+   "desc": "print values space-separated + newline",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "len": {
+   "sig": "len(x)",
+   "desc": "length of Str/List/Dict",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "range": {
+   "sig": "range(n) | range(a, b)",
+   "desc": "Int list [0..n) or [a..b)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "str": {
+   "sig": "str(x)",
+   "desc": "convert any value to Str",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "int": {
+   "sig": "int(x)",
+   "desc": "convert to Int",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "float": {
+   "sig": "float(x)",
+   "desc": "convert to Float (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "input": {
+   "sig": "input()",
+   "desc": "read one line from stdin (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "open": {
+   "sig": "open(path, mode)",
+   "desc": "open a file (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "read": {
+   "sig": "read(f, n)",
+   "desc": "read n bytes (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "write": {
+   "sig": "write(f, s)",
+   "desc": "write Str (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "close": {
+   "sig": "close(f)",
+   "desc": "close a file (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "append": {
+   "sig": "append(list, x)",
+   "desc": "push x, returns Null",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "split": {
+   "sig": "split(s) | split(s, sep)",
+   "desc": "split Str to List",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "find": {
+   "sig": "find(s, sub)",
+   "desc": "byte index of sub or -1",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "join": {
+   "sig": "join(sep, list)",
+   "desc": "join List of Str",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "argv": {
+   "sig": "argv()",
+   "desc": "program args as List (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "env": {
+   "sig": "env(name)",
+   "desc": "env var or Null (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "system": {
+   "sig": "system(cmd)",
+   "desc": "run shell command, exit code (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "tcp_connect": {
+   "sig": "tcp_connect(host, port)",
+   "desc": "open TCP (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "tcp_send": {
+   "sig": "tcp_send(sock, s)",
+   "desc": "send bytes (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "tcp_recv": {
+   "sig": "tcp_recv(sock, n)",
+   "desc": "recv bytes (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "tcp_close": {
+   "sig": "tcp_close(sock)",
+   "desc": "close socket (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "tcp_listen": {
+   "sig": "tcp_listen(port)",
+   "desc": "listen socket (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "tcp_accept": {
+   "sig": "tcp_accept(sock)",
+   "desc": "accept client (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "http_get": {
+   "sig": "http_get(url)",
+   "desc": "http GET body as Str (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "json_parse": {
+   "sig": "json_parse(s)",
+   "desc": "parse JSON Str (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "json_str": {
+   "sig": "json_str(x)",
+   "desc": "value to JSON Str (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "read_text": {
+   "sig": "read_text(path)",
+   "desc": "whole file as Str (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "write_text": {
+   "sig": "write_text(path, s)",
+   "desc": "write file (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "append_text": {
+   "sig": "append_text(path, s)",
+   "desc": "append file (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "exists": {
+   "sig": "exists(path)",
+   "desc": "path exists? (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "ls": {
+   "sig": "ls(path)",
+   "desc": "dir entries List (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "mkdir": {
+   "sig": "mkdir(path)",
+   "desc": "make directory (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "json_load": {
+   "sig": "json_load(path)",
+   "desc": "load JSON file (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "json_save": {
+   "sig": "json_save(path, x)",
+   "desc": "save value as JSON (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
+  "alloc": {
+   "sig": "alloc(n)",
+   "desc": "zeroed n bytes (unsafe only)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "load8": {
+   "sig": "load8(p)",
+   "desc": "load byte (unsafe only)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "load32": {
+   "sig": "load32(p)",
+   "desc": "load 4 bytes (unsafe only)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "store8": {
+   "sig": "store8(p, v)",
+   "desc": "store byte (unsafe only)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "store32": {
+   "sig": "store32(p, v)",
+   "desc": "store 4 bytes (unsafe only)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "as_ptr": {
+   "sig": "as_ptr(x)",
+   "desc": "Int value -> Ptr (unsafe only)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "as_int": {
+   "sig": "as_int(p)",
+   "desc": "Ptr -> Int value (unsafe only)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "ticks": {
+   "sig": "ticks()",
+   "desc": "ms ticks hosted, 100Hz timer on kernel",
+   "backends": [
+    "interp",
+    "native",
+    "xkernel"
+   ]
+  },
+  "readkey": {
+   "sig": "readkey()",
+   "desc": "stdin char hosted, last key or Null on kernel",
+   "backends": [
+    "interp",
+    "native",
+    "xkernel"
+   ]
+  },
+  "pmm_alloc": {
+   "sig": "pmm_alloc(npages)",
+   "desc": "allocate physical pages",
+   "backends": [
+    "interp",
+    "native",
+    "xkernel"
+   ]
+  },
+  "pmm_total": {
+   "sig": "pmm_total()",
+   "desc": "total pages (xkernel only)",
+   "backends": [
+    "xkernel"
+   ]
+  },
+  "pmm_free": {
+   "sig": "pmm_free()",
+   "desc": "free pages",
+   "backends": [
+    "interp",
+    "native",
+    "xkernel"
+   ]
+  },
+  "meminfo": {
+   "sig": "meminfo()",
+   "desc": "dict total/free/page (hosted only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  }
+ }
+}

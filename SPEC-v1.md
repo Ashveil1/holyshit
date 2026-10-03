@@ -1,6 +1,7 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: สเปกภาษาระดับ design (เฟส 1) ยังไม่ลงโค้ด
+> สถานะ: v0.5.0 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
 
@@ -328,3 +329,63 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
   + `tests/test_xkernel.py`: **58/58 ผ่าน**
 - เหลือ: paging แบบไดนามิก (map/unmap page), frame allocator + `std.heap` ใน kernel,
   scheduler, filesystem, user mode
+
+## 15. เอกสาร + tooling (เฟส 7 — v0.5.0)
+
+เป้าหมายเฟสนี้: **ทุกคนและทุก AI เขียนภาษานี้เป็น** — เอกสารต้องไม่หลอก
+(ทุกตัวอย่างต้องรันจริงได้) และ editor ต้องช่วยได้โดยไม่ต้องลง dependency
+
+### 15.1 ชั้นข้อมูลเดียว (single source of truth)
+
+- `scripts/lang_data.py` — keyword (28) + builtin (48) พร้อม signature,
+  คำอธิบาย, และชุด backend ที่รองรับ (`interp`/`native`/`xbuild`/`xkernel`)
+- `interp.BUILTINS` ยังคงเป็นความจริงฝั่ง runtime — `tests/test_docs.py`
+  ยืนยันว่า table ครอบทุกตัวและไม่มีตัวลอย (`pmm_total`/`pmm_free`
+  เป็นของ freestanding จึงอนุญาตเป็นตัวเดียว)
+- `scripts/gen_api.py` อ่านสองแหล่งนี้แล้วเขียน `docs/api.json`
+  (machine-readable) + `docs/builtins.md` (ตาราง markdown) — regenerate
+  ได้ด้วยคำสั่งเดียว และเทสจะ fail ถ้าไฟล์ไม่ตรงกับ generator
+
+### 15.2 เอกสาร
+
+| ไฟล์ | สำหรับ |
+|---|---|
+| `docs/index.md` | จุดเริ่ม + ตารางเลือกหัวข้อ |
+| `docs/tutorial.md` | เขียนโปรแกรมแรก 10 นาที (ทุกบล็อกถูกรันจริง) |
+| `docs/stdlib.md` | `std.str` / `std.list` / `std.heap` |
+| `docs/x64-subset.md` | ขอบเขต + กับดักของ backend ที่ไม่ใช้ gcc |
+| `docs/kernel.md` | kernel freestanding |
+| `docs/lsp.md` | language server + การต่อ editor |
+| `docs/for-agents.md` | ทางลัด + เครื่องมือสำหรับ AI |
+| `AGENTS.md` | กฎกระชับ (เป็น reference หลักของ agent) |
+| `SPEC-v1.md` | เหตุผลออกแบบ (ไฟล์นี้) |
+
+`tests/test_docs.py` (**33/33**) รันทุกบล็อก ```hs ใน `docs/*.md` เทียบกับ
+บรรทัด `# =>` ตามลำดับ, เช็ค drift ของ `api.json`/`builtins.md`, เช็คว่า
+ลิงก์ทุกอันใน README/`docs/index.md`/`AGENTS.md` มีไฟล์จริง, และสั่งคำสั่ง
+ใน `docs/lsp.md` ว่ารันได้จริง — เอกสารจึงพังตามโค้ด
+
+### 15.3 Language server (`lsp.py`)
+
+- stdio + JSON-RPC เขียนด้วย stdlib ล้วน (ไม่มี pip dependency) เข้าผ่าน
+  `python3 hs.py lsp` หรือ `python3 lsp.py`
+- ฟีเจอร์: `textDocument/publishDiagnostics` (parse + scope check ทุกครั้ง
+  ที่แก้ไฟล์), `hover` (builtin พร้อม backend, keyword, def/param/ตัวแปร),
+  `completion` (keyword + builtin + ชื่อในไฟล์), `definition` (ในไฟล์และ
+  ข้ามไฟล์ผ่าน `import mod` / `mod.attr` รวมถึง submodule ที่ re-export),
+  `documentSymbol`, `formatting` (เรียก `fmt.py`)
+- ตำแหน่งใช้ UTF-16 code unit ตามสเปก LSP (ไทย/อีโมจิไม่เพี้ยน)
+- `scripts/lsp_client.py` เป็น client แบบ one-shot เพื่อให้ agent เรียกใช้
+  ได้โดยไม่ต้องค้าง server (`--diag/--hover/--def/--complete/--symbols/--format`)
+- `tests/test_lsp.py` (**11/11**) ยิง protocol จริงผ่าน pipe
+
+### 15.4 editor
+
+`editors/vscode` (client.js ไม่ต้อง npm install), `editors/neovim`
+(syntax/vim + `lua/holyshit.lua`), `editors/helix`, `editors/zed` —
+ทุกตัวชี้ไปที่ `python3 <repo>/lsp.py` คำสั่งเดียวกัน
+
+### 15.5 สถานะเทสหลังเฟส 7
+
+`test.py` 35 · `test_native.py` 36 · `test_fmt.py` 2 · `test_x64.py` 25 ·
+`test_xkernel.py` 58 · `test_lsp.py` 11 · `test_docs.py` 33

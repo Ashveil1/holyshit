@@ -1,0 +1,47 @@
+{
+  "name": "holyshit",
+  "displayName": "holyshit (hs)",
+  "description": "Language support for holyshit — diagnostics, hover, completion, goto definition, formatting via the bundled stdio LSP.",
+  "version": "0.5.0",
+  "publisher": "holyshit",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:holyshit"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "holyshit",
+        "aliases": [
+          "holyshit",
+          "hs"
+        ],
+        "extensions": [
+          ".hs"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "holyshit.restartServer",
+        "title": "holyshit: Restart language server"
+      },
+      {
+        "command": "holyshit.check",
+        "title": "holyshit: Check file"
+      }
+    ]
+  },
+  "main": "./client.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/holyshit/holyshit"
+  }
+}

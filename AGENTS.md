@@ -1,7 +1,8 @@
-# AGENTS.md — holyshit (hs) v0.4.0 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.5.0 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
-working reference. `SPEC-v1.md` has design rationale; this file has rules.
+working reference. Longer prose lives in `docs/` (`docs/index.md` is the
+map); `SPEC-v1.md` has design rationale; this file has rules.
 
 ## Run
 
@@ -10,12 +11,33 @@ python3 interp.py prog.hs [args...]        # run now (reference behavior)
 python3 hs.py check prog.hs                # syntax+scope only, no output binary
 python3 hs.py build prog.hs [-o prog]      # native binary
 python3 hs.py run prog.hs [args...]        # build to temp and run
+python3 hs.py fmt prog.hs [-w|--check]     # canonical form (2-space, drops comments)
+python3 hs.py xbuild prog.hs [-o prog]     # x86-64 machine code, no gcc (subset)
+python3 hs.py xkernel prog.hs -o k.elf     # freestanding kernel, no gcc/as/ld
+python3 hs.py lsp                          # language server (stdio, no deps)
 python3 interp.py --json prog.hs           # errors as {"file","line","message"} on stderr
 python3 hs.py --json check|build ...       # same JSON error contract
 ```
 
 Both backends print byte-identical stdout. If they differ, the NATIVE side
 is usually right about nothing — file a bug, don't work around it.
+
+## Tooling you can call instead of guessing
+
+```sh
+python3 scripts/lsp_client.py --diag prog.hs          # errors + lines (no server hang)
+python3 scripts/lsp_client.py --symbols prog.hs       # every def/var/import in a file
+python3 scripts/lsp_client.py --hover prog.hs 3 5     # builtin sig, keyword, or variable
+python3 scripts/lsp_client.py --def prog.hs 2 10      # jump to definition (cross-file)
+python3 scripts/lsp_client.py --complete prog.hs 1 4  # keyword + builtin + local names
+python3 scripts/lsp_client.py --format prog.hs --write
+python3 scripts/gen_api.py                            # regenerate docs/api.json
+```
+
+`docs/api.json` holds every builtin (signature + backends) in machine form.
+`scripts/lang_data.py` is the single source both the LSP and `tests/test_docs.py`
+read — keep it in sync with `interp.BUILTINS` or the docs test fails.
+Editor configs (VS Code / Neovim / Helix / Zed) live in `editors/`.
 
 ## Syntax (indent like Python, but NOT Python)
 
@@ -182,3 +204,7 @@ use `as_ptr(x)` / `as_int(x)` to cross from tagged dynamic values.
 3. Run `hs fmt` before editing foreign code; keep diffs canonical.
 4. New failing case? Add `tests/<name>.hs` + `.expected`/`.fail` (+`.args`/`.stdin`/`.env`
    as needed) and run `tests/test.py` + `tests/test_native.py` (+`test_fmt.py`).
+5. Touching a builtin list or a doc example? `python3 scripts/gen_api.py`
+   and `python3 tests/test_docs.py` — both fail loudly on drift.
+6. Lost? `python3 scripts/lsp_client.py --diag prog.hs` gives the same error
+   with a 0-based line, no rebuild needed.

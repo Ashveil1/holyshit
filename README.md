@@ -1,6 +1,7 @@
-# holyshit (hs) — v0.4.0
+# holyshit (hs) — v0.5.0
 
-ภาษา dynamic เขียนง่ายแบบ Python, รันได้ 2 โหมด, ต่อ C ได้, ลง bare metal ได้
+ภาษา dynamic เขียนง่ายแบบ Python, รันได้ 4 โหมด, ต่อ C ได้, ลง bare metal ได้,
+มี language server ให้ editor และ AI agent
 
 ```sh
 python3 interp.py prog.hs [args...]   # รันทันที (tree-walk)
@@ -10,8 +11,12 @@ python3 hs.py run prog.hs [args...]   # build ลง temp แล้วรัน�
 python3 hs.py fmt prog.hs [-w|--check] # จัดรูป canonical (2-space, ตัดคอมเมนต์)
 python3 hs.py xbuild prog.hs [-o prog] # machine code ตรง ไม่ใช้ gcc (subset)
 python3 hs.py xkernel prog.hs -o k.elf # kernel freestanding ไม่ใช้ gcc/as/ld
+python3 hs.py lsp                     # language server (stdio, ไม่มี dependency)
 python3 hs.py --version
 ```
+
+เริ่มอ่านที่ **[`docs/index.md`](docs/index.md)** — tutorial, stdlib,
+x64 subset, kernel, LSP, คู่มือสำหรับ AI agent
 
 ## ตัวอย่าง 30 วินาที
 
@@ -33,14 +38,18 @@ print sin(0.0)
 
 | ส่วน | ไฟล์ |
 |---|---|
-| สเปกภาษา | `SPEC-v1.md` |
-| interpreter | `interp.py` |
-| native backend (AST→C→gcc) | `hs.py` + `native/rt.{h,c}` |
+| เอกสารทั้งหมด (เริ่มตรงนี้) | `docs/index.md` |
+| กฎสำหรับ AI agent | `AGENTS.md` |
+| สเปกภาษา + เหตุผลออกแบบ | `SPEC-v1.md` |
+| interpreter (พฤติกรรมอ้างอิง) | `interp.py` |
+| native backend (AST→C→gcc) + CLI | `hs.py` + `native/rt.{h,c}` |
 | x86-64 backend ตรง (subset, ไม่ใช้ gcc, ค่าแบบ tagged) | `x64.py` + `x64gen.py` |
 | kernel runtime (freestanding) | `kernel/` |
 | ไลบรารีมาตรฐาน (เขียนด้วย hs) | `std/` |
+| language server (diagnostics/hover/goto/format) | `lsp.py` + `editors/` |
+| ข้อมูลภาษาแบบเครื่องอ่านได้ | `docs/api.json`, `scripts/lang_data.py` |
 | ตัวอย่างตามหัวข้อ | `examples/` |
-| เทส (interp+native ตรงกัน) | `tests/test.py`, `tests/test_native.py`, `tests/test_xkernel.py` |
+| เทส | `tests/` |
 | ของเก่า v0.3 (WASM) | `legacy/` |
 
 ## หัวข้อหลักในภาษา
@@ -54,22 +63,38 @@ print sin(0.0)
 - `unsafe:` — I64/U64/Ptr + `asm` ตรง (static subset ในภาษาเดียวกัน)
 - `extern [from ...]:` — เรียก C/.so/ภาษาไหนก็ได้ผ่าน C ABI
 - closure (copy semantics), JSON, socket/HTTP client, argv/env/system
+- มี x64 subset ที่รันได้โดยไม่ต้องมี gcc เลย (รวมถึง kernel)
 
 ## เทส
 
 ```sh
+python3 tests/run_all.py         # ทุกชุด (ข้าม kernel ด้วย --quick)
 python3 tests/test.py          # interpreter (35 ชุด)
 python3 tests/test_native.py   # native binary (36 ชุด, ผลต้องตรง interp)
 python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec เท่าเดิม)
 python3 tests/test_x64.py      # backend x86-64 ตรง (25 ชุด, static ELF, ไม่ใช้ gcc)
 python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (58 เคส)
+python3 tests/test_lsp.py      # language server ผ่าน stdio (11 เคส)
+python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (33)
 ```
 
 กติกาเทส: `tests/<name>.hs` + `.expected` (stdout), `.stdin` (input),
 `.args` (argv ทีละบรรทัด), `.env` (KEY=VAL ต่อบรรทัด), `.fail` (error ที่คาด,
 เทียบ stderr), `mod_*` = helper (ไม่รันตรง), `.nativeonly` = ข้ามฝั่ง interp
 
+## editor
+
+language server เป็น stdio ล้วน ไม่ต้องลงอะไรเพิ่ม — ชี้ editor ไปที่
+`python3 <repo>/lsp.py` ได้เลย (VS Code / Neovim / Helix / Zed มีตัวอย่างใน
+`editors/`)
+
+```sh
+python3 hs.py lsp                                  # server
+python3 scripts/lsp_client.py --diag prog.hs       # คำสั่งเดียวจบ (สำหรับ agent)
+```
+
 ## สำหรับ AI agent
 
 อ่าน `AGENTS.md` ก่อนเขียน `.hs` เสมอ — reference กระชับครบกฎทั้งหมด
 รวม gotchas และ fix loop (`check` → `interp` → `build`, error มี `--json`)
+สั้นกว่านั้นดู `docs/for-agents.md`
