@@ -5,7 +5,9 @@
 
 | อยาก... | อ่าน |
 |---|---|
+| **cheatsheet หน้าเดียวจบ** | `cheatsheet.md` |
 | เขียนโปรแกรมแรกใน 10 นาที | `tutorial.md` |
+| ดูตัวอย่างที่รันได้จริง | `../examples/` |
 | หา builtin/keyword (คน) | `builtins.md` |
 | เขียน `std.*` เอง / ใช้ std | `stdlib.md` |
 | รันแบบไม่ใช้ gcc / ลง bare metal | `x64-subset.md`, `kernel.md` |

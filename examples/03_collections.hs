@@ -1,0 +1,34 @@
+# tour 03: List + Dict
+# รัน: python3 interp.py examples/03_collections.hs
+
+xs = [1, 2, 3]
+print xs, len(xs)
+print xs[0], xs[-1]
+
+append(xs, 4)
+print xs
+print xs[1:3]
+
+empty = []
+print len(empty), empty == []
+
+# Dict: key ต้องเป็น Str, การอ่าน key ที่ไม่มี = error
+cfg = {"port": 8080, "host": "localhost"}
+print cfg["host"], cfg["port"]
+cfg["debug"] = true
+print cfg["debug"]
+for k in cfg:
+  print k, cfg[k]
+
+nested = {"inner": {"n": 5}}
+print nested["inner"]["n"]
+
+# ลูปซ้อน + break/continue
+total = 0
+for x in xs:
+  if x == 2:
+    continue
+  if x == 4:
+    break
+  total = total + x
+print total

@@ -1410,7 +1410,21 @@ class Gen:
                            f"hsTry{tn}.msg, hsTry{tn}.line);")
                 if s["ename"] is not None:
                     out.append(f"{self.ref(self.resolve(s['ename'], scope, ln))} = v_str(hsEm{tn});")
+                if has_finally:
+                    # an error raised inside the handler must still run this
+                    # try's finally before unwinding further: guard the handler
+                    # with its own frame, run finally, then rethrow
+                    out.append(f"HSTry hsHandler{tn};")
+                    out.append(f"hs_try_push(&hsHandler{tn});")
+                    out.append(f"if (setjmp(hsHandler{tn}.buf) == 0) {{")
                 self.emit_body(s["ebody"], scope, out, depth)
+                if has_finally:
+                    out.append("hs_try_pop();")
+                    out.append("} else {")
+                    # hs_err already popped this frame before longjmp
+                    self._emit_fbody(out, scope, depth, s["fbody"])
+                    out.append(f"hs_err(hsHandler{tn}.line, \"%s\", hsHandler{tn}.msg);")
+                    out.append("}")
                 out.append("}")
                 self._except_stack.pop()
                 if has_finally:

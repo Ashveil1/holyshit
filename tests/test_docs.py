@@ -80,7 +80,10 @@ def run_blocks(state, path):
             f.write(src)
             tmp = f.name
         try:
+            # HSPATH -> repo so `import std.str` resolves inside doc examples
             env = dict(os.environ)
+            env["HSPATH"] = ROOT + (":" + env["HSPATH"] if env.get("HSPATH")
+                                    else "")
             p = subprocess.run([sys.executable, os.path.join(ROOT, "interp.py"),
                                 tmp, path],
                                capture_output=True, text=True, timeout=60,

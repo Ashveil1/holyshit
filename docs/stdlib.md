@@ -1,15 +1,29 @@
 # stdlib — `std/` (เขียนด้วย hs ล้วน)
 
-ใช้ด้วย `HSPATH=std` (หรือวางไฟล์ข้างโปรแกรม):
+`import std.str` ต้องการ `std/` ให้มองเห็นเป็นโฟลเดอร์ ของ `HSPATH`
+(โฟลเดอร์โปรแกรมก่อนเสมอ แล้วค่อย `HSPATH` ต่อด้วย `:`):
 
 ```sh
-HSPATH=std python3 interp.py prog.hs
+# จากโฟลเดอร์ repo: ชี้ HSPATH ที่ตัว repo (มี std/ อยู่ข้างใน)
+HSPATH=/path/to/holyshit python3 interp.py prog.hs
+# หรือก๊อป std/ ไปไว้ข้างโปรแกรมแล้ว import ตรง ๆ ไม่ต้องตั้งอะไร
 ```
 
-```hs-norun
+ตัวอย่างที่รันจริงในเทส:
+
+```hs
 import std.str
 import std.list
+
+def add(a, b):
+  return a + b
+
 print std.str.trim("  hi  ")
+print std.list.fold(add, 0, [1, 2, 3])
+print std.str.starts_with("holyshit", "holy")
+# => hi
+# => 6
+# => true
 ```
 
 ## std.str — ข้อความ

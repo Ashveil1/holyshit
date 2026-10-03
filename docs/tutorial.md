@@ -124,8 +124,14 @@ import std.str
 print std.str.trim("  hi  ")
 ```
 
-`import` หาไฟล์จาก: โฟลเดอร์ของโปรแกรม → `HSPATH` → cwd.
-รันโปรแกรมนี้จริงด้วย `HSPATH=std python3 interp.py prog.hs`.
+`import` หาไฟล์จาก: โฟลเดอร์ของโปรแกรม → `HSPATH` → cwd (คั่นด้วย `:`)
+`std/` อยู่ในโฟลเดอร์ repo จึงต้องชี้ `HSPATH` ที่ตัว repo:
+
+```sh
+HSPATH=/path/to/holyshit python3 interp.py prog.hs
+```
+
+โค้ดบล็อกนี้ถูกรันจริงในเทส (`HSPATH` ชี้ที่ repo)
 
 ## 7. ต่อไป
 

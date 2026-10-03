@@ -1,0 +1,39 @@
+# tour 01: ค่า ตัวแปร และฟังก์ชัน
+# รัน: python3 interp.py examples/01_basics.hs
+
+print "holyshit"
+print 1 + 2, 7 / 2, 7 % 3
+print true, false, null
+print "a" + "b"
+
+name = "ada"
+n = 42
+print name, n
+
+def greet(who, greeting):
+  return greeting + ", " + who
+
+print greet(name, "hi")
+
+# def เป็นตัวเดียวที่สร้าง scope ใหม่ — if/while/for ไม่สร้าง
+total = 0
+for i in range(5):
+  total = total + i
+print total
+
+i = 0
+while i < 3:
+  i = i + 1
+print i
+
+# and/or คืน operand ไม่ใช่ Bool
+print 0 or "fallback"
+print "kept" and 7
+print not ""
+
+if n > 100:
+  print "big"
+elif n > 10:
+  print "medium"
+else:
+  print "small"

@@ -1,0 +1,57 @@
+# tour 05: error + try/except/finally/raise
+# รัน: python3 interp.py examples/05_errors.hs
+#
+# error ทุกอันเป็น Str พร้อมเลขบรรทัด: "message at line N"
+# raise รับได้แค่ Str และ function boundary ตัด bare raise ทิ้ง
+
+# จับ type error ที่เกิดตอนรัน
+try:
+  print 1 + "a"
+except as e:
+  print "caught:", e
+
+try:
+  xs = [1]
+  print xs[9]
+except as e:
+  print "caught:", e
+
+try:
+  d = {}
+  print d["nope"]
+except as e:
+  print "caught:", e
+
+# finally รันทุกทางออก — ทั้ง error, return และโดยปกติ
+def checked(x):
+  try:
+    if x < 0:
+      raise "negative input"
+    return "ok " + str(x)
+  except as e:
+    return "error: " + e
+  finally:
+    print "checked", x
+
+print checked(3)
+print checked(-1)
+
+# ลองซ้อน: inner finally ก่อน แล้วค่อยหลุดไปที่ outer
+try:
+  try:
+    raise "inner"
+  except as e:
+    print "level 1 sees", e
+    raise "outer"
+  finally:
+    print "inner finally"
+except as e:
+  print "level 2 sees", e
+
+# จับแบบไม่มีตัวแปร
+try:
+  print len(5)
+except:
+  print "caught silently"
+
+print "done"

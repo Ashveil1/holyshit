@@ -15,8 +15,8 @@ python3 hs.py lsp                     # language server (stdio, ไม่มี 
 python3 hs.py --version
 ```
 
-เริ่มอ่านที่ **[`docs/index.md`](docs/index.md)** — tutorial, stdlib,
-x64 subset, kernel, LSP, คู่มือสำหรับ AI agent
+เริ่มอ่านที่ **[`docs/index.md`](docs/index.md)** — cheatsheet, tutorial, ตัวอย่าง
+ที่รันได้จริง, stdlib, x64 subset, kernel, LSP, คู่มือสำหรับ AI agent
 
 ## ตัวอย่าง 30 วินาที
 
@@ -74,6 +74,7 @@ python3 tests/test_native.py   # native binary (36 ชุด, ผลต้อง
 python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec เท่าเดิม)
 python3 tests/test_x64.py      # backend x86-64 ตรง (25 ชุด, static ELF, ไม่ใช้ gcc)
 python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (58 เคส)
+python3 tests/test_examples.py # ตัวอย่างทุกไฟล์ยังรันได้จริง (17)
 python3 tests/test_lsp.py      # language server ผ่าน stdio (25 เคส)
 python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (33)
 ```

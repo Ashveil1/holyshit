@@ -1,0 +1,36 @@
+# tour 07: ต่อ C / ไลบรารีภาษาอื่นผ่าน C ABI
+# รัน: python3 interp.py examples/07_extern.hs   (หรือ hs.py build)
+#
+# extern เรียกอะไรก็ได้ที่พูด C ABI: libc, .so ของภาษาอื่น, หรือไฟล์ .c
+# ที่คอมไพล์เข้ามาด้วย ไม่มี implicit conversion — แปลงเองทุกครั้ง
+
+# libc — ไม่ต้องระบุ from (default)
+extern:
+  U64 strlen(Str s)
+  I64 abs(I64 x)
+  I64 atoi(Str s)
+
+print strlen("holyshit")
+print abs(0 - 17)
+print atoi("42")
+
+# ไลบรารีระบบ: from "m" -> -lm
+extern from "m":
+  F64 sin(F64 x)
+  F64 cos(F64 x)
+
+print sin(0.0)
+print cos(0.0)
+
+# ไฟล์ .c ข้างโปรแกรม -> คอมไพล์+ลิงก์ให้อัตโนมัติ
+# (ดูตัวอย่าง helper ใน tests/ffic.c)
+# extern from "helper.c":
+#   I64 triple(I64 x)
+
+def repeat(s, k):
+  out = ""
+  for i in range(k):
+    out = out + s
+  return out
+
+print repeat("ab", 3)

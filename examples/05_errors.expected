@@ -1,0 +1,12 @@
+caught: cannot add Int and Str at line 9
+caught: index out of range at line 15
+caught: key 'nope' not found at line 21
+checked 3
+ok 3
+checked -1
+error: negative input at line 29
+level 1 sees inner at line 42
+inner finally
+level 2 sees outer at line 45
+caught silently
+done

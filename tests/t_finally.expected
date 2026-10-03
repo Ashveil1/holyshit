@@ -14,3 +14,10 @@ loop-done
 inner-fin
 deep at line 38
 done
+saw boom at line 48
+fin-before-rethrow
+outer saw rethrown at line 51
+saw boom at line 60
+fin-before-typeerror
+outer saw cannot add Int and Str at line 63
+end
