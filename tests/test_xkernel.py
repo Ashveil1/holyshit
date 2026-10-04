@@ -214,6 +214,19 @@ with tempfile.TemporaryDirectory() as d:
         exits = [out.find(x) for x in ("a exit", "b exit", "c exit")]
         check("ktask all tasks exit, c last",
               all(i >= 0 for i in exits) and exits[2] == max(exits), exits)
+    # preemption: hogs that never yield are still force-switched
+    kp = os.path.join(d, "kpre.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpreempt.hs"), kp)
+    check("kpreempt build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kp, timeout=15)
+        check("kpreempt finished", "kpreempt-done" in out, out[-800:])
+        check("kpreempt did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kpreempt all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("kpreempt every hog preempted",
+              all(f"ok hog{i} was preempted" in out for i in range(3)),
+              out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

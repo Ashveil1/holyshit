@@ -324,7 +324,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (73)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (77)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -363,6 +363,8 @@
 - `in module '{name}': {e.msg}`
 - `int wants 1 arg`
 - `invlpg wants invlpg(vaddr)`
+- `irq_off takes no args`
+- `irq_on takes no args`
 - `join wants join(sep, list)`
 - `module '{m['name']}' has no attribute '{e['name']}'`
 - `module '{m['name']}' has no attribute '{name}'`
@@ -374,6 +376,8 @@
 - `range wants range(n) or range(a, b)`
 - `readkey takes no args`
 - `return outside function`
+- `sched_on_tick wants sched_on_tick(func)`
+- `sched_tick_clear takes no args`
 - `set_cr3 wants set_cr3(pml4)`
 - `split wants split(s) or split(s, sep)`
 - `strings not allowed in unsafe`
@@ -405,4 +409,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 365 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 369 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

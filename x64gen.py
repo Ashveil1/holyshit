@@ -1195,6 +1195,8 @@ class Gen:
                 "pmm_free", "meminfo", "mb_info", "mb_magic",
                 "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush",
                 "ctx_swap", "task_run", "task_init",
+                "irq_off", "irq_on",
+                "sched_on_tick", "sched_tick_clear",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "read_text", "write_text", "append_text",
@@ -1203,7 +1205,9 @@ class Gen:
                     "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
                     "mb_info", "mb_magic", "image_end", "cr2", "cr3",
                     "set_cr3", "invlpg", "tlb_flush",
-                    "ctx_swap", "task_run", "task_init"):
+                    "ctx_swap", "task_run", "task_init",
+                    "irq_off", "irq_on",
+                    "sched_on_tick", "sched_tick_clear"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
@@ -1376,7 +1380,7 @@ class Gen:
             return
         if name == "ctx_swap":
             # ctx_swap(save, load): save this context, resume the other one.
-            # Both are 64-byte blocks (see emit_task_runtime); raw addresses
+            # Both are ctx blocks (see emit_task_runtime); raw addresses
             # arrive as tagged Ints and are unboxed here.
             if len(args) != 2:
                 raise HSErr("ctx_swap wants ctx_swap(save, load)", ln)
@@ -1462,6 +1466,52 @@ class Gen:
             a.sub_ri32("rax", 8)
             a.mov_mr("rdi", "rax", 48)  # rsp
             a.mov_mr("rdi", "r10", 56)  # rip = entry code
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "irq_off":
+            # cli: mask timer/keyboard IRQs around scheduler critical
+            # sections. Tasks always run with IF=1; never swap with IF=0
+            # (the target would keep running deaf to ticks).
+            if args:
+                raise HSErr("irq_off takes no args", ln)
+            a.cli()
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "irq_on":
+            if args:
+                raise HSErr("irq_on takes no args", ln)
+            a.sti()
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "sched_on_tick":
+            # sched_on_tick(func): register the 0-arg Func the timer stub
+            # calls on every tick (or 0/unregister via sched_tick(null)).
+            if len(args) != 1:
+                raise HSErr("sched_on_tick wants sched_on_tick(func)", ln)
+            self.ev(args[0], sc, mod)  # rax = func struct (raw address)
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            lab_sok = self.new_tmp("so")
+            lab_sob = self.new_tmp("so")
+            a.jcc("ne", lab_sob)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_FUNC)
+            a.jcc("e", lab_sok)
+            a.label(lab_sob)
+            self.raise_unop(3, ln)  # not callable
+            a.label(lab_sok)
+            a.lea_rip("rcx", "sched_tick_fn_")
+            a.mov_mr("rcx", "rax", 0)
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "sched_tick_clear":
+            # unregister the tick handler (preemption off, timer still ticks)
+            if args:
+                raise HSErr("sched_tick_clear takes no args", ln)
+            a.lea_rip("rcx", "sched_tick_fn_")
+            a.mov_ri32("rax", 0)
+            a.mov_mr("rcx", "rax", 0)
             a.mov_ri64("rax", Gen.HS_NULL)
             return
         raise HSErr(f"bad kdev {name}", ln)
@@ -2874,6 +2924,16 @@ class Gen:
             # the task_exit stub when a task function returns
             self.a.data_label("sched_ret_")
             self.a.data_qword(0)
+            # preemptive scheduler slots (see emit_task_runtime + irq_stub_32):
+            # sched_cur_ = block of the running task (every swap records it),
+            # sched_tick_fn_ = registered tick Func or 0,
+            # sched_depth_ = live timer-stub frames (nesting guard)
+            self.a.data_label("sched_cur_")
+            self.a.data_qword(0)
+            self.a.data_label("sched_tick_fn_")
+            self.a.data_qword(0)
+            self.a.data_label("sched_depth_")
+            self.a.data_qword(0)
             # physical end of the kernel image; patched by build_xkernel once
             # the final file size is known (the memory manager reserves it)
             self.a.data_label("imageend_")
@@ -3000,15 +3060,163 @@ class Gen:
             a.mov_ri32("rdi", vec)
             a.call("k_exc")
             # unreachable (k_exc halts)
-        # timer IRQ0 -> vec 32: ticks_++, EOI, iret
+        # timer IRQ0 -> vec 32: ticks_++, then drive the .hs scheduler when
+        # one is registered. The stub fully saves the interrupted task into
+        # sched_cur_ (maintained by every ctx_swap_inner), runs the tick
+        # handler on a dedicated stack, and either restores+irets (handler
+        # returned: keep running) or never comes back (handler swapped away).
+        # Nesting is handled by a depth counter: only depth 1 proceeds,
+        # deeper ticks EOI+iret on the current stack (no slots touched, so
+        # no state to corrupt). The skip path uses the stack only, which is
+        # always valid here. Full state (all 15 regs + rsp + rip) is saved,
+        # so the interrupted point is resumable no matter what it was doing.
+        # No cli anywhere: .hs critical sections mask IRQs themselves, and
+        # every shared slot below is reached by exactly one live stub frame.
         a.label("irq_stub_32")
-        a.push_r("rax")
+        # Timer tick. Nesting is linearized by sched_depth_: only depth 1
+        # proceeds; deeper ticks EOI and bail on the current stack (no slots
+        # touched, nothing to corrupt). .hs critical sections mask IRQs
+        # themselves around queue mutations; everything the handler touches
+        # is read-only otherwise.
+        a.push_r("rax")  # stash live rax (stack always valid on entry)
         a.inc_mrip("ticks_")
+        a.inc_mrip("sched_depth_")
+        a.mov_rm_rip("rax", "sched_depth_")
+        a.cmp_ri32("rax", 1)
+        lab_tskip = self.new_tmp("tm")
+        a.jcc("ne", lab_tskip)  # nested tick: bail out
         a.mov_ri32("rax", 0x20)
         a.mov_ri16("dx", 0x20)
-        a.out_dx_al()
-        a.pop_r("rax")
+        a.out_dx_al()  # EOI
+        a.mov_rm_rip("rax", "sched_cur_")
+        a.test_rr("rax", "rax")
+        lab_tskip2 = self.new_tmp("tm")
+        a.jcc("e", lab_tskip2)  # no task ever ran
+        a.mov_rm_rip("rax", "sched_tick_fn_")
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_tskip2)  # preemption off
+        # Full save into the cur block. Stack now holds live rax ([R0-8]);
+        # push live rbx too, then read both back by offset. Saved rsp = R0
+        # (recomputed with lea: no pops, nothing unbalanced).
+        a.push_r("rbx")
+        a.mov_rm_rip("rbx", "sched_cur_")  # base
+        a.mov_rm("rax", "rsp", 8)  # live rax ([R0-8])
+        a.mov_mr("rbx", "rax", 64)  # rax
+        a.mov_rm("rax", "rsp", 0)  # live rbx ([R0-16])
+        a.mov_mr("rbx", "rax", 0)  # rbx
+        a.mov_mr("rbx", "rcx", 72)
+        a.mov_mr("rbx", "rdx", 80)
+        a.mov_mr("rbx", "rsi", 88)
+        a.mov_mr("rbx", "rdi", 96)
+        a.mov_mr("rbx", "rbp", 8)
+        a.mov_mr("rbx", "r8", 104)
+        a.mov_mr("rbx", "r9", 112)
+        a.mov_mr("rbx", "r10", 120)
+        a.mov_mr("rbx", "r11", 128)
+        a.mov_mr("rbx", "r12", 16)
+        a.mov_mr("rbx", "r13", 24)
+        a.mov_mr("rbx", "r14", 32)
+        a.mov_mr("rbx", "r15", 40)
+        a.lea_m("rax", "rsp", 16)  # R0
+        a.mov_mr("rbx", "rax", 48)  # rsp
+        a.lea_rip("rax", "tick_back")
+        a.mov_mr("rbx", "rax", 56)
+        # The handler runs on the current (task) stack: bounded use and
+        # nest-safe, since every frame here is balanced or travels with the
+        # task being swapped. (A separate IRQ stack with an absolute reset
+        # would clobber handler frames abandoned by swaps.)
+        # call the registered tick handler: it returns Null (keep running
+        # the interrupted task) or a task block address (switch there).
+        # Same shape as a normal 0-arg call (func obj, caps in r15).
+        a.mov_rm_rip("r10", "sched_tick_fn_")
+        a.push_r("r10")
+        a.lea_m("r15", "r10", 16)  # caps
+        a.mov_rm("rax", "r10", 8)  # code
+        a.call_rax()
+        a.add_ri32("rsp", 8)
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_NULL)
+        lab_tgo = self.new_tmp("tm")
+        a.jcc("ne", lab_tgo)  # a block address: switch there
+        # Null: nobody to switch to. Restore from the cur block the entry
+        # saved (the handler changed nothing), drop the depth, resume.
+        a.mov_rm_rip("rbx", "sched_cur_")
+        a.mov_rm("rax", "rbx", 64)
+        a.mov_rm("rcx", "rbx", 72)
+        a.mov_rm("rdx", "rbx", 80)
+        a.mov_rm("rsi", "rbx", 88)
+        a.mov_rm("rdi", "rbx", 96)
+        a.mov_rm("rbp", "rbx", 8)
+        a.mov_rm("r8", "rbx", 104)
+        a.mov_rm("r9", "rbx", 112)
+        a.mov_rm("r10", "rbx", 120)
+        a.mov_rm("r11", "rbx", 128)
+        a.mov_rm("r12", "rbx", 16)
+        a.mov_rm("r13", "rbx", 24)
+        a.mov_rm("r14", "rbx", 32)
+        a.mov_rm("r15", "rbx", 40)
+        a.mov_rm("rsp", "rbx", 48)
+        a.mov_rm("rbx", "rbx", 0)
+        a.dec_mrip("sched_depth_")
+        lab_tdone = self.new_tmp("tm")
+        a.jmp(lab_tdone)
+        # Switch: rax is the tagged target block. Unbox it, record it as
+        # current, drop the depth (nobody returns through this frame), then
+        # full-load the target and jump to its rip. That rip pairs with its
+        # rsp by construction: fresh task -> entry code on a fresh stack,
+        # preempted task -> tick_back on a hardware frame, suspended task
+        # -> resume on a builtin frame. No save here: the entry already
+        # saved the interrupted task.
+        a.label(lab_tgo)
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        lab_tbad = self.new_tmp("tm")
+        a.jcc("ne", lab_tbad)  # tick must return Null or an Int address
+        a.sar_ri8("rax", 2)
+        a.mov_rr("rbx", "rax")  # base: survives until the final jump
+        a.lea_rip("rdi", "sched_cur_")
+        a.mov_mr("rdi", "rbx", 0)  # record current
+        a.mov_ri32("rax", 0)
+        a.mov_mr_rip("sched_depth_", "rax")  # nobody returns via stub
+        a.mov_rm("rax", "rbx", 64)
+        a.mov_rm("rcx", "rbx", 72)
+        a.mov_rm("rdx", "rbx", 80)
+        a.mov_rm("rsi", "rbx", 88)
+        a.mov_rm("rdi", "rbx", 96)
+        a.mov_rm("rbp", "rbx", 8)
+        a.mov_rm("r8", "rbx", 104)
+        a.mov_rm("r9", "rbx", 112)
+        a.mov_rm("r10", "rbx", 120)
+        a.mov_rm("r11", "rbx", 128)
+        a.mov_rm("r12", "rbx", 16)
+        a.mov_rm("r13", "rbx", 24)
+        a.mov_rm("r14", "rbx", 32)
+        a.mov_rm("r15", "rbx", 40)
+        a.mov_rm("rsp", "rbx", 48)
+        a.push_m("rbx", 56)
+        a.mov_rm("rbx", "rbx", 0)
+        # The CPU cleared IF when it vectored here (interrupt gate); the
+        # iret that would restore it never runs on this path, so enable
+        # explicitly -- otherwise the target runs deaf to ticks. (STI takes
+        # effect after the next instruction, so the ret below is atomic.)
+        a.sti()
+        a.ret()
+        a.label(lab_tbad)
+        a.call("k_halt")  # corrupt scheduler state: stop, do not jump wild
+        a.label("tick_back")  # resumed preempted task lands here: a bare
+        a.label(lab_tdone)  # iret, stack top already the hardware frame
         a.iretq()
+        a.label(lab_tskip)  # nested tick: unwind, resume; the pending
+        a.dec_mrip("sched_depth_")  # edge refires after iret (no EOI here:
+        a.pop_r("rax")  # outer already EOI'd, nothing is lost)
+        a.label(lab_tdone2 := self.new_tmp("tm"))
+        a.iretq()
+        a.label(lab_tskip2)  # outer bail (EOI done): unwind, resume
+        a.dec_mrip("sched_depth_")
+        a.pop_r("rax")
+        a.jmp(lab_tdone2)
         # keyboard IRQ1 -> vec 33: map scancode, store, EOI, iret
         a.label("irq_stub_33")
         for r in Gen.GPREGS:
@@ -3036,14 +3244,32 @@ class Gen:
         a.iretq()
 
     def emit_task_runtime(self):
-        # Cooperative task switching. Context block (64 bytes, .hs-managed):
-        # +0 rbx, +8 rbp, +16 r12, +24 r13, +32 r14, +40 r15, +48 rsp, +56 rip.
-        # Only callee-saved registers are kept: the swap happens inside a
-        # call, so caller-saved regs are already dead by SysV rules.
+        # Cooperative + preemptive task switching. Context block (136 bytes,
+        # .hs-managed, opaque): callee-saved + rsp + rip first (the cooperative
+        # path only touches these), then the caller-saved regs the timer stub
+        # needs for full preemption:
+        # +0 rbx +8 rbp +16 r12 +24 r13 +32 r14 +40 r15 +48 rsp +56 rip
+        # +64 rax +72 rcx +80 rdx +88 rsi +96 rdi +104 r8 +112 r9 +120 r10
+        # +128 r11. Every transition funnels through ctx_swap_inner, which
+        # records the incoming block in sched_cur_ so the timer stub always
+        # knows whose state to save.
         a = self.a
         a.label("ctx_swap_inner")  # rdi = save block, rsi = load block
+        # Full save: every reg (a preempted task may hold live values in
+        # caller-saved regs). rax first: the depth reset below needs it.
+        a.mov_mr("rdi", "rax", 64)
+        a.mov_ri32("rax", 0)
+        a.mov_mr_rip("sched_depth_", "rax")
+        a.mov_mr("rdi", "rcx", 72)
+        a.mov_mr("rdi", "rdx", 80)
+        a.mov_mr("rdi", "rsi", 88)
+        a.mov_mr("rdi", "rdi", 96)
         a.mov_mr("rdi", "rbx", 0)
         a.mov_mr("rdi", "rbp", 8)
+        a.mov_mr("rdi", "r8", 104)
+        a.mov_mr("rdi", "r9", 112)
+        a.mov_mr("rdi", "r10", 120)
+        a.mov_mr("rdi", "r11", 128)
         a.mov_mr("rdi", "r12", 16)
         a.mov_mr("rdi", "r13", 24)
         a.mov_mr("rdi", "r14", 32)
@@ -3051,16 +3277,34 @@ class Gen:
         a.mov_mr("rdi", "rsp", 48)
         a.lea_rip("rax", "ctx_resume")
         a.mov_mr("rdi", "rax", 56)
-        a.mov_rm("rbx", "rsi", 0)
-        a.mov_rm("rbp", "rsi", 8)
-        a.mov_rm("r12", "rsi", 16)
-        a.mov_rm("r13", "rsi", 24)
-        a.mov_rm("r14", "rsi", 32)
-        a.mov_rm("r15", "rsi", 40)
-        a.mov_rm("rsp", "rsi", 48)
-        a.jmp_m("rsi", 56)  # rsi survived: still the load block
-        a.label("ctx_resume")
+        a.lea_rip("rax", "sched_cur_")
+        a.mov_mr("rax", "rsi", 0)
+        # Full load. rbx stays the base until the end; the rip goes via
+        # push+ret so no scratch register is needed (all hold task state).
+        # Every stored rip pairs with its rsp: fresh task -> entry on a
+        # fresh stack, preempted task -> tick_back on a hardware frame,
+        # suspended task -> resume on a builtin frame.
+        a.mov_rr("rbx", "rsi")
+        a.mov_rm("rax", "rbx", 64)
+        a.mov_rm("rcx", "rbx", 72)
+        a.mov_rm("rdx", "rbx", 80)
+        a.mov_rm("rsi", "rbx", 88)
+        a.mov_rm("rdi", "rbx", 96)
+        a.mov_rm("rbp", "rbx", 8)
+        a.mov_rm("r8", "rbx", 104)
+        a.mov_rm("r9", "rbx", 112)
+        a.mov_rm("r10", "rbx", 120)
+        a.mov_rm("r11", "rbx", 128)
+        a.mov_rm("r12", "rbx", 16)
+        a.mov_rm("r13", "rbx", 24)
+        a.mov_rm("r14", "rbx", 32)
+        a.mov_rm("r15", "rbx", 40)
+        a.mov_rm("rsp", "rbx", 48)
+        a.push_m("rbx", 56)
+        a.mov_rm("rbx", "rbx", 0)
         a.ret()
+        a.label("ctx_resume")  # kept as the cooperative rip value; the
+        a.ret()  # push_m/ret above lands here identically
         # task entry: a finished task function returns here, which hands
         # control back to whoever ran it last (recorded by task_run)
         a.label("task_exit")
@@ -3068,7 +3312,7 @@ class Gen:
         a.lea_rip("rsi", "sched_ret_")
         a.mov_rm("rsi", "rsi", 0)
         a.jmp("ctx_swap_inner")
-        self.reserve("exit_save_", 64)
+        self.reserve("exit_save_", 136)
 
     # ----- output primitives -----
     def rt_out(self, fd=1):

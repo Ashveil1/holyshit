@@ -228,6 +228,14 @@ class Asm:
     def lea_rip(self, d, label):
         self._rm(0x8D, d, "rip", rip_label=label)
 
+    def mov_mr_rip(self, label, s):
+        # mov [rip+label], r64
+        self._rm(0x89, s, "rip", rip_label=label)
+
+    def mov_rm_rip(self, d, label):
+        # mov r64, [rip+label]
+        self._rm(0x8B, d, "rip", rip_label=label)
+
     # ----- control registers / TLB (long mode only) -----
 
     def mov_rcr64(self, rd, cr):
@@ -504,6 +512,10 @@ class Asm:
     def jmp_m(self, base, disp=0):
         # jmp r/m64 (FF /4) — indirect jump through [base+disp]
         self._rm(0xFF, 4, base, disp)
+
+    def push_m(self, base, disp=0):
+        # push r/m64 (FF /6) — push the qword at [base+disp]
+        self._rm(0xFF, 6, base, disp)
 
     def ret(self):
         self.code.append(0xC3)

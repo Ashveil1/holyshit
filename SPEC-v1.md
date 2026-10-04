@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.4 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.5 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -427,7 +427,7 @@ printer พิมพ์คอมเมนต์ไม่ได้ — lexer ท�
 ### 15.7 สถานะเทสหลังเฟส 7
 
 `test.py` 38 · `test_native.py` 39 · `test_fmt.py` 4 · `test_x64.py` 28 ·
-`test_xkernel.py` 94 · `test_examples.py` 17 · `test_lsp.py` 25 ·
+`test_xkernel.py` 99 · `test_examples.py` 17 · `test_lsp.py` 25 ·
 `test_docs.py` 38 (รันครบทุกชุด: `python3 tests/run_all.py`)
 
 ### 15.8 เตรียม OS: `load64`/`store64` (v0.6.1)
@@ -516,3 +516,27 @@ scheduler แบบ yield (ยังไม่ preemptive): policy `.hs`, กล�
   พิมพ์ fault RIP + CR2 แล้วเลยไม่ต้องเดา
 - เทส: `ktasktest` (3 task สลับกันใช้ counter ร่วม, exit ครบ, กลับ main) —
   xkernel 87 -> 94 เคส
+### 15.13 preemptive scheduler (v0.6.5)
+
+timer IRQ0 พา tasks สลับกันเอง: stub + tick handler `.hs` + switch ใน stub
+
+- `kernel/ktask.hs` — `tick()` (อ่านอย่างเดียว ไม่ print/alloc) ครบ quantum
+  คืน block เป้าหมาย, `preempt_on/off()`, `npreempted(i)` นับการถูกสลับออก;
+  `spawn`/`exit` ครอบ mutation ด้วย `irq_off/on`
+- กลไกใน `x64gen.py`: stub เซฟเต็ม 15 regs + rsp + rip (ห้ามแตะ rflags),
+  เรียก handler บน stack เดิม (bounded, nest-safe), คืนค่า Null = restore +
+  iret, คืนค่า block = บันทึก + full-load + กระโดด (rip จับคู่ rsp เสมอ:
+  fresh -> entry, preempted -> tick_back + iret, suspended -> resume + ret);
+  `irq_off/on`, `sched_on_tick(f)`/`sched_tick_clear()`, depth counter กัน
+  nested tick (skip ไม่แตะ slot)
+- บั๊กใหญ่ที่เจอ: IDT ใช้ interrupt gate (0x8E) CPU จึง clear IF ตอนเข้า
+  stub แต่ switch path แบบ jmp ไม่เคย restore — task แรกที่ถูก preempt
+  เลยวิ่งแบบหูหนวก (IF=0) จน `exit()` มา sti ให้; อาการคือ spans ยุบเป็น tick
+  เดียวทั้งที่ count ครบ; ตามด้วย IF-sampling + PIC/APIC/monitor จนเจอ;
+  เติม `sti` ก่อนกระโดดแล้วหาย
+- บั๊กที่สอง: `ctx_swap_inner` เก็บแค่ callee-saved — task ที่ถูกปลุกด้วย
+  cooperative load ได้ caller regs เก่ามั่ว (count หายแบบเงียบ); ตอนนี้
+  full save/load ทั้ง inner และ stub (ใช้ push_m + ret เพราะไม่มี scratch
+  reg ว่าง)
+- เทส: `kpreempt` (hog ไม่ yield แต่รอด้วย ticks เองจนโดนสลับแน่ๆ + นับ
+  ตรง + โดนสลับทุกตัว) — xkernel 94 -> 99 เคส

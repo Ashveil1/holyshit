@@ -11,20 +11,23 @@
 import kheap
 
 STACK_SIZE = 16384
-CTX_SIZE = 64
+CTX_SIZE = 136
+QUANTUM = 1
 
 tctx = []
 tstate = []
+npreempt = []
 cur = -1
 alive = 0
 main_ctx = 0
+last_tick = 0
 
 def new_ctx():
-  # zeroed 64-byte context block, returned tagged so safe code can hold it
+  # zeroed 136-byte context block, returned tagged so safe code can hold it
   unsafe:
-    Ptr m = alloc(64)
+    Ptr m = alloc(136)
     I64 i = 0
-    while i < 64:
+    while i < 136:
       store8(m + i, 0)
       i = i + 1
     return as_int(m)
@@ -33,6 +36,9 @@ def init():
   global main_ctx
   main_ctx = new_ctx()
   return main_ctx != 0
+
+def npreempted(i):
+  return npreempt[i]
 
 def nspawned():
   return len(tctx)
@@ -45,16 +51,22 @@ def current():
 
 def spawn(func):
   global alive
+  # list appends can relocate buffers, so no tick may observe them halfway
+  irq_off()
   stack = kheap.malloc(STACK_SIZE)
   if stack == 0:
+    irq_on()
     return -1
   top = (stack + STACK_SIZE) & ~15
   ctx = new_ctx()
   task_init(ctx, top, func)
   append(tctx, ctx)
   append(tstate, 1)
+  append(npreempt, 0)
   alive = alive + 1
-  return len(tctx) - 1
+  id = len(tctx) - 1
+  irq_on()
+  return id
 
 def next_ready(start):
   # next ready index at/after start (wraps), or -1
@@ -87,11 +99,47 @@ def yield():
 
 def exit():
   global alive, cur
+  # mutate first (interrupts off), swap after (interrupts on: the target
+  # must keep ticking)
+  irq_off()
   me = cur
   tstate[me] = 0
   alive = alive - 1
   cur = -1
+  irq_on()
   ctx_swap(tctx[me], main_ctx)
+
+def tick():
+  # timer upcall, runs with IF=1 on the interrupted task's stack. Reads
+  # only (no list mutation, no prints, no allocation): safe from IRQ
+  # context. Returns the next task's block to switch there, or Null to
+  # keep running. The stub does the switch itself, so no handler frame is
+  # ever abandoned mid-swap.
+  global cur, last_tick
+  if alive < 2:
+    return null
+  now = ticks()
+  if now - last_tick < QUANTUM:
+    return null
+  me = cur
+  if me < 0:
+    return null
+  nxt = next_ready(me + 1)
+  if nxt < 0 or nxt == me:
+    return null
+  last_tick = now
+  cur = nxt
+  npreempt[me] = npreempt[me] + 1
+  return tctx[nxt]
+
+def preempt_on():
+  last_tick = ticks()
+  sched_on_tick(tick)
+  return true
+
+def preempt_off():
+  sched_tick_clear()
+  return true
 
 def run():
   global cur
