@@ -1194,6 +1194,7 @@ class Gen:
                 "readkey", "pmm_alloc", "pmm_total",
                 "pmm_free", "meminfo", "mb_info", "mb_magic",
                 "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush",
+                "ctx_swap", "task_run", "task_init",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "read_text", "write_text", "append_text",
@@ -1201,7 +1202,8 @@ class Gen:
             if self.freestanding and fn["name"] in (
                     "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
                     "mb_info", "mb_magic", "image_end", "cr2", "cr3",
-                    "set_cr3", "invlpg", "tlb_flush"):
+                    "set_cr3", "invlpg", "tlb_flush",
+                    "ctx_swap", "task_run", "task_init"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
@@ -1370,6 +1372,96 @@ class Gen:
             # a whole 2MB/1GB range that invlpg(vaddr) alone cannot cover.
             a.mov_rcr64("rax", 3)
             a.mov_cr64(3, "rax")
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "ctx_swap":
+            # ctx_swap(save, load): save this context, resume the other one.
+            # Both are 64-byte blocks (see emit_task_runtime); raw addresses
+            # arrive as tagged Ints and are unboxed here.
+            if len(args) != 2:
+                raise HSErr("ctx_swap wants ctx_swap(save, load)", ln)
+            self.ev(args[0], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "ctx_swap wants ctx_swap(save, load)", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")
+            self.ev(args[1], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "ctx_swap wants ctx_swap(save, load)", ln))
+            a.sar_ri8("rax", 2)
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            a.call("ctx_swap_inner")
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "task_run":
+            # task_run(sched, task): like ctx_swap, but also records the
+            # scheduler block so a returning task finds its way back.
+            if len(args) != 2:
+                raise HSErr("task_run wants task_run(sched, task)", ln)
+            self.ev(args[0], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "task_run wants task_run(sched, task)", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")
+            self.ev(args[1], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "task_run wants task_run(sched, task)", ln))
+            a.sar_ri8("rax", 2)
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            a.lea_rip("rax", "sched_ret_")
+            a.mov_mr("rax", "rdi", 0)
+            a.call("ctx_swap_inner")
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "task_init":
+            # task_init(ctx, stack_top, func): prepare a fresh context block
+            # for a task whose entry is the Func value func (closures work:
+            # caps ride along in r15). The fresh stack gets the task_exit
+            # stub as its return address, so returning also exits cleanly.
+            if len(args) != 3:
+                raise HSErr("task_init wants task_init(ctx, top, func)", ln)
+            self.ev(args[0], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "task_init wants task_init(ctx, top, func)", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")  # ctx
+            self.ev(args[1], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "task_init wants task_init(ctx, top, func)", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")  # stack_top
+            self.ev(args[2], sc, mod)  # rax = func struct (raw address)
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            lab_tiok = self.new_tmp("ti")
+            lab_tib = self.new_tmp("ti")
+            a.jcc("ne", lab_tib)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_FUNC)
+            a.jcc("e", lab_tiok)
+            a.label(lab_tib)
+            self.raise_unop(3, ln)  # not callable
+            a.label(lab_tiok)
+            a.mov_rm("r10", "rax", 8)  # code addr
+            a.lea_m("r11", "rax", 16)  # caps addr
+            a.pop_r("rsi")  # stack_top
+            a.pop_r("rdi")  # ctx
+            a.mov_ri32("rax", 0)
+            a.mov_mr("rdi", "rax", 0)
+            a.mov_mr("rdi", "rax", 8)
+            a.mov_mr("rdi", "rax", 16)
+            a.mov_mr("rdi", "rax", 24)
+            a.mov_mr("rdi", "rax", 32)
+            a.mov_mr("rdi", "r11", 40)  # r15 = caps
+            a.lea_rip("rax", "task_exit")
+            a.mov_mr("rsi", "rax", -8)  # return address on the fresh stack
+            a.mov_rr("rax", "rsi")
+            a.sub_ri32("rax", 8)
+            a.mov_mr("rdi", "rax", 48)  # rsp
+            a.mov_mr("rdi", "r10", 56)  # rip = entry code
             a.mov_ri64("rax", Gen.HS_NULL)
             return
         raise HSErr(f"bad kdev {name}", ln)
@@ -2706,6 +2798,7 @@ class Gen:
             self.emit_exc_runtime()
         if self.freestanding:
             self.emit_irq_stubs()
+            self.emit_task_runtime()
         for m in [x for x in self.modules if x.get("collected")]:
             self.emit_mod_init(m)
         for s, themod in self._def_nodes(mod):
@@ -2728,6 +2821,10 @@ class Gen:
         if self.freestanding:
             self.a.label("oom_")
             self.a.code += b"out of memory\0"
+            self.a.label("excrip_")
+            self.a.code += b" rip="
+            self.a.label("exccr2_")
+            self.a.code += b" cr2="
             self.a.label("dzm_")
             self.a.code += b"division by zero\0"
             self.a.label("exc_")
@@ -2772,6 +2869,10 @@ class Gen:
             self.a.data_label("mbinfo_")
             self.a.data_qword(0)
             self.a.data_label("mbmagic_")
+            self.a.data_qword(0)
+            # scheduler return target: ctx block recorded by task_run, read by
+            # the task_exit stub when a task function returns
+            self.a.data_label("sched_ret_")
             self.a.data_qword(0)
             # physical end of the kernel image; patched by build_xkernel once
             # the final file size is known (the memory manager reserves it)
@@ -2868,6 +2969,22 @@ class Gen:
         a.push_r("rdi")
         a.call("print_int")
         a.add_ri32("rsp", 8)
+        # fault RIP: above our 15 pushed regs + the call's return address
+        a.lea_rip("rsi", "excrip_")
+        a.mov_ri32("rdx", 5)
+        self.k_write()
+        a.mov_rm("rax", "rsp", 128)
+        a.push_r("rax")
+        a.call("print_int")
+        a.add_ri32("rsp", 8)
+        # CR2: fault address (meaningful for EXC 14, garbage otherwise)
+        a.lea_rip("rsi", "exccr2_")
+        a.mov_ri32("rdx", 5)
+        self.k_write()
+        a.mov_rcr64("rax", 2)
+        a.push_r("rax")
+        a.call("print_int")
+        a.add_ri32("rsp", 8)
         a.mov_ri32("rax", 10)
         a.call("x_putc")
         a.call("k_halt")
@@ -2917,6 +3034,41 @@ class Gen:
         for r in reversed(Gen.GPREGS):
             a.pop_r(r)
         a.iretq()
+
+    def emit_task_runtime(self):
+        # Cooperative task switching. Context block (64 bytes, .hs-managed):
+        # +0 rbx, +8 rbp, +16 r12, +24 r13, +32 r14, +40 r15, +48 rsp, +56 rip.
+        # Only callee-saved registers are kept: the swap happens inside a
+        # call, so caller-saved regs are already dead by SysV rules.
+        a = self.a
+        a.label("ctx_swap_inner")  # rdi = save block, rsi = load block
+        a.mov_mr("rdi", "rbx", 0)
+        a.mov_mr("rdi", "rbp", 8)
+        a.mov_mr("rdi", "r12", 16)
+        a.mov_mr("rdi", "r13", 24)
+        a.mov_mr("rdi", "r14", 32)
+        a.mov_mr("rdi", "r15", 40)
+        a.mov_mr("rdi", "rsp", 48)
+        a.lea_rip("rax", "ctx_resume")
+        a.mov_mr("rdi", "rax", 56)
+        a.mov_rm("rbx", "rsi", 0)
+        a.mov_rm("rbp", "rsi", 8)
+        a.mov_rm("r12", "rsi", 16)
+        a.mov_rm("r13", "rsi", 24)
+        a.mov_rm("r14", "rsi", 32)
+        a.mov_rm("r15", "rsi", 40)
+        a.mov_rm("rsp", "rsi", 48)
+        a.jmp_m("rsi", 56)  # rsi survived: still the load block
+        a.label("ctx_resume")
+        a.ret()
+        # task entry: a finished task function returns here, which hands
+        # control back to whoever ran it last (recorded by task_run)
+        a.label("task_exit")
+        a.lea_rip("rdi", "exit_save_")
+        a.lea_rip("rsi", "sched_ret_")
+        a.mov_rm("rsi", "rsi", 0)
+        a.jmp("ctx_swap_inner")
+        self.reserve("exit_save_", 64)
 
     # ----- output primitives -----
     def rt_out(self, fd=1):
@@ -5156,10 +5308,12 @@ def build_xkernel(prog_path, out_path):
     asm64.data[idtr_off:idtr_off + 10] = (
         _st.pack("<H", 48 * 16 - 1) + _st.pack("<Q", dat_vaddr + idt_off))
     code = bytearray(asm64.resolve(pay_vaddr, dat_vaddr))
-    # physical end of the kernel image (page tables and stack
-    # included). The loader places its own data right after the
-    # image, so the memory manager reserves everything up to here.
-    image_end = A(tbl_off + 4096 * KTABLE_PAGES)
+    # physical end of the kernel image: page tables AND the main stack.
+    # The loader places its own data right after the image, so the memory
+    # manager reserves everything up to here and never hands those frames
+    # out (a frame overlapping the main stack corrupts return addresses
+    # and locals in ways that surface far away as wild jumps).
+    image_end = stack_top
     ie_off = asm64.data_labels["imageend_"]
     asm64.data[ie_off:ie_off + 8] = _st.pack("<Q", image_end)
     code[g._stack_patch_pos:g._stack_patch_pos + 8] = _st.pack("<Q", stack_top)

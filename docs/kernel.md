@@ -42,6 +42,14 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 - `kernel/kaddr.hs` — address space ละหนึ่ง PML4 แชร์ mapping ฝั่ง kernel
   (PML4[0]); `new`/`switch`/`current`; user page ต้องอยู่ `>= 0x8000000000`
   (PML4 slot 1+) จึงจะ isolated จริง
+- `kernel/ktask.hs` — cooperative task ใน ring 0 (policy `.hs`, กลไก encoder):
+  `spawn(func)` เตรียม stack+context ให้ entry `f()`, `run()` วน round-robin
+  จนหมด, `yield()` สลับตรง task→task, `exit()` จบ task; entry ต้องจบด้วย
+  `exit()` (return เฉยๆ จะถูก schedule ซ้ำ)
+- mechanism ใน `x64gen.py`: `ctx_swap(save, load)`, `task_run(sched, task)`
+  (จำทางกลับให้ task ที่ return), `task_init(ctx, top, func)` (เซ็ต r15=caps,
+  rip=code, วาง `task_exit` เป็น return address); block 64 bytes เก็บบแค่
+  callee-saved + rsp + rip; EXC report มี fault RIP + CR2 แล้ว
 - `std.bitmap` — bit set บน byte (`bit_get/set/clear`, `reserve/release`,
   `bit_alloc_run`, `bit_take`, `bitmap_bytes`) รันได้ทุก backend
 
@@ -51,4 +59,4 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 - ยังไม่มี scheduler / filesystem / user mode (ดู `SPEC-v1.md` หัวข้อ OS)
 - `ticks` เริ่มนับหลังบูต; keyboard คือ scancode ชุด 1 (ไม่มี shift)
 
-เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (87 เคส)
+เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (94 เคส)

@@ -324,7 +324,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (70)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (73)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -350,6 +350,7 @@
 - `cannot import '{s['name']}': '{top}' is already defined`
 - `circular import '{m['name']}'`
 - `continue outside loop`
+- `ctx_swap wants ctx_swap(save, load)`
 - `dict not in x64 subset`
 - `dup data reserve {name}`
 - `field '{e['name']}' is not an array`
@@ -381,6 +382,8 @@
 - `struct '{xs}' has no field '{obj['name']}'`
 - `struct '{xs}' has no field '{x['name']}'`
 - `struct type unknown (x64)`
+- `task_init wants task_init(ctx, top, func)`
+- `task_run wants task_run(sched, task)`
 - `ticks takes no args`
 - `tlb_flush takes no args`
 - `unknown struct '{st}'`
@@ -402,4 +405,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 362 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 365 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

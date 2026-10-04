@@ -1,4 +1,4 @@
-# AGENTS.md — holyshit (hs) v0.6.3 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.6.4 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the
@@ -153,7 +153,10 @@ Net (http only): `tcp_connect/send/recv/close tcp_listen/accept http_get(url)→
 Kernel-surface (xkernel freestanding): `ticks readkey pmm_alloc pmm_total pmm_free`
 (`pmm_*` is the legacy bump allocator; real code uses `kpmm`), `mb_info`/`mb_magic`
 (bootloader info), `image_end` (first address after the kernel image),
-`cr2`/`cr3`/`set_cr3`, `invlpg(v)`/`tlb_flush()` (+ unsafe alloc/load/store/as_*)
+`cr2`/`cr3`/`set_cr3`, `invlpg(v)`/`tlb_flush()`,
+`ctx_swap(save, load)`/`task_run(sched, task)`/`task_init(ctx, top, func)`
+(cooperative tasks; ctx block 64B: rbx rbp r12-r15 rsp rip)
+(+ unsafe alloc/load/store/as_*)
 
 ### x64 backend subset (`hs.py xbuild` / `xkernel`)
 

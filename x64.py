@@ -501,6 +501,10 @@ class Asm:
         self.code.append(0xFF)
         self._modrm(3, 4, rn)
 
+    def jmp_m(self, base, disp=0):
+        # jmp r/m64 (FF /4) — indirect jump through [base+disp]
+        self._rm(0xFF, 4, base, disp)
+
     def ret(self):
         self.code.append(0xC3)
 

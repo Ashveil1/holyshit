@@ -197,6 +197,23 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("kaddr all assertions pass", m and m.group(1) == "0", out[-800:])
         check("kaddr ran its checks", out.count("\nok ") >= 20, out[-800:])
+    # cooperative tasks: spawn/yield/exit/switch on bare metal
+    kt = os.path.join(d, "kt.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "ktasktest.hs"), kt)
+    check("ktasktest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kt, timeout=10)
+        check("ktask finished", "ktask-done" in out, out[-800:])
+        check("ktask did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("ktask all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("ktask ran its checks", out.count("\nok ") >= 12, out[-800:])
+        order = [out.find(x) for x in ("a start", "b start", "c start")]
+        check("ktask starts in round-robin order",
+              all(i >= 0 for i in order) and order == sorted(order), order)
+        exits = [out.find(x) for x in ("a exit", "b exit", "c exit")]
+        check("ktask all tasks exit, c last",
+              all(i >= 0 for i in exits) and exits[2] == max(exits), exits)
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

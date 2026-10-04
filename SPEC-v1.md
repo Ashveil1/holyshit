@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.3 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.4 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -427,7 +427,7 @@ printer พิมพ์คอมเมนต์ไม่ได้ — lexer ท�
 ### 15.7 สถานะเทสหลังเฟส 7
 
 `test.py` 38 · `test_native.py` 39 · `test_fmt.py` 4 · `test_x64.py` 28 ·
-`test_xkernel.py` 87 · `test_examples.py` 17 · `test_lsp.py` 25 ·
+`test_xkernel.py` 94 · `test_examples.py` 17 · `test_lsp.py` 25 ·
 `test_docs.py` 38 (รันครบทุกชุด: `python3 tests/run_all.py`)
 
 ### 15.8 เตรียม OS: `load64`/`store64` (v0.6.1)
@@ -497,3 +497,22 @@ m2 ของงาน OS: heap ที่ขยายได้จริง + PML4
 - เทส: `kheaptest` (malloc/free/reuse/patterns), `kaddrtest` (switch แล้ว
   serial ยังออก, map ใน space ใหม่, เก่าไม่เห็น, กลับมาแล้วยังอยู่) —
   xkernel 77 -> 87 เคส
+### 15.12 cooperative tasks ใน ring 0 (v0.6.4)
+
+scheduler แบบ yield (ยังไม่ preemptive): policy `.hs`, กลไก encoder
+
+- `kernel/ktask.hs` — `spawn(func)`/`run()`/`yield()`/`exit()` บน queue
+  round-robin (ลิสต์คู่ขนาน ctx+state); entry คือ Func `f()` ธรรมดา
+  (closure ได้ — caps ไปกับ r15); ต้องจบด้วย `exit()` มิฉะนั้น corpse ถูก
+  schedule ซ้ำ (documented, ไม่ guard)
+- กลไกใน `x64gen.py`: `ctx_swap` (save/load callee-saved + rsp + rip แล้ว
+  jmp ไป rip ใหม่), `task_run` (จำ sched ลง slot ให้ task ที่ return),
+  `task_init` (zero regs, r15 = func+16, rip = func code, วาง `task_exit`
+  เป็น return address), stub `task_exit` (สลับกลับด้วย sched ที่จำไว้)
+- บั๊กใหญ่ที่เจอ: `image_end` ไม่รวม main stack (16KB) — PMM แจกเฟรมทับ
+  stack ทำให้ locals/return address พัง อาการโผล่ไกลเป็น wild jump
+  (`EXC 6`), error ผี (`index must be Int` ทั้งที่ค่าถูก), ขึ้นกับ layout —
+  ตามด้วย disassembly เทียบกับ Python อยู่นานก่อนเจอ; EXC report ตอนนี้
+  พิมพ์ fault RIP + CR2 แล้วเลยไม่ต้องเดา
+- เทส: `ktasktest` (3 task สลับกันใช้ counter ร่วม, exit ครบ, กลับ main) —
+  xkernel 87 -> 94 เคส
