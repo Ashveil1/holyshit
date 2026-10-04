@@ -1,4 +1,4 @@
-# holyshit (hs) — v0.6.5
+# holyshit (hs) — v0.6.6
 
 ภาษา dynamic เขียนง่ายแบบ Python, รันได้ 4 โหมด, ต่อ C ได้, ลง bare metal ได้,
 มี language server ให้ editor และ AI agent
@@ -70,11 +70,11 @@ print sin(0.0)
 
 ```sh
 python3 tests/run_all.py         # ทุกชุด (ข้าม kernel ด้วย --quick)
-python3 tests/test.py          # interpreter (38 ชุด)
-python3 tests/test_native.py   # native binary (39 ชุด, ผลต้องตรง interp)
+python3 tests/test.py          # interpreter (40 ชุด)
+python3 tests/test_native.py   # native binary (41 ชุด, ผลต้องตรง interp)
 python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec+ทั้ง repo)
-python3 tests/test_x64.py      # backend x86-64 ตรง (28 ชุด, static ELF, ไม่ใช้ gcc)
-python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (99 เคส)
+python3 tests/test_x64.py      # backend x86-64 ตรง (30 ชุด, static ELF, ไม่ใช้ gcc)
+python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (105 เคส)
 python3 tests/test_examples.py # ตัวอย่างทุกไฟล์ยังรันได้จริง (17)
 python3 tests/test_lsp.py      # language server ผ่าน stdio (25 เคส)
 python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (38)

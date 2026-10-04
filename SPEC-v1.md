@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.5 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.6 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -98,8 +98,12 @@ for k in {"a": 1}:       # วน key
 - JSON: `json_parse(s)` ↔ `json_str(x)` (ลึกเกิน 200 ชั้น = error)
 - Agent kit: `read_text/write_text/append_text` (ไฟล์ทั้งก้อน), `exists/ls/mkdir`,
   `json_load/json_save` (ไฟล์ JSON ตรง), error ทุกตัวมี `--json` โหมดให้ agent parse
+- Memory: `read_mem(ptr, nbytes)` → Str ของ `nbytes` ไบต์ดิบที่ address `ptr`
+  (byte-preserving: NUL กับไบต์สูงรอด, ต่างจาก UTF-8 decode) — ต้องการอ่าน
+  โครงสร้างที่ allocator ไม่ได้เป็นเจ้าของ (boot info, ramdisk) และเป็นตัวเดียวที่
+  ทำงานได้ครบทุก backend รวมถึง kernel
 - ทั้งหมดนี้ใช้ใน kernel ไม่ได้ (ban ชัดเจน) ยกเว้น `ticks/readkey/pmm_alloc/meminfo`
-  ที่มี approximation ฝั่ง kernel
+  ที่มี approximation ฝั่ง kernel และ `read_mem` ที่ใช้จริง
 
 ## 5.1 Module และ stdlib
 
@@ -540,3 +544,45 @@ timer IRQ0 พา tasks สลับกันเอง: stub + tick handler `.hs
   reg ว่าง)
 - เทส: `kpreempt` (hog ไม่ yield แต่รอด้วย ticks เองจนโดนสลับแน่ๆ + นับ
   ตรง + โดนสลับทุกตัว) — xkernel 94 -> 99 เคส
+### 15.14 filesystem: ramdisk + VFS (v0.6.6)
+
+ระบบไฟล์แรกของ OS — ทั้งหมดเป็น `.hs` ล้วน ไม่มี block driver
+
+- builtin ใหม่ `read_mem(ptr, n)` → Str ของไบต์ดิบ (byte-preserving) บนทุก
+  backend; ของเดิมอ่าน memory ได้แค่ทีละไบต์/word ใน `unsafe:` ซึ่งเอาไป
+  ต่อ string ทั่วไปไม่ได้ — kernel ต้องอ่าน struct ของ bootloader เป็นชิ้น
+  (ต้องมี Str เพราะ `path` ใน KRFS เป็น bytes ไม่ใช่ตัวเลข)
+- `kernel/kvfs.hs` — inode เป็นลิสต์ขนาน + bytes เป็น Str: `mkdir`/`mkdirs`
+  (แบ่งชั้น), `create`/`write`(แทนทั้งไฟล์)/`read`, `ls`, `stat` →
+  `[kind, size]|null`, `is_file`/`is_dir`, `unlink` (dir ต้องว่าง; inode ที่ยัง
+  เปิดอยู่กลายเป็น dead → fd stale), fd layer `fopen`/`fread`/`fwrite`/`fseek`/
+  `ftell`/`fclose`. ไม่มี cwd — resolve จาก root เสมอ, `.`/`..` ได้
+  - ชื่อชั้น fd ขึ้นต้นด้วย `f` (`fopen` ไม่ใช่ `open`) เพราะชื่อ `open/read/
+    write/close/mkdir/ls` คือ builtin ของภาษา: ต้องไม่ให้ `.hs` ไปชน
+- `kernel/kramdisk.hs` + `scripts/mkramdisk.py` — อ่าน multiboot module
+  (`kmb.mod_start/mod_end`) เป็น KRFS image แล้วแตกลง `kvfs`: ทุก field
+  pad ขึ้น 4 ไบต์เพื่ออ่านด้วย `load32` อย่างเดียว (ไม่ต้องเชื่อ alignment),
+  path เรียงตามความลึก → สร้างทั้ง tree ใน pass เดียว
+- เทส: `tests/t_vfs.hs` (66 assertion บน interp + native) และ
+  `tests/x64/vfs.hs` (x64 ต้องตรงกันเป๊ะ), `kernel/kfstest.hs` (บูตจริงบน QEMU
+  พร้อม `-initrd`: โหลด 4 entry แล้วอ่าน/เขียน/ลบ)
+### 15.15 บั๊กที่เจอระหว่างทำ filesystem (v0.6.6)
+
+- ชื่อฟังก์ชันที่ชนกับ builtin: `kvfs.read(fd, n)` ถูก parse เป็นการเรียก
+  builtin `read` (arity ผิด → error) เพราะ x64 เดิม emit builtin ก่อนเสมอ;
+  แก้โดยให้ `def` ของผู้ใช้ shadow builtin (interp/native เป็นแบบนี้อยู่แล้ว)
+  แต่ชื่อที่อยู่ในรายการ `XBUILTINS` ยังเป็น builtin เสมอ เพราะ capture
+  analysis ข้ามชื่อเหล่านั้น (ถ้าไม่งั้น capture slot ไม่ถูกสร้าง)
+- `image_end()` ต้องรวม **page tables ตอนบูต** ด้วย ไม่ใช่แค่ end ของไฟล์:
+  ตารางอยู่หลัง `.data` ที่ page-aligned ถ้า `image_end` เล็กเกินไป PMM
+  จะแจกเฟรมที่ยังใช้เป็นตารางอยู่ แล้ว heap ที่เพิ่ง init เขียนทับ → PDPT[0]
+  เป็น 0 → `#PF` (เขียนใน bump heap ที่ 0x2008ca0) แล้ว handler เอง fetch
+  fault ที่ 0x101dc1 → double/triple fault → reboot วนจน QEMU ตัดเวลา
+  (อาการคล้าย Heisenbug: ย้ายโค้ดนิดเดียวก็หาย เพราะ layout เปลี่ยนว่าอะไร
+  ทับกันบังเอิญ) — แก้แล้วเป็น `max(stack_top, end of tables)` + ย้าย main
+  stack เข้า `.data` เพื่อไม่ให้ชนข้อมูลของ bootloader ที่ QEMU วางไว้
+  หลัง image และกู้ `busy()` + assertion ใน `kpmmtest` เป็นกันดัก
+- หน้าต่าง bump ของ runtime (`alloc()` → Str/List/page table/bitmap ที่
+  `0x2000000` ขนาด 16MB) อยู่ใน pool ของ PMM ด้วย ต้อง reserve ออกไป
+  ไม่งั้น kmalloc กับ bump allocator เขียนทับกันเงียบ ๆ (คนละคนคิดว่าจอง
+  frame เดียวกันได้)

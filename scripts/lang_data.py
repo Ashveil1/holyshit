@@ -76,6 +76,8 @@ BUILTINS = {
                  HOSTED),
     "json_parse": ("json_parse(s)", "parse JSON Str (hosted only)", HOSTED),
     "json_str": ("json_str(x)", "value to JSON Str (hosted only)", HOSTED),
+    "read_mem": ("read_mem(ptr, n)", "n raw bytes as Str (all backends)",
+                 ALL),
     "read_text": ("read_text(path)", "whole file as Str (hosted only)",
                   HOSTED),
     "write_text": ("write_text(path, s)", "write file (hosted only)", HOSTED),

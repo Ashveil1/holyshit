@@ -6,7 +6,11 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
 มี: Int (62-bit), Str/List/Bool/null เต็มรูปแบบ, `not/and/or`,
 `if/elif/else`, `while`, `for`, `break`/`continue`, `def` (+closure),
 `try`/`except`/`finally`/`raise`, `import` (+attr โมดูล), `global`,
-`str()`/`int()`/`len()`/`print`, `unsafe:` (I64/U64/Ptr + struct)
+`str()`/`int()`/`len()`/`print`, `read_mem(p, n)`,
+`unsafe:` (I64/U64/Ptr + struct)
+
+- `def` ของผู้ใช้ shadow builtin ชื่อเดียวกันได้ (เหมือน interp/native)
+  แต่ชื่อที่อยู่ในรายการ builtin ของ subset นี้คงเป็น builtin เสมอ
 
 ไม่มี (compile error ตั้งใจ): Float, Dict, `extern`, `argv`,
 `input/open/read/write/close`, `tcp_*`, `http_get`, `json_*`,

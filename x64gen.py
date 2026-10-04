@@ -96,6 +96,7 @@ class Gen:
             self.uloc = {}  # unsafe static name -> rbp offset (negative)
             self.utypes = {}  # unsafe static name -> I64/U64/Ptr/Ptr:X
             self.globs = set()  # names declared global here
+            self.deffns = set()  # names defined by `def` in this scope
             # names whose slot holds a raw machine word (assigned inside
             # `unsafe:`), so unsafe reads must not unbox them
             self.raw_names = set()
@@ -110,6 +111,7 @@ class Gen:
             t = s["t"]
             if t == "def":
                 self.decl(sc, s["name"])
+                sc.deffns.add(s["name"])
                 self.drop_binding(sc, s["name"])
                 fs = Gen.Scope(parent=sc, is_func=True)
                 fs._mod = sc._mod
@@ -361,7 +363,7 @@ class Gen:
         sc.loc[name] = self.slot(sc)
 
     XBUILTINS = {"print", "int", "len", "str", "range", "append",
-                 "split", "find", "join",
+                 "split", "find", "join", "read_mem",
                  "alloc", "load8", "load32", "load64", "store8",
                  "store32", "store64", "as_ptr", "as_int"}
 
@@ -1014,6 +1016,13 @@ class Gen:
         ln = e["line"]
         a = self.a
         fn = e["fn"]
+        if fn["t"] == "var" and fn["name"] not in Gen.XBUILTINS:
+            # a `def` in scope shadows the builtin of the same name (interp
+            # and native agree); plain variable slots do not, so initializers
+            # like `cr3 = cr3()` still reach the builtin
+            if self.is_user_def(fn["name"], sc, mod):
+                self.ev_user_call(e, sc, mod, ln)
+                return
         # builtin print / int() / unsafe builtins
         if fn["t"] == "var" and fn["name"] == "print":
             self.ev_print(e["args"], sc, mod, ln)
@@ -1188,6 +1197,30 @@ class Gen:
             a.mov_ri32("rdx", ln)
             a.call("x_join")
             return
+        if fn["t"] == "var" and fn["name"] == "read_mem":
+            # read_mem(ptr, nbytes) -> Str. Raw bytes straight into a Str
+            # object via x_str_at (no tagging, no validation: kernel reads
+            # bootloader and ramdisk memory no allocator owns).
+            if len(e["args"]) != 2:
+                raise HSErr("read_mem wants read_mem(ptr, nbytes)", ln)
+            self.ev(e["args"][0], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "read_mem wants read_mem(ptr, nbytes)", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")
+            self.ev(e["args"][1], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "read_mem wants read_mem(ptr, nbytes)", ln))
+            a.sar_ri8("rax", 2)
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            lab_rmok = self.new_tmp("rm")
+            a.test_rr("rsi", "rsi")
+            a.jcc("ns", lab_rmok)
+            self.raise_static("read_mem length must be >= 0", ln)
+            a.label(lab_rmok)
+            a.call("x_str_at")
+            return
         if fn["t"] == "var" and fn["name"] in (
                 "float", "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
@@ -1211,7 +1244,31 @@ class Gen:
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
-        # user function: indirect through value (uniform caps in r15)
+        self.ev_user_call(e, sc, mod, ln)
+
+    def is_user_def(self, name, sc, mod):
+        """True when `name` is bound by a `def` visible from sc (mirrors
+        resolve_var's scope walk, including `global` hops)."""
+        cur = sc
+        while cur is not None:
+            if name in cur.deffns:
+                return True
+            if name in cur.params or name in cur.uloc or name in cur.loc:
+                return False
+            if name in cur.globs:
+                cur = cur.parent
+                continue
+            if cur is mod["scope"]:
+                break
+            cur = cur.parent
+        return False
+
+    def ev_user_call(self, e, sc, mod, ln):
+        """Call through a user value: indirect through the Func struct with
+        uniform caps in r15. Used when the callee name resolves in user
+        scope (user definitions shadow builtins, like interp and native)."""
+        a = self.a
+        fn = e["fn"]
         self.ev(fn, sc, mod)  # rax = func struct ptr
         lab_fnok = self.new_tmp("fn")
         a.mov_rr("r11", "rax")
@@ -2938,6 +2995,10 @@ class Gen:
             # the final file size is known (the memory manager reserves it)
             self.a.data_label("imageend_")
             self.a.data_qword(0)
+            # main stack: 16KB of .data, so it can never collide with
+            # page tables or with bootloader data placed after the image
+            # (multiboot structs, cmdlines, initrd). stack_top points past it.
+            self.reserve("kstack_", KSTACK_SIZE)
             # IDT (48 gates) + IDTR filled by build_xkernel
             self.reserve("idt_", 48 * 16)
             self.reserve("idtr_", 10)
@@ -5510,10 +5571,9 @@ def build_xkernel(prog_path, out_path):
     while off % 4096:
         off += 1
     tbl_off, off = off, off + 4096 * KTABLE_PAGES
-    stack_size = KSTACK_SIZE
-    stack_top = KBASE + off + stack_size
     # absolute addresses
     A = lambda o: KBASE + o
+    stack_top = A(dat_off + asm64.data_labels["kstack_"] + KSTACK_SIZE)
     # patch boot32 symbolic constants: use abs32 labels mapped to constants
     b.labels["STACK_TOP"] = stack_top - KBASE  # abs32 -> base + this
     b.labels["PML4"] = (A(tbl_off) - KBASE)
@@ -5552,12 +5612,14 @@ def build_xkernel(prog_path, out_path):
     asm64.data[idtr_off:idtr_off + 10] = (
         _st.pack("<H", 48 * 16 - 1) + _st.pack("<Q", dat_vaddr + idt_off))
     code = bytearray(asm64.resolve(pay_vaddr, dat_vaddr))
-    # physical end of the kernel image: page tables AND the main stack.
-    # The loader places its own data right after the image, so the memory
-    # manager reserves everything up to here and never hands those frames
-    # out (a frame overlapping the main stack corrupts return addresses
-    # and locals in ways that surface far away as wild jumps).
-    image_end = stack_top
+    # physical end of the kernel image. Everything the file owns has to be
+    # inside: code, .data (which holds the main stack), AND the boot page
+    # tables, which live past .data at a 4K-aligned offset. The loader puts
+    # its own data right after the file, so the memory manager reserves
+    # everything up to here and never hands those frames out -- a frame
+    # overlapping the stack corrupts return addresses, and one overlapping a
+    # page table silently unmaps code the next time it is written.
+    image_end = max(stack_top, A(tbl_off + 4096 * KTABLE_PAGES))
     ie_off = asm64.data_labels["imageend_"]
     asm64.data[ie_off:ie_off + 8] = _st.pack("<Q", image_end)
     code[g._stack_patch_pos:g._stack_patch_pos + 8] = _st.pack("<Q", stack_top)
@@ -5585,7 +5647,7 @@ def build_xkernel(prog_path, out_path):
     ph1 = _st.pack("<IIIIIIII", 1, 0, KBASE, KBASE,
                    t_filesz, t_filesz, 5, 0x1000)
     ph2 = _st.pack("<IIIIIIII", 1, d_off, KBASE + d_off, KBASE + d_off,
-                   len(file_data), len(file_data) + stack_size, 6, 0x1000)
+                   len(file_data), len(file_data), 6, 0x1000)
     img = bytearray()
     img += eh + ph1 + ph2
     assert len(img) == 116

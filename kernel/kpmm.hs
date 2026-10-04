@@ -52,6 +52,21 @@ def reserve(lo, hi):
     i = i + 1
   return last - first
 
+def busy(paddr):
+  # is this frame taken? true for allocated and reserved frames, and for
+  # anything outside the pool (not ours to hand out in the first place), so
+  # callers only ever have to check one answer.
+  if paddr < pool_base:
+    return true
+  i = (paddr - pool_base) / FRAME_BYTES
+  if i >= pool_frames:
+    return true
+  # bit_get returns 0/1 from inside `unsafe:`; compare here so callers get
+  # a real Bool
+  if std.bitmap.bit_get(bitmap_addr, i) != 0:
+    return true
+  return false
+
 def scan():
   # count usable regions, remember the biggest one and where the map lives
   global nregions, pool_base, pool_frames, mmap_addr
@@ -71,6 +86,24 @@ def scan():
     i = i + 1
   return nregions
 
+def loader_top():
+  # highest address the bootloader owns: its modules (initrd) and strings
+  # sit past the static image end, so frames there are never ours
+  top = image_end()
+  i = 0
+  n = kmb.mods_count()
+  while i < n:
+    e = kmb.mod_end(i)
+    if e > top:
+      top = e
+    i = i + 1
+  if top % FRAME_BYTES == 0:
+    return top
+  return top + FRAME_BYTES - top % FRAME_BYTES
+
+def reserve_loader():
+  return reserve(image_end(), loader_top())
+
 def init():
   # build the pool; returns the number of frames it manages
   global bitmap_addr, bitmap_bytes, reserved_frames, ready_flag
@@ -85,6 +118,12 @@ def init():
   # image, so the image end is the honest boundary)
   reserved_frames = reserve(0, pool_base)
   reserved_frames = reserved_frames + reserve(pool_base, image_end())
+  reserved_frames = reserved_frames + reserve_loader()
+  # alloc() serves Str/List payloads, page tables and this bitmap from a
+  # fixed window; those frames are the runtime's, never ours
+  bump_lo = kmb.RUNTIME_BUMP_BASE
+  bump_hi = kmb.RUNTIME_BUMP_BASE + kmb.RUNTIME_BUMP_SIZE
+  reserved_frames = reserved_frames + reserve(bump_lo, bump_hi)
   # the bitmap lives in the kernel heap, so reserve it too
   reserved_frames = reserved_frames + reserve(bitmap_addr, bitmap_addr + bitmap_bytes)
   ready_flag = true

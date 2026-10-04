@@ -21,6 +21,13 @@ ABI_QEMU = 2
 
 FRAME_BYTES = 4096
 
+# the runtime's own bump allocator window, mirrored from x64gen.KHEAP_BASE /
+# x64gen.KHEAP_SIZE. alloc() (and with it every Str/List payload, every
+# new_table() and the frame bitmap) is served from here, so the physical
+# memory manager must treat it as occupied.
+RUNTIME_BUMP_BASE = 0x2000000
+RUNTIME_BUMP_SIZE = 16 << 20
+
 TYPE_USABLE = 1
 
 SPEC_MMAP_LEN = 52
@@ -160,3 +167,27 @@ def mem_upper():
   if abi() == ABI_SPEC:
     return rd32(info() + 16)
   return 0
+
+def mods_count():
+  # multiboot modules (QEMU -initrd lands here); 0 when none
+  if abi() == ABI_QEMU:
+    return rd32(info() + 20)
+  if abi() == ABI_SPEC:
+    return rd32(info() + 28)
+  return 0
+
+def mod_addr(i):
+  if abi() == ABI_QEMU:
+    return rd32(info() + 24) + i * 16
+  if abi() == ABI_SPEC:
+    return rd32(info() + 32) + i * 16
+  return 0
+
+def mod_start(i):
+  return rd32(mod_addr(i))
+
+def mod_end(i):
+  return rd32(mod_addr(i) + 4)
+
+def mod_len(i):
+  return mod_end(i) - mod_start(i)

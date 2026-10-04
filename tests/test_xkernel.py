@@ -35,13 +35,17 @@ def check(name, cond, detail=""):
         fails += 1
 
 
-def boot(elf, timeout=30, sendkeys=(), mem="256M"):
+def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None):
     d = tempfile.mkdtemp(prefix="xkboot_")
     slog = os.path.join(d, "serial.log")
     msock = os.path.join(d, "mon.sock")
-    p = subprocess.Popen([QEMU, "-kernel", elf, "-serial", f"file:{slog}",
-                          "-display", "none", "-m", mem,
-                          "-monitor", f"unix:{msock},server=on,wait=off"],
+    cmd = [QEMU, "-kernel", elf, "-serial", f"file:{slog}",
+           "-display", "none", "-m", mem,
+           "-monitor", f"unix:{msock},server=on,wait=off"]
+    if initrd is not None:
+        # multiboot module 0: the kernel reads it via kmb.mod_start(0)
+        cmd += ["-initrd", initrd]
+    p = subprocess.Popen(cmd,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for delay, key in sendkeys:
@@ -227,6 +231,22 @@ with tempfile.TemporaryDirectory() as d:
         check("kpreempt every hog preempted",
               all(f"ok hog{i} was preempted" in out for i in range(3)),
               out[-800:])
+    # filesystem: ramdisk via -initrd plus live file operations
+    rd = os.path.join(d, "ramdisk.krfs")
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "mkramdisk.py"),
+                        os.path.join(ROOT, "kernel", "ramdisk"), rd],
+                       capture_output=True, text=True)
+    check("mkramdisk packs", r.returncode == 0, r.stderr[-300:])
+    kf = os.path.join(d, "kf.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kfstest.hs"), kf)
+    check("kfstest build clean", rc == 0)
+    if rc == 0 and r.returncode == 0 and QEMU is not None:
+        out = boot(kf, timeout=10, initrd=rd)
+        check("kfs finished", "kfs-done" in out, out[-800:])
+        check("kfs did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kfs all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("kfs ran its checks", out.count("\nok ") >= 25, out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

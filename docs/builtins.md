@@ -71,6 +71,8 @@
 | | Int list [0..n) or [a..b) |||||
 | `read` | `read(f, n)` | ✓ | ✓ |   |   |
 | | read n bytes (hosted only) |||||
+| `read_mem` | `read_mem(ptr, n)` | ✓ | ✓ | ✓ | ✓ |
+| | n raw bytes as Str (all backends) |||||
 | `read_text` | `read_text(path)` | ✓ | ✓ |   |   |
 | | whole file as Str (hosted only) |||||
 | `readkey` | `readkey()` | ✓ | ✓ |   | ✓ |

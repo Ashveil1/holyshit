@@ -2212,6 +2212,20 @@ def b_read_text(args, ln):
         raise HSErr(f"read_text failed: {e.strerror or e}", ln)
 
 
+def b_read_mem(args, ln):
+    # raw bytes -> Str (byte-preserving latin-1). The kernel uses this to
+    # read bootloader structures and ramdisk images no allocator owns.
+    if len(args) != 2 or not is_int(args[0]) or not is_int(args[1]):
+        raise HSErr("read_mem wants read_mem(ptr, nbytes)", ln)
+    p, n = args
+    if n < 0:
+        raise HSErr("read_mem length must be >= 0", ln)
+    if n == 0:
+        return ""
+    us_check(p, n, ln)
+    return bytes(US_MEM[p:p + n]).decode("latin-1")
+
+
 def b_write_text(args, ln):
     if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], str):
         raise HSErr("write_text wants write_text(path, str)", ln)
@@ -2539,7 +2553,8 @@ BUILTINS = {
     "tcp_listen": b_tcp_listen, "tcp_accept": b_tcp_accept,
     "http_get": b_http_get,
     "json_parse": b_json_parse, "json_str": b_json_str,
-    "read_text": b_read_text, "write_text": b_write_text,
+    "read_text": b_read_text, "read_mem": b_read_mem,
+    "write_text": b_write_text,
     "append_text": b_append_text, "exists": b_exists, "ls": b_ls,
     "mkdir": b_mkdir, "json_load": b_json_load, "json_save": b_json_save,
 }

@@ -581,7 +581,8 @@ Val v_builtin(const char *name) {
         {b_tcp_listen, "tcp_listen"}, {b_tcp_accept, "tcp_accept"},
         {b_http_get, "http_get"},
         {b_json_parse, "json_parse"}, {b_json_str, "json_str"},
-        {b_read_text, "read_text"}, {b_write_text, "write_text"},
+        {b_read_text, "read_text"}, {b_read_mem, "read_mem"},
+        {b_write_text, "write_text"},
         {b_append_text, "append_text"}, {b_exists, "exists"},
         {b_ls, "ls"}, {b_mkdir, "mkdir"},
         {b_json_load, "json_load"}, {b_json_save, "json_save"},
@@ -1892,6 +1893,23 @@ Val b_read_text(Val *args, int nargs, int line) {
     }
     fclose(f);
     return v_strn(o, (int64_t)n);
+}
+
+Val b_read_mem(Val *args, int nargs, int line) {
+    if (nargs != 2)
+        hs_err(line, "read_mem wants read_mem(ptr, nbytes)");
+    if (args[0].tag != T_INT || args[1].tag != T_INT)
+        hs_err(line, "read_mem wants read_mem(ptr, nbytes)");
+    int64_t p = args[0].u.i, n = args[1].u.i;
+    if (n < 0)
+        hs_err(line, "read_mem length must be >= 0");
+    if (n == 0)
+        return v_strn("", 0);
+    if (p == 0)
+        hs_err(line, "null pointer dereference");
+    char *o = GC_MALLOC((size_t)n);
+    memcpy(o, (const void *)(uintptr_t)p, (size_t)n);
+    return v_strn(o, n);
 }
 
 Val b_write_text(Val *args, int nargs, int line) {

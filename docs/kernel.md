@@ -11,8 +11,10 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 
 ตัวอย่างใน `kernel/`: `xdemo` (boot+fib), `kx2` (timer/keyboard/PMM),
 `kxstr`/`kxlist`/`kxslice` (ค่าบน serial), `ktry` (try), `kimp` (import),
-`kxexc_*` (EXC report), `kprim` (primitives), `kpaging` (paging),
-`kpmmtest` (frame allocator)
+`kxexc_*` (EXC report), `kprim` (primitives), `kpaging` (paging)
+โมดูลจริง: `kmb` `kpage` `kpmm` `kheap` `kaddr` `ktask` `kvfs` `kramdisk`
+เทสใน QEMU: `kpmmtest` `kheaptest` `kaddrtest` `ktasktest` `kpreempt`
+`kfstest`
 
 ## สิ่งที่มีบน kernel
 
@@ -20,7 +22,11 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 - `pmm_alloc(n)` / `pmm_total()` / `pmm_free()` (เพจ 4K เริ่ม 64MB — ของเก่า,
   โค้ดจริงใช้ `kpmm` ข้างล่าง)
 - boot info: `mb_info()` (struct ของ bootloader), `mb_magic()` (magic จาก EAX),
-  `image_end()` (address แรกหลัง kernel image — PMM reserve ถึงตรงนี้)
+  `image_end()` (address แรกหลัง kernel image: โค้ด + `.data` ที่มี main
+  stack + page tables ตอนบูต — PMM reserve ถึงตรงนี้, เกินไปแล้ว bootloader
+  เขียนทับของเรา)
+- `read_mem(ptr, n)` — อ่าน memory ดิบเป็น Str (ไบต์ต่อไบต์) ใช้อ่าน struct
+  ของ bootloader กับ image ramdisk
 - paging: `cr2()`/`cr3()`/`set_cr3(p)`, `invlpg(vaddr)`, `tlb_flush()`
 - `unsafe:` เต็ม (`alloc`/`load`/`store` incl. `load64`/`store64`, struct) —
   คือวิธีแตะ hardware
@@ -35,8 +41,9 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
   `is_mapped`, `map_phys`/`map_user`; สร้างตารางที่ขาดอัตโนมัติ, แยก huge
   page (2MB/1GB) เป็นลูก 512 ตัวเมื่อต้อง map 4K ข้างใน, flush TLB ทุกครั้ง
 - `kernel/kpmm.hs` — frame allocator จริงบน bitmap (`std.bitmap`):
-  เอาเฟรมจาก region  usable ที่ใหญ่สุด, reserve image/heap/bitmap ตัวเอง,
-  `alloc(n)` คืน address 4K-aligned, `free`/`free_run` คืน pool
+  เอาเฟรมจาก region usable ที่ใหญ่สุด, reserve image/หน้าต่างบูต/heap/
+  bitmap ตัวเอง, `alloc(n)` คืน address 4K-aligned, `free`/`free_run` คืน
+  pool, `busy(paddr)` ถามว่าเฟรมนั้นถูกจองอยู่
 - `kernel/kheap.hs` — kmalloc (`std.heap` K&R malloc/free) บนเฟรมจริงที่ map
   ไว้ที่ `0x60000000`: `init(npages)`, `malloc`/`free`, `free_bytes`
 - `kernel/kaddr.hs` — address space ละหนึ่ง PML4 แชร์ mapping ฝั่ง kernel
@@ -58,10 +65,41 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 - `std.bitmap` — bit set บน byte (`bit_get/set/clear`, `reserve/release`,
   `bit_alloc_run`, `bit_take`, `bitmap_bytes`) รันได้ทุก backend
 
+## filesystem (`.hs` ล้วน)
+
+ramdisk จาก multiboot module + VFS ที่แก้ไฟล์ได้จริง ทั้งหมดเป็นโมดูล `.hs`
+ธรรมดา — ไม่มี block driver จริง, ข้อมูลอยู่ใน RAM
+
+- `kernel/kvfs.hs` — inode เก็บเป็นลิสต์ขนาน (`v_names`/`v_parent`/`v_kind`/
+  `v_data`), root = inode 0 และเป็น parent ของตัวเอง, ไม่มี cwd (ทุก path
+  resolve จาก root, `/` นำหน้าไม่บังคับ, `.`/`..` ได้): `mkdir`/`mkdirs`,
+  `create`/`write`/`read`, `ls`, `stat` (`[kind, size]` หรือ null),
+  `is_file`/`is_dir`, `unlink` (dir ต้องว่าง; inode ที่ยังเปิดอยู่ถูกทำ
+  เป็น dead แล้ว fd จะ stale) และ fd layer `fopen`/`fclose`/`fread`/`fwrite`/
+  `fseek`/`ftell` — ชื่อ `f*` กันชนกับ builtin `open`/`read`/`write`
+- `kernel/kramdisk.hs` — แกะ KRFS image ที่ bootloader ส่งมา
+  (`load_module(i)`, `load()` = module 0) เข้า `kvfs`; อ่านด้วย `read_mem`
+  กับ `kmb.rd32` เท่านั้น จึงไม่ต้องพึ่ง alignment
+- `scripts/mkramdisk.py` — จาก directory สู่ image:
+  ```sh
+  python3 scripts/mkramdisk.py kernel/ramdisk /tmp/ramdisk.krfs
+  qemu-system-x86_64 -kernel k.elf -initrd /tmp/ramdisk.krfs -serial stdio
+  ```
+
+  KRFS v1 (little-endian, field ทุกตัว pad ขึ้น 4 ไบต์) คือ `"KRFS"` | `u32`
+  count | ต่อ entry: `u32` type (0 ไฟล์, 1 ไดเรกทอรี) | `u32` path_len |
+  path | pad | `u32` size | data | pad — เรียงตามความลึกของ path
+  (parent มาก่อนลูก) แก้ทีเดียวเป็น pass เดียว
+- `kmb.hs` เพิ่ม `mods_count()`/`mod_start(i)`/`mod_end(i)`/`mod_len(i)`
+  (multiboot module ทั้งสอง ABI) และ `RUNTIME_BUMP_BASE`/`_SIZE`
+- เทส: `tests/t_vfs.hs` + `tests/x64/vfs.hs` (VFS ทั้งชุดบน interp/native/x64),
+  `kernel/kfstest.hs` (บูตจริง: โหลด ramdisk แล้วอ่าน/แก้/ลบบน QEMU)
+
 ## ข้อจำกัดตอนนี้
 
 - หารด้วยศูนย์ = CPU `#DE` → `EXC 0` แล้ว halt (จับด้วย try ไม่ได้)
-- ยังไม่มี filesystem / user mode (ดู `SPEC-v1.md` หัวข้อ OS)
+- ยังไม่มี user mode (ดู `SPEC-v1.md` หัวข้อ OS) และ filesystem เป็น RAM
+  ล้วน — ยังไม่มี block driver/ATA และยังไม่ persist ข้าม reboot
 - `ticks` เริ่มนับหลังบูต; keyboard คือ scancode ชุด 1 (ไม่มี shift)
 
-เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (99 เคส)
+เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (105 เคส)

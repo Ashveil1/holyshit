@@ -1,0 +1,67 @@
+ok init
+ok root is dir
+ok root ls empty
+ok missing is null
+ok missing stat null
+ok mkdir top
+ok mkdir again
+ok mkdir nested need parents
+ok mkdir under file later
+ok ls root
+ok ls etc empty
+ok create
+ok create dup
+ok create missing parent
+ok write
+ok read
+ok stat file
+ok stat dir
+ok is_file
+ok is_file dir
+ok write replaces
+ok read replaced
+ok write makes file
+ok read new
+ok write under missing parent
+ok read dir is null
+ok write dir fails
+ok open dir for write
+ok relative
+ok dot
+ok dotdot
+ok rootdot
+ok open r
+ok tell 0
+ok read 5
+ok tell 5
+ok read rest
+ok tell end
+ok seek 1
+ok read 2
+ok seek past clamps
+ok seek neg
+ok close
+ok close again
+ok read closed null
+ok tell closed
+ok open missing r
+ok open bad mode
+ok open w creates
+ok write fd
+ok write more
+ok tell 4
+ok seek 1
+ok overwrite
+ok close w
+ok file content
+ok write closed
+ok unlink missing
+ok unlink root
+ok unlink nonempty dir
+ok unlink file
+ok gone
+ok fd stale
+ok unlink twice
+ok unlink empty dir now
+ok ls root after
+fails 0

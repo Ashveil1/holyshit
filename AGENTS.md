@@ -1,4 +1,4 @@
-# AGENTS.md — holyshit (hs) v0.6.5 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.6.6 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the
@@ -147,6 +147,9 @@ extern from "helper.c":
 Core: `print len range str int float input open read write close`
 Text/containers: `append split find join`
 Files (agent kit): `read_text write_text append_text exists ls mkdir`
+Memory (all backends): `read_mem(ptr, n)` — n raw bytes at an address as Str
+(byte-preserving: NUL and high bytes included; the kernel reads bootloader
+structs and ramdisk images through it)
 JSON: `json_parse json_str json_load json_save`
 Process: `argv()→List` (no prog name) `env(name)→Str|Null` `system(cmd)→Int status`
 Net (http only): `tcp_connect/send/recv/close tcp_listen/accept http_get(url)→body`

@@ -28,7 +28,7 @@
 | `dict not in x64 subset` | ใช้ Dict ฝั่ง x64/kernel | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (208)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (210)
 
 - `'{d['name']}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -188,6 +188,8 @@
 - `range wants range(n) or range(a, b) with Ints`
 - `read failed: {e.strerror or e}`
 - `read wants read(f)`
+- `read_mem length must be >= 0`
+- `read_mem wants read_mem(ptr, nbytes)`
 - `read_text failed: {e.strerror or e}`
 - `readkey takes no args`
 - `scalar type '{ft.v}' cannot use '*'`
@@ -324,7 +326,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (77)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (78)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -374,6 +376,7 @@
 - `pmm_alloc wants pmm_alloc(npages)`
 - `raise without active exception`
 - `range wants range(n) or range(a, b)`
+- `read_mem wants read_mem(ptr, nbytes)`
 - `readkey takes no args`
 - `return outside function`
 - `sched_on_tick wants sched_on_tick(func)`
@@ -409,4 +412,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 369 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 372 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

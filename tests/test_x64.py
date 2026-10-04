@@ -14,6 +14,25 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 from x64gen import build_x64
 
+_CHILD_ENV = dict(os.environ)
+
+
+def _test_env(name):
+    # per-test env overlay: tests/x64/<name>.env has KEY=VAL lines
+    # (# comments ok). Same convention as test.py (HSPATH affects
+    # build-time imports).
+    e = dict(_CHILD_ENV)
+    p = os.path.join(HERE, "x64", name + ".env")
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            for ln in f:
+                ln = ln.strip()
+                if not ln or ln.startswith("#") or "=" not in ln:
+                    continue
+                k, v = ln.split("=", 1)
+                e[k.strip()] = v.strip()
+    return e
+
 fails = 0
 total = 0
 with tempfile.TemporaryDirectory() as d:
@@ -27,13 +46,20 @@ with tempfile.TemporaryDirectory() as d:
         from contextlib import redirect_stderr, redirect_stdout
         err = io.StringIO()
         sout = io.StringIO()
-        with redirect_stderr(err):
-            with redirect_stdout(sout):
-                try:
-                    rc = build_x64(prog, out)
-                except Exception as e:
-                    print(str(e), file=err)
-                    rc = 1
+        tenv = _test_env(name)
+        old_env = dict(os.environ)
+        os.environ.update(tenv)  # HSPATH affects build-time imports
+        try:
+            with redirect_stderr(err):
+                with redirect_stdout(sout):
+                    try:
+                        rc = build_x64(prog, out)
+                    except Exception as e:
+                        print(str(e), file=err)
+                        rc = 1
+        finally:
+            os.environ.clear()
+            os.environ.update(old_env)
         build_noise = sout.getvalue()
         fail_path = os.path.join(HERE, "x64", name + ".fail")
         if rc != 0:

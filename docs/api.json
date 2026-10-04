@@ -1,6 +1,6 @@
 {
  "language": "holyshit",
- "version": "0.6.5",
+ "version": "0.6.6",
  "keywords": {
   "def": "define a function: `def name(params):` + indented body",
   "if": "conditional branch (with `elif` / `else`)",
@@ -264,6 +264,16 @@
    "backends": [
     "interp",
     "native"
+   ]
+  },
+  "read_mem": {
+   "sig": "read_mem(ptr, n)",
+   "desc": "n raw bytes as Str (all backends)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
    ]
   },
   "read_text": {

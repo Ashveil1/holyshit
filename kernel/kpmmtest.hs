@@ -53,6 +53,22 @@ expect("usable regions counted", kpmm.regions() >= 2, true)
 expect("frames available", kpmm.available() > 0, true)
 expect("kernel image reserved", kpmm.available() < frames, true)
 
+# --- what the pool must never hand out ---
+# The boot page tables sit past .data and the main stack sits inside it. If
+# image_end() forgets either one, the allocator hands a live page table to
+# the heap and the kernel dies the next time that heap is written.
+expect("pml4 frame reserved", kpmm.busy(cr3()), true)
+expect("pdpt frame reserved", kpmm.busy(cr3() + 4096), true)
+expect("page directory reserved", kpmm.busy(cr3() + 8192), true)
+expect("image end past the tables", image_end() >= cr3() + 3 * 4096, true)
+expect("image end above the code base", image_end() > 0x100000, true)
+
+# alloc() (Str/List payloads, new_table, the frame bitmap) owns a fixed
+# window; frames there are the runtime's, not ours.
+expect("bump window reserved", kpmm.busy(kmb.RUNTIME_BUMP_BASE), true)
+expect("bump window tail reserved", kpmm.busy(kmb.RUNTIME_BUMP_BASE + kmb.RUNTIME_BUMP_SIZE - 4096), true)
+expect("plain frame still free", kpmm.busy(kpmm.base() + 0x8000000), false)
+
 # frames come out page-aligned, distinct and counted
 before = kpmm.available()
 a = kpmm.alloc(1)
