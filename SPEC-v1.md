@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.0 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.2 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -426,8 +426,8 @@ printer พิมพ์คอมเมนต์ไม่ได้ — lexer ท�
 
 ### 15.7 สถานะเทสหลังเฟส 7
 
-`test.py` 37 · `test_native.py` 38 · `test_fmt.py` 4 · `test_x64.py` 27 ·
-`test_xkernel.py` 62 · `test_examples.py` 17 · `test_lsp.py` 25 ·
+`test.py` 38 · `test_native.py` 39 · `test_fmt.py` 4 · `test_x64.py` 28 ·
+`test_xkernel.py` 77 · `test_examples.py` 17 · `test_lsp.py` 25 ·
 `test_docs.py` 38 (รันครบทุกชุด: `python3 tests/run_all.py`)
 
 ### 15.8 เตรียม OS: `load64`/`store64` (v0.6.1)
@@ -457,3 +457,24 @@ OS ต้องบิดขวดบิต (bitmap, page flags) ภาษาเ�
 - `hs fmt` เพิ่ม precedence + เว้นวรรคให้ `& | ^ << >>` และเก็บวงเล็บเมื่อ
   จำเป็น (`a & (b | c)`) — กฎเดิมคือ flatten ได้เฉพาะ `+`/`*` ฝั่งขวา
 - เทส: `tests/t_bits.hs` (interp+native), `tests/x64/bits.hs` (x64)
+### 15.10 memory management จริงบน bare metal (v0.6.2)
+
+paging แบบไดนามิก + frame allocator จริง เขียนเป็น `.hs` ล้วน บูตจริงบน QEMU
+
+- `kernel/kmb.hs` — อ่าน memory map ของ bootloader รองรับ 2 ABI (ตรวจโดย
+  validate): spec multiboot1 กับ struct 88-byte ของ QEMU เอง (layout ไม่ตรง
+  spec — QEMU ใช้ `mb_buf_phys` ของตัวเอง, entry 20-byte ที่ `0x9000`)
+- `kernel/kpage.hs` — page table 4 ระดับ (`map`/`unmap`/`translate`,
+  `map_phys`/`map_user`): สร้างตารางที่ขาด, แยก huge page (2MB/1GB) เป็น
+  512 children, flush TLB (`invlpg` + `tlb_flush` ทั้ง TLB หลัง split)
+- `kernel/kpmm.hs` — bitmap frame allocator บน region usable ที่ใหญ่สุด
+  (ผ่าน `std.bitmap`), reserve image/heap/bitmap, `alloc`/`free`/`free_run`
+- primitive ใหม่ใน `x64gen.py`: `mb_magic()`, `image_end()`, `tlb_flush()`
+  (บวกของเดิม `mb_info`/`cr2`/`cr3`/`set_cr3`/`invlpg`); `mov_ri64` รับเต็ม
+  64-bit (kernel ต้องการทุกบิต เช่น `0xDEADBEEF...`)
+- บั๊กที่เจอระหว่างทาง (แก้หมด): `0x83` บน PTE 4K เปิดบิต PS (huge) ต้องใช้
+  `0x03`; `pte_addr` ใช้ parent index อ่านตารางลูกหลัง split; `free_run`
+  เรียก `reserve` แทนที่จะ release; `unmap` คืน `false` ใน `unsafe:` กลายเป็น
+  Int 0 (ต้อง return ที่ safe level)
+- เทส: `kprim` (primitives), `kpaging` (30 asserts: map/translate/split/unmap),
+  `kpmmtest` (pool เต็ม + คืน pool) — xkernel 62 -> 77 เคส

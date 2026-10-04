@@ -324,7 +324,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (69)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (70)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -358,11 +358,11 @@
 - `field base must be a variable`
 - `find wants find(s, sub)`
 - `float not in x64 subset`
+- `image_end takes no args`
 - `in module '{name}': {e.msg}`
 - `int wants 1 arg`
 - `invlpg wants invlpg(vaddr)`
 - `join wants join(sep, list)`
-- `mb_info takes no args`
 - `module '{m['name']}' has no attribute '{e['name']}'`
 - `module '{m['name']}' has no attribute '{name}'`
 - `module '{name}' is not a first-class value in x64 subset (use mod.attr)`
@@ -382,6 +382,7 @@
 - `struct '{xs}' has no field '{x['name']}'`
 - `struct type unknown (x64)`
 - `ticks takes no args`
+- `tlb_flush takes no args`
 - `unknown struct '{st}'`
 - `unknown variable '{e['name']}'`
 - `unknown variable '{name}'`
@@ -401,4 +402,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 361 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 362 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

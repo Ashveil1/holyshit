@@ -96,6 +96,9 @@ class Gen:
             self.uloc = {}  # unsafe static name -> rbp offset (negative)
             self.utypes = {}  # unsafe static name -> I64/U64/Ptr/Ptr:X
             self.globs = set()  # names declared global here
+            # names whose slot holds a raw machine word (assigned inside
+            # `unsafe:`), so unsafe reads must not unbox them
+            self.raw_names = set()
             self.nloc = 0
 
     def slot(self, sc):
@@ -242,6 +245,7 @@ class Gen:
                 if t == "set":
                     self.ann_expr(s["val"], sc, True)
                     self.decl(sc, s["name"])
+                    sc.raw_names.add(s["name"])
                 elif t == "global":
                     sc.globs.update(s["names"])
                 elif t == "print":
@@ -1180,15 +1184,16 @@ class Gen:
                 "float", "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
                 "readkey", "pmm_alloc", "pmm_total",
-                "pmm_free", "meminfo", "mb_info", "cr2", "cr3",
-                "set_cr3", "invlpg",
+                "pmm_free", "meminfo", "mb_info", "mb_magic",
+                "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "read_text", "write_text", "append_text",
                 "exists", "ls", "mkdir", "json_load", "json_save", "asm"):
             if self.freestanding and fn["name"] in (
                     "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
-                    "mb_info", "cr2", "cr3", "set_cr3", "invlpg"):
+                    "mb_info", "mb_magic", "image_end", "cr2", "cr3",
+                    "set_cr3", "invlpg", "tlb_flush"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
@@ -1312,12 +1317,20 @@ class Gen:
             self.tag_box()
             return
         # --- memory introspection / paging primitives (raw machine words) ---
-        if name == "mb_info":
+        if name == "image_end":
             if args:
-                raise HSErr("mb_info takes no args", ln)
-            # physical address of the multiboot info struct saved by the
-            # 32-bit stub before it switched modes
-            a.lea_rip("rax", "mbinfo_")
+                raise HSErr("image_end takes no args", ln)
+            # first physical address after the kernel image
+            a.lea_rip("rax", "imageend_")
+            a.mov_rm("rax", "rax", 0)
+            self.tag_box()
+            return
+        if name in ("mb_info", "mb_magic"):
+            if args:
+                raise HSErr(f"{name} takes no args", ln)
+            # physical address of the multiboot info struct (EBX) and the boot
+            # magic (EAX), both saved by the 32-bit stub before it switched modes
+            a.lea_rip("rax", "mbinfo_" if name == "mb_info" else "mbmagic_")
             a.mov_rm("rax", "rax", 0)
             self.tag_box()
             return
@@ -1339,6 +1352,16 @@ class Gen:
                 raise HSErr("invlpg wants invlpg(vaddr)", ln)
             self.sev(args[0], sc, mod)  # raw vaddr in rax
             a.code += bytes([0x0F, 0x01, 0x38])  # invlpg [rax]
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "tlb_flush":
+            if args:
+                raise HSErr("tlb_flush takes no args", ln)
+            # reload CR3 with itself: drops every non-global TLB entry.
+            # Needed after a huge-page split, which changes translations for
+            # a whole 2MB/1GB range that invlpg(vaddr) alone cannot cover.
+            a.mov_rcr64("rax", 3)
+            a.mov_cr64(3, "rax")
             a.mov_ri64("rax", Gen.HS_NULL)
             return
         raise HSErr(f"bad kdev {name}", ln)
@@ -1406,12 +1429,12 @@ class Gen:
         if t == "str":
             raise HSErr("strings not allowed in unsafe", ln)
         if t == "var":
-            # a parameter slot holds a tagged dynamic value (the caller wrote
-            # it), so unsafe code must unbox it; unsafe locals (`I64 x = ...`)
-            # hold raw machine words and are read as-is
+            # Slots that hold dynamic (tagged) values must be unboxed when
+            # unsafe code reads them as machine words. Names assigned inside
+            # `unsafe:` (and unsafe typed locals) hold raw words already.
             kind, _ref = self.resolve_var(e["name"], sc, mod, ln)
             self.var_get(e["name"], sc, mod, ln)
-            if kind == "param":
+            if kind == "param" or self.holds_dynamic(e["name"], sc, mod):
                 self.unbox_int_here(ln)
             return
         if t == "deref":
@@ -2340,6 +2363,22 @@ class Gen:
         a.shl_ri8("rax", 3)
         a.or_ri8("rax", 2)
 
+    def holds_dynamic(self, name, sc, mod):
+        """True when `name`'s slot holds a tagged dynamic value (not a raw
+        machine word): anything not assigned inside `unsafe:`."""
+        cur = sc
+        while cur is not None:
+            if name in cur.raw_names or name in cur.uloc:
+                return False
+            if name in cur.loc or name in cur.params:
+                return True
+            if name in cur.globs:
+                break
+            cur = cur.parent
+        # module-level: dynamic unless the module assigned it inside unsafe
+        ms = mod["scope"]
+        return name not in ms.raw_names
+
     def unbox_int_here(self, ln):
         """rax = tagged value -> raw Int payload (raise when not an Int)."""
         a = self.a
@@ -2720,8 +2759,15 @@ class Gen:
             self.a.data_label("pmm_free_")
             self.a.data_qword(32768)
             # physical address of the multiboot info struct, written by the
-            # 32-bit stub (EBX) before the long-mode jump
+            # 32-bit stub (EBX) before the long-mode jump, plus the boot magic
+            # from EAX so the kernel can tell multiboot1 from multiboot2
             self.a.data_label("mbinfo_")
+            self.a.data_qword(0)
+            self.a.data_label("mbmagic_")
+            self.a.data_qword(0)
+            # physical end of the kernel image; patched by build_xkernel once
+            # the final file size is known (the memory manager reserves it)
+            self.a.data_label("imageend_")
             self.a.data_qword(0)
             # IDT (48 gates) + IDTR filled by build_xkernel
             self.reserve("idt_", 48 * 16)
@@ -5023,7 +5069,9 @@ def build_xkernel(prog_path, out_path):
     b.mov_ri32_abs(4, "STACK_TOP")  # esp; patched below (abs32 to constant)
     b.mov_rr(6, 0)   # esi = eax (magic)
     b.mov_rr(2, 3)   # edx = ebx (info)
-    # stash the multiboot info pointer before edx is reused by rdmsr
+    # stash the boot magic and the multiboot info pointer: eax is reused by
+    # rdmsr below and edx too, so both must be parked first
+    b.mov_mr_abs("MBMAGIC", 0)
     b.mov_mr_abs("MBINFO", 2)
     b.mov_ri32_abs(0, "PML4")
     b.mov_cr(3, 0)
@@ -5067,6 +5115,7 @@ def build_xkernel(prog_path, out_path):
     b.labels["PML4"] = (A(tbl_off) - KBASE)
     b.labels["GDT_PTR"] = (A(gdt_off + len(gdt)) - KBASE)
     b.labels["MBINFO"] = (A(dat_off + asm64.data_labels["mbinfo_"]) - KBASE)
+    b.labels["MBMAGIC"] = (A(dat_off + asm64.data_labels["mbmagic_"]) - KBASE)
     boot_bin = b.resolve(KBASE)
     # far jmp target: long_mode at payload start
     lm_addr = A(pay_off) + asm64.labels["long_mode"]
@@ -5099,6 +5148,12 @@ def build_xkernel(prog_path, out_path):
     asm64.data[idtr_off:idtr_off + 10] = (
         _st.pack("<H", 48 * 16 - 1) + _st.pack("<Q", dat_vaddr + idt_off))
     code = bytearray(asm64.resolve(pay_vaddr, dat_vaddr))
+    # physical end of the kernel image (page tables and stack
+    # included). The loader places its own data right after the
+    # image, so the memory manager reserves everything up to here.
+    image_end = A(tbl_off + 4096 * KTABLE_PAGES)
+    ie_off = asm64.data_labels["imageend_"]
+    asm64.data[ie_off:ie_off + 8] = _st.pack("<Q", image_end)
     code[g._stack_patch_pos:g._stack_patch_pos + 8] = _st.pack("<Q", stack_top)
     code = bytes(code)
     data = bytes(asm64.data)

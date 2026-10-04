@@ -16,6 +16,9 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 from x64gen import build_xkernel
 
+# kernel modules import std.*, so the repo root has to be on HSPATH
+os.environ["HSPATH"] = ROOT + os.pathsep + os.environ.get("HSPATH", "")
+
 QEMU = shutil.which("qemu-system-x86_64")
 
 fails = 0
@@ -138,6 +141,40 @@ with tempfile.TemporaryDirectory() as d:
                                        "k-outer at line")]
         check("ktry finally runs before rethrow unwinds",
               all(i >= 0 for i in order) and order[0] < order[1], order)
+    # memory introspection primitives (CR3/CR2/mb_info/mb_magic/image_end/invlpg)
+    kp = os.path.join(d, "kp.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kprim.hs"), kp)
+    check("kprim build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kp, timeout=8)
+        for line in ("kprim", "kprim-done"):
+            check(f"kprim serial has {line!r}", line in out, out[-800:])
+        check("kprim did not fault", "EXC " not in out, out[-800:])
+    # dynamic paging: map/unmap frames, split huge pages, use the mappings
+    kpg = os.path.join(d, "kpg.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpaging.hs"), kpg)
+    check("kpaging build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kpg, timeout=8)
+        check("kpaging finished", "kpaging-done" in out, out[-800:])
+        check("kpaging did not fault", "EXC " not in out, out[-800:])
+        # kpaging.hs counts its own failures and prints "fails N"
+        m = re.search(r"fails (\d+)", out)
+        check("kpaging all assertions pass", m and m.group(1) == "0",
+              out[-800:])
+        check("kpaging ran its checks", out.count("\nok ") >= 30, out[-800:])
+    # real frame allocator on the bootloader's memory map
+    km = os.path.join(d, "km.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpmmtest.hs"), km)
+    check("kpmmtest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(km, timeout=10)
+        check("kpmm banner", "kpmm" in out, out[-800:])
+        check("kpmm finished", "kpmm-done" in out, out[-800:])
+        check("kpmm did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kpmm all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("kpmm ran its checks", out.count("\nok ") >= 25, out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

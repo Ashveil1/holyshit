@@ -119,10 +119,11 @@ class Asm:
         self.code += struct.pack("<i", imm)
 
     def mov_ri64(self, d, imm):
+        # full 64-bit immediate: kernel code wants every bit (e.g. 0xDEADBEEF..)
         dn, db = _rn(d)
         self._rex(True, b=db)
         self.code.append(0xB8 + dn)
-        self.code += struct.pack("<q", imm)
+        self.code += struct.pack("<Q", imm & ((1 << 64) - 1))
 
     def mov_rm(self, d, base, disp=0):
         self._rm(0x8B, d, base, disp)

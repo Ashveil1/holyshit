@@ -1,4 +1,4 @@
-# AGENTS.md — holyshit (hs) v0.6.0 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.6.2 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the
@@ -150,7 +150,10 @@ Files (agent kit): `read_text write_text append_text exists ls mkdir`
 JSON: `json_parse json_str json_load json_save`
 Process: `argv()→List` (no prog name) `env(name)→Str|Null` `system(cmd)→Int status`
 Net (http only): `tcp_connect/send/recv/close tcp_listen/accept http_get(url)→body`
-Kernel-surface (xkernel freestanding): `ticks readkey pmm_alloc pmm_total pmm_free` (+ unsafe alloc/load/store/as_*)
+Kernel-surface (xkernel freestanding): `ticks readkey pmm_alloc pmm_total pmm_free`
+(`pmm_*` is the legacy bump allocator; real code uses `kpmm`), `mb_info`/`mb_magic`
+(bootloader info), `image_end` (first address after the kernel image),
+`cr2`/`cr3`/`set_cr3`, `invlpg(v)`/`tlb_flush()` (+ unsafe alloc/load/store/as_*)
 
 ### x64 backend subset (`hs.py xbuild` / `xkernel`)
 
@@ -198,6 +201,12 @@ Crossing the boundary (x64):
 - safe -> unsafe: pass a **tagged Int**; `as_ptr(n)` yields a raw pointer.
 - unsafe -> safe: `return <raw>` and `as_int(p)` re-box into a tagged Int, so
   the value can be printed/compared outside `unsafe:`.
+- a `return` inside `unsafe:` always boxes as **Int**: return Bool/Null at safe
+  level instead (`0 == false` is cross-type false).
+- x64 resolves module-level names statically: define a helper **before** its
+  callers in the file, or the build fails with `unknown variable`.
+- `unsafe:` bodies may only call `alloc`/`load*`/`store*`/`as_*` (no other
+  calls, not even module helpers): compute addresses outside, pass them in.
 - a raw pointer parked in a safe variable is NOT printable (its low bits read
   as a heap tag): convert with `as_int` first.
 

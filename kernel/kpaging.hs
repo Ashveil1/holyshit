@@ -1,0 +1,94 @@
+# dynamic paging on bare metal: map frames at a high virtual address, write
+# through them, read them back, unmap them, and split the boot identity map
+# (2MB pages) when a 4K mapping lands inside one of its ranges
+import kpage
+
+fails = 0
+
+def poke(addr, value):
+  unsafe:
+    store64(as_ptr(addr), value)
+
+def peek(addr):
+  unsafe:
+    I64 v = load64(as_ptr(addr))
+    return v
+
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+root = cr3()
+expect("cr3 aligned", root % 4096, 0)
+expect("identity map", kpage.translate(root, 0x100000), 0x100000)
+expect("identity mapped", kpage.is_mapped(root, 0x100000), true)
+
+# a frame from the legacy bump pmm (the real bitmap pmm lives in kpmm.hs)
+frame = pmm_alloc(1)
+expect("frame aligned", frame % 4096, 0)
+expect("frame nonzero", frame != 0, true)
+
+# 1. map a frame in a hole above the identity map
+va = 0x40000000
+expect("hole is unmapped", kpage.is_mapped(root, va), false)
+expect("map", kpage.map_phys(root, va, frame), true)
+expect("mapped now", kpage.is_mapped(root, va), true)
+expect("translate", kpage.translate(root, va), frame)
+poke(va, 0x1122334455667788)
+expect("write through the mapping", peek(va), 0x1122334455667788)
+expect("same data at the physical address", peek(frame), 0x1122334455667788)
+
+# 2. a 4K mapping inside the 2MB huge page that covers it: the huge page has
+#    to be split into its 512 children first
+va2 = 0x00208000
+expect("huge page covers it", kpage.translate(root, va2), va2)
+frame2 = pmm_alloc(1)
+expect("map inside a huge page", kpage.map_phys(root, va2, frame2), true)
+expect("4K mapping wins", kpage.translate(root, va2), frame2)
+poke(va2, 0x99AABBCCDDEEFF00)
+expect("read through the new mapping", peek(va2), 0x99AABBCCDDEEFF00)
+expect("data landed in the new frame", peek(frame2), 0x99AABBCCDDEEFF00)
+
+# neighbours of the split page still come from the identity map
+expect("neighbour below still identity", kpage.translate(root, va2 - 4096), va2 - 4096)
+expect("hole above still unmapped", kpage.translate(root, 0x40008000), 0)
+expect("neighbour above still identity", kpage.translate(root, va2 + 4096), va2 + 4096)
+poke(va2 + 4096, 0x0102030405060708)
+expect("neighbour still writable", peek(va2 + 4096), 0x0102030405060708)
+expect("neighbour still identity", kpage.translate(root, va2 + 4096), va2 + 4096)
+expect("first neighbour unchanged", peek(va2 - 4096) != 0x99AABBCCDDEEFF00, true)
+expect("frame2 was not the identity page", peek(frame2) != 0x0102030405060708, true)
+
+# 3. a 1GB-scale address: the PDPT slot has to be allocated on the way
+va3 = 0x80000000
+expect("1GB hole unmapped", kpage.is_mapped(root, va3), false)
+frame3 = pmm_alloc(1)
+expect("map at 2GB", kpage.map_phys(root, va3, frame3), true)
+expect("translate at 2GB", kpage.translate(root, va3), frame3)
+poke(va3, 0xFEEDFACECAFEBEEF)
+expect("write at 2GB", peek(va3), 0xFEEDFACECAFEBEEF)
+expect("read at the physical address", peek(frame3), 0xFEEDFACECAFEBEEF)
+
+# 4. unmap everything again; the kernel keeps running
+expect("unmap the huge-page child", kpage.unmap(root, va2), true)
+expect("gone", kpage.translate(root, va2), 0)
+expect("neighbour back to identity", kpage.translate(root, va2 + 4096), va2 + 4096)
+expect("unmap the 2GB mapping", kpage.unmap(root, va3), true)
+expect("2GB gone", kpage.translate(root, va3), 0)
+expect("unmap the first mapping", kpage.unmap(root, va), true)
+expect("first gone", kpage.translate(root, va), 0)
+
+# unmap must refuse to clear a huge page entry (it has no single PTE)
+expect("refuse to unmap a huge page", kpage.unmap(root, 0x500000), false)
+expect("huge page still there", kpage.translate(root, 0x500000), 0x500000)
+
+# the kernel itself still runs, and the identity map is intact
+expect("identity map intact", kpage.translate(root, 0x100000), 0x100000)
+expect("low identity intact", kpage.translate(root, 0x0), 0x0)
+
+print "fails", fails
+print "kpaging-done"
