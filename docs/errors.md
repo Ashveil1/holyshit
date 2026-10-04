@@ -326,7 +326,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (78)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (81)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -355,6 +355,7 @@
 - `ctx_swap wants ctx_swap(save, load)`
 - `dict not in x64 subset`
 - `dup data reserve {name}`
+- `enter_user wants enter_user(rip, frame)`
 - `field '{e['name']}' is not an array`
 - `field '{obj['name']}' is not a struct pointer`
 - `field '{x['name']}' is not an array`
@@ -389,6 +390,7 @@
 - `struct '{xs}' has no field '{obj['name']}'`
 - `struct '{xs}' has no field '{x['name']}'`
 - `struct type unknown (x64)`
+- `syscall_register wants syscall_register(func)`
 - `task_init wants task_init(ctx, top, func)`
 - `task_run wants task_run(sched, task)`
 - `ticks takes no args`
@@ -397,6 +399,7 @@
 - `unknown variable '{e['name']}'`
 - `unknown variable '{name}'`
 - `unknown variable '{obj['name']}'`
+- `user_stop takes no args`
 - `{fn['name']} wants 1 arg`
 - `{name} not in x64 subset`
 - `{name} takes no args`
@@ -412,4 +415,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 372 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 375 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

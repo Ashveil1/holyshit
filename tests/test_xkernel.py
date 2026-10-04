@@ -14,7 +14,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
-from x64gen import build_xkernel
+from x64gen import build_xkernel, build_x64
 
 # kernel modules import std.*, so the repo root has to be on HSPATH
 os.environ["HSPATH"] = ROOT + os.pathsep + os.environ.get("HSPATH", "")
@@ -247,6 +247,55 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("kfs all assertions pass", m and m.group(1) == "0", out[-800:])
         check("kfs ran its checks", out.count("\nok ") >= 25, out[-800:])
+    # user mode: hand-built ring-3 stub exits through the syscall stub
+    kr = os.path.join(d, "kr3.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kring3.hs"), kr)
+    check("kring3 build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kr, timeout=10)
+        check("kring3 finished", "kring3-done" in out, out[-800:])
+        check("kring3 did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kring3 all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("kring3 ran its checks", out.count("\nok ") >= 20, out[-800:])
+    # user mode: sysret back to ring 3, then hlt faults with the USER rip
+    kret = os.path.join(d, "kret.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kring3ret.hs"), kret)
+    check("kring3ret build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kret, timeout=10)
+        check("kring3ret handler ran", "ret-ok" in out, out[-800:])
+        check("kring3ret faults in ring 3",
+              re.search(r"EXC 13 rip=87\d+ cs=35", out) is not None,
+              out[-800:])
+    # user mode: write() returns to ring 3, then exit() stops back in kernel
+    krw = os.path.join(d, "krw.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kring3wr.hs"), krw)
+    check("kring3wr build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(krw, timeout=10)
+        check("kring3wr finished", "kring3wr-done" in out, out[-800:])
+        check("kring3wr did not fault", "EXC " not in out, out[-800:])
+        check("kring3wr user output", "hello" in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kring3wr all assertions pass", m and m.group(1) == "0", out[-800:])
+    # user mode: real user ELF in ring 3, syscalls served from .hs
+    uu = os.path.join(d, "uuser.elf")
+    rc = build_x64(os.path.join(ROOT, "kernel", "uuser.hs"), uu)
+    check("uuser build clean", rc == 0)
+    ku = os.path.join(d, "ku.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kusermode.hs"), ku)
+    check("kusermode build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(ku, timeout=15, initrd=uu)
+        check("kusermode finished", "kusermode-done" in out, out[-800:])
+        check("kusermode did not fault", "EXC " not in out, out[-800:])
+        for line in ("hello from ring 3, holyshit", "user line 3"):
+            check(f"kusermode user output {line!r}", line in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kusermode all assertions pass", m and m.group(1) == "0",
+              out[-800:])
+        check("kusermode ran its checks", out.count("\nok ") >= 15, out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

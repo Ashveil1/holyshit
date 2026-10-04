@@ -1230,6 +1230,7 @@ class Gen:
                 "ctx_swap", "task_run", "task_init",
                 "irq_off", "irq_on",
                 "sched_on_tick", "sched_tick_clear",
+                "syscall_register", "user_stop", "enter_user",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "read_text", "write_text", "append_text",
@@ -1240,7 +1241,8 @@ class Gen:
                     "set_cr3", "invlpg", "tlb_flush",
                     "ctx_swap", "task_run", "task_init",
                     "irq_off", "irq_on",
-                    "sched_on_tick", "sched_tick_clear"):
+                    "sched_on_tick", "sched_tick_clear",
+                    "syscall_register", "user_stop", "enter_user"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
@@ -1571,6 +1573,81 @@ class Gen:
             a.mov_mr("rcx", "rax", 0)
             a.mov_ri64("rax", Gen.HS_NULL)
             return
+        if name == "syscall_register":
+            # syscall_register(func): the ring-3 syscall stub calls this
+            # Func with (nr, a1..a6); pass null to unregister.
+            if len(args) != 1:
+                raise HSErr("syscall_register wants syscall_register(func)", ln)
+            self.ev(args[0], sc, mod)  # rax = func struct (raw address)
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            lab_rok = self.new_tmp("sr")
+            lab_rob = self.new_tmp("sr")
+            a.jcc("ne", lab_rob)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_FUNC)
+            a.jcc("e", lab_rok)
+            a.label(lab_rob)
+            self.raise_unop(3, ln)  # not callable
+            a.label(lab_rok)
+            a.lea_rip("rcx", "syscall_fn_")
+            a.mov_mr("rcx", "rax", 0)
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "user_stop":
+            # user_stop(): the syscall handler asks the stub not to go back
+            # to ring 3; control lands in the kernel where enter_user() was
+            # called.
+            if args:
+                raise HSErr("user_stop takes no args", ln)
+            a.lea_rip("rcx", "syscall_stop_")
+            a.mov_ri32("rax", 1)
+            a.mov_mr("rcx", "rax", 0)
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "enter_user":
+            # enter_user(rip, frame): iretq into ring 3, reading the
+            # interrupt frame (rip, cs, rflags, rsp, ss) from `frame`. The
+            # continuation and its stack are recorded first, so the syscall
+            # stub can resume the kernel once the user stops.
+            if len(args) != 2:
+                raise HSErr("enter_user wants enter_user(rip, frame)", ln)
+            self.ev(args[0], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "enter_user wants enter_user(rip, frame)", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")
+            self.ev(args[1], sc, mod)
+            self.check_int(lambda: self.raise_static(
+                "enter_user wants enter_user(rip, frame)", ln))
+            a.sar_ri8("rax", 2)
+            a.mov_rr("rsi", "rax")  # frame
+            a.pop_r("rdi")  # rip
+            a.lea_rip("rax", "user_saved_rsp_")
+            a.mov_mr("rax", "rsp", 0)  # the stack to come back on
+            a.lea_rip("rax", "user_cont_")
+            lab_uret = self.new_tmp("uret")
+            a.lea_rip("rcx", lab_uret)
+            a.mov_mr("rax", "rcx", 0)
+            # ---- ring 3 entry (the iretq never falls through) ----
+            a.mov_ri32("rax", 0x1B)  # SS  = user data (RPL 3)
+            a.mov_rr("rsp", "rsi")
+            a.mov_ri32("rdx", 0x2)  # RFLAGS: bit 1 set, IF off (IRQs belong
+            a.mov_ri32("rcx", 0x23)  # CS  = user code (RPL 3)
+            a.mov_rr("r8", "rdi")  # RIP
+            a.iretq()
+            a.label(lab_uret)
+            # Reached when the syscall stub stops the user. enter_user is
+            # inlined, so there is no return address to pop: the stub has
+            # already restored the caller's rsp and we simply fall through
+            # with Null, exactly like the normal end of the builtin. The
+            # syscall path runs with IF clear, but the kernel runs with IF
+            # set, so re-enable interrupts (same lesson as the preemption
+            # switch path, which must sti before jumping).
+            a.sti()
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
         raise HSErr(f"bad kdev {name}", ln)
 
     def print_unsafe(self, args, sc, mod, ln):
@@ -1875,7 +1952,12 @@ class Gen:
         """True when the expression is already an untagged machine value."""
         t = e["t"]
         if t in ("num", "deref", "field", "sizeof", "bin", "neg", "not",
-                 "unot"):
+                 "unot", "var"):
+            # sev() already converts a variable read: dynamic slots (and
+            # params) are unboxed with an Int check, names assigned inside
+            # `unsafe:` hold raw words already. Unboxing again here would
+            # shift the value twice and tag-check a raw address -- which
+            # fails outright for pointers whose low bits are not 00.
             return True
         if t == "call" and e["fn"]["t"] == "var" and e["fn"]["name"] in (
                 "alloc", "load8", "load32", "load64", "store8", "store32",
@@ -2906,6 +2988,7 @@ class Gen:
         if self.freestanding:
             self.emit_irq_stubs()
             self.emit_task_runtime()
+            self.emit_syscall_runtime()
         for m in [x for x in self.modules if x.get("collected")]:
             self.emit_mod_init(m)
         for s, themod in self._def_nodes(mod):
@@ -2930,6 +3013,10 @@ class Gen:
             self.a.code += b"out of memory\0"
             self.a.label("excrip_")
             self.a.code += b" rip="
+            self.a.label("exccs_")
+            self.a.code += b" cs="
+            self.a.label("excfl_")
+            self.a.code += b" fl="
             self.a.label("exccr2_")
             self.a.code += b" cr2="
             self.a.label("dzm_")
@@ -2999,6 +3086,11 @@ class Gen:
             # page tables or with bootloader data placed after the image
             # (multiboot structs, cmdlines, initrd). stack_top points past it.
             self.reserve("kstack_", KSTACK_SIZE)
+            # dedicated syscall stack (see emit_syscall_runtime): the stub
+            # runs handlers here instead of trusting the user rsp, so deep
+            # handler call chains can never overflow a user stack that is
+            # nearly full on entry
+            self.reserve("scstack_", KSTACK_SIZE)
             # IDT (48 gates) + IDTR filled by build_xkernel
             self.reserve("idt_", 48 * 16)
             self.reserve("idtr_", 10)
@@ -3090,11 +3182,29 @@ class Gen:
         a.push_r("rdi")
         a.call("print_int")
         a.add_ri32("rsp", 8)
-        # fault RIP: above our 15 pushed regs + the call's return address
+        # fault RIP: the stub pushed 15 regs (120) + this call's retaddr (8);
+        # k_exc's own push rdi was already popped by its matching add, and
+        # k_write is stack-neutral, so rsp sits 128 below the fault frame and
+        # [rsp+128] is RIP itself (error-code vectors already popped theirs)
         a.lea_rip("rsi", "excrip_")
         a.mov_ri32("rdx", 5)
         self.k_write()
         a.mov_rm("rax", "rsp", 128)
+        a.push_r("rax")
+        a.call("print_int")
+        a.add_ri32("rsp", 8)
+        # frame+8 (CS) and frame+16 (RFLAGS) disambiguate a bogus RIP
+        a.lea_rip("rsi", "exccs_")
+        a.mov_ri32("rdx", 4)
+        self.k_write()
+        a.mov_rm("rax", "rsp", 136)
+        a.push_r("rax")
+        a.call("print_int")
+        a.add_ri32("rsp", 8)
+        a.lea_rip("rsi", "excfl_")
+        a.mov_ri32("rdx", 4)
+        self.k_write()
+        a.mov_rm("rax", "rsp", 144)
         a.push_r("rax")
         a.call("print_int")
         a.add_ri32("rsp", 8)
@@ -3374,6 +3484,120 @@ class Gen:
         a.mov_rm("rsi", "rsi", 0)
         a.jmp("ctx_swap_inner")
         self.reserve("exit_save_", 136)
+
+    def emit_syscall_runtime(self):
+        # Ring 3 entry. `syscall` is NOT an interrupt: the CPU saves the
+        # return rip -> rcx and rflags -> r11, loads RIP <- LSTAR, switches
+        # CS/SS <- STAR — and pushes nothing, switches no stack. (An earlier
+        # version treated it like an IRQ with a CPU frame and returned with
+        # iretq; that faulted because there is no frame to pop.) So the stub
+        # parks the return state with xchg (needs no scratch register while
+        # every GPR is live) and moves to a dedicated syscall stack by hand;
+        # the way back is sysret, never iretq.
+        a = self.a
+        reg = {r: 8 * i for i, r in enumerate(Gen.GPREGS)}
+        a.label("syscall_entry")
+        a.xchg_rip("rcx", "ret_rip_")
+        a.xchg_rip("r11", "ret_rfl_")
+        # rcx+r11 now hold slot junk (dead); stash the user rsp and move to
+        # the syscall stack, whose top build_xkernel preloaded into sc_swap_
+        # (read-only at runtime — no re-arm needed anywhere)
+        a.lea_rip("rcx", "ret_rsp_")
+        a.mov_mr("rcx", "rsp", 0)
+        a.mov_rm_rip("rsp", "sc_swap_")
+        a.sub_ri32("rsp", 128)  # park area on the syscall stack
+        for r in Gen.GPREGS:
+            a.mov_mr("rsp", r, reg[r])
+        a.lea_rip("rax", "syscall_stop_")
+        a.mov_ri64("rbx", 0)
+        a.mov_mr("rax", "rbx", 0)  # every call starts un-stopped
+        a.lea_rip("rax", "syscall_fn_")
+        a.mov_rm("rax", "rax", 0)
+        a.test_rr("rax", "rax")
+        lab_noh = self.new_tmp("sc")
+        a.jcc("e", lab_noh)  # nobody registered: ENOSYS, straight back
+        # handler(nr, a1..a6) — like a .hs call site: push the Func value,
+        # then the seven arguments right to left. The stub passes raw
+        # register words but hs slots must hold tagged values (every read of
+        # a dynamic slot validates the tag), so each word is tagged here:
+        # value w becomes hs Int w, pointers included (user addresses fit
+        # the 62-bit range). Reload from the park slot (rax/rbx were already
+        # clobbered above; rcx/r11 hold slot junk, but they are not syscall
+        # arguments), tag, push.
+        a.mov_rr("rbx", "rax")  # handler Func (rbx is parked, safe to use)
+        a.push_r("rbx")  # Func value first, raw like every call site
+        pushed = 1
+        for r in ("r9", "r8", "r10", "rdx", "rsi", "rdi", "rax"):
+            a.mov_rm(r, "rsp", reg[r] + 8 * pushed)
+            a.shl_ri8(r, 2)
+            a.or_ri8(r, 1)
+            a.push_r(r)
+            pushed = pushed + 1
+        a.mov_rm("rax", "rsp", 8 * 7)  # reload the Func value again
+        a.push_r("r15")
+        a.mov_rr("r15", "rax")
+        a.add_ri32("r15", 16)  # caps live right after the Func struct
+        a.mov_rm("rax", "rax", 8)  # code address
+        a.call_rax()
+        a.pop_r("r15")
+        a.add_ri32("rsp", 8 * 8)
+        # The handler speaks tagged hs; the user speaks raw words. An Int
+        # result (hs value v, repr v<<2|1) must go back untagged (raw v);
+        # anything else (Null, Str*) already is a raw word. Negative values
+        # (like -ENOMEM) survive: sar keeps the sign.
+        a.mov_rr("rbx", "rax")
+        a.and_ri32("rbx", 3)
+        a.cmp_ri32("rbx", 1)
+        lab_raw = self.new_tmp("sc")
+        a.jcc("ne", lab_raw)
+        a.sar_ri8("rax", 2)
+        a.label(lab_raw)
+        a.mov_mr("rsp", "rax", 0)  # the handler's result is the user's rax
+        a.lea_rip("rbx", "syscall_stop_")
+        a.mov_rm("rbx", "rbx", 0)
+        a.test_rr("rbx", "rbx")
+        lab_stop = self.new_tmp("sc")
+        a.jcc("ne", lab_stop)  # handler stopped the user: return to the kernel
+        for r in Gen.GPREGS:
+            if r != "rax":
+                a.mov_rm(r, "rsp", reg[r])
+        a.mov_rm("rax", "rsp", 0)  # result
+        a.label("sysret_back")
+        a.add_ri32("rsp", 128)  # free the park
+        a.lea_rip("rcx", "ret_rip_")
+        a.mov_rm("rcx", "rcx", 0)
+        a.lea_rip("r11", "ret_rfl_")
+        a.mov_rm("r11", "r11", 0)
+        a.mov_rm_rip("rsp", "ret_rsp_")  # back to the user stack
+        a.sysret()  # RIP <- rcx, RFLAGS <- r11, CS/SS <- STAR user half
+        a.label(lab_noh)
+        a.mov_ri32("rax", -38)  # -ENOSYS, raw: nobody registered
+        a.mov_mr("rsp", "rax", 0)  # into the parked rax slot, then restore
+        for r in Gen.GPREGS:
+            if r != "rax":
+                a.mov_rm(r, "rsp", reg[r])
+        a.mov_rm("rax", "rsp", 0)
+        a.jmp("sysret_back")
+        a.label(lab_stop)
+        a.add_ri32("rsp", 128)
+        a.lea_rip("rax", "user_saved_rsp_")
+        a.mov_rm("rsp", "rax", 0)  # the stack enter_user() was called on
+        a.lea_rip("rax", "user_cont_")
+        a.jmp_m("rax")
+        self.reserve("syscall_fn_", 8)
+        self.reserve("syscall_stop_", 8)
+        self.reserve("ret_rip_", 8)
+        self.reserve("ret_rfl_", 8)
+        self.reserve("ret_rsp_", 8)
+        self.reserve("sc_swap_", 8)
+        self.reserve("user_cont_", 8)
+        self.reserve("user_saved_rsp_", 8)
+        # TSS: 104 bytes, I/O bitmap offset 104 so ring 3 gets no ports at
+        # all (every access faults with #GP). RSP0 still catches faults and
+        # IRQs from ring 3 (only `syscall` itself skips the stack switch).
+        # build_xkernel fills the descriptor and byte 66.
+        self.reserve("tss_", 104)
+
 
     # ----- output primitives -----
     def rt_out(self, fd=1):
@@ -5489,6 +5713,13 @@ def build_x64(prog_path, out_path):
 KBASE = 0x100000
 KSTACK_SIZE = 16384
 KTABLE_PAGES = 3
+# GDT selectors the kernel loads at boot (ring 3 gets the same descriptors
+# with RPL 3, so enter_user switches CS/SS to ...|3)
+SEL_KCODE = 0x08
+SEL_KDATA = 0x10
+SEL_UDATA = 0x18
+SEL_UCODE = 0x20
+SEL_TSS = 0x28
 
 
 def build_xkernel(prog_path, out_path):
@@ -5545,17 +5776,52 @@ def build_xkernel(prog_path, out_path):
     b.mov_cr(4, 0)
     b.mov_ri32(1, 0xC0000080)
     b.rdmsr()
-    b.or_ri32(0, 0x100)
+    b.or_ri32(0, 0x101)          # EFER.SCE (bit 0) + EFER.LME (bit 8)
+    b.wrmsr()
+    b.mov_ri32(1, 0xC0000082)   # IA32_LSTAR (0xC0000080 is EFER!)
+    b.xor_rr(2, 2)              # 64-bit MSR: EDX must be zero, not junk
+    b.mov_ri32_abs(0, "SYSCALL_STUB")  # fits in imm32: the image is < 4GB
+    b.wrmsr()
+    # IA32_STAR: syscall loads CS=0x08/SS=0x10; without it CS=0 -> #GP.
+    # The sysret half (0x18) is unused — we return to ring 3 via iretq.
+    # IA32_STAR: syscall loads CS=0x08/SS=0x10; sysret loads CS=base+16,
+    # SS=base+8 off the high half, so base 0x10 gives back our user code
+    # (0x20) and user data (0x18). The sysret half used to be wrong (0x18,
+    # aiming at the TSS); it never fired because nothing used sysret yet.
+    b.mov_ri32(1, 0xC0000081)
+    b.mov_ri32(0, 0)
+    b.mov_ri32(2, 0x00100008)
+    b.wrmsr()
+    # IA32_FMASK: mask IF on syscall entry, so the stub and the handler run
+    # with interrupts off even if ring 3 ever runs with IF set (right now
+    # enter_user always clears IF anyway)
+    b.mov_ri32(1, 0xC0000084)
+    b.mov_ri32(0, 0x200)
+    b.xor_rr(2, 2)
     b.wrmsr()
     b.mov_rcr(0, 0)
     b.or_ri32(0, 0x80000001)
     b.mov_cr(0, 0)
     b.lgdt_abs("GDT_PTR")
-    b.jmp_far_abs(0x08, 0)  # patched below
+    b.ltr(SEL_TSS)
+    b.jmp_far_abs(SEL_KCODE, 0)  # patched below
     boot_len = None  # filled after resolve
-    # gdt + payload + data + tables + stack
-    gdt = (b"\0" * 8 + _st.pack("<Q", 0x00209A0000000000)
-           + _st.pack("<Q", 0x0000920000000000))
+    # gdt + payload + data + tables + stack. Ring 3 needs its own data and
+    # code descriptors plus a TSS (its RSP0 catches faults and IRQs from
+    # ring 3 — `syscall` itself switches no stack); the
+    # TSS descriptor's base is only known once .data is placed, so its slot
+    # is reserved here and patched further down.
+    gdt = bytearray()
+    gdt += b"\0" * 8                                    # null
+    gdt += _st.pack("<Q", 0x00209A0000000000)            # 0x08 kernel code
+    gdt += _st.pack("<Q", 0x0000920000000000)            # 0x10 kernel data
+    # user descriptors need DPL=3 in the access byte (0xF2 data, 0xFA code):
+    # OR-ing 3 only sets limit bits, which leaves DPL=0 and makes iretq to
+    # ring 3 fault with #GP.
+    gdt += _st.pack("<Q", 0x0000F20000000000)            # 0x18 user data
+    gdt += _st.pack("<Q", 0x0020FA0000000000)            # 0x20 user code
+    gdt += b"\0" * 16                                   # TSS descriptor
+    gdt_off_sel = len(gdt) - 16
     # payload/data/table/stack offsets computed after boot assembled
     boot_code = b.code  # labels relative; resolve later with abs map
     off = boot_off + len(boot_code)
@@ -5580,16 +5846,36 @@ def build_xkernel(prog_path, out_path):
     b.labels["GDT_PTR"] = (A(gdt_off + len(gdt)) - KBASE)
     b.labels["MBINFO"] = (A(dat_off + asm64.data_labels["mbinfo_"]) - KBASE)
     b.labels["MBMAGIC"] = (A(dat_off + asm64.data_labels["mbmagic_"]) - KBASE)
+    # TSS descriptor (16 bytes) for the 104-byte task state segment: limit
+    # 103, 64-bit available TSS, 16-byte granular limit, no I/O bitmap (the
+    # offset field is 104 = limit + 1, so ring 3 gets no port access at all).
+    tss_base = A(dat_off + asm64.data_labels["tss_"])
+    tss_lo = ((104 - 1) | ((tss_base & 0xFFFF) << 16)
+              | (((tss_base >> 16) & 0xFF) << 32) | (0x89 << 40)
+              | (0x0F << 48) | (((tss_base >> 24) & 0xFF) << 56))
+    tss_hi = (tss_base >> 32) & 0xFFFFFFFF
+    gdt[gdt_off_sel:gdt_off_sel + 16] = (_st.pack("<Q", tss_lo)
+                                       + _st.pack("<Q", tss_hi))
+    tss_off = asm64.data_labels["tss_"]
+    asm64.data[tss_off + 4:tss_off + 8] = _st.pack(
+        "<I", stack_top)          # RSP0: faults/IRQs from ring 3 land here
+    sc_top = A(dat_off + asm64.data_labels["scstack_"] + KSTACK_SIZE)
+    sco = asm64.data_labels["sc_swap_"]
+    asm64.data[sco:sco + 8] = _st.pack("<Q", sc_top)  # syscall stack top
+    asm64.data[tss_off + 66:tss_off + 68] = _st.pack(
+        "<H", 104)                # I/O map offset = no ports for ring 3
+    gdt = bytes(gdt)
+    b.labels["SYSCALL_STUB"] = (A(pay_off)
+                                + asm64.labels["syscall_entry"]) - KBASE
     boot_bin = b.resolve(KBASE)
     # far jmp target: long_mode at payload start
     lm_addr = A(pay_off) + asm64.labels["long_mode"]
     # jmp_far_abs emitted with addr 0; patch last 6 bytes
-    boot_bin = boot_bin[:-6] + _st.pack("<IH", lm_addr, 0x08)
+    boot_bin = boot_bin[:-6] + _st.pack("<IH", lm_addr, SEL_KCODE)
     # stack_top mov: patch abs32
     # (mov_ri32_abs STACK_TOP already resolved via labels map above)
     # gdt_ptr bytes
-    gdt_ptr = _st.pack("<H", len(gdt) + 10 - 1 - 10 + 24 - 1)  # limit = 24-1
-    gdt_ptr = _st.pack("<H", 23) + _st.pack("<Q", A(gdt_off))
+    gdt_ptr = _st.pack("<H", len(gdt) - 1) + _st.pack("<Q", A(gdt_off))
     # page tables (prefilled): PML4[0]->PDPT, PDPT[0]->PD, PD identity 1GB
     tbl = bytearray(4096 * KTABLE_PAGES)
     pdpt_a, pd_a = A(tbl_off + 4096), A(tbl_off + 8192)

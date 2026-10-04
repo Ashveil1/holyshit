@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.6 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.7 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -586,3 +586,58 @@ timer IRQ0 พา tasks สลับกันเอง: stub + tick handler `.hs
   `0x2000000` ขนาด 16MB) อยู่ใน pool ของ PMM ด้วย ต้อง reserve ออกไป
   ไม่งั้น kmalloc กับ bump allocator เขียนทับกันเงียบ ๆ (คนละคนคิดว่าจอง
   frame เดียวกันได้)
+### 15.16 user mode + syscall (v0.6.7)
+
+ring 3 จริง: kernel โหลด static ELF (`xbuild` ธรรมดา, ส่งเป็น multiboot
+module) ขึ้นไปรัน แล้วรับ syscall ด้วย handler `.hs`, เสร็จกลับมา kernel —
+ทั้งหมด `.hs` ล้วน (กลไก encoder) ไม่มี C
+
+- `kernel/kuser.hs` — ELF loader: เดิน program header, `map` ทุก `PT_LOAD`
+  ที่ `vaddr + USER_BIAS` (PML4 slot 1+; ฝั่ง kernel เป็น supervisor-only),
+  เปิด writable ก่อนแล้ว `protect` text กลับเป็น read-only (W^X), stack 8
+  เพจ; `run()` = `enter_user(entry, frame)`
+- `kernel/ksyscall.hs` — `dispatch(nr, a1..a6)`: write (fd 1/2 → serial),
+  mmap (anonymous, kernel เลือก address), exit (จำ code + `user_stop()`);
+  exit code เป็น opaque (tagged อยู่แล้วใช้เลย, Null → 0)
+- stub ใน `x64gen.py`: park/tag/handler/untag เหมือนเดิม แต่ stack เป็น
+  syscall stack 16KB ของตัวเอง (ไม่ไว้ใจ user rsp) และขากลับเป็น `sysret`
+  (คืน rcx/r11/rsp จาก slot); `user_stop()` กลับทาง `user_cont_` บน stack
+  เดิม; `enter_user` ต่อด้วย `sti` (path นี้มาแบบ IF=0 แต่ kernel วิ่ง IF=1)
+- เทส: `kring3` (exit), `kring3ret` (sysret กลับแล้ว hlt fault ด้วย USER
+  rip + CS=0x23), `kring3wr` (write ออก serial แล้ว exit),
+  `kusermode` (ELF จริงพิมพ์ครบ exit 0 กลับมา kernel) —
+  xkernel 105 -> 126 เคส; `tests/x64/asptr.hs` กันดัก `as_ptr`/`as_int`
+  ข้างล่าง — รวม 322 เคส ผ่านหมด
+### 15.17 บั๊กที่เจอระหว่างทำ user mode (v0.6.7)
+
+- `syscall` ไม่ใช่ interrupt: CPU เซฟแค่ rip→rcx กับ rflags→r11 ไม่ push
+  frame ไม่สลับ stack — stub เวอร์ชันแรกทำเหมือน IRQ (park ใต้ "frame"
+  40 ไบต์ที่ไม่มีจริง + กลับด้วย `iretq`) เลย pop ขยะ: ทำ park ทับ user
+  stack ตัวเอง, `iretq` อ่าน RIP/CS ขยะ (`EXC 13` บ้าง `#PF` บ้างตามขยะ);
+  ระหว่างดีบักเคยสงสัยว่า EXC reporter อ่าน RIP ผิด slot (นับ stack ได้
+  136 แทน 128) แต่ disassembly พิสูจน์ว่า 128 ถูกตั้งแต่แรก — บทเรียน:
+  verify ด้วย objdump ก่อนโทษ reporter, และอย่าอ่าน serial ตอน QEMU
+  โดน terminate (เห็นครึ่งเดียวแล้วตีความผิด);
+  สรุป: `syscall` เข้า (rcx/r11, ไม่แตะ stack), กลับด้วย `sysret`
+  (ไม่มี frame ให้ pop), IRQ/fault เท่านั้นที่ใช้ TSS + iretq
+- `as_ptr(x)`/`as_int(x)` กับตัวแปร unbox ซ้ำ: `sev()` แปลง dynamic slot
+  เป็น raw word แล้ว `as_*` เช็ก tag + shift อีกรอบ — pointer ที่ low bits
+  ไม่ใช่ 00 โดน reject/shift ผิด; แก้ให้ `is_raw_expr` คืน True กับ `var`
+  (อ่านครั้งเดียวพอ) + เทส `tests/x64/asptr.hs`
+- `pte_addr` สร้างตารางชั้นกลางแบบ supervisor เสมอ: user page ได้ leaf
+  เป็น user แต่ทางผ่านเป็น supervisor เลย fault ตั้งแต่ `iretq` แรก —
+  ต้องพา U/S bit ลงไปทั้ง path (ตารางเก่าอัปเกรดตอนเจอครั้งแรก)
+- GDT user descriptor ผิด: `| 3` ได้แค่ limit bits ไม่ได้ DPL — DPL ยัง 0
+  `iretq` ไป ring 3 เลย `#GP`; ต้อง access byte 0xF2/0xFA (DPL=3) จริง
+- `EFER` เขียน `or eax, 0x100` ได้แค่ LME (bit 8) ไม่ได้ SCE (bit 0) —
+  `syscall` เป็น `#UD` ทั้งที่ MSR "เขียนแล้ว"; ต้อง `0x101`
+- `IA32_LSTAR` คือ `0xC0000082` ไม่ใช่ `0xC0000080` (นั่น EFER — เขียนทับ
+  แล้ว paging พัง), `EDX` ต้องเคลียร์ก่อน `wrmsr` (MSR 64-bit)
+- `sysret` ไม่มี REX.W คือ compat-mode (CS = STAR base เป็น data selector
+  `0x13`, fetch แตกทันที); ต้อง `48 0F 07` จึงได้ CS=0x20/SS=0x18
+- ครึ่ง sysret ของ `STAR` ต้อง base `0x10` (ได้ CS=0x20/SS=0x18) ไม่ใช่
+  `0x18`; เพิ่ม `FMASK=0x200` (mask IF ตอนเข้า) กันอนาคตที่มี IF=1
+- โปรแกรมมือ (hand stub) เขียน `48 B8` (movabs **rax**) แทน `48 BE`
+  (movabs rsi) — ทับ syscall number ตัวเองด้วย address เลยได้ ENOSYS
+  เงียบ ๆ; กันดักคือ assert ไบต์ทุกตัวแบบ `kring3` (เคสนี้สอนให้ assert
+  ตั้งแต่ `mov eax,1` ตัวแรก ไม่ใช่แค่ส่วนหลัง)

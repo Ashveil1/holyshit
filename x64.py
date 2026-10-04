@@ -236,6 +236,11 @@ class Asm:
         # mov r64, [rip+label]
         self._rm(0x8B, d, "rip", rip_label=label)
 
+    def xchg_rip(self, d, label):
+        # xchg r64, [rip+label]: atomic swap with no scratch register.
+        # The syscall stub uses it to park rcx/r11/rsp, which are all live.
+        self._rm(0x87, d, "rip", rip_label=label)
+
     # ----- control registers / TLB (long mode only) -----
 
     def mov_rcr64(self, rd, cr):
@@ -523,6 +528,13 @@ class Asm:
     def syscall(self):
         self.code += bytes([0x0F, 0x05])
 
+    def sysret(self):
+        # 64-bit only (the kernel never runs 32-bit user code): REX.W selects
+        # the 64-bit return (CS = STAR[63:48]+16). Without it the CPU takes
+        # the compatibility path (CS = STAR[63:48], a data selector) and the
+        # first user fetch faults.
+        self.code += bytes([0x48, 0x0F, 0x07])
+
     def nop(self):
         self.code.append(0x90)
 
@@ -701,6 +713,14 @@ class Asm32:
         self.code += bytes([0x0F, 0x01])
         self._modrm(0, 2, 5)
         self._abs32(label)
+
+    def ltr(self, sel):
+        # ltr eax: 0F 00 /3 with a 32-bit register operand (only the low 16
+        # bits are used). Loading a TSS descriptor must happen in ring 0 with
+        # the GDT its selector points into already live.
+        self.mov_ri32(0, sel)
+        self.code += bytes([0x0F, 0x00])
+        self._modrm(3, 3, 0)
 
     def rdmsr(self):
         self.code += bytes([0x0F, 0x32])

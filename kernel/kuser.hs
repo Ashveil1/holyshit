@@ -1,0 +1,130 @@
+import kmb
+import kpage
+import kpmm
+import ksyscall
+BIAS = ksyscall.USER_BIAS
+PAGE = 4096
+PT_LOAD = 1
+PF_W = 2
+STACK_TOP = BIAS + 0x20000000
+STACK_PAGES = 8
+CS_USER = 0x23
+SS_USER = 0x1B
+RFLAGS_USER = 0x2
+seg_base = 0
+seg_end = 0
+entry_point = 0
+seg_count = 0
+stack_top = 0
+def magic_byte(base, i):
+  unsafe:
+    return load8(as_ptr(base) + i)
+
+def elf_magic_ok(base):
+  # 0x7f "ELF" byte by byte: hs string escapes cover \n \t \" \\ only
+  return magic_byte(base, 0) == 127 and magic_byte(base, 1) == 69 and magic_byte(base, 2) == 76 and magic_byte(base, 3) == 70
+def ph_num(base):
+  return kmb.rd32(base + 54) >> 16
+def ph_size(base):
+  return kmb.rd32(base + 54) & 0xFFFF
+def phdr(base, i):
+  return base + kmb.rd64(base + 32) + i * ph_size(base)
+def ph_type(p):
+  return kmb.rd32(p)  # p_type is 32-bit and p_flags sits right after it
+def ph_flags(p):
+  return kmb.rd32(p + 4)
+def ph_offset(p):
+  return kmb.rd64(p + 8)
+def ph_vaddr(p):
+  return kmb.rd64(p + 16)
+def ph_filesz(p):
+  return kmb.rd64(p + 32)
+def ph_memsz(p):
+  return kmb.rd64(p + 40)
+def copy_in(dst, src, n):
+  unsafe:
+    Ptr s = as_ptr(src)
+    Ptr d = as_ptr(dst)
+    I64 i = 0
+    while i < n:
+      store8(d + i, load8(s + i))
+      i = i + 1
+  return n
+def poke(addr, value):
+  unsafe:
+    store64(as_ptr(addr), value)
+def load_segment(p, mod_base):
+  vaddr = ph_vaddr(p) + BIAS
+  memsz = ph_memsz(p)
+  if memsz <= 0:
+    return 0
+  if ksyscall.map_user_pages(vaddr, memsz, 7) * PAGE < memsz:
+    return 0
+  filesz = ph_filesz(p)
+  if filesz > 0:
+    copy_in(vaddr, mod_base + ph_offset(p), filesz)
+  if ph_flags(p) & PF_W == 0:
+    off = 0
+    while off < memsz:
+      kpage.protect(cr3(), vaddr + off, 5)
+      off = off + PAGE
+  return 1
+def load_module(idx):
+  global seg_base, seg_end, entry_point, seg_count, stack_top
+  seg_count = 0
+  seg_base = 0
+  seg_end = 0
+  if kmb.mods_count() <= idx:
+    return 0
+  mod_base = kmb.mod_start(idx)
+  if mod_base == 0 or kmb.mod_len(idx) < 128:
+    return 0
+  if not elf_magic_ok(mod_base):
+    return 0
+  n = ph_num(mod_base)
+  if n <= 0 or n > 64:
+    return 0
+  lo = 0
+  hi = 0
+  i = 0
+  while i < n:
+    p = phdr(mod_base, i)
+    if ph_type(p) == PT_LOAD:
+      if not load_segment(p, mod_base):
+        return 0
+      if seg_count == 0 or ph_vaddr(p) < lo:
+        lo = ph_vaddr(p)
+      if ph_vaddr(p) + ph_memsz(p) > hi:
+        hi = ph_vaddr(p) + ph_memsz(p)
+      seg_count = seg_count + 1
+    i = i + 1
+  if seg_count == 0:
+    return 0
+  seg_base = lo + BIAS
+  seg_end = hi + BIAS
+  entry_point = kmb.rd64(mod_base + 24) + BIAS
+  stack_bytes = STACK_PAGES * PAGE
+  if ksyscall.map_user_pages(STACK_TOP - stack_bytes, stack_bytes, 7) != STACK_PAGES:
+    return 0
+  stack_top = STACK_TOP
+  return 1
+def segments():
+  return seg_count
+def text_base():
+  return seg_base
+def text_end():
+  return seg_end
+def entry():
+  return entry_point
+def user_stack_top():
+  return stack_top
+def build_frame(rip, rsp):
+  frame = rsp - 40
+  poke(frame, rip)
+  poke(frame + 8, CS_USER)
+  poke(frame + 16, RFLAGS_USER)
+  poke(frame + 24, rsp)
+  poke(frame + 32, SS_USER)
+  return frame
+def run():
+  return enter_user(entry_point, build_frame(entry_point, stack_top))

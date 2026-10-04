@@ -52,11 +52,13 @@ def new_table():
       i = i + 8
     return page
 
-def split_huge(table, idx, entry, level):
+def split_huge(table, idx, entry, level, user):
   # Replace a huge (2MB/1GB) entry with a next-level table that covers the
   # same range with 512 children, and return that table.
   #   level 2 (PD):  2MB -> 512 x 4K pages
   #   level 3 (PDPT): 1GB -> 512 x 2MB pages
+  # `user` marks the new table user-accessible: without the U/S bit on every
+  # intermediate level, ring 3 faults even when the leaf itself allows it.
   flags = entry & 0xFF
   if level == 2:
     base = entry & MB_MASK
@@ -71,7 +73,10 @@ def split_huge(table, idx, entry, level):
   while i < 512:
     entry_set(fresh, i, (base + i * child_step) | child_flags)
     i = i + 1
-  entry_set(table, idx, fresh | TABLE_FLAGS)
+  tflags = TABLE_FLAGS
+  if user:
+    tflags = TABLE_FLAGS | PAGE_USER
+  entry_set(table, idx, fresh | tflags)
   tlb_flush()
   return fresh
 
@@ -99,10 +104,16 @@ def pte_addr_read(root, vaddr):
     l = l - 1
   return 0
 
-def pte_addr(root, vaddr):
+def pte_addr(root, vaddr, flags):
   # address of the leaf PTE, allocating tables and splitting huge pages.
   # The leaf level returns its slot directly (an absent PTE is fine: the
   # caller fills it in); only intermediate levels allocate or split.
+  # A user mapping needs the U/S bit on the whole path, so fresh tables
+  # inherit it and existing supervisor tables are upgraded on first use.
+  user = flags & PAGE_USER
+  tflags = TABLE_FLAGS
+  if user != 0:
+    tflags = TABLE_FLAGS | PAGE_USER
   table = root
   l = 4
   while l >= 1:
@@ -112,11 +123,13 @@ def pte_addr(root, vaddr):
     entry = entry_get(table, idx)
     if entry & PAGE_PRESENT == 0:
       fresh = new_table()
-      entry_set(table, idx, fresh | TABLE_FLAGS)
+      entry_set(table, idx, fresh | tflags)
       table = fresh
     elif entry & PAGE_HUGE != 0:
-      table = split_huge(table, idx, entry, l)
+      table = split_huge(table, idx, entry, l, user)
     else:
+      if user != 0 and entry & PAGE_USER == 0:
+        entry_set(table, idx, entry | PAGE_USER)
       table = entry & PAGE_MASK
     l = l - 1
   return 0
@@ -129,7 +142,7 @@ def pte_get(root, vaddr):
     return load64(as_ptr(p))
 
 def pte_set(root, vaddr, value):
-  p = pte_addr(root, vaddr)
+  p = pte_addr(root, vaddr, value)
   if p == 0:
     return false
   unsafe:
@@ -174,6 +187,20 @@ def unmap(root, vaddr):
     return false
   unsafe:
     store64(as_ptr(p), 0)
+  invlpg(vaddr)
+  return true
+
+def protect(root, vaddr, flags):
+  # change the permission bits of an existing 4K mapping, keeping the frame.
+  # Used to hand ring 3 read-only text after the loader has copied it in.
+  entry = pte_get(root, vaddr)
+  if entry & PAGE_PRESENT == 0:
+    return false
+  if entry & PAGE_HUGE != 0:
+    return false
+  p = pte_addr_read(root, vaddr)
+  unsafe:
+    store64(as_ptr(p), entry & PAGE_MASK | (flags & 0xFF))
   invlpg(vaddr)
   return true
 

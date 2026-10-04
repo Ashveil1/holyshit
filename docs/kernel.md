@@ -13,8 +13,9 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 `kxstr`/`kxlist`/`kxslice` (ค่าบน serial), `ktry` (try), `kimp` (import),
 `kxexc_*` (EXC report), `kprim` (primitives), `kpaging` (paging)
 โมดูลจริง: `kmb` `kpage` `kpmm` `kheap` `kaddr` `ktask` `kvfs` `kramdisk`
+`ksyscall` `kuser` (user program ตัวอย่าง: `uuser`)
 เทสใน QEMU: `kpmmtest` `kheaptest` `kaddrtest` `ktasktest` `kpreempt`
-`kfstest`
+`kfstest` `kring3` `kring3ret` `kring3wr` `kusermode`
 
 ## สิ่งที่มีบน kernel
 
@@ -38,8 +39,11 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
   validate ไม่ใช่เชื่อค่า EBX): spec multiboot1 กับ struct 88-byte ของ QEMU
   เอง (layout ไม่ตรง spec — ดู source `hw/i386/multiboot.c` ของ QEMU)
 - `kernel/kpage.hs` — page table 4 ระดับ: `map`/`unmap`/`translate`,
-  `is_mapped`, `map_phys`/`map_user`; สร้างตารางที่ขาดอัตโนมัติ, แยก huge
-  page (2MB/1GB) เป็นลูก 512 ตัวเมื่อต้อง map 4K ข้างใน, flush TLB ทุกครั้ง
+  `is_mapped`, `map_phys`/`map_user`, `protect` (เปลี่ยน permission ทีหลัง
+  ใช้ทำ user text read-only); สร้างตารางที่ขาดอัตโนมัติ, แยก huge
+  page (2MB/1GB) เป็นลูก 512 ตัวเมื่อต้อง map 4K ข้างใน, flush TLB ทุกครั้ง;
+  map แบบ user พา U/S bit ลงไปทั้ง path (ตารางชั้นกลางของ kernel เป็น
+  supervisor — ไม่ทำ ring 3 จะ fault ตั้งแต่ iret แรก)
 - `kernel/kpmm.hs` — frame allocator จริงบน bitmap (`std.bitmap`):
   เอาเฟรมจาก region usable ที่ใหญ่สุด, reserve image/หน้าต่างบูต/heap/
   bitmap ตัวเอง, `alloc(n)` คืน address 4K-aligned, `free`/`free_run` คืน
@@ -95,11 +99,40 @@ ramdisk จาก multiboot module + VFS ที่แก้ไฟล์ได้
 - เทส: `tests/t_vfs.hs` + `tests/x64/vfs.hs` (VFS ทั้งชุดบน interp/native/x64),
   `kernel/kfstest.hs` (บูตจริง: โหลด ramdisk แล้วอ่าน/แก้/ลบบน QEMU)
 
+## user mode + syscall (`.hs` ล้วน, กลไก encoder)
+
+โปรแกรม user คือ static ELF64 จาก `python3 hs.py xbuild prog.hs` ส่งเข้า
+kernel เป็น multiboot module (`-initrd`) — ไม่ต้องมี runtime พิเศษเพราะ
+backend ส่ง syscall แบบ Linux อยู่แล้ว (`write=1`, `mmap=9`, `exit=60`)
+
+- `kernel/kuser.hs` — โหลด ELF: อ่าน program header, map ทุก `PT_LOAD` ที่
+  address ของตัวเอง + `USER_BIAS` (user page อยู่ PML4 slot 1+ ฝั่ง kernel
+  PML4[0] เป็น supervisor-only แตะไม่ถึง), W^X (text ให้ `protect` เป็น
+  read-only หลัง copy), stack 8 เพจ; `run()` กระโดดเข้า ring 3
+- `kernel/ksyscall.hs` — `dispatch(nr, a1..a6)`: `sys_write` (fd 1/2 ออก
+  serial ผ่าน `read_mem`), `sys_mmap` (anonymous ที่ kernel เลือกให้),
+  `sys_exit` (จำ code แล้ว `user_stop()`); exit code เป็น opaque (tagged
+  อยู่แล้วใช้เลย, Null กลายเป็น 0)
+- กลไกใน `x64gen.py`: stub รับ `syscall` ตาม semantics จริง — CPU เซฟแค่
+  rip→rcx กับ rflags→r11 (ไม่มี frame, ไม่สลับ stack) ดังนั้น stub เก็บ
+  return state ด้วย `xchg` (ไม่ต้องใช้ scratch) แล้วย้ายเองไป syscall
+  stack 16KB ของตัวเอง (handler ลึกแค่ไหนก็ไม่ล้น user stack);
+  park/tag/handler/untag เหมือนเดิม ขากลับคือ `sysret` (ห้าม `iretq` —
+  ไม่มีอะไรให้ pop) ส่วน `user_stop()` กลับทาง `user_cont_` บน stack เดิม
+- GDT มี user code/data (DPL=3 จริง — ไม่ใช่ OR 3 ที่ได้แค่ limit bits),
+  TSS (RSP0 รับ fault/IRQ จาก ring 3; `syscall` ไม่ใช้), `IA32_STAR`
+  (ครึ่ง sysret ต้องชี้ base 0x10 จึงได้ CS=0x20/SS=0x18 กลับมา),
+  `IA32_FMASK` (mask IF ตอนเข้า), `EFER.SCE+LME`
+- เทส: `kring3` (exit ผ่าน stop), `kring3ret` (sysret กลับ ring 3 แล้ว hlt
+  fault ด้วย USER rip + CS=0x23), `kring3wr` (write แล้ว exit),
+  `kusermode` (ELF จริง: พิมพ์/คำนวณ/exit กลับมา kernel ครบ)
+
 ## ข้อจำกัดตอนนี้
 
 - หารด้วยศูนย์ = CPU `#DE` → `EXC 0` แล้ว halt (จับด้วย try ไม่ได้)
-- ยังไม่มี user mode (ดู `SPEC-v1.md` หัวข้อ OS) และ filesystem เป็น RAM
-  ล้วน — ยังไม่มี block driver/ATA และยังไม่ persist ข้าม reboot
+- filesystem เป็น RAM ล้วน — ยังไม่มี block driver/ATA และยังไม่ persist
+  ข้าม reboot; ยังไม่มี user mode หลายโปรเซส (โปรเซสเดียว + syscall
+  พื้นฐาน, ยังไม่มี fork/exec/permissions)
 - `ticks` เริ่มนับหลังบูต; keyboard คือ scancode ชุด 1 (ไม่มี shift)
 
-เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (105 เคส)
+เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (126 เคส)

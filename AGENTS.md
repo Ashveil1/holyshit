@@ -1,4 +1,4 @@
-# AGENTS.md — holyshit (hs) v0.6.6 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.6.7 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the
@@ -159,7 +159,12 @@ Kernel-surface (xkernel freestanding): `ticks readkey pmm_alloc pmm_total pmm_fr
 `cr2`/`cr3`/`set_cr3`, `invlpg(v)`/`tlb_flush()`,
 `ctx_swap(save, load)`/`task_run(sched, task)`/`task_init(ctx, top, func)`,
 `irq_off()`/`irq_on()`, `sched_on_tick(f)`/`sched_tick_clear()`
-(tasks + preemption; ctx block 136B: all 15 GPRs + rsp + rip)
+(tasks + preemption; ctx block 136B: all 15 GPRs + rsp + rip),
+`syscall_register(f)`/`user_stop()`/`enter_user(rip, frame)` (ring 3: `f` gets
+`(nr, a1..a6)` as tagged hs Ints and returns the raw result; `user_stop`
+ends the user back in the `enter_user` caller; user code is any `xbuild` ELF
+loaded as a multiboot module — the hosted numbers write=1, mmap=9, exit=60
+work with no extra runtime)
 (+ unsafe alloc/load/store/as_*)
 
 ### x64 backend subset (`hs.py xbuild` / `xkernel`)
