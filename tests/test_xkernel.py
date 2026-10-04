@@ -175,6 +175,28 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("kpmm all assertions pass", m and m.group(1) == "0", out[-800:])
         check("kpmm ran its checks", out.count("\nok ") >= 25, out[-800:])
+    # kmalloc: std.heap over real frames
+    kh = os.path.join(d, "kh.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kheaptest.hs"), kh)
+    check("kheaptest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kh, timeout=10)
+        check("kheap finished", "kheap-done" in out, out[-800:])
+        check("kheap did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kheap all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("kheap ran its checks", out.count("\nok ") >= 25, out[-800:])
+    # address spaces: a new PML4 shares the kernel, isolates user pages
+    ka = os.path.join(d, "ka.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kaddrtest.hs"), ka)
+    check("kaddrtest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(ka, timeout=10)
+        check("kaddr finished", "kaddr-done" in out, out[-800:])
+        check("kaddr did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kaddr all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("kaddr ran its checks", out.count("\nok ") >= 20, out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

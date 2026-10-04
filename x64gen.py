@@ -246,6 +246,14 @@ class Gen:
                     self.ann_expr(s["val"], sc, True)
                     self.decl(sc, s["name"])
                     sc.raw_names.add(s["name"])
+                    # module-visible: a name assigned raw in ANY function of
+                    # this module holds a raw word for every reader in it
+                    # (e.g. std.heap.free_head, written by malloc/free but
+                    # only read by heap_free/heap_nblocks)
+                    m = sc
+                    while m.parent is not None:
+                        m = m.parent
+                    m.raw_names.add(s["name"])
                 elif t == "global":
                     sc.globs.update(s["names"])
                 elif t == "print":

@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.2 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.3 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -427,7 +427,7 @@ printer พิมพ์คอมเมนต์ไม่ได้ — lexer ท�
 ### 15.7 สถานะเทสหลังเฟส 7
 
 `test.py` 38 · `test_native.py` 39 · `test_fmt.py` 4 · `test_x64.py` 28 ·
-`test_xkernel.py` 77 · `test_examples.py` 17 · `test_lsp.py` 25 ·
+`test_xkernel.py` 87 · `test_examples.py` 17 · `test_lsp.py` 25 ·
 `test_docs.py` 38 (รันครบทุกชุด: `python3 tests/run_all.py`)
 
 ### 15.8 เตรียม OS: `load64`/`store64` (v0.6.1)
@@ -478,3 +478,22 @@ paging แบบไดนามิก + frame allocator จริง เขี�
   Int 0 (ต้อง return ที่ safe level)
 - เทส: `kprim` (primitives), `kpaging` (30 asserts: map/translate/split/unmap),
   `kpmmtest` (pool เต็ม + คืน pool) — xkernel 62 -> 77 เคส
+### 15.11 kmalloc + address spaces (v0.6.3)
+
+m2 ของงาน OS: heap ที่ขยายได้จริง + PML4 ใหม่ต่อ space — `.hs` ล้วน บูตจริง
+
+- `std/heap.hs` เพิ่ม `heap_init_at(addr, nbytes)` (ของเดิม `heap_init` ไว้
+  เหมือนเดิม): kernel map เฟรมก่อนแล้วค่อยเริ่ม free list บนนั้น
+- `kernel/kheap.hs` — `init(npages)` เอาเฟรมต่อกันจาก PMM, `map_range` ไว้ที่
+  `0x60000000`, แล้ว `malloc`/`free` ธรรมดา (reuse กลางลิสต์, รวมบล็อกกลับ,
+  ขอเกินคืน 0 ไม่พัง)
+- `kernel/kaddr.hs` — `new()` ก็อปทุก entry ที่ present ของ PML4 ปัจจุบัน
+  (kernel อยู่ slot 0 ทั้งหมด), `switch()` โหลด CR3 (flush TLB ในตัว);
+  user page ต้อง `>= 0x8000000000` (slot 1+) จึง isolated จาก space เดิม
+- บั๊ก x64 ที่เจอ: global ที่ถูก assign ดิบใน `unsafe:` ของฟังก์ชันหนึ่ง แต่ถูก
+  อ่านในอีกฟังก์ชัน โดน unbox ผิด (`raw_names` อยู่แค่ scope ละฟังก์ชัน) —
+  ตอนนี้สะสมชื่อ raw ระดับโมดูลด้วย; อาการคือ `x_tname` เดินเข้าหน่วยความจำ
+  ขยะจน `x_malloc` หมด ("out of memory" ปลอม)
+- เทส: `kheaptest` (malloc/free/reuse/patterns), `kaddrtest` (switch แล้ว
+  serial ยังออก, map ใน space ใหม่, เก่าไม่เห็น, กลับมาแล้วยังอยู่) —
+  xkernel 77 -> 87 เคส

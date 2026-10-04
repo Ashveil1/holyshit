@@ -9,6 +9,16 @@ unsafe:
 
 free_head = 0
 
+def heap_init_at(addr, nbytes):
+  # start the heap on an explicit region (already mapped and writable).
+  # The kernel maps real frames first, then calls this.
+  global free_head
+  unsafe:
+    Block* b = as_ptr(addr)
+    b.size = nbytes - 16
+    b.next = null
+    free_head = as_int(b)
+
 def heap_init(nbytes):
   global free_head
   unsafe:

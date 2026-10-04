@@ -1,4 +1,4 @@
-# AGENTS.md — holyshit (hs) v0.6.2 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.6.3 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the

@@ -185,3 +185,14 @@ def map_phys(root, vaddr, paddr):
 
 def map_user(root, vaddr, paddr):
   return map(root, vaddr, paddr, USER_FLAGS)
+
+def map_range(root, vaddr, paddr, nbytes):
+  # map nbytes (rounded up to whole pages); returns pages mapped
+  n = 0
+  off = 0
+  while off < nbytes:
+    if not map(root, vaddr + off, paddr + off, KERNEL_FLAGS):
+      return n
+    n = n + 1
+    off = off + 4096
+  return n
