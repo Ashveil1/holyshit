@@ -1221,6 +1221,28 @@ class Gen:
             a.label(lab_rmok)
             a.call("x_str_at")
             return
+        if fn["t"] == "var" and fn["name"] == "scall":
+            # scall(nr, a1..a6): raw syscall for user programs (the shell).
+            # Hosted only: the kernel answers through its own stub, and a
+            # ring-0 `syscall` would wrongly drop to ring 3 on return, so the
+            # freestanding build rejects it like open/read/write/close.
+            if len(e["args"]) != 7:
+                raise HSErr("scall wants scall(nr, a1, a2, a3, a4, a5, a6)",
+                            ln)
+            if self.freestanding:
+                raise HSErr("scall not in x64 subset", ln)
+            regs = ("rax", "rdi", "rsi", "rdx", "r10", "r8", "r9")
+            for _rg, ar in zip(regs, e["args"]):
+                self.ev(ar, sc, mod)
+                self.check_int(lambda: self.raise_static(
+                    "scall args must be Ints", ln))
+                a.sar_ri8("rax", 2)
+                a.push_r("rax")
+            for rg in reversed(regs):
+                a.pop_r(rg)
+            a.syscall()
+            self.tag_box()
+            return
         if fn["t"] == "var" and fn["name"] in (
                 "float", "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
@@ -1230,7 +1252,7 @@ class Gen:
                 "ctx_swap", "task_run", "task_init",
                 "irq_off", "irq_on",
                 "sched_on_tick", "sched_tick_clear",
-                "syscall_register", "user_stop", "enter_user",
+                "syscall_register", "user_stop", "enter_user", "exec_enter",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "read_text", "write_text", "append_text",
@@ -1242,7 +1264,8 @@ class Gen:
                     "ctx_swap", "task_run", "task_init",
                     "irq_off", "irq_on",
                     "sched_on_tick", "sched_tick_clear",
-                    "syscall_register", "user_stop", "enter_user"):
+                    "syscall_register", "user_stop", "enter_user",
+                    "exec_enter"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
             raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
@@ -1606,30 +1629,39 @@ class Gen:
             a.mov_mr("rcx", "rax", 0)
             a.mov_ri64("rax", Gen.HS_NULL)
             return
-        if name == "enter_user":
+        if name in ("enter_user", "exec_enter"):
             # enter_user(rip, frame): iretq into ring 3, reading the
             # interrupt frame (rip, cs, rflags, rsp, ss) from `frame`. The
             # continuation and its stack are recorded first, so the syscall
             # stub can resume the kernel once the user stops.
+            # exec_enter(rip, frame): same iretq but records NOTHING — for
+            # sys_exec, which replaces the current image one-shot. Recording
+            # there would overwrite the outer session's continuation (and its
+            # stack), so the exec'd program's exit could never resume the
+            # right place; with no record the exit lands back in the outer
+            # session that is still intact.
             if len(args) != 2:
-                raise HSErr("enter_user wants enter_user(rip, frame)", ln)
+                raise HSErr(f"{name} wants {name}(rip, frame)", ln)
             self.ev(args[0], sc, mod)
             self.check_int(lambda: self.raise_static(
-                "enter_user wants enter_user(rip, frame)", ln))
+                f"{name} wants {name}(rip, frame)", ln))
             a.sar_ri8("rax", 2)
             a.push_r("rax")
             self.ev(args[1], sc, mod)
             self.check_int(lambda: self.raise_static(
-                "enter_user wants enter_user(rip, frame)", ln))
+                f"{name} wants {name}(rip, frame)", ln))
             a.sar_ri8("rax", 2)
             a.mov_rr("rsi", "rax")  # frame
             a.pop_r("rdi")  # rip
-            a.lea_rip("rax", "user_saved_rsp_")
-            a.mov_mr("rax", "rsp", 0)  # the stack to come back on
-            a.lea_rip("rax", "user_cont_")
-            lab_uret = self.new_tmp("uret")
-            a.lea_rip("rcx", lab_uret)
-            a.mov_mr("rax", "rcx", 0)
+            if name == "enter_user":
+                a.lea_rip("rax", "user_saved_rsp_")
+                a.mov_mr("rax", "rsp", 0)  # the stack to come back on
+                a.lea_rip("rax", "user_saved_rbp_")
+                a.mov_mr("rax", "rbp", 0)  # and the frame pointer to come back
+                a.lea_rip("rax", "user_cont_")
+                lab_uret = self.new_tmp("uret")
+                a.lea_rip("rcx", lab_uret)
+                a.mov_mr("rax", "rcx", 0)
             # ---- ring 3 entry (the iretq never falls through) ----
             a.mov_ri32("rax", 0x1B)  # SS  = user data (RPL 3)
             a.mov_rr("rsp", "rsi")
@@ -1637,6 +1669,14 @@ class Gen:
             a.mov_ri32("rcx", 0x23)  # CS  = user code (RPL 3)
             a.mov_rr("r8", "rdi")  # RIP
             a.iretq()
+            if name == "exec_enter":
+                # one-shot: control never comes back here (the new image
+                # owns ring 3 now); halt instead of falling into whatever
+                # bytes follow, and its exit resumes the OUTER session
+                # through the untouched continuation
+                a.call("k_halt")
+                a.mov_ri64("rax", Gen.HS_NULL)
+                return
             a.label(lab_uret)
             # Reached when the syscall stub stops the user. enter_user is
             # inlined, so there is no return address to pop: the stub has
@@ -1952,12 +1992,7 @@ class Gen:
         """True when the expression is already an untagged machine value."""
         t = e["t"]
         if t in ("num", "deref", "field", "sizeof", "bin", "neg", "not",
-                 "unot", "var"):
-            # sev() already converts a variable read: dynamic slots (and
-            # params) are unboxed with an Int check, names assigned inside
-            # `unsafe:` hold raw words already. Unboxing again here would
-            # shift the value twice and tag-check a raw address -- which
-            # fails outright for pointers whose low bits are not 00.
+                 "unot"):
             return True
         if t == "call" and e["fn"]["t"] == "var" and e["fn"]["name"] in (
                 "alloc", "load8", "load32", "load64", "store8", "store32",
@@ -2007,9 +2042,23 @@ class Gen:
         if name in ("as_ptr", "as_int"):
             if len(args) != 1:
                 raise HSErr(f"{name} wants 1 arg", ln)
-            self.sev(args[0], sc, mod)
-            if self.is_raw_expr(args[0]):
-                return  # already a machine value (literal / unsafe expression)
+            ar = args[0]
+            if ar["t"] == "var":
+                # Dynamic slots hold tagged Ints or heap pointers: load the
+                # raw word with NO tag check (sev would reject Str/Func here)
+                # and let the dispatch below sort Int vs heap. Statically raw
+                # unsafe locals pass through untouched.
+                kind, _ref = self.resolve_var(ar["name"], sc, mod, ln)
+                if kind is None:
+                    raise HSErr(f"unknown variable '{ar['name']}'", ln)
+                self.var_get(ar["name"], sc, mod, ln)
+                if kind != "param" and not self.holds_dynamic(ar["name"], sc,
+                                                             mod):
+                    return  # unsafe static: already a machine word
+            else:
+                self.sev(ar, sc, mod)
+                if self.is_raw_expr(ar):
+                    return  # literal / unsafe expression: already raw
             # tagged Int -> raw payload; heap Str/Func -> raw address
             lab_heap, lab_bad, lab_done = (self.new_tmp("az"), self.new_tmp("az"),
                                            self.new_tmp("az"))
@@ -3024,17 +3073,20 @@ class Gen:
             self.a.label("exc_")
             self.a.code += b"EXC "
             self.a.label("kbdmap_")
-            # set-1 make-code -> ascii (0 = ignore)
+            # set-1 make-code -> ascii (0 = ignore; no shift keys: the shell
+            # is lowercase-only, paths need just / . - and backspace)
             kb = bytearray(256)
             for code, ch in ((0x02, "1"), (0x03, "2"), (0x04, "3"), (0x05, "4"),
                              (0x06, "5"), (0x07, "6"), (0x08, "7"), (0x09, "8"),
-                             (0x0A, "9"), (0x0B, "0"), (0x10, "q"), (0x11, "w"),
+                             (0x0A, "9"), (0x0B, "0"), (0x0C, "-"),
+                             (0x0E, "\x08"), (0x10, "q"), (0x11, "w"),
                              (0x12, "e"), (0x13, "r"), (0x14, "t"), (0x15, "y"),
                              (0x16, "u"), (0x17, "i"), (0x18, "o"), (0x19, "p"),
                              (0x1E, "a"), (0x1F, "s"), (0x20, "d"), (0x21, "f"),
                              (0x22, "g"), (0x23, "h"), (0x24, "j"), (0x25, "k"),
                              (0x26, "l"), (0x2C, "z"), (0x2D, "x"), (0x2E, "c"),
                              (0x2F, "v"), (0x30, "b"), (0x31, "n"), (0x32, "m"),
+                             (0x33, ","), (0x34, "."), (0x35, "/"),
                              (0x39, " "), (0x1C, "\n")):
                 kb[code] = ord(ch)
             self.a.code += bytes(kb)
@@ -3580,6 +3632,14 @@ class Gen:
         a.jmp("sysret_back")
         a.label(lab_stop)
         a.add_ri32("rsp", 128)
+        # Resume the kernel exactly as enter_user left it: the code the
+        # continuation lands in is the tail of the same .hs function, so
+        # its epilogue (`mov rsp,rbp; pop rbp; ret`) needs the rbp from
+        # that frame. Nothing else survives here -- the stub runs on the
+        # syscall stack, and every register it left behind belongs to the
+        # handler (and, before that, to ring 3).
+        a.lea_rip("rax", "user_saved_rbp_")
+        a.mov_rm("rbp", "rax", 0)
         a.lea_rip("rax", "user_saved_rsp_")
         a.mov_rm("rsp", "rax", 0)  # the stack enter_user() was called on
         a.lea_rip("rax", "user_cont_")
@@ -3592,6 +3652,7 @@ class Gen:
         self.reserve("sc_swap_", 8)
         self.reserve("user_cont_", 8)
         self.reserve("user_saved_rsp_", 8)
+        self.reserve("user_saved_rbp_", 8)
         # TSS: 104 bytes, I/O bitmap offset 104 so ring 3 gets no ports at
         # all (every access faults with #GP). RSP0 still catches faults and
         # IRQs from ring 3 (only `syscall` itself skips the stack switch).

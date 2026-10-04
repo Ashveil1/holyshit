@@ -326,7 +326,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (81)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (84)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -355,7 +355,6 @@
 - `ctx_swap wants ctx_swap(save, load)`
 - `dict not in x64 subset`
 - `dup data reserve {name}`
-- `enter_user wants enter_user(rip, frame)`
 - `field '{e['name']}' is not an array`
 - `field '{obj['name']}' is not a struct pointer`
 - `field '{x['name']}' is not an array`
@@ -380,6 +379,8 @@
 - `read_mem wants read_mem(ptr, nbytes)`
 - `readkey takes no args`
 - `return outside function`
+- `scall not in x64 subset`
+- `scall wants scall(nr, a1, a2, a3, a4, a5, a6)`
 - `sched_on_tick wants sched_on_tick(func)`
 - `sched_tick_clear takes no args`
 - `set_cr3 wants set_cr3(pml4)`
@@ -396,6 +397,7 @@
 - `ticks takes no args`
 - `tlb_flush takes no args`
 - `unknown struct '{st}'`
+- `unknown variable '{ar['name']}'`
 - `unknown variable '{e['name']}'`
 - `unknown variable '{name}'`
 - `unknown variable '{obj['name']}'`
@@ -406,6 +408,7 @@
 - `{name} wants 1 arg`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
+- `{name} wants {name}(rip, frame)`
 - `{t} handled elsewhere or not in x64 subset`
 - `{t} not allowed in unsafe (x64)`
 - `{t} not in x64 subset`
@@ -415,4 +418,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 375 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 378 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

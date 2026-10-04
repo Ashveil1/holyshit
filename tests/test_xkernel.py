@@ -296,6 +296,126 @@ with tempfile.TemporaryDirectory() as d:
         check("kusermode all assertions pass", m and m.group(1) == "0",
               out[-800:])
         check("kusermode ran its checks", out.count("\nok ") >= 15, out[-800:])
+    # file syscalls without ring 3: sys_open/read/write/close + copy_out,
+    # deterministic (no keyboard timing involved)
+    kio = os.path.join(d, "kio.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kiotest.hs"), kio)
+    check("kiotest build clean", rc == 0)
+    if rc == 0 and r.returncode == 0 and QEMU is not None:
+        out = boot(kio, timeout=10, initrd=rd)
+        check("kio finished", "kiotest-done" in out, out[-800:])
+        check("kio did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kio all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("kio ran its checks", out.count("\nok ") >= 10, out[-800:])
+    # shell: stage ramdisk + user ELFs, pack, then type over sendkeys.
+    # Keys start late and slow: TCG boot takes seconds and the keyboard
+    # flag is one deep, so anything typed during boot collapses.
+    shd = os.path.join(d, "stage")
+    shutil.copytree(os.path.join(ROOT, "kernel", "ramdisk"), shd)
+    os.makedirs(os.path.join(shd, "bin"))
+    uu = os.path.join(d, "uush.elf")
+    rc = build_x64(os.path.join(ROOT, "kernel", "uush.hs"), uu)
+    check("uush build clean", rc == 0)
+    uh = os.path.join(d, "hi.elf")
+    rc = build_x64(os.path.join(ROOT, "kernel", "uuhi.hs"), uh)
+    check("uuhi build clean", rc == 0)
+    shutil.copy(uu, os.path.join(shd, "bin", "uush"))
+    shutil.copy(uh, os.path.join(shd, "bin", "hi"))
+    srd = os.path.join(d, "shell.krfs")
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "mkramdisk.py"),
+                        shd, srd], capture_output=True, text=True)
+    check("shell ramdisk packs", r.returncode == 0, r.stderr[-300:])
+    ku = os.path.join(d, "kush.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kushtest.hs"), ku)
+    check("kushtest build clean", rc == 0)
+
+    def shkeys(lines):
+        # (delay, key) with a slow start and 0.6s pacing; \x08 = backspace.
+        # Unknown QEMU key names fail LOUD (reply-checked) instead of
+        # silently dropping keys and garbling the session.
+        out = []
+        first = True
+        for line in lines:
+            for ch in line:
+                if ch == "\x08":
+                    key = "backspace"
+                elif ch == " ":
+                    key = "spc"
+                elif ch == "/":
+                    key = "slash"
+                else:
+                    key = ch
+                out.append(((15 if first else 0.6), key))
+                first = False
+            out.append((0.6, "ret"))
+        return out
+
+    def shboot(lines, timeout):
+        # boot() but every sendkey reply is checked for errors
+        slog = os.path.join(d, "shserial.log")
+        msock = os.path.join(d, "shmon.sock")
+        if os.path.exists(slog):
+            os.unlink(slog)
+        try:
+            os.unlink(msock)
+        except OSError:
+            pass
+        p = subprocess.Popen([QEMU, "-kernel", ku, "-serial", f"file:{slog}",
+                              "-display", "none", "-m", "256M",
+                              "-monitor", f"unix:{msock},server=on,wait=off",
+                              "-initrd", srd],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            for delay, key in shkeys(lines):
+                time.sleep(delay)
+                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                s.settimeout(5)
+                s.connect(msock)
+                s.recv(4096)
+                s.sendall(f"sendkey {key}\n".encode())
+                time.sleep(0.2)
+                try:
+                    rep = s.recv(4096).decode(errors="replace")
+                except socket.timeout:
+                    rep = ""
+                s.close()
+                check(f"sendkey {key} accepted", "error" not in rep.lower()
+                      and "unknown" not in rep.lower(), rep[-200:])
+            time.sleep(timeout)
+        finally:
+            p.terminate()
+            try:
+                p.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                p.kill()
+        with open(slog, encoding="utf-8", errors="replace") as f:
+            return f.read()
+
+    if rc == 0 and r.returncode == 0 and QEMU is not None:
+        # session A: files, errors, write/rm, backspace correction, exit
+        out = shboot(["help", "ls /", "caa\x08t /motd", "cat /nope", "bogus",
+                      "mkdir /tmp", "ls /", "write /n xyzzy 123", "cat /n",
+                      "rm /n", "exit"], 25)
+        check("kush finished", "kushell-done" in out, out[-800:])
+        check("kush did not fault", "EXC " not in out, out[-800:])
+        for line in ("commands: help echo cat ls mkdir rm write run exit",
+                     "holyshit test ramdisk", "second line here",
+                     "no such file", "unknown command: bogus", "xyzzy 123"):
+            check(f"kush output {line!r}", line in out, out[-800:])
+        check("kush tmp listed", "\ntmp\n" in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kush all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("kush ran its checks", out.count("\nok ") >= 12, out[-800:])
+        # session B: exec a real program from VFS (one-shot: no return)
+        out = shboot(["help", "ls /", "run /nope", "run /bin/hi"], 20)
+        check("kushexec finished", "kushell-done" in out, out[-800:])
+        check("kushexec did not fault", "EXC " not in out, out[-800:])
+        for line in ("exec failed", "hi from exec"):
+            check(f"kushexec output {line!r}", line in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kushexec all assertions pass", m and m.group(1) == "0",
+              out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

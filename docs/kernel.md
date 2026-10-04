@@ -13,9 +13,9 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 `kxstr`/`kxlist`/`kxslice` (ค่าบน serial), `ktry` (try), `kimp` (import),
 `kxexc_*` (EXC report), `kprim` (primitives), `kpaging` (paging)
 โมดูลจริง: `kmb` `kpage` `kpmm` `kheap` `kaddr` `ktask` `kvfs` `kramdisk`
-`ksyscall` `kuser` (user program ตัวอย่าง: `uuser`)
+`ksyscall` `kuser` (user program ตัวอย่าง: `uuser`, shell: `uush`)
 เทสใน QEMU: `kpmmtest` `kheaptest` `kaddrtest` `ktasktest` `kpreempt`
-`kfstest` `kring3` `kring3ret` `kring3wr` `kusermode`
+`kfstest` `kring3` `kring3ret` `kring3wr` `kusermode` `kiotest` `kushtest`
 
 ## สิ่งที่มีบน kernel
 
@@ -127,12 +127,43 @@ backend ส่ง syscall แบบ Linux อยู่แล้ว (`write=1`, `
   fault ด้วย USER rip + CS=0x23), `kring3wr` (write แล้ว exit),
   `kusermode` (ELF จริง: พิมพ์/คำนวณ/exit กลับมา kernel ครบ)
 
+## shell ใน ring 3 + syscall ไฟล์
+
+user ต่อกับ VFS ผ่าน syscall ตัวเลขเดียวกับ Linux (path แบบ
+`(ptr, len)` ไม่ต้องมี NUL เพราะ Str ของ hs ไม่มี):
+
+| nr | syscall | ทำอะไร |
+| --- | --- | --- |
+| 0 | `read(fd, buf, len)` | fd 0 = keyboard (หนึ่งบรรทัด), อื่น ๆ = ไฟล์จาก kvfs |
+| 1 | `write(fd, buf, len)` | fd 1/2 = serial, fd 3+ = เขียนไฟล์ |
+| 2 | `open(path, len, flags)` | flags 0 = อ่าน, อื่น ๆ = เขียน (สร้าง/ตัด) → fd ของ user = kvfs fd + 3 |
+| 3 | `close(fd)` | |
+| 59 | `exec(path, len)` | โหลด ELF จาก VFS ทับ image เดิม (ครั้งเดียว) |
+| 78 | `ls(path, len, buf, max)` | รายชื่อใน dir คั่นด้วย `\n` |
+| 83 | `mkdir(path, len)` | สร้างทั้ง path |
+| 87 | `unlink(path, len)` | |
+
+- `copy_out(dst, s, n)` คัดลอก Str ของ kernel ลง user memory (สะท้อน
+  pointer ความจริงของ x64: `as_ptr(str) + 16` = payload)
+- `readline()` บน fd 0: `irq_on()` แล้ว spin `readkey()` (path นี้มาแบบ
+  IF=0 คีย์บอร์ดจะไม่มาให้), backspace = byte 8 (สร้างครั้งเดียวจาก
+  `alloc` เพราะ hs escape ไม่มี `\0..\8`), ไม่ echo
+- `exec` เรียก `exec_enter` (iretq แบบไม่บันทึก continuation) ไม่ใช่
+  `run()` — ถ้าใช้ `run()` มันจะทับ continuation/stack ของ session เดิม
+  แล้วพอโปรแกรมใหม่ exit ก็กลับไปไม่ได้
+- `kernel/uush.hs` = shell จริงใน ring 3 (`help echo cat ls mkdir rm write
+  run exit`), คุยกับ kernel ผ่าน `scall()` ที่เพิ่มใหม่ใน x64 backend
+  (hosted only — ring 0 เรียก `syscall` แล้วขากลับตกลงไป ring 3 ผิด)
+- เทส: `kiotest` (sys_open/read/write/close/copy_out ตรง ๆ ไม่ต้อง
+  พิมพ์คีย์ = deterministic), `kushtest` + shell session จริงสองรอบ
+  (`help`/`ls`/`cat`/backspace/`write`/`rm`/`exit` และ `exec`)
+
 ## ข้อจำกัดตอนนี้
 
 - หารด้วยศูนย์ = CPU `#DE` → `EXC 0` แล้ว halt (จับด้วย try ไม่ได้)
 - filesystem เป็น RAM ล้วน — ยังไม่มี block driver/ATA และยังไม่ persist
   ข้าม reboot; ยังไม่มี user mode หลายโปรเซส (โปรเซสเดียว + syscall
-  พื้นฐาน, ยังไม่มี fork/exec/permissions)
+  พื้นฐาน + `exec` แบบครั้งเดียว, ยังไม่มี fork/permissions)
 - `ticks` เริ่มนับหลังบูต; keyboard คือ scancode ชุด 1 (ไม่มี shift)
 
-เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (126 เคส)
+เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (274 เคส)

@@ -2,6 +2,7 @@ import kmb
 import kpage
 import kpmm
 import ksyscall
+import kvfs
 BIAS = ksyscall.USER_BIAS
 PAGE = 4096
 PT_LOAD = 1
@@ -69,15 +70,14 @@ def load_segment(p, mod_base):
       kpage.protect(cr3(), vaddr + off, 5)
       off = off + PAGE
   return 1
-def load_module(idx):
+def load_image(mod_base, size):
+  # load an ELF from raw bytes; shared by multiboot modules and by exec
+  # (which reads the file from VFS). 1 once ready to enter, 0 otherwise.
   global seg_base, seg_end, entry_point, seg_count, stack_top
   seg_count = 0
   seg_base = 0
   seg_end = 0
-  if kmb.mods_count() <= idx:
-    return 0
-  mod_base = kmb.mod_start(idx)
-  if mod_base == 0 or kmb.mod_len(idx) < 128:
+  if mod_base == 0 or size < 128:
     return 0
   if not elf_magic_ok(mod_base):
     return 0
@@ -108,6 +108,12 @@ def load_module(idx):
     return 0
   stack_top = STACK_TOP
   return 1
+
+def load_module(idx):
+  if kmb.mods_count() <= idx:
+    return 0
+  return load_image(kmb.mod_start(idx), kmb.mod_len(idx))
+
 def segments():
   return seg_count
 def text_base():
@@ -128,3 +134,26 @@ def build_frame(rip, rsp):
   return frame
 def run():
   return enter_user(entry_point, build_frame(entry_point, stack_top))
+
+def payload_addr(s):
+  # heap address of a Str payload (header [kind][len] is 16 bytes)
+  unsafe:
+    Ptr p = as_ptr(s)
+    return as_int(p + 16)
+
+def sys_exec(path_ptr, path_len):
+  # exec(path, len) over the current image; one-shot, no return on success.
+  # Uses exec_enter (not run): run would record a continuation over the
+  # dying session, and the new program's exit could never resume the shell.
+  data = kvfs.read(read_mem(path_ptr, path_len))
+  if data == null:
+    return -2
+  if load_image(payload_addr(data), len(data)) == 0:
+    return -12
+  exec_enter(entry_point, build_frame(entry_point, stack_top))
+  return -12
+
+def enable_exec():
+  # ksyscall cannot import kuser (cycle), so it calls exec through this hook
+  ksyscall.exec_fn = sys_exec
+  return true

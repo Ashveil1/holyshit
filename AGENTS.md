@@ -1,4 +1,4 @@
-# AGENTS.md — holyshit (hs) v0.6.7 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.6.8 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the
@@ -164,8 +164,13 @@ Kernel-surface (xkernel freestanding): `ticks readkey pmm_alloc pmm_total pmm_fr
 `(nr, a1..a6)` as tagged hs Ints and returns the raw result; `user_stop`
 ends the user back in the `enter_user` caller; user code is any `xbuild` ELF
 loaded as a multiboot module — the hosted numbers write=1, mmap=9, exit=60
-work with no extra runtime)
+work with no extra runtime), `exec_enter(rip, frame)` (same `iretq` but records
+no continuation — `exec` over a live image)
 (+ unsafe alloc/load/store/as_*)
+
+x64 hosted only: `scall(nr, a1..a6)` — raw `syscall` with Ints for arguments
+(what user programs use to reach the kernel; rejected in `xkernel` because a
+ring-0 `syscall` would `sysret` into ring 3).
 
 ### x64 backend subset (`hs.py xbuild` / `xkernel`)
 
@@ -187,7 +192,8 @@ are a compile error), `global` (module/function globals from functions),
 structs, kernel builtins above.
 
 Missing (compile error, on purpose): Float, Dict,
-attribute access on values (only modules have attrs), `extern`.
+attribute access on values (only modules have attrs), `extern`,
+`scall`/`enter_user`/`exec_enter`/`user_stop` are hosted-only.
 Modules are compile-time only: passing a module as a
 value (`f = mymod`, `x = pkg.mod`) is an error — use `mod.attr`. `/` truncates
 like C here, not hs. Out-of-range indexing reports `index out of range`.
@@ -211,6 +217,8 @@ use `as_ptr(x)` / `as_int(x)` to cross from tagged dynamic values.
 
 Crossing the boundary (x64):
 - safe -> unsafe: pass a **tagged Int**; `as_ptr(n)` yields a raw pointer.
+  `as_ptr(s)` on a Str/Func yields its heap address (payload at +16);
+  interp/native reject this (their values have no addresses) — kernel-only.
 - unsafe -> safe: `return <raw>` and `as_int(p)` re-box into a tagged Int, so
   the value can be printed/compared outside `unsafe:`.
 - a `return` inside `unsafe:` always boxes as **Int**: return Bool/Null at safe

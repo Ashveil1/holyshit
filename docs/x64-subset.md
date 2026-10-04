@@ -16,6 +16,11 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
 `input/open/read/write/close`, `tcp_*`, `http_get`, `json_*`,
 file helpers, `env`/`system`, ส่งโมดูลเป็น value, `print`/`str` ของ Func
 
+hosted (`xbuild`) มี `scall(nr, a1..a6)` ด้วย — `syscall` ดิบ (ใช้เขียน
+user program ที่คุยกับ kernel ของเรา เช่น `kernel/uush.hs`) แต่
+`xkernel` ไม่มี เพราะ ring 0 เรียก `syscall` แล้ว `sysret` จะตกไป
+ring 3 ผิดทาง
+
 ## กับดักที่ต้องจำ
 
 - `/` ตัดทศนิยมแบบ C (hosted ได้ Float)

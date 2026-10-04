@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Run every holyshit suite: python3 tests/run_all.py [--quick]
 
---quick skips test_xkernel.py (needs qemu-system-x86_64 and boots 58 kernels).
+--quick skips test_xkernel.py (needs qemu-system-x86_64 and boots 24 kernels).
 
 Suites:
-  test.py         37  interpreter (reference semantics)
-  test_native.py  38  gcc native backend, byte-identical to interp
+  test.py         40  interpreter (reference semantics)
+  test_native.py  41  gcc native backend, byte-identical to interp
   test_fmt.py      4  formatter canonical + idempotent + same behavior
-  test_x64.py     27  x86-64 backend, static ELF, no gcc
-  test_xkernel.py 62  freestanding kernel booting on QEMU
+  test_x64.py     32  x86-64 backend, static ELF, no gcc
+  test_xkernel.py 274 freestanding kernel booting on QEMU
   test_examples.py 17  every examples/*.hs still runs (interp + native)
   test_lsp.py     25  language server over stdio
-  test_docs.py    33  doc examples really run, links + api.json stay in sync
+  test_docs.py    38  doc examples really run, links + api.json stay in sync
 """
 import os
 import subprocess

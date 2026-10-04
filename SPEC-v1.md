@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.7 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.8 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -641,3 +641,45 @@ module) ขึ้นไปรัน แล้วรับ syscall ด้วย h
   (movabs rsi) — ทับ syscall number ตัวเองด้วย address เลยได้ ENOSYS
   เงียบ ๆ; กันดักคือ assert ไบต์ทุกตัวแบบ `kring3` (เคสนี้สอนให้ assert
   ตั้งแต่ `mov eax,1` ตัวแรก ไม่ใช่แค่ส่วนหลัง)
+### 15.18 shell ใน ring 3 + syscall ไฟล์ (v0.6.8)
+
+user ต่อ VFS ผ่าน syscall ตัวเลขเดียวกับ Linux — path เป็น `(ptr, len)`
+เพราะ Str ของ hs ไม่มี NUL:
+
+| nr | syscall | ทำอะไร |
+| --- | --- | --- |
+| 0 | `read(fd, buf, len)` | fd 0 = keyboard (หนึ่งบรรทัด), อื่น ๆ = ไฟล์ |
+| 1 | `write(fd, buf, len)` | fd 1/2 = serial, fd 3+ = เขียนไฟล์ |
+| 2 | `open(path, len, flags)` | 0 = อ่าน, อื่น ๆ = เขียน → fd user = kvfs + 3 |
+| 3 | `close(fd)` | |
+| 59 | `exec(path, len)` | โหลด ELF จาก VFS ทับ image เดิม |
+| 78 | `ls` / 83 `mkdir` / 87 `unlink` | ผ่าน `kvfs` ตรง ๆ |
+
+- `kernel/ksyscall.hs`: `copy_out(dst, s, n)` คัด Str ลง user memory,
+  `readline()` spin `readkey()` หลัง `irq_on()` (path syscall มาแบบ IF=0
+  คีย์บอร์ดไม่มาให้), backspace = byte 8 ที่สร้างครั้งเดียวจาก `alloc`
+  (escape ของ hs ไม่มี `\0..\8`)
+- `exec` ใช้ `exec_enter` (iretq ที่ไม่บันทึก continuation) แยกจาก `run()` —
+  ถ้าใช้ `run()` มันทับ continuation/stack ของ session เดิม
+- `scall(nr, a1..a6)` = builtin ใหม่ของ x64 hosted (ส่ง `syscall` ตรง ๆ,
+  คืนค่าเป็น Int) ให้ `kernel/uush.hs` = shell ใน ring 3 (`help echo cat ls
+  mkdir rm write run exit`) เขียนด้วย hs ล้วนเหมือนกัน
+- เทส: `kiotest` (เรียก syscall ไฟล์จาก ring 0 ตรง ๆ — deterministic ไม่ต้อง
+  พิมพ์คีย์), `kushtest` + shell session จริงสองรอบบน QEMU
+  (`caa\x08t /motd` แก้คำด้วย backspace, `write`+`rm`, `run /nope` แล้ว
+  `run /bin/hi`) + `tests/x64/scall.hs` — x64 31 -> 32 ชุด,
+  xkernel +145 assertion (รวม 274)
+
+### 15.19 บั๊กที่เจอระหว่างทำ shell (v0.6.8)
+
+- `copy_out(buf, s)` เรียก `len()` ของ Str แต่ arity ไม่ถูกตรวจ (ช่องว่าง
+  ใน x64 subset) → `n` ที่ไม่ได้ bind เป็น Func → `cannot compare Int and
+  Func` — ผ่าน `kiotest` จับได้ทันทีเพราะไม่ต้องเดา timing
+- resume กลับจาก ring 3 ต้องคืน **rbp** ของเฟรมที่ `enter_user` ถูกเรียก:
+  ตอนนั้น stub ทำงานบน syscall stack และ rbp เหลือเป็นของ handler (หรือของ
+  ring 3) ทำให้ epilogue `mov rsp,rbp; pop rbp; ret` พุ่งไปที่ไหนแล้ว
+  triple fault = reboot เงียบ ๆ (เห็นเป็น "บูตใหม่" ใน serial) — บันทึก
+  `user_saved_rbp_` ตอนเข้าและคืนค่าก่อน `jmp` ที่ continuation
+- `sendkey` ของ QEMU เงียบไปเองตอนพิมพ์เร็วเกิน (PS/2 overrun ทิ้ง key)
+  ทำให้ session ไม่ deterministic — ต้อง reply-check ทุกครั้ง ช้า 0.6s/ตัว
+  และอย่าเริ่มพิมพ์ก่อน shell ขึ้น (จอแรกเป็น 15s)

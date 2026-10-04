@@ -9,10 +9,18 @@
 
 import kpage
 import kpmm
+import kvfs
 
+SYS_READ = 0
 SYS_WRITE = 1
+SYS_OPEN = 2
+SYS_CLOSE = 3
 SYS_MMAP = 9
+SYS_EXEC = 59
 SYS_EXIT = 60
+SYS_LS = 78
+SYS_MKDIR = 83
+SYS_UNLINK = 87
 
 # user pages live in PML4 slot 1 and up, so a user address space can be built
 # without ever touching the kernel half (PML4[0])
@@ -27,12 +35,14 @@ ENOMEM = 12
 brk = USER_BIAS + 0x10000000
 
 handler = null
+exec_fn = null
 n_calls = 0
 last_nr = 0
 last_arg = 0
 exit_code = 0
 stopped = false
 mapped_pages = 0
+bs_cached = null
 
 def round_up(n):
   # round to the next page (safe `/` is Float, so do the math in unsafe)
@@ -91,12 +101,130 @@ def map_user_pages(vaddr, nbytes, flags):
 def sys_write(fd, buf, n):
   # write(fd, buf, len): fd 1 and 2 go to the serial line. The buffer belongs
   # to the user, so it is copied through read_mem and echoed as one Str.
-  if fd != 1 and fd != 2:
+  if fd == 1 or fd == 2:
+    if n <= 0:
+      return 0
+    print read_mem(buf, n)
+    return n
+  # user fds start at 3 (0/1/2 are stdin/stdout/stderr); kvfs owns the table
+  if fd < 3 or not kvfs.fd_valid(fd - 3):
     return -EBADF
   if n <= 0:
     return 0
-  print read_mem(buf, n)
-  return n
+  wrote = kvfs.fwrite(fd - 3, read_mem(buf, n))
+  if wrote < 0:
+    return -EBADF
+  return wrote
+
+def copy_out(dst, s, n):
+  # copy a kernel Str into user memory; returns bytes copied
+  count = len(s)
+  if count > n:
+    count = n
+  unsafe:
+    I64 d = dst
+    Ptr p = as_ptr(s)
+    Ptr q = as_ptr(d)
+    I64 i = 0
+    I64 o = 0
+    while i < count:
+      o = 16 + i
+      store8(q + i, load8(p + o))
+      i = i + 1
+  return count
+
+def poke_bs():
+  unsafe:
+    Ptr p = alloc(8)
+    store8(p, 8)
+    return as_int(p)
+
+def bs_char():
+  # the one byte readkey can never spell as a literal (no \0..\8 escapes):
+  # build it once from raw memory and keep it
+  global bs_cached
+  if bs_cached == null:
+    bs_cached = read_mem(poke_bs(), 1)
+  return bs_cached
+
+def readline():
+  # blocking line input for fd 0: spin on readkey with IRQs on (the stub
+  # runs with IF clear, so without sti the keyboard IRQ never arrives).
+  # No echo — the serial log stays assertion-friendly. Backspace pops.
+  irq_on()
+  out = ""
+  bs = bs_char()
+  while true:
+    k = readkey()
+    if k == null:
+      continue
+    if k == "\n":
+      break
+    if k == bs:
+      if len(out) > 0:
+        out = out[:len(out) - 1]
+      continue
+    out = out + k
+  irq_off()
+  return out
+
+def sys_read(fd, buf, n):
+  # read(fd, buf, len): fd 0 is the keyboard (one line, no newline);
+  # files come from kvfs; returns bytes read, 0 at EOF
+  if fd == 0:
+    return copy_out(buf, readline(), n)
+  if fd < 3 or not kvfs.fd_valid(fd - 3):
+    return -EBADF
+  if n <= 0:
+    return 0
+  return copy_out(buf, kvfs.fread(fd - 3, n), n)
+
+def sys_open(path_ptr, path_len, flags):
+  # open(path, len, flags): 0 = read (must exist), anything else =
+  # write (create/truncate). Returns a user fd (kvfs fd + 3) or -2.
+  path = read_mem(path_ptr, path_len)
+  mode = "r"
+  if flags != 0:
+    mode = "w"
+  kfd = kvfs.fopen(path, mode)
+  if kfd < 0:
+    return -2
+  return kfd + 3
+
+def sys_close(fd):
+  if fd < 3 or not kvfs.fd_valid(fd - 3):
+    return -EBADF
+  if kvfs.fclose(fd - 3):
+    return 0
+  return -EBADF
+
+def sys_unlink(path_ptr, path_len):
+  if kvfs.unlink(read_mem(path_ptr, path_len)):
+    return 0
+  return -2
+
+def sys_mkdir(path_ptr, path_len):
+  if kvfs.mkdirs(read_mem(path_ptr, path_len)):
+    return 0
+  return -2
+
+def sys_ls(path_ptr, path_len, buf, n):
+  names = kvfs.ls(read_mem(path_ptr, path_len))
+  if names == null:
+    return -2
+  if len(names) == 0:
+    return 0
+  return copy_out(buf, join("\n", names), n)
+
+def sys_exec(path_ptr, path_len):
+  # exec lives in kuser (importing it here would cycle ksyscall<->kuser),
+  # so dispatch calls through the exec_fn hook kuser installs. One-shot by
+  # construction: the new text usually overlaps the old one, so there is
+  # no caller to come back to; on its exit the kernel resumes where the
+  # old program entered.
+  if exec_fn == null:
+    return -38
+  return exec_fn(path_ptr, path_len)
 
 def sys_mmap(addr, len, prot, flags, fd, off):
   # mmap(addr, len, prot=3, flags, fd=-1, off=0): anonymous rw mapping.
@@ -140,6 +268,20 @@ def dispatch(nr, a1, a2, a3, a4, a5, a6):
     return sys_mmap(a1, a2, a3, a4, a5, a6)
   if nr == SYS_EXIT:
     return sys_exit(a1)
+  if nr == SYS_READ:
+    return sys_read(a1, a2, a3)
+  if nr == SYS_OPEN:
+    return sys_open(a1, a2, a3)
+  if nr == SYS_CLOSE:
+    return sys_close(a1)
+  if nr == SYS_UNLINK:
+    return sys_unlink(a1, a2)
+  if nr == SYS_MKDIR:
+    return sys_mkdir(a1, a2)
+  if nr == SYS_LS:
+    return sys_ls(a1, a2, a3, a4)
+  if nr == SYS_EXEC:
+    return sys_exec(a1, a2)
   return -38
 
 def start():

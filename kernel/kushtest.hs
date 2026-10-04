@@ -1,0 +1,45 @@
+# shell session end to end: ramdisk mounted, shell ELF loaded from VFS,
+# commands typed over QEMU's sendkeys, file syscalls served from .hs.
+# Ends with the shell's own `exit` (no run: that path gets its own boot).
+import kmb
+import kpmm
+import ksyscall
+import kvfs
+import kramdisk
+import kuser
+
+fails = 0
+
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("vfs ready", kvfs.vfs_init(), true)
+expect("ramdisk loads", kramdisk.load() > 0, true)
+expect("shell present", kvfs.is_file("/bin/uush"), true)
+expect("hi present", kvfs.is_file("/bin/hi"), true)
+expect("motd present", kvfs.is_file("/motd"), true)
+
+data = kvfs.read("/bin/uush")
+expect("shell readable", data != null, true)
+expect("shell loads", kuser.load_image(kuser.payload_addr(data), len(data)), 1)
+expect("handler registered", ksyscall.start(), true)
+expect("exec enabled", kuser.enable_exec(), true)
+
+# --- ring 3 (the shell; driven by sendkeys) ---
+kuser.run()
+
+expect("user stopped", ksyscall.user_stopped(), true)
+expect("exit code", ksyscall.user_exit_code(), 0)
+expect("syscalls served", ksyscall.calls() > 10, true)
+expect("rm landed", kvfs.read("/n"), null)
+expect("kernel alive", cr3() != 0, true)
+
+print "fails", fails
+print "kushell-done"
