@@ -73,7 +73,19 @@ with tempfile.TemporaryDirectory() as d:
             fails += 1
             continue
         try:
-            r = subprocess.run([out], capture_output=True, timeout=60)
+            sin_path = os.path.join(HERE, "x64", name + ".stdin")
+            sin = None
+            if os.path.exists(sin_path):
+                with open(sin_path, "rb") as f:
+                    sin = f.read()
+            pargs = []
+            args_path = os.path.join(HERE, "x64", name + ".args")
+            if os.path.exists(args_path):
+                with open(args_path, encoding="utf-8") as f:
+                    pargs = [ln.rstrip("\n") for ln in f
+                             if ln.strip() != ""]
+            r = subprocess.run([out] + pargs, input=sin, capture_output=True,
+                               timeout=60, env=tenv)
         except subprocess.TimeoutExpired:
             print(f"FAIL {name}: timeout")
             fails += 1

@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.10 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.11 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -713,3 +713,17 @@ x64 ไม่เคยตรวจจำนวน arg: เรียกผิด�
 - เทส: `tests/arity` (interp+native), `tests/x64/arity`,
   `tests/x64/arity_reassign` — kernel ทั้งหมดบูตผ่านเหมือนเดิม
   (kiotest + shell session `fails 0`)
+### 15.22 hosted เติบโต: argv/input/env บน x64 (v0.6.11)
+
+โปรแกรม `xbuild` อ่านโลกภายนอกได้แล้ว (ก่อนหน้านี้ได้แค่คำนวณ+พิมพ์):
+
+- `_start` เก็บ argc/argv ลง slot ก่อน align stack (entry: `[rsp]=argc`)
+- `argv()` = List ของ `argv[1:]` (ข้ามชื่อโปรแกรมเหมือน interp),
+  `input()` = หนึ่งบรรทัด (byte-at-a-time เพราะไม่มี pushback,
+  EOF เปล่าๆ = `input: EOF`), `env(name)` = สแกน envp หา `NAME=` (ขาด =
+  null) — ทั้งหมดผ่าน raw syscall/Tempered stack ไม่มี libc
+- `test_x64.py` รู้จัก `.args`/`.stdin` แล้ว และส่ง `.env` ให้ตอนรัน
+  (เดิม overlay มีผลแค่ตอน build) — เทส: `argv`, `input`, `input_eof`,
+  `env` (x64 34 -> 38 ชุด)
+- เหลือ: `open/read/write/close` (ต้องมี heap kind `K_FILE`),
+  `system` (ต้องมี process), Float/Dict/extern/attr บนค่า

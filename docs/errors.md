@@ -326,12 +326,13 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (84)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (90)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
 - `alloc wants alloc(n)`
 - `append wants append(list, x)`
+- `argv takes no args`
 - `array field '{e['name']}' needs an index`
 - `array field '{x['name']}' needs an index`
 - `attribute access is only supported on modules (x64)`
@@ -343,6 +344,9 @@
 - `bad stmt {t}`
 - `bad var kind {kind} for '{name}'`
 - `break outside loop`
+- `builtin 'argv' not in x64 subset`
+- `builtin 'env' not in x64 subset`
+- `builtin 'input' not in x64 subset`
 - `builtin '{fn['name']}' not in x64 subset`
 - `builtin '{name}' is not a value (call it)`
 - `cannot access field of dynamic '{obj['name']}'`
@@ -356,6 +360,7 @@
 - `dict not in x64 subset`
 - `dup data reserve {name}`
 - `enter_user wants enter_user(rip, frame)`
+- `env wants env(name)`
 - `exec_enter wants exec_enter(rip, frame)`
 - `field '{e['name']}' is not an array`
 - `field '{obj['name']}' is not a struct pointer`
@@ -365,6 +370,7 @@
 - `float not in x64 subset`
 - `image_end takes no args`
 - `in module '{name}': {e.msg}`
+- `input takes no args`
 - `int wants 1 arg`
 - `invlpg wants invlpg(vaddr)`
 - `irq_off takes no args`
@@ -418,4 +424,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 378 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 384 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

@@ -1,4 +1,4 @@
-# AGENTS.md — holyshit (hs) v0.6.10 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.6.11 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the
@@ -188,8 +188,9 @@ body runs once via guarded init, parent-first; `mod.attr` read + write,
 `print mod` → `<module name>`; HSPATH + program-dir lookup; circular imports
 are a compile error), `global` (module/function globals from functions),
 `str()` (incl. lists → `[1, x]`), `int()`,
-`len()`, `print` (lists print as `[a, b]`, nested), `unsafe:` I64/U64/Ptr +
-structs, kernel builtins above.
+`len()`, `print` (lists print as `[a, b]`, nested), hosted-only `argv()`
+(List of argv[1:]), `input()` (one line), `env(name)` (missing → null),
+`unsafe:` I64/U64/Ptr + structs, kernel builtins above.
 
 Missing (compile error, on purpose): Float, Dict,
 attribute access on values (only modules have attrs), `extern`,

@@ -12,11 +12,13 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
 - `def` ของผู้ใช้ shadow builtin ชื่อเดียวกันได้ (เหมือน interp/native)
   แต่ชื่อที่อยู่ในรายการ builtin ของ subset นี้คงเป็น builtin เสมอ
 
-ไม่มี (compile error ตั้งใจ): Float, Dict, `extern`, `argv`,
-`input/open/read/write/close`, `tcp_*`, `http_get`, `json_*`,
-file helpers, `env`/`system`, ส่งโมดูลเป็น value, `print`/`str` ของ Func
+ไม่มี (compile error ตั้งใจ): Float, Dict, `extern`, `system`,
+`input/open/read/write/close` บน kernel, `tcp_*`, `http_get`, `json_*`,
+file helpers, ส่งโมดูลเป็น value, `print`/`str` ของ Func
 
-hosted (`xbuild`) มี `scall(nr, a1..a6)` ด้วย — `syscall` ดิบ (ใช้เขียน
+hosted (`xbuild`) มีเพิ่ม: `argv()` (List ของ argv[1:]), `input()`
+(หนึ่งบรรทัด, EOF เปล่าๆ = error), `env(name)` (ขาด = null),
+`scall(nr, a1..a6)` — `syscall` ดิบ (ใช้เขียน
 user program ที่คุยกับ kernel ของเรา เช่น `kernel/uush.hs`) แต่
 `xkernel` ไม่มี เพราะ ring 0 เรียก `syscall` แล้ว `sysret` จะตกไป
 ring 3 ผิดทาง

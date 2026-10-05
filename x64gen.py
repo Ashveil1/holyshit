@@ -1243,6 +1243,51 @@ class Gen:
             a.syscall()
             self.tag_box()
             return
+        if fn["t"] == "var" and fn["name"] == "argv":
+            # hosted only: List of argv[1:] like interp (freestanding has no
+            # command line, so it keeps the subset rejection below)
+            if e["args"]:
+                raise HSErr("argv takes no args", ln)
+            if self.freestanding:
+                raise HSErr("builtin 'argv' not in x64 subset", ln)
+            a.call("argv_build")
+            return
+        if fn["t"] == "var" and fn["name"] == "input":
+            # hosted only: one stdin line (no trailing newline)
+            if e["args"]:
+                raise HSErr("input takes no args", ln)
+            if self.freestanding:
+                raise HSErr("builtin 'input' not in x64 subset", ln)
+            a.call("input_read")
+            lab_inok = self.new_tmp("in")
+            a.mov_ri64("r11", Gen.HS_NULL)
+            a.cmp_rr("rax", "r11")
+            a.jcc("ne", lab_inok)
+            self.raise_static("input: EOF", ln)
+            a.label(lab_inok)
+            return
+        if fn["t"] == "var" and fn["name"] == "env":
+            # hosted only: environ lookup, Null when missing
+            if len(e["args"]) != 1:
+                raise HSErr("env wants env(name)", ln)
+            if self.freestanding:
+                raise HSErr("builtin 'env' not in x64 subset", ln)
+            self.ev(e["args"][0], sc, mod)
+            lab_envok, lab_envbad = self.new_tmp("ev"), self.new_tmp("ev")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_envbad)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_envok)
+            a.label(lab_envbad)
+            self.raise_static("env wants env(name)", ln)
+            a.label(lab_envok)
+            a.mov_rm("rsi", "rax", 8)  # len
+            a.lea_m("rdi", "rax", 16)  # payload address (bytes inline)
+            a.call("env_scan")
+            return
         if fn["t"] == "var" and fn["name"] in (
                 "float", "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
@@ -3028,6 +3073,14 @@ class Gen:
         a.ret()
         # _start: align stack, call hs_main, exit(code)
         a.label("_start")
+        # save the kernel-provided argc/argv for argv()/env() before the
+        # stack is aligned (Linux entry: [rsp]=argc, [rsp+8]=argv[0]...)
+        a.mov_rm("rdi", "rsp", 0)  # argc
+        a.lea_rip("rax", "cmd_argc_")
+        a.mov_mr("rax", "rdi", 0)
+        a.lea_m("rax", "rsp", 8)  # &argv[0]
+        a.lea_rip("rcx", "cmd_argv_")
+        a.mov_mr("rcx", "rax", 0)
         a.and_ri32("rsp", -16)
         a.call("hs_main")
         a.mov_rr("rdi", "rax")
@@ -4436,8 +4489,231 @@ class Gen:
         self.emit_val_runtime()
         # oom_ / dzm_ cstrs emitted with rodata in build_image
 
+    def emit_input_read(self):
+        """input_read: rax = one stdin line as Str (no trailing newline),
+        or Null on immediate EOF (the caller raises "input: EOF" with its
+        own line). Hosted only: raw read(2) one byte at a time — there is
+        no pushback, so chunk reads would over-consume."""
+        a = self.a
+        a.label("input_read")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_ri32("rdi", 128)
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -8)  # buf
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -16)  # len
+        a.mov_ri32("rax", 128)
+        a.mov_mr("rbp", "rax", -24)  # cap
+        lab_top, lab_read = self.new_tmp("in"), self.new_tmp("in")
+        lab_eof, lab_done = self.new_tmp("in"), self.new_tmp("in")
+        a.label(lab_top)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rcx", "rbp", -24)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("l", lab_read)
+        # grow: cap *= 2, copy len bytes over
+        a.mov_rm("rax", "rbp", -24)
+        a.shl_ri8("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.mov_rr("rdi", "rax")
+        a.call("x_malloc")
+        a.mov_rm("rsi", "rbp", -8)  # old buf
+        a.mov_rm("rcx", "rbp", -16)  # len
+        a.mov_rr("r10", "rax")  # new buf
+        a.mov_rr("rdi", "r10")
+        self.copy_bytes()  # rdi=dst, rsi=src, rcx=n
+        a.mov_mr("rbp", "r10", -8)
+        a.label(lab_read)
+        # read(0, buf + len, 1)
+        a.mov_rm("r10", "rbp", -8)
+        a.mov_rm("rcx", "rbp", -16)
+        a.lea_m("rsi", "r10", 0, "rcx", 1)
+        a.mov_ri32("rax", 0)  # sys_read
+        a.mov_ri32("rdi", 0)
+        a.mov_ri32("rdx", 1)
+        a.syscall()
+        a.test_rr("rax", "rax")
+        a.jcc("le", lab_eof)  # 0 = EOF, <0 = error: stop like EOF
+        a.movzx_eax_m8("rsi", 0)
+        a.cmp_ri32("rax", 10)  # newline ends the line, not stored
+        a.jcc("e", lab_done)
+        # buf[len] = al; len += 1
+        a.mov_rm("r10", "rbp", -8)
+        a.mov_rm("rcx", "rbp", -16)
+        a.lea_m("rdi", "r10", 0, "rcx", 1)
+        a.mov_mr8("rdi", 0, 0)  # [rdi] = al
+        a.mov_rm("rax", "rbp", -16)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)
+        a.jmp(lab_top)
+        a.label(lab_eof)
+        a.mov_rm("rax", "rbp", -16)
+        a.test_rr("rax", "rax")
+        a.jcc("ne", lab_done)  # partial line at EOF: keep it
+        a.mov_ri64("rax", Gen.HS_NULL)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_done)
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rsi", "rbp", -16)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
+    def emit_env_scan(self):
+        """env_scan: rdi = name ptr, rsi = name len -> rax = value Str,
+        or Null when missing (like interp's environ.get). Hosted only:
+        scans the envp after argv (argc/argv saved by _start)."""
+        a = self.a
+        a.label("env_scan")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)  # nptr
+        a.mov_mr("rbp", "rsi", -16)  # nlen
+        # envp = argv + (argc + 1) * 8
+        a.mov_rm_rip("rax", "cmd_argc_")
+        a.add_ri32("rax", 1)
+        a.shl_ri8("rax", 3)
+        a.mov_rm_rip("r10", "cmd_argv_")
+        a.add_rr("r10", "rax")
+        a.mov_mr("rbp", "r10", -24)  # envp
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -32)  # k
+        lab_top, lab_next = self.new_tmp("ev"), self.new_tmp("ev")
+        lab_nomatch, lab_missing = self.new_tmp("ev"), self.new_tmp("ev")
+        a.label(lab_top)
+        # entry = envp[k]; null entry ends the list
+        a.mov_rm("r10", "rbp", -24)
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rmx("rsi", "r10", "rax", 8, 0)
+        a.test_rr("rsi", "rsi")
+        a.jcc("e", lab_missing)
+        a.mov_mr("rbp", "rsi", -40)  # entry
+        # compare entry[0:nlen] with name
+        a.mov_ri32("rcx", 0)  # j
+        lab_cmp = self.new_tmp("ev")
+        a.label(lab_cmp)
+        a.mov_rm("rax", "rbp", -16)
+        a.cmp_rr("rcx", "rax")
+        a.jcc("e", lab_nomatch)  # all nlen bytes equal: check '='
+        a.mov_rm("r11", "rbp", -8)
+        a.lea_m("r11", "r11", 0, "rcx", 1)
+        a.movzx_eax_m8("r11", 0)  # name[j]
+        a.push_r("rax")
+        a.mov_rm("r11", "rbp", -40)
+        a.lea_m("r11", "r11", 0, "rcx", 1)
+        a.movzx_eax_m8("r11", 0)  # entry[j]
+        a.pop_r("r10")  # name[j]
+        a.cmp_rr("r10", "rax")
+        a.jcc("ne", lab_next)
+        a.add_ri32("rcx", 1)
+        a.jmp(lab_cmp)
+        a.label(lab_nomatch)
+        # entry[nlen] must be '='
+        a.mov_rm("r10", "rbp", -40)
+        a.mov_rm("rcx", "rbp", -16)
+        a.lea_m("r11", "r10", 0, "rcx", 1)
+        a.movzx_eax_m8("r11", 0)
+        a.cmp_ri32("rax", 61)  # '='
+        a.jcc("ne", lab_next)
+        # value = entry + nlen + 1; strlen; str
+        a.mov_rm("r10", "rbp", -40)
+        a.mov_rm("rcx", "rbp", -16)
+        a.lea_m("rsi", "r10", 1, "rcx", 1)
+        a.mov_mr("rbp", "rsi", -40)  # val ptr
+        a.mov_ri32("rcx", 0)
+        lab_vlen, lab_hit = self.new_tmp("ev"), self.new_tmp("ev")
+        a.label(lab_vlen)
+        a.movzx_eax_m8("rsi", 0)
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_hit)
+        a.add_ri32("rsi", 1)
+        a.add_ri32("rcx", 1)
+        a.jmp(lab_vlen)
+        a.label(lab_hit)
+        a.mov_rr("rsi", "rcx")
+        a.mov_rm("rdi", "rbp", -40)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_next)
+        a.mov_rm("rax", "rbp", -32)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -32)
+        a.jmp(lab_top)
+        a.label(lab_missing)
+        a.mov_ri64("rax", Gen.HS_NULL)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
+    def emit_argv_build(self):
+        """argv_build: rax = List of argv[1:] as Str (hosted only; skips the
+        program name like interp). Reads the argc/argv _start saved."""
+        a = self.a
+        a.label("argv_build")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_ri32("rdi", 0)
+        a.call("x_list_new")
+        a.mov_mr("rbp", "rax", -8)  # list
+        a.mov_rm_rip("rax", "cmd_argc_")
+        a.mov_mr("rbp", "rax", -16)  # argc
+        a.mov_rm_rip("rax", "cmd_argv_")
+        a.mov_mr("rbp", "rax", -24)  # argv
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -32)  # i
+        lab_top, lab_done = self.new_tmp("av"), self.new_tmp("av")
+        a.label(lab_top)
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ge", lab_done)
+        # p = argv[i]
+        a.mov_rm("r10", "rbp", -24)
+        a.mov_rmx("rsi", "r10", "rax", 8, 0)
+        a.mov_mr("rbp", "rsi", -40)  # p
+        # strlen(p)
+        a.mov_ri32("rcx", 0)
+        lab_len, lab_lend = self.new_tmp("av"), self.new_tmp("av")
+        a.label(lab_len)
+        a.movzx_eax_m8("rsi", 0)
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_lend)
+        a.add_ri32("rsi", 1)
+        a.add_ri32("rcx", 1)
+        a.jmp(lab_len)
+        a.label(lab_lend)
+        a.mov_rr("rsi", "rcx")  # len
+        a.mov_rm("rdi", "rbp", -40)  # p
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -8)
+        a.call("x_append")
+        a.mov_rm("rax", "rbp", -32)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -32)
+        a.jmp(lab_top)
+        a.label(lab_done)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
     def emit_runtime(self):
         a = self.a
+        self.reserve("cmd_argc_", 8)
+        self.reserve("cmd_argv_", 8)
+        self.emit_argv_build()
+        self.emit_input_read()
+        self.emit_env_scan()
         # x_malloc: rdi = bytes -> bump pointer over 16MB mmap arenas.
         # Never frees (arena semantics, like the kernel heap). exit(99) on failure.
         a.label("x_malloc")

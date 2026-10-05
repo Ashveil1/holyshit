@@ -1,0 +1,2 @@
+print env("HOLYSHIT_X64_TEST")
+print env("HOLYSHIT_X64_MISSING")
