@@ -30,6 +30,7 @@ PAGE = 4096
 EINVAL = 22
 EBADF = 9
 ENOMEM = 12
+EFAULT = 14
 
 # anonymous mappings are handed out from here, page by page, upward
 brk = USER_BIAS + 0x10000000
@@ -98,10 +99,25 @@ def map_user_pages(vaddr, nbytes, flags):
     off = off + PAGE
   return n
 
+def user_range_ok(addr, n):
+  # user memory lives at/above USER_BIAS; anything below is kernel memory
+  # (or null) and must never be touched through a ring-3 pointer
+  if n < 0:
+    return false
+  if addr < USER_BIAS:
+    return false
+  if addr + n < addr:
+    return false
+  return true
+
 def sys_write(fd, buf, n):
   # write(fd, buf, len): fd 1 and 2 go to the serial line. The buffer belongs
   # to the user, so it is copied through read_mem and echoed as one Str.
+  # NOTE: `print` appends one `\n` the caller did not write — fd 1/2 is a
+  # serial line discipline, not byte-exact write(). Return value stays exact.
   if fd == 1 or fd == 2:
+    if not user_range_ok(buf, n):
+      return -EFAULT
     if n <= 0:
       return 0
     print read_mem(buf, n)
@@ -109,6 +125,8 @@ def sys_write(fd, buf, n):
   # user fds start at 3 (0/1/2 are stdin/stdout/stderr); kvfs owns the table
   if fd < 3 or not kvfs.fd_valid(fd - 3):
     return -EBADF
+  if not user_range_ok(buf, n):
+    return -EFAULT
   if n <= 0:
     return 0
   wrote = kvfs.fwrite(fd - 3, read_mem(buf, n))
@@ -117,7 +135,12 @@ def sys_write(fd, buf, n):
   return wrote
 
 def copy_out(dst, s, n):
-  # copy a kernel Str into user memory; returns bytes copied
+  # copy a kernel Str into user memory; returns bytes copied, -EFAULT when
+  # the destination is not user memory
+  if n <= 0:
+    return 0
+  if not user_range_ok(dst, n):
+    return -EFAULT
   count = len(s)
   if count > n:
     count = n
@@ -172,6 +195,8 @@ def sys_read(fd, buf, n):
   # read(fd, buf, len): fd 0 is the keyboard (one line, no newline);
   # files come from kvfs; returns bytes read, 0 at EOF
   if fd == 0:
+    if n <= 0:
+      return 0
     return copy_out(buf, readline(), n)
   if fd < 3 or not kvfs.fd_valid(fd - 3):
     return -EBADF
@@ -181,7 +206,10 @@ def sys_read(fd, buf, n):
 
 def sys_open(path_ptr, path_len, flags):
   # open(path, len, flags): 0 = read (must exist), anything else =
-  # write (create/truncate). Returns a user fd (kvfs fd + 3) or -2.
+  # write (create/truncate). Returns a user fd (kvfs fd + 3), -2 when the
+  # path does not exist, -EFAULT when the path pointer is not user memory.
+  if not user_range_ok(path_ptr, path_len):
+    return -EFAULT
   path = read_mem(path_ptr, path_len)
   mode = "r"
   if flags != 0:
@@ -199,16 +227,22 @@ def sys_close(fd):
   return -EBADF
 
 def sys_unlink(path_ptr, path_len):
+  if not user_range_ok(path_ptr, path_len):
+    return -EFAULT
   if kvfs.unlink(read_mem(path_ptr, path_len)):
     return 0
   return -2
 
 def sys_mkdir(path_ptr, path_len):
+  if not user_range_ok(path_ptr, path_len):
+    return -EFAULT
   if kvfs.mkdirs(read_mem(path_ptr, path_len)):
     return 0
   return -2
 
 def sys_ls(path_ptr, path_len, buf, n):
+  if not user_range_ok(path_ptr, path_len):
+    return -EFAULT
   names = kvfs.ls(read_mem(path_ptr, path_len))
   if names == null:
     return -2

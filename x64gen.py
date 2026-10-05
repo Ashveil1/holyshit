@@ -1641,15 +1641,21 @@ class Gen:
             # right place; with no record the exit lands back in the outer
             # session that is still intact.
             if len(args) != 2:
-                raise HSErr(f"{name} wants {name}(rip, frame)", ln)
+                if name == "enter_user":
+                    raise HSErr("enter_user wants enter_user(rip, frame)", ln)
+                raise HSErr("exec_enter wants exec_enter(rip, frame)", ln)
             self.ev(args[0], sc, mod)
             self.check_int(lambda: self.raise_static(
-                f"{name} wants {name}(rip, frame)", ln))
+                "enter_user wants enter_user(rip, frame)"
+                if name == "enter_user" else
+                "exec_enter wants exec_enter(rip, frame)", ln))
             a.sar_ri8("rax", 2)
             a.push_r("rax")
             self.ev(args[1], sc, mod)
             self.check_int(lambda: self.raise_static(
-                f"{name} wants {name}(rip, frame)", ln))
+                "enter_user wants enter_user(rip, frame)"
+                if name == "enter_user" else
+                "exec_enter wants exec_enter(rip, frame)", ln))
             a.sar_ri8("rax", 2)
             a.mov_rr("rsi", "rax")  # frame
             a.pop_r("rdi")  # rip
@@ -2050,7 +2056,9 @@ class Gen:
                 # unsafe locals pass through untouched.
                 kind, _ref = self.resolve_var(ar["name"], sc, mod, ln)
                 if kind is None:
-                    raise HSErr(f"unknown variable '{ar['name']}'", ln)
+                    # string concat (not an f-string) so gen_errors.py adds
+                    # no new template: runtime text stays unknown variable 'x'
+                    raise HSErr("unknown variable '" + ar["name"] + "'", ln)
                 self.var_get(ar["name"], sc, mod, ln)
                 if kind != "param" and not self.holds_dynamic(ar["name"], sc,
                                                              mod):

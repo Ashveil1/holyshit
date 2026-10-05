@@ -1,4 +1,4 @@
-# holyshit (hs) — v0.6.8
+# holyshit (hs) — v0.6.9
 
 ภาษา dynamic เขียนง่ายแบบ Python, รันได้ 4 โหมด, ต่อ C ได้, ลง bare metal ได้,
 มี language server ให้ editor และ AI agent

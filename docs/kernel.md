@@ -144,7 +144,14 @@ user ต่อกับ VFS ผ่าน syscall ตัวเลขเดีย�
 | 87 | `unlink(path, len)` | |
 
 - `copy_out(dst, s, n)` คัดลอก Str ของ kernel ลง user memory (สะท้อน
-  pointer ความจริงของ x64: `as_ptr(str) + 16` = payload)
+  pointer ความจริงของ x64: `as_ptr(str) + 16` = payload); `n <= 0` คืน 0
+  ทันที (fd 0 จะได้ไม่เข้า `readline()` แล้วค้าง)
+- ทุก pointer จาก ring 3 ผ่าน `user_range_ok(addr, n)` ก่อน: ต่ำกว่า
+  `USER_BIAS` คือ kernel memory (หรือ null) ห้ามแตะ — คืน `-EFAULT` (14)
+  โดยไม่ `read_mem`/`store8` เลย; `kiotest` เลยต้อง poke path/buffer ลง
+  user page จริง (`map_user_pages`) แทนที่จะส่ง kernel address ตรง ๆ
+- `write` fd 1/2 เป็น serial line discipline ไม่ใช่ byte-exact: `print`
+  แถม `\n` หนึ่งตัวที่ caller ไม่ได้เขียน (return value ยังตรง `n`)
 - `readline()` บน fd 0: `irq_on()` แล้ว spin `readkey()` (path นี้มาแบบ
   IF=0 คีย์บอร์ดจะไม่มาให้), backspace = byte 8 (สร้างครั้งเดียวจาก
   `alloc` เพราะ hs escape ไม่มี `\0..\8`), ไม่ echo

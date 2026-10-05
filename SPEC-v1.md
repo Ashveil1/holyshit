@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.8 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.9 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -683,3 +683,16 @@ user ต่อ VFS ผ่าน syscall ตัวเลขเดียวกั�
 - `sendkey` ของ QEMU เงียบไปเองตอนพิมพ์เร็วเกิน (PS/2 overrun ทิ้ง key)
   ทำให้ session ไม่ deterministic — ต้อง reply-check ทุกครั้ง ช้า 0.6s/ตัว
   และอย่าเริ่มพิมพ์ก่อน shell ขึ้น (จอแรกเป็น 15s)
+### 15.20 ปิดช่องโหว่ syscall + หนี้ docs (v0.6.9)
+
+- `user_range_ok(addr, n)` ใน `ksyscall`: pointer จาก ring 3 ต้อง `>=
+  USER_BIAS` ไม่งั้นคืน `-EFAULT` (14) โดยไม่แตะ memory — เดิม `read_mem`
+  /`copy_out` อ่าน/เขียน address ไหนก็ได้ (info leak + corrupt kernel จาก
+  ring 3); `kiotest` เลยต้อง poke path/buffer ลง user page จริงแทน
+- `copy_out`/`sys_read` fd 0 กัน `n <= 0` คืน 0 ก่อน (เดิม `n` ลบหลุดเป็น
+  return ติดลบ และ fd 0 จะเข้า `readline()` แล้วค้าง)
+- จดไว้เป็นข้อจำกัด: `write` fd 1/2 ผ่าน `print` จึงแถม `\n` เสมอ
+  (byte-exact ต้องมี builtin serial-write ตัวใหม่ — ยังไม่ทำ)
+- error message กลับเป็น literal: `enter/exec_enter wants ...` แยกสอง
+  บรรทัด, `unknown variable` ใช้ string concat (ไม่เพิ่ม template ใหม่) —
+  `docs/errors.md` กลับมามีชื่อจริงแทน `{name}/{ar['name']}`

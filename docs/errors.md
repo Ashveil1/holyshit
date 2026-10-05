@@ -355,6 +355,8 @@
 - `ctx_swap wants ctx_swap(save, load)`
 - `dict not in x64 subset`
 - `dup data reserve {name}`
+- `enter_user wants enter_user(rip, frame)`
+- `exec_enter wants exec_enter(rip, frame)`
 - `field '{e['name']}' is not an array`
 - `field '{obj['name']}' is not a struct pointer`
 - `field '{x['name']}' is not an array`
@@ -397,7 +399,6 @@
 - `ticks takes no args`
 - `tlb_flush takes no args`
 - `unknown struct '{st}'`
-- `unknown variable '{ar['name']}'`
 - `unknown variable '{e['name']}'`
 - `unknown variable '{name}'`
 - `unknown variable '{obj['name']}'`
@@ -408,7 +409,6 @@
 - `{name} wants 1 arg`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
-- `{name} wants {name}(rip, frame)`
 - `{t} handled elsewhere or not in x64 subset`
 - `{t} not allowed in unsafe (x64)`
 - `{t} not in x64 subset`
