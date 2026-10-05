@@ -1,0 +1,12 @@
+d = "/tmp/opencode/hs_x64fs2"
+mkdir(d + "/sub")
+write_text(d + "/sub/one.txt", "1")
+write_text(d + "/sub/two.txt", "22")
+append_text(d + "/sub/one.txt", "3")
+print read_text(d + "/sub/one.txt")
+print read_text(d + "/sub/two.txt")
+print exists(d + "/sub/one.txt")
+print exists(d + "/sub/nope.txt")
+print ls(d + "/sub")
+print ls(d)
+print mkdir(d + "/sub")

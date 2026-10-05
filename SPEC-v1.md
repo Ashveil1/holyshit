@@ -815,3 +815,24 @@ x64 ไม่เคยตรวจจำนวน arg: เรียกผิด�
 - stub emit เฉพาะ builtin ที่โปรแกรมอ้างจริง -> โปรแกรมที่ไม่ใช้เลย
   ไม่มีต้นทุนโค้ด; เทส `builtin_value` (ผ่านตัวแปร/ผ่าน argument ของ
   `def`), `builtin_value_arity` — x64 47 -> 49
+
+### 15.29 file helpers ใน x64 (v0.6.15)
+
+`read_text/write_text/append_text/exists/ls/mkdir` ที่เคยเป็น compile
+error บน x64 — ตัวแกรม/สคริปต์ที่ใช้ไฟล์จึงรันบน backend นี้ได้แล้ว
+
+- ทั้งหมดต่อยอดจาก File runtime ที่มีอยู่ (openat/read/write/close)
+  บวก syscall ดิบอีกสามตัว: `access` (21) เป็น `exists`, `mkdir` (83)
+  เป็น `mkdir`, `getdents64` (217) เป็น `ls`
+- `open` ได้โหมดที่สาม = append (`O_WRONLY|O_CREAT|O_APPEND`) เพื่อให้
+  `append_text` ได้
+- `mkdir` ทำ makedirs เหมือน interp: เดินหา `/` ในพาธแล้ว mkdir ทีละ
+  prefix (EEXIST ข้าม) แล้วค่อย mkdir พาธเต็ม — ต้องส่ง **payload** ของ
+  Str เข้า `x_str_at` ไม่ใช่ตัว object (ได้ gotcha)
+- `ls` อ่าน `linux_dirent64` แล้ว **สแกนหา NUL** เพื่อหาความยาวชื่อ
+  (ห้ามใช้ `d_reclen - 19`: `d_reclen` ปัดขึ้นเป็น 8 ไบต์) ข้าม `.`/`..`
+  แล้ว insertion sort ตาม `x_str_cmp` — เทียบเคียง `sorted(os.listdir())`
+- ข้อความ error ของ file helpers รายงาน `errno N` แทน strerror ของ
+  interp (ต่างจุดเดียวที่บันทึกไว้ใน AGENTS.md / docs)
+- เทส `fs_helpers` (makedirs ซ้อน, append, exists จริง/ปลอม, ls สอง
+  ชั้น) — x64 49 -> 50

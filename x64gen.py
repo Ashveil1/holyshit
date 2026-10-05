@@ -1568,6 +1568,81 @@ class Gen:
             a.call("file_close")
             return
         if fn["t"] == "var" and fn["name"] in (
+                "read_text", "write_text", "append_text", "exists", "ls",
+                "mkdir"):
+            # hosted only: the whole-file helpers, built on the File
+            # runtime (openat/read/write/close) plus access/mkdir/getdents
+            args = e["args"]
+            want = {"read_text": (1, "read_text wants read_text(path)"),
+                    "write_text": (2, "write_text wants write_text(path, str)"),
+                    "append_text": (2, "append_text wants append_text(path, str)"),
+                    "exists": (1, "exists wants exists(path)"),
+                    "ls": (1, "ls wants ls(dir)"),
+                    "mkdir": (1, "mkdir wants mkdir(path)")}[fn["name"]]
+            n_want, msg = want
+            lab_fsbad, lab_fsret = self.new_tmp("fs"), self.new_tmp("fs")
+            if len(args) != n_want:
+                raise HSErr(msg, ln)
+            if self.freestanding:
+                raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
+            for ar in args:
+                self.ev(ar, sc, mod)
+                a.push_r("rax")
+            for _ in range(len(args)):
+                a.pop_r("rcx")
+                a.test_rr("rcx", "rcx")
+                a.jcc("e", lab_fsbad)      # a Str is a heap pointer, never 0
+                a.mov_rm("rax", "rcx", 0)
+                a.cmp_ri32("rax", Gen.K_STR)
+                a.jcc("ne", lab_fsbad)
+                a.push_r("rcx")
+            if fn["name"] == "read_text":
+                a.pop_r("rdi")            # path (the only argument)
+                a.mov_ri32("rsi", 0)
+                a.mov_ri32("rdx", ln)
+                a.call("file_open")
+                a.push_r("rax")           # the File
+                a.mov_rr("rdi", "rax")
+                a.mov_ri32("rdx", ln)
+                a.call("file_read_all")
+                a.push_r("rax")           # the content on top
+                a.mov_rm("rdi", "rsp", 8)  # the File, read without popping
+                a.call("file_close")      # clobbers rax, so the content
+                a.pop_r("rax")            # comes back off the stack
+                a.add_ri32("rsp", 8)      # now drop the File slot
+                a.jmp(lab_fsret)
+            if fn["name"] in ("write_text", "append_text"):
+                a.pop_r("rsi")            # data (arg 1, pushed last)
+                a.pop_r("rdi")            # path (arg 0)
+                a.push_r("rdi")
+                a.push_r("rsi")
+                a.mov_ri32("rsi", 1 if fn["name"] == "write_text" else 2)
+                a.mov_ri32("rdx", ln)
+                a.call("file_open")
+                a.push_r("rax")           # the File rides on the stack
+                a.mov_ri32("rdx", ln)
+                a.mov_rm("rsi", "rsp", 8)  # data, read in place
+                a.mov_rm("rdi", "rsp", 0)  # the File
+                a.call("file_write_all")
+                a.mov_rm("rdi", "rsp", 0)  # the File is still parked
+                a.add_ri32("rsp", 24)      # drop File, data, path
+                a.call("file_close")
+                a.jmp(lab_fsret)
+            a.pop_r("rdi")                # path
+            a.mov_ri32("rsi", ln)
+            if fn["name"] == "exists":
+                a.call("fs_exists")
+                a.jmp(lab_fsret)
+            if fn["name"] == "mkdir":
+                a.call("fs_mkdirs")
+                a.jmp(lab_fsret)
+            a.call("fs_ls")
+            a.jmp(lab_fsret)
+            a.label(lab_fsbad)
+            self.raise_static(msg, ln)
+            a.label(lab_fsret)
+            return
+        if fn["t"] == "var" and fn["name"] in (
                 "float", "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
                 "readkey", "pmm_alloc", "pmm_total",
@@ -1579,8 +1654,7 @@ class Gen:
                 "syscall_register", "user_stop", "enter_user", "exec_enter",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
-                "json_str", "read_text", "write_text", "append_text",
-                "exists", "ls", "mkdir", "json_load", "json_save", "asm"):
+                "json_str", "json_load", "json_save", "asm"):
             if self.freestanding and fn["name"] in (
                     "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
                     "mb_info", "mb_magic", "image_end", "cr2", "cr3",
@@ -5199,7 +5273,13 @@ class Gen:
         a.mov_ri32("rdx", 0)  # O_RDONLY
         a.jmp("file_open_do")
         a.label(lab_fow)
+        a.mov_rm("rax", "rbp", -16)
+        a.cmp_ri32("rax", 2)
+        a.jcc("e", "file_open_app")
         a.mov_ri32("rdx", 577)  # O_WRONLY|O_CREAT|O_TRUNC
+        a.jmp("file_open_do")
+        a.label("file_open_app")
+        a.mov_ri32("rdx", 1089)  # O_WRONLY|O_CREAT|O_APPEND
         a.label("file_open_do")
         a.mov_ri32("rax", 257)  # sys_openat
         a.mov_ri32("rdi", -100)  # AT_FDCWD
@@ -5370,6 +5450,277 @@ class Gen:
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
         a.ret()
+        # fs_exists: rdi = path Str, rsi = line -> Bool (access(F_OK))
+        a.label("fs_exists")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)
+        a.call("file_cstr")
+        a.mov_rr("rdi", "rax")
+        a.mov_ri32("rsi", 0)          # F_OK
+        a.mov_ri32("rax", 21)         # sys_access
+        a.syscall()
+        a.cmp_ri32("rax", 0)
+        a.jcc("l", "fs_exists_no")
+        a.mov_ri64("rax", Gen.HS_TRUE)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fs_exists_no")
+        a.mov_ri64("rax", Gen.HS_FALSE)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # fs_mkdirs: rdi = path Str, rsi = line -> Null. Creates every
+        # missing parent like os.makedirs(exist_ok=True).
+        a.label("fs_mkdirs")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 64)
+        a.mov_mr("rbp", "rdi", -8)      # path
+        a.mov_mr("rbp", "rsi", -16)     # line
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)     # i (start at 1: keep "/" alone)
+        lab_mk_top = self.new_tmp("mk")
+        a.label(lab_mk_top)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_rm("rcx", "rcx", 8)       # path len
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "fs_mkdirs_last")
+        # is path[i] == '/'?  (r11 = i, then rsi = payload + i)
+        a.mov_rm("rax", "rbp", -8)
+        a.add_ri32("rax", 16)          # payload
+        a.mov_rm("r11", "rbp", -24)
+        a.lea_m("rsi", "rax", 0, "r11", 1)
+        a.movzx_eax_m8("rsi", 0)
+        a.cmp_ri32("rax", 47)          # '/'
+        a.jcc("ne", "fs_mkdirs_next")
+        # mkdir the prefix path[0:i] (x_str_at wants the payload, not the
+        # Str header)
+        a.mov_rm("rdi", "rbp", -8)
+        a.add_ri32("rdi", 16)
+        a.mov_rm("rsi", "rbp", -24)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.call("file_cstr")
+        a.mov_rr("rdi", "rax")
+        a.mov_ri32("rsi", 0x1ed)       # 0755
+        a.mov_ri32("rax", 83)          # sys_mkdir
+        a.syscall()                    # EEXIST here is fine
+        a.label("fs_mkdirs_next")
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_mk_top)
+        a.label("fs_mkdirs_last")
+        a.mov_rm("rdi", "rbp", -8)
+        a.call("file_cstr")
+        a.mov_rr("rdi", "rax")
+        a.mov_ri32("rsi", 0x1ed)       # 0755
+        a.mov_ri32("rax", 83)          # sys_mkdir
+        a.syscall()
+        a.cmp_ri32("rax", 0)
+        a.jcc("ns", "fs_mkdirs_ok")
+        a.cmp_ri32("rax", -17)         # EEXIST
+        a.jcc("e", "fs_mkdirs_ok")
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr("mkdir failed: errno "))
+        a.mov_ri32("rsi", 20)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.pop_r("rax")
+        a.call("file_erno")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -16)
+        a.jmp("hs_raise_msg")
+        a.label("fs_mkdirs_ok")
+        a.mov_ri64("rax", Gen.HS_NULL)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_list_sort_str: rdi = List of Str, sorted in place (insertion
+        # sort -- ls() output is tiny)
+        a.label("x_list_sort_str")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # list
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)     # i
+        lab_so_top = self.new_tmp("so")
+        lab_so_ret = self.new_tmp("so")
+        lab_so_up = self.new_tmp("so")
+        a.label(lab_so_top)
+        a.mov_rm("rax", "rbp", -16)     # i
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_rm("rcx", "rcx", 8)       # len
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_so_ret)
+        a.mov_mr("rbp", "rax", -24)     # j = i
+        lab_so_in = self.new_tmp("so")
+        a.label(lab_so_in)
+        a.mov_rm("rax", "rbp", -24)     # j
+        a.cmp_ri32("rax", 1)
+        a.jcc("l", lab_so_up)           # walked to the front: next i
+        a.mov_rr("rcx", "rax")
+        a.sub_ri32("rcx", 1)            # rcx = j - 1
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)      # rax = buf
+        # strictly-greater means out of order: swap and step back. Equal
+        # stops the walk, which keeps the sort stable like Python's.
+        a.mov_rmx("rdi", "rax", "rcx", 8, 0)
+        a.mov_rr("r10", "rcx")
+        a.add_ri32("r10", 1)
+        a.mov_rmx("rsi", "rax", "r10", 8, 0)
+        a.call("x_str_cmp")          # clobbers rax, so reload the buffer
+        a.test_rr("rax", "rax")
+        a.jcc("le", lab_so_up)        # <= 0: already in order (stable)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)
+        a.mov_rmx("r11", "rax", "rcx", 8, 0)   # a = buf[j-1]
+        a.mov_rr("r10", "rcx")
+        a.add_ri32("r10", 1)
+        a.mov_rmx("rdx", "rax", "r10", 8, 0)   # b = buf[j]
+        a.mov_mrx("rax", "rcx", 8, 0, "rdx")   # buf[j-1] = b
+        a.mov_rr("r10", "rcx")
+        a.add_ri32("r10", 1)
+        a.mov_mrx("rax", "r10", 8, 0, "r11")   # buf[j] = a
+        a.mov_rm("rax", "rbp", -24)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_so_in)
+        a.label(lab_so_up)             # this i is placed
+        a.mov_rm("rax", "rbp", -16)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)
+        a.jmp(lab_so_top)
+        a.label(lab_so_ret)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # fs_ls: rdi = path Str, rsi = line -> rax = List of Str, sorted
+        a.label("fs_ls")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 96)
+        a.mov_mr("rbp", "rdi", -8)      # path
+        a.mov_mr("rbp", "rsi", -16)     # line
+        a.call("file_cstr")
+        a.mov_rr("rsi", "rax")          # pathname
+        a.mov_ri32("rdi", -100)         # AT_FDCWD
+        a.mov_ri32("rdx", 0x10000)      # O_DIRECTORY
+        a.mov_ri32("r10", 0)
+        a.mov_ri32("rax", 257)          # sys_openat
+        a.syscall()
+        a.cmp_ri32("rax", 0)
+        a.jcc("l", "fs_ls_err")
+        a.mov_mr("rbp", "rax", -24)     # dirfd
+        a.mov_ri32("rdi", 4160)
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -32)     # buf
+        a.mov_ri32("rdi", 0)
+        a.call("x_list_new")
+        a.mov_mr("rbp", "rax", -40)     # list
+        lab_ls_read = self.new_tmp("ls")
+        a.label(lab_ls_read)
+        a.mov_rm("rdi", "rbp", -24)
+        a.mov_rm("rsi", "rbp", -32)
+        a.mov_ri32("rdx", 4096)
+        a.mov_ri32("rax", 217)         # sys_getdents64
+        a.syscall()
+        a.mov_mr("rbp", "rax", -48)     # bytes
+        a.cmp_ri32("rax", 0)
+        a.jcc("le", "fs_ls_done")
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -56)     # off
+        lab_ls_ent = self.new_tmp("ls")
+        a.label(lab_ls_ent)
+        a.mov_rm("rax", "rbp", -56)
+        a.mov_rm("rcx", "rbp", -48)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_ls_read)
+        # entry = buf + off; reclen at +16 (u16), name at +19
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rm("rcx", "rbp", -56)
+        a.lea_m("rax", "rax", 0, "rcx", 1)
+        a.mov_rr("r10", "rax")         # entry
+        a.mov_rm("rax", "r10", 16)     # d_reclen|d_type|name[0..4]
+        a.and_ri32("rax", 0xFFFF)      # d_reclen only (u16)
+        a.mov_mr("rbp", "rax", -64)
+        # d_name sits at +19 and is NUL terminated; d_reclen is padded up
+        # to 8 bytes, so the length has to come from the scan, not reclen
+        a.lea_m("r11", "r10", 19)     # name start
+        a.mov_rr("r10", "r11")        # scan cursor
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -72)   # n = 0
+        lab_nscan = self.new_tmp("ls")
+        a.label(lab_nscan)
+        a.movzx_eax_m8("r10", 0)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_ls_ndone")
+        a.add_ri32("r10", 1)
+        a.mov_rm("rax", "rbp", -72)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -72)
+        a.jmp(lab_nscan)
+        a.label("fs_ls_ndone")
+        # skip "." and ".."
+        a.mov_rm("rax", "rbp", -72)   # n
+        a.cmp_ri32("rax", 1)
+        a.jcc("ne", "fs_ls_name")
+        a.movzx_eax_m8("r11", 0)
+        a.cmp_ri32("rax", 46)          # '.'
+        a.jcc("e", "fs_ls_next")
+        a.label("fs_ls_name")
+        a.mov_rm("rax", "rbp", -72)
+        a.cmp_ri32("rax", 2)
+        a.jcc("ne", "fs_ls_take")
+        a.movzx_eax_m8("r11", 0)
+        a.cmp_ri32("rax", 46)
+        a.jcc("ne", "fs_ls_take")
+        a.lea_m("rsi", "r11", 1)
+        a.movzx_eax_m8("rsi", 0)
+        a.cmp_ri32("rax", 46)
+        a.jcc("ne", "fs_ls_take")
+        a.jmp("fs_ls_next")
+        a.label("fs_ls_take")
+        a.mov_rr("rdi", "r11")          # the name bytes, not the buffer
+        a.mov_rm("rsi", "rbp", -72)     # its length
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -40)
+        a.call("x_append")
+        a.label("fs_ls_next")
+        a.mov_rm("rax", "rbp", -56)
+        a.mov_rm("rcx", "rbp", -64)
+        a.add_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -56)
+        a.jmp(lab_ls_ent)
+        a.label("fs_ls_done")
+        a.mov_rm("rdi", "rbp", -24)
+        a.mov_ri32("rsi", 3)
+        a.mov_ri32("rax", 3)           # sys_close
+        a.syscall()
+        a.mov_rm("rdi", "rbp", -40)
+        a.call("x_list_sort_str")
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fs_ls_err")
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr("ls failed: errno "))
+        a.mov_ri32("rsi", 17)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.pop_r("rax")
+        a.call("file_erno")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -16)
+        a.jmp("hs_raise_msg")
         # file_close: rdi = File -> Null (no-op when already closed)
         a.label("file_close")
         a.mov_rm("rax", "rdi", 16)

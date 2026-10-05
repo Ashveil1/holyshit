@@ -14,7 +14,7 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
 
 ไม่มี (compile error ตั้งใจ): Float, `extern`,
 `open/read/write/close` บน kernel, `tcp_*`, `http_get`, `json_*`,
-file helpers, ส่งโมดูลเข้าคำนวณ/call/index, `print`/`str` ของ
+ส่งโมดูลเข้าคำนวณ/call/index, `print`/`str` ของ
 Func ที่ประกาศเอง (builtin ใช้เป็นค่าได้ เห็น `<builtin str>`)
 
 `m = mod` / `m = pkg.sub` เป็น alias ได้ (ไม่เสียค่าใช้จ่ายตอนรัน,

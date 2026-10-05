@@ -197,7 +197,11 @@ arity checked at the call with interp's message; `print`/`str` of a plain
 user Func is still a type error), hosted-only `argv()`
 (List of argv[1:]), `input()` (one line), `env(name)` (missing → null),
 `open/read/write/close` (File objects, `<file PATH>`), `system(cmd)`
-(exit status เหมือน Python),
+(exit status เหมือน Python), the whole-file helpers
+`read_text/write_text/append_text/exists/ls/mkdir` — `ls` is sorted
+like interp's `sorted(os.listdir())` and `mkdir` is
+`makedirs(exist_ok=True)`; failures report `errno N`, the one
+documented divergence from interp's strerror text,
 `unsafe:` I64/U64/Ptr + structs, kernel builtins above.
 
 Missing (compile error, on purpose): Float,
