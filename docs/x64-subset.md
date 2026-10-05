@@ -12,9 +12,10 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
 - `def` ของผู้ใช้ shadow builtin ชื่อเดียวกันได้ (เหมือน interp/native)
   แต่ชื่อที่อยู่ในรายการ builtin ของ subset นี้คงเป็น builtin เสมอ
 
-ไม่มี (compile error ตั้งใจ): Float, Dict, `extern`,
+ไม่มี (compile error ตั้งใจ): Float, `extern`,
 `open/read/write/close` บน kernel, `tcp_*`, `http_get`, `json_*`,
-file helpers, ส่งโมดูลเข้าคำนวณ/call/index, `print`/`str` ของ Func
+file helpers, ส่งโมดูลเข้าคำนวณ/call/index, `print`/`str` ของ
+Func ที่ประกาศเอง (builtin ใช้เป็นค่าได้ เห็น `<builtin str>`)
 
 `m = mod` / `m = pkg.sub` เป็น alias ได้ (ไม่เสียค่าใช้จ่ายตอนรัน,
 `m.attr` เหมือนเดิมทุกอย่างรวมถึง `print m`) — แต่ห้ามส่งโมดูลเข้า

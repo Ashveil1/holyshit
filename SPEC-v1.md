@@ -744,7 +744,7 @@ x64 ไม่เคยตรวจจำนวน arg: เรียกผิด�
 - `system(cmd)` ผ่าน fork + execve(`/bin/sh -c cmd`) + wait4 ล้วนๆ
   (env ส่งต่อของเดิม, exec ล้ม = 127, โดน signal = ลบเหมือน Python)
 - เทส: `system` (exit 3/0 + kill -9 → -9) — x64 42 -> 43 ชุด
-- เหลือจริงๆ: Float/Dict/extern/attr บนค่า (ต้องเปลี่ยน representation)
+- เหลือจริงๆ: Float (ต้องเปลี่ยน representation), extern, attr บนค่า
 ### 15.25 module alias บน x64 (v0.6.14)
 
 - `m = mod` / `m = pkg.sub` ผูกชื่อโดยไม่ emit โค้ดเลย; `m.attr` เรียก
@@ -770,3 +770,48 @@ x64 ไม่เคยตรวจจำนวน arg: เรียกผิด�
   เจอ NULL เป็น null ถูกต้อง
 - บทเรียน harness: binary โต + TCG ช้า รอ 10s เห็น serial ขาดกลางทาง
   แล้วดูเหมือน hang — ต้อง 25s; ปรับ `kusermode` timeout 15 → 25
+
+### 15.27 Dict ใน x64 (v0.6.15)
+
+ปิดช่องโหว่ตัวสุดท้ายของ subset: Dict ที่เคยเป็น compile error
+
+- heap kind ใหม่ `K_DICT` = `[kind][len][cap][buf]` โดย buf เก็บคู่
+  (key, value) สลับกัน — หนึ่งคู่ 16 ไบต์ จึงเดินด้วย word index
+  (เลขคู่) และ `for k in d` ข้ามทีละ 2
+- ค้น key แบบ linear scan (`x_str_cmp`) — dict ในภาษานี้เล็ก และลำดับ
+  insertion คือสิ่งที่ interp (Python dict) โชว์อยู่แล้ว; เขียน key เดิม
+  ทับของเดิมไว้ที่ตำแหน่งเดิม (Python semantics)
+- `x_dict_new` เตรียมเป็นจำนวนคู่ตายตัว (รู้ตอน compile) แล้ว `x_dict_set`
+  โตเป็น 2 เท่า/ครั้ง (คัดลอกด้วย copy_bytes)
+- literal `{"k": v}` ประกอบใน stack: push ทุกคู่ตามลำดับต้นฉบับ แล้ว
+  อ่านกลับด้วย offset คงที่ (`16*(n-i)`) เพราะ pop แบบ LIFO จะเดินกลับ
+  ลำดับ — บันทึกเป็น gotcha ไว้ในโค้ด
+- `x_dict_get` ขึ้น `key 'k' not found`, `d[1]` ขึ้น `dict key must be Str`
+  (ตรวจชนิด key ก่อนชนิด index ตามลำดับของ interp)
+- `x_dict_eq` คืน 0 เมื่อเท่า (เหมือน `x_list_eq` — `x_eq` แปลงด้วย
+  `sete` สลับกันแล้ว `==` จะกลับด้านเงียบๆ)
+- เทส `dict` (17 เคส รวม nested/equality/order), `dict_missing`,
+  `dict_keytype` — x64 44 -> 47 ชุด; kernel บูตผ่านเหมือนเดิม
+  (kiotest `fails 0`)
+
+### 15.28 builtin ใช้เป็นค่าใน x64 (v0.6.15)
+
+`f = str; f(65)` เคยเป็น compile error เพราะ x64 ไม่มี trampoline
+
+- อ่านชื่อ builtin ในตำแหน่ง value -> สร้าง Func object
+  `[kind][code=bi_call][nparams=-1][name][caps[0]=id]` เก็บใน data slot
+  ต่อชื่อ (cache) จึงเทียบตัวตัวเองได้เหมือน interp
+- sentinel `nparams = -1` บอก call site ให้ข้าม arity check แล้วส่ง
+  `argc` (rdi) + เลขบรรทัดของผู้เรียก (rsi) ไปให้ `bi_call`
+- `bi_call` แตกตาม id แล้วเทียบ argc -> **tail jump** ไป stub ของ
+  (builtin, argc) ที่ emit ปลายโค้ด: stub ไม่สร้าง frame ใหม่ เพราะ
+  frame ของ `bi_call` มี argument อยู่ที่ `[rbp+24]` อยู่แล้ว — stub
+  อ่าน argument ในที่แล้วปิด frame ของ bi_call (`mov rsp,rbp; pop
+  rbp; ret`) ทำให้ inline emitter เดิมใช้ซ้ำได้โดยไม่แตะ
+- argc ผิด -> ข้อความตาม interp (`str wants 1 arg, got 2`) พร้อม
+  เลขบรรทัดของผู้เรียก
+- `print`/`str` ของ builtin เป็น `<builtin NAME>`; `tname` เป็น `Builtin`
+  (Func ที่ประกาศเองยังเป็น type error ตามเดิม)
+- stub emit เฉพาะ builtin ที่โปรแกรมอ้างจริง -> โปรแกรมที่ไม่ใช้เลย
+  ไม่มีต้นทุนโค้ด; เทส `builtin_value` (ผ่านตัวแปร/ผ่าน argument ของ
+  `def`), `builtin_value_arity` — x64 47 -> 49

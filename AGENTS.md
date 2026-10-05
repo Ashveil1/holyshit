@@ -177,9 +177,12 @@ ring-0 `syscall` would `sysret` into ring 3).
 Has: Int (62-bit), Str values (literals, `+` concat, `len`, `==`, `<`,
 slicing `s[a:b]` byte-based, `split`/`find`/`join`),
 List values (literals, `+` concat, `len`, `append`, `==`, indexing incl.
-negative, `l[i] = v`, slicing `l[a:b]`, `range()` materializes a List), Bool, `null`,
+negative, `l[i] = v`, slicing `l[a:b]`, `range()` materializes a List),
+Dict values (`{"k": v}`, `d[k]`, `d[k] = v`, `len`, `==`, `for k in d`
+yields keys in insertion order, prints `{k: v}`; keys linear-scanned),
+Bool, `null`,
 `not/and/or`, `if/elif/else`, `while`, `for` (`for i in range([a,] b)` lowers to a
-counter loop; `for x in <str|list>` yields elements), `break`/`continue`,
+counter loop; `for x in <str|list|dict>` yields elements/keys), `break`/`continue`,
 `def` (recursion + closures), `try`/`except`/`finally`/`raise` (full interp
 parity incl. dynamic messages with line numbers; `except as e` binds
 `"msg at line N"`; bare `raise` re-raises lexically; setjmp/longjmp over a
@@ -188,13 +191,16 @@ body runs once via guarded init, parent-first; `mod.attr` read + write,
 `print mod` → `<module name>`; HSPATH + program-dir lookup; circular imports
 are a compile error), `global` (module/function globals from functions),
 `str()` (incl. lists → `[1, x]`), `int()`,
-`len()`, `print` (lists print as `[a, b]`, nested), hosted-only `argv()`
+`len()`, `print` (lists print as `[a, b]`, nested), builtin values
+(`f = str; f(65)` — a Func wrapping the builtin, prints `<builtin str>`,
+arity checked at the call with interp's message; `print`/`str` of a plain
+user Func is still a type error), hosted-only `argv()`
 (List of argv[1:]), `input()` (one line), `env(name)` (missing → null),
 `open/read/write/close` (File objects, `<file PATH>`), `system(cmd)`
 (exit status เหมือน Python),
 `unsafe:` I64/U64/Ptr + structs, kernel builtins above.
 
-Missing (compile error, on purpose): Float, Dict,
+Missing (compile error, on purpose): Float,
 attribute access on values (only modules have attrs), `extern`,
 `scall`/`enter_user`/`exec_enter`/`user_stop` are hosted-only.
 Modules support aliasing: `m = mod` / `m = pkg.sub` binds the name

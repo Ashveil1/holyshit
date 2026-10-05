@@ -11,7 +11,8 @@ Values are tagged with the low 2 bits (see TAG_* below):
   00 heap object ptr (8-aligned) | 01 Int (62-bit payload, value = word >> 2)
   10 Bool: 0x02 false, 0x0A true | 11 Null 0x03 / Unbound 0x0B
   Heap obj: [kind:u64][payload...]; kind 0 = Str{len,bytes},
-  1 = Func{code,nparams,name,caps}, 2 = List{len,cap,buf}.
+  1 = Func{code,nparams,name,caps}, 2 = List{len,cap,buf},
+  3 = File{fd,flags,path}, 4 = Dict{len,cap,buf} (buf = key,value pairs).
   GC: bump-only arena (grows, never frees) -- documented.
 """
 import sys
@@ -48,6 +49,9 @@ class Gen:
         self.flabels = {}  # id(fs) -> code label
         self.mod_bindings = {}  # (id(scope), name) -> mod dict (import bindings)
         self.shell_mods = {}  # dotted name -> empty package mod (no body)
+        # builtin-as-value: id per builtin name, and the trampoline stubs
+        self.bi_ids = {}
+        self.bi_stubs = {}
 
     # ----- modules -----
     def load_module(self, name, from_dir, line):
@@ -82,7 +86,7 @@ class Gen:
     # ----- value representation (low 2 bits are the tag) -----
     TAG_HEAP, TAG_INT, TAG_BOOL, TAG_NULL = 0, 1, 2, 3
     HS_FALSE, HS_TRUE, HS_NULL, HS_UNBOUND = 0x02, 0x0A, 0x03, 0x0B
-    K_STR, K_FUNC, K_LIST, K_FILE = 0, 1, 2, 3
+    K_STR, K_FUNC, K_LIST, K_FILE, K_DICT = 0, 1, 2, 3, 4
 
     class Scope:
         def __init__(self, parent=None, is_func=False):
@@ -101,6 +105,9 @@ class Gen:
             # `unsafe:`), so unsafe reads must not unbox them
             self.raw_names = set()
             self.nloc = 0
+            # builtin-as-value: id per name, and the stubs still to emit
+            self.bi_ids = {}
+            self.bi_stubs = {}
 
     def slot(self, sc):
         sc.nloc += 1
@@ -323,7 +330,10 @@ class Gen:
                 self.ann_expr(e["stop"], sc, ux)
             return
         if t == "dict":
-            raise HSErr(f"{t} not in x64 subset", e["line"])
+            for k, v in e["pairs"]:
+                self.ann_expr(k, sc, ux)
+                self.ann_expr(v, sc, ux)
+            return
         if t == "sizeof":
             st = e["stype"]
             if st not in ("I64", "U64", "Ptr") and st not in HS_STRUCTS:
@@ -370,6 +380,36 @@ class Gen:
         if name in sc.loc or name in sc.uloc:
             return
         sc.loc[name] = self.slot(sc)
+
+    # Builtins that may also be used as values (`f = str; f(65)`), with
+    # (min args, max args, message for a wrong count). Only builtins that
+    # the current backend can really call are listed. The Func object
+    # stores nparams = -1 as the "builtin" sentinel, which makes the call
+    # site skip its own arity check and hand argc + line to bi_call.
+    BI_VALUES = {
+        "print": (0, 7, "print wants 0 or more args, got"),
+        "len": (1, 1, "len wants 1 arg, got"),
+        "str": (1, 1, "str wants 1 arg, got"),
+        "int": (1, 1, "int wants 1 arg, got"),
+        "range": (1, 2, "range wants range(n) or range(a, b)"),
+        "append": (2, 2, "append wants append(list, x)"),
+        "split": (1, 2, "split wants split(s) or split(s, sep)"),
+        "find": (2, 2, "find wants find(s, sub)"),
+        "join": (2, 2, "join wants join(sep, list)"),
+        "read_mem": (2, 2, "read_mem wants read_mem(ptr, nbytes)"),
+        # hosted only (a freestanding build keeps the subset error)
+        "argv": (0, 0, "argv takes no args"),
+        "input": (0, 0, "input takes no args"),
+        "env": (1, 1, "env wants env(name)"),
+        "system": (1, 1, "system wants system(cmd)"),
+        "open": (2, 2, "open wants open(path, mode)"),
+        "read": (1, 1, "read wants read(f)"),
+        "write": (2, 2, "write wants write(f, str)"),
+        "close": (1, 1, "close wants close(f)"),
+        "scall": (7, 7, "scall wants scall(nr, a1, a2, a3, a4, a5, a6)"),
+    }
+    BI_HOSTED = {"argv", "input", "env", "system", "open", "read", "write",
+                 "close", "scall"}
 
     XBUILTINS = {"print", "int", "len", "str", "range", "append",
                  "split", "find", "join", "read_mem",
@@ -462,7 +502,30 @@ class Gen:
                     a.mov_mr("rdx", "rcx", 8 * i)
             return
         if t == "dict":
-            raise HSErr("dict not in x64 subset", ln)
+            pairs = e["pairs"]
+            for k, v in pairs:          # source order: key, value, ...
+                self.ev(k, sc, mod)
+                a.push_r("rax")
+                self.ev(v, sc, mod)
+                a.push_r("rax")
+            # the pair count is static, so the object is built here and
+            # parked on top; popping then walks the pairs in source order
+            a.mov_ri32("rdi", len(pairs))
+            a.call("x_dict_new")
+            a.push_r("rax")
+            # The pairs went on the stack in source order, so the LAST one
+            # sits lowest: pair i has its key at [rsp + 16*(n - i)] and its
+            # value 8 below that. Read them by offset to keep insertion
+            # order (a plain pop would walk the pairs backwards).
+            n = len(pairs)
+            for i in range(n):
+                a.mov_rm("rdx", "rsp", 16 * (n - i) - 8)   # value
+                a.mov_rm("rsi", "rsp", 16 * (n - i))       # key
+                a.mov_rm("rdi", "rsp", 0)
+                a.call("x_dict_set")     # returns Null
+            a.mov_rm("rax", "rsp", 0)
+            a.add_ri32("rsp", 8 * (2 * len(pairs) + 1))
+            return
         if t == "neg":
             self.ev(e["val"], sc, mod)
             self.check_int(lambda: self.raise_unop(6, ln))
@@ -708,8 +771,13 @@ class Gen:
         a = self.a
         kind, ref = self.resolve_var(name, sc, mod, ln)
         if kind is None:
-            # builtin-as-value and module bindings stay compile errors;
-            # genuinely unknown reads become unbound globals (runtime error).
+            if name in Gen.BI_VALUES and name not in self.mod_bindings:
+                if self.freestanding and name in Gen.BI_HOSTED:
+                    raise HSErr(f"builtin '{name}' not in x64 subset", ln)
+                self.ev_builtin_value(name)
+                return
+            # module bindings stay compile errors; genuinely unknown reads
+            # become unbound globals (runtime error).
             if name in ("print", "len", "range", "str", "int", "float", "input",
                         "open", "read", "write", "close", "argv", "env", "system",
                         "append", "split", "find", "join", "ticks", "readkey",
@@ -988,6 +1056,34 @@ class Gen:
         self.ev(e["idx"], sc, mod)
         a.mov_rr("rcx", "rax")  # idx (tagged)
         a.pop_r("rax")          # obj
+        # Dict first: its key must be Str, everything else an Int (interp
+        # picks the branch from the object kind before checking the index)
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        lab_notdict = self.new_tmp("ix")
+        lab_dkey, lab_dget = self.new_tmp("ix"), self.new_tmp("ix")
+        lab_ix_done = self.new_tmp("ix")
+        a.jcc("ne", lab_notdict)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_DICT)
+        a.jcc("ne", lab_notdict)
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_dkey)
+        a.mov_rm("r11", "rcx", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_dget)
+        a.label(lab_dkey)
+        self.raise_static("dict key must be Str", ln)
+        a.label(lab_dget)
+        a.mov_rr("rdi", "rax")
+        a.mov_rr("rsi", "rcx")
+        a.mov_ri32("rdx", ln)
+        a.call("x_dict_get")
+        a.jmp(lab_ix_done)
+        a.label(lab_notdict)
         a.mov_rr("r11", "rcx")
         a.and_ri32("r11", 3)
         a.cmp_ri32("r11", Gen.TAG_INT)
@@ -1042,6 +1138,7 @@ class Gen:
         a.label(lab_heap)
         self.raise_static("index out of range", ln)
         a.label(lab_done)
+        a.label(lab_ix_done)
 
     def ev_call(self, e, sc, mod):
         ln = e["line"]
@@ -1079,6 +1176,8 @@ class Gen:
                 a.cmp_ri32("r11", Gen.K_STR)
                 a.jcc("e", lab_lok)
                 a.cmp_ri32("r11", Gen.K_LIST)
+                a.jcc("e", lab_lok)
+                a.cmp_ri32("r11", Gen.K_DICT)
                 a.jcc("e", lab_lok)
                 a.label(lab_lck)
                 self.raise_unop(0, ln)
@@ -1493,7 +1592,8 @@ class Gen:
                     "exec_enter"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
-            raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
+            name = fn["name"]
+            raise HSErr(f"builtin '{name}' not in x64 subset", ln)
         self.ev_user_call(e, sc, mod, ln)
 
     def is_user_def(self, name, sc, mod):
@@ -1534,14 +1634,19 @@ class Gen:
         a.label(lab_fnok)
         # arity: Func[16] holds the callee's own param count, Func[24] its
         # def name — so even a reassigned name reports exactly what interp
-        # reports ("g wants 1 args, got 2")
+        # reports ("g wants 1 args, got 2"). nparams == -1 marks a builtin
+        # value: bi_call checks the count itself, with the caller's line.
         a.mov_rm("r11", "rax", 16)  # nparams (raw)
-        a.cmp_ri32("r11", len(e["args"]))
+        a.cmp_ri32("r11", -1)
         lab_aok = self.new_tmp("ar")
         a.jcc("e", lab_aok)
+        a.cmp_ri32("r11", len(e["args"]))
+        lab_aok2 = self.new_tmp("ar")
+        a.jcc("e", lab_aok2)
         a.mov_ri32("r11", len(e["args"]))  # M (got)
         a.mov_ri32("rsi", ln)
         a.jmp("arity_fail")
+        a.label(lab_aok2)
         a.label(lab_aok)
         a.push_r("rax")
         for ar in reversed(e["args"]):
@@ -1552,6 +1657,10 @@ class Gen:
         a.mov_rr("r15", "rax")
         a.add_ri32("r15", 32)  # r15 = &caps (lea, no deref)
         a.mov_rm("rax", "rax", 8)  # code addr
+        # argc and the caller's line: unused by user functions (their
+        # prologue reads the stack), read by bi_call for builtins
+        a.mov_ri32("rdi", len(e["args"]))
+        a.mov_ri32("rsi", ln)
         a.call_rax()
         a.pop_r("r15")
         a.add_ri32("rsp", 8 * (len(e["args"]) + 1))
@@ -2561,10 +2670,36 @@ class Gen:
         a.mov_rr("rdx", "rax")  # val
         a.pop_r("rcx")          # idx (tagged)
         a.pop_r("rax")          # obj
-        lab_ok = self.new_tmp("sx")
+        # Dict keys are Str; List/Str indices are Ints (see ev_index)
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        lab_snotdict = self.new_tmp("sx")
+        lab_sdkey, lab_sdset = self.new_tmp("sx"), self.new_tmp("sx")
+        lab_sx_done = self.new_tmp("sx")
+        a.jcc("ne", lab_snotdict)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_DICT)
+        a.jcc("ne", lab_snotdict)
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_sdkey)
+        a.mov_rm("r11", "rcx", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_sdset)
+        a.label(lab_sdkey)
+        self.raise_static("dict key must be Str", ln)
+        a.label(lab_sdset)
+        a.mov_rr("rdi", "rax")
+        a.mov_rr("rsi", "rcx")
+        a.call("x_dict_set")
+        a.jmp(lab_sx_done)
+        a.label(lab_snotdict)
         a.mov_rr("r11", "rcx")
         a.and_ri32("r11", 3)
         a.cmp_ri32("r11", Gen.TAG_INT)
+        lab_ok = self.new_tmp("sx")
         a.jcc("e", lab_ok)
         self.raise_static("index must be Int", ln)
         a.label(lab_ok)
@@ -2597,6 +2732,7 @@ class Gen:
         a.label(lab_oob)
         self.raise_static("index out of range", ln)
         a.label(lab_done)
+        a.label(lab_sx_done)
 
     def ex_for(self, s, sc, mod, depth):
         """for var in range([a,] b) | for var in <Str/List expr>.
@@ -2661,6 +2797,7 @@ class Gen:
                                                 self.new_tmp("fs"),
                                                 self.new_tmp("fs"),
                                                 self.new_tmp("fs"))
+        lab_dict, lab_dstep = self.new_tmp("fs"), self.new_tmp("fs")
         a.label(lab_top)
         a.mov_rm("rax", "rbp", s["_f0"])  # obj
         a.mov_rr("r11", "rax")
@@ -2672,6 +2809,8 @@ class Gen:
         a.jcc("e", lab_str)
         a.cmp_ri32("r11", Gen.K_LIST)
         a.jcc("e", lab_list)
+        a.cmp_ri32("r11", Gen.K_DICT)
+        a.jcc("e", lab_dict)
         a.label(lab_bad)
         self.raise_unop(5, ln)
         a.label(lab_str)
@@ -2697,6 +2836,34 @@ class Gen:
         self.ex_body(s["body"], sc, mod, depth + 1)
         self.loop_trys.pop()
         self.loop_stack.pop()
+        a.jmp(lab_step)        # Str/List step by one element
+        a.label(lab_dict)
+        a.mov_rm("rax", "rbp", s["_f0"])  # obj (re-dispatch: _f0 was set
+        a.mov_rr("r11", "rax")            # by the generic path below)
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_bad)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_DICT)
+        a.jcc("ne", lab_bad)
+        a.mov_rm("rcx", "rax", 8)             # len
+        a.shl_ri8("rcx", 1)                  # limit = len * 2
+        a.mov_rm("rdx", "rbp", s["_f1"])      # word index
+        a.cmp_rr("rdx", "rcx")
+        a.jcc("ae", lab_brk)
+        a.mov_rm("rax", "rax", 24)            # buf
+        a.mov_rmx("rax", "rax", "rdx", 8, 0)  # key
+        self.var_set(s["var"], sc, mod, ln)
+        self.loop_stack.append((lab_brk, lab_step))
+        self.loop_trys.append(self.try_depth)
+        self.ex_body(s["body"], sc, mod, depth + 1)
+        self.loop_trys.pop()
+        self.loop_stack.pop()
+        a.label(lab_dstep)      # Dict: skip the value word (2 words a pair)
+        a.mov_rm("rax", "rbp", s["_f1"])
+        a.add_ri32("rax", 2)
+        a.mov_mr("rbp", "rax", s["_f1"])
+        a.jmp(lab_top)
         a.label(lab_step)
         a.mov_rm("rax", "rbp", s["_f1"])
         a.add_ri32("rax", 1)
@@ -3341,6 +3508,7 @@ class Gen:
         for s, themod in self._def_nodes(mod):
             self.emit_func(self.flabels[id(s["_fs"])], s, s["_fs"], themod)
         self.emit_main(mod)
+        self.emit_builtin_runtime(mod)
         assert self.try_depth == 0 and not self.loop_trys, "try/loop stack unbalanced"
         assert not self._fin_stack and not self._except_stack, "fin/except stack unbalanced"
         # rodata: strings + sp/nl (sp_/nl_ labels for separators)
@@ -4261,19 +4429,27 @@ class Gen:
         a.mov_rm("rax", "r10", 0)      # kind
         lab_ts, lab_tl, lab_tf = (self.new_tmp("tn"), self.new_tmp("tn"),
                                   self.new_tmp("tn"))
-        lab_tfl = self.new_tmp("tn")
+        lab_tfl, lab_tdc = self.new_tmp("tn"), self.new_tmp("tn")
+        lab_tbi, lab_tfn = self.new_tmp("tn"), self.new_tmp("tn")
         a.cmp_ri32("rax", Gen.K_STR)
         a.jcc("e", lab_ts)
         a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("e", lab_tl)
         a.cmp_ri32("rax", Gen.K_FUNC)
-        a.jcc("e", lab_tf)
+        a.jcc("e", lab_tfn)
         a.cmp_ri32("rax", Gen.K_FILE)
         a.jcc("e", lab_tfl)
+        a.cmp_ri32("rax", Gen.K_DICT)
+        a.jcc("e", lab_tdc)
         a.lea_rip("rdi", self.rstr("?"))
         a.mov_ri32("rsi", 1)
         a.call("x_str_at")
         a.ret()
+        a.label(lab_tfn)               # Func: a builtin value is Builtin
+        a.mov_rm("rax", "r10", 16)     # nparams == -1 is the builtin mark
+        a.cmp_ri32("rax", -1)
+        a.jcc("e", lab_tbi)
+        a.jmp(lab_tf)
         a.label(lab_th)                # tag 3: Null vs Unbound
         a.cmp_ri32("r10", Gen.HS_NULL)
         a.jcc("e", lab_tn)
@@ -4281,7 +4457,8 @@ class Gen:
         for lab_nm, txt in ((lab_ti, "Int"), (lab_tb, "Bool"), (lab_tn, "Null"),
                             (lab_tu, "Unbound"), (lab_ts, "Str"),
                             (lab_tl, "List"), (lab_tf, "Func"),
-                            (lab_tfl, "File")):
+                            (lab_tfl, "File"), (lab_tdc, "Dict"),
+                            (lab_tbi, "Builtin")):
             a.label(lab_nm)
             a.lea_rip("rdi", self.rstr(txt))
             a.mov_ri32("rsi", len(txt))
@@ -4677,6 +4854,7 @@ class Gen:
         self.emit_fmt_int()
         self.emit_print_int()
         self.emit_val_runtime()
+        self.emit_dict_helpers()
         # oom_ / dzm_ cstrs emitted with rodata in build_image
 
     def emit_input_read(self):
@@ -5210,6 +5388,457 @@ class Gen:
         a.mov_ri64("rax", Gen.HS_NULL)
         a.ret()
 
+    def bi_id(self, name):
+        """Stable small integer per builtin name (the trampoline's id)."""
+        i = self.bi_ids.get(name)
+        if i is None:
+            i = len(self.bi_ids)
+            self.bi_ids[name] = i
+        return i
+
+    def ev_builtin_value(self, name):
+        """rax = a Func value for builtin `name`. Cached in a data slot, so
+        two reads of one builtin compare equal like interp's HSBuiltin."""
+        a = self.a
+        bid = self.bi_id(name)
+        slot = f"bislot_{name}"
+        if slot not in self.a.data_labels:
+            self.reserve(slot, 8)
+        a.lea_rip("rcx", slot)
+        a.mov_rm("rax", "rcx", 0)
+        a.test_rr("rax", "rax")
+        lab_done = self.new_tmp("biv")
+        a.jcc("ne", lab_done)
+        a.push_r("rcx")              # keep the slot address
+        a.mov_ri32("rdi", 40)
+        a.call("x_malloc")
+        a.mov_rr("r10", "rax")       # the object
+        a.mov_ri32("rcx", Gen.K_FUNC)
+        a.mov_mr("r10", "rcx", 0)
+        a.lea_rip("rcx", "bi_call")
+        a.mov_mr("r10", "rcx", 8)
+        a.mov_ri32("rcx", -1)        # BUILTIN: skip the caller arity check
+        a.mov_mr("r10", "rcx", 16)
+        a.lea_rip("rdi", self.rstr(name))
+        a.mov_ri32("rsi", len(name.encode()))
+        a.call("x_str_at")           # rax = name Str (clobbers rax only)
+        a.mov_mr("r10", "rax", 24)
+        a.mov_ri32("rcx", bid)
+        a.mov_mr("r10", "rcx", 32)   # caps[0] = id
+        a.pop_r("rcx")
+        a.mov_mr("rcx", "r10", 0)    # cache it
+        a.mov_rr("rax", "r10")
+        a.label(lab_done)
+
+    def emit_builtin_runtime(self, mod):
+        """Builtins used as values. bi_call is entered like any user
+        function (rbp frame, args at [rbp+24]...) plus rdi = argc and
+        rsi = the caller's line; it jumps to the stub for (id, argc) or
+        raises that builtin's own arity message. Stubs are emitted last,
+        after every body, so only referenced builtins get one."""
+        a = self.a
+        wanted = sorted(n for n in self.bi_ids
+                        if not (self.freestanding and n in Gen.BI_HOSTED))
+        if not wanted:
+            return
+        for name in wanted:
+            lo, hi, _msg = Gen.BI_VALUES[name]
+            bid = self.bi_id(name)
+            for n in range(lo, hi + 1):
+                self.bi_stubs[(name, n)] = f"hsBI_{bid}_{n}"
+        a.label("bi_call")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # argc
+        a.mov_mr("rbp", "rsi", -16)     # caller's line
+        a.mov_rm("rax", "r15", 0)       # caps[0] = builtin id
+        lab_ret = self.new_tmp("bic")
+        for name in wanted:
+            lo, hi, msg = Gen.BI_VALUES[name]
+            bid = self.bi_id(name)
+            lab_next = self.new_tmp("bic")
+            a.cmp_ri32("rax", bid)
+            a.jcc("ne", lab_next)   # another builtin: try the next id
+            labs = []
+            for n in range(lo, hi + 1):
+                lab_n = self.new_tmp("bic")
+                labs.append((n, lab_n))
+                a.mov_rm("rcx", "rbp", -8)
+                a.cmp_ri32("rcx", n)
+                a.jcc("e", lab_n)
+            # wrong count: msg + " " + the count interp would report
+            a.lea_rip("rdi", self.rstr(msg + " "))
+            a.mov_ri32("rsi", len(msg.encode()) + 1)
+            a.call("x_str_at")
+            a.push_r("rax")
+            a.mov_rm("rcx", "rbp", -8)
+            a.shl_ri8("rcx", 2)
+            a.or_ri8("rcx", 1)
+            a.mov_rr("rdi", "rcx")
+            a.call("x_str")
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            a.call("x_str_cat")        # "<msg> " + N
+            a.mov_rr("rdi", "rax")
+            a.mov_rm("rsi", "rbp", -16)
+            a.jmp("hs_raise_msg")
+            for n, lab_n in labs:
+                a.label(lab_n)
+                a.jmp(self.bi_stubs[(name, n)])
+            a.label(lab_next)
+        a.label(lab_ret)
+        # unreachable in practice: every id came from bi_id
+        a.mov_ri64("rax", Gen.HS_NULL)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        for (name, n), label in sorted(self.bi_stubs.items(),
+                                       key=lambda kv: kv[1]):
+            # The stub is a TAIL CALL: bi_call's own frame already has the
+            # arguments at [rbp+24]..., so the stub must not build another
+            # one -- it reads them in place and tears bi_call's frame down.
+            # That lets the ordinary inline builtin emitter run unchanged,
+            # with the arguments modelled as parameters.
+            sc = Gen.Scope(is_func=True)
+            sc.params = [f"_a{i}" for i in range(n)]
+            for i, pn in enumerate(sc.params):
+                sc.loc[pn] = 24 + 8 * i
+            args = [{"t": "var", "name": pn, "line": 0} for pn in sc.params]
+            node = {"t": "call", "fn": {"t": "var", "name": name, "line": 0},
+                    "args": args, "line": 0}
+            a.label(label)
+            self.ev_call(node, sc, mod)
+            a.mov_rr("rsp", "rbp")
+            a.pop_r("rbp")
+            a.ret()
+
+    def emit_dict_helpers(self):
+        """Dict runtime. Layout [kind][len][cap][buf]; buf holds interleaved
+        (key, value) tagged words, so one pair is 16 bytes and the key word
+        index is even. Keys are Str, found by a linear scan: dicts here are
+        small and insertion order is what interp (a Python dict) shows.
+        Overwriting a key keeps its position, like Python."""
+        a = self.a
+        KD = Gen.K_DICT
+        # x_dict_new: rdi = n -> rax = dict (len 0, cap n)
+        a.label("x_dict_new")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # n
+        a.mov_rr("rax", "rdi")
+        a.shl_ri8("rax", 4)             # 2 words per pair
+        a.mov_mr("rbp", "rax", -16)     # bytes
+        a.mov_ri32("rcx", 0)
+        a.mov_mr("rbp", "rcx", -24)     # buf = 0 until allocated
+        a.test_rr("rax", "rax")
+        lab_dnb = self.new_tmp("dc")
+        a.jcc("e", lab_dnb)
+        a.label(lab_dnb)                # n == 0: buf stays 0
+        a.test_rr("rax", "rax")
+        lab_dnb2 = self.new_tmp("dc")
+        a.jcc("e", lab_dnb2)
+        a.mov_rr("rdi", "rax")
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -24)     # buf
+        a.label(lab_dnb2)
+        a.mov_ri32("rdi", 32)
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -32)     # obj
+        a.mov_ri32("rcx", KD)
+        a.mov_mr("rax", "rcx", 0)       # kind
+        a.mov_ri32("rcx", 0)
+        a.mov_mr("rax", "rcx", 8)       # len = 0
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_mr("rax", "rcx", 16)      # cap = n
+        a.mov_rm("rcx", "rbp", -24)
+        a.mov_mr("rax", "rcx", 24)      # buf
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_dict_find: rdi = dict, rsi = key Str -> rax = word index or -1
+        a.label("x_dict_find")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # dict
+        a.mov_mr("rbp", "rsi", -16)     # key
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -24)     # w
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 8)       # len
+        a.shl_ri8("rax", 1)
+        a.mov_mr("rbp", "rax", -32)     # limit = len * 2
+        lab_df_top = self.new_tmp("dc")
+        a.label(lab_df_top)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -32)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "dc_no")
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)      # buf
+        a.mov_rm("rcx", "rbp", -24)
+        a.mov_rmx("rdi", "rax", "rcx", 8, 0)
+        a.mov_rm("rsi", "rbp", -16)
+        a.call("x_str_cmp")
+        a.test_rr("rax", "rax")
+        a.jcc("e", "dc_hit")
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 2)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_df_top)
+        a.label("dc_hit")
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("dc_no")
+        a.mov_ri32("rax", -1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_dict_set: rdi = dict, rsi = key Str, rdx = value -> Null
+        a.label("x_dict_set")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 64)
+        a.mov_mr("rbp", "rdi", -8)      # dict
+        a.mov_mr("rbp", "rsi", -16)     # key
+        a.mov_mr("rbp", "rdx", -24)     # value
+        a.call("x_dict_find")
+        a.mov_mr("rbp", "rax", -32)     # w
+        a.mov_rr("r11", "rax")
+        a.test_rr("r11", "r11")
+        a.jcc("ns", "dc_set_put")       # existing key: overwrite in place
+        # new key: grow when len == cap
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("r10", "rax", 16)      # cap
+        a.mov_rm("rcx", "rax", 8)       # len
+        a.cmp_rr("rcx", "r10")
+        a.jcc("l", "dc_set_new")
+        a.mov_rr("rax", "r10")
+        a.test_rr("rax", "rax")
+        lab_dnz = self.new_tmp("dc")
+        a.jcc("ne", lab_dnz)
+        a.mov_ri32("rax", 4)
+        a.label(lab_dnz)
+        a.shl_ri8("rax", 1)
+        a.mov_mr("rbp", "rax", -40)     # newcap
+        a.shl_ri8("rax", 4)
+        a.mov_rr("rdi", "rax")          # newcap * 16 bytes
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -48)     # newbuf
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_rm("rdi", "rbp", -48)     # dst
+        a.mov_rm("rsi", "rcx", 24)      # src = old buf
+        a.mov_rm("rcx", "rcx", 8)       # len
+        a.shl_ri8("rcx", 4)             # len * 16 bytes
+        self.copy_bytes()
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_rm("rax", "rbp", -48)
+        a.mov_mr("rcx", "rax", 24)      # dict[24] = newbuf
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_mr("rcx", "rax", 16)      # dict[16] = newcap
+        a.label("dc_set_new")
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 8)       # len
+        a.mov_rr("r11", "rax")
+        a.shl_ri8("rax", 1)            # w = len * 2 (a pair is two words)
+        a.mov_mr("rbp", "rax", -32)
+        a.mov_rr("rax", "r11")
+        a.add_ri32("rax", 1)           # len = len + 1
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_mr("rcx", "rax", 8)
+        a.label("dc_set_put")
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("r10", "rax", 24)      # buf
+        a.mov_rm("rax", "rbp", -32)     # w
+        a.mov_rm("r11", "rbp", -16)     # key
+        a.mov_mrx("r10", "rax", 8, 0, "r11")
+        a.mov_rm("rax", "rbp", -32)
+        a.add_ri32("rax", 1)
+        a.mov_rm("rdx", "rbp", -24)     # value
+        a.mov_mrx("r10", "rax", 8, 0, "rdx")
+        a.mov_ri64("rax", Gen.HS_NULL)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_dict_get: rdi = dict, rsi = key Str, rdx = line -> rax = value
+        a.label("x_dict_get")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)      # dict
+        a.mov_mr("rbp", "rsi", -16)     # key
+        a.mov_mr("rbp", "rdx", -24)     # line
+        a.call("x_dict_find")
+        a.mov_rr("r11", "rax")
+        a.test_rr("r11", "r11")
+        a.jcc("ns", "dc_get_ok")
+        # missing: "key 'K' not found"
+        a.lea_rip("rdi", self.rstr("key '"))
+        a.mov_ri32("rsi", 5)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")            # a = "key '" (x_str_cat is a+b)
+        a.mov_rm("rsi", "rbp", -16)       # b = the key
+        a.call("x_str_cat")
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr("' not found"))
+        a.mov_ri32("rsi", 11)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.pop_r("rdi")
+        a.call("x_str_cat")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -24)
+        a.jmp("hs_raise_msg")
+        a.label("dc_get_ok")
+        a.add_ri32("r11", 1)            # r11 = w + 1 (the value word)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)      # buf
+        a.mov_rmx("rax", "rax", "r11", 8, 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_dict_eq: rdi = a, rsi = b -> rax = 0 when equal, 1 when not
+        # (same convention as x_list_eq, which x_eq turns into a Bool with
+        # sete — mixing the two up silently inverts ==)
+        a.label("x_dict_eq")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)
+        a.mov_mr("rbp", "rsi", -16)
+        a.mov_rm("rax", "rdi", 8)
+        a.mov_rm("rcx", "rsi", 8)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ne", "dc_eq_no")
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -24)     # w
+        a.shl_ri8("rax", 1)
+        a.mov_mr("rbp", "rax", -32)     # limit
+        lab_de_top = self.new_tmp("dc")
+        a.label(lab_de_top)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -32)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "dc_eq_yes")
+        a.mov_rm("rdi", "rbp", -16)           # b (the dict to search)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)
+        a.mov_rm("rcx", "rbp", -24)
+        a.mov_rmx("rsi", "rax", "rcx", 8, 0)   # rsi = a's key
+        a.call("x_dict_find")                  # where is it in b?
+        a.mov_rr("r11", "rax")
+        a.test_rr("r11", "r11")
+        a.jcc("ns", "dc_eq_hit")
+        a.jmp("dc_eq_no")
+        a.label("dc_eq_hit")
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rdi", "rax", 24)      # a.buf
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)            # a value word = w + 1
+        a.mov_rmx("rdi", "rdi", "rax", 8, 0)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rsi", "rax", 24)      # b.buf
+        a.mov_rr("rcx", "r11")
+        a.add_ri32("rcx", 1)            # b value word
+        a.mov_rmx("rsi", "rsi", "rcx", 8, 0)
+        a.call("x_eq")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "dc_eq_no")
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 2)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_de_top)
+        a.label("dc_eq_yes")
+        a.mov_ri32("rax", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("dc_eq_no")
+        a.mov_ri32("rax", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_dict_str: rdi = dict -> rax = Str "{k: v, ...}"
+        a.label("x_dict_str")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 64)
+        a.mov_mr("rbp", "rdi", -8)      # dict
+        a.lea_rip("rdi", self.rstr("{"))
+        a.mov_ri32("rsi", 1)
+        a.call("x_str_at")
+        a.mov_mr("rbp", "rax", -16)     # acc
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -24)     # w
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 8)
+        a.shl_ri8("rax", 1)
+        a.mov_mr("rbp", "rax", -32)     # limit
+        lab_ds_top = self.new_tmp("dc")
+        a.label(lab_ds_top)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -32)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "dc_str_done")
+        a.mov_rm("rax", "rbp", -24)
+        a.test_rr("rax", "rax")
+        lab_ds_nc = self.new_tmp("dc")
+        a.jcc("e", lab_ds_nc)
+        a.lea_rip("rdi", self.rstr(", "))
+        a.mov_ri32("rsi", 2)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -16)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -16)
+        a.label(lab_ds_nc)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)
+        a.mov_rm("rcx", "rbp", -24)
+        a.mov_rmx("rdi", "rax", "rcx", 8, 0)   # key
+        a.call("x_str")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -16)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -16)
+        a.lea_rip("rdi", self.rstr(": "))
+        a.mov_ri32("rsi", 2)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -16)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -16)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)
+        a.mov_rm("rcx", "rbp", -24)
+        a.mov_rr("r10", "rcx")
+        a.add_ri32("r10", 1)
+        a.mov_rmx("rdi", "rax", "r10", 8, 0)   # value
+        a.call("x_str")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -16)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -16)
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 2)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_ds_top)
+        a.label("dc_str_done")
+        a.lea_rip("rdi", self.rstr("}"))
+        a.mov_ri32("rsi", 1)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -16)
+        a.call("x_str_cat")            # rax = the finished "{...}"
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
     def emit_argv_build(self):
         """argv_build: rax = List of argv[1:] as Str (hosted only; skips the
         program name like interp). Reads the argc/argv _start saved."""
@@ -5345,6 +5974,7 @@ class Gen:
         self.emit_fmt_int()
         self.emit_print_int()
         self.emit_val_runtime()
+        self.emit_dict_helpers()
 
     def emit_fmt_int(self):
         """fmt_int: rdi = i64, rsi = buf_end -> rsi = start, rdx = length."""
@@ -5471,7 +6101,8 @@ class Gen:
         lab_pv_unb, lab_pv_bad = self.new_tmp("pv"), self.new_tmp("pv")
         lab_pv_done = self.new_tmp("pv")
         lab_pv_str = self.new_tmp("pv")
-        lab_pv_list, lab_pv_file = self.new_tmp("pv"), self.new_tmp("pv")
+        lab_pv_list = self.new_tmp("pv")
+        lab_pv_file, lab_pv_dict = self.new_tmp("pv"), self.new_tmp("pv")
         a.cmp_ri32("rax", I)
         a.jcc("e", lab_pv_int)
         a.cmp_ri32("rax", B)
@@ -5513,7 +6144,21 @@ class Gen:
         a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("e", lab_pv_list)
         a.cmp_ri32("rax", Gen.K_FILE)
+        a.jcc("e", lab_pv_file)
+        a.cmp_ri32("rax", Gen.K_DICT)
+        a.jcc("e", lab_pv_dict)
+        a.cmp_ri32("rax", Gen.K_FUNC)
         a.jcc("ne", lab_pv_bad)
+        a.mov_rr("rdi", "r10")
+        a.call("x_str")            # "<builtin NAME>" (or a type error)
+        a.mov_rr("r10", "rax")
+        a.jmp(lab_pv_str)
+        a.label(lab_pv_dict)
+        a.mov_rr("rdi", "r10")
+        a.call("x_dict_str")
+        a.mov_rr("r10", "rax")
+        a.jmp(lab_pv_str)
+        a.label(lab_pv_file)
         a.mov_rr("rdi", "r10")
         a.call("x_str")  # "<file PATH>"
         a.mov_rr("r10", "rax")
@@ -5682,7 +6327,17 @@ class Gen:
         a.cmp_ri32("rax", KS)
         a.jcc("e", "eq_str")
         a.cmp_ri32("rax", Gen.K_LIST)
+        a.jcc("e", "eq_list")
+        a.cmp_ri32("rax", Gen.K_DICT)
         a.jcc("ne", "eq_raw")
+        a.mov_rr("rdi", "r10")
+        a.mov_rr("rsi", "r11")
+        a.call("x_dict_eq")
+        a.test_rr("rax", "rax")
+        a.setcc_al("e")
+        a.movzx_eax_al()
+        a.ret()
+        a.label("eq_list")
         a.mov_rr("rdi", "r10")
         a.mov_rr("rsi", "r11")
         a.call("x_list_eq")
@@ -5760,6 +6415,8 @@ class Gen:
         a.cmp_ri32("rcx", KS)
         a.jcc("e", lab_len_ok)
         a.cmp_ri32("rcx", Gen.K_LIST)
+        a.jcc("e", lab_len_ok)
+        a.cmp_ri32("rcx", Gen.K_DICT)
         a.jcc("ne", lab_len_bad)
         a.label(lab_len_ok)
         a.mov_rm("rax", "r10", 8)
@@ -5788,7 +6445,33 @@ class Gen:
         a.jcc("e", "st_list")
         a.cmp_ri32("rax", Gen.K_FILE)
         a.jcc("e", "st_file")
-        a.jmp("st_bad")
+        a.cmp_ri32("rax", Gen.K_DICT)
+        a.jcc("e", "st_dict")
+        a.cmp_ri32("rax", Gen.K_FUNC)
+        a.jcc("ne", "st_bad")
+        a.mov_rm("rax", "r10", 16)     # nparams == -1 marks a builtin
+        a.cmp_ri32("rax", -1)
+        a.jcc("ne", "st_bad")
+        a.mov_rm("rsi", "r10", 24)     # rsi = name Str
+        a.push_r("rsi")
+        a.lea_rip("rdi", self.rstr("<builtin "))
+        a.mov_ri32("rsi", 9)
+        a.call("x_str_at")             # rax = "<builtin "
+        a.mov_rr("rdi", "rax")         # x_str_cat(a, b) = rdi + rsi
+        a.pop_r("rsi")                 # rsi = name
+        a.call("x_str_cat")            # "<builtin " + name
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr(">"))
+        a.mov_ri32("rsi", 1)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.pop_r("rdi")
+        a.call("x_str_cat")
+        a.ret()
+        a.label("st_dict")
+        a.mov_rr("rdi", "r10")
+        a.call("x_dict_str")
+        a.ret()
         a.label("st_list")
         a.mov_rr("rdi", "r10")
         a.call("x_list_str")
