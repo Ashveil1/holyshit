@@ -125,11 +125,18 @@ def entry():
 def user_stack_top():
   return stack_top
 def build_frame(rip, rsp):
-  frame = rsp - 40
+  # argv for kernel-loaded programs is empty: lay argc=0 and argv[0]=NULL
+  # on the stack top (envp after it reads NULL too), and start the user
+  # rsp below them. The hosted _start prologue reads argc from [rsp] the
+  # way Linux lays it out — without this it would read an unmapped word
+  # and fault before main runs.
+  frame = rsp - 56
+  poke(rsp - 8, 0)
+  poke(rsp - 16, 0)
   poke(frame, rip)
   poke(frame + 8, CS_USER)
   poke(frame + 16, RFLAGS_USER)
-  poke(frame + 24, rsp)
+  poke(frame + 24, rsp - 16)
   poke(frame + 32, SS_USER)
   return frame
 def run():

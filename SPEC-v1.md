@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.14 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.15 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -757,3 +757,16 @@ x64 ไม่เคยตรวจจำนวน arg: เรียกผิด�
   (`err_mod_value` เปลี่ยนเป็น `print x + 1`; เพิ่ม `modalias`)
   — x64 43 -> 44 ชุด
 - เหลือจริงๆ: Float/Dict/extern/attr บนค่า
+### 15.26 _start อ่าน argc พังบน stack ของ kernel (v0.6.15)
+
+- v0.6.11 ใส่ `_start` capture (อ่าน argc จาก `[rsp]`) — บน Linux ถูก
+  แต่โปรแกรมที่ kernel โหลดไม่มี argc บน stack: อ่าน word นอก map ทันที
+  → `EXC 14` ตั้งแต่คำสั่งแรกของ user (`kusermode`/`kushtest` พังทั้งหมด
+  ทั้งที่ kiotest ผ่าน — kiotest ไม่เข้า ring 3)
+- matrix พิสูจน์: kernel เก่า + user ใหม่พัง, kernel ใหม่ + user ใหม่พัง,
+  kernel เก่า + user เก่าผ่าน → ของเสียอยู่ฝั่ง user ELF (hosted emission)
+- แก้ที่ `build_frame`: วาง argc=0 กับ argv[0]=NULL บนยอด user stack
+  แล้วเริ่ม rsp ต่ำลง 16 (frame ขยับลงกันทับ) — `argv()` ว่าง, `env()`
+  เจอ NULL เป็น null ถูกต้อง
+- บทเรียน harness: binary โต + TCG ช้า รอ 10s เห็น serial ขาดกลางทาง
+  แล้วดูเหมือน hang — ต้อง 25s; ปรับ `kusermode` timeout 15 → 25

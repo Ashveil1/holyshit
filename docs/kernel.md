@@ -161,6 +161,10 @@ user ต่อกับ VFS ผ่าน syscall ตัวเลขเดีย�
 - `kernel/uush.hs` = shell จริงใน ring 3 (`help echo cat ls mkdir rm write
   run exit`), คุยกับ kernel ผ่าน `scall()` ที่เพิ่มใหม่ใน x64 backend
   (hosted only — ring 0 เรียก `syscall` แล้วขากลับตกลงไป ring 3 ผิด)
+- โปรแกรมที่ kernel โหลดเห็น `argv()` ว่างเสมอ: `build_frame` วาง argc=0
+  กับ argv[0]=NULL ไว้บนยอด stack เพราะ `_start` ของ hosted อ่าน argc
+  จาก `[rsp]` ตาม layout ของ Linux — ไม่วางจะอ่าน word นอก map แล้ว
+  fault ตั้งแต่คำสั่งแรกของ user
 - เทส: `kiotest` (sys_open/read/write/close/copy_out ตรง ๆ ไม่ต้อง
   พิมพ์คีย์ = deterministic), `kushtest` + shell session จริงสองรอบ
   (`help`/`ls`/`cat`/backspace/`write`/`rm`/`exit` และ `exec`)

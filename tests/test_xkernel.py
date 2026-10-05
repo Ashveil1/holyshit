@@ -287,7 +287,9 @@ with tempfile.TemporaryDirectory() as d:
     rc = build_xkernel(os.path.join(ROOT, "kernel", "kusermode.hs"), ku)
     check("kusermode build clean", rc == 0)
     if rc == 0 and QEMU is not None:
-        out = boot(ku, timeout=15, initrd=uu)
+        # 25s: binaries grew (arity checks, file runtime, names) and TCG
+        # translation is slow on the first boot; 15s flaked on loaded hosts
+        out = boot(ku, timeout=25, initrd=uu)
         check("kusermode finished", "kusermode-done" in out, out[-800:])
         check("kusermode did not fault", "EXC " not in out, out[-800:])
         for line in ("hello from ring 3, holyshit", "user line 3"):
