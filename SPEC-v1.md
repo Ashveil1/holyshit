@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.9 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.10 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -696,3 +696,20 @@ user ต่อ VFS ผ่าน syscall ตัวเลขเดียวกั�
 - error message กลับเป็น literal: `enter/exec_enter wants ...` แยกสอง
   บรรทัด, `unknown variable` ใช้ string concat (ไม่เพิ่ม template ใหม่) —
   `docs/errors.md` กลับมามีชื่อจริงแทน `{name}/{ar['name']}`
+### 15.21 arity check ใน x64 (v0.6.10)
+
+x64 ไม่เคยตรวจจำนวน arg: เรียกผิดแล้ว callee อ่านขยะจาก stack ได้ error
+มั่ว (`cannot add Int and Func`) — interp/native ดักได้ตั้งแต่แรก
+(`f wants 2 args, got 1`) ตาม native ที่เก็บ `name+arity` ใน Func object:
+
+- Func เป็น `[kind][code][nparams][name][caps...]` (caps ขยับ +16 → +32
+  ทั้ง 4 จุด: call site, task_init, tick stub, syscall stub)
+- ทุก user call เทียบ `nparams` กับจำนวน arg จริง; ผิดทาง cold helper
+  `arity_fail` ประกอบ `"NAME wants N args, got M"` จาก struct (ไม่ใช่ชื่อ
+  静态) แล้ว `hs_raise_msg` — `f = g; f(1,2)` รายงาน `g` ตรง interp,
+  try จับได้
+- `task_init`/`sched_on_tick` ตรวจ 0 arg, `syscall_register` ตรวจ 7 arg
+  ตั้งแต่ตอน register (stub ร้อนไม่ต้องตรวจซ้ำ)
+- เทส: `tests/arity` (interp+native), `tests/x64/arity`,
+  `tests/x64/arity_reassign` — kernel ทั้งหมดบูตผ่านเหมือนเดิม
+  (kiotest + shell session `fails 0`)

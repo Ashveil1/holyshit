@@ -1,4 +1,4 @@
-# AGENTS.md — holyshit (hs) v0.6.9 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.6.10 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the
@@ -202,14 +202,17 @@ Errors: every dynamic failure carries `message at line N` (uncaught prints
 `error: message at line N`, exit 1) — operator/index/len/call messages name
 the runtime types, unknown reads report `unknown variable 'x'`; exotic combos
 (Str vs Func compare, `str(func)`) fall back to generic `type error`. Locals
-start UNBOUND; call arity is unchecked (documented gap). Freestanding integer
+start UNBOUND; call arity is checked at every user call, at registration
+for task/tick/syscall handlers (exact interp message with the callee's own
+name, catchable by try). Freestanding integer
 divide hits hardware #DE (`EXC 0`, halt) instead of a catchable error.
 Str index/slice/split are byte-based (non-ASCII diverges from interp);
 `split` with empty separator raises (interp/native crash instead).
 
 Value representation: low 2 bits are the tag — `01` Int (`v<<2|1`),
 `10` Bool (0x02/0x0A), `11` Null (0x03)/Unbound (0x0B), `00` heap object
-(`[kind][len][bytes]` for Str, `[kind][code][caps]` for Func). Heap = bump
+(`[kind][len][bytes]` for Str, `[kind][code][nparams][name][caps]` for
+Func — nparams/name let every call check arity). Heap = bump
 allocator, never frees. Type errors print `type error` and exit(1)/halt.
 
 Inside `unsafe:` values stay raw machine words (literals untagged);

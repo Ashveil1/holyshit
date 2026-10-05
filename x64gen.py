@@ -11,7 +11,7 @@ Values are tagged with the low 2 bits (see TAG_* below):
   00 heap object ptr (8-aligned) | 01 Int (62-bit payload, value = word >> 2)
   10 Bool: 0x02 false, 0x0A true | 11 Null 0x03 / Unbound 0x0B
   Heap obj: [kind:u64][payload...]; kind 0 = Str{len,bytes},
-  1 = Func{code,caps}, 2 = List{len,cap,buf}.
+  1 = Func{code,nparams,name,caps}, 2 = List{len,cap,buf}.
   GC: bump-only arena (grows, never frees) -- documented.
 """
 import sys
@@ -1307,6 +1307,17 @@ class Gen:
         a.label(lab_fnb)
         self.raise_unop(3, ln)
         a.label(lab_fnok)
+        # arity: Func[16] holds the callee's own param count, Func[24] its
+        # def name — so even a reassigned name reports exactly what interp
+        # reports ("g wants 1 args, got 2")
+        a.mov_rm("r11", "rax", 16)  # nparams (raw)
+        a.cmp_ri32("r11", len(e["args"]))
+        lab_aok = self.new_tmp("ar")
+        a.jcc("e", lab_aok)
+        a.mov_ri32("r11", len(e["args"]))  # M (got)
+        a.mov_ri32("rsi", ln)
+        a.jmp("arity_fail")
+        a.label(lab_aok)
         a.push_r("rax")
         for ar in reversed(e["args"]):
             self.ev(ar, sc, mod)
@@ -1314,7 +1325,7 @@ class Gen:
         a.mov_rm("rax", "rsp", 8 * len(e["args"]))  # reload func object
         a.push_r("r15")
         a.mov_rr("r15", "rax")
-        a.add_ri32("r15", 16)  # r15 = &caps (lea, no deref)
+        a.add_ri32("r15", 32)  # r15 = &caps (lea, no deref)
         a.mov_rm("rax", "rax", 8)  # code addr
         a.call_rax()
         a.pop_r("r15")
@@ -1531,8 +1542,17 @@ class Gen:
             a.label(lab_tib)
             self.raise_unop(3, ln)  # not callable
             a.label(lab_tiok)
+            # task entry runs with 0 args: reject early with the exact message
+            a.mov_rm("r11", "rax", 16)  # nparams (raw)
+            a.cmp_ri32("r11", 0)
+            lab_ti0 = self.new_tmp("ti")
+            a.jcc("e", lab_ti0)
+            a.mov_ri32("r11", 0)
+            a.mov_ri32("rsi", ln)
+            a.jmp("arity_fail")
+            a.label(lab_ti0)
             a.mov_rm("r10", "rax", 8)  # code addr
-            a.lea_m("r11", "rax", 16)  # caps addr
+            a.lea_m("r11", "rax", 32)  # caps addr
             a.pop_r("rsi")  # stack_top
             a.pop_r("rdi")  # ctx
             a.mov_ri32("rax", 0)
@@ -1583,6 +1603,15 @@ class Gen:
             a.label(lab_sob)
             self.raise_unop(3, ln)  # not callable
             a.label(lab_sok)
+            # the timer stub calls with 0 args: reject early, exact message
+            a.mov_rm("r11", "rax", 16)  # nparams (raw)
+            a.cmp_ri32("r11", 0)
+            lab_so0 = self.new_tmp("so")
+            a.jcc("e", lab_so0)
+            a.mov_ri32("r11", 0)
+            a.mov_ri32("rsi", ln)
+            a.jmp("arity_fail")
+            a.label(lab_so0)
             a.lea_rip("rcx", "sched_tick_fn_")
             a.mov_mr("rcx", "rax", 0)
             a.mov_ri64("rax", Gen.HS_NULL)
@@ -1614,6 +1643,15 @@ class Gen:
             a.label(lab_rob)
             self.raise_unop(3, ln)  # not callable
             a.label(lab_rok)
+            # the stub always calls handler(nr, a1..a6): 7 args, checked here
+            a.mov_rm("r11", "rax", 16)  # nparams (raw)
+            a.cmp_ri32("r11", 7)
+            lab_ro7 = self.new_tmp("sr")
+            a.jcc("e", lab_ro7)
+            a.mov_ri32("r11", 7)
+            a.mov_ri32("rsi", ln)
+            a.jmp("arity_fail")
+            a.label(lab_ro7)
             a.lea_rip("rcx", "syscall_fn_")
             a.mov_mr("rcx", "rax", 0)
             a.mov_ri64("rax", Gen.HS_NULL)
@@ -2153,15 +2191,28 @@ class Gen:
             for nm in fs.caplist:
                 self.var_get(nm, sc, mod, ln)
                 a.push_r("rax")
-            a.mov_ri32("rdi", 8 * (2 + n))
+            # Func layout: [kind][code][nparams][name][caps...]. nparams and
+            # name let every call site check arity with interp's exact
+            # message ("g wants 1 args, got 2"), even when the name was
+            # reassigned to another function.
+            a.mov_ri32("rdi", 8 * (4 + n))
             a.call("x_malloc")
             for i in reversed(range(n)):
                 a.pop_r("rcx")
-                a.mov_mr("rax", "rcx", 8 * (i + 2))
+                a.mov_mr("rax", "rcx", 8 * (i + 4))
             a.mov_ri32("rcx", 1)
             a.mov_mr("rax", "rcx", 0)          # kind = K_FUNC
             a.lea_rip("rcx", lab)
             a.mov_mr("rax", "rcx", 8)          # code address
+            a.mov_ri32("rcx", len(fs.params))
+            a.mov_mr("rax", "rcx", 16)         # param count (raw int)
+            a.push_r("rax")                    # save obj across x_str_at
+            a.lea_rip("rdi", self.rstr(s["name"]))
+            a.mov_ri32("rsi", len(s["name"].encode()))
+            a.call("x_str_at")                 # rax = name Str
+            a.mov_rr("rcx", "rax")
+            a.pop_r("rax")                      # obj
+            a.mov_mr("rax", "rcx", 24)         # name
             self.var_set(s["name"], sc, mod, ln)
             return
         if t == "if":
@@ -3361,7 +3412,7 @@ class Gen:
         # Same shape as a normal 0-arg call (func obj, caps in r15).
         a.mov_rm_rip("r10", "sched_tick_fn_")
         a.push_r("r10")
-        a.lea_m("r15", "r10", 16)  # caps
+        a.lea_m("r15", "r10", 32)  # caps
         a.mov_rm("rax", "r10", 8)  # code
         a.call_rax()
         a.add_ri32("rsp", 8)
@@ -3596,7 +3647,7 @@ class Gen:
         a.mov_rm("rax", "rsp", 8 * 7)  # reload the Func value again
         a.push_r("r15")
         a.mov_rr("r15", "rax")
-        a.add_ri32("r15", 16)  # caps live right after the Func struct
+        a.add_ri32("r15", 32)  # caps live right after the Func struct
         a.mov_rm("rax", "rax", 8)  # code address
         a.call_rax()
         a.pop_r("r15")
@@ -4194,6 +4245,58 @@ class Gen:
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
         a.ret()
+        self.emit_arity_fail()
+
+    def emit_arity_fail(self):
+        """arity_fail: rax = Func ptr, r11 = got nargs (raw), rsi = line.
+        Builds "NAME wants N args, got M" (NAME/N from the Func struct, so
+        reassignment reports exactly what interp reports) and raises. Cold."""
+        a = self.a
+        a.label("arity_fail")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rax", -8)    # func
+        a.mov_mr("rbp", "r11", -16)   # M (got)
+        a.mov_mr("rbp", "rsi", -24)   # line
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)    # name Str
+        a.mov_mr("rbp", "rax", -32)   # acc
+        a.lea_rip("rdi", self.rstr(" wants "))
+        a.mov_ri32("rsi", 7)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -32)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -32)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 16)    # raw N
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)            # tag as Int
+        a.mov_rr("rdi", "rax")
+        a.call("x_str")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -32)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -32)
+        a.lea_rip("rdi", self.rstr(" args, got "))
+        a.mov_ri32("rsi", 11)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -32)
+        a.call("x_str_cat")
+        a.mov_mr("rbp", "rax", -32)
+        a.mov_rm("rax", "rbp", -16)
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)            # tag as Int
+        a.mov_rr("rdi", "rax")
+        a.call("x_str")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -32)
+        a.call("x_str_cat")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -24)
+        a.jmp("hs_raise_msg")
 
     def emit_fatal_line(self):
         a = self.a
