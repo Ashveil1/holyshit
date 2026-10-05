@@ -35,6 +35,12 @@ def _test_env(name):
 
 fails = 0
 total = 0
+# file.hs uses a fixed scratch file: start clean for determinism.
+try:
+    import os as _os
+    _os.remove("/tmp/opencode/hs_x64file_a.txt")
+except OSError:
+    pass
 with tempfile.TemporaryDirectory() as d:
     for prog in sorted(glob.glob(os.path.join(HERE, "x64", "*.hs"))):
         name = os.path.splitext(os.path.basename(prog))[0]

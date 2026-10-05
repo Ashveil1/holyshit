@@ -326,7 +326,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (90)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (98)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -345,8 +345,12 @@
 - `bad var kind {kind} for '{name}'`
 - `break outside loop`
 - `builtin 'argv' not in x64 subset`
+- `builtin 'close' not in x64 subset`
 - `builtin 'env' not in x64 subset`
 - `builtin 'input' not in x64 subset`
+- `builtin 'open' not in x64 subset`
+- `builtin 'read' not in x64 subset`
+- `builtin 'write' not in x64 subset`
 - `builtin '{fn['name']}' not in x64 subset`
 - `builtin '{name}' is not a value (call it)`
 - `cannot access field of dynamic '{obj['name']}'`
@@ -355,6 +359,7 @@
 - `cannot find module '{name}'`
 - `cannot import '{s['name']}': '{top}' is already defined`
 - `circular import '{m['name']}'`
+- `close wants close(f)`
 - `continue outside loop`
 - `ctx_swap wants ctx_swap(save, load)`
 - `dict not in x64 subset`
@@ -381,9 +386,11 @@
 - `module '{name}' is not a first-class value in x64 subset (use mod.attr)`
 - `module '{target['name']}' is not a first-class value in x64 subset (use mod.attr)`
 - `only alloc/load/store/as_* calls allowed in unsafe (x64)`
+- `open wants open(path, mode)`
 - `pmm_alloc wants pmm_alloc(npages)`
 - `raise without active exception`
 - `range wants range(n) or range(a, b)`
+- `read wants read(f)`
 - `read_mem wants read_mem(ptr, nbytes)`
 - `readkey takes no args`
 - `return outside function`
@@ -409,6 +416,7 @@
 - `unknown variable '{name}'`
 - `unknown variable '{obj['name']}'`
 - `user_stop takes no args`
+- `write wants write(f, str)`
 - `{fn['name']} wants 1 arg`
 - `{name} not in x64 subset`
 - `{name} takes no args`
@@ -424,4 +432,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 384 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 392 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

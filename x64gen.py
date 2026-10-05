@@ -82,7 +82,7 @@ class Gen:
     # ----- value representation (low 2 bits are the tag) -----
     TAG_HEAP, TAG_INT, TAG_BOOL, TAG_NULL = 0, 1, 2, 3
     HS_FALSE, HS_TRUE, HS_NULL, HS_UNBOUND = 0x02, 0x0A, 0x03, 0x0B
-    K_STR, K_FUNC, K_LIST = 0, 1, 2
+    K_STR, K_FUNC, K_LIST, K_FILE = 0, 1, 2, 3
 
     class Scope:
         def __init__(self, parent=None, is_func=False):
@@ -1287,6 +1287,133 @@ class Gen:
             a.mov_rm("rsi", "rax", 8)  # len
             a.lea_m("rdi", "rax", 16)  # payload address (bytes inline)
             a.call("env_scan")
+            return
+        if fn["t"] == "var" and fn["name"] == "open":
+            # hosted only: open(path, mode) -> File ("r"/"w")
+            if len(e["args"]) != 2:
+                raise HSErr("open wants open(path, mode)", ln)
+            if self.freestanding:
+                raise HSErr("builtin 'open' not in x64 subset", ln)
+            for ar in e["args"]:
+                self.ev(ar, sc, mod)
+                a.push_r("rax")
+            a.pop_r("rcx")  # mode Str
+            a.pop_r("rax")  # path Str
+            a.push_r("rax")  # save path across the checks
+            lab_opbad = self.new_tmp("fh")
+            for rg in ("rax", "rcx"):
+                a.mov_rr("r11", rg)
+                a.and_ri32("r11", 3)
+                a.test_rr("r11", "r11")
+                a.jcc("ne", lab_opbad)
+                a.mov_rm("r11", rg, 0)
+                a.cmp_ri32("r11", Gen.K_STR)
+                a.jcc("ne", lab_opbad)
+            # mode must be exactly "r" or "w" (single byte)
+            a.mov_rm("r11", "rcx", 8)
+            a.cmp_ri32("r11", 1)
+            lab_opmode = self.new_tmp("fh")
+            a.jcc("ne", lab_opmode)
+            a.movzx_eax_m8("rcx", 16)  # mode byte
+            a.cmp_ri32("rax", 114)  # 'r'
+            lab_openr, lab_openw = self.new_tmp("fh"), self.new_tmp("fh")
+            a.jcc("e", lab_openr)
+            a.cmp_ri32("rax", 119)  # 'w'
+            a.jcc("e", lab_openw)
+            a.label(lab_opmode)
+            self.raise_static("open mode must be \"r\" or \"w\"", ln)
+            a.mov_ri32("rsi", 1)
+            a.jmp(lab_openw)
+            a.label(lab_openr)
+            a.mov_ri32("rsi", 0)
+            a.label(lab_openw)
+            a.pop_r("rdi")  # path
+            a.mov_ri32("rdx", ln)
+            a.call("file_open")
+            lab_openok = self.new_tmp("fh")
+            a.jmp(lab_openok)
+            a.label(lab_opbad)
+            self.raise_static("open wants open(path, mode)", ln)
+            a.label(lab_openok)
+            return
+        if fn["t"] == "var" and fn["name"] == "read":
+            # hosted only: read(f) -> whole content Str
+            if len(e["args"]) != 1:
+                raise HSErr("read wants read(f)", ln)
+            if self.freestanding:
+                raise HSErr("builtin 'read' not in x64 subset", ln)
+            self.ev(e["args"][0], sc, mod)
+            lab_rok, lab_rbad = self.new_tmp("fh"), self.new_tmp("fh")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_rbad)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_FILE)
+            a.jcc("e", lab_rok)
+            a.label(lab_rbad)
+            self.raise_static("read wants read(f)", ln)
+            a.label(lab_rok)
+            a.mov_rr("rdi", "rax")
+            a.mov_ri32("rdx", ln)
+            a.call("file_read_all")
+            return
+        if fn["t"] == "var" and fn["name"] == "write":
+            # hosted only: write(f, str) -> bytes written
+            if len(e["args"]) != 2:
+                raise HSErr("write wants write(f, str)", ln)
+            if self.freestanding:
+                raise HSErr("builtin 'write' not in x64 subset", ln)
+            for ar in e["args"]:
+                self.ev(ar, sc, mod)
+                a.push_r("rax")
+            a.pop_r("rsi")  # data Str
+            a.pop_r("rdi")  # file
+            a.push_r("rdi")
+            a.push_r("rsi")
+            lab_wfok, lab_wbad = self.new_tmp("fh"), self.new_tmp("fh")
+            a.mov_rr("r11", "rdi")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_wbad)
+            a.mov_rm("r11", "rdi", 0)
+            a.cmp_ri32("r11", Gen.K_FILE)
+            a.jcc("ne", lab_wbad)
+            a.mov_rr("r11", "rsi")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_wbad)
+            a.mov_rm("r11", "rsi", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_wfok)
+            a.label(lab_wbad)
+            self.raise_static("write wants write(f, str)", ln)
+            a.label(lab_wfok)
+            a.pop_r("rsi")
+            a.pop_r("rdi")
+            a.mov_ri32("rdx", ln)
+            a.call("file_write_all")
+            return
+        if fn["t"] == "var" and fn["name"] == "close":
+            # hosted only: close(f) -> Null (no-op when already closed)
+            if len(e["args"]) != 1:
+                raise HSErr("close wants close(f)", ln)
+            if self.freestanding:
+                raise HSErr("builtin 'close' not in x64 subset", ln)
+            self.ev(e["args"][0], sc, mod)
+            lab_cok, lab_cbad = self.new_tmp("fh"), self.new_tmp("fh")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_cbad)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_FILE)
+            a.jcc("e", lab_cok)
+            a.label(lab_cbad)
+            self.raise_static("close wants close(f)", ln)
+            a.label(lab_cok)
+            a.mov_rr("rdi", "rax")
+            a.call("file_close")
             return
         if fn["t"] == "var" and fn["name"] in (
                 "float", "input", "open", "read",
@@ -4075,12 +4202,15 @@ class Gen:
         a.mov_rm("rax", "r10", 0)      # kind
         lab_ts, lab_tl, lab_tf = (self.new_tmp("tn"), self.new_tmp("tn"),
                                   self.new_tmp("tn"))
+        lab_tfl = self.new_tmp("tn")
         a.cmp_ri32("rax", Gen.K_STR)
         a.jcc("e", lab_ts)
         a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("e", lab_tl)
         a.cmp_ri32("rax", Gen.K_FUNC)
         a.jcc("e", lab_tf)
+        a.cmp_ri32("rax", Gen.K_FILE)
+        a.jcc("e", lab_tfl)
         a.lea_rip("rdi", self.rstr("?"))
         a.mov_ri32("rsi", 1)
         a.call("x_str_at")
@@ -4091,7 +4221,8 @@ class Gen:
         a.jmp(lab_tu)
         for lab_nm, txt in ((lab_ti, "Int"), (lab_tb, "Bool"), (lab_tn, "Null"),
                             (lab_tu, "Unbound"), (lab_ts, "Str"),
-                            (lab_tl, "List"), (lab_tf, "Func")):
+                            (lab_tl, "List"), (lab_tf, "Func"),
+                            (lab_tfl, "File")):
             a.label(lab_nm)
             a.lea_rip("rdi", self.rstr(txt))
             a.mov_ri32("rsi", len(txt))
@@ -4653,6 +4784,269 @@ class Gen:
         a.pop_r("rbp")
         a.ret()
 
+    def emit_file_helpers(self):
+        """Hosted file objects. Layout: [kind=3][fd][flags bit0=closed]
+        [path Str]. Raising helpers take the line in rdx."""
+        a = self.a
+        # file_check_open: rdi = File (preserved) — "file is closed" if shut
+        a.label("file_check_open")
+        a.mov_rm("rax", "rdi", 16)
+        a.and_ri32("rax", 1)
+        lab_fco = self.new_tmp("fh")
+        a.jcc("e", lab_fco)
+        self.raise_static_rdx("file is closed")
+        a.label(lab_fco)
+        a.ret()
+        # file_cstr: rdi = Str -> rax = NUL-terminated copy (for syscalls)
+        a.label("file_cstr")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)  # str
+        a.mov_rm("rax", "rdi", 8)  # len
+        a.mov_mr("rbp", "rax", -16)
+        a.add_ri32("rax", 1)
+        a.mov_rr("rdi", "rax")
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -24)  # dst
+        a.mov_rm("rsi", "rbp", -8)
+        a.add_ri32("rsi", 16)  # payload
+        a.mov_rm("rcx", "rbp", -16)  # len
+        a.mov_rm("rdi", "rbp", -24)
+        self.copy_bytes()  # rdi=dst, rsi=src, rcx=n
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -16)
+        a.lea_m("rdi", "rax", 0, "rcx", 1)
+        a.mov_ri32("rcx", 0)
+        a.mov_mr8("rdi", 1, 0)  # NUL: [rdi] = cl
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # file_erno: rdi = prefix Str, rax = -errno (raw, negative) ->
+        # rax = full "prefix errno N" Str
+        a.label("file_erno")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)  # prefix
+        a.neg_r("rax")  # errno
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)
+        a.mov_rr("rdi", "rax")
+        a.call("x_str")
+        a.mov_rr("rsi", "rax")
+        a.mov_rm("rdi", "rbp", -8)
+        a.call("x_str_cat")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # file_open: rdi = path Str, rsi = 0 read / 1 write, rdx = line
+        a.label("file_open")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)  # path
+        a.mov_mr("rbp", "rsi", -16)  # wflag
+        a.mov_mr("rbp", "rdx", -24)  # line
+        a.call("file_cstr")  # rax = c path
+        a.mov_mr("rbp", "rax", -32)
+        a.mov_rm("rax", "rbp", -16)
+        a.test_rr("rax", "rax")
+        lab_fow = self.new_tmp("fh")
+        a.jcc("ne", lab_fow)
+        a.mov_ri32("rdx", 0)  # O_RDONLY
+        a.jmp("file_open_do")
+        a.label(lab_fow)
+        a.mov_ri32("rdx", 577)  # O_WRONLY|O_CREAT|O_TRUNC
+        a.label("file_open_do")
+        a.mov_ri32("rax", 257)  # sys_openat
+        a.mov_ri32("rdi", -100)  # AT_FDCWD
+        a.mov_rm("rsi", "rbp", -32)
+        a.mov_ri32("r10", 420)  # 0644
+        a.syscall()
+        a.test_rr("rax", "rax")
+        lab_fook = self.new_tmp("fh")
+        a.jcc("ns", lab_fook)
+        # failed: "open failed: errno N"
+        a.push_r("rax")  # -errno
+        a.lea_rip("rdi", self.rstr("open failed: errno "))
+        a.mov_ri32("rsi", 19)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.pop_r("rax")
+        a.call("file_erno")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -24)
+        a.jmp("hs_raise_msg")
+        a.label(lab_fook)
+        a.mov_mr("rbp", "rax", -32)  # fd
+        a.mov_ri32("rdi", 32)
+        a.call("x_malloc")
+        a.mov_ri32("rcx", Gen.K_FILE)
+        a.mov_mr("rax", "rcx", 0)
+        a.mov_rm("rcx", "rbp", -32)
+        a.mov_mr("rax", "rcx", 8)  # fd
+        a.mov_ri32("rcx", 0)
+        a.mov_mr("rax", "rcx", 16)  # flags: open
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_mr("rax", "rcx", 24)  # path
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # file_read_all: rdi = File, rdx = line -> rax = content Str
+        a.label("file_read_all")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)  # file
+        a.mov_mr("rbp", "rdx", -16)  # line
+        a.call("file_check_open")  # rdi = file preserved
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rdi", "rdi", 8)  # fd
+        a.mov_mr("rbp", "rdi", -24)
+        a.mov_ri32("rdi", 128)
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -32)  # buf
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -40)  # len
+        a.mov_ri32("rax", 128)
+        a.mov_mr("rbp", "rax", -48)  # cap
+        lab_rtop, lab_rread = self.new_tmp("fh"), self.new_tmp("fh")
+        lab_rdone = self.new_tmp("fh")
+        a.label(lab_rtop)
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rm("rcx", "rbp", -48)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("l", lab_rread)
+        # grow: cap *= 2
+        a.mov_rm("rax", "rbp", -48)
+        a.shl_ri8("rax", 1)
+        a.mov_mr("rbp", "rax", -48)
+        a.mov_rr("rdi", "rax")
+        a.call("x_malloc")
+        a.mov_rm("rsi", "rbp", -32)  # old buf
+        a.mov_rm("rcx", "rbp", -40)  # len
+        a.mov_rr("r10", "rax")  # new buf
+        a.mov_rr("rdi", "r10")
+        self.copy_bytes()
+        a.mov_mr("rbp", "r10", -32)
+        a.label(lab_rread)
+        # read(fd, buf + len, cap - len)
+        a.mov_rm("rax", "rbp", -48)
+        a.mov_rm("rcx", "rbp", -40)
+        a.sub_rr("rax", "rcx")  # room
+        a.mov_rr("rdx", "rax")
+        a.mov_rm("r10", "rbp", -32)
+        a.lea_m("rsi", "r10", 0, "rcx", 1)
+        a.mov_rm("rdi", "rbp", -24)  # fd
+        a.mov_ri32("rax", 0)  # sys_read
+        a.syscall()
+        a.test_rr("rax", "rax")
+        lab_rerr = self.new_tmp("fh")
+        a.jcc("l", lab_rerr)  # <0: real error
+        a.jcc("e", lab_rdone)  # 0: EOF
+        a.mov_rm("rcx", "rbp", -40)
+        a.add_rr("rcx", "rax")
+        a.mov_mr("rbp", "rcx", -40)
+        a.jmp(lab_rtop)
+        a.label(lab_rerr)
+        # "read failed: errno N"
+        a.push_r("rax")  # -errno
+        a.lea_rip("rdi", self.rstr("read failed: errno "))
+        a.mov_ri32("rsi", 19)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.pop_r("rax")
+        a.call("file_erno")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -16)
+        a.jmp("hs_raise_msg")
+        a.label(lab_rdone)
+        a.mov_rm("rdi", "rbp", -32)
+        a.mov_rm("rsi", "rbp", -40)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # file_write_all: rdi = File, rsi = data Str, rdx = line -> count
+        a.label("file_write_all")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)  # file
+        a.mov_mr("rbp", "rsi", -16)  # data
+        a.mov_mr("rbp", "rdx", -24)  # line
+        a.call("file_check_open")
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rdi", "rdi", 8)  # fd
+        a.mov_mr("rbp", "rdi", -32)
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rax", "rax", 8)  # total
+        a.mov_mr("rbp", "rax", -40)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -48)  # off
+        lab_wtop, lab_wdone = self.new_tmp("fh"), self.new_tmp("fh")
+        a.label(lab_wtop)
+        a.mov_rm("rax", "rbp", -48)
+        a.mov_rm("rcx", "rbp", -40)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("e", lab_wdone)
+        # write(fd, payload + off, total - off)
+        a.sub_rr("rcx", "rax")  # left
+        a.mov_rr("rdx", "rcx")
+        a.mov_rm("rsi", "rbp", -16)
+        a.add_ri32("rsi", 16)  # payload
+        a.mov_rm("rax", "rbp", -48)
+        a.add_rr("rsi", "rax")  # + off
+        a.mov_rm("rdi", "rbp", -32)  # fd
+        a.mov_ri32("rax", 1)  # sys_write
+        a.syscall()
+        a.test_rr("rax", "rax")
+        lab_werr = self.new_tmp("fh")
+        a.jcc("l", lab_werr)
+        a.jcc("e", lab_wdone)  # 0: nothing more can be written
+        a.mov_rm("rcx", "rbp", -48)
+        a.add_rr("rcx", "rax")
+        a.mov_mr("rbp", "rcx", -48)
+        a.jmp(lab_wtop)
+        a.label(lab_werr)
+        # "write failed: errno N"
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr("write failed: errno "))
+        a.mov_ri32("rsi", 20)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.pop_r("rax")
+        a.call("file_erno")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -24)
+        a.jmp("hs_raise_msg")
+        a.label(lab_wdone)
+        a.mov_rm("rax", "rbp", -40)
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)  # tag count as Int
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # file_close: rdi = File -> Null (no-op when already closed)
+        a.label("file_close")
+        a.mov_rm("rax", "rdi", 16)
+        a.and_ri32("rax", 1)
+        lab_cshut = self.new_tmp("fh")
+        a.jcc("ne", lab_cshut)
+        a.push_r("rdi")
+        a.mov_rm("rdi", "rdi", 8)  # fd
+        a.mov_ri32("rax", 3)  # sys_close
+        a.syscall()
+        a.pop_r("rdi")
+        a.mov_rm("rax", "rdi", 16)
+        a.or_ri8("rax", 1)
+        a.mov_mr("rdi", "rax", 16)  # mark closed
+        a.label(lab_cshut)
+        a.mov_ri64("rax", Gen.HS_NULL)
+        a.ret()
+
     def emit_argv_build(self):
         """argv_build: rax = List of argv[1:] as Str (hosted only; skips the
         program name like interp). Reads the argc/argv _start saved."""
@@ -4714,6 +5108,7 @@ class Gen:
         self.emit_argv_build()
         self.emit_input_read()
         self.emit_env_scan()
+        self.emit_file_helpers()
         # x_malloc: rdi = bytes -> bump pointer over 16MB mmap arenas.
         # Never frees (arena semantics, like the kernel heap). exit(99) on failure.
         a.label("x_malloc")
@@ -4912,6 +5307,7 @@ class Gen:
         lab_pv_unb, lab_pv_bad = self.new_tmp("pv"), self.new_tmp("pv")
         lab_pv_done = self.new_tmp("pv")
         lab_pv_str = self.new_tmp("pv")
+        lab_pv_list, lab_pv_file = self.new_tmp("pv"), self.new_tmp("pv")
         a.cmp_ri32("rax", I)
         a.jcc("e", lab_pv_int)
         a.cmp_ri32("rax", B)
@@ -4951,7 +5347,14 @@ class Gen:
         a.cmp_ri32("rax", KS)
         a.jcc("e", lab_pv_str)
         a.cmp_ri32("rax", Gen.K_LIST)
+        a.jcc("e", lab_pv_list)
+        a.cmp_ri32("rax", Gen.K_FILE)
         a.jcc("ne", lab_pv_bad)
+        a.mov_rr("rdi", "r10")
+        a.call("x_str")  # "<file PATH>"
+        a.mov_rr("r10", "rax")
+        a.jmp(lab_pv_str)
+        a.label(lab_pv_list)
         a.mov_rr("rdi", "r10")
         a.call("x_print_list")
         a.ret()
@@ -5218,9 +5621,29 @@ class Gen:
         a.cmp_ri32("rax", KS)
         a.jcc("e", "st_same")
         a.cmp_ri32("rax", Gen.K_LIST)
-        a.jcc("ne", "st_bad")
+        a.jcc("e", "st_list")
+        a.cmp_ri32("rax", Gen.K_FILE)
+        a.jcc("e", "st_file")
+        a.jmp("st_bad")
+        a.label("st_list")
         a.mov_rr("rdi", "r10")
         a.call("x_list_str")
+        a.ret()
+        a.label("st_file")
+        a.lea_rip("rdi", self.rstr("<file "))
+        a.mov_ri32("rsi", 6)
+        a.call("x_str_at")  # rax = "<file "
+        a.push_r("rax")  # acc
+        a.mov_rm("rsi", "r10", 24)  # path
+        a.pop_r("rdi")  # acc
+        a.call("x_str_cat")  # "<file " + path
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr(">"))
+        a.mov_ri32("rsi", 1)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.pop_r("rdi")
+        a.call("x_str_cat")
         a.ret()
         a.label("st_same")
         a.mov_rr("rax", "r10")

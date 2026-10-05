@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.11 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.12 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -727,3 +727,15 @@ x64 ไม่เคยตรวจจำนวน arg: เรียกผิด�
   `env` (x64 34 -> 38 ชุด)
 - เหลือ: `open/read/write/close` (ต้องมี heap kind `K_FILE`),
   `system` (ต้องมี process), Float/Dict/extern/attr บนค่า
+### 15.23 hosted file I/O: open/read/write/close บน x64 (v0.6.12)
+
+- heap kind ใหม่ `K_FILE` (`[kind][fd][flags][path]`) + `print`/`str`
+  แสดง `<file PATH>` + `tname` รู้จัก `File`
+- `open(path, "r"/"w")` ผ่าน `openat` (w = O_WRONLY|O_CREAT|O_TRUNC),
+  `read` อ่านทั้งไฟล์แบบ grow, `write` วนจนครบ (คืน byte count),
+  `close` เป็น no-op เมื่อปิดแล้ว — error เป็น `errno N`
+  (ต่างจาก interp ที่โชว์ strerror; จดไว้)
+- เทส: `file` (เขียน/อ่าน/โชว์/เทียบ), `file_err` (ENOENT),
+  `file_errmode` (mode), `file_closed` — รวมไฟล์ 100KB ผ่าน
+  (x64 38 -> 42 ชุด)
+- เหลือ: `system`, Float/Dict/extern/attr บนค่า

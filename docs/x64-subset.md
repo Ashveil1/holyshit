@@ -13,11 +13,14 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
   แต่ชื่อที่อยู่ในรายการ builtin ของ subset นี้คงเป็น builtin เสมอ
 
 ไม่มี (compile error ตั้งใจ): Float, Dict, `extern`, `system`,
-`input/open/read/write/close` บน kernel, `tcp_*`, `http_get`, `json_*`,
+`open/read/write/close` บน kernel, `tcp_*`, `http_get`, `json_*`,
 file helpers, ส่งโมดูลเป็น value, `print`/`str` ของ Func
 
 hosted (`xbuild`) มีเพิ่ม: `argv()` (List ของ argv[1:]), `input()`
 (หนึ่งบรรทัด, EOF เปล่าๆ = error), `env(name)` (ขาด = null),
+`open(path, "r"/"w")` → File (แสดง `<file PATH>`), `read(f)` ทั้งไฟล์,
+`write(f, s)` (คืน byte count), `close(f)` (ปิดซ้ำ = no-op) —
+error เป็น `errno N` (interp โชว์ strerror),
 `scall(nr, a1..a6)` — `syscall` ดิบ (ใช้เขียน
 user program ที่คุยกับ kernel ของเรา เช่น `kernel/uush.hs`) แต่
 `xkernel` ไม่มี เพราะ ring 0 เรียก `syscall` แล้ว `sysret` จะตกไป
