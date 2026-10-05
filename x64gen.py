@@ -125,8 +125,17 @@ class Gen:
                 s["_fs"] = fs
             elif t == "set":
                 self.ann_expr(s["val"], sc)
-                self.drop_binding(sc, s["name"])
-                self.decl(sc, s["name"])
+                msc = sc
+                while msc.parent is not None:
+                    msc = msc.parent
+                alias = self.try_mod_value(s["val"], sc, getattr(msc, "_mod", None))
+                if alias is not None:
+                    # `m = mod.attr`: module alias, not a value slot — a
+                    # later plain assignment drops it (below), like imports
+                    self.mod_bindings[(id(sc), s["name"])] = alias
+                else:
+                    self.drop_binding(sc, s["name"])
+                    self.decl(sc, s["name"])
             elif t == "for":
                 self.ann_expr(s["iter"], sc)
                 self.drop_binding(sc, s["var"])
@@ -596,7 +605,7 @@ class Gen:
         if e["t"] == "var":
             cur = mod if mod is not None else sc._mod
             if self.resolve_var(e["name"], sc, cur, ln)[0] is not None:
-                raise HSErr("attribute access is only supported on modules (x64)", ln)
+                raise HSErr("only modules have attributes", ln)
             m = self.find_binding(e["name"], sc)
             if m is None:
                 raise HSErr(f"unknown variable '{e['name']}'", ln)
@@ -609,7 +618,7 @@ class Gen:
             if sub is None:
                 raise HSErr(f"module '{m['name']}' has no attribute '{e['name']}'", ln)
             return sub
-        raise HSErr("attribute access is only supported on modules (x64)", ln)
+        raise HSErr("only modules have attributes", ln)
 
     def mod_global(self, m, name, ln):
         """(target_mod, global_label) for attribute `name` on module m."""
@@ -624,15 +633,37 @@ class Gen:
             return (m, self.glabel(m, name))
         raise HSErr(f"module '{m['name']}' has no attribute '{name}'", ln)
 
+    def mod_alias_visible(self, name, sc, mod):
+        """Innermost module binding for `name` that no value slot shadows.
+        A later plain assignment in the SAME scope leaves a stale value
+        slot behind (flow-insensitive scopes), so a tie goes to the
+        binding; a value slot in a NEARER scope (param, def, capture)
+        wins, matching runtime shadowing."""
+        cur = sc
+        while cur is not None:
+            if (name in cur.params or name in cur.uloc or name in cur.loc
+                    or name in cur.deffns
+                    or name in getattr(cur, "caplist", [])):
+                if (id(cur), name) in self.mod_bindings:
+                    return self.mod_bindings[(id(cur), name)]
+                return None
+            m = self.mod_bindings.get((id(cur), name))
+            if m is not None:
+                return m
+            if name in cur.globs:
+                cur = cur.parent
+                continue
+            if mod is None or cur is mod["scope"]:
+                break
+            cur = cur.parent
+        return None
+
     def try_mod_value(self, e, sc, mod):
         """If e is a bare module reference (var/attr chain to a module),
         return the mod dict, else None. No errors raised."""
         try:
             if e["t"] == "var":
-                cur = mod if mod is not None else sc._mod
-                if self.resolve_var(e["name"], sc, cur, e["line"])[0] is not None:
-                    return None
-                return self.find_binding(e["name"], sc)
+                return self.mod_alias_visible(e["name"], sc, mod)
             if e["t"] == "attr":
                 m = self.resolve_mod_base(e["obj"], sc, mod, e["line"])
                 sub = m.get("submods", {}).get(e["name"])
@@ -2336,7 +2367,13 @@ class Gen:
                 self.ev_print(s["args"], sc, mod, ln)
             return
         if t == "set":
-            self.ev(s["val"], sc, mod)
+            alias = self.try_mod_value(s["val"], sc, mod)
+            if alias is not None:
+                # module alias: no code emitted, just (re)bind the name
+                self.mod_bindings[(id(sc), s["name"])] = alias
+                return
+            self.drop_binding(sc, s["name"])  # mirror collect: a plain
+            self.ev(s["val"], sc, mod)  # assignment ends any alias
             self.var_set(s["name"], sc, mod, ln)
             return
         if t == "return":

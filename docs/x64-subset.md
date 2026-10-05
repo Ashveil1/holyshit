@@ -14,7 +14,11 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
 
 ไม่มี (compile error ตั้งใจ): Float, Dict, `extern`,
 `open/read/write/close` บน kernel, `tcp_*`, `http_get`, `json_*`,
-file helpers, ส่งโมดูลเป็น value, `print`/`str` ของ Func
+file helpers, ส่งโมดูลเข้าคำนวณ/call/index, `print`/`str` ของ Func
+
+`m = mod` / `m = pkg.sub` เป็น alias ได้ (ไม่เสียค่าใช้จ่ายตอนรัน,
+`m.attr` เหมือนเดิมทุกอย่างรวมถึง `print m`) — แต่ห้ามส่งโมดูลเข้า
+function/operator/index (ชื่อที่ assign ค่าทับ alias กลายเป็นค่าปกติ)
 
 hosted (`xbuild`) มีเพิ่ม: `argv()` (List ของ argv[1:]), `input()`
 (หนึ่งบรรทัด, EOF เปล่าๆ = error), `env(name)` (ขาด = null),

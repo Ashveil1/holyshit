@@ -335,7 +335,6 @@
 - `argv takes no args`
 - `array field '{e['name']}' needs an index`
 - `array field '{x['name']}' needs an index`
-- `attribute access is only supported on modules (x64)`
 - `attribute assignment only supported on modules (x64)`
 - `bad kdev {name}`
 - `bad module name '{fullname}'`
@@ -387,6 +386,7 @@
 - `module '{name}' is not a first-class value in x64 subset (use mod.attr)`
 - `module '{target['name']}' is not a first-class value in x64 subset (use mod.attr)`
 - `only alloc/load/store/as_* calls allowed in unsafe (x64)`
+- `only modules have attributes`
 - `open wants open(path, mode)`
 - `pmm_alloc wants pmm_alloc(npages)`
 - `raise without active exception`

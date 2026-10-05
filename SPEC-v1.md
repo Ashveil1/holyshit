@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.13 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.14 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -745,3 +745,15 @@ x64 ไม่เคยตรวจจำนวน arg: เรียกผิด�
   (env ส่งต่อของเดิม, exec ล้ม = 127, โดน signal = ลบเหมือน Python)
 - เทส: `system` (exit 3/0 + kill -9 → -9) — x64 42 -> 43 ชุด
 - เหลือจริงๆ: Float/Dict/extern/attr บนค่า (ต้องเปลี่ยน representation)
+### 15.25 module alias บน x64 (v0.6.14)
+
+- `m = mod` / `m = pkg.sub` ผูกชื่อโดยไม่ emit โค้ดเลย; `m.attr` เรียก
+  ได้เหมือนของเดิม (รวม error `has no attribute` และ `print m`)
+- กฎ nearest-wins: value slot ใน scope ที่ใกล้กว่าชนะ (param/def/capture
+  บัง import ได้เหมือนเดิม), เสมอกันใน scope เดียวกันให้ binding ชนะ
+  (เพราะ scope ของ x64 เป็น flow-insensitive), assign ค่าปกติทับ alias
+  ได้ (`m = 42` หลัง `m = mod` กลายเป็นค่าปกติ)
+- ส่งโมดูลเข้า call/operator/index ยังเป็น error เหมือนเดิม
+  (`err_mod_value` เปลี่ยนเป็น `print x + 1`; เพิ่ม `modalias`)
+  — x64 43 -> 44 ชุด
+- เหลือจริงๆ: Float/Dict/extern/attr บนค่า

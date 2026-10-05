@@ -1,4 +1,4 @@
-# AGENTS.md — holyshit (hs) v0.6.13 language reference for AI coding agents
+# AGENTS.md — holyshit (hs) v0.6.14 language reference for AI coding agents
 
 Read this file before writing or fixing `.hs` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the
@@ -197,8 +197,11 @@ are a compile error), `global` (module/function globals from functions),
 Missing (compile error, on purpose): Float, Dict,
 attribute access on values (only modules have attrs), `extern`,
 `scall`/`enter_user`/`exec_enter`/`user_stop` are hosted-only.
-Modules are compile-time only: passing a module as a
-value (`f = mymod`, `x = pkg.mod`) is an error — use `mod.attr`. `/` truncates
+Modules support aliasing: `m = mod` / `m = pkg.sub` binds the name
+without emitting code, and `m.attr` resolves statically like the
+original (including `<module name>` display). Passing a module into a
+call, arithmetic, or index is still an error — use `mod.attr`.
+`/` truncates
 like C here, not hs. Out-of-range indexing reports `index out of range`.
 
 Errors: every dynamic failure carries `message at line N` (uncaught prints
