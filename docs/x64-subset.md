@@ -12,7 +12,7 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
 - `def` ของผู้ใช้ shadow builtin ชื่อเดียวกันได้ (เหมือน interp/native)
   แต่ชื่อที่อยู่ในรายการ builtin ของ subset นี้คงเป็น builtin เสมอ
 
-ไม่มี (compile error ตั้งใจ): Float, Dict, `extern`, `system`,
+ไม่มี (compile error ตั้งใจ): Float, Dict, `extern`,
 `open/read/write/close` บน kernel, `tcp_*`, `http_get`, `json_*`,
 file helpers, ส่งโมดูลเป็น value, `print`/`str` ของ Func
 

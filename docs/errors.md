@@ -326,7 +326,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (98)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (100)
 
 - `'{n}' already defined in this scope`
 - `Float not in x64 subset`
@@ -350,6 +350,7 @@
 - `builtin 'input' not in x64 subset`
 - `builtin 'open' not in x64 subset`
 - `builtin 'read' not in x64 subset`
+- `builtin 'system' not in x64 subset`
 - `builtin 'write' not in x64 subset`
 - `builtin '{fn['name']}' not in x64 subset`
 - `builtin '{name}' is not a value (call it)`
@@ -407,6 +408,7 @@
 - `struct '{xs}' has no field '{x['name']}'`
 - `struct type unknown (x64)`
 - `syscall_register wants syscall_register(func)`
+- `system wants system(cmd)`
 - `task_init wants task_init(ctx, top, func)`
 - `task_run wants task_run(sched, task)`
 - `ticks takes no args`
@@ -432,4 +434,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 392 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 394 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

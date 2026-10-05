@@ -1288,6 +1288,28 @@ class Gen:
             a.lea_m("rdi", "rax", 16)  # payload address (bytes inline)
             a.call("env_scan")
             return
+        if fn["t"] == "var" and fn["name"] == "system":
+            # hosted only: system(cmd) -> exit status like Python
+            if len(e["args"]) != 1:
+                raise HSErr("system wants system(cmd)", ln)
+            if self.freestanding:
+                raise HSErr("builtin 'system' not in x64 subset", ln)
+            self.ev(e["args"][0], sc, mod)
+            lab_syok, lab_sybad = self.new_tmp("sy"), self.new_tmp("sy")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_sybad)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_syok)
+            a.label(lab_sybad)
+            self.raise_static("system wants system(cmd)", ln)
+            a.label(lab_syok)
+            a.mov_rr("rdi", "rax")
+            a.mov_ri32("rsi", ln)
+            a.call("system_run")
+            return
         if fn["t"] == "var" and fn["name"] == "open":
             # hosted only: open(path, mode) -> File ("r"/"w")
             if len(e["args"]) != 2:
@@ -4784,6 +4806,110 @@ class Gen:
         a.pop_r("rbp")
         a.ret()
 
+    def emit_system_run(self):
+        """system_run: rdi = cmd Str, rsi = line -> rax = exit status Int.
+        Hosted only: fork + execve(/bin/sh -c cmd) + wait4, decoded like
+        Python (negative when killed by a signal)."""
+        a = self.a
+        a.label("system_run")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 64)
+        a.mov_mr("rbp", "rdi", -8)  # cmd
+        a.mov_mr("rbp", "rsi", -16)  # line
+        # cstr of the command
+        a.call("file_cstr")  # rax = c cmd
+        a.mov_mr("rbp", "rax", -24)
+        # argv = ["/bin/sh", "-c", cmd, NULL] (all NUL-terminated)
+        a.mov_ri32("rdi", 32)
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -32)
+        a.lea_rip("rdi", self.rstr("/bin/sh"))
+        a.mov_ri32("rsi", 7)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.call("file_cstr")
+        a.mov_mr("rbp", "rax", -56)  # sh path
+        a.lea_rip("rdi", self.rstr("-c"))
+        a.mov_ri32("rsi", 2)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.call("file_cstr")
+        a.mov_mr("rbp", "rax", -64)  # "-c"
+        a.mov_rm("rax", "rbp", -32)  # argv
+        a.mov_rm("rdi", "rbp", -56)
+        a.mov_mr("rax", "rdi", 0)
+        a.mov_rm("rdi", "rbp", -64)
+        a.mov_mr("rax", "rdi", 8)
+        a.mov_rm("rdi", "rbp", -24)
+        a.mov_mr("rax", "rdi", 16)
+        a.mov_ri32("rdi", 0)
+        a.mov_mr("rax", "rdi", 24)
+        # envp: reuse this process' own (argv + (argc + 1) * 8)
+        a.mov_rm_rip("rdi", "cmd_argc_")
+        a.add_ri32("rdi", 1)
+        a.shl_ri8("rdi", 3)
+        a.mov_rm_rip("rsi", "cmd_argv_")
+        a.add_rr("rsi", "rdi")  # rsi = envp
+        a.mov_mr("rbp", "rsi", -40)
+        a.mov_ri32("rax", 57)  # sys_fork
+        a.syscall()
+        a.test_rr("rax", "rax")
+        lab_child, lab_parent, lab_forkerr = (self.new_tmp("sy"),
+                                              self.new_tmp("sy"),
+                                              self.new_tmp("sy"))
+        a.jcc("l", lab_forkerr)
+        a.jcc("e", lab_child)
+        a.jmp(lab_parent)
+        a.label(lab_child)
+        # child: execve(/bin/sh, argv, envp) — never returns; 127 on failure
+        a.mov_rm("rsi", "rbp", -32)  # argv
+        a.mov_rm("rdx", "rbp", -40)  # envp
+        a.mov_rm("rdi", "rbp", -56)  # sh path (NUL-terminated)
+        a.mov_ri32("rax", 59)  # sys_execve
+        a.syscall()
+        a.mov_ri32("rdi", 127)
+        a.mov_ri32("rax", 60)  # sys_exit
+        a.syscall()
+        a.label(lab_forkerr)
+        # "system failed: errno N"
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr("system failed: errno "))
+        a.mov_ri32("rsi", 21)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.pop_r("rax")
+        a.call("file_erno")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -16)
+        a.jmp("hs_raise_msg")
+        a.label(lab_parent)
+        # wait4(-1, &status, 0, 0)
+        a.lea_m("rsi", "rbp", -48)
+        a.mov_ri32("rax", 61)  # sys_wait4
+        a.mov_ri32("rdi", -1)
+        a.mov_ri32("rdx", 0)
+        a.mov_ri32("r10", 0)
+        a.syscall()
+        a.mov_rm("rax", "rbp", -48)  # status
+        a.mov_rr("rcx", "rax")
+        a.and_ri32("rcx", 0x7F)
+        lab_sig = self.new_tmp("sy")
+        a.jcc("ne", lab_sig)  # killed by signal: -(sig)
+        a.shr_ri8("rax", 8)
+        a.and_ri32("rax", 0xFF)  # WEXITSTATUS
+        a.jmp("system_tag")
+        a.label(lab_sig)
+        a.mov_rr("rax", "rcx")
+        a.neg_r("rax")
+        a.jmp("system_tag")
+        a.label("system_tag")
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
     def emit_file_helpers(self):
         """Hosted file objects. Layout: [kind=3][fd][flags bit0=closed]
         [path Str]. Raising helpers take the line in rdx."""
@@ -5109,6 +5235,7 @@ class Gen:
         self.emit_input_read()
         self.emit_env_scan()
         self.emit_file_helpers()
+        self.emit_system_run()
         # x_malloc: rdi = bytes -> bump pointer over 16MB mmap arenas.
         # Never frees (arena semantics, like the kernel heap). exit(99) on failure.
         a.label("x_malloc")

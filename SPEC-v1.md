@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.12 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.13 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -739,3 +739,9 @@ x64 ไม่เคยตรวจจำนวน arg: เรียกผิด�
   `file_errmode` (mode), `file_closed` — รวมไฟล์ 100KB ผ่าน
   (x64 38 -> 42 ชุด)
 - เหลือ: `system`, Float/Dict/extern/attr บนค่า
+### 15.24 system() บน x64 (v0.6.13)
+
+- `system(cmd)` ผ่าน fork + execve(`/bin/sh -c cmd`) + wait4 ล้วนๆ
+  (env ส่งต่อของเดิม, exec ล้ม = 127, โดน signal = ลบเหมือน Python)
+- เทส: `system` (exit 3/0 + kill -9 → -9) — x64 42 -> 43 ชุด
+- เหลือจริงๆ: Float/Dict/extern/attr บนค่า (ต้องเปลี่ยน representation)
