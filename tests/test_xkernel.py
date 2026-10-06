@@ -35,7 +35,7 @@ def check(name, cond, detail=""):
         fails += 1
 
 
-def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None):
+def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None, disk=None):
     d = tempfile.mkdtemp(prefix="xkboot_")
     slog = os.path.join(d, "serial.log")
     msock = os.path.join(d, "mon.sock")
@@ -45,6 +45,9 @@ def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None):
     if initrd is not None:
         # multiboot module 0: the kernel reads it via kmb.mod_start(0)
         cmd += ["-initrd", initrd]
+    if disk is not None:
+        # raw disk on the primary IDE channel: the ATA driver reads it
+        cmd += ["-drive", f"file={disk},if=ide,format=raw,index=0,media=disk"]
     p = subprocess.Popen(cmd,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -310,6 +313,28 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("kio all assertions pass", m and m.group(1) == "0", out[-800:])
         check("kio ran its checks", out.count("\nok ") >= 10, out[-800:])
+    # ATA driver (kernel/kata.hs) on a real IDE disk: identify + PIO
+    # read/write round-trip. The image is built here so the pattern
+    # sector 4 (AB CD 5A repeating) and the intact neighbour byte
+    # (sector 10 offset 0 = 0x5A) are exactly what katatest expects.
+    kdisk = os.path.join(d, "kata.img")
+    with open(kdisk, "wb") as f:
+        img = bytearray(1 << 20)
+        pat = (0xAB, 0xCD, 0x5A)
+        for i in range(512):
+            img[4 * 512 + i] = pat[i % 3]
+        img[10 * 512] = 0x5A
+        f.write(img)
+    ka = os.path.join(d, "kata.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "katatest.hs"), ka)
+    check("katatest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(ka, timeout=20, disk=kdisk)
+        check("kata finished", "kata-done" in out, out[-800:])
+        check("kata did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kata all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("kata ran its checks", out.count("\nok ") >= 8, out[-800:])
     # shell: stage ramdisk + user ELFs, pack, then type over sendkeys.
     # Keys start late and slow: TCG boot takes seconds and the keyboard
     # flag is one deep, so anything typed during boot collapses.

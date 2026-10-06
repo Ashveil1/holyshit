@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.16 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.17 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -853,3 +853,21 @@ error บน x64 — ตัวแกรม/สคริปต์ที่ใช�
 - เทสใน kiotest: CMOS shadow RAM (0x70 index / 0x71 data) round-trip ได้
   ทั้ง 0x5A และ 0xA5 และความกว้าง 16/32-bit อ่านพอร์ตว่างได้ 0 —
   คือ driver จะคุยกับ register จริงได้
+
+### 15.31 ATA driver (PIO) ตัวแรกของ OS (v0.6.17)
+
+`kernel/kata.hs` — driver อ่าน/เขียน disk จริงตัวแรก เขียนด้วย `.hs`
+ล้วน คุยกับ controller ผ่าน `ioport_in/out` จาก 15.30
+
+- primary channel / master / LBA28: IDENTIFY (0xEC), READ (0x20),
+  WRITE (0x30); PIO ทีละ word ผ่านพอร์ต 0x1F0 (ไม่ต้องมี DMA/IRQ)
+- `present()` เช็ค IDENTIFY, `read_identify()` ดึง 256 word;
+  `sectors()` อ่าน words 60-61, `model()` ถอดชื่อรุ่น (byte-swapped
+  ในแต่ละ word, NUL ปนมา — compact แล้วค่อย `read_mem` เป็น Str)
+- `read`/`write(lba, count, buf)` ตรวจ count 1..256, `select(lba>>24)`
+  + `lba_setup` ก่อนสั่ง command แล้ว `wait_ready()` ตรวจ DRDY/ERR
+- gotcha ที่เจอ: ค่าที่อ่านใน `unsafe:` เป็น block-local — ส่งออกด้วย
+  `return` ผ่าน helper (`rd8`/`byte_at`/`put_byte`) แทนการ assign ตรง
+- เทส `katatest` บูต QEMU พร้อมดิสก์ raw 1MB: identify, อ่าน sector 4
+  ตรง pattern, เขียน sector 9 แล้วอ่านกลับเท่าเดิม, sector 10 ไม่เสียหาย
+  — ต่อเข้า test_xkernel (274 -> 279)

@@ -34,6 +34,9 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
   แตะ register ของ hardware เพราะ `asm` มีแต่ฝั่ง native
 - `unsafe:` เต็ม (`alloc`/`load`/`store` incl. `load64`/`store64`, struct) —
   คือวิธีแตะ hardware
+- ATA: `kata` (primary/master/LBA28, PIO) — `present()`, `read_identify()`,
+  `sectors()`, `model()`, `read`/`write(lba, count, buf)` (count 1..256);
+  เทส `katatest` บูตพร้อม `-drive if=ide`
 - `import` ได้ (โมดูล `.hs` ธรรมดา), `try` ได้ (halt ถ้าไม่มี handler รับ)
 
 ## memory management (`.hs` ล้วน)
