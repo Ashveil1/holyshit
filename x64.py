@@ -203,6 +203,21 @@ class Asm:
     def out_dx_al(self):
         self.code.append(0xEE)
 
+    # port I/O, all forms the kernel needs (dx holds the port number)
+    def in_ax_dx(self):
+        self.code.append(0x66)
+        self.code.append(0xED)
+
+    def in_eax_dx(self):
+        self.code.append(0xED)
+
+    def out_dx_ax(self):
+        self.code.append(0x66)
+        self.code.append(0xEF)
+
+    def out_dx_eax(self):
+        self.code.append(0xEF)
+
     def add_ri8(self, d, imm):
         dn, db = _rn(d)
         self._rex(True, b=db)

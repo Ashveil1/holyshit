@@ -29,6 +29,9 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 - `read_mem(ptr, n)` — อ่าน memory ดิบเป็น Str (ไบต์ต่อไบต์) ใช้อ่าน struct
   ของ bootloader กับ image ramdisk
 - paging: `cr2()`/`cr3()`/`set_cr3(p)`, `invlpg(vaddr)`, `tlb_flush()`
+- port I/O: `ioport_in(port, size)` / `ioport_out(port, value, size)`
+  (size = 1/2/4 ไบต์, ค่าเป็น machine word ไม่มี tag) — ทางเดียวที่ kernel
+  แตะ register ของ hardware เพราะ `asm` มีแต่ฝั่ง native
 - `unsafe:` เต็ม (`alloc`/`load`/`store` incl. `load64`/`store64`, struct) —
   คือวิธีแตะ hardware
 - `import` ได้ (โมดูล `.hs` ธรรมดา), `try` ได้ (halt ถ้าไม่มี handler รับ)

@@ -1642,6 +1642,34 @@ class Gen:
             self.raise_static(msg, ln)
             a.label(lab_fsret)
             return
+        if fn["t"] == "var" and fn["name"] in ("ioport_in", "ioport_out"):
+            # freestanding only: the kernel needs real port I/O and there is
+            # no `asm` in this backend
+            args = e["args"]
+            if fn["name"] == "ioport_in":
+                n_want, msg = 2, "ioport_in wants ioport_in(port, size)"
+            else:
+                n_want, msg = 3, "ioport_out wants ioport_out(port, value, size)"
+            if len(args) != n_want:
+                raise HSErr(msg, ln)
+            if not self.freestanding:
+                raise HSErr(f"builtin '{fn['name']}' not in x64 subset", ln)
+            for ar in args:
+                self.ev(ar, sc, mod)
+                self.check_int(lambda: self.raise_static(msg, ln))
+                a.sar_ri8("rax", 2)      # untagged machine word
+                a.push_r("rax")
+            a.pop_r("rsi")              # size
+            if fn["name"] == "ioport_in":
+                a.pop_r("rdx")          # port
+                a.call("x_port_in")
+                a.shl_ri8("rax", 2)
+                a.or_ri8("rax", 1)
+            else:
+                a.pop_r("rax")          # value
+                a.pop_r("rdx")          # port
+                a.call("x_port_out")    # returns Null
+            return
         if fn["t"] == "var" and fn["name"] in (
                 "float", "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
@@ -4929,6 +4957,7 @@ class Gen:
         self.emit_print_int()
         self.emit_val_runtime()
         self.emit_dict_helpers()
+        self.emit_port_io()
         # oom_ / dzm_ cstrs emitted with rodata in build_image
 
     def emit_input_read(self):
@@ -5863,6 +5892,76 @@ class Gen:
             a.mov_rr("rsp", "rbp")
             a.pop_r("rbp")
             a.ret()
+
+    def emit_port_io(self):
+        """Raw x86 port I/O for the kernel (ATA, POST, ...). The language has
+        no `asm` in a freestanding build, so the port primitives live in the
+        runtime behind two builtins. Values are untagged machine words."""
+        a = self.a
+        # x_port_in: rdx = port, rsi = size (1/2/4) -> rax = value
+        a.label("x_port_in")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.mov_ri32("rax", 0)
+        lab_in_1 = self.new_tmp("io")
+        lab_in_2 = self.new_tmp("io")
+        lab_in_4 = self.new_tmp("io")
+        lab_in_bad = self.new_tmp("io")
+        a.cmp_ri32("rsi", 1)
+        a.jcc("e", lab_in_1)
+        a.cmp_ri32("rsi", 2)
+        a.jcc("e", lab_in_2)
+        a.cmp_ri32("rsi", 4)
+        a.jcc("e", lab_in_4)
+        a.jmp(lab_in_bad)
+        a.label(lab_in_1)
+        a.in_al_dx()              # 8-bit in zero-extends into rax
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_in_2)
+        a.in_ax_dx()          # 16-bit in already zero-extends into rax
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_in_4)
+        a.in_eax_dx()
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_in_bad)
+        self.type_err()
+        # x_port_out: rdx = port, rax = value, rsi = size (1/2/4) -> Null
+        a.label("x_port_out")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        lab_out_1 = self.new_tmp("io")
+        lab_out_2 = self.new_tmp("io")
+        lab_out_4 = self.new_tmp("io")
+        lab_out_bad = self.new_tmp("io")
+        a.cmp_ri32("rsi", 1)
+        a.jcc("e", lab_out_1)
+        a.cmp_ri32("rsi", 2)
+        a.jcc("e", lab_out_2)
+        a.cmp_ri32("rsi", 4)
+        a.jcc("e", lab_out_4)
+        a.jmp(lab_out_bad)
+        a.label(lab_out_1)
+        a.out_dx_al()
+        a.jmp("port_out_done")
+        a.label(lab_out_2)
+        a.out_dx_ax()
+        a.jmp("port_out_done")
+        a.label(lab_out_4)
+        a.out_dx_eax()
+        a.jmp("port_out_done")
+        a.label(lab_out_bad)
+        self.type_err()
+        a.label("port_out_done")
+        a.mov_ri64("rax", Gen.HS_NULL)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
 
     def emit_dict_helpers(self):
         """Dict runtime. Layout [kind][len][cap][buf]; buf holds interleaved

@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.15 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.16 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -836,3 +836,20 @@ error บน x64 — ตัวแกรม/สคริปต์ที่ใช�
   interp (ต่างจุดเดียวที่บันทึกไว้ใน AGENTS.md / docs)
 - เทส `fs_helpers` (makedirs ซ้อน, append, exists จริง/ปลอม, ls สอง
   ชั้น) — x64 49 -> 50
+
+### 15.30 port I/O ดิบใน kernel (v0.6.16)
+
+`ioport_in(port, size)` / `ioport_out(port, value, size)` — ขั้นเดินสำคัญ
+ของ driver ตัวจริง (ATA) เพราะ `asm()` มีแต่ฝั่ง native
+
+- ภาษาไม่มี `asm` ใน `xkernel` จึงต้องมีทางออก: port I/O สดอยู่ใน
+  runtime ฝั่ง freestanding หลัง `x_dict_helpers` เป็น `x_port_in` /
+  `x_port_out` (size = 1/2/4 ไบต์; `in ax,dx` 16-bit zero-extend ให้เอง)
+- ตัว builtin unbox argument เป็น machine word ก่อน (`sar 2`) — port
+  number กับค่าเป็นเลขดิบ ไม่มี tag
+- hosted build ปฏิเสธด้วย `builtin 'ioport_in' not in x64 subset` เหมือน
+  syscall ตัวอื่นที่เป็นของ kernel
+- assembler เพิ่ม `in_ax_dx`/`in_eax_dx`/`out_dx_ax`/`out_dx_eax`
+- เทสใน kiotest: CMOS shadow RAM (0x70 index / 0x71 data) round-trip ได้
+  ทั้ง 0x5A และ 0xA5 และความกว้าง 16/32-bit อ่านพอร์ตว่างได้ 0 —
+  คือ driver จะคุยกับ register จริงได้

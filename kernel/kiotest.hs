@@ -81,5 +81,16 @@ expect("ls kern path", ksyscall.sys_ls(4096, 5, UBUF, 64), -14)
 # zero-length never blocks (fd 0 would spin on readline otherwise)
 expect("read0 zero", ksyscall.sys_read(0, UBUF, 0), 0)
 expect("write zero", ksyscall.sys_write(1, UBUF, 0), 0)
+
+# raw port I/O (the kernel has no `asm`; ioport_* is how ATA will talk to
+# the disk controller). CMOS shadow RAM round-trips byte for byte.
+ioport_out(0x70, 0x15, 1)
+ioport_out(0x71, 0x5A, 1)
+expect("port out/in 8", ioport_in(0x71, 1), 0x5A)
+ioport_out(0x70, 0x16, 1)
+ioport_out(0x71, 0xA5, 1)
+expect("port out/in 8b", ioport_in(0x71, 1), 0xA5)
+expect("port width 16", ioport_in(0xE9, 2), 0)
+expect("port width 32", ioport_in(0xE9, 4), 0)
 print "fails", fails
 print "kiotest-done"
