@@ -52,6 +52,9 @@ class Gen:
         # builtin-as-value: id per builtin name, and the trampoline stubs
         self.bi_ids = {}
         self.bi_stubs = {}
+        # runtime/ helper modules compiled into the image on demand
+        self.js_mod = None
+        self.js_fns = {}
 
     # ----- modules -----
     def load_module(self, name, from_dir, line):
@@ -305,7 +308,13 @@ class Gen:
             self.ann_expr(e["r"], sc, ux)
             return
         if t == "call":
-            self.ann_expr(e["fn"], sc, ux)
+            fn = e["fn"]
+            if (isinstance(fn, dict) and fn.get("t") == "var"
+                    and fn.get("name") == "type_name" and self.in_json(sc)):
+                for ar in e["args"]:
+                    self.ann_expr(ar, sc, ux)
+                return
+            self.ann_expr(fn, sc, ux)
             for ar in e["args"]:
                 self.ann_expr(ar, sc, ux)
             return
@@ -430,7 +439,11 @@ class Gen:
                 p = fs.parent
                 outer = False
                 while p is not None:
-                    if p is ms:
+                    # the owning module scope ends the search: names there
+                    # are globals, not captures (works for every module,
+                    # including the private runtime/json.hs one)
+                    if p is ms or (isinstance(getattr(p, "_mod", None), dict)
+                                   and p is p._mod.get("scope")):
                         break
                     if nm in p.globs:
                         break
@@ -1277,6 +1290,17 @@ class Gen:
                 self.ev_user_call(e, sc, mod, ln)
                 return
         # builtin print / int() / unsafe builtins
+        if fn["t"] == "var" and fn["name"] == "type_name" and self.in_json(sc):
+            # private hook: runtime/json.hs only. Users cannot call it.
+            if len(e["args"]) != 1:
+                raise HSErr("type_name wants type_name(x)", ln)
+            self.ev(e["args"][0], sc, mod)
+            a.mov_rr("rdi", "rax")
+            a.call("x_tname")
+            return
+        if fn["t"] == "var" and fn["name"] in Gen.JSON_CALLS:
+            self.ev_json(e, sc, mod, ln)
+            return
         if fn["t"] == "var" and fn["name"] == "print":
             self.ev_print(e["args"], sc, mod, ln)
             return
@@ -1290,11 +1314,15 @@ class Gen:
             lab_iok, lab_inum = self.new_tmp("in"), self.new_tmp("in")
             lab_iflt, lab_istr = self.new_tmp("in"), self.new_tmp("in")
             lab_ibool, lab_iquote = self.new_tmp("in"), self.new_tmp("in")
+            lab_iint = self.new_tmp("in")
             a.push_r("rax")
             a.mov_rr("r11", "rax")
             a.and_ri32("r11", 3)
             a.cmp_ri32("r11", Gen.TAG_INT)
-            a.jcc("e", lab_iok)
+            a.jcc("e", lab_iint)
+            # the Int passthrough has to drop the saved original too, or the
+            # extra slot leaks into whatever pops next (s[int(n)] read the
+            # index expression's leftover instead of the object)
             a.cmp_ri32("r11", Gen.TAG_BOOL)
             a.jcc("e", lab_ibool)
             a.test_rr("r11", "r11")
@@ -1365,6 +1393,9 @@ class Gen:
             a.mov_rr("rdi", "rax")
             a.mov_ri32("rsi", ln)
             a.jmp("hs_raise_msg")
+            a.label(lab_iint)
+            a.add_ri32("rsp", 8)            # drop the saved original
+            a.jmp(lab_iok)
             a.label(lab_iok)
             return
         if fn["t"] == "var" and fn["name"] in ("str", "len"):
@@ -2016,6 +2047,147 @@ class Gen:
                 break
             cur = cur.parent
         return False
+
+    def call_js_entry(self, lab, argreg="rax"):
+        """Call a runtime/json.hs entry point with one argument.
+
+        Layout matches ev_user_call: a Func pointer slot, then the argument
+        at [rbp+24], then r15. The helper has no captures, so the Func and
+        r15 values are placeholders that are never dereferenced.
+        """
+        a = self.a
+        a.push_r("rax")                 # Func pointer placeholder
+        a.push_r(argreg)                # the argument, read at [rbp+24]
+        a.push_r("rax")                 # r15 = &caps
+        a.call(lab)
+        a.add_ri32("rsp", 24)
+
+    def ev_json(self, e, sc, mod, ln):
+        """json_parse / json_str / json_load / json_save.
+
+        The parser and encoder live in runtime/json.hs, compiled into the
+        image as the private module `<json>` (see load_json_helper). They
+        return [null, value] or ["<message>", null]; this wrapper turns the
+        failure case into a raise at the *caller's* line, exactly like
+        interp, which reports CPython's json error text.
+        """
+        a = self.a
+        name = e["fn"]["name"]
+        args = e["args"]
+        lab_ok = self.new_tmp("js")
+
+        want = {"json_parse": (1, "json_parse wants json_parse(str)"),
+                "json_str": (1, "json_str wants json_str(x)"),
+                "json_load": (1, "json_load wants json_load(path)"),
+                "json_save": (2, "json_save wants json_save(path, x)")}[name]
+        if len(args) != want[0]:
+            raise HSErr(want[1], ln)
+        if name in ("json_load", "json_save") and self.freestanding:
+            raise HSErr(f"builtin '{name}' not in x64 subset", ln)
+        lab_bad = self.new_tmp("js")
+        lab_go = self.new_tmp("js")
+        for ar in args:
+            self.ev(ar, sc, mod)
+            a.push_r("rax")
+        if name in ("json_parse", "json_load", "json_save"):
+            # a Str is a heap pointer, so a non-null tag means "not a Str"
+            for i in range(len(args)):
+                if name == "json_save" and i == 1:
+                    continue              # the payload is any value
+                # args are pushed in order, so arg i sits at 8*(n-1-i)
+                off = 8 * (len(args) - 1 - i)
+                a.mov_rm("r11", "rsp", off)    # a Str is a heap pointer
+                a.and_ri32("r11", 3)
+                a.jcc("ne", lab_bad)
+                a.mov_rm("r11", "rsp", off)
+                a.mov_rm("r11", "r11", 0)       # so read its kind
+                a.cmp_ri32("r11", Gen.K_STR)
+                a.jcc("ne", lab_bad)
+            a.jmp(lab_go)
+            a.label(lab_bad)
+            self.raise_static(want[1], ln)
+            a.label(lab_go)
+
+        if name == "json_save":
+            # path on the stack, payload on top: encode the payload, then
+            # write the text out with the same sequence write_text uses
+            a.pop_r("rax")
+            self.call_js_entry(self.js_label("js_encode", ln))
+            self.js_finish(lab_ok, ln)
+            a.push_r("rax")                # the JSON text
+            a.mov_rm("rdi", "rsp", 8)      # the path
+            a.mov_ri32("rsi", 1)           # mode 1 = write/truncate
+            a.mov_ri32("rdx", ln)
+            a.call("file_open")
+            a.push_r("rax")                # File, text, path
+            a.mov_ri32("rdx", ln)
+            a.mov_rm("rsi", "rsp", 8)
+            a.mov_rm("rdi", "rsp", 0)
+            a.call("file_write_all")
+            a.mov_rm("rdi", "rsp", 0)
+            a.add_ri32("rsp", 24)
+            a.call("file_close")
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "json_load":
+            a.mov_rm("rdi", "rsp", 0)
+            a.mov_ri32("rsi", 0)
+            a.mov_ri32("rdx", ln)
+            a.call("file_open")
+            a.push_r("rax")                # the File
+            a.mov_rr("rdi", "rax")
+            a.mov_ri32("rdx", ln)
+            a.call("file_read_all")
+            a.push_r("rax")                # the content
+            a.mov_rm("rdi", "rsp", 8)
+            a.call("file_close")
+            a.add_ri32("rsp", 8)           # drop the File slot
+            a.pop_r("rax")                 # the content
+            a.add_ri32("rsp", 8)           # drop the path slot
+            self.call_js_entry(self.js_label("js_decode", ln))
+            self.js_finish(lab_ok, ln, parse=True)
+            return
+        a.pop_r("rax")
+        if name == "json_parse":
+            self.call_js_entry(self.js_label("js_decode", ln))
+            self.js_finish(lab_ok, ln, parse=True)
+            return
+        self.call_js_entry(self.js_label("js_encode", ln))
+        self.js_finish(lab_ok, ln)
+        return
+
+    def js_finish(self, lab_ok, ln, parse=False):
+        """rax = [err_or_null, payload]: return the payload, or raise at ln.
+
+        The helper already spells out every encoder message; the decoder only
+        produces the bare CPython text, so json_parse/json_load prepend
+        "json_parse failed: " the way interp does.
+        """
+        a = self.a
+        # the helper returns a List: [kind][len][cap][buf], so the two
+        # elements live in the buffer, not in the header
+        a.mov_rm("r11", "rax", 24)          # buf
+        a.mov_rm("r10", "r11", 0)           # element 0: null or the message
+        a.cmp_ri32("r10", Gen.HS_NULL)
+        a.jcc("e", lab_ok)
+        a.mov_rr("rcx", "r10")             # the message Str
+        if parse:
+            # the message rides on the stack: x_str_at clobbers rcx
+            pre = "json_parse failed: "
+            a.push_r("rcx")
+            a.lea_rip("rdi", self.rstr(pre))
+            a.mov_ri32("rsi", len(pre))
+            a.call("x_str_at")            # rax = the prefix
+            a.pop_r("rsi")                # rsi = the message
+            a.mov_rr("rdi", "rax")
+            a.call("x_str_cat")           # prefix + message
+            a.mov_rr("rdi", "rax")
+        else:
+            a.mov_rr("rdi", "rcx")
+        a.mov_ri32("rsi", ln)
+        a.jmp("hs_raise_msg")
+        a.label(lab_ok)
+        a.mov_rm("rax", "r11", 8)           # element 1: the payload
 
     def ev_user_call(self, e, sc, mod, ln):
         """Call through a user value: indirect through the Func struct with
@@ -3817,6 +3989,10 @@ class Gen:
         if ms.nloc:
             a.sub_ri32("rsp", 8 * ms.nloc)
         self.frame_init_unbound(ms.nloc)
+        if self.js_mod is not None:
+            # runtime/json.hs is never imported by user code: run its body
+            # once up front so the Func objects and HEX exist
+            a.call(f"hsM_init_{self.js_mod['pfx']}")
         self.ex_body(mod["prog"], ms, mod, 0)
         if self.freestanding:
             # return to the boot trampoline, which halts
@@ -3882,6 +4058,88 @@ class Gen:
         a.hlt()
         a.jmp(lab_h)
 
+    # ----- runtime/ helper modules (currently only JSON) -----
+    JSON_CALLS = ("json_parse", "json_str", "json_load", "json_save")
+
+    def in_json(self, sc):
+        """True while emitting code that belongs to the runtime/json.hs module."""
+        while sc is not None:
+            m = getattr(sc, "_mod", None)
+            if isinstance(m, dict) and m.get("name") == "<json>":
+                return True
+            sc = sc.parent
+        return False
+
+    def uses_json(self, mod):
+        """True when the program mentions one of the json_* builtins."""
+        want = set(self.JSON_CALLS)
+        hit = [False]
+
+        def walk(node):
+            if isinstance(node, list):
+                for x in node:
+                    walk(x)
+                return
+            if not isinstance(node, dict):
+                return
+            if node.get("t") == "call":
+                fn = node.get("fn")
+                if isinstance(fn, dict) and fn.get("t") == "var" \
+                        and fn.get("name") in want:
+                    hit[0] = True
+            for v in node.values():
+                walk(v)
+
+        walk(mod["prog"])
+        for m in self.modules:
+            if m.get("collected") and not hit[0]:
+                walk(m["prog"])
+        return hit[0]
+
+    def load_json_helper(self):
+        """Compile runtime/json.hs as a private module `<json>`.
+
+        The file is plain hs restricted to the x64 subset, so the JSON
+        parser/encoder is written once and compiled by the very same
+        backend. One hook exists for this module alone: `type_name(x)`,
+        which lowers to the x_tname runtime routine.
+        """
+        import os as _os
+        path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                             "runtime", "json.hs")
+        try:
+            with open(path, encoding="utf-8") as f:
+                src = f.read()
+        except OSError as e:
+            raise HSErr(f"cannot read {path}: {e.strerror or e}", 1)
+        prog = interp.parse_program(src)
+        mod = {"name": "<json>", "prog": prog, "pfx": "js_",
+               "scope": Gen.Scope(),
+               "dir": _os.path.dirname(_os.path.abspath(path))}
+        mod["scope"]._mod = mod
+        base = len(self.all_fs)
+        self.collect(prog, mod["scope"])
+        for i, fs in enumerate(self.all_fs):
+            if i >= base:
+                self.flabels[id(fs)] = f"hsJF_{i}"
+        for st in prog:
+            if st["t"] == "def" and "_fs" in st:
+                self.js_fns[st["name"]] = self.flabels[id(st["_fs"])]
+        mod["collected"] = True
+        self.modules.append(mod)
+        self.js_mod = mod
+        return mod
+
+    def js_label(self, name, ln):
+        """Code label of a runtime/json.hs entry point."""
+        if self.js_mod is None:
+            raise HSErr("json internal error (helper not compiled)", ln)
+        lab = self.js_fns.get(name)
+        if lab is None:
+            raise HSErr(f"json internal error (no {name} in runtime/json.hs)",
+                        ln)
+        return lab
+
     def build_image(self, mod):
         # assign function labels, collect, emit everything, link
         ms = mod["scope"]
@@ -3889,6 +4147,8 @@ class Gen:
         self.collect(mod["prog"], ms)
         for i, fs in enumerate(self.all_fs):
             self.flabels[id(fs)] = f"hsF_{i}"
+        if self.uses_json(mod):
+            self.load_json_helper()
         self.finalize(mod)
         for m in [mod] + [x for x in self.modules if x.get("collected")]:
             self.emit_data(m)
@@ -7122,7 +7382,11 @@ class Gen:
         a.test_rr("rcx", "rcx")
         a.jcc("ne", "pf_keep")
         a.cmp_ri32("rax", 48)
-        a.jcc("e", "pf_nexti")          # leading zero: skip, no count
+        a.jcc("ne", "pf_keep")
+        # leading zero: still a digit, just no contribution to Mc
+        a.mov_ri32("rcx", 1)
+        a.mov_mr("rbp", "rcx", -80)
+        a.jmp("pf_nexti")
         a.label("pf_keep")
         a.mov_ri32("rcx", 1)
         a.mov_mr("rbp", "rcx", -80)
@@ -7202,7 +7466,11 @@ class Gen:
         a.test_rr("rcx", "rcx")
         a.jcc("ne", "pf_fkeep")
         a.cmp_ri32("rax", 48)
-        a.jcc("e", "pf_fnext")          # leading zero: position only
+        a.jcc("ne", "pf_fkeep")
+        # leading zero: still a digit, it only fixes the decimal position
+        a.mov_ri32("rcx", 1)
+        a.mov_mr("rbp", "rcx", -80)
+        a.jmp("pf_fnext")
         a.label("pf_fkeep")
         a.mov_ri32("rcx", 1)
         a.mov_mr("rbp", "rcx", -80)

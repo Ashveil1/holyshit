@@ -35,14 +35,14 @@
 | | convert to Int |||||
 | `join` | `join(sep, list)` | ✓ | ✓ | ✓ | ✓ |
 | | join List of Str |||||
-| `json_load` | `json_load(path)` | ✓ | ✓ |   |   |
+| `json_load` | `json_load(path)` | ✓ | ✓ | ✓ |   |
 | | load JSON file (hosted only) |||||
-| `json_parse` | `json_parse(s)` | ✓ | ✓ |   |   |
-| | parse JSON Str (hosted only) |||||
-| `json_save` | `json_save(path, x)` | ✓ | ✓ |   |   |
+| `json_parse` | `json_parse(s)` | ✓ | ✓ | ✓ | ✓ |
+| | parse JSON Str |||||
+| `json_save` | `json_save(path, x)` | ✓ | ✓ | ✓ |   |
 | | save value as JSON (hosted only) |||||
-| `json_str` | `json_str(x)` | ✓ | ✓ |   |   |
-| | value to JSON Str (hosted only) |||||
+| `json_str` | `json_str(x)` | ✓ | ✓ | ✓ | ✓ |
+| | value to JSON Str |||||
 | `len` | `len(x)` | ✓ | ✓ | ✓ | ✓ |
 | | length of Str/List/Dict |||||
 | `load32` | `load32(p)` | ✓ | ✓ | ✓ | ✓ |

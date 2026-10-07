@@ -12,3 +12,7 @@ print float("nan") == float("nan"), float("nan") < 2.0
 print [1.5, 2.5], {"pi": 3.14}
 print str(float("6.290184345309701e-235"))
 print float("5.896816288783659e+166")
+# int() as an index operand: every conversion path has to keep the stack even
+s = "0123456789abcdef"
+print s[int(3)], s[int(2.9)], s[int("10")]
+print s[int(0.0) + int(1)], s[int(true)]

@@ -1,6 +1,6 @@
 {
  "language": "holyshit",
- "version": "0.6.18",
+ "version": "0.6.19",
  "keywords": {
   "def": "define a function: `def name(params):` + indented body",
   "if": "conditional branch (with `elif` / `else`)",
@@ -254,18 +254,22 @@
   },
   "json_parse": {
    "sig": "json_parse(s)",
-   "desc": "parse JSON Str (hosted only)",
+   "desc": "parse JSON Str",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild",
+    "xkernel"
    ]
   },
   "json_str": {
    "sig": "json_str(x)",
-   "desc": "value to JSON Str (hosted only)",
+   "desc": "value to JSON Str",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild",
+    "xkernel"
    ]
   },
   "read_mem": {
@@ -331,7 +335,8 @@
    "desc": "load JSON file (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "json_save": {
@@ -339,7 +344,8 @@
    "desc": "save value as JSON (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "alloc": {

@@ -169,6 +169,21 @@ with tempfile.TemporaryDirectory() as d:
               len(re.findall(r"(?m)^ok ", out)) >= 29, out[-800:])
         check("kfloattest all assertions pass",
               "kfloattest fails" not in out, out[-800:])
+    # JSON in the freestanding build: runtime/json.hs compiled into the image
+    kj = os.path.join(d, "kj.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kjsontest.hs"), kj)
+    check("kjsontest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kj, timeout=12)
+        check("kjsontest finished", "kjsontest ok" in out, out[-800:])
+        check("kjsontest did not fault", "EXC " not in out, out[-800:])
+        check("kjsontest ran its checks",
+              len(re.findall(r"(?m)^ok ", out)) >= 18, out[-800:])
+        check("kjsontest all assertions pass",
+              "kjsontest fails" not in out, out[-800:])
+        for line in ("bad-bracket err json_parse failed: Expecting value",
+                     "bad-inf err json_str failed: Out of range float"):
+            check(f"kjsontest serial has {line!r}", line in out, out[-800:])
     # dynamic paging: map/unmap frames, split huge pages, use the mappings
     kpg = os.path.join(d, "kpg.elf")
     rc = build_xkernel(os.path.join(ROOT, "kernel", "kpaging.hs"), kpg)

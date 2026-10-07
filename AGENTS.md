@@ -224,9 +224,25 @@ even last digit) is emitted; `float(str)` parses the other way with
 over IEEE patterns with round-half-to-even at the midpoint. Verified
 bit-exact against CPython over ~2500 random doubles.
 
+JSON in x64 lives in `runtime/json.hs`: the parser/encoder are plain hs
+written against the subset, and x64gen compiles that file into the image as
+a private module (`<json>`) whenever the program mentions one of the four
+builtins, then routes the calls through it. One hook exists for that module
+alone — `type_name(x)`, lowered straight to the x_tname runtime routine —
+so a hand-written `import runtime.json` (reachable when the repo is on
+HSPATH) gets a copy that cannot compile anything using it. Each entry point
+returns `[null, value]` or `["<message>", null]`, so the wrapper raises with the
+caller's line and interp's exact CPython wording (`Expecting value`,
+`Extra data`, `Illegal trailing comma before end of array`, ...).
+`json_parse`/`json_str` work freestanding too; `json_load`/`json_save`
+need a filesystem and stay hosted-only. Two gotchas that file lives with:
+x64 `and`/`or` do not short-circuit, so every bound test is written as its
+own safe call (`js_at(s, i, n)`), and an x64 Str has no `chr()` — bytes are
+built with `alloc` + `store8` + `read_mem` (`js_chr`).
+
 Missing (compile error, on purpose):
 attribute access on values (only modules have attrs), `extern`,
-`tcp_*`/`http_get`/`json_*`,
+`tcp_*`/`http_get`,
 `scall`/`enter_user`/`exec_enter`/`user_stop` are hosted-only.
 Modules support aliasing: `m = mod` / `m = pkg.sub` binds the name
 without emitting code, and `m.attr` resolves statically like the
@@ -234,6 +250,9 @@ original (including `<module name>` display). Passing a module into a
 call, arithmetic, or index is still an error — use `mod.attr`.
 `/` truncates
 like C here, not hs. Out-of-range indexing reports `index out of range`.
+`and`/`or` do not short-circuit: both sides always run, so `s[i]` inside a
+bound test raises instead of guarding. `int(x)` with an Int `x` returns
+`x` and leaves the evaluation stack exactly as it found it.
 
 Errors: every dynamic failure carries `message at line N` (uncaught prints
 `error: message at line N`, exit 1) — operator/index/len/call messages name

@@ -1,0 +1,26 @@
+enc-mixed ok [1, 2.5, true, false, null, "hi", {"a": 1, "b": [2]}]
+enc-escapes ok "quote \" backslash \\ slash / tab\there"
+enc-utf8 ok "h\u00e9llo \u2192 \u2713 \ud83d\ude00"
+enc-order ok {"z": 1, "a": 2, "m": [1, {"k": null}]}
+enc-float ok 1.5
+enc-small ok 0.0001
+dec-int ok 1
+dec-list ok [1, 2, 3]
+dec-nested ok {"a": [1, null, true], "b": {"c": "x"}}
+dec-exp ok -2500.0
+dec-unicode ok "\u00e9\ud83d\ude00"
+dec-empty-list ok []
+dec-empty-obj ok {}
+dec-escapes ok "a\n\t\\/"
+dec-overflow err json_str failed: Out of range float values are not JSON compliant: inf at line 4
+dec-zero ok 0.0
+err-word err json_parse failed: Expecting value at line 44
+err-trail-arr err json_parse failed: Illegal trailing comma before end of array at line 46
+err-trail-obj err json_parse failed: Illegal trailing comma before end of object at line 48
+err-extra err json_parse failed: Extra data at line 50
+err-comma err json_parse failed: Expecting ',' delimiter at line 52
+err-unterm err json_parse failed: Unterminated string starting at at line 54
+err-key err json_parse failed: Expecting property name enclosed in double quotes at line 56
+err-inf err json_str failed: Out of range float values are not JSON compliant: inf at line 58
+err-nan err json_str failed: Out of range float values are not JSON compliant: nan at line 60
+err-empty err json_parse failed: Expecting value at line 62

@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.18 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.19 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -944,3 +944,72 @@ word) เพราะทั้งสองทางเรียกแบบ in-p
 `1.7976931348623157e+308`; `int()`/`float()`/`str()` และ error messages
 ตรงทุกเคส. เทส `tests/x64/float.hs` (x64 50 -> 51) และ
 `kernel/kfloattest.hs` ที่บูต QEMU จริง (xkernel 279 -> 284)
+
+### 15.33 JSON ใน x64: คอมไพล์ parser จากซอร์ส `.hs` เข้าไปใน image (v0.6.19)
+
+`json_parse`/`json_str` เต็มรูปแบบทั้ง `xbuild` และ `xkernel`
+(`json_load`/`json_save` hosted เท่านั้น เพราะต้องมี filesystem)
+
+**วิธีที่เลือก.** ไม่เขียน JSON เป็น machine code ด้วยมือ แต่เขียนเป็น
+hs จริงใน `runtime/json.hs` (ราว 430 บรรทัด) แล้วให้ x64gen **คอมไพล์ไฟล์นั้น
+เข้าไปใน image** เป็นโมดูลส่วนตัวชื่อ `<json>` เฉพาะโปรแกรมที่เรียก
+`json_*` — ตรวจด้วยการเดิน AST ก่อน `finalize` ถ้าเจอก็ `collect` + ออก
+label `hsJF_*` แล้วสั่ง `emit_mod_init` เหมือน `import` ทุกอย่าง
+
+- hook เดียวที่มีให้โมดูลนี้คือ `type_name(x)` ซึ่งคอมไพล์ตรงไปที่
+  runtime `x_tname` (hs ไม่มี type introspection) โดย hook อยู่หลังเช็ก
+  `mod["name"] == "<json>"` ผลคือถ้าผู้ใช้เขียน `import runtime.json`
+  เอง (ทำได้ถ้า repo อยู่บน HSPATH) จะได้อีกสำเนาที่ไม่มี hook —
+  ฟังก์ชันที่ต้องใช้ `type_name` จะคอมไพล์ไม่ผ่าน (`unknown variable
+  'type_name'`) ไม่งั้นแค่ helper ที่ไม่ต้อง introspect
+- entry point คืน 2-element List: `[null, value]` หรือ
+  `["<message>", null]` แล้ว wrapper ที่ emit ใน `ev_call` เป็นคน
+  `hs_raise_msg` ด้วย **บรรทัดของผู้เรียก** ข้อความ error จึงตรงกับ
+  CPython ที่ interp ใช้ทุกตัว: `Expecting value`, `Extra data`,
+  `Expecting ',' delimiter`, `Illegal trailing comma before end of array`,
+  `Unterminated string starting at`, ... รวมถึง
+  `json_str failed: Out of range float values are not JSON compliant: inf`
+  และ `not JSON-serializable: Builtin`
+- parser/encoder เขียนแบบ byte-oriented (x64 Str คือ buffer UTF-8) จึง
+  ต้องอ่านค่า byte เป็น Int — ทำด้วย `byte_at()` = `as_ptr` + `load8`
+
+**สิ่งที่เจอระหว่างทำ (สำคัญ).**
+- **`and`/`or` ฝั่ง x64 ไม่ short-circuit** ทั้ง interp และ native
+  short-circuit แต่ x64 รันทั้งสองข้าง → `while i < len(s) and s[i] == "x"`
+  พังทันที (`index out of range`) แก้โดยเขียน bound check เป็นการเรียก
+  เดี่ยว (`js_at(s, i, n)` คืน -1 เมื่อเลยปลาย) แล้วเทียบ
+- **hs ไม่มี `chr()`** แต่ encoder ต้องปั่น byte ดิบ (UTF-8 ส่วนที่
+  escape ไม่ได้) วิธีเดียวที่ subset มีคือ `alloc` + `store8` + `read_mem`
+  (`js_chr`) — ช้ากว่ามากแต่ถูก
+- **`append()` คืน Null** (เหมือน interp) ไม่ใช่คืน list → ต้องแก้ list
+  ใน place ไม่ใช่ `x = append(x, y)`
+- **register ที่เก็บค่าข้าม `call` ได้ไม่ได้** — ตอนแรกเก็บข้อความ error
+  ไว้ใน rcx แล้วเรียก `x_str_at` เพื่อสร้าง prefix `"json_parse failed: "`
+  rcx ถูก clobber ทิ้ง เปลี่ยนเป็นเก็บบน stack
+- **x64 ไม่มี mutual recursion** และ resolve ชื่อ module-level แบบ static
+  → ต้องรวม array/object parsing ไว้ใน `js_value` ตัวเดียวที่เรียกตัวเอง
+  ได้ (คำนวณไว้ใน `runtime/json.hs` เพราะไม่มี `int()`/`ord()` ให้แยกว่า
+  Int กับ Float — ใช้ `str()` + first char หรือ `len()` + first char แยกแทน)
+- **list ใน x64 คือ `[kind][len][cap][buf]`** element อยู่ใน buf ไม่ใช่
+  inline → wrapper ต้องอ่าน `[[rax+24]+8]` ไม่ใช่ `[rax+16]`
+- `finalize()` เดิมใช้ module scope ของ `<main>` เป็นขอบเขตการหา
+  capture ทำให้ชื่อ module-level ของโมดูลอื่นถูกมองเป็น capture (แล้ว
+  อ่าน global ที่ยังไม่ assign = `unknown variable`) แก้เป็นหยุดที่
+  module scope ของตัวเอง (`p is p._mod.get("scope")`)
+- Python `return` ในตัว emit ทำให้ `a.label(...)` ที่อยู่ถัดมาเป็น dead
+  code (undefined label) — json_save เลยต้อง emit ทั้งก้อน inline ไม่ใช่
+  `jmp` ไป label ท้ายฟังก์ชัน
+- **เทสต์ x64 ไม่ได้เตือนเรื่อง stack** — หลักฐานคือ `gdb` ดู
+  `mov 0x8(%rdi),%rax` ที่ rdi = 0 แล้วไล่กลับด้าน call chain
+
+**บั๊กที่เจอใน x64 ระหว่างทำงานนี้ (แก้แล้ว).** `int(x)` เมื่อ `x` เป็น Int
+ทาง passthrough ไม่ `pop` ค่าที่ push ไว้เพื่อทำ message
+→ ทิ้งสแต็คค้าง 8 ไบต์ ทำให้ `s[int(n)]` อ่าน operand ผิดตัว
+(`cannot index Int`) และการกิน stack ใน expression ที่ซับซ้อน ก้อนนี้
+เพิ่มเทสต์ `tests/x64/float.hs` (บรรทัดท้าย) กันซ้ำ
+
+**ผลตรวจ.** differential test เทียบ interp (ซึ่งคือ CPython) 44 เคส encode
++ 79 เคส decode — ตรงกันทุกตัวทั้ง stdout, stderr และ exit code
+รวมข้อความ error และเลขบรรทัด เทส `tests/x64/json.hs` (x64 51 -> 52)
+และ `kernel/kjsontest.hs` ที่บูต QEMU จริง 18 assertion + 4 error
+(xkernel 284 -> 291)

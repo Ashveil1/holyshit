@@ -43,6 +43,8 @@ KEYWORDS = {
 ALL = {"interp", "native", "xbuild", "xkernel"}
 HOSTED = {"interp", "native"}
 NO_XBUILD = {"interp", "native", "xkernel"}  # kernel-surface via xkernel
+# needs a filesystem: xbuild yes, a freestanding kernel no
+HOSTED_NO_KERNEL = {"interp", "native", "xbuild"}
 
 # name -> (signature, description, support set)
 BUILTINS = {
@@ -74,8 +76,8 @@ BUILTINS = {
     "tcp_accept": ("tcp_accept(sock)", "accept client (hosted only)", HOSTED),
     "http_get": ("http_get(url)", "http GET body as Str (hosted only)",
                  HOSTED),
-    "json_parse": ("json_parse(s)", "parse JSON Str (hosted only)", HOSTED),
-    "json_str": ("json_str(x)", "value to JSON Str (hosted only)", HOSTED),
+    "json_parse": ("json_parse(s)", "parse JSON Str", ALL),
+    "json_str": ("json_str(x)", "value to JSON Str", ALL),
     "read_mem": ("read_mem(ptr, n)", "n raw bytes as Str (all backends)",
                  ALL),
     "read_text": ("read_text(path)", "whole file as Str (hosted only)",
@@ -86,9 +88,10 @@ BUILTINS = {
     "exists": ("exists(path)", "path exists? (hosted only)", HOSTED),
     "ls": ("ls(path)", "dir entries List (hosted only)", HOSTED),
     "mkdir": ("mkdir(path)", "make directory (hosted only)", HOSTED),
-    "json_load": ("json_load(path)", "load JSON file (hosted only)", HOSTED),
+    "json_load": ("json_load(path)", "load JSON file (hosted only)",
+                  HOSTED_NO_KERNEL),
     "json_save": ("json_save(path, x)", "save value as JSON (hosted only)",
-                  HOSTED),
+                  HOSTED_NO_KERNEL),
     # unsafe builtins (raw machine words, inside unsafe: only)
     "alloc": ("alloc(n)", "zeroed n bytes (unsafe only)", ALL),
     "load8": ("load8(p)", "load byte (unsafe only)", ALL),

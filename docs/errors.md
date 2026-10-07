@@ -326,7 +326,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (100)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (104)
 
 - `'{n}' already defined in this scope`
 - `alloc wants alloc(n)`
@@ -358,6 +358,7 @@
 - `cannot capture '{name}' (x64)`
 - `cannot find module '{name}'`
 - `cannot import '{s['name']}': '{top}' is already defined`
+- `cannot read {path}: {e.strerror or e}`
 - `circular import '{m['name']}'`
 - `close wants close(f)`
 - `continue outside loop`
@@ -381,6 +382,8 @@
 - `irq_off takes no args`
 - `irq_on takes no args`
 - `join wants join(sep, list)`
+- `json internal error (helper not compiled)`
+- `json internal error (no {name} in runtime/json.hs)`
 - `module '{m['name']}' has no attribute '{e['name']}'`
 - `module '{m['name']}' has no attribute '{name}'`
 - `module '{name}' is not a first-class value in x64 subset (use mod.attr)`
@@ -413,6 +416,7 @@
 - `task_run wants task_run(sched, task)`
 - `ticks takes no args`
 - `tlb_flush takes no args`
+- `type_name wants type_name(x)`
 - `unknown struct '{st}'`
 - `unknown variable '{e['name']}'`
 - `unknown variable '{name}'`
@@ -434,4 +438,4 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 394 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 398 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

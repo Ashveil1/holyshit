@@ -7,14 +7,16 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
 แบบ shortest round-trip ตรงกับ Python), Str/List/Dict/Bool/null เต็มรูปแบบ, `not/and/or`,
 `if/elif/else`, `while`, `for`, `break`/`continue`, `def` (+closure),
 `try`/`except`/`finally`/`raise`, `import` (+attr โมดูล), `global`,
-`str()`/`int()`/`float()`/`len()`/`print`, `read_mem(p, n)`,
+`str()`/`int()`/`float()`/`len()`/`print`, `json_parse`/`json_str`,
+`read_mem(p, n)`,
 `unsafe:` (I64/U64/Ptr + struct)
 
 - `def` ของผู้ใช้ shadow builtin ชื่อเดียวกันได้ (เหมือน interp/native)
   แต่ชื่อที่อยู่ในรายการ builtin ของ subset นี้คงเป็น builtin เสมอ
 
 ไม่มี (compile error ตั้งใจ): `extern`,
-`open/read/write/close` บน kernel, `tcp_*`, `http_get`, `json_*`,
+`open/read/write/close` บน kernel, `json_load`/`json_save` บน kernel, `tcp_*`,
+`http_get`,
 ส่งโมดูลเข้าคำนวณ/call/index, `print`/`str` ของ
 Func ที่ประกาศเอง (builtin ใช้เป็นค่าได้ เห็น `<builtin str>`)
 
@@ -27,6 +29,7 @@ hosted (`xbuild`) มีเพิ่ม: `argv()` (List ของ argv[1:]), `in
 `open(path, "r"/"w")` → File (แสดง `<file PATH>`), `read(f)` ทั้งไฟล์,
 `write(f, s)` (คืน byte count), `close(f)` (ปิดซ้ำ = no-op) —
 error เป็น `errno N` (interp โชว์ strerror),
+`json_load`/`json_save` (อ่าน/เขียนไฟล์ผ่าน File runtime),
 `scall(nr, a1..a6)` — `syscall` ดิบ (ใช้เขียน
 user program ที่คุยกับ kernel ของเรา เช่น `kernel/uush.hs`) แต่
 `xkernel` ไม่มี เพราะ ring 0 เรียก `syscall` แล้ว `sysret` จะตกไป
@@ -39,6 +42,13 @@ ring 3 ผิดทาง
 - `split` sep ว่าง raise (interp/native crash แทน)
 - หารด้วยศูนย์บน kernel เป็น HW `#DE` (halt) ไม่ใช่ error จับได้
 - อ่านตัวแปรที่ยังไม่เคย assign = error `unknown variable` (ไม่ใช่ขยะ)
+- `and`/`or` **ไม่ short-circuit** — ทั้งสองข้างรันเสมอ ต้องเขียน bound check
+  เป็นเรียกแยก (`js_at(s, i, n)` ใน `runtime/json.hs`) ไม่งั้น `s[i]`
+  นอกช่วงจะ raise
+- `json_*` ถูกคอมไพล์มาจาก `runtime/json.hs` (โมดูลส่วนตัว `<json>` ที่
+  x64gen ใส่เข้า image เมื่อโปรแกรมเรียกมัน) — ไม่ใช่ API: `import`
+  เอาไปเองได้ถ้า repo อยู่บน HSPATH แต่ตัวที่ต้องใช้ `type_name` (hook
+  ส่วนตัว) จะคอมไพล์ไม่ผ่าน
 
 ## ตัวอย่างผ่าน / ไม่ผ่าน
 
