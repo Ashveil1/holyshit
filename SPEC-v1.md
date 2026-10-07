@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.17 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.18 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -871,3 +871,76 @@ error บน x64 — ตัวแกรม/สคริปต์ที่ใช�
 - เทส `katatest` บูต QEMU พร้อมดิสก์ raw 1MB: identify, อ่าน sector 4
   ตรง pattern, เขียน sector 9 แล้วอ่านกลับเท่าเดิม, sector 10 ไม่เสียหาย
   — ต่อเข้า test_xkernel (274 -> 279)
+
+### 15.32 Float ใน x64: IEEE-754 f64 โดยไม่มี libc (v0.6.18)
+
+ช่องว่างหลักของ subset x64 ปิดแล้ว — `Float` เต็มรูปแบบทั้ง hosted
+(`xbuild`) และ freestanding (`xkernel`) ด้วย `.hs`+machine code ล้วน
+
+**การแทนค่า.** tag bit หมด (Int `01`, Bool `10`, Null `11`, heap `00`)
+Float จึงเป็น heap object แบบเต็ม: kind `K_FLOAT = 5` เก็บ f64 bits ดิบ
+(`[kind][f64]`) — ไม่มีทางเลือกอื่นที่ไม่ต้องแก้ทั้ง runtime
+
+**คณิตศาสตร์.** `- * /` ใช้ SSE2 (`subsd`/`mulsd`/`divsd`) ส่วน `%` ใช้ x87
+`fprem` + แก้ sign ให้เป็น `math.fmod` ตาม Python (`7.5 % 2.0 == 1.5`,
+`-1.5 % 2.0 == 0.5`, `1.5 % -2.0 == -0.5`) ส่วน `/` และ `%` ด้วย 0.0 ให้
+`division by zero` (catchable) เหมือน interp. Int ข้าง Float แปลงผ่าน
+`cvtsi2sd`; Bool/Null ข้าง Float เป็น error (`cannot add Float and Bool`)
+
+**เทียบ.** `ucomisd` — `0.0 == -0.0` true, `nan == nan` false, NaN ไม่มีทาง
+`<`/`>` (คืน false ทั้ง `<=`/`>=` ด้วย แบบ IEEE). `1.0 == true` true เพราะ
+Python ถือ Bool เป็นตัวเลข 0/1 ใน `==` แต่ *ไม่* ใน `<` (interp ทำแบบนั้น)
+
+**`print`/`str`: shortest round-trip แบบไม่มี libc.** Python ใช้ dtoa
+mode 0 = *shortest decimal ที่อยู่ในช่วง round-trip* ไม่ใช่ "ปัดเป็น
+p หลักแล้วเอาที่สั้นที่สุด" — ต่างกันจริง เช่น
+`6.290184345309701e-235` (ไม่ใช่ `...7005`) ขั้นตอน:
+
+1. decompose เป็น `m x 2^e` แล้วขยายทศนิยมแบบ**ตรงเป๊ะ** บน bigint
+   96 คำ (`m x 5^-e` ถ้า `e < 0`) เป็นสตริงตัวเลข
+2. คำนวณขอบเขต round-trip ครั้งเดียว: midpoint กับ pattern เพื่อนบ้าน
+   (`P-1`, `P+1`) เป็น `S x 2^(emin-1)` พร้อม flag ว่า endpoint inclusive
+   ไหม (half-even ดูนิดท้ายของ pattern) — `Lp == 0` และ `Up == inf`
+   มีทางพิเศษ
+3. ลอง `p = 1..17`: เอา `T` = หลักตัวแรก `p` ตัว แล้วทดสอบ `T` กับ
+   `T+1` ว่าอยู่ในช่วงไหม ถ้าอยู่ทั้งคู่เลือกข้างที่ใกล้กว่า (เทียบ
+   `(2T+1)x10^K` กับ `2v` ด้วย bigint) — tie ไปทางหลักท้ายเลขคู่
+4. พิมพ์แบบ Python: fixed ถ้า `-4 <= E10 <= 15` มิฉะนั้น scientific,
+   `.0` เก็บไว้ให้เห็นว่าเป็น float, `inf`/`nan`/`-0.0` เป็นคำพิเศษ
+
+**`float(str)`: parse ถูกต้องเสมอ.** เก็บ 100 หลักนัยสำคัญ + sticky bit
+(`K` ผูกกับจำนวนหลักทศนิยม) แล้วเทียบแบบ cross-multiply บน bigint
+(`dec_cmp`: `L/R == D_dec/D_dbl` เป๊ะ) จากนั้น binary search บน pattern
+IEEE 63 รอบ จบด้วยการตัดสินที่ midpoint แบบ round-half-to-even
+(เทียบ `2T+1` กับ `S x 2^emin`) — กับ sticky bit ทำให้ input ยาว
+เกิน 100 หลักยังถูกต้อง ไม่ต้องพึ่ง FPU เลย (เลี่ยงบั๊ก subnormal/ties)
+
+**เครื่องมือ.** assembler เพิ่ม SSE2/x87 (`cvtsi2sd`, `cvttsd2si`, `ucomisd`,
+`addsd`..`divsd`, `movsd_*`, `fprem`, `fnstsw_ax`, `sahf`, `fstp_st1`, `shr_cl`)
++ `adc_*`/`mul_r`/`or_ri32`/`xor_ri32` และ bigint core 7 ตัว
+(`bi_zero`/`bi_from_u64`/`bi_copy`/`bi_mul_small`/`bi_add_small`/
+`bi_shl`/`bi_cmp`/`bi_divmod_small`) — ทุกตัว alias-safe (อ่านก่อนเขียนทีละ
+word) เพราะทั้งสองทางเรียกแบบ in-place
+
+**gotcha ที่เจอระหว่างทำ.**
+- ค่าใน `unsafe:` เป็น block-local เหมือนเดิม; ที่ใหม่คือ `return` ใน
+  generator ทำให้ `a.label(...)` ที่อยู่ถัดมาเป็น dead code →
+  `undefined label` ต้อง `jmp` ไป end label แทน `return` ตรง ๆ
+- สล็อต `[rbp-N]` ซ้ำกันสองตัวแปร = ค่าหายเงียบ (เจอ 4 ครั้ง:
+  pointer กับ loop counter, `limit` กับ digit, `ecnt` ที่ PUTAL ทับ,
+  `E10c` ที่ carry ดัน) — ดูดีก่อนอ่านค่าใน gdb
+- buffer บน stack ต้อง `bi_zero` ก่อนใช้เสมอ ไม่งั้นผลขึ้นกับว่า stack
+  page เคยถูกแตะหรือไม่ (เจอเป็น parse ผิดเฉพาะ subnormal)
+- `x_dbl_parts` คืน `e = raw - 1075` (ไม่ใช่ `-1023`) เพราะ mantissa
+  มี implicit leading 1 อยู่แล้ว
+- midpoint คือ `S x 2^(emin-1)` ไม่ใช่ `x 2^emin` (S คือผลบวก) — ลืม
+  `-1` ทำให้ทุก candidate เล็กไปหนึ่งเท่า
+- ไม่มี libc แปลว่าไม่มี `snprintf("%.17g")` — ถ้าวันหนึ่งมี
+  `extern:` ใน x64 การเพิ่ม Float จะถูก ง่ายกว่านี้มาก
+
+**ผลการทดสอบ.** fuzz เทียบ `interp.py` (ซึ่งคือ CPython) กว่า 2500 ค่า
+(สุ่มทั้งทศนิยมหลายรูปแบบ, bit pattern สุ่ม, 2^k/10^k ทุกขั้น, เพื่อนบ้าน
+ของ subnormal/ศูนย์/max-double) — ตรงกันทุกตัว รวม `1e-08`, `5e-324`,
+`1.7976931348623157e+308`; `int()`/`float()`/`str()` และ error messages
+ตรงทุกเคส. เทส `tests/x64/float.hs` (x64 50 -> 51) และ
+`kernel/kfloattest.hs` ที่บูต QEMU จริง (xkernel 279 -> 284)

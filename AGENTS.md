@@ -177,7 +177,8 @@ ring-0 `syscall` would `sysret` into ring 3).
 
 ### x64 backend subset (`hs.py xbuild` / `xkernel`)
 
-Has: Int (62-bit), Str values (literals, `+` concat, `len`, `==`, `<`,
+Has: Int (62-bit), Float (IEEE-754 f64, boxed as a heap object; see
+`print`/`float()`/`int()` below), Str values (literals, `+` concat, `len`, `==`, `<`,
 slicing `s[a:b]` byte-based, `split`/`find`/`join`),
 List values (literals, `+` concat, `len`, `append`, `==`, indexing incl.
 negative, `l[i] = v`, slicing `l[a:b]`, `range()` materializes a List),
@@ -193,7 +194,9 @@ fixed 256-frame handler stack), `import` (real file or dotted package; module
 body runs once via guarded init, parent-first; `mod.attr` read + write,
 `print mod` → `<module name>`; HSPATH + program-dir lookup; circular imports
 are a compile error), `global` (module/function globals from functions),
-`str()` (incl. lists → `[1, x]`), `int()`,
+`str()` (incl. lists → `[1, x]`), `int()` (Bool/Float/Str convert; Str
+trims whitespace then decimal or `0x` hex), `float()` (Int/Bool convert,
+Str parses with inf/nan),
 `len()`, `print` (lists print as `[a, b]`, nested), builtin values
 (`f = str; f(65)` — a Func wrapping the builtin, prints `<builtin str>`,
 arity checked at the call with interp's message; `print`/`str` of a plain
@@ -207,8 +210,23 @@ like interp's `sorted(os.listdir())` and `mkdir` is
 documented divergence from interp's strerror text,
 `unsafe:` I64/U64/Ptr + structs, kernel builtins above.
 
-Missing (compile error, on purpose): Float,
+Float in x64: a boxed f64 (no free tag bit left, so kind `K_FLOAT` = 5
+holds the raw bits). `- * / %` run on SSE2, `%` on x87 `fprem` with the
+sign fix so it matches Python's `math.fmod`. Mixing with Bool/Null is an
+error (only Int converts), `0.0 == -0.0` is true, NaN never compares
+equal or ordered, `x / 0.0` and `x % 0.0` raise `division by zero`.
+`print`/`str` produce Python's shortest round-trip repr (`3.5`, `0.0`,
+`1e-08`, `inf`, `nan`) with no libc at all: the exact decimal expansion
+is computed on a 96-word bigint, then the shortest of `T`/`T+1` digits
+inside the exact round-trip interval (the floor/ceil test, ties to the
+even last digit) is emitted; `float(str)` parses the other way with
+`bi_shl`/`bi_mul_small` cross-multiplied compares and a binary search
+over IEEE patterns with round-half-to-even at the midpoint. Verified
+bit-exact against CPython over ~2500 random doubles.
+
+Missing (compile error, on purpose):
 attribute access on values (only modules have attrs), `extern`,
+`tcp_*`/`http_get`/`json_*`,
 `scall`/`enter_user`/`exec_enter`/`user_stop` are hosted-only.
 Modules support aliasing: `m = mod` / `m = pkg.sub` binds the name
 without emitting code, and `m.attr` resolves statically like the

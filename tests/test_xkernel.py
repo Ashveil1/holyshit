@@ -157,6 +157,18 @@ with tempfile.TemporaryDirectory() as d:
         for line in ("kprim", "kprim-done"):
             check(f"kprim serial has {line!r}", line in out, out[-800:])
         check("kprim did not fault", "EXC " not in out, out[-800:])
+    # Float with no libc: SSE2 + x87 + exact decimal<->double on bigints
+    kf = os.path.join(d, "kf.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kfloattest.hs"), kf)
+    check("kfloattest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kf, timeout=10)
+        check("kfloattest finished", "kfloattest ok" in out, out[-800:])
+        check("kfloattest did not fault", "EXC " not in out, out[-800:])
+        check("kfloattest ran its checks",
+              len(re.findall(r"(?m)^ok ", out)) >= 29, out[-800:])
+        check("kfloattest all assertions pass",
+              "kfloattest fails" not in out, out[-800:])
     # dynamic paging: map/unmap frames, split huge pages, use the mappings
     kpg = os.path.join(d, "kpg.elf")
     rc = build_xkernel(os.path.join(ROOT, "kernel", "kpaging.hs"), kpg)

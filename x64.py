@@ -166,6 +166,12 @@ class Asm:
     def and_ri32(self, d, imm):
         self._alu_ri32(4, d, imm)
 
+    def or_ri32(self, d, imm):
+        self._alu_ri32(1, d, imm)
+
+    def xor_ri32(self, d, imm):
+        self._alu_ri32(6, d, imm)
+
     def cli(self):
         self.code.append(0xFA)
 
@@ -324,6 +330,19 @@ class Asm:
     def and_ri32(self, d, imm):
         self._alu_ri32(4, d, imm)
 
+    def adc_rr(self, d, s):
+        self._alu_rr(0x11, d, s)
+
+    def adc_ri32(self, d, imm):
+        self._alu_ri32(2, d, imm)
+
+    def mul_r(self, r):
+        # unsigned mul r/m64: rdx:rax = rax * r
+        rn, rb = _rn(r)
+        self._rex(True, b=rb)
+        self.code.append(0xF7)
+        self._modrm(3, 4, rn)
+
     def imul_rr(self, d, s):
         dn, db = _rn(d)
         sn, sb = _rn(s)
@@ -384,6 +403,9 @@ class Asm:
     def shl_cl(self, d):
         self._shift_cl(4, d)
 
+    def shr_cl(self, d):
+        self._shift_cl(5, d)
+
     def sar_cl(self, d):
         self._shift_cl(7, d)
 
@@ -399,6 +421,169 @@ class Asm:
         self._rex(True, r=sb, b=db)
         self.code.append(0x85)
         self._modrm(3, sn, dn)
+
+    # -- SSE2 / x87: the hs float backend (doubles only, xmm0-xmm7) --
+    def _xmm_mem(self, pre, opc, xd, base, disp=0, index=None, scale=1,
+                 rex_w=False):
+        """prefix + opcode + modrm for xmm <-> mem."""
+        assert xd in range(8)
+        bn, bb = _rn(base)
+        xb = 0
+        sib = None
+        if index is not None:
+            xn, xb = _rn(index)
+            assert scale in (1, 2, 4, 8)
+            sc = {1: 0, 2: 1, 4: 2, 8: 3}[scale]
+            sib = (sc << 6) | ((xn & 7) << 3) | (bn & 7)
+            rm = 4
+        elif bn == 4:
+            sib = (4 << 3) | bn
+            rm = 4
+        else:
+            rm = bn
+        if disp == 0 and bn != 5:
+            mod, db = 0, b""
+        elif -128 <= disp <= 127:
+            mod, db = 1, struct.pack("b", disp)
+        else:
+            mod, db = 2, struct.pack("<i", disp)
+        if isinstance(pre, bytes):
+            self.code += pre
+        else:
+            self.code.append(pre)
+        self._rex(rex_w, r=0, x=xb, b=bb)
+        self.code.append(0x0F)
+        self.code.append(opc)
+        self._modrm(mod, xd, rm)
+        if sib is not None:
+            self.code.append(sib)
+        self.code += db
+
+    def _xmm_rr(self, pre, opc, xd, xs, rex_w=False):
+        if isinstance(pre, bytes):
+            self.code += pre
+        else:
+            self.code.append(pre)
+        self._rex(rex_w)
+        self.code.append(0x0F)
+        self.code.append(opc)
+        self._modrm(3, xd, xs)
+
+    def movsd_xm(self, xd, base, disp=0):
+        self._xmm_mem(0xF2, 0x10, xd, base, disp)
+
+    def movsd_mx(self, base, disp, xs):
+        self._xmm_mem(0xF2, 0x11, xs, base, disp)
+
+    def movq_xm(self, xd, base, disp=0):
+        # movq xmm, m64 (raw bits, no conversion)
+        bn, bb = _rn(base)
+        self.code.append(0xF3)
+        self._rex(True, b=bb)
+        self.code += bytes([0x0F, 0x7E])
+        if disp == 0 and bn != 5:
+            self._modrm(0, xd, bn)
+        elif -128 <= disp <= 127:
+            self._modrm(1, xd, bn)
+            self.code.append(disp & 0xFF)
+        else:
+            self._modrm(2, xd, bn)
+            self.code += struct.pack("<i", disp)
+
+    def movq_xr(self, xd, rs):
+        # movq xmm, r64 (raw bits, no conversion)
+        rn, rb = _rn(rs)
+        self.code.append(0x66)
+        self._rex(True, b=rb)
+        self.code += bytes([0x0F, 0x6E])
+        self._modrm(3, xd, rn)
+
+    def movq_rx(self, rd, xs):
+        # movq r64, xmm (raw bits, no conversion)
+        dn, db = _rn(rd)
+        self.code.append(0x66)
+        self._rex(True, b=db)
+        self.code += bytes([0x0F, 0x7E])
+        self._modrm(3, xs, dn)
+
+    def cvtsi2sd(self, xd, rs):
+        rn, rb = _rn(rs)
+        self.code.append(0xF2)
+        self._rex(True, b=rb)
+        self.code += bytes([0x0F, 0x2A])
+        self._modrm(3, xd, rn)
+
+    def cvttsd2si(self, rd, xs):
+        dn, db = _rn(rd)
+        self.code.append(0xF2)
+        self._rex(True, b=db)
+        self.code += bytes([0x0F, 0x2C])
+        self._modrm(3, xs, dn)
+
+    def ucomisd(self, xa, xb):
+        self.code.append(0x66)
+        self._rex(False)
+        self.code += bytes([0x0F, 0x2E])
+        self._modrm(3, xa, xb)
+
+    def addsd(self, xd, xs):
+        self._xmm_rr(0xF2, 0x58, xd, xs)
+
+    def subsd(self, xd, xs):
+        self._xmm_rr(0xF2, 0x5C, xd, xs)
+
+    def mulsd(self, xd, xs):
+        self._xmm_rr(0xF2, 0x59, xd, xs)
+
+    def divsd(self, xd, xs):
+        self._xmm_rr(0xF2, 0x5E, xd, xs)
+
+    def xorpd(self, xd, xs):
+        self.code.append(0x66)
+        self._rex(False)
+        self.code += bytes([0x0F, 0x57])
+        self._modrm(3, xd, xs)
+
+    # x87 for the exact IEEE remainder (fprem) that float % needs
+    def fld_m64(self, base, disp=0):
+        bn, bb = _rn(base)
+        if bb:
+            raise ValueError("fld needs a low register base")
+        self.code.append(0xDD)
+        if disp == 0 and bn != 5:
+            self._modrm(0, 0, bn)
+        elif -128 <= disp <= 127:
+            self._modrm(1, 0, bn)
+            self.code.append(disp & 0xFF)
+        else:
+            self._modrm(2, 0, bn)
+            self.code += struct.pack("<i", disp)
+
+    def fprem(self):
+        self.code += bytes([0xD9, 0xF8])
+
+    def fnstsw_ax(self):
+        self.code += bytes([0xDF, 0xE0])
+
+    def sahf(self):
+        self.code.append(0x9E)
+
+    def fstp_st1(self):
+        self.code += bytes([0xDD, 0xD9])
+
+    def fstp_m64(self, base, disp=0):
+        bn, bb = _rn(base)
+        if bb:
+            raise ValueError("fstp needs a low register base")
+        self.code.append(0xDD)
+        if disp == 0 and bn != 5:
+            self._modrm(0, 3, bn)
+        elif -128 <= disp <= 127:
+            self._modrm(1, 3, bn)
+            self.code.append(disp & 0xFF)
+        else:
+            self._modrm(2, 3, bn)
+            self.code += struct.pack("<i", disp)
 
     def movzx_eax_m8(self, base, disp=0):
         # movzx eax, byte [base+disp] (zero-extends, no REX.W)

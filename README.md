@@ -1,4 +1,4 @@
-# holyshit (hs) — v0.6.17
+# holyshit (hs) — v0.6.18
 
 ภาษา dynamic เขียนง่ายแบบ Python, รันได้ 4 โหมด, ต่อ C ได้, ลง bare metal ได้,
 มี language server ให้ editor และ AI agent
@@ -64,7 +64,9 @@ print sin(0.0)
 - `unsafe:` — I64/U64/Ptr + `asm` ตรง (static subset ในภาษาเดียวกัน)
 - `extern [from ...]:` — เรียก C/.so/ภาษาไหนก็ได้ผ่าน C ABI
 - closure (copy semantics), JSON, socket/HTTP client, argv/env/system
-- มี x64 subset ที่รันได้โดยไม่ต้องมี gcc เลย (รวมถึง kernel)
+- มี x64 subset ที่รันได้โดยไม่ต้องมี gcc เลย (รวมถึง kernel) — มีครบ
+  Int/Float/Str/List/Dict/Bool/Null, `- * / %` เทียบ float และ
+  `print`/`float()` แบบ shortest round-trip ตรงกับ Python โดยไม่ใช้ libc
 
 ## เทส
 
@@ -73,8 +75,8 @@ python3 tests/run_all.py         # ทุกชุด (ข้าม kernel ด�
 python3 tests/test.py          # interpreter (41 ชุด)
 python3 tests/test_native.py   # native binary (42 ชุด, ผลต้องตรง interp)
 python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec+ทั้ง repo)
-python3 tests/test_x64.py      # backend x86-64 ตรง (50 ชุด, static ELF, ไม่ใช้ gcc)
-python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (279 เคส)
+python3 tests/test_x64.py      # backend x86-64 ตรง (51 ชุด, static ELF, ไม่ใช้ gcc)
+python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (284 เคส)
 python3 tests/test_examples.py # ตัวอย่างทุกไฟล์ยังรันได้จริง (17)
 python3 tests/test_lsp.py      # language server ผ่าน stdio (25 เคส)
 python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (38)

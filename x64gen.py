@@ -86,7 +86,7 @@ class Gen:
     # ----- value representation (low 2 bits are the tag) -----
     TAG_HEAP, TAG_INT, TAG_BOOL, TAG_NULL = 0, 1, 2, 3
     HS_FALSE, HS_TRUE, HS_NULL, HS_UNBOUND = 0x02, 0x0A, 0x03, 0x0B
-    K_STR, K_FUNC, K_LIST, K_FILE, K_DICT = 0, 1, 2, 3, 4
+    K_STR, K_FUNC, K_LIST, K_FILE, K_DICT, K_FLOAT = 0, 1, 2, 3, 4, 5
 
     class Scope:
         def __init__(self, parent=None, is_func=False):
@@ -474,7 +474,10 @@ class Gen:
             elif v is None:
                 a.mov_ri64("rax", Gen.HS_NULL)
             elif isinstance(v, float):
-                raise HSErr("Float not in x64 subset", ln)
+                import struct as _st
+                a.mov_ri64("rdi", _st.unpack("<Q", _st.pack("<d", v))[0])
+                a.call("x_float_new")
+                return
             else:
                 a.mov_ri64("rax", self.tag_int(v))
             return
@@ -528,10 +531,27 @@ class Gen:
             return
         if t == "neg":
             self.ev(e["val"], sc, mod)
+            lab_nfl, lab_nno, lab_ndone = (self.new_tmp("ng"), self.new_tmp("ng"),
+                                            self.new_tmp("ng"))
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_nno)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_FLOAT)
+            a.jcc("ne", lab_nno)
+            a.label(lab_nfl)
+            a.mov_rm("rdi", "rax", 8)       # flip the sign bit
+            a.mov_ri64("r11", 0x8000000000000000)
+            a.xor_rr("rdi", "r11")
+            a.call("x_float_new")
+            a.jmp(lab_ndone)
+            a.label(lab_nno)
             self.check_int(lambda: self.raise_unop(6, ln))
             a.sar_ri8("rax", 2)     # untag before negating
             a.neg_r("rax")
             self.tag_box()
+            a.label(lab_ndone)
             return
         if t == "not":
             self.ev(e["val"], sc, mod)
@@ -909,6 +929,27 @@ class Gen:
             # operand type names (matches interp's cannot compare).
             lab_cmpno, lab_cmperr, lab_cmpok = (self.new_tmp("co"), self.new_tmp("co"),
                                                self.new_tmp("co"))
+            # Float on either side: compare as doubles (NaN never orders).
+            # The float path finishes the op itself and returns.
+            lab_cflt, lab_cnoflt = self.new_tmp("co"), self.new_tmp("co")
+            lab_cerr = self.new_tmp("co")
+            self.emit_float_check(lab_cflt, lab_cnoflt)
+            self.emit_f64_bits("rax", lab_cerr)
+            self.emit_f64_bits("rcx", lab_cerr)
+            a.movq_xr(0, "rdi")
+            a.movq_xr(1, "rsi")
+            a.ucomisd(0, 1)
+            a.setcc_al({"<": "b", ">": "a", "<=": "be", ">=": "ae"}[op])
+            lab_cnan = self.new_tmp("co")
+            a.jcc("np", lab_cnan)
+            a.xor_rr("rax", "rax")
+            a.label(lab_cnan)
+            self.box_bool_al()
+            lab_cdone = self.new_tmp("co")
+            a.jmp(lab_cdone)
+            a.label(lab_cerr)
+            self.raise_binop(5, ln)
+            a.label(lab_cnoflt)
             a.mov_rr("r11", "rax")
             a.and_ri32("r11", 3)
             a.cmp_ri32("r11", Gen.TAG_INT)
@@ -939,6 +980,7 @@ class Gen:
             a.cmp_ri32("rax", 0)
             a.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
             self.box_bool_al()
+            a.label(lab_cdone)
             return
         if op == "+":
             self.ev(e["l"], sc, mod)
@@ -951,7 +993,8 @@ class Gen:
         if op in ("<<", ">>", "&", "|", "^"):
             self.emit_bitop(op, e, sc, mod, ln, True)
             return
-        # - * / % : Int only (else "operator OP needs numbers, got A and B")
+        # - * / % : Int only (else "operator OP needs numbers, got A and B").
+        # A Float on either side selects float arithmetic instead.
         opcodes = {"-": 1, "*": 2, "/": 3, "%": 4}
         self.ev(e["l"], sc, mod)
         a.push_r("rax")                # tagged l
@@ -959,6 +1002,28 @@ class Gen:
         a.mov_rr("rcx", "rax")
         a.pop_r("rax")                 # rax = l, rcx = r (both tagged)
         lab_aerr = self.new_tmp("ae")
+        lab_aflt, lab_noflt = self.new_tmp("ae"), self.new_tmp("ae")
+        lab_bok, lab_fdone = self.new_tmp("ae"), self.new_tmp("ae")
+        self.emit_float_check(lab_aflt, lab_noflt)
+        self.emit_f64_bits("rax", lab_aerr)
+        self.emit_f64_bits("rcx", lab_aerr)
+        if op in ("/", "%"):
+            # float zero (either sign) divides like interp: catchable error
+            a.mov_rr("r11", "rsi")
+            a.shl_ri8("r11", 1)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_bok)
+            self.raise_static("division by zero", ln)
+            a.label(lab_bok)
+        if op == "%":
+            a.call("x_fmod")
+        else:
+            a.mov_ri32("rdx", {"-": 1, "*": 2, "/": 3}[op])
+            a.call("x_fop")
+        a.mov_rr("rdi", "rax")
+        a.call("x_float_new")
+        a.jmp(lab_fdone)
+        a.label(lab_noflt)
         a.mov_rr("r11", "rax")
         a.and_ri32("r11", 3)
         a.cmp_ri32("r11", Gen.TAG_INT)
@@ -995,12 +1060,72 @@ class Gen:
         else:
             raise HSErr(f"bad operator {op}", ln)
         self.tag_box()
+        a.label(lab_fdone)
+
+    def emit_f64_bits(self, vreg, err_label):
+        """Convert a tagged value (rax/rcx) to raw f64 bits in rdi/rsi.
+        vreg is 'rax' (result -> rdi) or 'rcx' (result -> rsi). Jumps to
+        err_label unless the value is an Int or a Float."""
+        a = self.a
+        dst = "rdi" if vreg == "rax" else "rsi"
+        lab_fi = self.new_tmp("fb")
+        a.mov_rr("r11", vreg)
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("e", lab_fi)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", err_label)       # Bool/Null are not heap pointers
+        a.mov_rm("r11", vreg, 0)
+        a.cmp_ri32("r11", Gen.K_FLOAT)
+        a.jcc("ne", err_label)
+        a.mov_rm(dst, vreg, 8)
+        lab_fd = self.new_tmp("fb")
+        a.jmp(lab_fd)
+        a.label(lab_fi)
+        a.mov_rr(dst, vreg)
+        a.sar_ri8(dst, 2)
+        a.cvtsi2sd(0, dst)
+        a.movq_rx(dst, 0)
+        a.label(lab_fd)
+
+    def emit_float_check(self, lab_flt, lab_noflt):
+        """Jump to lab_flt when rax or rcx holds a Float (heap objects
+        only -- every other tag falls through untouched)."""
+        a = self.a
+        lab_rcx = self.new_tmp("fb")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_rcx)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_FLOAT)
+        a.jcc("e", lab_flt)
+        a.label(lab_rcx)
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_noflt)
+        a.mov_rm("r11", "rcx", 0)
+        a.cmp_ri32("r11", Gen.K_FLOAT)
+        a.jcc("ne", lab_noflt)
+        a.label(lab_flt)
 
     def emit_add(self, ln):
         """rax/rcx tagged -> rax = Int+Int, Str+Str or List+List, else raise."""
         a = self.a
         lab_str, lab_err, lab_end = (self.new_tmp("ad"), self.new_tmp("ad"),
                                      self.new_tmp("ad"))
+        # Float + numeric -> float add (either side may be the Float)
+        lab_flt, lab_nofloat = self.new_tmp("ad"), self.new_tmp("ad")
+        self.emit_float_check(lab_flt, lab_nofloat)
+        self.emit_f64_bits("rax", lab_err)
+        self.emit_f64_bits("rcx", lab_err)
+        a.mov_ri32("rdx", 0)            # add
+        a.call("x_fop")
+        a.mov_rr("rdi", "rax")
+        a.call("x_float_new")
+        a.jmp(lab_end)
+        a.label(lab_nofloat)
         # Int + Int (fast path)
         a.mov_rr("r11", "rax")
         a.and_ri32("r11", 3)
@@ -1159,7 +1284,88 @@ class Gen:
             if len(e["args"]) != 1:
                 raise HSErr("int wants 1 arg", ln)
             self.ev(e["args"][0], sc, mod)
-            self.check_int(lambda: self.raise_unop(4, ln))
+            # Int passes through; Bool/Float/Str convert; else tname error.
+            # The original value rides on the stack for 'cannot convert'
+            # messages, which quote it like interp's !r.
+            lab_iok, lab_inum = self.new_tmp("in"), self.new_tmp("in")
+            lab_iflt, lab_istr = self.new_tmp("in"), self.new_tmp("in")
+            lab_ibool, lab_iquote = self.new_tmp("in"), self.new_tmp("in")
+            a.push_r("rax")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("e", lab_iok)
+            a.cmp_ri32("r11", Gen.TAG_BOOL)
+            a.jcc("e", lab_ibool)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_inum)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_FLOAT)
+            a.jcc("e", lab_iflt)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_istr)
+            a.label(lab_inum)
+            a.add_ri32("rsp", 8)            # drop the saved original
+            self.raise_unop(4, ln)
+            a.label(lab_ibool)
+            a.cmp_ri32("rax", Gen.HS_TRUE)
+            a.setcc_al("e")
+            a.movzx_eax_al()
+            a.shl_ri8("rax", 2)
+            a.or_ri8("rax", 1)
+            a.add_ri32("rsp", 8)
+            a.jmp(lab_iok)
+            a.label(lab_iflt)
+            # Float -> Int truncation (cvttsd2si like native; the 62-bit
+            # hs range is enforced, out of range fails clean)
+            a.movq_xm(0, "rax", 8)
+            a.cvttsd2si("rax", 0)
+            a.mov_rr("rcx", "rax")
+            a.mov_ri64("r11", 0x2000000000000000)
+            a.add_rr("rcx", "r11")          # shift [-2^61, 2^61) to [0, 2^62)
+            a.mov_ri64("r11", 0x4000000000000000)
+            a.cmp_rr("rcx", "r11")
+            a.jcc("ae", lab_inum)
+            self.tag_box()
+            a.add_ri32("rsp", 8)
+            a.jmp(lab_iok)
+            a.label(lab_istr)
+            # Str -> trim, parse, 62-bit check, else 'cannot convert' quote
+            a.mov_rr("rdi", "rax")
+            a.call("x_trim")                # rax = ptr, rdx = len
+            a.mov_rr("rdi", "rax")
+            a.mov_rr("rsi", "rdx")
+            a.call("x_int_parse")           # rax = i64, rdx = ok
+            a.test_rr("rdx", "rdx")
+            a.jcc("e", lab_iquote)
+            a.mov_rr("rcx", "rax")
+            a.mov_ri64("r11", 0x2000000000000000)
+            a.add_rr("rcx", "r11")
+            a.mov_ri64("r11", 0x4000000000000000)
+            a.cmp_rr("rcx", "r11")
+            a.jcc("ae", lab_iquote)
+            self.tag_box()
+            a.add_ri32("rsp", 8)
+            a.jmp(lab_iok)
+            a.label(lab_iquote)
+            # "cannot convert '<orig>' to Int" with the caller's line
+            a.lea_rip("rdi", self.rstr("cannot convert '"))
+            a.mov_ri32("rsi", 16)
+            a.call("x_str_at")
+            a.mov_rr("rdi", "rax")          # a = prefix
+            a.mov_rm("rsi", "rsp", 0)       # b = the original Str
+            a.call("x_str_cat")
+            a.push_r("rax")
+            a.lea_rip("rdi", self.rstr("' to Int"))
+            a.mov_ri32("rsi", 8)
+            a.call("x_str_at")
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            a.call("x_str_cat")
+            a.mov_rr("rdi", "rax")
+            a.mov_ri32("rsi", ln)
+            a.jmp("hs_raise_msg")
+            a.label(lab_iok)
             return
         if fn["t"] == "var" and fn["name"] in ("str", "len"):
             if len(e["args"]) != 1:
@@ -1670,8 +1876,104 @@ class Gen:
                 a.pop_r("rdx")          # port
                 a.call("x_port_out")    # returns Null
             return
+        if fn["t"] == "var" and fn["name"] == "float":
+            if len(e["args"]) != 1:
+                raise HSErr("float wants 1 arg", ln)
+            self.ev(e["args"][0], sc, mod)
+            # Int/Bool -> bits; Float passes; Str parses; else tname error
+            lab_fok, lab_fnum = self.new_tmp("fl"), self.new_tmp("fl")
+            lab_fflt, lab_fstr = self.new_tmp("fl"), self.new_tmp("fl")
+            lab_fbool, lab_fquote = self.new_tmp("fl"), self.new_tmp("fl")
+            lab_fint = self.new_tmp("fl")
+            a.push_r("rax")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("e", lab_fint)
+            a.cmp_ri32("r11", Gen.TAG_BOOL)
+            a.jcc("e", lab_fbool)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_fnum)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_FLOAT)
+            a.jcc("e", lab_fflt)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_fstr)
+            a.label(lab_fnum)
+            a.add_ri32("rsp", 8)
+            a.mov_rr("rdi", "rax")
+            a.call("x_tname")
+            a.push_r("rax")              # x_str_at clobbers argument registers
+            a.lea_rip("rdi", self.rstr("cannot convert "))
+            a.mov_ri32("rsi", 15)
+            a.call("x_str_at")
+            a.mov_rr("rdi", "rax")
+            a.pop_r("rsi")
+            a.call("x_str_cat")
+            a.push_r("rax")
+            a.lea_rip("rdi", self.rstr(" to Float"))
+            a.mov_ri32("rsi", 9)
+            a.call("x_str_at")
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            a.call("x_str_cat")
+            a.mov_rr("rdi", "rax")
+            a.mov_ri32("rsi", ln)
+            a.jmp("hs_raise_msg")
+            a.label(lab_fint)
+            a.sar_ri8("rax", 2)
+            a.cvtsi2sd(0, "rax")
+            a.movq_rx("rdi", 0)
+            a.call("x_float_new")
+            a.add_ri32("rsp", 8)
+            a.jmp(lab_fok)
+            a.label(lab_fbool)
+            a.cmp_ri32("rax", Gen.HS_TRUE)
+            a.setcc_al("e")
+            a.movzx_eax_al()            # 1/0
+            a.cvtsi2sd(0, "rax")
+            a.movq_rx("rdi", 0)
+            a.call("x_float_new")
+            a.add_ri32("rsp", 8)
+            a.jmp(lab_fok)
+            a.label(lab_fflt)
+            a.add_ri32("rsp", 8)
+            a.jmp(lab_fok)
+            a.label(lab_fstr)
+            a.mov_rr("rdi", "rax")
+            a.call("x_trim")            # rax = ptr, rdx = len
+            a.mov_rr("rdi", "rax")
+            a.mov_rr("rsi", "rdx")
+            a.call("x_parse_f64")       # rax = bits, rdx = ok
+            a.test_rr("rdx", "rdx")
+            a.jcc("e", lab_fquote)
+            a.mov_rr("rdi", "rax")
+            a.call("x_float_new")
+            a.add_ri32("rsp", 8)
+            a.jmp(lab_fok)
+            a.label(lab_fquote)
+            a.mov_rm("rdi", "rsp", 0)   # the original Str
+            a.push_r("rdi")
+            a.lea_rip("rdi", self.rstr("cannot convert '"))
+            a.mov_ri32("rsi", 16)
+            a.call("x_str_at")
+            a.mov_rr("rdi", "rax")
+            a.pop_r("rsi")              # orig
+            a.call("x_str_cat")
+            a.push_r("rax")
+            a.lea_rip("rdi", self.rstr("' to Float"))
+            a.mov_ri32("rsi", 10)
+            a.call("x_str_at")
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            a.call("x_str_cat")
+            a.mov_rr("rdi", "rax")
+            a.mov_ri32("rsi", ln)
+            a.jmp("hs_raise_msg")
+            a.label(lab_fok)
+            return
         if fn["t"] == "var" and fn["name"] in (
-                "float", "input", "open", "read",
+                "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
                 "readkey", "pmm_alloc", "pmm_total",
                 "pmm_free", "meminfo", "mb_info", "mb_magic",
@@ -4532,6 +4834,7 @@ class Gen:
         lab_ts, lab_tl, lab_tf = (self.new_tmp("tn"), self.new_tmp("tn"),
                                   self.new_tmp("tn"))
         lab_tfl, lab_tdc = self.new_tmp("tn"), self.new_tmp("tn")
+        lab_tft = self.new_tmp("tn")
         lab_tbi, lab_tfn = self.new_tmp("tn"), self.new_tmp("tn")
         a.cmp_ri32("rax", Gen.K_STR)
         a.jcc("e", lab_ts)
@@ -4543,6 +4846,8 @@ class Gen:
         a.jcc("e", lab_tfl)
         a.cmp_ri32("rax", Gen.K_DICT)
         a.jcc("e", lab_tdc)
+        a.cmp_ri32("rax", Gen.K_FLOAT)
+        a.jcc("e", lab_tft)
         a.lea_rip("rdi", self.rstr("?"))
         a.mov_ri32("rsi", 1)
         a.call("x_str_at")
@@ -4560,7 +4865,7 @@ class Gen:
                             (lab_tu, "Unbound"), (lab_ts, "Str"),
                             (lab_tl, "List"), (lab_tf, "Func"),
                             (lab_tfl, "File"), (lab_tdc, "Dict"),
-                            (lab_tbi, "Builtin")):
+                            (lab_tbi, "Builtin"), (lab_tft, "Float")):
             a.label(lab_nm)
             a.lea_rip("rdi", self.rstr(txt))
             a.mov_ri32("rsi", len(txt))
@@ -4957,6 +5262,13 @@ class Gen:
         self.emit_print_int()
         self.emit_val_runtime()
         self.emit_dict_helpers()
+        self.emit_float_helpers()
+        self.emit_bigint()
+        self.emit_float_conv()
+        self.emit_float_parse()
+        self.emit_float_scan()
+        self.emit_float_format()
+        self.emit_conv_helpers()
         self.emit_port_io()
         # oom_ / dzm_ cstrs emitted with rodata in build_image
 
@@ -5963,12 +6275,2180 @@ class Gen:
         a.pop_r("rbp")
         a.ret()
 
+    def emit_float_helpers(self):
+        """Float runtime: K_FLOAT = [kind][f64 bits]. Arithmetic is SSE2;
+        % uses the exact x87 fprem plus a sign fix (Python semantics).
+        Formatting/parsing (shortest round-trip, no libc) live in
+        x_float_str / x_parse_f64 below, on top of the small bigint core."""
+        a = self.a
+        KF = Gen.K_FLOAT
+        # x_float_new: rdi = raw f64 bits -> rax = boxed Float
+        a.label("x_float_new")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)
+        a.mov_ri32("rdi", 16)
+        a.call("x_malloc")
+        a.mov_ri32("rcx", KF)
+        a.mov_mr("rax", "rcx", 0)
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_mr("rax", "rcx", 8)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_fop: rdi = a bits, rsi = b bits, rdx = op (0 add 1 sub 2 mul
+        # 3 div) -> rax = result bits. No errors (the caller pre-checks /0).
+        a.label("x_fop")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.movq_xr(0, "rdi")
+        a.movq_xr(1, "rsi")
+        lab_f1, lab_f2, lab_f3 = (self.new_tmp("fo"), self.new_tmp("fo"),
+                                  self.new_tmp("fo"))
+        a.cmp_ri32("rdx", 0)
+        a.jcc("e", lab_f1)
+        a.cmp_ri32("rdx", 1)
+        a.jcc("e", lab_f2)
+        a.cmp_ri32("rdx", 2)
+        a.jcc("e", lab_f3)
+        a.divsd(0, 1)
+        a.movq_rx("rax", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_f1)
+        a.addsd(0, 1)
+        a.movq_rx("rax", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_f2)
+        a.subsd(0, 1)
+        a.movq_rx("rax", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_f3)
+        a.mulsd(0, 1)
+        a.movq_rx("rax", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_fmod: rdi = a bits, rsi = b bits -> rax = Python a % b bits.
+        # fprem is exact (no overflow corner like a truncating quotient),
+        # then a C-style remainder takes b's sign when the signs differ.
+        a.label("x_fmod")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # a bits
+        a.mov_mr("rbp", "rsi", -16)     # b bits
+        a.mov_rr("rax", "rbp")
+        a.sub_ri32("rax", 16)
+        a.fld_m64("rax", 0)             # st0 = b
+        a.mov_rr("rax", "rbp")
+        a.sub_ri32("rax", 8)
+        a.fld_m64("rax", 0)             # st0 = a, st1 = b
+        lab_fp = self.new_tmp("fm")
+        a.label(lab_fp)
+        a.fprem()
+        a.fnstsw_ax()
+        a.sahf()
+        a.jcc("p", lab_fp)              # C2 still set -> partial, repeat
+        a.fstp_st1()                    # drop st1, keep the remainder
+        a.mov_rr("rax", "rbp")
+        a.sub_ri32("rax", 24)
+        a.fstp_m64("rax", 0)            # [rbp-24] = C remainder, FPU empty
+        a.mov_rm("rax", "rbp", -24)     # rem bits
+        a.mov_rr("r11", "rax")
+        a.shl_ri8("r11", 1)
+        a.test_rr("r11", "r11")
+        a.jcc("e", "fmod_done")         # exact zero stays zero
+        a.mov_rm("rcx", "rbp", -16)     # b bits
+        a.mov_rr("r11", "rax")
+        a.mov_rr("r10", "rcx")
+        a.mov_ri64("rcx", 0x8000000000000000 & ((1 << 64) - 1))
+        a.and_rr("r11", "rcx")
+        a.and_rr("r10", "rcx")
+        a.cmp_rr("r11", "r10")
+        a.jcc("e", "fmod_done")         # same sign: keep the remainder
+        a.movq_xr(0, "rax")
+        a.mov_rm("rax", "rbp", -16)
+        a.movq_xr(1, "rax")
+        a.addsd(0, 1)
+        a.movq_rx("rax", 0)
+        a.label("fmod_done")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+    BW = 96  # bigint words: exact for decimal |K| <= ~1200 (see parse)
+
+    def emit_bigint(self):
+        """Fixed-size little-endian u64 bigint core for exact float work.
+        All take nw in rcx (or rdx where noted); leaf routines, no calls."""
+        a = self.a
+        # bi_zero(rdi=dst, rsi=nw)
+        a.label("bi_zero")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        lab_bz = self.new_tmp("bi")
+        a.label(lab_bz)
+        a.test_rr("rsi", "rsi")
+        a.jcc("e", "bi_zero_done")
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rdi", "rax", 0)
+        a.add_ri32("rdi", 8)
+        a.sub_ri32("rsi", 1)
+        a.jmp(lab_bz)
+        a.label("bi_zero_done")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # bi_from_u64(rdi=dst, rsi=val, rdx=nw)
+        a.label("bi_from_u64")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.mov_mr("rdi", "rsi", 0)
+        lab_bf = self.new_tmp("bi")
+        a.label(lab_bf)
+        a.sub_ri32("rdx", 1)
+        a.jcc("e", "bi_from_done")
+        a.add_ri32("rdi", 8)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rdi", "rax", 0)
+        a.jmp(lab_bf)
+        a.label("bi_from_done")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # bi_mul_small(rdi=dst, rsi=src, rdx=m, rcx=nw) -> rax=carry out.
+        # Alias-safe: each word is read before it is written.
+        a.label("bi_mul_small")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)
+        a.mov_mr("rbp", "rsi", -16)
+        a.mov_mr("rbp", "rdx", -24)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -32)     # carry
+        lab_bm = self.new_tmp("bi")
+        a.label(lab_bm)
+        a.test_rr("rcx", "rcx")
+        a.jcc("e", "bi_mul_done")
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rax", "rax", 0)       # src word
+        a.mov_rm("r11", "rbp", -24)     # m
+        a.mul_r("r11")                  # rdx:rax = word * m
+        a.mov_rm("r11", "rbp", -32)
+        a.add_rr("rax", "r11")
+        a.adc_ri32("rdx", 0)
+        a.mov_rm("r11", "rbp", -8)
+        a.mov_mr("r11", "rax", 0)       # dst word
+        a.mov_mr("rbp", "rdx", -32)
+        a.mov_rm("rax", "rbp", -8)
+        a.add_ri32("rax", 8)
+        a.mov_mr("rbp", "rax", -8)
+        a.mov_rm("rax", "rbp", -16)
+        a.add_ri32("rax", 8)
+        a.mov_mr("rbp", "rax", -16)
+        a.sub_ri32("rcx", 1)
+        a.jmp(lab_bm)
+        a.label("bi_mul_done")
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # bi_cmp(rdi=a, rsi=b, rdx=nw) -> rax in {-1, 0, 1}, top word first
+        a.label("bi_cmp")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.mov_rr("rax", "rdx")
+        a.shl_ri8("rax", 3)
+        a.add_rr("rdi", "rax")
+        a.add_rr("rsi", "rax")          # one past the top word
+        lab_bc = self.new_tmp("bi")
+        a.label(lab_bc)
+        a.test_rr("rdx", "rdx")
+        a.jcc("e", "bi_cmp_eq")
+        a.sub_ri32("rdi", 8)
+        a.sub_ri32("rsi", 8)
+        a.mov_rm("rax", "rdi", 0)
+        a.mov_rm("rcx", "rsi", 0)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("a", "bi_cmp_gt")
+        a.jcc("b", "bi_cmp_lt")
+        a.sub_ri32("rdx", 1)
+        a.jmp(lab_bc)
+        a.label("bi_cmp_eq")
+        a.mov_ri32("rax", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("bi_cmp_gt")
+        a.mov_ri32("rax", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("bi_cmp_lt")
+        a.mov_ri32("rax", -1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # bi_shl(rdi=dst, rsi=src, rdx=bits, rcx=nw): alias-safe.
+        # Word shift top-down, then bit shift bottom-up.
+        a.label("bi_shl")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # dst
+        a.mov_mr("rbp", "rsi", -16)     # src
+        a.mov_rr("rax", "rdx")
+        a.shr_ri8("rax", 6)
+        a.mov_mr("rbp", "rax", -24)     # whole words w
+        a.mov_rr("rax", "rdx")
+        a.and_ri32("rax", 63)
+        a.mov_mr("rbp", "rax", -32)     # leftover bits b
+        # pass 1: i = nw-1 down to 0: dst[i] = src[i-w] or 0
+        a.mov_rr("rax", "rcx")
+        a.sub_ri32("rax", 1)            # i
+        lab_bs1 = self.new_tmp("bi")
+        a.label(lab_bs1)
+        a.test_rr("rax", "rax")
+        a.jcc("s", "bi_shl_bit")
+        a.mov_rr("r10", "rax")
+        a.mov_rm("r11", "rbp", -24)     # w
+        a.sub_rr("r10", "r11")          # i - w
+        a.jcc("s", "bi_shl_zero")
+        a.mov_rm("r11", "rbp", -16)     # src
+        a.mov_rmx("r10", "r11", "r10", 8, 0)
+        a.jmp("bi_shl_store")
+        a.label("bi_shl_zero")
+        a.mov_ri32("r10", 0)
+        a.label("bi_shl_store")
+        a.mov_rm("r11", "rbp", -8)      # dst
+        a.mov_mrx("r11", "rax", 8, 0, "r10")
+        a.sub_ri32("rax", 1)
+        a.jmp(lab_bs1)
+        a.label("bi_shl_bit")
+        a.mov_rm("rax", "rbp", -32)     # b
+        a.test_rr("rax", "rax")
+        a.jcc("e", "bi_shl_done")
+        a.mov_rr("rdi", "rcx")          # rdi = nw (rdi is dead now)
+        a.mov_rr("rcx", "rax")          # rcx = b, then 64 - b
+        a.mov_ri32("rsi", 64)
+        a.sub_rr("rsi", "rcx")
+        a.mov_mr("rbp", "rsi", -40)     # save 64 - b
+        a.mov_mr("rbp", "rax", -48)     # save b
+        a.mov_ri32("r11", 0)            # carry
+        a.mov_ri32("rax", 0)            # i = 0
+        a.mov_rm("r10", "rbp", -8)      # dst
+        lab_bs2 = self.new_tmp("bi")
+        a.label(lab_bs2)
+        a.cmp_rr("rax", "rdi")
+        a.jcc("ae", "bi_shl_done")
+        a.mov_rmx("rdx", "r10", "rax", 8, 0)
+        a.mov_rr("rsi", "rdx")
+        a.mov_rm("rcx", "rbp", -40)
+        a.shr_cl("rsi")                 # new carry
+        a.mov_rm("rcx", "rbp", -48)
+        a.shl_cl("rdx")
+        a.or_rr("rdx", "r11")
+        a.mov_mrx("r10", "rax", 8, 0, "rdx")
+        a.mov_rr("r11", "rsi")
+        a.add_ri32("rax", 1)
+        a.jmp(lab_bs2)
+        a.label("bi_shl_done")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
+        # bi_copy(rdi=dst, rsi=src, rdx=nw)
+        a.label("bi_copy")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        lab_bcp = self.new_tmp("bi")
+        a.label(lab_bcp)
+        a.test_rr("rdx", "rdx")
+        a.jcc("e", "bi_copy_done")
+        a.mov_rm("rax", "rsi", 0)
+        a.mov_mr("rdi", "rax", 0)
+        a.add_ri32("rdi", 8)
+        a.add_ri32("rsi", 8)
+        a.sub_ri32("rdx", 1)
+        a.jmp(lab_bcp)
+        a.label("bi_copy_done")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # bi_add_small(rdi=dst, rsi=src, rdx=c, rcx=nw): dst = src + c.
+        # Alias-safe (read-then-write per word, carry in rax).
+        a.label("bi_add_small")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.mov_rr("rax", "rdx")          # carry = c
+        lab_ba = self.new_tmp("bi")
+        a.label(lab_ba)
+        a.test_rr("rcx", "rcx")
+        a.jcc("e", "bi_add_done")
+        a.mov_rm("r11", "rsi", 0)
+        a.add_rr("r11", "rax")
+        a.mov_ri32("rax", 0)
+        a.adc_ri32("rax", 0)
+        a.mov_mr("rdi", "r11", 0)
+        a.add_ri32("rdi", 8)
+        a.add_ri32("rsi", 8)
+        a.sub_ri32("rcx", 1)
+        a.jmp(lab_ba)
+        a.label("bi_add_done")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # bi_divmod_small(rdi=q or 0, rsi=src, rdx=d, rcx=nw) -> rem.
+        # Top word first; a null q skips the stores (remainder only).
+        a.label("bi_divmod_small")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # q (may be 0)
+        a.mov_mr("rbp", "rsi", -16)     # src
+        a.mov_mr("rbp", "rdx", -24)     # d
+        a.mov_rr("rax", "rcx")
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -32)     # i = nw - 1
+        a.mov_ri32("r11", 0)            # rem
+        lab_bd = self.new_tmp("bi")
+        a.label(lab_bd)
+        a.mov_rm("rax", "rbp", -32)
+        a.test_rr("rax", "rax")
+        a.jcc("s", "bi_div_done")
+        a.mov_rm("rsi", "rbp", -16)
+        a.mov_rmx("rax", "rsi", "rax", 8, 0)  # rax = src[i]
+        a.mov_rr("rdx", "r11")          # rdx:rax = rem:word
+        a.mov_rm("r10", "rbp", -24)
+        a.div_r("r10")                  # rax = quot, rdx = rem
+        a.mov_rr("r11", "rdx")
+        a.mov_rm("rcx", "rbp", -32)     # i
+        a.mov_rm("r10", "rbp", -8)      # q
+        a.test_rr("r10", "r10")
+        a.jcc("e", "bi_div_next")
+        a.mov_mrx("r10", "rcx", 8, 0, "rax")  # q[i] = quot
+        a.label("bi_div_next")
+        a.mov_rm("rax", "rbp", -32)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -32)
+        a.jmp(lab_bd)
+        a.label("bi_div_done")
+        a.mov_rr("rax", "r11")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
+    def emit_float_conv(self):
+        """Exact decimal-vs-double compare and correctly-rounded nearest.
+        Buffers are BW words; Mc holds up to ~100 significant digits (plus
+        a sticky bit for longer inputs), so every realistic literal and all
+        fuzz inputs compare exactly."""
+        a = self.a
+        BW = Gen.BW
+        # x_dbl_parts(rdi = bits) -> rax = mantissa, rdx = exp2, rcx = sign.
+        # Normals carry the implicit leading 1; subnormals use e = -1074.
+        # Caller keeps inf/nan (exp field 0x7FF) away from here.
+        a.label("x_dbl_parts")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.mov_rr("rax", "rdi")
+        a.shr_ri8("rax", 63)
+        a.mov_rr("rcx", "rax")          # sign
+        a.mov_rr("rax", "rdi")
+        a.shr_ri8("rax", 52)
+        a.and_ri32("rax", 0x7FF)        # raw exp field
+        a.mov_rr("rdx", "rax")
+        a.sub_ri32("rdx", 1074)         # e for subnormals
+        a.test_rr("rax", "rax")
+        a.jcc("e", "dbl_sub")
+        a.mov_rr("rdx", "rax")
+        a.sub_ri32("rdx", 1075)         # e for normals: raw-1023 for the
+                                        # point, minus 52 for the implicit 1
+        a.mov_rr("rax", "rdi")
+        a.mov_ri64("rcx", 0xFFFFFFFFFFFFF)
+        a.and_rr("rax", "rcx")
+        a.mov_ri64("rcx", 0x10000000000000)
+        a.or_rr("rax", "rcx")           # implicit leading 1
+        a.mov_rr("rcx", "rdi")
+        a.shr_ri8("rcx", 63)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("dbl_sub")
+        a.mov_rr("rax", "rdi")
+        a.mov_ri64("rcx", 0xFFFFFFFFFFFFF)
+        a.and_rr("rax", "rcx")          # raw mantissa, no leading 1
+        a.mov_rr("rcx", "rdi")
+        a.shr_ri8("rcx", 63)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # dec_cmp(rdi=Mc, rsi=K, rdx=sticky, rcx=m, r8=e):
+        # sign(Mc*10^K - m*2^e). m fits u64 (midpoint sums need 55 bits).
+        # A sticky tail with an exact tie counts as greater.
+        a.label("dec_cmp")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 96)
+        a.mov_mr("rbp", "rdi", -8)      # Mc
+        a.mov_mr("rbp", "rsi", -16)     # K
+        a.mov_mr("rbp", "rdx", -24)     # sticky
+        a.mov_mr("rbp", "rcx", -32)     # m
+        a.mov_mr("rbp", "r8", -40)      # e
+        a.sub_ri32("rsp", BW * 16)      # L then R below rsp
+        # A = max(0,-e); B = max(0,-K)
+        a.mov_rr("rax", "r8")
+        a.mov_ri32("rdx", 0)
+        a.cmp_ri32("rax", 0)
+        a.jcc("ge", "dcmp_a")
+        a.mov_rr("rdx", "rax")
+        a.mov_ri32("rax", 0)
+        a.sub_rr("rax", "rdx")
+        a.mov_rr("rdx", "rax")          # rdx = A
+        a.label("dcmp_a")
+        a.mov_mr("rbp", "rdx", -48)     # A
+        a.mov_rm("rax", "rbp", -16)     # K
+        a.mov_ri32("rdx", 0)
+        a.cmp_ri32("rax", 0)
+        a.jcc("ge", "dcmp_b")
+        a.mov_rr("rdx", "rax")
+        a.mov_ri32("rax", 0)
+        a.sub_rr("rax", "rdx")
+        a.mov_rr("rdx", "rax")          # rdx = B
+        a.label("dcmp_b")
+        a.mov_mr("rbp", "rdx", -56)     # B
+        # L = Mc side: L = Mc << (K>=0 ? K+A : A), then x5^K if K>0.
+        # (Cross-multiplied so L/R == D_dec/D_dbl exactly.)
+        a.mov_rr("rdi", "rsp")          # L
+        a.mov_rm("rsi", "rbp", -8)      # Mc
+        a.mov_ri32("rdx", BW)
+        a.call("bi_copy")
+        a.mov_rm("rax", "rbp", -16)     # K
+        a.test_rr("rax", "rax")
+        a.jcc("s", "dcmp_lneg")
+        a.mov_rm("rdx", "rbp", -48)     # A
+        a.add_rr("rax", "rdx")          # K + A
+        a.jmp("dcmp_lsh")
+        a.label("dcmp_lneg")
+        a.mov_rm("rax", "rbp", -48)     # A
+        a.label("dcmp_lsh")
+        a.mov_mr("rbp", "rax", -72)     # shift
+        a.mov_rr("rdi", "rsp")
+        a.mov_rr("rsi", "rdi")
+        a.mov_rm("rdx", "rbp", -72)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_shl")
+        a.mov_rm("rax", "rbp", -16)     # K>0 still needs x5^K
+        a.test_rr("rax", "rax")
+        a.jcc("le", "dcmp_l5")
+        a.mov_mr("rbp", "rax", -80)     # counter
+        lab_d5 = self.new_tmp("dc")
+        a.label(lab_d5)
+        a.mov_rr("rdi", "rsp")
+        a.mov_rr("rsi", "rdi")
+        a.mov_ri32("rdx", 5)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_mul_small")
+        a.mov_rm("rax", "rbp", -80)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -80)
+        a.jcc("ne", lab_d5)
+        a.label("dcmp_l5")
+        # R = m side: R = m << (e+A+B), then x5^B
+        a.mov_rr("rax", "rsp")
+        a.add_ri32("rax", BW * 8)       # R
+        a.mov_mr("rbp", "rax", -64)     # stash R pointer
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -32)     # m
+        a.mov_ri32("rdx", BW)
+        a.call("bi_from_u64")
+        a.mov_rm("rax", "rbp", -40)     # e
+        a.mov_rm("rdx", "rbp", -48)     # A
+        a.add_rr("rax", "rdx")
+        a.mov_rm("rdx", "rbp", -56)     # B
+        a.add_rr("rax", "rdx")          # e + A + B
+        a.mov_rr("rdx", "rax")
+        a.mov_rm("rdi", "rbp", -64)
+        a.mov_rr("rsi", "rdi")
+        a.mov_ri32("rcx", BW)
+        a.call("bi_shl")
+        a.mov_rm("rax", "rbp", -56)     # B
+        a.test_rr("rax", "rax")
+        a.jcc("e", "dcmp_cmp")
+        a.mov_mr("rbp", "rax", -72)     # counter
+        lab_d6 = self.new_tmp("dc")
+        a.label(lab_d6)
+        a.mov_rm("rdi", "rbp", -64)
+        a.mov_rr("rsi", "rdi")
+        a.mov_ri32("rdx", 5)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_mul_small")
+        a.mov_rm("rax", "rbp", -72)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -72)
+        a.jcc("ne", lab_d6)
+        a.label("dcmp_cmp")
+        a.mov_rr("rdi", "rsp")          # L
+        a.mov_rm("rsi", "rbp", -64)     # R
+        a.mov_ri32("rdx", BW)
+        a.call("bi_cmp")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "dcmp_done")
+        a.mov_rm("rax", "rbp", -24)     # sticky: a tie means greater
+        a.test_rr("rax", "rax")
+        a.jcc("e", "dcmp_done")
+        a.mov_ri32("rax", 1)
+        a.label("dcmp_done")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
+    def emit_float_parse(self):
+        """Correctly-rounded decimal -> double. Mc holds up to ~100 exact
+        significant digits (sticky bit past that); early outs for |E|>330."""
+        a = self.a
+        BW = Gen.BW
+        # nearest_double(rdi=Mc, rsi=K, rdx=sticky, rcx=sign):
+        # Mc*10^K (plus a positive tail iff sticky), Mc != 0.
+        a.label("nearest_double")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 112)
+        a.mov_mr("rbp", "rdi", -8)      # Mc
+        a.mov_mr("rbp", "rsi", -16)     # K
+        a.mov_mr("rbp", "rdx", -24)     # sticky
+        a.mov_mr("rbp", "rcx", -32)     # sign
+        a.sub_ri32("rsp", BW * 8)       # T = doubled Mc, below rsp
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -40)     # lo = 0
+        a.mov_ri64("rax", 0x7FF0000000000000)
+        a.mov_mr("rbp", "rax", -48)     # hi = inf pattern (exclusive)
+        a.mov_ri32("rax", 63)
+        a.mov_mr("rbp", "rax", -56)     # iters
+        lab_nb = self.new_tmp("nd")
+        a.label(lab_nb)
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rm("rcx", "rbp", -48)
+        a.add_rr("rax", "rcx")
+        a.shr_ri8("rax", 1)             # mid
+        a.mov_mr("rbp", "rax", -64)
+        a.mov_rr("rdi", "rax")
+        a.call("x_dbl_parts")           # rax=m, rdx=e
+        a.mov_mr("rbp", "rax", -72)     # m
+        a.mov_mr("rbp", "rdx", -80)     # e
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rsi", "rbp", -16)
+        a.mov_rm("rdx", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -72)
+        a.mov_rm("r8", "rbp", -80)
+        a.call("dec_cmp")
+        a.test_rr("rax", "rax")
+        a.jcc("g", "nd_lo")
+        a.mov_rm("rax", "rbp", -64)
+        a.mov_mr("rbp", "rax", -48)     # hi = mid
+        a.jmp("nd_next")
+        a.label("nd_lo")
+        a.mov_rm("rax", "rbp", -64)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -40)     # lo = mid + 1
+        a.label("nd_next")
+        a.mov_rm("rax", "rbp", -56)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -56)
+        a.jcc("ne", lab_nb)
+        a.sub_ri32("rsp", BW * 8)       # T = doubled Mc, below rsp
+        # exact hit on lo?
+        a.mov_rm("rdi", "rbp", -40)     # lo bits
+        a.call("x_dbl_parts")           # rax=m2, rdx=e2
+        a.mov_mr("rbp", "rax", -72)     # m2
+        a.mov_mr("rbp", "rdx", -80)     # e2
+        a.mov_rm("rdi", "rbp", -8)      # Mc
+        a.mov_rm("rsi", "rbp", -16)     # K
+        a.mov_rm("rdx", "rbp", -24)     # sticky
+        a.mov_rr("rcx", "rax")          # m2
+        a.mov_rr("r8", "rdx")           # e2
+        a.call("dec_cmp")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "nd_round")
+        a.mov_rm("rax", "rbp", -40)
+        a.jmp("nd_sign")
+        a.label("nd_round")
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_ri64("rcx", 0x7FF0000000000000)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("e", "nd_infedge")
+        # midpoint of V(lo-1) and V(lo) as S x 2^emin, tested on
+        # doubled Mc: T = Mc << 1, then sign(T*10^K - S*2^emin).
+        a.mov_rr("rdi", "rax")
+        a.sub_ri32("rdi", 1)
+        a.call("x_dbl_parts")           # lo-1: rax=m1, rdx=e1
+        a.mov_rr("r11", "rax")          # m1
+        a.mov_rr("r10", "rdx")          # e1
+        a.mov_rm("rcx", "rbp", -80)     # e2
+        a.mov_rm("rax", "rbp", -72)     # m2
+        a.cmp_rr("r10", "rcx")          # e1 vs e2
+        a.jcc("le", "nd_emin1")
+        # emin = e2: M1 = m1 << (e1 - e2), M2 = m2
+        a.mov_mr("rbp", "rcx", -88)     # emin
+        a.mov_rr("rdx", "r10")
+        a.sub_rr("rdx", "rcx")          # shift = e1 - e2
+        a.mov_rr("rcx", "rdx")
+        a.mov_rr("rax", "r11")
+        a.shl_cl("rax")                 # M1
+        a.mov_rm("rdx", "rbp", -72)     # m2
+        a.add_rr("rax", "rdx")          # S = M1 + m2
+        a.jmp("nd_sdone")
+        a.label("nd_emin1")
+        # emin = e1: M1 = m1, M2 = m2 << (e2 - e1)
+        a.mov_mr("rbp", "r10", -88)     # emin
+        a.mov_rr("rdx", "rcx")
+        a.sub_rr("rdx", "r10")          # shift = e2 - e1
+        a.mov_rr("rcx", "rdx")
+        a.shl_cl("rax")                 # M2 (rax was m2)
+        a.add_rr("rax", "r11")          # S = M2 + m1
+        a.label("nd_sdone")
+        a.mov_mr("rbp", "rax", -72)     # S
+        # T = Mc << 1 (T lives below rsp)
+        a.mov_rr("rdi", "rsp")
+        a.mov_rm("rsi", "rbp", -8)      # Mc
+        a.mov_ri32("rdx", 1)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_shl")
+        a.mov_rr("rdi", "rsp")          # T
+        a.mov_rm("rsi", "rbp", -16)     # K
+        a.mov_rm("rdx", "rbp", -24)     # sticky
+        a.mov_rm("rcx", "rbp", -72)     # S
+        a.mov_rm("r8", "rbp", -88)      # emin
+        a.call("dec_cmp")
+        a.test_rr("rax", "rax")
+        a.jcc("l", "nd_uselo1")
+        a.jcc("g", "nd_uselo")
+        # tie: the even pattern of (lo-1, lo) wins
+        a.mov_rm("rax", "rbp", -40)
+        a.sub_ri32("rax", 1)            # rax = lo - 1
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 1)
+        a.jcc("e", "nd_sign")           # lo-1 even: keep it
+        a.mov_rm("rax", "rbp", -40)     # else lo
+        a.jmp("nd_sign")
+        a.label("nd_uselo1")
+        a.mov_rm("rax", "rbp", -40)
+        a.sub_ri32("rax", 1)
+        a.jmp("nd_sign")
+        a.label("nd_uselo")
+        a.mov_rm("rax", "rbp", -40)     # lo
+        a.jmp("nd_sign")
+        a.label("nd_infedge")
+        # halfway between max-double and inf rounds up: D > mid -> inf,
+        # D == mid -> inf, else max-double. mid = (2^54-1) x 2^970.
+        a.mov_rm("rdi", "rbp", -8)      # Mc
+        a.mov_rm("rsi", "rbp", -16)     # K
+        a.mov_rm("rdx", "rbp", -24)     # sticky
+        a.mov_ri64("rcx", 0x3FFFFFFFFFFFFF)  # 2^54 - 1
+        a.mov_ri32("r8", 970)
+        a.call("dec_cmp")
+        a.test_rr("rax", "rax")
+        a.jcc("l", "nd_maxdbl")
+        a.mov_ri64("rax", 0x7FF0000000000000)
+        a.jmp("nd_sign")
+        a.label("nd_maxdbl")
+        a.mov_ri64("rax", 0x7FEFFFFFFFFFFFFF)
+        a.jmp("nd_sign")
+        a.label("nd_sign")
+        a.mov_rm("rcx", "rbp", -32)     # sign
+        a.shl_ri8("rcx", 63)
+        a.or_rr("rax", "rcx")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
+    def emit_float_scan(self):
+        """Decimal string -> exactly-rounded double. Mc keeps 100 significant
+        digits plus a sticky bit; E_dec early outs catch |E| > 330 exactly."""
+        a = self.a
+        BW = Gen.BW
+        # x_parse_f64(rdi=ptr, rsi=len) -> rax = bits, rdx = ok{0,1}.
+        # Caller trims; empty or garbage gives ok = 0.
+        a.label("x_parse_f64")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 128)
+        a.mov_mr("rbp", "rdi", -8)      # ptr
+        a.mov_mr("rbp", "rsi", -16)     # len
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -24)     # i
+        a.mov_mr("rbp", "rax", -32)     # sign (0/1)
+        a.mov_mr("rbp", "rax", -40)     # E (clamped)
+        a.mov_mr("rbp", "rax", -48)     # n_frac
+        a.mov_mr("rbp", "rax", -56)     # di_total (capped)
+        a.mov_mr("rbp", "rax", -64)     # ndigits kept
+        a.mov_mr("rbp", "rax", -72)     # sticky
+        a.mov_mr("rbp", "rax", -80)     # seen_digit
+        a.mov_mr("rbp", "rax", -88)     # seen_dot
+        a.mov_mr("rbp", "rax", -96)     # exp_seen
+        a.sub_ri32("rsp", BW * 8)       # Mc below rsp (must be zeroed:
+        a.mov_rr("rdi", "rsp")          # bigint ops read every word)
+        a.mov_ri32("rsi", BW)
+        a.call("bi_zero")
+        a.mov_rr("rdi", "rsp")
+        a.mov_ri32("rsi", BW)
+        a.call("bi_zero")
+        # optional sign
+        a.mov_rm("rax", "rbp", -24)     # i
+        a.mov_rm("rcx", "rbp", -16)     # len
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "pf_digits")
+        a.mov_rm("rdi", "rbp", -8)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 0)
+        a.cmp_ri32("rax", 43)           # '+'
+        a.jcc("e", "pf_plussign")
+        a.cmp_ri32("rax", 45)           # '-'
+        a.jcc("ne", "pf_digits")
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -32)     # sign = 1
+        a.label("pf_plussign")
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)     # i++
+        a.label("pf_digits")
+        # inf / infinity / nan (case-insensitive first letter decides)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -16)
+        a.sub_rr("rcx", "rax")          # remaining
+        a.jcc("le", "pf_bad")
+        a.mov_rm("rdi", "rbp", -8)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 0)
+        a.or_ri32("rax", 32)            # lowercase
+        a.cmp_ri32("rax", 105)          # 'i'
+        a.jcc("e", "pf_inf")
+        a.cmp_ri32("rax", 110)          # 'n'
+        a.jcc("e", "pf_nan")
+        a.jmp("pf_int")
+        a.label("pf_nan")
+        # nan needs exactly "nan"
+        a.cmp_ri32("rcx", 3)
+        a.jcc("ne", "pf_bad")
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rax", "rbp", -24)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 1)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 97)           # 'a'
+        a.jcc("ne", "pf_bad")
+        a.movzx_eax_m8("rdi", 2)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 110)          # 'n'
+        a.jcc("ne", "pf_bad")
+        a.mov_ri64("rax", 0x7FF8000000000000)
+        a.mov_ri32("rdx", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("pf_inf")
+        # "inf" or "infinity", case-insensitive
+        a.cmp_ri32("rcx", 3)
+        a.jcc("l", "pf_bad")
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rax", "rbp", -24)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 1)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 110)          # 'n'
+        a.jcc("ne", "pf_bad")
+        a.movzx_eax_m8("rdi", 2)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 102)          # 'f'
+        a.jcc("ne", "pf_bad")
+        a.cmp_ri32("rcx", 3)
+        a.jcc("e", "pf_inf3")
+        a.cmp_ri32("rcx", 8)
+        a.jcc("ne", "pf_bad")
+        # check "inity"
+        a.movzx_eax_m8("rdi", 3)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 105)
+        a.jcc("ne", "pf_bad")
+        a.movzx_eax_m8("rdi", 4)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 110)
+        a.jcc("ne", "pf_bad")
+        a.movzx_eax_m8("rdi", 5)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 105)
+        a.jcc("ne", "pf_bad")
+        a.movzx_eax_m8("rdi", 6)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 116)
+        a.jcc("ne", "pf_bad")
+        a.movzx_eax_m8("rdi", 7)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 121)
+        a.jcc("ne", "pf_bad")
+        a.label("pf_inf3")
+        a.mov_ri64("rax", 0x7FF0000000000000)
+        a.mov_rm("rcx", "rbp", -32)     # sign
+        a.shl_ri8("rcx", 63)
+        a.or_rr("rax", "rcx")
+        a.mov_ri32("rdx", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("pf_int")
+        # integer digits (leading zeros skipped for Mc, counted for E_dec)
+        lab_pfi = self.new_tmp("pf")
+        a.label(lab_pfi)
+        a.mov_rm("rax", "rbp", -24)     # i
+        a.mov_rm("rcx", "rbp", -16)     # len
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "pf_frac")
+        a.mov_rm("rdi", "rbp", -8)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 0)        # ch
+        a.cmp_ri32("rax", 48)
+        a.jcc("l", "pf_frac")
+        a.cmp_ri32("rax", 57)
+        a.jcc("g", "pf_frac")
+        # a digit: count it, keep it unless still in leading zeros
+        a.mov_rm("rcx", "rbp", -80)     # seen_digit?
+        a.test_rr("rcx", "rcx")
+        a.jcc("ne", "pf_keep")
+        a.cmp_ri32("rax", 48)
+        a.jcc("e", "pf_nexti")          # leading zero: skip, no count
+        a.label("pf_keep")
+        a.mov_ri32("rcx", 1)
+        a.mov_mr("rbp", "rcx", -80)
+        a.mov_rm("rcx", "rbp", -56)     # di_total (cap counts at 20000)
+        a.cmp_ri32("rcx", 20000)
+        a.jcc("ae", "pf_keep2")
+        a.add_ri32("rcx", 1)
+        a.mov_mr("rbp", "rcx", -56)
+        a.label("pf_keep2")
+        a.mov_rm("rcx", "rbp", -64)     # ndigits
+        a.cmp_ri32("rcx", 100)
+        a.jcc("ae", "pf_sticky")
+        a.sub_ri32("rax", 48)           # digit value
+        a.mov_mr("rbp", "rax", -104)    # stash digit
+        a.mov_rr("rdi", "rsp")          # Mc
+        a.mov_rr("rsi", "rdi")
+        a.mov_ri32("rdx", 10)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_mul_small")
+        a.mov_rr("rdi", "rsp")
+        a.mov_rr("rsi", "rdi")
+        a.mov_rm("rdx", "rbp", -104)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_add_small")
+        a.mov_rm("rax", "rbp", -64)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -64)
+        a.jmp("pf_nexti")
+        a.label("pf_sticky")
+        a.cmp_ri32("rax", 48)
+        a.jcc("e", "pf_nexti")
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -72)
+        a.label("pf_nexti")
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_pfi)
+        a.label("pf_frac")
+        # optional fraction: every digit counts for n_frac; leading zeros
+        # before the first significant digit count too (they are positions)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "pf_exp")
+        a.mov_rm("rdi", "rbp", -8)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 0)
+        a.cmp_ri32("rax", 46)           # '.'
+        a.jcc("ne", "pf_exp")
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)     # skip '.'
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -88)     # seen_dot = 1
+        lab_pff = self.new_tmp("pf")
+        a.label(lab_pff)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "pf_exp")
+        a.mov_rm("rdi", "rbp", -8)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 0)
+        a.cmp_ri32("rax", 48)
+        a.jcc("l", "pf_exp")
+        a.cmp_ri32("rax", 57)
+        a.jcc("g", "pf_exp")
+        a.mov_rm("rcx", "rbp", -48)     # n_frac++ (cap at 20000)
+        a.cmp_ri32("rcx", 20000)
+        a.jcc("ae", "pf_frac2")
+        a.add_ri32("rcx", 1)
+        a.mov_mr("rbp", "rcx", -48)
+        a.label("pf_frac2")
+        # same keep/sticky logic as the integer part, minus di_total
+        a.mov_rm("rcx", "rbp", -80)
+        a.test_rr("rcx", "rcx")
+        a.jcc("ne", "pf_fkeep")
+        a.cmp_ri32("rax", 48)
+        a.jcc("e", "pf_fnext")          # leading zero: position only
+        a.label("pf_fkeep")
+        a.mov_ri32("rcx", 1)
+        a.mov_mr("rbp", "rcx", -80)
+        a.mov_rm("rcx", "rbp", -64)
+        a.cmp_ri32("rcx", 100)
+        a.jcc("ae", "pf_fsticky")
+        a.sub_ri32("rax", 48)
+        a.mov_mr("rbp", "rax", -104)
+        a.mov_rr("rdi", "rsp")
+        a.mov_rr("rsi", "rdi")
+        a.mov_ri32("rdx", 10)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_mul_small")
+        a.mov_rr("rdi", "rsp")
+        a.mov_rr("rsi", "rdi")
+        a.mov_rm("rdx", "rbp", -104)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_add_small")
+        a.mov_rm("rax", "rbp", -64)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -64)
+        a.jmp("pf_fnext")
+        a.label("pf_fsticky")
+        a.cmp_ri32("rax", 48)
+        a.jcc("e", "pf_fnext")
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -72)
+        a.label("pf_fnext")
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_pff)
+        a.label("pf_exp")
+        # optional exponent: e[+-]digits, clamped to +-99999
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "pf_end")
+        a.mov_rm("rdi", "rbp", -8)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 0)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 101)          # 'e'
+        a.jcc("ne", "pf_end")
+        a.mov_ri32("rcx", 1)            # esign = +1
+        a.mov_mr("rbp", "rcx", -104)    # reuse stash
+        a.mov_ri32("rcx", 0)            # eval = 0
+        a.mov_mr("rbp", "rcx", -112)    # stash eval (frame has room: -128)
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)     # skip 'e'
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rdx", "rbp", -16)
+        a.cmp_rr("rax", "rdx")
+        a.jcc("ae", "pf_bad")
+        a.mov_rm("rdi", "rbp", -8)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 0)
+        a.cmp_ri32("rax", 43)
+        a.jcc("e", "pf_eskip")
+        a.cmp_ri32("rax", 45)
+        a.jcc("ne", "pf_edig")
+        a.mov_ri32("rax", -1)
+        a.mov_mr("rbp", "rax", -104)
+        a.label("pf_eskip")
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.label("pf_edig")
+        a.mov_ri32("rax", 0)            # any = 0
+        a.mov_mr("rbp", "rax", -120)
+        lab_pfe = self.new_tmp("pf")
+        a.label(lab_pfe)
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "pf_echeck")
+        a.mov_rm("rdi", "rbp", -8)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 0)
+        a.cmp_ri32("rax", 48)
+        a.jcc("l", "pf_echeck")
+        a.cmp_ri32("rax", 57)
+        a.jcc("g", "pf_echeck")
+        a.mov_ri32("rcx", 1)
+        a.mov_mr("rbp", "rcx", -120)    # any = 1
+        a.sub_ri32("rax", 48)
+        a.mov_rm("rcx", "rbp", -112)    # eval = eval*10 + d, cap 99999
+        a.mov_rr("rdx", "rax")
+        a.mov_rr("rax", "rcx")
+        a.mov_ri32("rcx", 10)
+        a.imul_rr("rax", "rcx")
+        a.add_rr("rax", "rdx")
+        a.cmp_ri32("rax", 99999)
+        a.jcc("le", "pf_ecap")
+        a.mov_ri32("rax", 99999)
+        a.label("pf_ecap")
+        a.mov_mr("rbp", "rax", -112)
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_pfe)
+        a.label("pf_echeck")
+        a.mov_rm("rax", "rbp", -120)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "pf_bad")            # 'e' with no digits
+        a.mov_rm("rax", "rbp", -112)
+        a.mov_rm("rcx", "rbp", -104)    # esign
+        a.imul_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -40)     # E
+        a.label("pf_end")
+        # must have consumed everything and seen at least one digit
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ne", "pf_bad")
+        a.mov_rm("rax", "rbp", -80)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "pf_bad")
+        # E_dec = di_total - 1 + E; Mc == 0 -> signed zero
+        a.mov_rm("rax", "rbp", -64)     # ndigits kept
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "pf_mag")
+        a.mov_rm("rax", "rbp", -32)     # sign
+        a.shl_ri8("rax", 63)
+        a.mov_ri32("rdx", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("pf_mag")
+        a.mov_rm("rax", "rbp", -56)     # di_total
+        a.sub_ri32("rax", 1)
+        a.mov_rm("rcx", "rbp", -40)     # E
+        a.add_rr("rax", "rcx")          # E_dec
+        a.cmp_ri32("rax", 310)
+        a.jcc("g", "pf_infret")
+        a.cmp_ri32("rax", -330)
+        a.jcc("l", "pf_zeroret")
+        # K = E - n_frac; nearest_double(Mc, K, sticky, sign)
+        a.mov_rm("rax", "rbp", -40)     # E
+        a.mov_rm("rcx", "rbp", -48)     # n_frac
+        a.sub_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -40)     # reuse E slot for K
+        a.mov_rr("rdi", "rsp")          # Mc
+        a.mov_rr("rsi", "rax")          # K
+        a.mov_rm("rdx", "rbp", -72)     # sticky
+        a.mov_rm("rcx", "rbp", -32)     # sign
+        a.call("nearest_double")
+        a.mov_ri32("rdx", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("pf_infret")
+        a.mov_ri64("rax", 0x7FF0000000000000)
+        a.mov_rm("rcx", "rbp", -32)
+        a.shl_ri8("rcx", 63)
+        a.or_rr("rax", "rcx")
+        a.mov_ri32("rdx", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("pf_zeroret")
+        a.mov_rm("rax", "rbp", -32)
+        a.shl_ri8("rax", 63)
+        a.mov_ri32("rdx", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("pf_bad")
+        a.mov_ri32("rdx", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
+    def emit_float_format(self):
+        """Shortest round-trip float formatting (Python repr style), exact
+        decimal expansion escalated 1..17 digits with a parse-back check."""
+        a = self.a
+        BW = Gen.BW
+        # x_float_str(rdi = Float value) -> rax = Str
+        # f_in_interval(rdi=McBuf, rsi=K, rdx=bounds) -> rax 0/1.
+        # Bounds: [m_lo,e_lo,m_hi,e_hi,incl_lo,incl_hi]; Mc any size.
+        a.label("f_in_interval")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # McBuf
+        a.mov_mr("rbp", "rsi", -16)     # K
+        a.mov_mr("rbp", "rdx", -24)     # bounds
+        # lower: strictly greater, or equal when inclusive
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rsi", "rbp", -16)
+        a.mov_ri32("rdx", 0)
+        a.mov_rm("rcx", "rbp", -24)
+        a.mov_rm("rcx", "rcx", 0)       # m_lo
+        a.mov_rm("r8", "rbp", -24)
+        a.mov_rm("r8", "r8", 8)         # e_lo
+        a.call("dec_cmp")
+        a.test_rr("rax", "rax")
+        a.jcc("g", "fin_upper")
+        a.jcc("l", "fin_no")
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rax", "rax", 32)      # incl_lo
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fin_no")
+        a.label("fin_upper")
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rsi", "rbp", -16)
+        a.mov_ri32("rdx", 0)
+        a.mov_rm("rcx", "rbp", -24)
+        a.mov_rm("rcx", "rcx", 16)      # m_hi
+        a.mov_rm("r8", "rbp", -24)
+        a.mov_rm("r8", "r8", 24)        # e_hi
+        a.call("dec_cmp")
+        a.test_rr("rax", "rax")
+        a.jcc("l", "fin_yes")
+        a.jcc("g", "fin_no")
+        a.mov_rm("rax", "rbp", -24)
+        a.mov_rm("rax", "rax", 40)      # incl_hi
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fin_no")
+        a.label("fin_yes")
+        a.mov_ri32("rax", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fin_no")
+        a.mov_ri32("rax", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("x_float_str")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 224)
+        a.mov_mr("rbp", "rdi", -8)      # value
+        a.mov_rm("rax", "rdi", 8)       # bits
+        a.mov_mr("rbp", "rax", -16)     # bits
+        a.mov_rr("rcx", "rax")
+        a.shr_ri8("rcx", 63)
+        a.mov_mr("rbp", "rcx", -24)     # sign
+        a.mov_rr("rdx", "rax")
+        a.shr_ri8("rdx", 52)
+        a.and_ri32("rdx", 0x7FF)
+        a.cmp_ri32("rdx", 0x7FF)
+        a.jcc("ne", "fs_finite")
+        a.shl_ri8("rax", 12)
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "fs_nan")
+        a.mov_rm("rax", "rbp", -24)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_inf")
+        a.lea_rip("rdi", self.rstr("-inf"))
+        a.mov_ri32("rsi", 4)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fs_inf")
+        a.lea_rip("rdi", self.rstr("inf"))
+        a.mov_ri32("rsi", 3)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fs_nan")
+        a.lea_rip("rdi", self.rstr("nan"))
+        a.mov_ri32("rsi", 3)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fs_finite")
+        a.mov_rm("rax", "rbp", -16)
+        a.shl_ri8("rax", 1)
+        a.jcc("ne", "fs_nz")
+        a.mov_rm("rax", "rbp", -24)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_pzero")
+        a.lea_rip("rdi", self.rstr("-0.0"))
+        a.mov_ri32("rsi", 4)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fs_pzero")
+        a.lea_rip("rdi", self.rstr("0.0"))
+        a.mov_ri32("rsi", 3)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fs_nz")
+        a.sub_ri32("rsp", BW * 8)       # M: exact integer mantissa
+        a.mov_rr("rdi", "rsp")
+        a.mov_mr("rbp", "rdi", -32)     # M ptr
+        a.mov_rm("rdi", "rbp", -16)     # bits
+        a.call("x_dbl_parts")           # rax=m, rdx=e
+        a.mov_mr("rbp", "rax", -40)     # m
+        a.mov_mr("rbp", "rdx", -48)     # e
+        a.mov_rr("rdi", "rsp")          # M... rsp moved? no calls yet: same
+        a.mov_mr("rbp", "rdi", -32)
+        a.mov_ri32("rsi", BW)
+        a.call("bi_zero")
+        a.mov_rr("rdi", "rsp")
+        a.mov_rm("rsi", "rbp", -40)     # m
+        a.mov_ri32("rdx", BW)
+        a.call("bi_from_u64")
+        a.mov_rm("rax", "rbp", -48)     # e
+        a.test_rr("rax", "rax")
+        a.jcc("s", "fs_frac")
+        # e >= 0: M <<= e
+        a.mov_rr("rdi", "rsp")
+        a.mov_rr("rsi", "rdi")
+        a.mov_rr("rdx", "rax")
+        a.mov_ri32("rcx", BW)
+        a.call("bi_shl")
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -56)     # frac = 0
+        a.jmp("fs_digits")
+        a.label("fs_frac")
+        # e < 0: M *= 5^(-e), frac = -e
+        a.mov_rm("rax", "rbp", -48)
+        a.mov_ri32("rdx", 0)
+        a.sub_rr("rdx", "rax")          # rdx = -e
+        a.mov_mr("rbp", "rdx", -56)     # frac
+        a.mov_mr("rbp", "rdx", -64)     # times (reuse digit slot later)
+        lab_f5 = self.new_tmp("fs")
+        a.label(lab_f5)
+        a.mov_rr("rdi", "rsp")          # M (rsp stable: no calls shifted it)
+        a.mov_rr("rsi", "rdi")
+        a.mov_ri32("rdx", 5)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_mul_small")
+        a.mov_rm("rax", "rbp", -64)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -64)
+        a.jcc("ne", lab_f5)
+        a.label("fs_digits")
+        # extract decimal digits, LSD first, into a byte buffer
+        a.sub_ri32("rsp", 1152)         # digit buf (max ~1100 digits)
+        a.mov_rr("rdi", "rsp")
+        a.mov_mr("rbp", "rdi", -64)     # digit ptr
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -72)     # n = 0
+        lab_fdig = self.new_tmp("fs")
+        a.label(lab_fdig)
+        # zero-check M (scan all words)
+        a.mov_rm("rdi", "rbp", -32)     # M
+        a.mov_ri32("rax", 0)            # found-nonzero = 0
+        a.mov_ri32("rcx", BW)
+        lab_fz = self.new_tmp("fs")
+        a.label(lab_fz)
+        a.mov_rm("r11", "rdi", 0)
+        a.or_rr("rax", "r11")
+        a.add_ri32("rdi", 8)
+        a.sub_ri32("rcx", 1)
+        a.jcc("ne", lab_fz)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_have_digits")
+        # M = M // 10, digit = M % 10
+        a.mov_rm("rdi", "rbp", -32)     # q = M (in place)
+        a.mov_rr("rsi", "rdi")
+        a.mov_ri32("rdx", 10)
+        a.mov_ri32("rcx", BW)
+        a.call("bi_divmod_small")       # rax = remainder
+        a.add_ri32("rax", 48)           # '0' + digit
+        a.mov_rm("rdi", "rbp", -64)
+        a.mov_rm("rcx", "rbp", -72)
+        a.mov_rr("r11", "rax")
+        a.mov_rr("rax", "rcx")
+        a.jmp("fs_storedig")
+        a.label("fs_storedig")
+        # buf[n] = digit (in r11); n++
+        a.mov_rr("rax", "r11")
+        a.mov_rm("rdi", "rbp", -64)     # buf
+        a.mov_rm("rcx", "rbp", -72)     # n
+        a.lea_m("rdi", "rdi", 0, "rcx", 1)
+        a.mov_mr8("rdi", 0, 0)          # [buf+n] = al
+        a.mov_rm("rax", "rbp", -72)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -72)
+        a.jmp(lab_fdig)
+        a.label("fs_have_digits")
+        # E10: value = d1.d2... x 10^E10, with n digits and `frac` places
+        a.mov_rm("rax", "rbp", -72)     # n
+        a.sub_ri32("rax", 1)
+        a.mov_rm("rcx", "rbp", -56)     # frac
+        a.sub_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -96)     # E10
+        a.mov_mr("rbp", "rax", -144)    # E10c (adjusted on carry-out)
+        # McCheck buffer + output buffer below rsp
+        a.sub_ri32("rsp", BW * 8)
+        a.mov_rr("rdi", "rsp")
+        a.mov_mr("rbp", "rdi", -80)     # McCheck
+        a.sub_ri32("rsp", 64)
+        a.mov_rr("rdi", "rsp")
+        a.mov_mr("rbp", "rdi", -88)     # out buf
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -128)    # cursor
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -104)    # p = 1
+        # ---- round-trip boundaries (once): midpoints to the neighbor
+        # patterns, with half-even inclusivity from the pattern's low bit.
+        # Struct at [rbp-216]: m_lo,e_lo,m_hi,e_hi,incl_lo,incl_hi.
+        a.mov_rm("rax", "rbp", -16)     # bits
+        a.mov_ri64("r11", 0x7FFFFFFFFFFFFFFF)
+        a.and_rr("rax", "r11")
+        a.mov_mr("rbp", "rax", -152)    # P (magnitude pattern)
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 1)            # P odd?
+        a.mov_mr("rbp", "r11", -160)    # odd flag (reused below)
+        # lower bound from Lp = P - 1
+        a.mov_rm("rax", "rbp", -152)    # P
+        a.sub_ri32("rax", 1)
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "fb_lo")
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -216)    # m_lo = 1
+        a.mov_ri32("rax", -1075)
+        a.mov_mr("rbp", "rax", -208)    # e_lo
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -184)    # incl_lo = 0 (0.0 is even)
+        a.jmp("fb_up")
+        a.label("fb_lo")
+        a.mov_rr("rdi", "rax")          # Lp
+        a.call("x_dbl_parts")           # m1,e1
+        a.mov_rr("r11", "rax")          # m1
+        a.mov_rr("r10", "rdx")          # e1
+        a.mov_rm("rcx", "rbp", -48)     # e (orig)
+        a.mov_rm("rax", "rbp", -40)     # m (orig)
+        a.cmp_rr("r10", "rcx")          # e1 vs e
+        a.jcc("le", "fb_lemin1")
+        # emin = e: S = (m1 << (e1-e)) + m
+        a.mov_mr("rbp", "rcx", -208)    # e_lo = e
+        a.mov_rr("rdx", "r10")
+        a.sub_rr("rdx", "rcx")          # shift
+        a.mov_rr("rcx", "rdx")
+        a.mov_rr("rax", "r11")
+        a.shl_cl("rax")                 # m1 << shift
+        a.mov_rm("rdx", "rbp", -40)     # m
+        a.add_rr("rax", "rdx")          # S
+        a.mov_mr("rbp", "rax", -216)    # m_lo
+        a.mov_rm("rax", "rbp", -48)
+        a.sub_ri32("rax", 1)            # midpoint halves: emin - 1
+        a.mov_mr("rbp", "rax", -208)    # e_lo
+        a.label("fb_lemin1")
+        # emin = e1: S = m1 + (m << (e-e1))
+        a.mov_rr("rax", "r10")
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -208)    # e_lo = e1 - 1
+        a.mov_rr("rdx", "rcx")
+        a.sub_rr("rdx", "r10")          # shift = e - e1
+        a.mov_rr("rcx", "rdx")
+        a.mov_rm("rax", "rbp", -40)     # m
+        a.shl_cl("rax")                 # m << shift
+        a.add_rr("rax", "r11")          # + m1 = S
+        a.mov_mr("rbp", "rax", -216)    # m_lo
+        a.label("fb_loincl")
+        a.mov_rm("rax", "rbp", -160)    # odd flag
+        a.xor_ri32("rax", 1)            # incl = not odd
+        a.mov_mr("rbp", "rax", -184)    # incl_lo
+        a.label("fb_up")
+        # upper bound from Up = P + 1
+        a.mov_rm("rax", "rbp", -152)    # P
+        a.add_ri32("rax", 1)
+        a.mov_ri64("rcx", 0x7FF0000000000000)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("e", "fb_infedge")
+        a.mov_rr("rdi", "rax")          # Up
+        a.call("x_dbl_parts")           # m2,e2
+        a.mov_rr("r11", "rax")          # m2
+        a.mov_rr("r10", "rdx")          # e2
+        a.mov_rm("rcx", "rbp", -48)     # e (orig)
+        a.mov_rm("rax", "rbp", -40)     # m (orig)
+        a.cmp_rr("r10", "rcx")          # e2 vs e
+        a.jcc("le", "fb_uemin2")
+        # emin = e: S = (m2 << (e2-e)) + m, halved for the midpoint
+        a.mov_rm("rax", "rbp", -48)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -192)    # e_hi = e - 1
+        a.mov_rr("rdx", "r10")
+        a.sub_rr("rdx", "rcx")
+        a.mov_rr("rcx", "rdx")
+        a.mov_rr("rax", "r11")
+        a.shl_cl("rax")
+        a.mov_rm("rdx", "rbp", -40)
+        a.add_rr("rax", "rdx")
+        a.mov_mr("rbp", "rax", -200)    # m_hi = S
+        a.jmp("fb_uincl")
+        a.label("fb_uemin2")
+        # emin = e2: S = m2 + (m << (e-e2)), halved for the midpoint
+        a.mov_rr("rax", "r10")
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -192)    # e_hi = e2 - 1
+        a.mov_rr("rdx", "rcx")
+        a.sub_rr("rdx", "r10")
+        a.mov_rr("rcx", "rdx")
+        a.mov_rm("rax", "rbp", -40)
+        a.shl_cl("rax")
+        a.add_rr("rax", "r11")
+        a.mov_mr("rbp", "rax", -200)    # m_hi = S
+        a.label("fb_uincl")
+        a.mov_rm("rax", "rbp", -160)
+        a.xor_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -176)    # incl_hi
+        a.jmp("fb_lodone")
+        a.label("fb_infedge")
+        a.mov_ri64("rax", 0x3FFFFFFFFFFFFF)  # 2^54 - 1
+        a.mov_mr("rbp", "rax", -200)    # m_hi
+        a.mov_ri32("rax", 970)
+        a.mov_mr("rbp", "rax", -192)    # e_hi
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -176)    # incl_hi = 0 (strict)
+        a.jmp("fb_lodone")
+        a.label("fb_lodone")
+        lab_fp = self.new_tmp("fs")
+        a.label(lab_fp)
+        # Dp = first min(p,n) digits; round half-even if n > p
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -112)    # Dp = 0
+        a.mov_ri32("rax", 0)            # i = 0
+        a.mov_mr("rbp", "rax", -136)    # i slot
+        a.mov_rm("rcx", "rbp", -104)    # p
+        a.mov_rm("rdx", "rbp", -72)     # n
+        a.cmp_rr("rcx", "rdx")
+        a.jcc("le", "fs_lim")
+        a.mov_rr("rcx", "rdx")          # limit = min(p, n)
+        a.label("fs_lim")
+        a.mov_mr("rbp", "rcx", -120)    # limit (reuse K slot)
+        lab_fdg = self.new_tmp("fs")
+        a.label(lab_fdg)
+        a.mov_rm("rax", "rbp", -136)
+        a.mov_rm("rcx", "rbp", -120)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "fs_rounded")
+        # dig = buf[n-1-i] (MSD first), as a value
+        a.mov_rm("rdi", "rbp", -64)     # buf
+        a.mov_rm("rcx", "rbp", -72)     # n
+        a.sub_rr("rcx", "rax")
+        a.sub_ri32("rcx", 1)
+        a.lea_m("rdi", "rdi", 0, "rcx", 1)
+        a.movzx_eax_m8("rdi", 0)
+        a.sub_ri32("rax", 48)
+        a.mov_rr("r11", "rax")          # stash digit (limit lives at -120)
+        a.mov_rm("rax", "rbp", -112)    # Dp
+        a.mov_ri32("rcx", 10)
+        a.imul_rr("rax", "rcx")
+        a.add_rr("rax", "r11")
+        a.mov_mr("rbp", "rax", -112)
+        a.mov_rm("rax", "rbp", -136)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -136)
+        a.jmp(lab_fdg)
+        a.label("fs_rounded")
+        # T = first-p-digits in [rbp-112]. K on the p-grid; floor/ceil test.
+        a.mov_rm("rax", "rbp", -96)     # E10
+        a.add_ri32("rax", 1)
+        a.mov_rm("rcx", "rbp", -104)    # p
+        a.sub_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -56)     # K = E10 + 1 - p
+        a.mov_rm("rdi", "rbp", -80)     # McCheck = T
+        a.mov_rm("rsi", "rbp", -112)    # T
+        a.mov_ri32("rdx", BW)
+        a.call("bi_from_u64")
+        # in1 = interval(T)
+        a.mov_rm("rdi", "rbp", -80)
+        a.mov_rm("rsi", "rbp", -56)
+        a.lea_m("rdx", "rbp", -216)     # bounds
+        a.call("f_in_interval")
+        a.mov_mr("rbp", "rax", -120)    # in1 (cnt slot is dead)
+        # McCheck = T + 1
+        a.mov_rm("rax", "rbp", -112)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -136)    # reuse i slot: C2 = T + 1
+        a.mov_rm("rdi", "rbp", -80)
+        a.mov_rr("rsi", "rax")
+        a.mov_ri32("rdx", BW)
+        a.call("bi_from_u64")
+        # in2 = interval(T+1)
+        a.mov_rm("rdi", "rbp", -80)
+        a.mov_rm("rsi", "rbp", -56)
+        a.lea_m("rdx", "rbp", -216)
+        a.call("f_in_interval")
+        a.mov_mr("rbp", "rax", -136)    # in2 (reuse C2 slot)
+        a.mov_rm("rax", "rbp", -120)    # in1
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_tryceil")
+        a.mov_rm("rax", "rbp", -136)    # in2?
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_win_floor")
+        # both in: closer one wins (tie -> even last digit)
+        a.mov_rm("rax", "rbp", -112)    # T
+        a.add_rr("rax", "rax")
+        a.add_ri32("rax", 1)            # 2T + 1
+        a.mov_mr("rbp", "rax", -136)    # stash
+        a.mov_rm("rdi", "rbp", -80)
+        a.mov_rr("rsi", "rax")
+        a.mov_ri32("rdx", BW)
+        a.call("bi_from_u64")           # McCheck = 2T + 1
+        a.mov_rm("rdi", "rbp", -80)
+        a.mov_rm("rsi", "rbp", -56)     # K
+        a.mov_ri32("rdx", 0)
+        a.mov_rm("rcx", "rbp", -40)     # m (orig, preserved)
+        a.mov_rm("r8", "rbp", -48)      # e (orig, preserved)
+        a.add_ri32("r8", 1)             # 2v = m x 2^(e+1)
+        a.call("dec_cmp")
+        a.test_rr("rax", "rax")
+        a.jcc("g", "fs_win_floor")      # (2T+1)10^K > 2v: floor closer
+        a.jcc("l", "fs_winceil")
+        # tie: even last digit wins
+        a.mov_rm("rax", "rbp", -112)    # T
+        a.and_ri32("rax", 1)
+        a.jcc("e", "fs_win_floor")      # T even: keep it
+        a.jmp("fs_winceil")
+        a.label("fs_tryceil")
+        a.mov_rm("rax", "rbp", -136)    # in2?
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_nextp")
+        a.label("fs_winceil")
+        # winner = T + 1; normalize a 10^p carry to (1, E10 + 1)
+        a.mov_rm("rax", "rbp", -112)    # T
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -112)    # Dp = T + 1
+        a.mov_rm("rax", "rbp", -104)    # p
+        a.mov_ri32("rcx", 1)            # pow = 10^p
+        lab_fpc = self.new_tmp("fs")
+        a.label(lab_fpc)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_pcdone")
+        a.mov_ri32("r11", 10)
+        a.imul_rr("rcx", "r11")
+        a.sub_ri32("rax", 1)
+        a.jmp(lab_fpc)
+        a.label("fs_pcdone")
+        a.mov_rm("rax", "rbp", -112)    # Dp
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ne", "fs_wingo")
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -112)    # Dp = 1
+        a.mov_rm("rax", "rbp", -96)     # E10
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -144)    # E10c = E10 + 1
+        a.jmp("fs_win")
+        a.label("fs_wingo")
+        a.mov_rm("rax", "rbp", -96)
+        a.mov_mr("rbp", "rax", -144)    # E10c = E10
+        a.jmp("fs_win")
+        a.label("fs_win_floor")
+        # winner = T (floor); E10c = E10
+        a.mov_rm("rax", "rbp", -96)
+        a.mov_mr("rbp", "rax", -144)
+        a.jmp("fs_win")
+        a.label("fs_nextp")
+        a.mov_rm("rax", "rbp", -104)    # p++
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -104)
+        a.cmp_ri32("rax", 18)
+        a.jcc("g", "fs_win")            # unreachable (p=17 always has one)
+        a.jmp(lab_fp)
+
+        a.label("fs_win")
+        # Dp's digits, LSD first, into a 24-byte area (Dp < 10^17)
+        a.sub_ri32("rsp", 24)
+        a.mov_rr("rdi", "rsp")
+        a.mov_mr("rbp", "rdi", -136)    # digbuf
+        a.mov_rm("rax", "rbp", -112)    # Dp
+        a.mov_ri32("rcx", 0)            # cnt2
+        a.mov_ri32("r10", 10)
+        lab_fext = self.new_tmp("fs")
+        a.label(lab_fext)
+        a.xor_rr("rdx", "rdx")
+        a.div_r("r10")
+        a.add_ri32("rdx", 48)
+        a.mov_mr("rdi", "rdx", 0)
+        a.add_ri32("rdi", 1)
+        a.add_ri32("rcx", 1)
+        a.test_rr("rax", "rax")
+        a.jcc("ne", lab_fext)
+        a.mov_mr("rbp", "rcx", -40)     # cnt2
+        # sci = E10c < -4 or E10c > 15
+        a.mov_rm("rax", "rbp", -144)
+        a.mov_ri32("rcx", 0)
+        a.cmp_ri32("rax", -4)
+        a.jcc("l", "fs_sci")
+        a.cmp_ri32("rax", 15)
+        a.jcc("g", "fs_sci")
+        a.jmp("fs_nosci")
+        a.label("fs_sci")
+        a.mov_ri32("rcx", 1)
+        a.label("fs_nosci")
+        a.mov_mr("rbp", "rcx", -56)     # sci
+        # sign
+        a.mov_rm("rax", "rbp", -24)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_nosign")
+        a.mov_ri32("rax", 45)           # '-'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.label("fs_nosign")
+        a.mov_rm("rax", "rbp", -56)
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "fs_scientific")
+        # ---- fixed ----
+        a.mov_rm("rax", "rbp", -144)    # E10c
+        a.test_rr("rax", "rax")
+        a.jcc("s", "fs_neg")
+        # E10c >= 0: int_len = E10c + 1; leading MSD digits, pad, dot, rest
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -48)     # int_len
+        a.mov_rm("rcx", "rbp", -40)     # cnt2
+        a.mov_rm("rdx", "rbp", -48)     # int_len
+        a.cmp_rr("rcx", "rdx")
+        a.jcc("le", "fs_xilimit")
+        a.mov_rr("rcx", "rdx")
+        a.label("fs_xilimit")
+        a.mov_mr("rbp", "rcx", -112)    # limit (Dp slot dead)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -120)    # i = 0 (cnt slot dead)
+        lab_fxi = self.new_tmp("fs")
+        a.label(lab_fxi)
+        a.mov_rm("rax", "rbp", -120)    # i
+        a.mov_rm("rcx", "rbp", -112)    # limit
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "fs_xipad")
+        # al = MSDigit(i in rax)
+        a.mov_rm("rcx", "rbp", -40)     # cnt2
+        a.sub_rr("rcx", "rax")
+        a.sub_ri32("rcx", 1)            # LSD index
+        a.mov_rm("rdi", "rbp", -136)    # digbuf
+        a.add_rr("rdi", "rcx")
+        a.movzx_eax_m8("rdi", 0)
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -120)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -120)
+        a.jmp(lab_fxi)
+        a.label("fs_xipad")
+        # pad zeros to int_len, then dot, then the rest (or '0')
+        a.mov_rm("rax", "rbp", -120)    # i
+        a.mov_rm("rcx", "rbp", -48)     # int_len
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "fs_xidot")
+        a.mov_ri32("rax", 48)           # '0'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -120)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -120)
+        a.jmp("fs_xipad")
+        a.label("fs_xidot")
+        a.mov_ri32("rax", 46)           # '.'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        # rest = MSD(i..cnt2-1); i already at int_len (or past)
+        lab_fxr = self.new_tmp("fs")
+        a.label(lab_fxr)
+        a.mov_rm("rax", "rbp", -120)    # i
+        a.mov_rm("rcx", "rbp", -40)     # cnt2
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "fs_xrdone")
+        a.mov_rm("rcx", "rbp", -40)     # cnt2
+        a.sub_rr("rcx", "rax")
+        a.sub_ri32("rcx", 1)
+        a.mov_rm("rdi", "rbp", -136)
+        a.add_rr("rdi", "rcx")
+        a.movzx_eax_m8("rdi", 0)
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -120)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -120)
+        a.jmp(lab_fxr)
+        a.label("fs_xrdone")
+        # rest empty (int_len >= cnt2) -> '0' keeps the ".0" marker
+        a.mov_rm("rax", "rbp", -48)     # int_len
+        a.mov_rm("rcx", "rbp", -40)     # cnt2
+        a.cmp_rr("rax", "rcx")
+        a.jcc("l", "fs_fxdone")
+        a.mov_ri32("rax", 48)           # '0'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.label("fs_fxdone")
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rsi", "rbp", -128)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fs_neg")
+        # E10c < 0: "0." + (-E10c-1) zeros + all cnt2 MSD digits
+        a.mov_ri32("rax", 48)           # '0'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_ri32("rax", 46)           # '.'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -144)    # E10c
+        a.mov_ri32("rcx", 0)
+        a.sub_rr("rcx", "rax")          # -E10c
+        a.sub_ri32("rcx", 1)            # zeros to emit
+        a.mov_mr("rbp", "rcx", -112)    # reuse (Dp dead)
+        lab_fxz = self.new_tmp("fs")
+        a.label(lab_fxz)
+        a.mov_rm("rax", "rbp", -112)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_nzdigits")
+        a.mov_ri32("rax", 48)
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -112)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -112)
+        a.jmp(lab_fxz)
+        a.label("fs_nzdigits")
+        a.mov_ri32("rax", 0)            # i = 0
+        a.mov_mr("rbp", "rax", -112)
+        lab_fzn = self.new_tmp("fs")
+        a.label(lab_fzn)
+        a.mov_rm("rax", "rbp", -112)
+        a.mov_rm("rcx", "rbp", -40)     # cnt2
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "fs_fxdone2")
+        a.mov_rm("rcx", "rbp", -40)
+        a.sub_rr("rcx", "rax")
+        a.sub_ri32("rcx", 1)
+        a.mov_rm("rdi", "rbp", -136)
+        a.add_rr("rdi", "rcx")
+        a.movzx_eax_m8("rdi", 0)
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -112)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -112)
+        a.jmp(lab_fzn)
+        a.label("fs_fxdone2")
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rsi", "rbp", -128)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("fs_scientific")
+        # d0 [. d1..] e esign E (E = |E10c|, >= 2 digits)
+        a.mov_ri32("rax", 0)            # MSD index 0
+        a.mov_rm("rcx", "rbp", -40)     # cnt2
+        a.sub_rr("rcx", "rax")
+        a.sub_ri32("rcx", 1)
+        a.mov_rm("rdi", "rbp", -136)
+        a.add_rr("rdi", "rcx")
+        a.movzx_eax_m8("rdi", 0)
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -40)     # cnt2
+        a.cmp_ri32("rax", 1)
+        a.jcc("le", "fs_scino_dot")
+        a.mov_ri32("rax", 46)           # '.'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_ri32("rax", 1)            # i = 1
+        a.mov_mr("rbp", "rax", -112)
+        lab_fsc = self.new_tmp("fs")
+        a.label(lab_fsc)
+        a.mov_rm("rax", "rbp", -112)
+        a.mov_rm("rcx", "rbp", -40)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", "fs_scino_dot")
+        a.mov_rm("rcx", "rbp", -40)
+        a.sub_rr("rcx", "rax")
+        a.sub_ri32("rcx", 1)
+        a.mov_rm("rdi", "rbp", -136)
+        a.add_rr("rdi", "rcx")
+        a.movzx_eax_m8("rdi", 0)
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -112)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -112)
+        a.jmp(lab_fsc)
+        a.label("fs_scino_dot")
+        a.mov_ri32("rax", 101)          # 'e'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -144)    # E10c
+        a.test_rr("rax", "rax")
+        a.jcc("ns", "fs_sciexp")
+        a.mov_ri32("rax", 45)           # '-'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -144)
+        a.mov_ri32("rcx", 0)
+        a.sub_rr("rcx", "rax")          # |E10c|
+        a.mov_mr("rbp", "rcx", -112)
+        a.jmp("fs_sciexp2")
+        a.label("fs_sciexp")
+        a.mov_ri32("rax", 43)           # '+'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.mov_rm("rax", "rbp", -144)
+        a.mov_mr("rbp", "rax", -112)    # |E10c| = E10c
+        a.label("fs_sciexp2")
+        # decimal of |E10c|, zero-padded to >= 2 digits, into digbuf
+        a.mov_rm("rax", "rbp", -112)
+        a.mov_rm("rdi", "rbp", -136)    # digbuf
+        a.mov_ri32("rcx", 0)            # ecnt
+        a.mov_ri32("r10", 10)
+        lab_fsce = self.new_tmp("fs")
+        a.label(lab_fsce)
+        a.xor_rr("rdx", "rdx")
+        a.div_r("r10")
+        a.add_ri32("rdx", 48)
+        a.mov_mr("rdi", "rdx", 0)
+        a.add_ri32("rdi", 1)
+        a.add_ri32("rcx", 1)
+        a.test_rr("rax", "rax")
+        a.jcc("ne", lab_fsce)
+        a.cmp_ri32("rcx", 2)
+        a.mov_mr("rbp", "rcx", -112)    # stash ecnt (PUTAL clobbers rcx)
+        a.jcc("ae", "fs_sceout")
+        a.mov_ri32("rax", 48)           # pad '0'
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.label("fs_sceout")
+        # emit digbuf[ecnt-1 .. 0] (ecnt already stashed above)
+        lab_fsco = self.new_tmp("fs")
+        a.label(lab_fsco)
+        a.mov_rm("rax", "rbp", -112)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "fs_scdone")
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -112)
+        a.mov_rm("rdi", "rbp", -136)
+        a.add_rr("rdi", "rax")
+        a.movzx_eax_m8("rdi", 0)
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rcx", "rbp", -128)
+        a.add_rr("rdi", "rcx")
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rax", "rbp", -128)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -128)
+        a.jmp(lab_fsco)
+        a.label("fs_scdone")
+        a.mov_rm("rdi", "rbp", -88)
+        a.mov_rm("rsi", "rbp", -128)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
+    def emit_conv_helpers(self):
+        """String trims and integer parsing for int()/float()."""
+        a = self.a
+        # x_trim(rdi = Str) -> rax = start ptr, rdx = length, with ASCII
+        # whitespace ([ \t\n\v\f\r]) stripped on both ends.
+        a.label("x_trim")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_rm("rax", "rdi", 8)       # len
+        a.mov_mr("rbp", "rax", -8)
+        a.mov_rr("rax", "rdi")
+        a.add_ri32("rax", 16)           # ptr
+        a.mov_mr("rbp", "rax", -16)
+        lab_tl = self.new_tmp("tm")
+        a.label(lab_tl)
+        a.mov_rm("rax", "rbp", -8)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "trim_done")
+        a.mov_rm("rdi", "rbp", -16)
+        a.movzx_eax_m8("rdi", 0)
+        a.mov_rr("rdi", "rax")          # x_isspace takes the byte value
+        a.call("x_isspace")
+        a.test_rr("rax", "rax")
+        a.jcc("e", "trim_right")
+        a.mov_rm("rax", "rbp", -16)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)
+        a.mov_rm("rax", "rbp", -8)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -8)
+        a.jmp(lab_tl)
+        a.label("trim_right")
+        a.mov_rm("rax", "rbp", -8)
+        a.test_rr("rax", "rax")
+        a.jcc("e", "trim_done")
+        a.mov_rm("rdi", "rbp", -16)
+        a.mov_rm("rcx", "rbp", -8)
+        a.add_rr("rdi", "rcx")
+        a.sub_ri32("rdi", 1)
+        a.movzx_eax_m8("rdi", 0)
+        a.mov_rr("rdi", "rax")          # x_isspace takes the byte value
+        a.call("x_isspace")
+        a.test_rr("rax", "rax")
+        a.jcc("e", "trim_done")
+        a.mov_rm("rax", "rbp", -8)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -8)
+        a.jmp("trim_right")
+        a.label("trim_done")
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_rm("rdx", "rbp", -8)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_isspace(rdi = byte) -> rax = 1/0 for space \t \n \v \f \r
+        a.label("x_isspace")
+        a.cmp_ri32("rdi", 32)
+        a.jcc("e", "issp_yes")
+        a.cmp_ri32("rdi", 9)
+        a.jcc("l", "issp_no")
+        a.cmp_ri32("rdi", 13)
+        a.jcc("le", "issp_yes")
+        a.label("issp_no")
+        a.mov_ri32("rax", 0)
+        a.ret()
+        a.label("issp_yes")
+        a.mov_ri32("rax", 1)
+        a.ret()
+        # x_int_parse(rdi = ptr, rsi = len) -> rax = i64, rdx = ok.
+        # Decimal with optional sign, or 0x/0X hex. No whitespace (trim
+        # first). Overflow (beyond signed 64) fails like an empty string.
+        a.label("x_int_parse")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # ptr
+        a.mov_mr("rbp", "rsi", -16)     # len
+        a.mov_ri32("rax", 1)            # sign = +1
+        a.mov_mr("rbp", "rax", -24)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -32)     # value
+        a.mov_mr("rbp", "rax", -40)     # any = 0
+        a.test_rr("rsi", "rsi")
+        a.jcc("e", "iparse_bad")
+        a.movzx_eax_m8("rdi", 0)
+        a.cmp_ri32("rax", 43)           # '+'
+        a.jcc("e", "iparse_sign")
+        a.cmp_ri32("rax", 45)           # '-'
+        a.jcc("ne", "iparse_hex")
+        a.mov_ri32("rax", -1)
+        a.mov_mr("rbp", "rax", -24)
+        a.label("iparse_sign")
+        a.mov_rm("rax", "rbp", -8)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -8)
+        a.mov_rm("rax", "rbp", -16)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)
+        a.label("iparse_hex")
+        # 0x prefix? only with no sign (interp checks startswith for base)
+        a.mov_rm("rax", "rbp", -24)     # sign
+        a.test_rr("rax", "rax")
+        a.jcc("s", "iparse_dec")
+        a.mov_rm("rax", "rbp", -16)
+        a.cmp_ri32("rax", 3)            # need 0x + 1 digit at least
+        a.jcc("l", "iparse_dec")
+        a.mov_rm("rdi", "rbp", -8)
+        a.movzx_eax_m8("rdi", 0)
+        a.cmp_ri32("rax", 48)           # '0'
+        a.jcc("ne", "iparse_dec")
+        a.movzx_eax_m8("rdi", 1)
+        a.or_ri32("rax", 32)
+        a.cmp_ri32("rax", 120)          # 'x'
+        a.jcc("ne", "iparse_dec")
+        a.mov_rm("rax", "rbp", -8)
+        a.add_ri32("rax", 2)
+        a.mov_mr("rbp", "rax", -8)
+        a.mov_rm("rax", "rbp", -16)
+        a.sub_ri32("rax", 2)
+        a.mov_mr("rbp", "rax", -16)
+        a.mov_ri32("rax", 16)
+        a.mov_mr("rbp", "rax", -40)     # any = base (nonzero = hex mode)
+        a.jmp("iparse_loop")
+        a.label("iparse_dec")
+        a.mov_ri32("rax", 10)
+        a.mov_mr("rbp", "rax", -40)     # any = base
+        a.label("iparse_loop")
+        a.mov_rm("rax", "rbp", -16)     # len
+        a.test_rr("rax", "rax")
+        a.jcc("e", "iparse_end")
+        a.mov_rm("rdi", "rbp", -8)
+        a.movzx_eax_m8("rdi", 0)        # ch
+        a.mov_rr("rcx", "rax")
+        a.sub_ri32("rcx", 48)
+        a.cmp_ri32("rcx", 9)
+        a.jcc("le", "iparse_dig")
+        a.mov_rr("rcx", "rax")
+        a.or_ri32("rcx", 32)
+        a.sub_ri32("rcx", 87)           # 'a' -> 10
+        a.cmp_ri32("rcx", 10)
+        a.jcc("l", "iparse_bad")
+        a.cmp_ri32("rcx", 15)
+        a.jcc("g", "iparse_bad")
+        a.mov_rm("rax", "rbp", -40)     # base must be 16 for a-f
+        a.cmp_ri32("rax", 16)
+        a.jcc("ne", "iparse_bad")
+        a.label("iparse_dig")
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -48)     # digits seen
+        # value = value * base + d, failing on u64 overflow
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rm("r11", "rbp", -40)     # base
+        a.mul_r("r11")                  # rdx:rax
+        a.test_rr("rdx", "rdx")
+        a.jcc("ne", "iparse_bad")
+        a.add_rr("rax", "rcx")
+        a.jcc("b", "iparse_bad")
+        a.mov_mr("rbp", "rax", -32)
+        a.mov_rm("rax", "rbp", -8)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -8)
+        a.mov_rm("rax", "rbp", -16)
+        a.sub_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -16)
+        a.jmp("iparse_loop")
+        a.label("iparse_end")
+        a.mov_rm("rax", "rbp", -48)     # at least one digit?
+        a.test_rr("rax", "rax")
+        a.jcc("e", "iparse_bad")
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rr("rdx", "rax")          # save magnitude
+        a.mov_rm("rax", "rbp", -24)     # sign
+        a.test_rr("rax", "rax")
+        a.jcc("ns", "iparse_pos")
+        a.mov_rr("rax", "rdx")
+        a.mov_ri64("rcx", 0x8000000000000000)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("a", "iparse_bad")        # magnitude > 2^63
+        a.jcc("e", "iparse_min")
+        a.mov_rr("rax", "rdx")
+        a.neg_r("rax")
+        a.mov_ri32("rdx", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("iparse_min")
+        a.mov_ri64("rax", 0x8000000000000000)
+        a.mov_ri32("rdx", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("iparse_pos")
+        a.mov_rr("rax", "rdx")
+        a.mov_ri64("rcx", 0x7FFFFFFFFFFFFFFF)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("a", "iparse_bad")
+        a.mov_ri32("rdx", 1)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label("iparse_bad")
+        a.mov_ri32("rdx", 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+
     def emit_dict_helpers(self):
-        """Dict runtime. Layout [kind][len][cap][buf]; buf holds interleaved
-        (key, value) tagged words, so one pair is 16 bytes and the key word
-        index is even. Keys are Str, found by a linear scan: dicts here are
-        small and insertion order is what interp (a Python dict) shows.
-        Overwriting a key keeps its position, like Python."""
+        """Dict runtime: K_DICT = [kind][len][cap][buf], buf holding
+        interleaved (key, value) words. Linear key scan, insertion order."""
         a = self.a
         KD = Gen.K_DICT
         # x_dict_new: rdi = n -> rax = dict (len 0, cap n)
@@ -6425,6 +8905,13 @@ class Gen:
         self.emit_print_int()
         self.emit_val_runtime()
         self.emit_dict_helpers()
+        self.emit_float_helpers()
+        self.emit_bigint()
+        self.emit_float_conv()
+        self.emit_float_parse()
+        self.emit_float_scan()
+        self.emit_float_format()
+        self.emit_conv_helpers()
 
     def emit_fmt_int(self):
         """fmt_int: rdi = i64, rsi = buf_end -> rsi = start, rdx = length."""
@@ -6527,9 +9014,19 @@ class Gen:
         a.jcc("e", lab_heap_len)
         a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("e", lab_heap_len)
+        a.cmp_ri32("rax", Gen.K_FLOAT)
+        lab_flt = self.new_tmp("tr")
+        a.jcc("e", lab_flt)
         a.cmp_ri32("rax", Gen.K_FUNC)  # functions are always truthy
         a.jcc("ne", lab_bad_truth)
         a.mov_ri32("rax", 1)
+        a.ret()
+        a.label(lab_flt)
+        a.mov_rm("rax", "rdi", 8)       # bits; 0.0 and -0.0 are both false
+        a.shl_ri8("rax", 1)
+        a.test_rr("rax", "rax")
+        a.setcc_al("ne")
+        a.movzx_eax_al()
         a.ret()
         a.label(lab_heap_len)
         a.mov_rm("rax", "rdi", 8)       # len
@@ -6553,6 +9050,7 @@ class Gen:
         lab_pv_str = self.new_tmp("pv")
         lab_pv_list = self.new_tmp("pv")
         lab_pv_file, lab_pv_dict = self.new_tmp("pv"), self.new_tmp("pv")
+        lab_pv_float = self.new_tmp("pv")
         a.cmp_ri32("rax", I)
         a.jcc("e", lab_pv_int)
         a.cmp_ri32("rax", B)
@@ -6597,6 +9095,8 @@ class Gen:
         a.jcc("e", lab_pv_file)
         a.cmp_ri32("rax", Gen.K_DICT)
         a.jcc("e", lab_pv_dict)
+        a.cmp_ri32("rax", Gen.K_FLOAT)
+        a.jcc("e", lab_pv_float)
         a.cmp_ri32("rax", Gen.K_FUNC)
         a.jcc("ne", lab_pv_bad)
         a.mov_rr("rdi", "r10")
@@ -6606,6 +9106,11 @@ class Gen:
         a.label(lab_pv_dict)
         a.mov_rr("rdi", "r10")
         a.call("x_dict_str")
+        a.mov_rr("r10", "rax")
+        a.jmp(lab_pv_str)
+        a.label(lab_pv_float)
+        a.mov_rr("rdi", "r10")
+        a.call("x_float_str")
         a.mov_rr("r10", "rax")
         a.jmp(lab_pv_str)
         a.label(lab_pv_file)
@@ -6739,6 +9244,80 @@ class Gen:
         a.label("x_eq")
         a.mov_rr("r10", "rdi")
         a.mov_rr("r11", "rsi")
+        # Float-involved equality: Int converts, -0.0 == 0.0, unordered
+        # (NaN) is never equal. Anything else against a Float is false.
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "eq_chk11")
+        a.mov_rm("rax", "r10", 0)
+        a.cmp_ri32("rax", Gen.K_FLOAT)
+        a.jcc("e", "eq_f10")
+        a.label("eq_chk11")
+        a.mov_rr("rax", "r11")
+        a.and_ri32("rax", 3)
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "eq_noflt")
+        a.mov_rm("rax", "r11", 0)
+        a.cmp_ri32("rax", Gen.K_FLOAT)
+        a.jcc("ne", "eq_noflt")
+        # r11 is Float: Python treats Bool as 0/1 for equality only.
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 3)
+        a.cmp_ri32("rax", I)
+        a.jcc("e", "eq_fint10")
+        a.cmp_ri32("rax", B)
+        a.jcc("ne", "eq_false")
+        a.mov_rr("rax", "r10")
+        a.and_ri32("rax", 8)
+        a.shr_ri8("rax", 3)
+        a.jmp("eq_fconvert10")
+        a.label("eq_fint10")
+        a.mov_rr("rax", "r10")
+        a.sar_ri8("rax", 2)
+        a.label("eq_fconvert10")
+        a.cvtsi2sd(0, "rax")
+        a.movq_xm(1, "r11", 8)
+        a.jmp("eq_fcmp")
+        a.label("eq_f10")
+        # r10 is Float: r11 may be Int, Bool, or another Float.
+        a.mov_rr("rax", "r11")
+        a.and_ri32("rax", 3)
+        a.cmp_ri32("rax", I)
+        a.jcc("e", "eq_f01")
+        a.cmp_ri32("rax", B)
+        a.jcc("e", "eq_fb01")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "eq_false")
+        a.mov_rm("rax", "r11", 0)
+        a.cmp_ri32("rax", Gen.K_FLOAT)
+        a.jcc("ne", "eq_false")
+        a.movq_xm(0, "r10", 8)
+        a.movq_xm(1, "r11", 8)
+        a.jmp("eq_fcmp")
+        a.label("eq_fb01")
+        a.mov_rr("rax", "r11")
+        a.and_ri32("rax", 8)
+        a.shr_ri8("rax", 3)
+        a.jmp("eq_fconvert01")
+        a.label("eq_f01")
+        a.mov_rr("rax", "r11")
+        a.sar_ri8("rax", 2)
+        a.label("eq_fconvert01")
+        a.movq_xm(0, "r10", 8)
+        a.cvtsi2sd(1, "rax")
+        a.label("eq_fcmp")
+        a.ucomisd(0, 1)
+        a.setcc_al("e")
+        a.jcc("np", "eq_fdone")
+        a.xor_rr("rax", "rax")
+        a.label("eq_fdone")
+        a.movzx_eax_al()
+        a.ret()
+        a.label("eq_false")
+        a.mov_ri32("rax", 0)
+        a.ret()
+        a.label("eq_noflt")
         a.mov_rr("rax", "r10")
         a.and_ri32("rax", 3)
         a.cmp_ri32("rax", I)
@@ -6897,6 +9476,8 @@ class Gen:
         a.jcc("e", "st_file")
         a.cmp_ri32("rax", Gen.K_DICT)
         a.jcc("e", "st_dict")
+        a.cmp_ri32("rax", Gen.K_FLOAT)
+        a.jcc("e", "st_float")
         a.cmp_ri32("rax", Gen.K_FUNC)
         a.jcc("ne", "st_bad")
         a.mov_rm("rax", "r10", 16)     # nparams == -1 marks a builtin
@@ -6921,6 +9502,10 @@ class Gen:
         a.label("st_dict")
         a.mov_rr("rdi", "r10")
         a.call("x_dict_str")
+        a.ret()
+        a.label("st_float")
+        a.mov_rr("rdi", "r10")
+        a.call("x_float_str")
         a.ret()
         a.label("st_list")
         a.mov_rr("rdi", "r10")

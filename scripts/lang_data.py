@@ -51,7 +51,7 @@ BUILTINS = {
     "range": ("range(n) | range(a, b)", "Int list [0..n) or [a..b)", ALL),
     "str": ("str(x)", "convert any value to Str", ALL),
     "int": ("int(x)", "convert to Int", ALL),
-    "float": ("float(x)", "convert to Float (hosted only)", HOSTED),
+    "float": ("float(x)", "convert to Float", ALL),
     "input": ("input()", "read one line from stdin (hosted only)", HOSTED),
     "open": ("open(path, mode)", "open a file (hosted only)", HOSTED),
     "read": ("read(f, n)", "read n bytes (hosted only)", HOSTED),

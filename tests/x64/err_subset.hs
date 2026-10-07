@@ -1,1 +1,3 @@
-print 1.5
+extern:
+  I64 puts(Str s)
+print puts("hi")

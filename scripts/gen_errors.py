@@ -99,8 +99,8 @@ def main():
              "| `expected ':' then an indented block` | ลืม `:` ท้ายบรรทัด | เติม `:` + indent |",
              "| `unexpected indent` | มีช่องว่างนำหน้าเกิน | จัดรูปด้วย `hs fmt` |",
              "| `assertion failed at line N` | เงื่อนไขใน `unsafe:` ไม่ผ่าน | เช็คชนิดใน `unsafe:` |",
-             "| `Float not in x64 subset` | ใช้ Float ฝั่ง x64/kernel | ดู `x64-subset.md` |",
-             "| `dict not in x64 subset` | ใช้ Dict ฝั่ง x64/kernel | ดู `x64-subset.md` |",
+             "| `extern handled elsewhere or not in x64 subset` | ใช้ `extern:` ฝั่ง x64 | ดู `x64-subset.md` |",
+             "| `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |",
              "| `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |",
              ""]
     total = 0

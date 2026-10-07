@@ -3,16 +3,17 @@
 machine code ตรง ไม่ใช้ gcc/as/ld/libc. ตาราง `builtins.md` คอลัมน์
 xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎสั้น ๆ ของ subset:
 
-มี: Int (62-bit), Str/List/Bool/null เต็มรูปแบบ, `not/and/or`,
+มี: Int (62-bit), Float (f64 เต็ม: คำนวณ `- * / %`, เทียบ, `print`/`float()`
+แบบ shortest round-trip ตรงกับ Python), Str/List/Dict/Bool/null เต็มรูปแบบ, `not/and/or`,
 `if/elif/else`, `while`, `for`, `break`/`continue`, `def` (+closure),
 `try`/`except`/`finally`/`raise`, `import` (+attr โมดูล), `global`,
-`str()`/`int()`/`len()`/`print`, `read_mem(p, n)`,
+`str()`/`int()`/`float()`/`len()`/`print`, `read_mem(p, n)`,
 `unsafe:` (I64/U64/Ptr + struct)
 
 - `def` ของผู้ใช้ shadow builtin ชื่อเดียวกันได้ (เหมือน interp/native)
   แต่ชื่อที่อยู่ในรายการ builtin ของ subset นี้คงเป็น builtin เสมอ
 
-ไม่มี (compile error ตั้งใจ): Float, `extern`,
+ไม่มี (compile error ตั้งใจ): `extern`,
 `open/read/write/close` บน kernel, `tcp_*`, `http_get`, `json_*`,
 ส่งโมดูลเข้าคำนวณ/call/index, `print`/`str` ของ
 Func ที่ประกาศเอง (builtin ใช้เป็นค่าได้ เห็น `<builtin str>`)
@@ -54,7 +55,7 @@ print [3][0:]
 ```
 
 ```hs-norun
-print 1.5        # Float: not in x64 subset
+print 1.5 + 2.5  # Float: 4.0
 import os        # ไม่มีโมดูลนี้: cannot find module
 print argv()     # argv: not in x64 subset
 ```

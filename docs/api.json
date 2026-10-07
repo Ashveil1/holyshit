@@ -1,6 +1,6 @@
 {
  "language": "holyshit",
- "version": "0.6.17",
+ "version": "0.6.18",
  "keywords": {
   "def": "define a function: `def name(params):` + indented body",
   "if": "conditional branch (with `elif` / `else`)",
@@ -84,10 +84,12 @@
   },
   "float": {
    "sig": "float(x)",
-   "desc": "convert to Float (hosted only)",
+   "desc": "convert to Float",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild",
+    "xkernel"
    ]
   },
   "input": {

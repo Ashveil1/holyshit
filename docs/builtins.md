@@ -25,8 +25,8 @@
 | | path exists? (hosted only) |||||
 | `find` | `find(s, sub)` | ✓ | ✓ | ✓ | ✓ |
 | | byte index of sub or -1 |||||
-| `float` | `float(x)` | ✓ | ✓ |   |   |
-| | convert to Float (hosted only) |||||
+| `float` | `float(x)` | ✓ | ✓ | ✓ | ✓ |
+| | convert to Float |||||
 | `http_get` | `http_get(url)` | ✓ | ✓ |   |   |
 | | http GET body as Str (hosted only) |||||
 | `input` | `input()` | ✓ | ✓ |   |   |
