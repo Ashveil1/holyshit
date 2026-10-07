@@ -1044,6 +1044,12 @@ class Gen:
             if v is None:
                 return "v_null()"
             if isinstance(v, float):
+                if v != v:                     # nan
+                    return "v_float(hs_f64raw(0x7ff8000000000000ULL))"
+                if v == float("inf"):
+                    return "v_float(hs_f64raw(0x7ff0000000000000ULL))"
+                if v == float("-inf"):
+                    return "v_float(hs_f64raw(0xfff0000000000000ULL))"
                 return f"v_float({repr(v)})"
             return f"v_int({v}LL)"
         if t == "str":

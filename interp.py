@@ -407,7 +407,9 @@ class Tok:
 
 SC = re.compile(r"""
     (?P<str>"(?:[^"\\\n]|\\.)*")
-  | (?P<float>[0-9]+\.[0-9]*|\.[0-9]+)
+  | (?P<float>[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?
+              |\.[0-9]+([eE][+-]?[0-9]+)?
+              |[0-9]+[eE][+-]?[0-9]+)
   | (?P<hex>0[xX][0-9a-fA-F]+)
   | (?P<int>[0-9]+)
   | (?P<id>[A-Za-z_][A-Za-z0-9_]*)
@@ -452,7 +454,8 @@ def lex_line(content, line):
         if g == "str":
             toks.append(Tok("STR", unesc(v, line), line))
         elif g == "float":
-            toks.append(Tok("NUM", float(v), line))
+            # raw keeps the spelling (1.5e3 stays 1.5e3 in `hs fmt`)
+            toks.append(Tok("NUM", float(v), line, raw=v))
         elif g == "hex":
             toks.append(Tok("NUM", int(v, 16), line, raw=v))
         elif g == "int":

@@ -60,6 +60,10 @@ Editor configs (VS Code / Neovim / Helix / Zed) live in `editors/`.
 `List` (mixed ok) `Dict` (Str keys only) `Func` (first-class).
 
 - `+`: numbers (Int+Float→Float), Str+Str concat, List+List concat. Else runtime error.
+- Float literals may carry an exponent: `1.5e3`, `2.5E-2`, `1e3`, `.5e1`.
+  `hs fmt` keeps the spelling; `print`/`str` use the shortest round-trip
+  decimal, exactly like Python (`0.1`, `1e+16`, `5e-324`, `inf`, `nan`).
+  A parse out of double range saturates to `inf`/`0.0`, never to `nan`.
 - `& | ^ << >>` and `~x` are **bitwise, Int only** (Bool is not an Int), shift
   count must be 0..63, `>>` is arithmetic. Bitwise binds tighter than `+ -`
   and looser than `* / %`. x64 Int is 62-bit signed, so bit 61 is the sign
@@ -67,7 +71,8 @@ Editor configs (VS Code / Neovim / Helix / Zed) live in `editors/`.
 - `== !=` work across types (just false). `< > <= >=` need same kind (Str ok).
 - Truthiness: `false null 0 "" [] {}` are false, everything else true.
 - Index: `a[i]` (negative ok), `d["k"]`, slice `s[a:b]`/`s[:b]`/`s[a:]` (Str+List).
-- String escapes: `\n \t \" \\`. No multiline strings.
+- String escapes: `\n \t \r \0 \" \\`; an unknown escape passes through
+  literally. No multiline strings.
 
 ## Functions and scope
 
@@ -294,7 +299,7 @@ Crossing the boundary (x64):
 1. `//` starts a comment. Always.
 2. `;` `{` `}` do not exist. `Print` capital is legacy and fails.
 3. `for i in 0..5` does not exist — use `range(5)`.
-4. `x = 010` is decimal 10, not octal. `0xFF` hex works.
+4. `x = 010` is decimal 10, not octal. `0xFF` hex works, `1.5e3` is 1500.0.
 5. Dict keys must be Str. `d[k] = v` creates keys; missing read is an error.
 6. `print` of a Float prints shortest form (`3.5`, `0.0` with `.0` kept).
 7. Errors always look like `error: <msg> at line N` (stderr, exit 1).

@@ -68,6 +68,14 @@ Val v_null(void) { return (Val){T_NULL, {0}}; }
 Val v_bool(int b) { return (Val){T_BOOL, {.b = !!b}}; }
 Val v_int(int64_t i) { return (Val){T_INT, {.i = i}}; }
 Val v_float(double f) { return (Val){T_FLOAT, {.f = f}}; }
+
+// float literals can overflow to inf (1e400) or be nan; neither has a
+// portable C literal, so hand the raw bits over instead
+double hs_f64raw(uint64_t bits) {
+    union { uint64_t u; double d; } v;
+    v.u = bits;
+    return v.d;
+}
 Val v_unbound(void) { return (Val){T_UNBOUND, {0}}; }
 
 Val v_strn(const char *s, int64_t n) {
@@ -686,6 +694,76 @@ Val v_seq(Val v, int line) {
 }
 
 // ---------- display ----------
+
+// repr() of a double: the shortest decimal string that reads back to the
+// same bits, formatted like CPython (fixed while 10^-4 <= |x| < 10^16,
+// ".0" kept so it still reads as a float, at least two exponent digits).
+// A plain "%.17g" prints 17 digits for every inexact value, which is what
+// interp/Python never do: 0.1 must be "0.1", not "0.10000000000000001".
+static void fmt_repr(double x, char *out, size_t cap) {
+    if (isnan(x)) {
+        snprintf(out, cap, "%snan", signbit(x) ? "-" : "");
+        return;
+    }
+    if (isinf(x)) {
+        snprintf(out, cap, "%sinf", x < 0 ? "-" : "");
+        return;
+    }
+    int neg = signbit(x);
+    double a = neg ? -x : x;
+    char buf[64], digits[24];
+    int prec = 17;
+    for (int p = 1; p <= 17; p++) {
+        snprintf(buf, sizeof(buf), "%.*e", p - 1, a);
+        if (strtod(buf, NULL) == a) {
+            prec = p;
+            break;
+        }
+    }
+    snprintf(buf, sizeof(buf), "%.*e", prec - 1, a);
+    char *ep = strchr(buf, 'e');
+    int exp10 = atoi(ep + 1);
+    int nd = 0;
+    for (char *q = buf; q < ep; q++)
+        if (*q != '.')
+            digits[nd++] = *q;
+    digits[nd] = 0;
+    char *o = out;
+    if (neg)
+        *o++ = '-';
+    if (exp10 >= -4 && exp10 <= 15) {
+        if (exp10 >= 0) {
+            for (int i = 0; i <= exp10; i++)
+                *o++ = i < nd ? digits[i] : '0';
+            *o++ = '.';
+            if (nd > exp10 + 1) {
+                memcpy(o, digits + exp10 + 1, nd - exp10 - 1);
+                o += nd - exp10 - 1;
+            } else {
+                *o++ = '0';
+            }
+        } else {
+            *o++ = '0';
+            *o++ = '.';
+            for (int i = 0; i < -exp10 - 1; i++)
+                *o++ = '0';
+            memcpy(o, digits, nd);
+            o += nd;
+        }
+        *o = 0;
+    } else {
+        *o++ = digits[0];
+        if (nd > 1) {
+            *o++ = '.';
+            memcpy(o, digits + 1, nd - 1);
+            o += nd - 1;
+        }
+        *o = 0;
+        snprintf(o, cap - (size_t)(o - out), "e%c%02d", exp10 < 0 ? '-' : '+',
+                 exp10 < 0 ? -exp10 : exp10);
+    }
+}
+
 const char *v_disp(Val v) {
     char tmp[64];
     switch (v.tag) {
@@ -698,19 +776,9 @@ const char *v_disp(Val v) {
     case T_INT:
         snprintf(tmp, sizeof(tmp), "%lld", (long long)v.u.i);
         break;
-    case T_FLOAT: {
-        snprintf(tmp, sizeof(tmp), "%.17g", v.u.f);
-        char *t2 = tmp;
-        int bare = 1;
-        for (; *t2; t2++)
-            if (*t2 == '.' || *t2 == 'e' || *t2 == 'n') {
-                bare = 0;
-                break;
-            }
-        if (bare)
-            snprintf(tmp, sizeof(tmp), "%.17g.0", v.u.f);
+    case T_FLOAT:
+        fmt_repr(v.u.f, tmp, sizeof(tmp));
         break;
-    }
     case T_STR:
         return AS_STR(v)->data;
     case T_LIST: {

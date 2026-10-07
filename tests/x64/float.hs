@@ -16,3 +16,8 @@ print float("5.896816288783659e+166")
 s = "0123456789abcdef"
 print s[int(3)], s[int(2.9)], s[int("10")]
 print s[int(0.0) + int(1)], s[int(true)]
+# float literals with exponents (the lexer spells them like Python's)
+print 1.5e3, 2.5E-2, 1e3, 1e16, 1e-5, 1e-300, 5e-324
+print 1e15, 1e17, 0xFF, .5e1
+# a value above the max double saturates to inf (not nan)
+print float("1e309"), float("1.8e308"), float("-1.8e308"), float("1.79e308")

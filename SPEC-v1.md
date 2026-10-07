@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.19 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.20 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -13,14 +13,18 @@
 - block (if/while/for) ไม่สร้าง scope ใหม่ — มีแค่ function เท่านั้นที่สร้าง scope (แบบ Python)
 - จบ statement ด้วยขึ้นบรรทัดใหม่ (`;` ใช้ไม่ได้แล้ว)
 - คอมเมนต์: `#` และ `//` ถึงท้ายบรรทัด
-- string: `"..."` มี escape `\n \t \" \\`, ไม่มี string หลายบรรทัดใน v1
+- string: `"..."` มี escape `\n \t \r \0 \" \\` (escape ที่ไม่รู้จัก
+  ปล่อยผ่านมาเป็นตัวอักษร), ไม่มี string หลายบรรทัดใน v1
+- เลขทศนิยมเขียนเลขยกกำลังได้: `1.5e3`, `2.5E-2`, `1e3`, `.5e1` (และคงรูป
+  เดิมไว้เวลา `hs fmt`)
 
 ## 2. ค่า (dynamic ทั้งหมด, ไม่มีประกาศ type)
 
 | ชนิด | ตัวอย่าง | หมายเหตุ |
 |---|---|---|
 | Int | `42`, `-7`, `0xFF` | 64-bit signed |
-| Float | `3.14`, `2.0` | 64-bit |
+| Float | `3.14`, `2.0`, `1.5e3` | 64-bit; repr คือ shortest round-trip |
+ติดกับ `print`/`str` เหมือน Python (`0.1` ไม่ใช่ `0.10000000000000001`) |
 | Str | `"hello"` | UTF-8, ต่อด้วย `+` ได้ |
 | Bool | `true`, `false` | |
 | Null | `null` | ค่าเริ่มต้นของ var ที่ยังไม่ assign ไม่ได้ — ต้อง assign ก่อนใช้เสมอ |
@@ -33,7 +37,7 @@
 - `//` ไม่มีในฐานะ operator — `//` เริ่มคอมเมนต์ทั้งบรรทัด (เหมือน `#`)
 - `pass` = คำสั่งว่าง (ไว้เติม block ที่ยังไม่เขียน)
 - เปรียบเทียบ: `== != < > <= >=` ใช้กับชนิดเดียวกัน (Str เทียบ lexicographic ได้)
-- ตรรกะ: `and or not` (short-circuit), truthiness: `false null 0 "" [] {}` เป็นเท็จ ที่เหลือจริง
+- ตรรกะ: `and or not` (short-circuit ยกเว้น backend x64), truthiness: `false null 0 "" [] {}` เป็นเท็จ ที่เหลือจริง
 - ผิดชนิดตอนรัน (เช่น `1 + "a"`) = runtime error พร้อมบรรทัดที่ผิด
 
 ## 3. ตัวแปรและฟังก์ชัน
@@ -1013,3 +1017,42 @@ label `hsJF_*` แล้วสั่ง `emit_mod_init` เหมือน `impo
 รวมข้อความ error และเลขบรรทัด เทส `tests/x64/json.hs` (x64 51 -> 52)
 และ `kernel/kjsontest.hs` ที่บูต QEMU จริง 18 assertion + 4 error
 (xkernel 284 -> 291)
+
+### 15.34 เลขทศนิยมนับยกกำลังได้ + native print float แบบ shortest (v0.6.20)
+
+คำถามว่า "ภาษาครบ 100% ไหม" เปิดช่องโหว่สองตัวที่ไม่ใช่ฟีเจอร์ที่สเปก
+เขียนไว้ แต่เป็นบั๊กจริงที่ต้องแก้
+
+**1. `1.5e3` ไม่ใช่เลขทศนิยม.** lexer เดิมมีแต่
+`[0-9]+\.[0-9]*|\.[0-9]+` เลยตัด `1.5e3` เป็น `1.5` แล้วเหลือ
+`e3` ไว้ให้ตายด้วย `unknown variable 'e3'` — ภาษาที่ indent เหมือน
+Python แต่เขียนเลขยกกำลังไม่ได้ ตอนนี้ regex เป็น
+`[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?|\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+`
+และเก็บ `raw` ไว้ด้วยเพื่อให้ `hs fmt` คืนรูปเดิม (`1.5e3` ไม่กลายเป็น
+`1500.0`) — `0xFF` ก็เก็บแบบเดียวกันอยู่แล้ว
+
+**2. native print Float ไม่ตรง interp 48% ของค่า.** `v_disp` ใน
+`native/rt.c` ใช้ `%.17g` ตรง ๆ ซึ่งพิมพ์ 17 หลักนัยสำหรับทุกค่าที่ไม่
+แน่นอน: `print 0.1` ได้ `0.10000000000000001` แต่ interp ได้ `0.1`
+fuzz 674 ค่า match แค่ 322 — **บั๊กนี้มีมาตั้งแต่ Float เข้ามาใน native
+(ไม่ใช่ของรอบนี้) และไม่เคยถูกจับ เพราะไม่มี test ไหน print float
+ที่ไม่แน่นอน** แก้ด้วย `fmt_repr()` ที่หา significant digits สั้นที่สุด
+(ไล่ 1..17 แล้วเช็คว่า `strtod` อ่านกลับได้ค่าเดิม) แล้วจัดรูปแบบตาม
+CPython: fixed ตอน 1e-4 <= |x| < 1e16, มี `.0` ตอนลงตัว, เลขชี้กำลัง
+อย่างน้อย 2 หลัก → ผ่าน 2021 ค่าใน 3 seed ที่ fuzz มา ตอนนี้ 100%
+
+**3. บั๊ก x64 ที่เจอระหว่างทำ: `float("1e309")` ได้ nan.** ค้นพบตอน
+fuzz float หลังแก้ข้อ 2 (seed 77) — `nearest_double()` ไบนารีเซิร์ชค่า
+IEEE pattern โดยตั้ง `hi = inf` แล้วเดิน `lo = mid + 1` 63 รอบ พอ `lo`
+ชน `hi` ที่เป็น pattern ของ inf พอดี ขั้นถัดไปก็เดินข้ามไปเป็น NaN
+(`0x7FF0000000000001`) แล้วคืน nan กลับออกไป แก้ด้วย clamp
+`lo = min(mid + 1, hi)` → ทุกอย่างที่เกิน max double กลายเป็น `inf`
+ตาม Python
+
+**4. native ต้องมีวิธีพิมพ์ `inf`/`nan` ที่ literal.** `repr(float('inf'))`
+ให้ `inf` ซึ่งเป็น identifier ไม่ใช่ constant ใน C (gcc error) เลยเพิ่ม
+`hs_f64raw(uint64_t)` ใน `rt.c` แล้ว emit เป็น bit pattern ตรง ๆ
+(`v_float(hs_f64raw(0x7ff0000000000000ULL))`) แทนการผูก `math.h`
+
+หลักฐาน: `tests/floatlit.hs` (interp 42 / native 43), `tests/x64/float.hs`
+ยาวขึ้น, `tests/test.py` 41 -> 42, `tests/test_native.py` 42 -> 43

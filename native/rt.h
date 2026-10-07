@@ -5,6 +5,9 @@
 
 #include <stdint.h>
 
+// float literal bits -> double (see hs_f64raw in rt.c)
+double hs_f64raw(uint64_t bits);
+
 typedef enum {
     T_UNBOUND = 0,
     T_NULL,

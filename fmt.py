@@ -65,7 +65,8 @@ def fmt_num(v, raw=None):
     if v is None:
         return "null"
     if isinstance(v, float):
-        return repr(v)
+        # keep 1.5e3 / .5e1 as written; fall back to repr() otherwise
+        return raw if raw else repr(v)
     if raw and isinstance(v, int) and not isinstance(v, bool):
         return raw  # keep 0xAB as written (page-table flags stay readable)
     return str(v)

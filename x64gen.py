@@ -7117,7 +7117,17 @@ class Gen:
         a.label("nd_lo")
         a.mov_rm("rax", "rbp", -64)
         a.add_ri32("rax", 1)
-        a.mov_mr("rbp", "rax", -40)     # lo = mid + 1
+        # clamp to hi: once lo reaches the inf pattern (hi's initial value)
+        # mid+1 would step past it into the NaN range and the result came
+        # back as nan instead of inf for anything above the max double
+        a.mov_rr("rcx", "rax")
+        a.mov_rm("r11", "rbp", -48)
+        a.cmp_rr("rcx", "r11")
+        lab_ndok = self.new_tmp("nd")
+        a.jcc("le", lab_ndok)
+        a.mov_rr("rax", "r11")
+        a.label(lab_ndok)
+        a.mov_mr("rbp", "rax", -40)     # lo = min(mid + 1, hi)
         a.label("nd_next")
         a.mov_rm("rax", "rbp", -56)
         a.sub_ri32("rax", 1)
