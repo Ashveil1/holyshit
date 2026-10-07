@@ -41,10 +41,12 @@ KEYWORDS = {
 }
 
 ALL = {"interp", "native", "xbuild", "xkernel"}
-HOSTED = {"interp", "native"}
+# everything that needs libc/stdin/argv works on the hosted x64 backend too
+# (its File runtime is the same openat/read/write/getdents machinery)
+HOSTED = {"interp", "native", "xbuild"}
 NO_XBUILD = {"interp", "native", "xkernel"}  # kernel-surface via xkernel
-# needs a filesystem: xbuild yes, a freestanding kernel no
-HOSTED_NO_KERNEL = {"interp", "native", "xbuild"}
+# tcp_* / http_get: interp and native only (x64 has no sockets yet)
+NET = {"interp", "native"}
 
 # name -> (signature, description, support set)
 BUILTINS = {
@@ -68,14 +70,14 @@ BUILTINS = {
     "system": ("system(cmd)", "run shell command, exit code (hosted only)",
                HOSTED),
     "tcp_connect": ("tcp_connect(host, port)", "open TCP (hosted only)",
-                    HOSTED),
-    "tcp_send": ("tcp_send(sock, s)", "send bytes (hosted only)", HOSTED),
-    "tcp_recv": ("tcp_recv(sock, n)", "recv bytes (hosted only)", HOSTED),
-    "tcp_close": ("tcp_close(sock)", "close socket (hosted only)", HOSTED),
-    "tcp_listen": ("tcp_listen(port)", "listen socket (hosted only)", HOSTED),
-    "tcp_accept": ("tcp_accept(sock)", "accept client (hosted only)", HOSTED),
+                    NET),
+    "tcp_send": ("tcp_send(sock, s)", "send bytes (hosted only)", NET),
+    "tcp_recv": ("tcp_recv(sock, n)", "recv bytes (hosted only)", NET),
+    "tcp_close": ("tcp_close(sock)", "close socket (hosted only)", NET),
+    "tcp_listen": ("tcp_listen(port)", "listen socket (hosted only)", NET),
+    "tcp_accept": ("tcp_accept(sock)", "accept client (hosted only)", NET),
     "http_get": ("http_get(url)", "http GET body as Str (hosted only)",
-                 HOSTED),
+                 NET),
     "json_parse": ("json_parse(s)", "parse JSON Str", ALL),
     "json_str": ("json_str(x)", "value to JSON Str", ALL),
     "read_mem": ("read_mem(ptr, n)", "n raw bytes as Str (all backends)",
@@ -88,10 +90,9 @@ BUILTINS = {
     "exists": ("exists(path)", "path exists? (hosted only)", HOSTED),
     "ls": ("ls(path)", "dir entries List (hosted only)", HOSTED),
     "mkdir": ("mkdir(path)", "make directory (hosted only)", HOSTED),
-    "json_load": ("json_load(path)", "load JSON file (hosted only)",
-                  HOSTED_NO_KERNEL),
+    "json_load": ("json_load(path)", "load JSON file (hosted only)", HOSTED),
     "json_save": ("json_save(path, x)", "save value as JSON (hosted only)",
-                  HOSTED_NO_KERNEL),
+                  HOSTED),
     # unsafe builtins (raw machine words, inside unsafe: only)
     "alloc": ("alloc(n)", "zeroed n bytes (unsafe only)", ALL),
     "load8": ("load8(p)", "load byte (unsafe only)", ALL),

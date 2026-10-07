@@ -9,19 +9,19 @@
 | | zeroed n bytes (unsafe only) |||||
 | `append` | `append(list, x)` | ✓ | ✓ | ✓ | ✓ |
 | | push x, returns Null |||||
-| `append_text` | `append_text(path, s)` | ✓ | ✓ |   |   |
+| `append_text` | `append_text(path, s)` | ✓ | ✓ | ✓ |   |
 | | append file (hosted only) |||||
-| `argv` | `argv()` | ✓ | ✓ |   |   |
+| `argv` | `argv()` | ✓ | ✓ | ✓ |   |
 | | program args as List (hosted only) |||||
 | `as_int` | `as_int(p)` | ✓ | ✓ | ✓ | ✓ |
 | | Ptr -> Int value (unsafe only) |||||
 | `as_ptr` | `as_ptr(x)` | ✓ | ✓ | ✓ | ✓ |
 | | Int value -> Ptr (unsafe only) |||||
-| `close` | `close(f)` | ✓ | ✓ |   |   |
+| `close` | `close(f)` | ✓ | ✓ | ✓ |   |
 | | close a file (hosted only) |||||
-| `env` | `env(name)` | ✓ | ✓ |   |   |
+| `env` | `env(name)` | ✓ | ✓ | ✓ |   |
 | | env var or Null (hosted only) |||||
-| `exists` | `exists(path)` | ✓ | ✓ |   |   |
+| `exists` | `exists(path)` | ✓ | ✓ | ✓ |   |
 | | path exists? (hosted only) |||||
 | `find` | `find(s, sub)` | ✓ | ✓ | ✓ | ✓ |
 | | byte index of sub or -1 |||||
@@ -29,7 +29,7 @@
 | | convert to Float |||||
 | `http_get` | `http_get(url)` | ✓ | ✓ |   |   |
 | | http GET body as Str (hosted only) |||||
-| `input` | `input()` | ✓ | ✓ |   |   |
+| `input` | `input()` | ✓ | ✓ | ✓ |   |
 | | read one line from stdin (hosted only) |||||
 | `int` | `int(x)` | ✓ | ✓ | ✓ | ✓ |
 | | convert to Int |||||
@@ -51,13 +51,13 @@
 | | load 8 bytes raw (unsafe only; page tables) |||||
 | `load8` | `load8(p)` | ✓ | ✓ | ✓ | ✓ |
 | | load byte (unsafe only) |||||
-| `ls` | `ls(path)` | ✓ | ✓ |   |   |
+| `ls` | `ls(path)` | ✓ | ✓ | ✓ |   |
 | | dir entries List (hosted only) |||||
-| `meminfo` | `meminfo()` | ✓ | ✓ |   |   |
+| `meminfo` | `meminfo()` | ✓ | ✓ | ✓ |   |
 | | dict total/free/page (hosted only) |||||
-| `mkdir` | `mkdir(path)` | ✓ | ✓ |   |   |
+| `mkdir` | `mkdir(path)` | ✓ | ✓ | ✓ |   |
 | | make directory (hosted only) |||||
-| `open` | `open(path, mode)` | ✓ | ✓ |   |   |
+| `open` | `open(path, mode)` | ✓ | ✓ | ✓ |   |
 | | open a file (hosted only) |||||
 | `pmm_alloc` | `pmm_alloc(npages)` | ✓ | ✓ |   | ✓ |
 | | allocate physical pages |||||
@@ -69,11 +69,11 @@
 | | print values space-separated + newline |||||
 | `range` | `range(n) | range(a, b)` | ✓ | ✓ | ✓ | ✓ |
 | | Int list [0..n) or [a..b) |||||
-| `read` | `read(f, n)` | ✓ | ✓ |   |   |
+| `read` | `read(f, n)` | ✓ | ✓ | ✓ |   |
 | | read n bytes (hosted only) |||||
 | `read_mem` | `read_mem(ptr, n)` | ✓ | ✓ | ✓ | ✓ |
 | | n raw bytes as Str (all backends) |||||
-| `read_text` | `read_text(path)` | ✓ | ✓ |   |   |
+| `read_text` | `read_text(path)` | ✓ | ✓ | ✓ |   |
 | | whole file as Str (hosted only) |||||
 | `readkey` | `readkey()` | ✓ | ✓ |   | ✓ |
 | | stdin char hosted, last key or Null on kernel |||||
@@ -87,7 +87,7 @@
 | | store byte (unsafe only) |||||
 | `str` | `str(x)` | ✓ | ✓ | ✓ | ✓ |
 | | convert any value to Str |||||
-| `system` | `system(cmd)` | ✓ | ✓ |   |   |
+| `system` | `system(cmd)` | ✓ | ✓ | ✓ |   |
 | | run shell command, exit code (hosted only) |||||
 | `tcp_accept` | `tcp_accept(sock)` | ✓ | ✓ |   |   |
 | | accept client (hosted only) |||||
@@ -103,9 +103,9 @@
 | | send bytes (hosted only) |||||
 | `ticks` | `ticks()` | ✓ | ✓ |   | ✓ |
 | | ms ticks hosted, 100Hz timer on kernel |||||
-| `write` | `write(f, s)` | ✓ | ✓ |   |   |
+| `write` | `write(f, s)` | ✓ | ✓ | ✓ |   |
 | | write Str (hosted only) |||||
-| `write_text` | `write_text(path, s)` | ✓ | ✓ |   |   |
+| `write_text` | `write_text(path, s)` | ✓ | ✓ | ✓ |   |
 | | write file (hosted only) |||||
 
 Full descriptions live in `docs/api.json` (same source, machine-readable).

@@ -97,7 +97,8 @@
    "desc": "read one line from stdin (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "open": {
@@ -105,7 +106,8 @@
    "desc": "open a file (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "read": {
@@ -113,7 +115,8 @@
    "desc": "read n bytes (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "write": {
@@ -121,7 +124,8 @@
    "desc": "write Str (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "close": {
@@ -129,7 +133,8 @@
    "desc": "close a file (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "append": {
@@ -177,7 +182,8 @@
    "desc": "program args as List (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "env": {
@@ -185,7 +191,8 @@
    "desc": "env var or Null (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "system": {
@@ -193,7 +200,8 @@
    "desc": "run shell command, exit code (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "tcp_connect": {
@@ -287,7 +295,8 @@
    "desc": "whole file as Str (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "write_text": {
@@ -295,7 +304,8 @@
    "desc": "write file (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "append_text": {
@@ -303,7 +313,8 @@
    "desc": "append file (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "exists": {
@@ -311,7 +322,8 @@
    "desc": "path exists? (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "ls": {
@@ -319,7 +331,8 @@
    "desc": "dir entries List (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "mkdir": {
@@ -327,7 +340,8 @@
    "desc": "make directory (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   },
   "json_load": {
@@ -486,7 +500,8 @@
    "desc": "dict total/free/page (hosted only)",
    "backends": [
     "interp",
-    "native"
+    "native",
+    "xbuild"
    ]
   }
  }
