@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.24 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.25 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -1141,3 +1141,22 @@ file helpers) — `load float` แล้ว call ผ่าน value protocol จ
 หลักฐาน: `tests/test_irx64.py` เทียบ ELF ชน ELF (IR path vs AST path)
 9/9; ที่เหลือข้ามอย่างนับแยก (containers = slice ต่อไป; try/import/
 unsafe = งานหลัง; ref ปฏิเสธเองอีก 9)
+
+### 15.39 irx64 part 2: containers + เรียก builtin ตรงแบบ inline (v0.6.25)
+
+- Container ops ครบ: build_list/dict (stack + x_list_new/x_dict_new),
+  index/slice/setindex (transliterate ev_index/ev_slice/ex_setindex),
+  iterseq (List/Str ผ่าน, Dict เป็น list ของ keys ผ่านลูป machine code
+  ไม่มี call ข้างใน) — `for` ทำงานบน IR path แล้ว
+- เรียก builtin ตรงต้อง inline: ฟัซซ์จับได้ว่า `len` ของ Int รายงาน
+  `len of Int` ไม่มีเลขบรรทัดบน IR path (stub อบ line 0 ไว้) ขณะที่
+  AST path มี — เพราะ ev_call มี inline arm แยกจาก value protocol
+  แก้ด้วย provenance: temp จาก `load` ของ builtin ใน INLINE_DIRECT
+  ({float,len,str,int,range,append}) ที่ feed เฉพาะ call-fn และไม่ถูก
+  shadow จะเรียก inline emitter (error ตรงบรรทัด); first-class use
+  ยังผ่าน stub เหมือนเดิม
+- `for k in dict`: IR ทำ keys-snapshot เหมือน interp ส่วน x64gen เดิม
+  เดิน buf สด — IR path ถูกกว่าเดิมตรงนี้ (harness รับเมื่อตรงฝั่งใดฝั่งหนึ่ง)
+
+หลักฐาน: `tests/test_irx64.py` 9 -> 13 (for/func/types/t_strfun),
+ฟัซซ์ ELF-ชน-ELF 240 เคสตรงกันหมด

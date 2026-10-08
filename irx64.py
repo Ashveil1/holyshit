@@ -9,9 +9,9 @@ driving layer is new: IR blocks/temps instead of AST scopes. Semantics
 equal x64gen-today by construction (same emitters); the IR path will be
 where divergences get fixed, one at a time, after the switchover.
 
-Subset tonight: const/bin/un/br/jmp/ret/phi/load/stvar/stglobal/print/
-call/mkfunc. Containers (build_list/dict/index/slice/setindex/iterseq)
-report a clear subset error; they are the next slice.
+Subset: const/bin/un/br/jmp/ret/phi/load/stvar/stglobal/print/call/
+mkfunc plus containers (build_list/dict/index/slice/setindex/iterseq).
+try/import/unsafe/extern/attr stay out (later work).
 """
 import struct as _st
 import sys
@@ -36,6 +36,11 @@ NOT_A_VALUE = {
 # A `load` of one whose temp feeds call-fn positions exclusively gets a
 # dummy value (the inline path ignores it); any other use raises.
 INLINE_ONLY = {"float"}
+
+# builtins where a DIRECT call must use the inline emitter (exact error
+# lines) while first-class uses go through the value/stub protocol
+# (whose type errors carry the stub's line 0, like x64gen-today).
+INLINE_DIRECT = {"float", "len", "str", "int", "range", "append"}
 
 
 class GenIR(Gen):
@@ -122,13 +127,15 @@ class GenIR(Gen):
                 caps.add(nm)
         fr["res"] = res
         fr["caps"] = sorted(caps)
-        # inline-only builtins (float: no value form in x64) whose loaded
-        # temp is unshadowed and feeds call-fn positions exclusively get
+        # inline-only builtins (float: no value form in x64) and direct
+        # calls of inlinable builtins (exact error lines): a loaded temp
+        # that is unshadowed and feeds call-fn positions exclusively gets
         # a dummy value at the load; any other use raises "not a value".
         for b in fdef["blocks"]:
             for ins in b["instrs"]:
-                if ins["op"] == "load" and ins["name"] in INLINE_ONLY and \
-                        res.get(ins["name"]) == "novalue":
+                if ins["op"] == "load" and ins["name"] in INLINE_ONLY | \
+                        INLINE_DIRECT and res.get(ins["name"]) in \
+                        ("novalue", "builtin"):
                     ds = ins["dest"]
                     if fr["uses"].get(ds, []) and \
                             all(u == "call" for u in fr["uses"][ds]):
@@ -494,12 +501,341 @@ class GenIR(Gen):
         a.mov_ri32("rsi", 1)
         self.rt_out()
 
+    def _print(self, fr, args, ln):
+        a = self.a
+        for i, t in enumerate(args):
+            if i > 0:
+                a.lea_rip("rdi", "sp_")
+                a.mov_ri32("rsi", 1)
+                self.rt_out()
+            self._load(fr, t, ln)
+            a.mov_rr("rdi", "rax")
+            a.call("print_val")
+        a.lea_rip("rdi", "nl_")
+        a.mov_ri32("rsi", 1)
+        self.rt_out()
+
+    def _build_list(self, fr, dest, items, ln):
+        a = self.a
+        for it in items:
+            self._load(fr, it, ln)
+            a.push_r("rax")
+        a.mov_ri32("rdi", len(items))
+        a.call("x_list_new")
+        if items:
+            a.mov_rm("rdx", "rax", 24)  # buf
+            for i in reversed(range(len(items))):
+                a.pop_r("rcx")
+                a.mov_mr("rdx", "rcx", 8 * i)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _build_dict(self, fr, dest, pairs, ln):
+        a = self.a
+        n = len(pairs)
+        for k, v in pairs:  # source order: key, value, ...
+            self._load(fr, k, ln)
+            a.push_r("rax")
+            self._load(fr, v, ln)
+            a.push_r("rax")
+        a.mov_ri32("rdi", n)
+        a.call("x_dict_new")
+        a.push_r("rax")
+        for i in range(n):
+            a.mov_rm("rdx", "rsp", 16 * (n - i) - 8)  # value
+            a.mov_rm("rsi", "rsp", 16 * (n - i))  # key
+            a.mov_rm("rdi", "rsp", 0)
+            a.call("x_dict_set")
+        a.mov_rm("rax", "rsp", 0)
+        a.add_ri32("rsp", 8 * (2 * n + 1))
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _index(self, fr, dest, obj, idx, ln):
+        # transliterated Gen.ev_index: obj in rax, idx (tagged) in rcx
+        a = self.a
+        self._load(fr, obj, ln)
+        a.push_r("rax")
+        self._load(fr, idx, ln)
+        a.mov_rr("rcx", "rax")
+        a.pop_r("rax")
+        lab_notdict = self.new_tmp("ix")
+        lab_dkey, lab_dget = self.new_tmp("ix"), self.new_tmp("ix")
+        lab_ix_done = self.new_tmp("ix")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_notdict)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_DICT)
+        a.jcc("ne", lab_notdict)
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_dkey)
+        a.mov_rm("r11", "rcx", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_dget)
+        a.label(lab_dkey)
+        self.raise_static("dict key must be Str", ln)
+        a.label(lab_dget)
+        a.mov_rr("rdi", "rax")
+        a.mov_rr("rsi", "rcx")
+        a.mov_ri32("rdx", ln)
+        a.call("x_dict_get")
+        a.jmp(lab_ix_done)
+        a.label(lab_notdict)
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        lab_ok = self.new_tmp("ix")
+        a.jcc("e", lab_ok)
+        self.raise_static("index must be Int", ln)
+        a.label(lab_ok)
+        a.sar_ri8("rcx", 2)
+        lab_heap, lab_bad = self.new_tmp("ix"), self.new_tmp("ix")
+        lab_str, lab_list = self.new_tmp("ix"), self.new_tmp("ix")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_bad)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_str)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_list)
+        a.label(lab_bad)
+        self.raise_unop(1, ln)
+        a.label(lab_str)
+        a.mov_rm("r11", "rax", 8)
+        a.cmp_ri32("rcx", 0)
+        lab_pos = self.new_tmp("ix")
+        a.jcc("ge", lab_pos)
+        a.add_rr("rcx", "r11")
+        a.label(lab_pos)
+        a.cmp_ri32("rcx", 0)
+        a.jcc("l", lab_heap)
+        a.cmp_rr("rcx", "r11")
+        a.jcc("ae", lab_heap)
+        a.lea_m("rdi", "rax", 16, "rcx", 1)
+        a.mov_ri32("rsi", 1)
+        a.call("x_str_at")
+        lab_done = self.new_tmp("ix")
+        a.jmp(lab_done)
+        a.label(lab_list)
+        a.mov_rm("r11", "rax", 8)
+        a.cmp_ri32("rcx", 0)
+        lab_pos2 = self.new_tmp("ix")
+        a.jcc("ge", lab_pos2)
+        a.add_rr("rcx", "r11")
+        a.label(lab_pos2)
+        a.cmp_ri32("rcx", 0)
+        a.jcc("l", lab_heap)
+        a.cmp_rr("rcx", "r11")
+        a.jcc("ae", lab_heap)
+        a.mov_rm("rdx", "rax", 24)
+        a.mov_rmx("rax", "rdx", "rcx", 8, 0)
+        a.jmp(lab_done)
+        a.label(lab_heap)
+        self.raise_static("index out of range", ln)
+        a.label(lab_done)
+        a.label(lab_ix_done)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _slice(self, fr, dest, obj, start, stop, ln):
+        # transliterated Gen.ev_slice: raw bounds -> x_slice
+        a = self.a
+        self._load(fr, obj, ln)
+        a.push_r("rax")
+        mask = 0
+        if start is not None:
+            self._load(fr, start, ln)
+            self.check_int(lambda: self.raise_static(
+                "slice index must be Int", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")
+            mask |= 1
+        else:
+            a.mov_ri32("rax", 0)
+            a.push_r("rax")
+        if stop is not None:
+            self._load(fr, stop, ln)
+            self.check_int(lambda: self.raise_static(
+                "slice index must be Int", ln))
+            a.sar_ri8("rax", 2)
+            a.push_r("rax")
+            mask |= 2
+        else:
+            a.mov_ri32("rax", 0)
+            a.push_r("rax")
+        a.pop_r("rdx")
+        a.pop_r("rsi")
+        a.pop_r("rdi")
+        lab_sok, lab_sbad = self.new_tmp("sl"), self.new_tmp("sl")
+        a.mov_rr("r11", "rdi")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_sbad)
+        a.mov_rm("r11", "rdi", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_sok)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_sok)
+        a.label(lab_sbad)
+        a.mov_rr("rax", "rdi")
+        self.raise_unop(7, ln)
+        a.label(lab_sok)
+        a.mov_ri32("rcx", mask)
+        a.call("x_slice")
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _setindex(self, fr, obj, idx, val, ln):
+        # transliterated Gen.ex_setindex
+        a = self.a
+        self._load(fr, obj, ln)
+        a.push_r("rax")
+        self._load(fr, idx, ln)
+        a.push_r("rax")
+        self._load(fr, val, ln)
+        a.mov_rr("rdx", "rax")
+        a.pop_r("rcx")
+        a.pop_r("rax")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        lab_snotdict = self.new_tmp("sx")
+        lab_sdkey, lab_sdset = self.new_tmp("sx"), self.new_tmp("sx")
+        lab_sx_done = self.new_tmp("sx")
+        a.jcc("ne", lab_snotdict)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_DICT)
+        a.jcc("ne", lab_snotdict)
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_sdkey)
+        a.mov_rm("r11", "rcx", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_sdset)
+        a.label(lab_sdkey)
+        self.raise_static("dict key must be Str", ln)
+        a.label(lab_sdset)
+        a.mov_rr("rdi", "rax")
+        a.mov_rr("rsi", "rcx")
+        a.call("x_dict_set")
+        a.jmp(lab_sx_done)
+        a.label(lab_snotdict)
+        a.mov_rr("r11", "rcx")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        lab_ok = self.new_tmp("sx")
+        a.jcc("e", lab_ok)
+        self.raise_static("index must be Int", ln)
+        a.label(lab_ok)
+        a.sar_ri8("rcx", 2)
+        lab_bad, lab_list = self.new_tmp("sx"), self.new_tmp("sx")
+        lab_pos, lab_oob, lab_done = (self.new_tmp("sx"), self.new_tmp("sx"),
+                                      self.new_tmp("sx"))
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_bad)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_list)
+        a.label(lab_bad)
+        self.raise_unop(2, ln)
+        a.label(lab_list)
+        a.mov_rm("r11", "rax", 8)
+        a.cmp_ri32("rcx", 0)
+        a.jcc("ge", lab_pos)
+        a.add_rr("rcx", "r11")
+        a.label(lab_pos)
+        a.cmp_ri32("rcx", 0)
+        a.jcc("l", lab_oob)
+        a.cmp_rr("rcx", "r11")
+        a.jcc("ae", lab_oob)
+        a.mov_rm("r11", "rax", 24)
+        a.mov_mrx("r11", "rcx", 8, 0, "rdx")
+        a.jmp(lab_done)
+        a.label(lab_oob)
+        self.raise_static("index out of range", ln)
+        a.label(lab_done)
+        a.label(lab_sx_done)
+
+    def _iterseq(self, fr, dest, src, ln):
+        # like the IR interpreter: dict -> fresh key list, List/Str pass
+        # through (shared, like interp's `seq = it`), else "not iterable".
+        a = self.a
+        self._load(fr, src, ln)
+        lab_list, lab_str, lab_dict, lab_done = (self.new_tmp("iq"),
+                                                 self.new_tmp("iq"),
+                                                 self.new_tmp("iq"),
+                                                 self.new_tmp("iq"))
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        lab_bad = self.new_tmp("iq")
+        a.jcc("ne", lab_bad)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_list)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_str)
+        a.cmp_ri32("r11", Gen.K_DICT)
+        a.jcc("e", lab_dict)
+        a.label(lab_bad)
+        self.raise_unop(5, ln)
+        a.label(lab_list)
+        a.label(lab_str)
+        a.jmp(lab_done)
+        a.label(lab_dict)
+        # dict buf holds [k0, v0, k1, v1, ...]: copy the even words into
+        # a fresh list. No calls inside the loop, so caller-saved regs
+        # survive across iterations.
+        a.push_r("rax")  # dict
+        a.mov_rm("rdi", "rax", 8)  # pair count
+        a.call("x_list_new")  # rax = keys list
+        a.mov_rr("rsi", "rax")  # rsi = keys list
+        a.pop_r("rax")  # rax = dict
+        a.mov_rm("r11", "rax", 8)  # r11 = pair count
+        a.mov_rm("rdi", "rax", 24)  # rdi = dict buf
+        a.mov_rm("rdx", "rsi", 24)  # rdx = list buf
+        a.test_rr("r11", "r11")
+        lab_kdone = self.new_tmp("iq")
+        a.jcc("e", lab_kdone)
+        a.mov_ri32("rcx", 0)  # i
+        lab_kloop = self.new_tmp("iq")
+        a.label(lab_kloop)
+        a.mov_rr("r8", "rcx")
+        a.shl_ri8("r8", 1)  # 2i
+        a.mov_rmx("r8", "rdi", "r8", 8, 0)  # dictbuf[2i]
+        a.mov_mrx("rdx", "rcx", 8, 0, "r8")  # listbuf[i]
+        a.add_ri32("rcx", 1)
+        a.cmp_rr("rcx", "r11")
+        a.jcc("l", lab_kloop)
+        a.label(lab_kdone)
+        a.mov_rr("rax", "rsi")
+        a.label(lab_done)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
     def _call(self, fr, dest, fn, args, ln):
-        # `float(x)` has no value form in x64 (inline-only, like ev_call):
-        # detect the unshadowed builtin by provenance and inline it.
-        if fr["prov"].get(fn) == "float" and \
-                fr["res"].get("float") == "novalue":
-            self._inline_float(fr, dest, args, ln)
+        # Direct calls of inline builtins use the inline emitter (exact
+        # error lines, like ev_call); first-class uses go through the
+        # value/stub protocol (whose type errors carry line 0, also like
+        # x64gen-today). `float` has no value form at all.
+        if fn in fr["floattemps"]:
+            name = fr["prov"][fn]
+            if name == "float":
+                self._inline_float(fr, dest, args, ln)
+            elif name in ("len", "str"):
+                self._inline_len_str(fr, dest, name, args, ln)
+            elif name == "int":
+                self._inline_int(fr, dest, args, ln)
+            elif name == "range":
+                self._inline_range(fr, dest, args, ln)
+            elif name == "append":
+                self._inline_append(fr, dest, args, ln)
+            else:
+                raise HSErr(f"IR: '{name}' not in irx64 subset yet", ln)
             return
         # otherwise one path for user funcs and builtin values
         # (transliterated Gen.ev_user_call; nparams == -1 lets bi_call
@@ -653,6 +989,163 @@ class GenIR(Gen):
         a.label(lab_fok)
         a.mov_mr("rbp", "rax", fr["slots"][dest])
 
+    def _inline_len_str(self, fr, dest, name, args, ln):
+        a = self.a
+        if len(args) != 1:
+            raise HSErr(f"{name} wants 1 arg", ln)
+        self._load(fr, args[0], ln)
+        if name == "len":
+            lab_lok, lab_lck = self.new_tmp("ln"), self.new_tmp("ln")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_lck)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_lok)
+            a.cmp_ri32("r11", Gen.K_LIST)
+            a.jcc("e", lab_lok)
+            a.cmp_ri32("r11", Gen.K_DICT)
+            a.jcc("e", lab_lok)
+            a.label(lab_lck)
+            self.raise_unop(0, ln)
+            a.label(lab_lok)
+        a.mov_rr("rdi", "rax")
+        a.call("x_str" if name == "str" else "x_len")
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _inline_int(self, fr, dest, args, ln):
+        a = self.a
+        if len(args) != 1:
+            raise HSErr("int wants 1 arg", ln)
+        self._load(fr, args[0], ln)
+        lab_iok, lab_inum = self.new_tmp("in"), self.new_tmp("in")
+        lab_iflt, lab_istr = self.new_tmp("in"), self.new_tmp("in")
+        lab_ibool, lab_iquote = self.new_tmp("in"), self.new_tmp("in")
+        lab_iint = self.new_tmp("in")
+        a.push_r("rax")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("e", lab_iint)
+        a.cmp_ri32("r11", Gen.TAG_BOOL)
+        a.jcc("e", lab_ibool)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_inum)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_FLOAT)
+        a.jcc("e", lab_iflt)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_istr)
+        a.label(lab_inum)
+        a.add_ri32("rsp", 8)
+        self.raise_unop(4, ln)
+        a.label(lab_ibool)
+        a.cmp_ri32("rax", Gen.HS_TRUE)
+        a.setcc_al("e")
+        a.movzx_eax_al()
+        a.shl_ri8("rax", 2)
+        a.or_ri8("rax", 1)
+        a.add_ri32("rsp", 8)
+        a.jmp(lab_iok)
+        a.label(lab_iflt)
+        a.movq_xm(0, "rax", 8)
+        a.cvttsd2si("rax", 0)
+        a.mov_rr("rcx", "rax")
+        a.mov_ri64("r11", 0x2000000000000000)
+        a.add_rr("rcx", "r11")
+        a.mov_ri64("r11", 0x4000000000000000)
+        a.cmp_rr("rcx", "r11")
+        a.jcc("ae", lab_inum)
+        self.tag_box()
+        a.add_ri32("rsp", 8)
+        a.jmp(lab_iok)
+        a.label(lab_istr)
+        a.mov_rr("rdi", "rax")
+        a.call("x_trim")
+        a.mov_rr("rdi", "rax")
+        a.mov_rr("rsi", "rdx")
+        a.call("x_int_parse")
+        a.test_rr("rdx", "rdx")
+        a.jcc("e", lab_iquote)
+        a.mov_rr("rcx", "rax")
+        a.mov_ri64("r11", 0x2000000000000000)
+        a.add_rr("rcx", "r11")
+        a.mov_ri64("r11", 0x4000000000000000)
+        a.cmp_rr("rcx", "r11")
+        a.jcc("ae", lab_iquote)
+        self.tag_box()
+        a.add_ri32("rsp", 8)
+        a.jmp(lab_iok)
+        a.label(lab_iquote)
+        a.lea_rip("rdi", self.rstr("cannot convert '"))
+        a.mov_ri32("rsi", 16)
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rsp", 0)
+        a.call("x_str_cat")
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr("' to Int"))
+        a.mov_ri32("rsi", 8)
+        a.call("x_str_at")
+        a.mov_rr("rsi", "rax")
+        a.pop_r("rdi")
+        a.call("x_str_cat")
+        a.mov_rr("rdi", "rax")
+        a.mov_ri32("rsi", ln)
+        a.jmp("hs_raise_msg")
+        a.label(lab_iint)
+        a.add_ri32("rsp", 8)
+        a.jmp(lab_iok)
+        a.label(lab_iok)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _inline_range(self, fr, dest, args, ln):
+        a = self.a
+        if len(args) == 1:
+            self._load(fr, args[0], ln)
+            self.check_int(lambda: self.raise_static(
+                "range wants range(n) or range(a, b) with Ints", ln))
+            a.mov_rr("rdi", "rax")
+            a.call("x_range1")
+        elif len(args) == 2:
+            self._load(fr, args[0], ln)
+            self.check_int(lambda: self.raise_static(
+                "range wants range(n) or range(a, b) with Ints", ln))
+            a.push_r("rax")
+            self._load(fr, args[1], ln)
+            self.check_int(lambda: self.raise_static(
+                "range wants range(n) or range(a, b) with Ints", ln))
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            a.call("x_range2")
+        else:
+            raise HSErr("range wants range(n) or range(a, b)", ln)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _inline_append(self, fr, dest, args, ln):
+        a = self.a
+        if len(args) != 2:
+            raise HSErr("append wants append(list, x)", ln)
+        self._load(fr, args[0], ln)
+        lab_apok, lab_apbad = self.new_tmp("ap"), self.new_tmp("ap")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_apbad)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_apok)
+        a.label(lab_apbad)
+        self.raise_static("append wants append(list, x)", ln)
+        a.label(lab_apok)
+        a.push_r("rax")
+        self._load(fr, args[1], ln)
+        a.mov_rr("rsi", "rax")
+        a.pop_r("rdi")
+        a.call("x_append")
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
     def _mkfunc(self, fr, dest, qname, ln):
         # transliterated Gen ex-def: captures evaluated in the defining
         # frame, Func = [kind][code][nparams][name][caps...].
@@ -734,6 +1227,19 @@ class GenIR(Gen):
                 self._call(fr, ins["dest"], ins["fn"], ins["args"], ln)
             elif op == "print":
                 self._print(fr, ins["args"], ln)
+            elif op == "build_list":
+                self._build_list(fr, ins["dest"], ins["items"], ln)
+            elif op == "build_dict":
+                self._build_dict(fr, ins["dest"], ins["pairs"], ln)
+            elif op == "index":
+                self._index(fr, ins["dest"], ins["obj"], ins["idx"], ln)
+            elif op == "slice":
+                self._slice(fr, ins["dest"], ins["obj"], ins["start"],
+                            ins["stop"], ln)
+            elif op == "setindex":
+                self._setindex(fr, ins["obj"], ins["idx"], ins["val"], ln)
+            elif op == "iterseq":
+                self._iterseq(fr, ins["dest"], ins["src"], ln)
             elif op == "phi":
                 pass  # lowered as moves on incoming edges, not here
             else:

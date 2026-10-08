@@ -504,12 +504,17 @@
 - `unknown variable '{name}'`
 - `{fdef['dispname']} wants {len(fdef['params'])} args, got {len(args)}`
 
-## irx64.py — IR ลง x86-64 (5)
+## irx64.py — IR ลง x86-64 (10)
 
+- `IR: '{name}' not in irx64 subset yet`
 - `IR: '{op}' not in irx64 subset yet`
 - `IR: bad const value`
 - `IR: bad terminator`
+- `append wants append(list, x)`
 - `builtin '{ref}' is not a value (call it)`
 - `float wants 1 arg`
+- `int wants 1 arg`
+- `range wants range(n) or range(a, b)`
+- `{name} wants 1 arg`
 
-รวม 466 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 471 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
