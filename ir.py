@@ -91,23 +91,26 @@ class _FuncBuild:
 
 
 class Builder:
-    def __init__(self):
+    def __init__(self, pfx=""):
         self.funcs = {}
         self.order = []
+        self.pfx = pfx
 
-    def build(self, prog):
-        fb = _FuncBuild(self, "<main>", [], "<main>")
+    def build(self, prog, pfx=""):
+        pfx = pfx or self.pfx
+        fb = _FuncBuild(self, f"{pfx}<main>", [], "<main>")
         entry = fb.block("entry")
         fb.start(entry)
         self._body(fb, prog)
         if fb.cur is not None:
             fb.end(_t("ret", prog[-1]["line"] if prog else 0, val=None))
-        fn = {"name": "<main>", "dispname": "<main>", "params": [],
+        fn = {"name": f"{pfx}<main>", "dispname": "<main>", "params": [],
               "blocks": fb.blocks, "entry": entry["label"],
               "globals": sorted(fb.gnames)}
-        self.funcs["<main>"] = fn
-        self.order.append("<main>")
-        return {"funcs": self.funcs, "order": self.order, "entry": "<main>"}
+        self.funcs[f"{pfx}<main>"] = fn
+        self.order.append(f"{pfx}<main>")
+        return {"funcs": self.funcs, "order": self.order,
+                "entry": f"{pfx}<main>"}
 
     # ----- statements -----
 
@@ -167,17 +170,29 @@ class Builder:
         if t == "for":
             self._for(fb, s)
             return
+        if t == "import":
+            import re as _re
+            if not _re.match(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_]"
+                             r"[A-Za-z0-9_]*)*$", s["name"]):
+                raise HSErr(f"bad module name '{s['name']}'", ln)
+            fb.emit(_n("import", ln, name=s["name"]))
+            return
         if t == "setindex":
             obj = self._expr(fb, s["obj"])
             idx = self._expr(fb, s["idx"])
             val = self._expr(fb, s["val"])
             fb.emit(_n("setindex", ln, obj=obj, idx=idx, val=val))
             return
+        if t == "setattr":
+            obj = self._expr(fb, s["obj"])
+            val = self._expr(fb, s["val"])
+            fb.emit(_n("setattr", ln, obj=obj, name=s["name"], val=val))
+            return
         raise HSErr(f"IR: unsupported '{t}'", ln)
 
     def _def(self, fb, s):
         ln = s["line"]
-        qname = f"{s['name']}$L{ln}"
+        qname = f"{self.pfx}{s['name']}$L{ln}"
         child = _FuncBuild(self, qname, s["params"], s["name"])
         entry = child.block("entry")
         child.start(entry)
@@ -325,6 +340,11 @@ class Builder:
             idx = self._expr(fb, e["idx"])
             d = fb.temp()
             fb.emit(_n("index", ln, dest=d, obj=obj, idx=idx))
+            return d
+        if t == "attr":
+            obj = self._expr(fb, e["obj"])
+            d = fb.temp()
+            fb.emit(_n("attr", ln, dest=d, obj=obj, name=e["name"]))
             return d
         if t == "slice":
             obj = self._expr(fb, e["obj"])
@@ -487,8 +507,13 @@ def _verify_func(fn, funcs):
                     # the arm value flows along the edge: its definition
                     # must dominate the predecessor it comes from
                     _use(at, al, ln)
-            elif op in ("const", "load", "stvar", "stglobal"):
+            elif op in ("const", "load", "stvar", "stglobal", "import"):
                 pass
+            elif op == "attr":
+                _use(ins["obj"], b["label"], ln)
+            elif op == "setattr":
+                _use(ins["obj"], b["label"], ln)
+                _use(ins["val"], b["label"], ln)
             elif op == "mkfunc":
                 if ins["func"] not in funcs:
                     raise HSErr(f"IR: unknown function '{ins['func']}'", ln)
@@ -672,6 +697,12 @@ def dump_instr(ins):
         return f"{ins['dest']} = call {ins['fn']}({args})"
     if op == "print":
         return "print" + (" " + ", ".join(ins["args"]) if ins["args"] else "")
+    if op == "import":
+        return f"import {ins['name']}"
+    if op == "attr":
+        return f"{ins['dest']} = attr {ins['obj']} {ins['name']}"
+    if op == "setattr":
+        return f"setattr {ins['obj']} {ins['name']} {ins['val']}"
     if op == "build_list":
         return f"{ins['dest']} = build_list [{', '.join(ins['items'])}]"
     if op == "build_dict":
@@ -715,10 +746,12 @@ _LINE_RE = _re.compile(r"^(.*) @(\d+)$")
 
 
 def _disp_of(key):
+    # qnames look like `fib$L2` or `pkg.mod.f$L12`; the display name is
+    # the bare function name (what arity errors quote, like interp).
     if "$L" in key:
         head, tail = key.rsplit("$L", 1)
         if head and tail.isdigit():
-            return head
+            return head.rsplit(".", 1)[-1]
     return key
 
 
@@ -834,6 +867,12 @@ def _parse_code(code, ln):
         args = [] if rest == "" else [_temp(a.strip(), ln)
                                      for a in _split_top(rest)]
         return _n("print", ln, args=args)
+    if code.startswith("import "):
+        return _n("import", ln, name=code[7:])
+    if code.startswith("setattr "):
+        _, o, nm, v = code.split()
+        return _n("setattr", ln, obj=_temp(o, ln), name=nm,
+                  val=_temp(v, ln))
     if code.startswith("stvar "):
         _, name, src = code.split()
         return _n("stvar", ln, name=name, src=_temp(src, ln))
@@ -892,6 +931,9 @@ def _parse_code(code, ln):
     if rhs.startswith("index "):
         _, o, ix = rhs.split()
         return _n("index", ln, dest=dest, obj=_temp(o, ln), idx=_temp(ix, ln))
+    if rhs.startswith("attr "):
+        _, o, nm = rhs.split()
+        return _n("attr", ln, dest=dest, obj=_temp(o, ln), name=nm)
     if rhs.startswith("slice "):
         _, o, s, e = rhs.split()
         return _n("slice", ln, dest=dest, obj=_temp(o, ln),
@@ -935,17 +977,120 @@ class IRFunc:
         self.line = line
 
 
+class IRMod:
+    def __init__(self, name, frame, basedir):
+        self.name = name
+        self.frame = frame
+        self.basedir = basedir
+
+    def __repr__(self):
+        return f"<module {self.name}>"
+
+
+_IR_MODS = {}  # abspath -> {"state": "busy"|"done", "mod": IRMod}
+_IR_SHELL = {}  # dotted name -> IRMod (empty parent packages)
+_BUILTIN_ROOT = None
+
+
+def _ir_find(name, basedir, ln):
+    rel = name.replace(".", "/") + ".hs"
+    dirs = [basedir] + [d for d in os.environ.get("HSPATH", "").split(":")
+                        if d] + [os.getcwd()]
+    for d in dirs:
+        if not d:
+            continue
+        p = os.path.join(d, rel)
+        if os.path.isfile(p):
+            return os.path.abspath(p)
+    raise HSErr(f"cannot find module '{name}'", ln)
+
+
+def _ir_shell(name):
+    m = _IR_SHELL.get(name)
+    if m is None:
+        f = Frame(parent=_BUILTIN_ROOT, root=None, is_root=True)
+        f.basedir = ""
+        m = IRMod(name, f, "")
+        _IR_SHELL[name] = m
+    return m
+
+
+def _ir_load(name, path, ln):
+    ent = _IR_MODS.get(path)
+    if ent is not None:
+        if ent["state"] == "done":
+            return ent["mod"]
+        raise HSErr(f"circular import '{name}'", ln)
+    with open(path, encoding="utf-8") as f:
+        src = f.read()
+    try:
+        interp.reset_parse_state()
+        prog = interp.parse_program(src)
+    except HSErr as e:
+        raise HSErr(f"in module '{name}': {e.msg}", e.line)
+    mod = IRMod(name, None, os.path.dirname(path))
+    _IR_MODS[path] = {"state": "busy", "mod": mod}
+    try:
+        pfx = name + "."
+        sub = build_module(prog, pfx)
+        verify_module(sub)
+        _FUNCS.update(sub["funcs"])
+        f = Frame(parent=_BUILTIN_ROOT, root=None, is_root=True,
+                  gnames=sub["funcs"][sub["entry"]]["globals"])
+        f.basedir = os.path.dirname(path)
+        mod.frame = f
+        try:
+            _exec(sub["funcs"][sub["entry"]], f)
+        except _Ret:
+            pass  # module body finished (same as falling off the end)
+    except HSErr as e:
+        del _IR_MODS[path]
+        raise HSErr(f"in module '{name}': {e.msg}", e.line)
+    _IR_MODS[path] = {"state": "done", "mod": mod}
+    return mod
+
+
+def _ir_import(name, frame, ln):
+    # returns (leafmod, topmod, topname); the caller binds topname.
+    if "." in name:
+        parent, _, leaf = name.rpartition(".")
+        try:
+            pmod = _ir_import(parent, frame, ln)[0]
+        except HSErr as e:
+            if f"cannot find module '{parent}'" not in str(e):
+                raise
+            pmod = _ir_shell(parent)
+        path = _ir_find(name, frame.basedir, ln)
+        leafmod = _ir_load(name, path, ln)
+        pmod.frame.vars[leaf] = leafmod
+        topname = name.split(".")[0]
+        try:
+            topmod = _ir_import(topname, frame, ln)[0]
+        except HSErr:
+            topmod = _ir_shell(topname)
+        return leafmod, topmod, topname
+    if name in _IR_SHELL:
+        m = _IR_SHELL[name]
+        return m, m, name
+    path = _ir_find(name, frame.basedir, ln)
+    m = _ir_load(name, path, ln)
+    return m, m, name
+
+
 class _Ret(Exception):
     def __init__(self, value):
         self.value = value
 
 
 class Frame:
-    def __init__(self, parent=None, root=None, is_root=False, gnames=()):
+    def __init__(self, parent=None, root=None, is_root=False, gnames=(),
+                 basedir=""):
         self.vars = {}
         self.parent = parent
         self.root = self if is_root else root
         self.globals = set(gnames)
+        self.basedir = basedir or (parent.basedir if parent is not None
+                                   else "")
 
     def get(self, name, line):
         f = self
@@ -1168,6 +1313,23 @@ def _exec(fdef, frame):
             elif op == "print":
                 sys.stdout.write(" ".join(
                     disp(temps[a]) for a in ins["args"]) + "\n")
+            elif op == "import":
+                _leaf, top, topname = _ir_import(ins["name"], frame, ln)
+                frame.set(topname, top)
+            elif op == "attr":
+                obj = temps[ins["obj"]]
+                if not isinstance(obj, IRMod):
+                    raise HSErr("only modules have attributes", ln)
+                nm = ins["name"]
+                if nm not in obj.frame.vars:
+                    raise HSErr(f"module '{obj.name}' has no attribute "
+                                f"'{nm}'", ln)
+                temps[ins["dest"]] = obj.frame.vars[nm]
+            elif op == "setattr":
+                obj = temps[ins["obj"]]
+                if not isinstance(obj, IRMod):
+                    raise HSErr("only modules have attributes", ln)
+                obj.frame.vars[ins["name"]] = temps[ins["val"]]
             elif op == "build_list":
                 temps[ins["dest"]] = [temps[x] for x in ins["items"]]
             elif op == "build_dict":
@@ -1216,21 +1378,25 @@ def _exec(fdef, frame):
 _FUNCS = {}
 
 
-def build_module(prog):
-    b = Builder()
-    return b.build(prog)
+def build_module(prog, pfx=""):
+    b = Builder(pfx)
+    return b.build(prog, pfx)
 
 
 def run_module(m, basedir=""):
-    global _FUNCS
+    global _FUNCS, _BUILTIN_ROOT
     _FUNCS = m["funcs"]
+    _IR_MODS.clear()
+    _IR_SHELL.clear()
     verify_module(m)
     root = Frame(is_root=True)
     for n, fn in interp.BUILTINS.items():
         root.vars[n] = interp.HSBuiltin(n, fn)
     root.basedir = basedir
+    _BUILTIN_ROOT = root
     frame = Frame(parent=root, root=root,
                   gnames=m["funcs"][m["entry"]]["globals"])
+    frame.basedir = basedir
     frame.root = frame  # `global` writes to the main frame, like interp's
     # gbase (the builtins env stays reachable as the parent chain)
     main = m["funcs"][m["entry"]]

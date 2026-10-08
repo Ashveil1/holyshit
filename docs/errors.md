@@ -438,7 +438,7 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-## ir.py — IR กลาง (build/verify/exec) (63)
+## ir.py — IR กลาง (build/verify/exec) (69)
 
 - `IR: bad binop '{op}'`
 - `IR: bad block label`
@@ -480,22 +480,28 @@
 - `IR: undefined temp '{t}'`
 - `IR: unknown function '{ins['func']}'`
 - `IR: unsupported '{t}'`
+- `bad module name '{s['name']}'`
 - `break outside loop`
 - `cannot add {tname(l)} and {tname(r)}`
 - `cannot assign into {tname(obj)}`
 - `cannot bitwise-not {tname(v)}`
 - `cannot compare {tname(l)} and {tname(r)}`
+- `cannot find module '{name}'`
 - `cannot index {tname(obj)}`
 - `cannot negate {tname(v)}`
 - `cannot slice {tname(obj)}`
+- `circular import '{name}'`
 - `continue outside loop`
 - `dict key must be Str`
 - `division by zero`
+- `in module '{name}': {e.msg}`
 - `index must be Int`
 - `index out of range`
 - `key {idx} not found`
+- `module '{obj.name}' has no attribute '{nm}'`
 - `not callable: {tname(fn)}`
 - `not iterable: {tname(v)}`
+- `only modules have attributes`
 - `operator '{op}' needs Ints, got {tname(l)} and {tname(r)}`
 - `operator '{op}' needs numbers, got {tname(l)} and {tname(r)}`
 - `recursion too deep`
@@ -504,17 +510,27 @@
 - `unknown variable '{name}'`
 - `{fdef['dispname']} wants {len(fdef['params'])} args, got {len(args)}`
 
-## irx64.py — IR ลง x86-64 (10)
+## irx64.py — IR ลง x86-64 (20)
 
 - `IR: '{name}' not in irx64 subset yet`
 - `IR: '{op}' not in irx64 subset yet`
+- `IR: attribute assignment only supported on modules (x64)`
+- `IR: attribute needs a direct m.attr chain`
 - `IR: bad const value`
 - `IR: bad terminator`
 - `append wants append(list, x)`
+- `bad module name '{name}'`
 - `builtin '{ref}' is not a value (call it)`
+- `cannot find module '{name}'`
+- `cannot import '{name}': '{top}' is already defined`
+- `circular import '{dotted}'`
 - `float wants 1 arg`
+- `in module '{dotted}': {e.msg}`
 - `int wants 1 arg`
+- `module '{fr['phantoms'][ref]}' is not a first-class value in x64 subset (use mod.attr)`
+- `module '{modrec['name']}' has no attribute '{attr}'`
+- `module '{target['name']}' is not a first-class value in x64 subset (use mod.attr)`
 - `range wants range(n) or range(a, b)`
 - `{name} wants 1 arg`
 
-รวม 471 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 487 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

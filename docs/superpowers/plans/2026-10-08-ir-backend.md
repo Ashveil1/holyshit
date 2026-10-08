@@ -93,7 +93,7 @@ Lower `list/dict/index/slice/setindex/for` (desugar `for` to len/index/while ove
 
 Proper def-dominates-use check; `hs.py ir prog.hs` dumps canonical IR text; round-trip parse test. Needed before backends consume IR.
 
-### Task 4: x64 backend consumes IR (part 1 DONE v0.6.24, part 2 DONE v0.6.25)
+### Task 4: x64 backend consumes IR (parts 1-3 DONE v0.6.24-26)
 
 Rewire `x64gen.py` entry to `ir.build_module` + lower IR (real branches for `and`/`or` — kills the short-circuit divergence). Full `tests/test_x64.py` green unchanged. `interp.parse_program` remains only for `check`/`fmt`.
 

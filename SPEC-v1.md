@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.25 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.26 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -1160,3 +1160,22 @@ unsafe = งานหลัง; ref ปฏิเสธเองอีก 9)
 
 หลักฐาน: `tests/test_irx64.py` 9 -> 13 (for/func/types/t_strfun),
 ฟัซซ์ ELF-ชน-ELF 240 เคสตรงกันหมด
+
+### 15.40 import ครบ end-to-end บน IR (v0.6.26, Task 4 part 3)
+
+- `ir.py`: builder รับ `import`/`attr`/`setattr`, interpreter มี module
+  registry จริง (file resolve แบบ interp, dotted + shell package,
+  circular error, `in module` wrap, init รันครั้งเดียว, attr read/write,
+  `print mod` เป็น `<module name>`) — `tests/t_import.hs` ตรง interp
+  ทุกไบต์
+- `irx64.py`: resolve ตอน build (parent-first + shell + circular),
+  merge funcs ด้วย dotted prefix, global แยกต่อ module, init guard
+  แบบ hsM_init, attr resolve แบบ static (submodule = phantom temp
+  ที่ value-use แล้ว error ชัด), `print mod` ตรง, copies ของ module
+  (`x = mod`) เป็นช่องโหว่ที่จดไว้
+- กับดัก: alias-load ต้องข้าม emission เมื่อทุก use เป็น chain
+  (ไม่งั้น UNBOUND check ลั่นก่อน attr จะ resolve), attr ซ้อน
+  (`std.str.trim`) ต้องรับ mval ไม่ใช่แค่ mod
+
+หลักฐาน: `test_ir.py` 83 -> 86, `test_irx64.py` 13 -> 18
+(t_import/t_pkg/t_std ผ่าน; t_heap ยังติด unsafe ถูกต้องแล้ว)

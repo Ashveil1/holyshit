@@ -141,5 +141,61 @@ with tempfile.TemporaryDirectory() as d:
                   f"err={rb.stderr[-200:]!r}")
 
 print(f"skipped (no reference or outside irx64 subset): {len(nskipped)}")
-print(f"{total - fails}/{total} passed")
-sys.exit(1 if fails else 0)
+grand_total, grand_fails = total, fails
+
+# ---------- inline file-op cases (t_fs needs json_str, which needs the
+# module machinery, so the file helpers get direct differential tests) ----------
+
+FILE_CASES = [
+    ("fs_basic",
+     'mkdir(P)\nwrite_text(P + "/a.txt", "hello")\n'
+     'append_text(P + "/a.txt", " world")\nprint read_text(P + "/a.txt")\n'
+     'print exists(P + "/a.txt")\nprint exists(P + "/no")\nprint ls(P)\n'),
+    ("fs_err",
+     'print read_text(5)\n'),
+]
+
+ffails = ftotal = 0
+with tempfile.TemporaryDirectory() as d:
+    for name, template in FILE_CASES:
+        ftotal += 1
+        progs = []
+        for tag, builder in (("ref", build_x64), ("irx", build_irx64)):
+            work = os.path.join(d, f"{name}_{tag}")
+            os.mkdir(work)
+            src = template.replace("P", '"' + work + '"')
+            prog = os.path.join(d, f"{name}_{tag}.hs")
+            with open(prog, "w") as f:
+                f.write(src)
+            old_env = dict(os.environ)
+            try:
+                rc, err = _build(builder, prog, os.path.join(d, tag))
+            finally:
+                os.environ.clear()
+                os.environ.update(old_env)
+            progs.append((rc, err, os.path.join(d, tag), work))
+        (rrc, rerr, rp, rwork), (irc, ierr, ip, iwork) = progs
+        if rrc != 0 or irc != 0:
+            ok = (rrc == irc and rerr == ierr)
+            print(("ok   " if ok else "FAIL") + f" {name} (build)")
+            ffails += 0 if ok else 1
+            continue
+        ra = subprocess.run([rp], capture_output=True, timeout=60)
+        rb = subprocess.run([ip], capture_output=True, timeout=60)
+        # separate scratch dirs per side: normalize each to P
+        na = (ra.stdout.replace(rwork.encode(), b"P"),
+              ra.stderr.replace(rwork.encode(), b"P"))
+        nb = (rb.stdout.replace(iwork.encode(), b"P"),
+              rb.stderr.replace(iwork.encode(), b"P"))
+        ok = ra.returncode == rb.returncode and na == nb
+        print(("ok   " if ok else "FAIL") + f" {name}")
+        if not ok:
+            ffails += 1
+            print(f"  ast: rc={ra.returncode} out={ra.stdout!r} "
+                  f"err={ra.stderr[-200:]!r}")
+            print(f"  irx: rc={rb.returncode} out={rb.stdout!r} "
+                  f"err={rb.stderr[-200:]!r}")
+
+print(f"{grand_total + ftotal - grand_fails - ffails}/"
+      f"{grand_total + ftotal} passed")
+sys.exit(1 if grand_fails + ffails else 0)

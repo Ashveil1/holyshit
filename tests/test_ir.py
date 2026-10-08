@@ -210,8 +210,8 @@ except interp.HSErr as e:
     fails += 0 if ok else 1
 
 # builder rejects out-of-subset constructs with a clear message
-for caps, src in [("import", "import std.str\n"),
-                  ("try", "try:\n  pass\nexcept:\n  pass\n"),
+for caps, src in [("try", "try:\n  pass\nexcept:\n  pass\n"),
+                  ("raise", 'raise "boom"\n'),
                   ("unsafe", "unsafe:\n  Ptr p = alloc(8)\n")]:
     total += 1
     try:
