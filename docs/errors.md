@@ -438,16 +438,34 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-## ir.py — IR กลาง (build/verify/exec) (52)
+## ir.py — IR กลาง (build/verify/exec) (63)
 
 - `IR: bad binop '{op}'`
+- `IR: bad block label`
+- `IR: bad build_dict`
+- `IR: bad build_list`
+- `IR: bad call`
+- `IR: bad const value`
+- `IR: bad func header`
+- `IR: bad instruction`
+- `IR: bad label`
+- `IR: bad line (want `<code> @N`)`
 - `IR: bad op '{op}'`
+- `IR: bad param`
+- `IR: bad phi`
+- `IR: bad string escape`
+- `IR: bad string literal`
+- `IR: bad temp`
 - `IR: bad terminator`
 - `IR: bad terminator '{tm['term']}'`
 - `IR: bad unop '{op}'`
 - `IR: block '{b['label']}' has no terminator`
 - `IR: builtin '{fn.name}' not in subset`
+- `IR: code after terminator`
+- `IR: code outside block`
+- `IR: code outside function`
 - `IR: duplicate block label in '{fn['dispname']}'`
+- `IR: duplicate function '{key}'`
 - `IR: duplicate function '{name}'`
 - `IR: jump to missing block '{lab}'`
 - `IR: missing entry`
@@ -458,16 +476,9 @@
 - `IR: phi in entry block`
 - `IR: phi with no arms`
 - `IR: temp '{d}' redefined`
-- `IR: undefined temp '{at}'`
-- `IR: undefined temp '{a}'`
-- `IR: undefined temp '{ins['fn']}'`
-- `IR: undefined temp '{ins['obj']}'`
-- `IR: undefined temp '{ins['src']}'`
-- `IR: undefined temp '{ins['v']}'`
-- `IR: undefined temp '{ins[k]}'`
-- `IR: undefined temp '{tm['cond']}'`
-- `IR: undefined temp '{tm['val']}'`
-- `IR: undefined temp '{x}'`
+- `IR: temp '{t}' does not dominate use`
+- `IR: undefined temp '{t}'`
+- `IR: unknown function '{ins['func']}'`
 - `IR: unsupported '{t}'`
 - `break outside loop`
 - `cannot add {tname(l)} and {tname(r)}`
@@ -493,4 +504,4 @@
 - `unknown variable '{name}'`
 - `{fdef['dispname']} wants {len(fdef['params'])} args, got {len(args)}`
 
-รวม 450 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 461 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

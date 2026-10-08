@@ -392,115 +392,140 @@ def verify_module(m):
         seen.add(name)
         if name not in m["funcs"]:
             raise HSErr(f"IR: missing function '{name}'", 0)
-        _verify_func(m["funcs"][name])
+        _verify_func(m["funcs"][name], m["funcs"])
 
 
-def _verify_func(fn):
+def _verify_func(fn, funcs):
     labels = [b["label"] for b in fn["blocks"]]
     if len(set(labels)) != len(labels):
         raise HSErr(f"IR: duplicate block label in '{fn['dispname']}'", 0)
     by = {b["label"]: b for b in fn["blocks"]}
     if fn["entry"] not in by:
         raise HSErr(f"IR: missing entry block in '{fn['dispname']}'", 0)
-    defs = set()
+    defs = {}
     for b in fn["blocks"]:
         for ins in b["instrs"]:
             d = ins.get("dest")
             if d is not None:
                 if d in defs:
                     raise HSErr(f"IR: temp '{d}' redefined", ins["line"])
-                defs.add(d)
+                defs[d] = b["label"]
     preds = {l: set() for l in labels}
+    succs = {l: [] for l in labels}
+
+    def _edge(frm, to, tm):
+        _need(by, to, tm)
+        preds[to].add(frm)
+        succs[frm].append(to)
+
     for b in fn["blocks"]:
         tm = b["term"]
         if tm is None:
             raise HSErr(f"IR: block '{b['label']}' has no terminator",
                         b["instrs"][-1]["line"] if b["instrs"] else 0)
         if tm["term"] == "jmp":
-            _need(by, tm["to"], tm)
-            preds[tm["to"]].add(b["label"])
+            _edge(b["label"], tm["to"], tm)
         elif tm["term"] == "br":
-            _need(by, tm["then"], tm)
-            _need(by, tm["els"], tm)
-            preds[tm["then"]].add(b["label"])
-            preds[tm["els"]].add(b["label"])
-            if tm["cond"] not in defs:
-                raise HSErr(f"IR: undefined temp '{tm['cond']}'", tm["line"])
-        elif tm["term"] == "ret":
-            if tm["val"] is not None and tm["val"] not in defs:
-                raise HSErr(f"IR: undefined temp '{tm['val']}'", tm["line"])
-        else:
+            _edge(b["label"], tm["then"], tm)
+            _edge(b["label"], tm["els"], tm)
+        elif tm["term"] != "ret":
             raise HSErr(f"IR: bad terminator '{tm['term']}'", tm["line"])
+
+    # reachable set: dominance is only checked where execution can go.
+    # Code after return lives in dead blocks and is exempt (but still
+    # needs labels, terminators and well-formed instructions).
+    reach = set()
+    stack = [fn["entry"]]
+    while stack:
+        l = stack.pop()
+        if l in reach:
+            continue
+        reach.add(l)
+        stack.extend(succs[l])
+
+    dom = {l: set(labels) for l in labels}
+    dom[fn["entry"]] = {fn["entry"]}
+    changed = True
+    while changed:
+        changed = False
+        for l in labels:
+            if l == fn["entry"]:
+                continue
+            ps = preds[l]
+            new = set.intersection(*(dom[p] for p in ps)) | {l} if ps \
+                else {l}
+            if new != dom[l]:
+                dom[l] = new
+                changed = True
+
+    def _use(t, at, ln):
+        if t not in defs:
+            raise HSErr(f"IR: undefined temp '{t}'", ln)
+        if at in reach and defs[t] not in dom[at]:
+            raise HSErr(f"IR: temp '{t}' does not dominate use", ln)
+
+    for b in fn["blocks"]:
+        tm = b["term"]
+        if tm["term"] == "br":
+            _use(tm["cond"], b["label"], tm["line"])
+        elif tm["term"] == "ret":
+            if tm["val"] is not None:
+                _use(tm["val"], b["label"], tm["line"])
     for b in fn["blocks"]:
         for ins in b["instrs"]:
             op = ins["op"]
+            ln = ins["line"]
             if op == "phi":
                 if b["label"] == fn["entry"]:
-                    raise HSErr("IR: phi in entry block", ins["line"])
+                    raise HSErr("IR: phi in entry block", ln)
                 if not ins["arms"]:
-                    raise HSErr("IR: phi with no arms", ins["line"])
+                    raise HSErr("IR: phi with no arms", ln)
                 for al, at in ins["arms"]:
                     if al not in preds[b["label"]]:
                         raise HSErr(
-                            f"IR: phi arm from non-predecessor '{al}'",
-                            ins["line"])
-                    if at not in defs:
-                        raise HSErr(f"IR: undefined temp '{at}'", ins["line"])
-            elif op in ("const", "load", "mkfunc", "stvar", "stglobal"):
+                            f"IR: phi arm from non-predecessor '{al}'", ln)
+                    # the arm value flows along the edge: its definition
+                    # must dominate the predecessor it comes from
+                    _use(at, al, ln)
+            elif op in ("const", "load", "stvar", "stglobal"):
                 pass
+            elif op == "mkfunc":
+                if ins["func"] not in funcs:
+                    raise HSErr(f"IR: unknown function '{ins['func']}'", ln)
             elif op == "build_list":
                 for x in ins["items"]:
-                    if x not in defs:
-                        raise HSErr(f"IR: undefined temp '{x}'", ins["line"])
+                    _use(x, b["label"], ln)
             elif op == "build_dict":
                 for k, v in ins["pairs"]:
-                    for x in (k, v):
-                        if x not in defs:
-                            raise HSErr(f"IR: undefined temp '{x}'",
-                                        ins["line"])
+                    _use(k, b["label"], ln)
+                    _use(v, b["label"], ln)
             elif op == "index":
-                for k in ("obj", "idx"):
-                    if ins[k] not in defs:
-                        raise HSErr(f"IR: undefined temp '{ins[k]}'",
-                                    ins["line"])
+                _use(ins["obj"], b["label"], ln)
+                _use(ins["idx"], b["label"], ln)
             elif op == "slice":
-                if ins["obj"] not in defs:
-                    raise HSErr(f"IR: undefined temp '{ins['obj']}'",
-                                ins["line"])
+                _use(ins["obj"], b["label"], ln)
                 for k in ("start", "stop"):
-                    if ins[k] is not None and ins[k] not in defs:
-                        raise HSErr(f"IR: undefined temp '{ins[k]}'",
-                                    ins["line"])
+                    if ins[k] is not None:
+                        _use(ins[k], b["label"], ln)
             elif op == "setindex":
                 for k in ("obj", "idx", "val"):
-                    if ins[k] not in defs:
-                        raise HSErr(f"IR: undefined temp '{ins[k]}'",
-                                    ins["line"])
+                    _use(ins[k], b["label"], ln)
             elif op == "iterseq":
-                if ins["src"] not in defs:
-                    raise HSErr(f"IR: undefined temp '{ins['src']}'",
-                                ins["line"])
+                _use(ins["src"], b["label"], ln)
             elif op == "bin":
-                for k in ("l", "r"):
-                    if ins[k] not in defs:
-                        raise HSErr(f"IR: undefined temp '{ins[k]}'",
-                                    ins["line"])
+                _use(ins["l"], b["label"], ln)
+                _use(ins["r"], b["label"], ln)
             elif op == "un":
-                if ins["v"] not in defs:
-                    raise HSErr(f"IR: undefined temp '{ins['v']}'", ins["line"])
+                _use(ins["v"], b["label"], ln)
             elif op == "call":
-                if ins["fn"] not in defs:
-                    raise HSErr(f"IR: undefined temp '{ins['fn']}'",
-                                ins["line"])
+                _use(ins["fn"], b["label"], ln)
                 for a in ins["args"]:
-                    if a not in defs:
-                        raise HSErr(f"IR: undefined temp '{a}'", ins["line"])
+                    _use(a, b["label"], ln)
             elif op == "print":
                 for a in ins["args"]:
-                    if a not in defs:
-                        raise HSErr(f"IR: undefined temp '{a}'", ins["line"])
+                    _use(a, b["label"], ln)
             else:
-                raise HSErr(f"IR: bad op '{op}'", ins["line"])
+                raise HSErr(f"IR: bad op '{op}'", ln)
 
 
 def _need(by, lab, tm):
@@ -520,21 +545,109 @@ def _q(v):
     if isinstance(v, float):
         return repr(v)
     if isinstance(v, str):
-        return '"' + v.replace("\\", "\\\\").replace('"', '\\"').replace(
-            "\n", "\\n").replace("\t", "\\t") + '"'
+        out = []
+        for ch in v:
+            o = ord(ch)
+            if ch == "\\":
+                out.append("\\\\")
+            elif ch == '"':
+                out.append('\\"')
+            elif ch == "\n":
+                out.append("\\n")
+            elif ch == "\t":
+                out.append("\\t")
+            elif ch == "\r":
+                out.append("\\r")
+            elif 32 <= o <= 126:
+                out.append(ch)
+            elif o <= 0xFFFF:
+                out.append(f"\\u{o:04x}")
+            else:
+                o -= 0x10000
+                out.append(f"\\u{(0xD800 + (o >> 10)):04x}")
+                out.append(f"\\u{(0xDC00 + (o & 0x3FF)):04x}")
+        return '"' + "".join(out) + '"'
     return str(v)
 
 
+def _unq(lit, line):
+    # inverse of _q for string literals (handles surrogate pairs)
+    if len(lit) < 2 or not lit.startswith('"') or not lit.endswith('"'):
+        raise HSErr("IR: bad string literal", line)
+    body = lit[1:-1]
+    out = []
+    i = 0
+    while i < len(body):
+        c = body[i]
+        if c != "\\":
+            out.append(c)
+            i += 1
+            continue
+        i += 1
+        if i >= len(body):
+            raise HSErr("IR: bad string escape", line)
+        e = body[i]
+        i += 1
+        if e == "n":
+            out.append("\n")
+        elif e == "t":
+            out.append("\t")
+        elif e == "r":
+            out.append("\r")
+        elif e == '"':
+            out.append('"')
+        elif e == "\\":
+            out.append("\\")
+        elif e == "u":
+            hexd = body[i:i + 4]
+            if len(hexd) != 4 or not all(ch in "0123456789abcdefABCDEF"
+                                        for ch in hexd):
+                raise HSErr("IR: bad string escape", line)
+            i += 4
+            cp = int(hexd, 16)
+            if 0xD800 <= cp <= 0xDBFF and body[i:i + 2] == "\\u":
+                hex2 = body[i + 2:i + 6]
+                if len(hex2) == 4 and all(
+                        ch in "0123456789abcdefABCDEF" for ch in hex2):
+                    lo = int(hex2, 16)
+                    if 0xDC00 <= lo <= 0xDFFF:
+                        out.append(chr(0x10000 + ((cp - 0xD800) << 10) +
+                                        (lo - 0xDC00)))
+                        i += 6
+                        continue
+            out.append(chr(cp))
+        else:
+            raise HSErr("IR: bad string escape", line)
+    return "".join(out)
+
+
+def _const_val(text, line):
+    if text in ("true", "false", "null"):
+        return {"true": True, "false": False, "null": None}[text]
+    if text.startswith('"'):
+        return _unq(text, line)
+    if text.lstrip("+-").isdigit():
+        return int(text)
+    try:
+        return float(text)
+    except ValueError:
+        raise HSErr("IR: bad const value", line)
+
+
 def dump_module(m):
+    # Canonical text: `hs.py ir` prints this; parse_module reads it back.
+    # Every instruction/terminator carries its source line as ` @N` so a
+    # reparsed module executes with identical error lines. Function headers
+    # use the unique key (`fib$L2`); the display name is re-derived.
     out = []
     for name in m["order"]:
         fn = m["funcs"][name]
-        out.append(f"func {fn['dispname']}({', '.join(fn['params'])}):")
+        out.append(f"func {name}({', '.join(fn['params'])}):")
         for b in fn["blocks"]:
             out.append(f"{b['label']}:")
             for ins in b["instrs"]:
-                out.append(f"  {dump_instr(ins)}")
-            out.append(f"  {dump_term(b['term'])}")
+                out.append(f"  {dump_instr(ins)} @{ins['line']}")
+            out.append(f"  {dump_term(b['term'])} @{b['term']['line']}")
     return "\n".join(out) + "\n"
 
 
@@ -555,19 +668,23 @@ def dump_instr(ins):
     if op == "un":
         return f"{ins['dest']} = un {ins['unop']} {ins['v']}"
     if op == "call":
-        return f"{ins['dest']} = call {ins['fn']}({', '.join(ins['args'])})"
+        args = ", ".join(ins["args"])
+        return f"{ins['dest']} = call {ins['fn']}({args})"
     if op == "print":
-        return f"print {', '.join(ins['args'])}"
+        return "print" + (" " + ", ".join(ins["args"]) if ins["args"] else "")
     if op == "build_list":
         return f"{ins['dest']} = build_list [{', '.join(ins['items'])}]"
     if op == "build_dict":
         ps = " ".join(f"({k}: {v})" for k, v in ins["pairs"])
-        return f"{ins['dest']} = build_dict {ps}"
+        return f"{ins['dest']} = build_dict" + (" " + ps if ps else "")
     if op == "index":
         return f"{ins['dest']} = index {ins['obj']} {ins['idx']}"
+    if op == "setindex":
+        return f"setindex {ins['obj']} {ins['idx']} {ins['val']}"
     if op == "slice":
-        return f"{ins['dest']} = slice {ins['obj']} " \
-            f"{ins['start']} {ins['stop']}"
+        s = ins["start"] if ins["start"] is not None else "-"
+        e = ins["stop"] if ins["stop"] is not None else "-"
+        return f"{ins['dest']} = slice {ins['obj']} {s} {e}"
     if op == "setindex":
         return f"setindex {ins['obj']} {ins['idx']} {ins['val']}"
     if op == "iterseq":
@@ -586,6 +703,223 @@ def dump_term(tm):
     if tm["term"] == "ret":
         return f"ret {tm['val']}" if tm["val"] is not None else "ret"
     return "<bad term>"
+
+
+# ---------- text parser (inverse of dump_module) ----------
+
+import re as _re
+
+_FUNC_RE = _re.compile(r"func (\S+)\((.*)\):$")
+_LABEL_RE = _re.compile(r"[A-Za-z_][A-Za-z0-9_$]*$")
+_LINE_RE = _re.compile(r"^(.*) @(\d+)$")
+
+
+def _disp_of(key):
+    if "$L" in key:
+        head, tail = key.rsplit("$L", 1)
+        if head and tail.isdigit():
+            return head
+    return key
+
+
+def _split_top(s):
+    # split on ", " but not inside quotes/brackets/parens
+    parts, depth, cur, instr = [], 0, "", False
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if instr:
+            cur += c
+            if c == "\\" and i + 1 < len(s):
+                cur += s[i + 1]
+                i += 1
+            elif c == '"':
+                instr = False
+        elif c == '"':
+            instr = True
+            cur += c
+        elif c in "[(":
+            depth += 1
+            cur += c
+        elif c in "])":
+            depth -= 1
+            cur += c
+        elif c == "," and depth == 0 and s[i:i + 2] == ", ":
+            parts.append(cur)
+            cur = ""
+            i += 1
+        else:
+            cur += c
+        i += 1
+    if cur != "" or parts:
+        parts.append(cur)
+    return parts
+
+
+def parse_module(text):
+    funcs = {}
+    order = []
+    fn = None
+    blk = None
+    for rawno, raw in enumerate(text.splitlines(), 1):
+        line = raw.rstrip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("func "):
+            m = _FUNC_RE.match(line)
+            if not m:
+                raise HSErr("IR: bad func header", 0)
+            key, params = m.group(1), m.group(2)
+            if key in funcs:
+                raise HSErr(f"IR: duplicate function '{key}'", 0)
+            ps = [] if params == "" else [p for p in params.split(", ")]
+            for p in ps:
+                if not _LABEL_RE.match(p or " "):
+                    raise HSErr("IR: bad param", 0)
+            fn = {"name": key, "dispname": _disp_of(key), "params": ps,
+                  "blocks": [], "entry": None, "globals": []}
+            funcs[key] = fn
+            order.append(key)
+            blk = None
+            continue
+        if fn is None:
+            raise HSErr("IR: code outside function", 0)
+        if not line.startswith((" ", "\t")) and line.endswith(":"):
+            lab = line[:-1]
+            if not _LABEL_RE.match(lab):
+                raise HSErr("IR: bad block label", 0)
+            blk = {"label": lab, "instrs": [], "term": None}
+            fn["blocks"].append(blk)
+            if fn["entry"] is None:
+                fn["entry"] = lab
+            continue
+        if blk is None:
+            raise HSErr("IR: code outside block", 0)
+        m = _LINE_RE.match(line.strip())
+        if not m:
+            raise HSErr("IR: bad line (want `<code> @N`)", 0)
+        code, lns = m.group(1), int(m.group(2))
+        if blk["term"] is not None:
+            raise HSErr("IR: code after terminator", lns)
+        ins = _parse_code(code, lns)
+        if "term" in ins:
+            blk["term"] = ins
+        else:
+            blk["instrs"].append(ins)
+    if "<main>" not in funcs:
+        raise HSErr("IR: missing entry", 0)
+    for fn in funcs.values():
+        # `global` declarations are not printed; re-derive them from the
+        # stores (the builder emits stglobal exactly for declared names,
+        # and bare `global g` without a store needs no entry: reads use
+        # load either way, matching interp's chain lookup)
+        fn["globals"] = sorted({ins["name"] for b in fn["blocks"]
+                                for ins in b["instrs"]
+                                if ins["op"] == "stglobal"})
+    return {"funcs": funcs, "order": order, "entry": "<main>"}
+
+
+def _parse_code(code, ln):
+    if code.startswith("jmp "):
+        return _t("jmp", ln, to=_label(code[4:], ln))
+    if code.startswith("br "):
+        _, c, t, e = code.split()
+        return _t("br", ln, cond=_temp(c, ln), then=_label(t, ln),
+                   els=_label(e, ln))
+    if code == "ret" or code.startswith("ret "):
+        rest = code[3:].strip()
+        return _t("ret", ln, val=_temp(rest, ln) if rest else None)
+    if code.startswith("print"):
+        rest = code[5:].strip()
+        args = [] if rest == "" else [_temp(a.strip(), ln)
+                                     for a in _split_top(rest)]
+        return _n("print", ln, args=args)
+    if code.startswith("stvar "):
+        _, name, src = code.split()
+        return _n("stvar", ln, name=name, src=_temp(src, ln))
+    if code.startswith("stglobal "):
+        _, name, src = code.split()
+        return _n("stglobal", ln, name=name, src=_temp(src, ln))
+    if code.startswith("setindex "):
+        _, o, ix, v = code.split()
+        return _n("setindex", ln, obj=_temp(o, ln), idx=_temp(ix, ln),
+                  val=_temp(v, ln))
+    m = _re.match(r"(%\d+) = (.*)$", code)
+    if not m:
+        raise HSErr("IR: bad instruction", ln)
+    dest, rhs = m.group(1), m.group(2)
+    if rhs.startswith("const "):
+        return _n("const", ln, dest=dest, val=_const_val(rhs[6:], ln))
+    if rhs.startswith("load "):
+        return _n("load", ln, dest=dest, name=rhs[5:])
+    if rhs.startswith("mkfunc "):
+        return _n("mkfunc", ln, dest=dest, func=rhs[7:])
+    if rhs.startswith("bin "):
+        _, op, l, r = rhs.split()
+        return _n("bin", ln, dest=dest, binop=op, l=_temp(l, ln),
+                  r=_temp(r, ln))
+    if rhs.startswith("un "):
+        _, op, v = rhs.split()
+        return _n("un", ln, dest=dest, unop=op, v=_temp(v, ln))
+    if rhs.startswith("call "):
+        m2 = _re.match(r"(%\d+)\((.*)\)$", rhs[5:])
+        if not m2:
+            raise HSErr("IR: bad call", ln)
+        args = [] if m2.group(2) == "" else [_temp(a.strip(), ln)
+                                            for a in _split_top(m2.group(2))]
+        return _n("call", ln, dest=dest, fn=_temp(m2.group(1), ln), args=args)
+    if rhs.startswith("build_list "):
+        inner = rhs[11:]
+        if not (inner.startswith("[") and inner.endswith("]")):
+            raise HSErr("IR: bad build_list", ln)
+        inner = inner[1:-1]
+        items = [] if inner == "" else [_temp(a.strip(), ln)
+                                       for a in _split_top(inner)]
+        return _n("build_list", ln, dest=dest, items=items)
+    if rhs == "build_dict" or rhs.startswith("build_dict "):
+        rest = rhs[10:].strip()
+        pairs = []
+        if rest != "":
+            # pairs are `(temp: temp)` units joined by ") ("; temps never
+            # nest, so a flat scan is exact (a ", "-split would not be:
+            # the dump joins pairs with a space, not a comma)
+            for pm in _re.finditer(r"\(([^()]*): ([^()]*)\)", rest):
+                pairs.append((_temp(pm.group(1), ln),
+                              _temp(pm.group(2), ln)))
+            if " ".join(f"({k}: {v})" for k, v in pairs) != rest:
+                raise HSErr("IR: bad build_dict", ln)
+        return _n("build_dict", ln, dest=dest, pairs=pairs)
+    if rhs.startswith("index "):
+        _, o, ix = rhs.split()
+        return _n("index", ln, dest=dest, obj=_temp(o, ln), idx=_temp(ix, ln))
+    if rhs.startswith("slice "):
+        _, o, s, e = rhs.split()
+        return _n("slice", ln, dest=dest, obj=_temp(o, ln),
+                  start=None if s == "-" else _temp(s, ln),
+                  stop=None if e == "-" else _temp(e, ln))
+    if rhs.startswith("iterseq "):
+        return _n("iterseq", ln, dest=dest, src=_temp(rhs[8:], ln))
+    if rhs.startswith("phi "):
+        rest = rhs[4:]
+        arms = []
+        for pm in _re.finditer(r"\[([^]]*): (%\d+)\]", rest):
+            arms.append((_label(pm.group(1), ln), pm.group(2)))
+        if not arms or " ".join(f"[{a}: {t}]" for a, t in arms) != rest:
+            raise HSErr("IR: bad phi", ln)
+        return _n("phi", ln, dest=dest, arms=arms)
+    raise HSErr("IR: bad instruction", ln)
+
+
+def _temp(s, ln):
+    if not _re.match(r"%\d+$", s):
+        raise HSErr("IR: bad temp", ln)
+    return s
+
+
+def _label(s, ln):
+    if not _LABEL_RE.match(s):
+        raise HSErr("IR: bad label", ln)
+    return s
 
 
 # ---------- reference interpreter (must match interp.py) ----------

@@ -1617,6 +1617,12 @@ def gen_c(src, main_path="<main>"):
     return Gen(prog, main_path).build()
 
 
+def _jerr(path, msg, line):
+    import json as _json
+    print(_json.dumps({"file": path, "line": line, "message": msg}),
+          file=sys.stderr)
+
+
 def build(prog_path, out_path, as_json=False):
     interp.reset_parse_state()
     def fail(msg, line):
@@ -1693,11 +1699,11 @@ def main(argv):
         _lsp.main()
         return 0
     if len(argv) < 3 or argv[1] not in ("build", "run", "check", "fmt",
-                                     "xbuild", "xrun", "xkernel"):
+                                     "xbuild", "xrun", "xkernel", "ir"):
         print("usage: hs.py [--json] build prog.hs [-o prog] | hs.py run prog.hs [args...] "
               "| hs.py check prog.hs | hs.py fmt prog.hs [-w|--check] "
               "| hs.py xbuild prog.hs [-o prog] | hs.py xrun prog.hs "
-              "| hs.py xkernel prog.hs -o kernel.elf | hs.py lsp",
+              "| hs.py xkernel prog.hs -o kernel.elf | hs.py ir prog.hs | hs.py lsp",
               file=sys.stderr)
         return 2
     if argv[1] == "fmt":
@@ -1759,6 +1765,30 @@ def main(argv):
         if not as_json:
             print(f"ok: {argv[2]}")
         return 0
+    if argv[1] == "ir":
+        import ir as _ir
+        try:
+            with open(argv[2], encoding="utf-8") as f:
+                src = f.read()
+        except OSError as e:
+            msg = f"cannot read {argv[2]}: {e.strerror or e}"
+            if as_json:
+                _jerr(argv[2], msg, None)
+            else:
+                print(f"error: {msg}", file=sys.stderr)
+            return 1
+        try:
+            interp.reset_parse_state()
+            m = _ir.build_module(interp.parse_program(src))
+            _ir.verify_module(m)
+        except HSErr as e:
+            if as_json:
+                _jerr(argv[2], e.msg, e.line)
+            else:
+                print(str(e), file=sys.stderr)
+            return 1
+        sys.stdout.write(_ir.dump_module(m))
+        return 0
     if argv[1] == "xbuild":
         import x64gen as _x64
         prog = argv[2]
@@ -1766,7 +1796,6 @@ def main(argv):
         if "-o" in argv:
             out = argv[argv.index("-o") + 1]
         return _x64.build_x64(prog, out)
-    if argv[1] == "xkernel":
         import x64gen as _x64
         prog = argv[2]
         out = "kernel.elf"

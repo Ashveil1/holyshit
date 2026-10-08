@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.22 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.23 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -1100,3 +1100,22 @@ Task 2 ของแผน IR: `list`/`dict` literal, `index`/`slice`, `setindex`
 33 ข้ามนอก subset อย่างนับแยก), ฟัซซ์สุ่มเพิ่ม 292 โปรแกรมตรงกันหมด
 (รวมสองรอบ 882 เคส, timeout ที่เหลือคือ infinite loop แท้ในซอร์สที่
 แฮงก์เหมือนกันทั้งสองฝั่ง)
+
+### 15.37 Dominance verifier + รูปแบบ text ของ IR + `hs.py ir` (v0.6.23)
+
+Task 3 ของแผน IR: verifier ตรวจ def-dominates-use จริง (dominator แบบ
+iterative dataflow, phi arm ต้อง dominate บล็อกต้นทางของ edge; บล็อกที่
+ไปไม่ถึงได้รับยกเว้นแต่ยังต้องมี terminator ถูกทรง) พร้อมรูปแบบ text
+มาตรฐาน: `hs.py ir prog.hs` พิมพ์ CFG (`func key(params):`, `label:`,
+`@line` ท้ายทุกบรรทัด, `-` แทน None, string escape `\uXXXX` รวม
+surrogate pair) และ `parse_module` อ่านกลับ — round-trip ทั้ง text
+เท่ากันและการรันเท่ากัน ครอบทุกเคสใน `test_ir.py` รวมสตริงโหด
+(quote/backslash/NUL/ไทย/astral/ลงท้ายด้วย ` @3`)
+
+ของแถม: `_jerr` ใน `hs.py` ถูกเรียกแต่ไม่เคยนิยาม — path `--json`
+ตอน error พังด้วย NameError มาตลอด แก้ 6 บรรทัดให้ตรง contract
+`{"file","line","message"}` ที่เอกสารสัญญาไว้ พร้อม regression test
+(`hs-ir --json`)
+
+หลักฐาน: `tests/test_ir.py` 47 -> 83 (dominance unit + round-trip 33 +
+`hs.py ir` dump/--json), `docs/errors.md` งอก section ข้อความ IR

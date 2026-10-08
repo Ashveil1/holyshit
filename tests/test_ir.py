@@ -151,6 +151,7 @@ total += 1
 try:
     IR.verify_module({"entry": "<main>", "order": ["<main>"], "funcs": {
         "<main>": {"name": "<main>", "dispname": "<main>", "params": [],
+                   "globals": [],
                    "blocks": [
                        {"label": "b0", "instrs": [], "term":
                         {"term": "jmp", "line": 1, "to": "nope"}}],
@@ -164,16 +165,49 @@ total += 1
 try:
     IR.verify_module({"entry": "<main>", "order": ["<main>"], "funcs": {
         "<main>": {"name": "<main>", "dispname": "<main>", "params": [],
+                   "globals": [],
                    "blocks": [
                        {"label": "b0", "instrs": [
                            {"op": "bin", "line": 1, "dest": "%1",
-                            "op2": "+", "l": "%9", "r": "%9"}],
+                            "binop": "+", "l": "%9", "r": "%9"}],
                         "term": {"term": "ret", "line": 1, "val": None}}],
                    "entry": "b0"}}})
     print("FAIL undef-temp accepted")
     fails += 1
 except interp.HSErr as e:
     print(f"ok   undef-temp rejected ({e.msg})")
+
+total += 1
+try:
+    # %2 is defined only on the b1 path but used in the join: without a
+    # phi nothing dominates the use, so this must be rejected
+    IR.verify_module({"entry": "<main>", "order": ["<main>"], "funcs": {
+        "<main>": {"name": "<main>", "dispname": "<main>", "params": [],
+                   "globals": [],
+                   "blocks": [
+                       {"label": "b0", "instrs": [
+                           {"op": "const", "line": 1, "dest": "%1",
+                            "val": 1}],
+                        "term": {"term": "br", "line": 1, "cond": "%1",
+                                 "then": "b1", "els": "b2"}},
+                       {"label": "b1", "instrs": [
+                           {"op": "const", "line": 2, "dest": "%2",
+                            "val": 2}],
+                        "term": {"term": "jmp", "line": 2, "to": "b3"}},
+                       {"label": "b2", "instrs": [],
+                        "term": {"term": "jmp", "line": 3, "to": "b3"}},
+                       {"label": "b3", "instrs": [
+                           {"op": "bin", "line": 4, "dest": "%3",
+                            "binop": "+", "l": "%2", "r": "%1"}],
+                        "term": {"term": "ret", "line": 4, "val": "%3"}}],
+                   "entry": "b0"}}})
+    print("FAIL dominance violation accepted")
+    fails += 1
+except interp.HSErr as e:
+    ok = "does not dominate" in e.msg
+    print(("ok  " if ok else "FAIL") +
+          f" dominance violation rejected ({e.msg})")
+    fails += 0 if ok else 1
 
 # builder rejects out-of-subset constructs with a clear message
 for caps, src in [("import", "import std.str\n"),
@@ -190,13 +224,92 @@ for caps, src in [("import", "import std.str\n"),
               f" unsupported-{caps} rejected ({e.msg})")
         fails += 0 if ok else 1
 
-# dump smoke: fib IR contains a call and a ret
+# dump smoke: fib IR uses the canonical text format (keyed func header,
+# @line suffixes) with a call and a ret
 total += 1
 m = build_src("def fib(n):\n  return fib(n)\nprint fib(1)\n")
 dump = IR.dump_module(m)
-ok = "func fib(n):" in dump and "call" in dump and "ret" in dump
+ok = "func fib$L1(n):" in dump and "call" in dump and "ret" in dump \
+    and "@2" in dump
 print(("ok  " if ok else "FAIL") + " dump smoke")
 fails += 0 if ok else 1
+
+# ---------- text round-trip: build -> dump -> parse -> dump ----------
+# Every inline CASE above plus a nasty-strings program must survive the
+# trip with identical text AND identical execution.
+
+import io
+import contextlib
+
+
+def _exec_capture(m):
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            IR.run_module(m)
+    except interp.HSErr as e:
+        return buf.getvalue(), f"{e.msg}@{e.line}"
+    return buf.getvalue(), None
+
+
+_RT_EXTRA = [
+    ("strings",
+     'print "a\\"b\\\\c\\nd\\te\\rf\\0g"\nprint "caf\u00e9 \u0e01 \U0001F600"\n'
+     'print "trailing @3"\nprint ""\ns = "x @9"\nprint s + "y"\n'),
+]
+
+for name, src, *_ in CASES + _RT_EXTRA:
+    total += 1
+    interp.reset_parse_state()
+    m1 = IR.build_module(interp.parse_program(src))
+    IR.verify_module(m1)
+    t1 = IR.dump_module(m1)
+    try:
+        m2 = IR.parse_module(t1)
+        IR.verify_module(m2)
+    except interp.HSErr as e:
+        print(f"FAIL roundtrip/{name}: reparse: {e}")
+        fails += 1
+        continue
+    t2 = IR.dump_module(m2)
+    if t1 != t2:
+        print(f"FAIL roundtrip/{name}: dump differs")
+        fails += 1
+        continue
+    if _exec_capture(m1) != _exec_capture(m2):
+        print(f"FAIL roundtrip/{name}: exec differs")
+        fails += 1
+        continue
+    print(f"ok   roundtrip/{name}")
+
+# ---------- hs.py ir CLI: dump contract + --json error contract ----------
+
+total += 1
+r = subprocess.run([sys.executable, f"{ROOT}/hs.py", "ir",
+                    os.path.join(HERE, "floatlit.hs")],
+                   capture_output=True, text=True, timeout=60)
+ok = r.returncode == 0 and "func <main>():" in r.stdout
+print(("ok  " if ok else "FAIL") + " hs-ir dump")
+fails += 0 if ok else 1
+
+total += 1
+with tempfile.NamedTemporaryFile("w", suffix=".hs", delete=False) as f:
+    f.write("print 1 +\n")
+    bad = f.name
+try:
+    r = subprocess.run([sys.executable, f"{ROOT}/hs.py", "--json", "ir", bad],
+                       capture_output=True, text=True, timeout=60)
+    import json as _json
+    try:
+        got = _json.loads(r.stderr)
+        ok = (r.returncode == 1 and got["file"] == bad and
+              got["line"] == 1 and "message" in got)
+    except Exception:
+        ok = False
+    print(("ok  " if ok else "FAIL") + " hs-ir --json")
+    fails += 0 if ok else 1
+finally:
+    os.unlink(bad)
 
 # ---------- differential over the whole tests/*.hs corpus ----------
 # Files outside the IR subset report SKIP (honest, counted separately).

@@ -89,7 +89,7 @@ Then append `SPEC-v1.md` §15.35, update `AGENTS.md`/`README.md`/`VERSION` (0.6.
 
 Lower `list/dict/index/slice/setindex/for` (desugar `for` to len/index/while over a private temp). Differential-test against `tests/*.hs` container programs. `setattr/attr` (module attrs) stay AST-side until Task 4.
 
-### Task 3: Dominance verifier + IR text format
+### Task 3: Dominance verifier + IR text format (DONE v0.6.23)
 
 Proper def-dominates-use check; `hs.py ir prog.hs` dumps canonical IR text; round-trip parse test. Needed before backends consume IR.
 
