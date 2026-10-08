@@ -8,6 +8,7 @@ Suites:
   test_native.py  43  gcc native backend, byte-identical to interp
   test_fmt.py      4  formatter canonical + idempotent + same behavior
   test_x64.py     52  x86-64 backend, static ELF, no gcc
+  test_ir.py      23  IR: build/verify/exec byte-identical to interp
   test_xkernel.py 291 freestanding kernel booting on QEMU
   test_examples.py 17  every examples/*.hs still runs (interp + native)
   test_lsp.py     25  language server over stdio
@@ -24,6 +25,7 @@ SUITES = [
     ("test_native.py", "native (gcc)"),
     ("test_fmt.py", "formatter"),
     ("test_x64.py", "x64 backend"),
+    ("test_ir.py", "IR (build/verify/exec)"),
     ("test_xkernel.py", "kernel on QEMU"),
     ("test_examples.py", "examples"),
     ("test_lsp.py", "language server"),

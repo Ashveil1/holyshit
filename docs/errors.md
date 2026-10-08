@@ -1,7 +1,7 @@
 # error catalog (generated — do not edit by hand)
 
 > จาก `scripts/gen_errors.py` โดยอ่าน `HSErr(...)` ทุกตัวใน
-> `interp.py`, `hs.py`, `x64gen.py`, `fmt.py`
+> `interp.py`, `hs.py`, `x64gen.py`, `fmt.py`, `ir.py`
 > (regen: `python3 scripts/gen_errors.py`, เทสตรวจด้วย `tests/test_docs.py`)
 
 ทุก error เป็น Str `"<message> at line N"` — ไม่มี exception object,
@@ -438,4 +438,47 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-รวม 398 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+## ir.py — IR กลาง (build/verify/exec) (40)
+
+- `IR: bad binop '{op}'`
+- `IR: bad op '{op}'`
+- `IR: bad terminator`
+- `IR: bad terminator '{tm['term']}'`
+- `IR: bad unop '{op}'`
+- `IR: block '{b['label']}' has no terminator`
+- `IR: builtin '{fn.name}' not in subset`
+- `IR: duplicate block label in '{fn['dispname']}'`
+- `IR: duplicate function '{name}'`
+- `IR: jump to missing block '{lab}'`
+- `IR: missing entry`
+- `IR: missing entry block in '{fn['dispname']}'`
+- `IR: missing function '{name}'`
+- `IR: no phi arm for entry`
+- `IR: phi arm from non-predecessor '{al}'`
+- `IR: phi in entry block`
+- `IR: phi with no arms`
+- `IR: temp '{d}' redefined`
+- `IR: undefined temp '{at}'`
+- `IR: undefined temp '{a}'`
+- `IR: undefined temp '{ins['fn']}'`
+- `IR: undefined temp '{ins['v']}'`
+- `IR: undefined temp '{ins[k]}'`
+- `IR: undefined temp '{tm['cond']}'`
+- `IR: undefined temp '{tm['val']}'`
+- `IR: unsupported '{t}'`
+- `break outside loop`
+- `cannot add {tname(l)} and {tname(r)}`
+- `cannot bitwise-not {tname(v)}`
+- `cannot compare {tname(l)} and {tname(r)}`
+- `cannot negate {tname(v)}`
+- `continue outside loop`
+- `division by zero`
+- `not callable: {tname(fn)}`
+- `operator '{op}' needs Ints, got {tname(l)} and {tname(r)}`
+- `operator '{op}' needs numbers, got {tname(l)} and {tname(r)}`
+- `recursion too deep`
+- `shift count {r} out of range (0..63)`
+- `unknown variable '{name}'`
+- `{fdef['dispname']} wants {len(fdef['params'])} args, got {len(args)}`
+
+รวม 438 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

@@ -22,6 +22,11 @@ python3 hs.py --json check|build ...       # same JSON error contract
 Both backends print byte-identical stdout. If they differ, the NATIVE side
 is usually right about nothing — file a bug, don't work around it.
 
+`ir.py` is the architecture-neutral middle layer: it builds a flat CFG
+(SSA temps + frame variables + explicit blocks) from the AST, verifies it,
+and executes it byte-identically to `interp.py` (`python3 tests/test_ir.py`).
+New backends consume IR, never AST. Gaps fail fast as `IR: unsupported '<t>'`.
+
 ## Tooling you can call instead of guessing
 
 ```sh

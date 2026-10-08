@@ -1,7 +1,7 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.20 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
-> kernel freestanding) + stdlib + formatter + language server + เอกสารที่เทสตรวจ
+> สถานะ: v0.6.21 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
 
@@ -1056,3 +1056,28 @@ IEEE pattern โดยตั้ง `hi = inf` แล้วเดิน `lo = mid
 
 หลักฐาน: `tests/floatlit.hs` (interp 42 / native 43), `tests/x64/float.hs`
 ยาวขึ้น, `tests/test.py` 41 -> 42, `tests/test_native.py` 42 -> 43
+
+### 15.35 IR กลาง: CFG ที่ backend ทุกตัวต้องกินแทน AST (v0.6.21)
+
+ก้าวแรกของแผน self-hosting (`docs/superpowers/plans/2026-10-08-ir-backend.md`):
+`ir.py` สร้าง flat CFG จาก AST ของ `interp` — temp นิพจน์เป็น SSA บริสุทธิ์
+(`%1`, `%2`, ...), ตัวแปรซอร์สอยู่ในเฟรม (`stvar`/`load`), โฟลว์เป็นบล็อก
+ชัด (`jmp`/`br`/`ret`) พร้อม verifier (label ซ้ำ, โดดข้ามบล็อกที่ไม่มี,
+temp ไม่ได้นิยาม, phi ผิด) กับ reference interpreter ที่ต้องตรง `interp`
+ทุกไบต์ทั้ง stdout/stderr/rc
+
+การตัดสินใจสำคัญ: `and`/`or` lower เป็น branch+phi (short-circuit เหมือน
+interp) — นี่คือจุดที่ x64 ปัจจุบันทำผิด (รันทั้งสองข้าง) และ backend x64
+ต้องทำ branch จริงตอนย้ายมากิน IR (Task 4). ตัวแปรไม่ทำ mem2reg ตั้งแต่
+ต้น (รอ Task 3) เพื่อให้ closure/forward-ref/path-dependent definedness
+ถูกโดย construction — ฟัซซ์ differential 590 โปรแกรมสุ่มตรงกันหมด
+(ที่เหลือคือ infinite loop ที่ฟัซเซอร์สร้างเอง แฮงก์เหมือนกันทั้งสองฝั่ง)
+
+divergence ที่ตั้งใจและจดไว้ใน `ir.py`: `break`/`continue` นอก loop กับ
+`return` นอกฟังก์ชันเป็น `error:` สะอาด ส่วน interp ปล่อย exception
+หลุดเป็น traceback — จะ match traceback ตรง ๆ ไม่ได้เพราะผูกกับ layout
+ไฟล์ของ `interp.py` เอง
+
+หลักฐาน: `ir.py`, `tests/test_ir.py` (16 differential + 4 verifier/builder
++ dump + unsupported), `tests/run_all.py` มี suite ที่ 9, `docs/errors.md`
+มี section `ir.py` (ผ่าน `scripts/gen_errors.py` ที่รู้จัก `ir.py` แล้ว)
