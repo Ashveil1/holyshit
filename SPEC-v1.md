@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.26 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.27 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -1179,3 +1179,22 @@ unsafe = งานหลัง; ref ปฏิเสธเองอีก 9)
 
 หลักฐาน: `test_ir.py` 83 -> 86, `test_irx64.py` 13 -> 18
 (t_import/t_pkg/t_std ผ่าน; t_heap ยังติด unsafe ถูกต้องแล้ว)
+
+### 15.41 try/except/finally/raise บน IR ทั้งสองชั้น (v0.6.27, Task 4 part 4)
+
+- `ir.py`: ops ใหม่ `try_push/try_pop/exc_str/exc_pop/unbind/reraise`
+  กับ terminator `raise`; builder inline finally บนทุกทางออกฉับพลัน
+  (return/break/continue พร้อม depth rule แบบ x64gen ผ่าน trystack),
+  handler shape ครบ (guard ซ้อนสำหรับ error ใน handler + finally,
+  save/restore ตาม shadow analysis ทั้งฟังก์ชัน); interpreter ใช้
+  Python exception + handler stack แยกเฟรม (_Jump ข้าม _call)
+- `irx64.py`: transliterate ตรงจาก ex_try (hs_try_push0/pop,
+  hs_exc_str/pop, hs_reraise, hs_raise_raw/Msg) พร้อม exc runtime +
+  data เมื่อมี try; bare raise ตรวจตอน build เหมือน x64gen
+- ฟัซซ์จับได้อีกแล้ว: `len` เสีย line (แก้ด้วย inline ไปแล้วรอบก่อน),
+  รอบนี้ `try_push` คู่กับ `unbind` ระดับ module ที่ลืม (slot ไม่มี
+  เพราะ entry-stvar เป็น global)
+
+หลักฐาน: `test_ir.py` 86 -> 108 (10 เคส try + corpus t_try/t_finally/
+t_closure/t_circ ผ่าน), `test_irx64.py` 18 -> 22, ฟัซซ์ try 350 เคส
+บวก x64-diff 370 เคสตรงกันหมด

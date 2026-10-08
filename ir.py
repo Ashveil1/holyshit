@@ -52,16 +52,22 @@ def _t(term, line, **kw):
 # ---------- builder: AST -> flat CFG ----------
 
 class _FuncBuild:
-    def __init__(self, b, name, params, dispname):
+    def __init__(self, b, name, params, dispname, ast=None):
         self.b = b
         self.name = name
         self.dispname = dispname
         self.params = list(params)
+        self.ast = ast if ast is not None else []
         self.blocks = []
         self.tmp = 0
         self.cur = None
         self.loops = []  # {header_exit...}: {"header": blk, "exit": blk}
         self.gnames = set()
+        self.exceptdepth = 0
+        # try/finally stack: [(fbody_stmts, owner_id, loopdepth)] innermost
+        # last. Mirrors x64gen._fin_stack for abrupt-exit inlining.
+        self.trystack = []
+        self.finactive = set()
 
     def block(self, hint):
         lab = f"b_{hint}_{len(self.blocks)}"
@@ -98,7 +104,7 @@ class Builder:
 
     def build(self, prog, pfx=""):
         pfx = pfx or self.pfx
-        fb = _FuncBuild(self, f"{pfx}<main>", [], "<main>")
+        fb = _FuncBuild(self, f"{pfx}<main>", [], "<main>", ast=prog)
         entry = fb.block("entry")
         fb.start(entry)
         self._body(fb, prog)
@@ -118,6 +124,25 @@ class Builder:
         for s in stmts:
             fb.alive()
             self._stmt(fb, s)
+
+    def _finallies(self, fb, ln, for_break=False):
+        # Inline pending finally bodies, innermost first (mirrors
+        # x64gen._emit_finallies), then pop every exited try region.
+        # return exits every enclosing try; break/continue only those
+        # inside the current loop.
+        nloops = len(fb.loops)
+        for entry in reversed(fb.trystack):
+            if for_break and entry["loopdepth"] != nloops:
+                continue
+            fbody = entry["fbody"]
+            if fbody is not None and id(fbody) not in fb.finactive:
+                fb.finactive.add(id(fbody))
+                try:
+                    self._body(fb, fbody)
+                finally:
+                    fb.finactive.discard(id(fbody))
+            if fb.cur is not None:
+                fb.emit(_n("try_pop", ln))
 
     def _stmt(self, fb, s):
         t = s["t"]
@@ -143,16 +168,25 @@ class Builder:
             return
         if t == "return":
             v = self._expr(fb, s["val"]) if s["val"] is not None else None
+            self._finallies(fb, ln)
+            if fb.cur is None:
+                return  # a finally already transferred control
             fb.end(_t("ret", ln, val=v))
             return
         if t == "break":
             if not fb.loops:
                 raise HSErr("break outside loop", ln)
+            self._finallies(fb, ln, for_break=True)
+            if fb.cur is None:
+                return
             fb.end(_t("jmp", ln, to=fb.loops[-1]["exit"]["label"]))
             return
         if t == "continue":
             if not fb.loops:
                 raise HSErr("continue outside loop", ln)
+            self._finallies(fb, ln, for_break=True)
+            if fb.cur is None:
+                return
             lp = fb.loops[-1]
             to = lp["incr"]["label"] if lp["incr"] is not None else \
                 lp["header"]["label"]
@@ -169,6 +203,18 @@ class Builder:
             return
         if t == "for":
             self._for(fb, s)
+            return
+        if t == "try":
+            self._try(fb, s)
+            return
+        if t == "raise":
+            if s["val"] is None:
+                if not fb.exceptdepth:
+                    raise HSErr("raise without active exception", ln)
+                fb.end(_t("raise", ln, src=None))
+            else:
+                v = self._expr(fb, s["val"])
+                fb.end(_t("raise", ln, src=v))
             return
         if t == "import":
             import re as _re
@@ -193,7 +239,8 @@ class Builder:
     def _def(self, fb, s):
         ln = s["line"]
         qname = f"{self.pfx}{s['name']}$L{ln}"
-        child = _FuncBuild(self, qname, s["params"], s["name"])
+        child = _FuncBuild(self, qname, s["params"], s["name"],
+                           ast=s["body"])
         entry = child.block("entry")
         child.start(entry)
         self._body(child, s["body"])
@@ -393,11 +440,120 @@ class Builder:
         r = self._expr(fb, e["r"])
         rl = rb["label"]
         fb.end(_t("jmp", ln, to=jb["label"]))
-        rl = fb.blocks[-2]["label"] if False else rl
         fb.start(jb)
         d = fb.temp()
         jb["instrs"].append(_n("phi", ln, dest=d, arms=[(brb, l), (rl, r)]))
         return d
+
+    def _try(self, fb, s):
+        ln = s["line"]
+        has_except = s["ebody"] is not None
+        has_finally = s["fbody"] is not None
+        ename = s.get("ename")
+        fb.trystack.append({"loopdepth": len(fb.loops),
+                            "fbody": s["fbody"] if has_finally else None,
+                            "owner": id(s)})
+        try:
+            handler = fb.block("handler")
+            done = fb.block("done")
+            fb.emit(_n("try_push", ln, handler=handler["label"]))
+            self._body(fb, s["body"])
+            if fb.cur is not None:
+                fb.emit(_n("try_pop", ln))
+                if has_finally:
+                    self._body(fb, s["fbody"])
+                fb.end(_t("jmp", ln, to=done["label"]))
+            fb.start(handler)
+            if has_except:
+                if has_finally:
+                    # an error inside the handler still runs this finally:
+                    # guard the handler with its own frame, then reraise
+                    hfail = fb.block("hfail")
+                    hok = fb.block("hok")
+                    fb.emit(_n("try_push", ln, handler=hfail["label"]))
+                    self._handler_body(fb, s, ename, ln)
+                    if fb.cur is not None:
+                        fb.emit(_n("try_pop", ln))
+                        fb.end(_t("jmp", ln, to=hok["label"]))
+                    fb.start(hfail)
+                    self._body(fb, s["fbody"])
+                    fb.emit(_n("reraise", ln))
+                    if fb.cur is not None:
+                        fb.end(_t("jmp", ln, to=hok["label"]))
+                    fb.start(hok)
+                else:
+                    self._handler_body(fb, s, ename, ln)
+                if fb.cur is not None:
+                    fb.emit(_n("exc_pop", ln))
+                    if has_finally:
+                        self._body(fb, s["fbody"])
+                    fb.end(_t("jmp", ln, to=done["label"]))
+            else:
+                if has_finally:
+                    self._body(fb, s["fbody"])
+                fb.emit(_n("reraise", ln))
+                if fb.cur is not None:
+                    fb.end(_t("jmp", ln, to=done["label"]))
+            fb.start(done)
+        finally:
+            fb.trystack.pop()
+
+    def _handler_body(self, fb, s, ename, ln):
+        fb.exceptdepth += 1
+        try:
+            if ename is not None:
+                t = fb.temp()
+                fb.emit(_n("exc_str", ln, dest=t))
+                if self._bound_in_func(fb, ename):
+                    # save/shadow/restore, like x64gen's _eshadow path
+                    old = fb.temp()
+                    fb.emit(_n("load", ln, dest=old, name=ename))
+                    fb.emit(_n("stvar", ln, name=ename, src=t))
+                    self._body(fb, s["ebody"])
+                    if fb.cur is not None:
+                        fb.emit(_n("stvar", ln, name=ename, src=old))
+                else:
+                    fb.emit(_n("stvar", ln, name=ename, src=t))
+                    self._body(fb, s["ebody"])
+                    if fb.cur is not None:
+                        fb.emit(_n("unbind", ln, name=ename))
+            else:
+                self._body(fb, s["ebody"])
+        finally:
+            fb.exceptdepth -= 1
+
+    def _bound_in_func(self, fb, name):
+        # True when `name` is otherwise visible anywhere in this function
+        # (whole-body scan: shadowing is only observable through it).
+        if name in fb.params:
+            return True
+        found = [False]
+
+        def walk(ss):
+            for x in ss:
+                if found[0]:
+                    return
+                t = x["t"]
+                if t == "set" and x.get("name") == name:
+                    found[0] = True
+                    return
+                if t == "def":
+                    if x.get("name") == name:
+                        found[0] = True
+                    continue
+                if t == "for" and x.get("var") == name:
+                    found[0] = True
+                    return
+                if t == "global" and name in x.get("names", []):
+                    found[0] = True
+                    return
+                for k in ("then", "els", "body", "ebody", "fbody"):
+                    if isinstance(x.get(k), list):
+                        walk(x[k])
+                for _, eb in x.get("elifs", []):
+                    walk(eb)
+        walk(fb.ast)
+        return found[0]
 
 
 # ---------- verifier ----------
@@ -448,7 +604,7 @@ def _verify_func(fn, funcs):
         elif tm["term"] == "br":
             _edge(b["label"], tm["then"], tm)
             _edge(b["label"], tm["els"], tm)
-        elif tm["term"] != "ret":
+        elif tm["term"] != "ret" and tm["term"] != "raise":
             raise HSErr(f"IR: bad terminator '{tm['term']}'", tm["line"])
 
     # reachable set: dominance is only checked where execution can go.
@@ -491,6 +647,9 @@ def _verify_func(fn, funcs):
         elif tm["term"] == "ret":
             if tm["val"] is not None:
                 _use(tm["val"], b["label"], tm["line"])
+        elif tm["term"] == "raise":
+            if tm["src"] is not None:
+                _use(tm["src"], b["label"], tm["line"])
     for b in fn["blocks"]:
         for ins in b["instrs"]:
             op = ins["op"]
@@ -508,6 +667,18 @@ def _verify_func(fn, funcs):
                     # must dominate the predecessor it comes from
                     _use(at, al, ln)
             elif op in ("const", "load", "stvar", "stglobal", "import"):
+                pass
+            elif op in ("try_push",):
+                if ins["handler"] not in by:
+                    raise HSErr(f"IR: jump to missing block "
+                                f"'{ins['handler']}'", ln)
+            elif op in ("try_pop", "exc_pop"):
+                pass
+            elif op == "exc_str":
+                pass
+            elif op == "unbind":
+                pass
+            elif op == "reraise":
                 pass
             elif op == "attr":
                 _use(ins["obj"], b["label"], ln)
@@ -699,6 +870,18 @@ def dump_instr(ins):
         return "print" + (" " + ", ".join(ins["args"]) if ins["args"] else "")
     if op == "import":
         return f"import {ins['name']}"
+    if op == "try_push":
+        return f"try_push {ins['handler']}"
+    if op == "try_pop":
+        return "try_pop"
+    if op == "exc_str":
+        return f"{ins['dest']} = exc_str"
+    if op == "exc_pop":
+        return "exc_pop"
+    if op == "unbind":
+        return f"unbind {ins['name']}"
+    if op == "reraise":
+        return "reraise"
     if op == "attr":
         return f"{ins['dest']} = attr {ins['obj']} {ins['name']}"
     if op == "setattr":
@@ -733,6 +916,8 @@ def dump_term(tm):
         return f"br {tm['cond']} {tm['then']} {tm['els']}"
     if tm["term"] == "ret":
         return f"ret {tm['val']}" if tm["val"] is not None else "ret"
+    if tm["term"] == "raise":
+        return f"raise {tm['src']}" if tm["src"] is not None else "raise"
     return "<bad term>"
 
 
@@ -862,6 +1047,19 @@ def _parse_code(code, ln):
     if code == "ret" or code.startswith("ret "):
         rest = code[3:].strip()
         return _t("ret", ln, val=_temp(rest, ln) if rest else None)
+    if code == "raise" or code.startswith("raise "):
+        rest = code[5:].strip()
+        return _t("raise", ln, src=_temp(rest, ln) if rest else None)
+    if code.startswith("try_push "):
+        return _n("try_push", ln, handler=_label(code[9:], ln))
+    if code == "try_pop":
+        return _n("try_pop", ln)
+    if code == "exc_pop":
+        return _n("exc_pop", ln)
+    if code == "reraise":
+        return _n("reraise", ln)
+    if code.startswith("unbind "):
+        return _n("unbind", ln, name=code[7:])
     if code.startswith("print"):
         rest = code[5:].strip()
         args = [] if rest == "" else [_temp(a.strip(), ln)
@@ -900,6 +1098,8 @@ def _parse_code(code, ln):
     if rhs.startswith("un "):
         _, op, v = rhs.split()
         return _n("un", ln, dest=dest, unop=op, v=_temp(v, ln))
+    if rhs == "exc_str":
+        return _n("exc_str", ln, dest=dest)
     if rhs.startswith("call "):
         m2 = _re.match(r"(%\d+)\((.*)\)$", rhs[5:])
         if not m2:
@@ -1080,6 +1280,28 @@ def _ir_import(name, frame, ln):
 class _Ret(Exception):
     def __init__(self, value):
         self.value = value
+
+
+class _Jump(Exception):
+    # transfer to a handler frame: unwinds _call frames until the _exec
+    # loop owning the target frame catches it.
+    def __init__(self, frame, label, err=None):
+        self.frame = frame
+        self.label = label
+        self.err = err
+
+
+_THANDLERS = []  # (frame, handler_label): innermost last
+_ACTIVE = []  # (msg, line) of errors currently handled (bare raise)
+
+
+def _owns(hframe, frame):
+    f = frame
+    while f is not None:
+        if f is hframe:
+            return True
+        f = f.parent
+    return False
 
 
 class Frame:
@@ -1288,91 +1510,156 @@ def _exec(fdef, frame):
     prev = None
     while True:
         b = by[lab]
-        for ins in b["instrs"]:
-            op = ins["op"]
-            ln = ins["line"]
-            if op == "const":
-                temps[ins["dest"]] = ins["val"]
-            elif op == "load":
-                temps[ins["dest"]] = frame.get(ins["name"], ln)
-            elif op == "stvar":
-                frame.set(ins["name"], temps[ins["src"]])
-            elif op == "stglobal":
-                frame.root.vars[ins["name"]] = temps[ins["src"]]
-            elif op == "mkfunc":
-                temps[ins["dest"]] = IRFunc(_FUNCS[ins["func"]], frame, ln)
-            elif op == "bin":
-                temps[ins["dest"]] = _binop(ins["binop"], temps[ins["l"]],
-                                            temps[ins["r"]], ln)
-            elif op == "un":
-                temps[ins["dest"]] = _unop(ins["unop"], temps[ins["v"]],
-                                           ln)
-            elif op == "call":
-                temps[ins["dest"]] = _call(temps[ins["fn"]],
-                                          [temps[a] for a in ins["args"]], ln)
-            elif op == "print":
-                sys.stdout.write(" ".join(
-                    disp(temps[a]) for a in ins["args"]) + "\n")
-            elif op == "import":
-                _leaf, top, topname = _ir_import(ins["name"], frame, ln)
-                frame.set(topname, top)
-            elif op == "attr":
-                obj = temps[ins["obj"]]
-                if not isinstance(obj, IRMod):
-                    raise HSErr("only modules have attributes", ln)
-                nm = ins["name"]
-                if nm not in obj.frame.vars:
-                    raise HSErr(f"module '{obj.name}' has no attribute "
-                                f"'{nm}'", ln)
-                temps[ins["dest"]] = obj.frame.vars[nm]
-            elif op == "setattr":
-                obj = temps[ins["obj"]]
-                if not isinstance(obj, IRMod):
-                    raise HSErr("only modules have attributes", ln)
-                obj.frame.vars[ins["name"]] = temps[ins["val"]]
-            elif op == "build_list":
-                temps[ins["dest"]] = [temps[x] for x in ins["items"]]
-            elif op == "build_dict":
-                d = {}
-                for k, v in ins["pairs"]:
-                    kk = temps[k]
-                    if not isinstance(kk, str):
-                        raise HSErr("dict key must be Str", ln)
-                    d[kk] = temps[v]
-                temps[ins["dest"]] = d
-            elif op == "index":
-                temps[ins["dest"]] = _index(temps[ins["obj"]],
-                                            temps[ins["idx"]], ln)
-            elif op == "slice":
-                temps[ins["dest"]] = _slice(
-                    temps[ins["obj"]],
-                    temps[ins["start"]] if ins["start"] is not None else None,
-                    temps[ins["stop"]] if ins["stop"] is not None else None,
-                    ln)
-            elif op == "setindex":
-                _setindex(temps[ins["obj"]], temps[ins["idx"]],
-                          temps[ins["val"]], ln)
-            elif op == "iterseq":
-                temps[ins["dest"]] = _iterseq(temps[ins["src"]], ln)
-            elif op == "phi":
-                for al, at in ins["arms"]:
-                    if al == prev:
-                        temps[ins["dest"]] = temps[at]
-                        break
-                else:
-                    raise HSErr("IR: no phi arm for entry", ln)
+        try:
+            for ins in b["instrs"]:
+                _step(ins, temps, frame, prev)
+            tm = b["term"]
+            if tm["term"] == "jmp":
+                prev, lab = lab, tm["to"]
+            elif tm["term"] == "br":
+                prev = lab
+                lab = tm["then"] if temps[tm["cond"]] else tm["els"]
+            elif tm["term"] == "ret":
+                raise _Ret(temps[tm["val"]]
+                           if tm["val"] is not None else None)
+            elif tm["term"] == "raise":
+                _do_raise(temps[tm["src"]] if tm["src"] is not None
+                          else None, tm["line"], bare=tm["src"] is None)
             else:
-                raise HSErr(f"IR: bad op '{op}'", ln)
-        tm = b["term"]
-        if tm["term"] == "jmp":
-            prev, lab = lab, tm["to"]
-        elif tm["term"] == "br":
-            prev = lab
-            lab = tm["then"] if temps[tm["cond"]] else tm["els"]
-        elif tm["term"] == "ret":
-            raise _Ret(temps[tm["val"]] if tm["val"] is not None else None)
+                raise HSErr("IR: bad terminator", tm["line"])
+        except _Jump as j:
+            if j.frame is not frame:
+                raise
+            _ACTIVE.append(j.err)
+            lab, prev = j.label, None
+        except HSErr as e:
+            tgt = _unwind(frame)
+            if tgt is None:
+                raise
+            hframe, hlab = tgt
+            if hframe is not frame:
+                raise _Jump(hframe, hlab, (e.msg, e.line))
+            _ACTIVE.append((e.msg, e.line))
+            lab, prev = hlab, None
+
+
+def _unwind(frame):
+    # drop handlers of dead frames; return (frame, label) of the
+    # innermost handler owning this frame chain, or None.
+    while _THANDLERS and not _owns(_THANDLERS[-1][0], frame):
+        _THANDLERS.pop()
+    if not _THANDLERS:
+        return None
+    return _THANDLERS.pop()
+
+
+def _do_raise(v, ln, bare):
+    if v is None:
+        if not _ACTIVE:
+            raise HSErr("raise without active exception", ln)
+        msg, eline = _ACTIVE[-1]
+        raise HSErr(msg, eline)
+    if not isinstance(v, str):
+        raise HSErr("raise wants Str", ln)
+    raise HSErr(v, ln)
+
+
+def _step(ins, temps, frame, prev):
+    op = ins["op"]
+    ln = ins["line"]
+    if op == "const":
+        temps[ins["dest"]] = ins["val"]
+    elif op == "load":
+        temps[ins["dest"]] = frame.get(ins["name"], ln)
+    elif op == "stvar":
+        frame.set(ins["name"], temps[ins["src"]])
+    elif op == "stglobal":
+        frame.root.vars[ins["name"]] = temps[ins["src"]]
+    elif op == "mkfunc":
+        temps[ins["dest"]] = IRFunc(_FUNCS[ins["func"]], frame, ln)
+    elif op == "bin":
+        temps[ins["dest"]] = _binop(ins["binop"], temps[ins["l"]],
+                                    temps[ins["r"]], ln)
+    elif op == "un":
+        temps[ins["dest"]] = _unop(ins["unop"], temps[ins["v"]],
+                                   ln)
+    elif op == "call":
+        temps[ins["dest"]] = _call(temps[ins["fn"]],
+                                  [temps[a] for a in ins["args"]], ln)
+    elif op == "print":
+        sys.stdout.write(" ".join(
+            disp(temps[a]) for a in ins["args"]) + "\n")
+    elif op == "import":
+        _leaf, top, topname = _ir_import(ins["name"], frame, ln)
+        frame.set(topname, top)
+    elif op == "attr":
+        obj = temps[ins["obj"]]
+        if not isinstance(obj, IRMod):
+            raise HSErr("only modules have attributes", ln)
+        nm = ins["name"]
+        if nm not in obj.frame.vars:
+            raise HSErr(f"module '{obj.name}' has no attribute "
+                        f"'{nm}'", ln)
+        temps[ins["dest"]] = obj.frame.vars[nm]
+    elif op == "setattr":
+        obj = temps[ins["obj"]]
+        if not isinstance(obj, IRMod):
+            raise HSErr("only modules have attributes", ln)
+        obj.frame.vars[ins["name"]] = temps[ins["val"]]
+    elif op == "build_list":
+        temps[ins["dest"]] = [temps[x] for x in ins["items"]]
+    elif op == "build_dict":
+        d = {}
+        for k, v in ins["pairs"]:
+            kk = temps[k]
+            if not isinstance(kk, str):
+                raise HSErr("dict key must be Str", ln)
+            d[kk] = temps[v]
+        temps[ins["dest"]] = d
+    elif op == "index":
+        temps[ins["dest"]] = _index(temps[ins["obj"]],
+                                    temps[ins["idx"]], ln)
+    elif op == "slice":
+        temps[ins["dest"]] = _slice(
+            temps[ins["obj"]],
+            temps[ins["start"]] if ins["start"] is not None else None,
+            temps[ins["stop"]] if ins["stop"] is not None else None,
+            ln)
+    elif op == "setindex":
+        _setindex(temps[ins["obj"]], temps[ins["idx"]],
+                  temps[ins["val"]], ln)
+    elif op == "iterseq":
+        temps[ins["dest"]] = _iterseq(temps[ins["src"]], ln)
+    elif op == "phi":
+        for al, at in ins["arms"]:
+            if al == prev:
+                temps[ins["dest"]] = temps[at]
+                break
         else:
-            raise HSErr("IR: bad terminator", tm["line"])
+            raise HSErr("IR: no phi arm for entry", ln)
+    elif op == "try_push":
+        _THANDLERS.append((frame, ins["handler"]))
+    elif op == "try_pop":
+        if _THANDLERS and _THANDLERS[-1][0] is frame:
+            _THANDLERS.pop()
+    elif op == "exc_str":
+        if not _ACTIVE:
+            raise HSErr("raise without active exception", ln)
+        msg, eline = _ACTIVE[-1]
+        temps[ins["dest"]] = msg + (f" at line {eline}" if eline
+                                    else "")
+    elif op == "exc_pop":
+        if _ACTIVE:
+            _ACTIVE.pop()
+    elif op == "unbind":
+        frame.vars.pop(ins["name"], None)
+    elif op == "reraise":
+        if not _ACTIVE:
+            raise HSErr("raise without active exception", ln)
+        msg, eline = _ACTIVE[-1]
+        raise HSErr(msg, eline)
+    else:
+        raise HSErr(f"IR: bad op '{op}'", ln)
 
 
 _FUNCS = {}

@@ -196,6 +196,16 @@ class GenIR(Gen):
 
     def _plan(self):
         self._load_all()
+        # exception runtime is needed when any function uses try/raise
+        self.exc_used = False
+        for key in self.allorder:
+            for b in self.allfuncs[key]["blocks"]:
+                for ins in b["instrs"]:
+                    if ins["op"] in ("try_push", "reraise"):
+                        self.exc_used = True
+                tm = b["term"]
+                if tm["term"] == "raise":
+                    self.exc_used = True
         # per-module globals: stored names in each module's entry func.
         self.mod_globals = {}
         for mpref, ekey in self.mod_entries.items():
@@ -1551,6 +1561,30 @@ class GenIR(Gen):
                 self._call(fr, ins["dest"], ins["fn"], ins["args"], ln)
             elif op == "print":
                 self._print(fr, ins["args"], ln)
+            elif op == "try_push":
+                a.call("hs_try_push0")
+                a.test_rr("rax", "rax")
+                a.jcc("ne", self._blabel(key, ins["handler"]))
+            elif op == "try_pop":
+                a.call("hs_try_pop")
+            elif op == "exc_str":
+                a.call("hs_exc_str")
+                a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
+            elif op == "exc_pop":
+                a.call("hs_exc_pop")
+            elif op == "unbind":
+                # bound via stvar in the same function, so a slot exists;
+                # at module level the binding lives in a data global.
+                if ins["name"] in fr["slots"]:
+                    a.mov_ri64("rax", Gen.HS_UNBOUND)
+                    a.mov_mr("rbp", "rax", fr["slots"][ins["name"]])
+                else:
+                    lab = self._glabel(ins["name"], fr["mod"])
+                    a.mov_ri64("rax", Gen.HS_UNBOUND)
+                    a.lea_rip("rcx", lab)
+                    a.mov_mr("rcx", "rax", 0)
+            elif op == "reraise":
+                a.call("hs_reraise")
             elif op == "import":
                 for m in ins.get("_chain", []):
                     a.call(self._init_label(m))
@@ -1643,6 +1677,27 @@ class GenIR(Gen):
             a.mov_rr("rsp", "rbp")
             a.pop_r("rbp")
             a.ret()
+        elif tm["term"] == "raise":
+            if tm["src"] is not None:
+                self._load(fr, tm["src"], ln)
+                lab_rstr = self.new_tmp("rz")
+                a.mov_rr("r11", "rax")
+                a.and_ri32("r11", 3)
+                a.test_rr("r11", "r11")
+                lab_rbad = self.new_tmp("rz")
+                a.jcc("ne", lab_rbad)
+                a.mov_rm("r11", "rax", 0)
+                a.cmp_ri32("r11", Gen.K_STR)
+                a.jcc("e", lab_rstr)
+                a.label(lab_rbad)
+                self.raise_static("raise wants Str", ln)
+                a.label(lab_rstr)
+                a.mov_rm("rsi", "rax", 8)
+                a.lea_m("rdi", "rax", 16)
+                a.mov_ri32("rdx", ln)
+                a.call("hs_error")
+            else:
+                a.call("hs_reraise")
         else:
             raise HSErr("IR: bad terminator", ln)
 
@@ -1723,6 +1778,8 @@ class GenIR(Gen):
         self.emit_runtime()
         self.emit_fatal_line()
         self.emit_err_builders()
+        if self.exc_used:
+            self.emit_exc_runtime()
         # builtin-value stubs evaluate synthetic AST and need a real Scope
         # chain + module dict (only for name resolution, never emitted)
         _stubmod = {"name": "<main>", "pfx": "ir", "scope": Gen.Scope()}
@@ -1740,6 +1797,16 @@ class GenIR(Gen):
         a.data_qword(0)
         a.data_label("bump_end_")
         a.data_qword(0)
+        if self.exc_used:
+            # exception handler stack + active-error value stack
+            a.data_label("exc_depth")
+            a.data_qword(0)
+            a.data_label("exc_frames")
+            a.data_bytes(b"\0" * (Gen.EXC_FRSZ * Gen.EXC_MAX))
+            a.data_label("exc_vlen")
+            a.data_qword(0)
+            a.data_label("exc_vals")
+            a.data_bytes(b"\0" * (Gen.EXC_VSZ * Gen.EXC_VMAX))
         a.label("sp_")
         a.code += b" "
         a.label("nl_")

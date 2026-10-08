@@ -106,6 +106,31 @@ CASES = [
      "error: not iterable: Int at line 1\n", 1),
     ("idxfloat", 'print [1, 2][1.0]\n', "",
      "error: index must be Int at line 1\n", 1),
+    ("trybasic",
+     'try:\n  print 1 / 0\nexcept:\n  print "caught"\nprint "after"\n',
+     "caught\nafter\n", "", 0),
+    ("tryas",
+     'try:\n  1 + "a"\nexcept as e:\n  print e\n',
+     "cannot add Int and Str at line 2\n", "", 0),
+    ("tryfin",
+     'try:\n  print "b"\nfinally:\n  print "f"\nprint "e"\n',
+     "b\nf\ne\n", "", 0),
+    ("tryfinexc",
+     'try:\n  print 1 / 0\nfinally:\n  print "f"\n',
+     None, None, 1),
+    ("tryret",
+     'def f():\n  try:\n    return 1\n  finally:\n    print "f"\nprint f()\n',
+     "f\n1\n", "", 0),
+    ("tryreraise",
+     'try:\n  try:\n    raise "in"\n  except:\n    raise\nexcept as e:\n  print e\n',
+     "in at line 3\n", "", 0),
+    ("tryshadow",
+     'x = 1\ntry:\n  print 1 / 0\nexcept as x:\n  print x\nprint x\n',
+     None, "", 0),
+    ("tryuncaught",
+     'try:\n  print undefined\nfinally:\n  print "f"\n',
+     None, None, 1),
+    ("raisestr", 'raise "boom"\n', "", "error: boom at line 1\n", 1),
 ]
 
 fails = 0
@@ -210,16 +235,16 @@ except interp.HSErr as e:
     fails += 0 if ok else 1
 
 # builder rejects out-of-subset constructs with a clear message
-for caps, src in [("try", "try:\n  pass\nexcept:\n  pass\n"),
-                  ("raise", 'raise "boom"\n'),
-                  ("unsafe", "unsafe:\n  Ptr p = alloc(8)\n")]:
+for caps, src, want in [("raise-outside", "raise\n", "raise without active"),
+                        ("unsafe", "unsafe:\n  Ptr p = alloc(8)\n",
+                         "IR: unsupported")]:
     total += 1
     try:
         build_src(src)
         print(f"FAIL unsupported-{caps} accepted")
         fails += 1
     except interp.HSErr as e:
-        ok = "IR: unsupported" in e.msg
+        ok = want in e.msg
         print(("ok  " if ok else "FAIL") +
               f" unsupported-{caps} rejected ({e.msg})")
         fails += 0 if ok else 1

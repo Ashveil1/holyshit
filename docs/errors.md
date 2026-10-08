@@ -438,7 +438,7 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-## ir.py — IR กลาง (build/verify/exec) (69)
+## ir.py — IR กลาง (build/verify/exec) (72)
 
 - `IR: bad binop '{op}'`
 - `IR: bad block label`
@@ -467,6 +467,7 @@
 - `IR: duplicate block label in '{fn['dispname']}'`
 - `IR: duplicate function '{key}'`
 - `IR: duplicate function '{name}'`
+- `IR: jump to missing block '{ins['handler']}'`
 - `IR: jump to missing block '{lab}'`
 - `IR: missing entry`
 - `IR: missing entry block in '{fn['dispname']}'`
@@ -504,6 +505,8 @@
 - `only modules have attributes`
 - `operator '{op}' needs Ints, got {tname(l)} and {tname(r)}`
 - `operator '{op}' needs numbers, got {tname(l)} and {tname(r)}`
+- `raise wants Str`
+- `raise without active exception`
 - `recursion too deep`
 - `shift count {r} out of range (0..63)`
 - `slice index must be Int`
@@ -533,4 +536,4 @@
 - `range wants range(n) or range(a, b)`
 - `{name} wants 1 arg`
 
-รวม 487 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 490 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
