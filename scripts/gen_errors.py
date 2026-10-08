@@ -21,6 +21,7 @@ SOURCES = [
     ("x64gen.py", "x64gen.py — backend x86-64 ตรง (xbuild/xkernel)"),
     ("fmt.py", "fmt.py — formatter"),
     ("ir.py", "ir.py — IR กลาง (build/verify/exec)"),
+    ("irx64.py", "irx64.py — IR ลง x86-64"),
 ]
 
 # lines that are internal plumbing rather than user-facing advice
@@ -77,7 +78,7 @@ def main():
     lines = ["# error catalog (generated — do not edit by hand)",
              "",
              "> จาก `scripts/gen_errors.py` โดยอ่าน `HSErr(...)` ทุกตัวใน",
-             "> `interp.py`, `hs.py`, `x64gen.py`, `fmt.py`, `ir.py`",
+             "> `interp.py`, `hs.py`, `x64gen.py`, `fmt.py`, `ir.py`, `irx64.py`",
              "> (regen: `python3 scripts/gen_errors.py`, เทสตรวจด้วย `tests/test_docs.py`)",
              "",
              "ทุก error เป็น Str `\"<message> at line N\"` — ไม่มี exception object,",

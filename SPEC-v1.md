@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.23 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.24 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -1119,3 +1119,25 @@ surrogate pair) และ `parse_module` อ่านกลับ — round-trip
 
 หลักฐาน: `tests/test_ir.py` 47 -> 83 (dominance unit + round-trip 33 +
 `hs.py ir` dump/--json), `docs/errors.md` งอก section ข้อความ IR
+
+### 15.38 IR -> x64: backend ที่สองกิน IR โดยตรง (v0.6.24, Task 4 part 1)
+
+`irx64.py` เป็น Gen subclass ที่ reuse runtime ทั้งก้อนของ x64gen
+(value model, heap, builtins, error) กับ leaf emitter
+(emit_add/compares/arith/bitop/un/print/call/func-construct) — สิ่งที่
+เขียนใหม่มีแค่ driving layer: temp/ชื่อ -> frame slot, IR block ->
+label, phi -> store บน edge, call ผ่าน protocol เดียวกันทั้ง user func
+และ builtin values, `hs_main`/`_start`/link ต่อท้ายแบบเดียวกับ
+build_image
+
+กับดักที่เจอ: builtin บางตัวใน x64 ไม่มี value form (`float`,
+file helpers) — `load float` แล้ว call ผ่าน value protocol จะ segfault
+(r15 ขยะ) เพราะ num arms ของ ev_call เป็น inline emitter
+แก้ด้วย provenance: temp จาก `load` ของ inline-only builtin ที่ feed
+เฉพาะ call-fn จะได้ dummy (inline path ทิ้งค่าอยู่แล้ว) นอกนั้น error
+`is not a value` เหมือนเดิม; shadowing (`float = 5` ของผู้ใช้) ยังถูก
+เพราะ resolve ตาม scope chain ก่อนเสมอ
+
+หลักฐาน: `tests/test_irx64.py` เทียบ ELF ชน ELF (IR path vs AST path)
+9/9; ที่เหลือข้ามอย่างนับแยก (containers = slice ต่อไป; try/import/
+unsafe = งานหลัง; ref ปฏิเสธเองอีก 9)

@@ -26,6 +26,8 @@ is usually right about nothing — file a bug, don't work around it.
 (SSA temps + frame variables + explicit blocks) from the AST, verifies it,
 and executes it byte-identically to `interp.py` (`python3 tests/test_ir.py`).
 New backends consume IR, never AST. Gaps fail fast as `IR: unsupported '<t>'`.
+`irx64.py` lowers IR to x86-64 reusing x64gen's runtime/emitters
+(`python3 tests/test_irx64.py`: IR-path ELF vs AST-path ELF).
 
 ## Tooling you can call instead of guessing
 

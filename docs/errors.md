@@ -1,7 +1,7 @@
 # error catalog (generated — do not edit by hand)
 
 > จาก `scripts/gen_errors.py` โดยอ่าน `HSErr(...)` ทุกตัวใน
-> `interp.py`, `hs.py`, `x64gen.py`, `fmt.py`, `ir.py`
+> `interp.py`, `hs.py`, `x64gen.py`, `fmt.py`, `ir.py`, `irx64.py`
 > (regen: `python3 scripts/gen_errors.py`, เทสตรวจด้วย `tests/test_docs.py`)
 
 ทุก error เป็น Str `"<message> at line N"` — ไม่มี exception object,
@@ -504,4 +504,12 @@
 - `unknown variable '{name}'`
 - `{fdef['dispname']} wants {len(fdef['params'])} args, got {len(args)}`
 
-รวม 461 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+## irx64.py — IR ลง x86-64 (5)
+
+- `IR: '{op}' not in irx64 subset yet`
+- `IR: bad const value`
+- `IR: bad terminator`
+- `builtin '{ref}' is not a value (call it)`
+- `float wants 1 arg`
+
+รวม 466 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
