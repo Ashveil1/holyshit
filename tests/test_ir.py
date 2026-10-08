@@ -60,6 +60,52 @@ CASES = [
     ("condvar",
      "if true:\n  x = 1\nprint x\nif false:\n  y = 2\nprint y\n",
      "1\n", None, 1),  # trailing error text pinned by interp, not by hand
+    ("listlit",
+     "print [1, 2, 3]\nprint []\nprint [[1], [2, 3]]\nprint [1] + [2]\n",
+     "[1, 2, 3]\n[]\n[[1], [2, 3]]\n[1, 2]\n", "", 0),
+    ("index",
+     'print [10, 20, 30][0], [10, 20, 30][-1]\nprint "abc"[1]\n'
+     "l = [1, 2]\nl[0] = 9\nprint l\n",
+     "10 30\nb\n[9, 2]\n", "", 0),
+    ("dict",
+     'd = {"a": 1}\nprint d["a"]\nd["b"] = 2\nprint d\n',
+     '1\n{a: 1, b: 2}\n', "", 0),
+    ("slice",
+     'print [1, 2, 3, 4][1:3]\nprint [1, 2, 3][:2]\nprint "hello"[1:]\n'
+     'print [1, 2][2:1]\n',
+     "[2, 3]\n[1, 2]\nello\n[]\n", "", 0),
+    ("forrange",
+     "s = 0\nfor i in range(5):\n  s = s + i\nprint s\n",
+     "10\n", "", 0),
+    ("forlist",
+     's = ""\nfor x in ["a", "b"]:\n  s = s + x\nprint s\n',
+     "ab\n", "", 0),
+    ("forstr",
+     'n = 0\nfor ch in "hey":\n  n = n + 1\nprint n\n',
+     "3\n", "", 0),
+    ("fordict",
+     'd = {"x": 1, "y": 2}\nfor k in d:\n  print k, d[k]\n',
+     "x 1\ny 2\n", "", 0),
+    ("forbreak",
+     "s = 0\nfor i in range(10):\n  if i == 3:\n    break\n  s = s + i\nprint s\n",
+     "3\n", "", 0),
+    ("forcontinue",
+     "s = 0\nfor i in range(10):\n  if i % 2 == 0:\n    continue\n  s = s + i\nprint s\n",
+     "25\n", "", 0),
+    ("fornested",
+     "n = 0\nfor i in range(3):\n  for j in range(3):\n    n = n + 1\nprint n\n",
+     "9\n", "", 0),
+    ("append",
+     "l = []\nappend(l, 1)\nappend(l, 2)\nprint l, len(l)\n",
+     "[1, 2] 2\n", "", 0),
+    ("idxrange", "print [1][5]\n", "",
+     "error: index out of range at line 1\n", 1),
+    ("keymissing", 'd = {}\nprint d["k"]\n', "",
+     "error: key 'k' not found at line 2\n", 1),
+    ("notiter", "for x in 5:\n  print x\n", "",
+     "error: not iterable: Int at line 1\n", 1),
+    ("idxfloat", 'print [1, 2][1.0]\n', "",
+     "error: index must be Int at line 1\n", 1),
 ]
 
 fails = 0
@@ -130,10 +176,9 @@ except interp.HSErr as e:
     print(f"ok   undef-temp rejected ({e.msg})")
 
 # builder rejects out-of-subset constructs with a clear message
-for caps, src in [("for", "for i in range(3):\n  print i\n"),
-                  ("import", "import std.str\n"),
+for caps, src in [("import", "import std.str\n"),
                   ("try", "try:\n  pass\nexcept:\n  pass\n"),
-                  ("list", "print [1, 2]\n")]:
+                  ("unsafe", "unsafe:\n  Ptr p = alloc(8)\n")]:
     total += 1
     try:
         build_src(src)
@@ -153,5 +198,67 @@ ok = "func fib(n):" in dump and "call" in dump and "ret" in dump
 print(("ok  " if ok else "FAIL") + " dump smoke")
 fails += 0 if ok else 1
 
+# ---------- differential over the whole tests/*.hs corpus ----------
+# Files outside the IR subset report SKIP (honest, counted separately).
+
+import glob
+
+
+def _suite_env(name):
+    e = dict(os.environ)
+    p = os.path.join(HERE, name + ".env")
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            for ln in f:
+                ln = ln.strip()
+                if not ln or ln.startswith("#") or "=" not in ln:
+                    continue
+                k, v = ln.split("=", 1)
+                e[k.strip()] = v.strip()
+    return e
+
+
+nskipped = []
+for prog in sorted(glob.glob(os.path.join(HERE, "*.hs"))):
+    name = os.path.splitext(os.path.basename(prog))[0]
+    if name.startswith("mod_"):
+        continue
+    if os.path.exists(os.path.join(HERE, name + ".nativeonly")):
+        continue
+    total += 1
+    stdin = None
+    sin_path = os.path.join(HERE, name + ".stdin")
+    if os.path.exists(sin_path):
+        with open(sin_path, "rb") as f:
+            stdin = f.read()
+    pargs = []
+    args_path = os.path.join(HERE, name + ".args")
+    if os.path.exists(args_path):
+        with open(args_path, encoding="utf-8") as f:
+            pargs = [ln.rstrip("\n") for ln in f if ln.strip() != ""]
+    env = _suite_env(name)
+    text_in = stdin.decode("utf-8") if stdin is not None else None
+    a = subprocess.run([sys.executable, f"{ROOT}/interp.py", prog] + pargs,
+                       input=text_in, capture_output=True, timeout=120,
+                       env=env, text=True)
+    b = subprocess.run([sys.executable, f"{ROOT}/ir.py", prog] + pargs,
+                       input=text_in, capture_output=True, timeout=120,
+                       env=env, text=True)
+    if "IR: unsupported" in b.stderr or "IR: builtin" in b.stderr or \
+            "IR: not in subset" in b.stderr:
+        nskipped.append(name)
+        total -= 1
+        continue
+    ok = (a.stdout == b.stdout and a.stderr == b.stderr and
+          a.returncode == b.returncode)
+    print(("ok  " if ok else "FAIL") + f" corpus/{name}")
+    if not ok:
+        fails += 1
+        print(f"  interp: rc={a.returncode} out={a.stdout!r} "
+              f"err={a.stderr[-200:]!r}")
+        print(f"  ir:     rc={b.returncode} out={b.stdout!r} "
+              f"err={b.stderr[-200:]!r}")
+
+print(f"corpus skipped (outside IR subset): {len(nskipped)}")
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)

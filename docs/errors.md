@@ -438,7 +438,7 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-## ir.py — IR กลาง (build/verify/exec) (40)
+## ir.py — IR กลาง (build/verify/exec) (52)
 
 - `IR: bad binop '{op}'`
 - `IR: bad op '{op}'`
@@ -461,24 +461,36 @@
 - `IR: undefined temp '{at}'`
 - `IR: undefined temp '{a}'`
 - `IR: undefined temp '{ins['fn']}'`
+- `IR: undefined temp '{ins['obj']}'`
+- `IR: undefined temp '{ins['src']}'`
 - `IR: undefined temp '{ins['v']}'`
 - `IR: undefined temp '{ins[k]}'`
 - `IR: undefined temp '{tm['cond']}'`
 - `IR: undefined temp '{tm['val']}'`
+- `IR: undefined temp '{x}'`
 - `IR: unsupported '{t}'`
 - `break outside loop`
 - `cannot add {tname(l)} and {tname(r)}`
+- `cannot assign into {tname(obj)}`
 - `cannot bitwise-not {tname(v)}`
 - `cannot compare {tname(l)} and {tname(r)}`
+- `cannot index {tname(obj)}`
 - `cannot negate {tname(v)}`
+- `cannot slice {tname(obj)}`
 - `continue outside loop`
+- `dict key must be Str`
 - `division by zero`
+- `index must be Int`
+- `index out of range`
+- `key {idx} not found`
 - `not callable: {tname(fn)}`
+- `not iterable: {tname(v)}`
 - `operator '{op}' needs Ints, got {tname(l)} and {tname(r)}`
 - `operator '{op}' needs numbers, got {tname(l)} and {tname(r)}`
 - `recursion too deep`
 - `shift count {r} out of range (0..63)`
+- `slice index must be Int`
 - `unknown variable '{name}'`
 - `{fdef['dispname']} wants {len(fdef['params'])} args, got {len(args)}`
 
-รวม 438 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 450 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

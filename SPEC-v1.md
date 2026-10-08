@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.21 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.22 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -1081,3 +1081,22 @@ divergence ที่ตั้งใจและจดไว้ใน `ir.py`: `b
 หลักฐาน: `ir.py`, `tests/test_ir.py` (16 differential + 4 verifier/builder
 + dump + unsupported), `tests/run_all.py` มี suite ที่ 9, `docs/errors.md`
 มี section `ir.py` (ผ่าน `scripts/gen_errors.py` ที่รู้จัก `ir.py` แล้ว)
+
+### 15.36 Container + `for` ใน IR (v0.6.22)
+
+Task 2 ของแผน IR: `list`/`dict` literal, `index`/`slice`, `setindex`,
+`for` (desugar เป็น len/index/while บนสล็อตเฟรมส่วนตัว `$itN`/`$iN`
+ชื่อชนกับโค้ดผู้ใช้ไม่ได้เพราะ `$` เขียนในซอร์สไม่ได้) พร้อม builtin
+เพิ่ม `range`/`append` (reuse ฟังก์ชันเดียวกับ interp ข้อความจึงตรง
+โดย construction)
+
+บั๊กที่ differential เจอ: `continue` ใน `for` โดดข้ามขั้น increment
+(แขวนทั้งลูป) — แก้ด้วย incr block กลาง: body/break/continue ที่ตกผ่าน
+เข้าบล็อกเพิ่มค่าก่อนกลับ header ส่วน `while` ใช้ header ตรงเหมือนเดิม
+(แยกด้วย `incr: None`)
+
+หลักฐาน: `tests/test_ir.py` 23 -> 47 (เคส container/`for` 16 +
+`forcontinue` + corpus differential บน `tests/*.hs` ทั้งคลัง: 9 ผ่าน,
+33 ข้ามนอก subset อย่างนับแยก), ฟัซซ์สุ่มเพิ่ม 292 โปรแกรมตรงกันหมด
+(รวมสองรอบ 882 เคส, timeout ที่เหลือคือ infinite loop แท้ในซอร์สที่
+แฮงก์เหมือนกันทั้งสองฝั่ง)

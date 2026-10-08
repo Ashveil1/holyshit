@@ -85,7 +85,7 @@ Run: `python3 tests/run_all.py --quick`
 Expected: all suites pass including new `test_ir.py`.
 Then append `SPEC-v1.md` §15.35, update `AGENTS.md`/`README.md`/`VERSION` (0.6.21), commit on `main`.
 
-### Task 2: Containers + `for` in IR (next)
+### Task 2: Containers + `for` in IR (DONE v0.6.22)
 
 Lower `list/dict/index/slice/setindex/for` (desugar `for` to len/index/while over a private temp). Differential-test against `tests/*.hs` container programs. `setattr/attr` (module attrs) stay AST-side until Task 4.
 

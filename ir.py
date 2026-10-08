@@ -13,10 +13,10 @@ explicit blocks. That split is deliberate: no mem2reg yet (Task 3), so
 closures, forward refs and path-dependent definedness all behave exactly
 like interp by construction.
 
-Subset tonight (Task 1): num/str/var, bin (arith/cmp/bitwise/and/or),
-not/neg/unot, call, print, set, def/return, global, if/elif/else,
-while/break/continue, pass. Anything else fails fast with
-`IR: unsupported '<t>'` so gaps are loud, never silent.
+Subset (Tasks 1-2): num/str/var, list/dict literals, index/slice,
+setindex, bin (arith/cmp/bitwise/and/or), not/neg/unot, call, print, set,
+def/return, global, if/elif/else, while/for/break/continue, pass. Anything
+else fails fast with `IR: unsupported '<t>'` so gaps are loud, never silent.
 
 Deliberate divergences from interp (both rc=1, different stderr):
 `break`/`continue` outside a loop and top-level `return` are clean
@@ -34,7 +34,7 @@ from interp import HSErr
 
 # Builtins the IR runtime reuses verbatim (same function objects as interp,
 # so messages match by construction). Anything else fails at call time.
-IR_BUILTINS = {"len", "str", "int", "float"}
+IR_BUILTINS = {"len", "str", "int", "float", "range", "append"}
 
 
 def _n(kind, line, **kw):
@@ -150,7 +150,10 @@ class Builder:
         if t == "continue":
             if not fb.loops:
                 raise HSErr("continue outside loop", ln)
-            fb.end(_t("jmp", ln, to=fb.loops[-1]["header"]["label"]))
+            lp = fb.loops[-1]
+            to = lp["incr"]["label"] if lp["incr"] is not None else \
+                lp["header"]["label"]
+            fb.end(_t("jmp", ln, to=to))
             return
         if t == "def":
             self._def(fb, s)
@@ -160,6 +163,15 @@ class Builder:
             return
         if t == "while":
             self._while(fb, s)
+            return
+        if t == "for":
+            self._for(fb, s)
+            return
+        if t == "setindex":
+            obj = self._expr(fb, s["obj"])
+            idx = self._expr(fb, s["idx"])
+            val = self._expr(fb, s["val"])
+            fb.emit(_n("setindex", ln, obj=obj, idx=idx, val=val))
             return
         raise HSErr(f"IR: unsupported '{t}'", ln)
 
@@ -217,11 +229,70 @@ class Builder:
         exitb = fb.block("exit")
         fb.end(_t("br", s["cond"]["line"], cond=c, then=bodyb["label"],
                    els=exitb["label"]))
-        fb.loops.append({"header": header, "exit": exitb})
+        fb.loops.append({"header": header, "exit": exitb, "incr": None})
         fb.start(bodyb)
         self._body(fb, s["body"])
         if fb.cur is not None:
             fb.end(_t("jmp", ln, to=header["label"]))
+        fb.loops.pop()
+        fb.start(exitb)
+
+    def _for(self, fb, s):
+        # Desugar to len/index/while over private frame slots. The sequence
+        # object itself is shared (like interp's `seq = it`), so mutation
+        # during iteration stays visible on both sides.
+        ln = s["line"]
+        tag = fb.temp()[1:]  # unique per loop, e.g. "7" -> $it7/$i7
+        it = f"$it{tag}"
+        ix = f"$i{tag}"
+        t = self._expr(fb, s["iter"])
+        d = fb.temp()
+        fb.emit(_n("iterseq", ln, dest=d, src=t))
+        fb.emit(_n("stvar", ln, name=it, src=d))
+        z = fb.temp()
+        fb.emit(_n("const", ln, dest=z, val=0))
+        fb.emit(_n("stvar", ln, name=ix, src=z))
+        header = fb.block("loop")
+        fb.end(_t("jmp", ln, to=header["label"]))
+        fb.start(header)
+        a = fb.temp()
+        fb.emit(_n("load", ln, dest=a, name=ix))
+        b = fb.temp()
+        fb.emit(_n("load", ln, dest=b, name=it))
+        n = fb.temp()
+        fn = fb.temp()
+        fb.emit(_n("load", ln, dest=fn, name="len"))
+        fb.emit(_n("call", ln, dest=n, fn=fn, args=[b]))
+        c = fb.temp()
+        fb.emit(_n("bin", ln, dest=c, binop="<", l=a, r=n))
+        bodyb = fb.block("body")
+        exitb = fb.block("exit")
+        fb.end(_t("br", ln, cond=c, then=bodyb["label"], els=exitb["label"]))
+        incrb = fb.block("incr")
+        fb.loops.append({"header": header, "exit": exitb, "incr": incrb})
+        fb.start(bodyb)
+        e = fb.temp()
+        fb.emit(_n("load", ln, dest=e, name=it))
+        k = fb.temp()
+        fb.emit(_n("load", ln, dest=k, name=ix))
+        v = fb.temp()
+        fb.emit(_n("index", ln, dest=v, obj=e, idx=k))
+        if s["var"] in fb.gnames:
+            fb.emit(_n("stglobal", ln, name=s["var"], src=v))
+        else:
+            fb.emit(_n("stvar", ln, name=s["var"], src=v))
+        self._body(fb, s["body"])
+        if fb.cur is not None:
+            fb.end(_t("jmp", ln, to=incrb["label"]))
+        fb.start(incrb)
+        a2 = fb.temp()
+        fb.emit(_n("load", ln, dest=a2, name=ix))
+        one = fb.temp()
+        fb.emit(_n("const", ln, dest=one, val=1))
+        a3 = fb.temp()
+        fb.emit(_n("bin", ln, dest=a3, binop="+", l=a2, r=one))
+        fb.emit(_n("stvar", ln, name=ix, src=a3))
+        fb.end(_t("jmp", ln, to=header["label"]))
         fb.loops.pop()
         fb.start(exitb)
 
@@ -237,6 +308,32 @@ class Builder:
         if t == "var":
             d = fb.temp()
             fb.emit(_n("load", ln, dest=d, name=e["name"]))
+            return d
+        if t == "list":
+            items = [self._expr(fb, x) for x in e["items"]]
+            d = fb.temp()
+            fb.emit(_n("build_list", ln, dest=d, items=items))
+            return d
+        if t == "dict":
+            pairs = [(self._expr(fb, k), self._expr(fb, v))
+                     for k, v in e["pairs"]]
+            d = fb.temp()
+            fb.emit(_n("build_dict", ln, dest=d, pairs=pairs))
+            return d
+        if t == "index":
+            obj = self._expr(fb, e["obj"])
+            idx = self._expr(fb, e["idx"])
+            d = fb.temp()
+            fb.emit(_n("index", ln, dest=d, obj=obj, idx=idx))
+            return d
+        if t == "slice":
+            obj = self._expr(fb, e["obj"])
+            start = self._expr(fb, e["start"]) \
+                if e["start"] is not None else None
+            stop = self._expr(fb, e["stop"]) \
+                if e["stop"] is not None else None
+            d = fb.temp()
+            fb.emit(_n("slice", ln, dest=d, obj=obj, start=start, stop=stop))
             return d
         if t == "bin":
             if e["op"] == "and":
@@ -351,6 +448,38 @@ def _verify_func(fn):
                         raise HSErr(f"IR: undefined temp '{at}'", ins["line"])
             elif op in ("const", "load", "mkfunc", "stvar", "stglobal"):
                 pass
+            elif op == "build_list":
+                for x in ins["items"]:
+                    if x not in defs:
+                        raise HSErr(f"IR: undefined temp '{x}'", ins["line"])
+            elif op == "build_dict":
+                for k, v in ins["pairs"]:
+                    for x in (k, v):
+                        if x not in defs:
+                            raise HSErr(f"IR: undefined temp '{x}'",
+                                        ins["line"])
+            elif op == "index":
+                for k in ("obj", "idx"):
+                    if ins[k] not in defs:
+                        raise HSErr(f"IR: undefined temp '{ins[k]}'",
+                                    ins["line"])
+            elif op == "slice":
+                if ins["obj"] not in defs:
+                    raise HSErr(f"IR: undefined temp '{ins['obj']}'",
+                                ins["line"])
+                for k in ("start", "stop"):
+                    if ins[k] is not None and ins[k] not in defs:
+                        raise HSErr(f"IR: undefined temp '{ins[k]}'",
+                                    ins["line"])
+            elif op == "setindex":
+                for k in ("obj", "idx", "val"):
+                    if ins[k] not in defs:
+                        raise HSErr(f"IR: undefined temp '{ins[k]}'",
+                                    ins["line"])
+            elif op == "iterseq":
+                if ins["src"] not in defs:
+                    raise HSErr(f"IR: undefined temp '{ins['src']}'",
+                                ins["line"])
             elif op == "bin":
                 for k in ("l", "r"):
                     if ins[k] not in defs:
@@ -429,6 +558,20 @@ def dump_instr(ins):
         return f"{ins['dest']} = call {ins['fn']}({', '.join(ins['args'])})"
     if op == "print":
         return f"print {', '.join(ins['args'])}"
+    if op == "build_list":
+        return f"{ins['dest']} = build_list [{', '.join(ins['items'])}]"
+    if op == "build_dict":
+        ps = " ".join(f"({k}: {v})" for k, v in ins["pairs"])
+        return f"{ins['dest']} = build_dict {ps}"
+    if op == "index":
+        return f"{ins['dest']} = index {ins['obj']} {ins['idx']}"
+    if op == "slice":
+        return f"{ins['dest']} = slice {ins['obj']} " \
+            f"{ins['start']} {ins['stop']}"
+    if op == "setindex":
+        return f"setindex {ins['obj']} {ins['idx']} {ins['val']}"
+    if op == "iterseq":
+        return f"{ins['dest']} = iterseq {ins['src']}"
     if op == "phi":
         arms = " ".join(f"[{a}: {t}]" for a, t in ins["arms"])
         return f"{ins['dest']} = phi {arms}"
@@ -570,6 +713,73 @@ def _unop(op, v, ln):
     raise HSErr(f"IR: bad unop '{op}'", ln)
 
 
+def _index(obj, idx, ln):
+    if isinstance(obj, (list, str)):
+        if not is_num(idx) or isinstance(idx, float):
+            raise HSErr("index must be Int", ln)
+        i = int(idx)
+        if i < 0:
+            i += len(obj)
+        if i < 0 or i >= len(obj):
+            raise HSErr("index out of range", ln)
+        return obj[i]
+    if isinstance(obj, dict):
+        if not isinstance(idx, str):
+            raise HSErr("dict key must be Str", ln)
+        if idx not in obj:
+            raise HSErr(f"key {idx!r} not found", ln)
+        return obj[idx]
+    raise HSErr(f"cannot index {tname(obj)}", ln)
+
+
+def _slice(obj, start, stop, ln):
+    lo = start
+    if lo is not None and (not isinstance(lo, int) or isinstance(lo, bool)):
+        raise HSErr("slice index must be Int", ln)
+    hi = stop
+    if hi is not None and (not isinstance(hi, int) or isinstance(hi, bool)):
+        raise HSErr("slice index must be Int", ln)
+    if isinstance(obj, (list, str)):
+        n = len(obj)
+        a = lo if lo is not None else 0
+        b = hi if hi is not None else n
+        if a < 0:
+            a += n
+        if b < 0:
+            b += n
+        a = max(0, min(a, n))
+        b = max(0, min(b, n))
+        return obj[a:b] if a < b else obj[:0]
+    raise HSErr(f"cannot slice {tname(obj)}", ln)
+
+
+def _setindex(obj, idx, val, ln):
+    if isinstance(obj, list):
+        if not is_num(idx) or isinstance(idx, float):
+            raise HSErr("index must be Int", ln)
+        i = int(idx)
+        if i < 0:
+            i += len(obj)
+        if i < 0 or i >= len(obj):
+            raise HSErr("index out of range", ln)
+        obj[i] = val
+        return
+    if isinstance(obj, dict):
+        if not isinstance(idx, str):
+            raise HSErr("dict key must be Str", ln)
+        obj[idx] = val
+        return
+    raise HSErr(f"cannot assign into {tname(obj)}", ln)
+
+
+def _iterseq(v, ln):
+    if isinstance(v, dict):
+        return list(v.keys())
+    if isinstance(v, (list, str)):
+        return v
+    raise HSErr(f"not iterable: {tname(v)}", ln)
+
+
 def _call(fn, args, ln):
     if isinstance(fn, HSBuiltin):
         if fn.name not in IR_BUILTINS:
@@ -624,6 +834,30 @@ def _exec(fdef, frame):
             elif op == "print":
                 sys.stdout.write(" ".join(
                     disp(temps[a]) for a in ins["args"]) + "\n")
+            elif op == "build_list":
+                temps[ins["dest"]] = [temps[x] for x in ins["items"]]
+            elif op == "build_dict":
+                d = {}
+                for k, v in ins["pairs"]:
+                    kk = temps[k]
+                    if not isinstance(kk, str):
+                        raise HSErr("dict key must be Str", ln)
+                    d[kk] = temps[v]
+                temps[ins["dest"]] = d
+            elif op == "index":
+                temps[ins["dest"]] = _index(temps[ins["obj"]],
+                                            temps[ins["idx"]], ln)
+            elif op == "slice":
+                temps[ins["dest"]] = _slice(
+                    temps[ins["obj"]],
+                    temps[ins["start"]] if ins["start"] is not None else None,
+                    temps[ins["stop"]] if ins["stop"] is not None else None,
+                    ln)
+            elif op == "setindex":
+                _setindex(temps[ins["obj"]], temps[ins["idx"]],
+                          temps[ins["val"]], ln)
+            elif op == "iterseq":
+                temps[ins["dest"]] = _iterseq(temps[ins["src"]], ln)
             elif op == "phi":
                 for al, at in ins["arms"]:
                     if al == prev:
