@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.29 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.30 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -1249,3 +1249,40 @@ IR path ตรงกว่า เช่น segfault ของ `tests/ufunc.hs` �
 - เคส QEMU ที่ค้างมานาน (`kio` EXC 14 ×3, `kush` sendkey) ผ่านหมดในรอบ
   เต็ม: `test_xkernel.py` 291/291 — เคยเป็นปัญหา environment ของ QEMU
   (รันเดี่ยว ๆ ผ่านตั้งแต่ก่อน) ไม่เกี่ยวกับงาน IR
+
+### 15.44 บั๊กจริง 5 ข้อบน x64 ที่ชุดเทสเดิมมองไม่เห็น (v0.6.30)
+
+เปิด `xbuild` ไปทาง IR แล้วต้องพิสูจน์ว่า path ใหม่ยังตรงทุกภาษา ไม่ใช่แค่ผ่าน
+`tests/x64/` — เพิ่มการเดินคอร์ปัส `tests/*.hs` ทั้งหมดผ่าน IR path แล้วเทียบผลรันกับ
+`interp.py` (build error ที่ `.fail` ตรงก็ถือว่าผ่าน, ข้างนอก subset ขึ้น SKIP,
+ต่างที่เอกสารรับรองไว้แล้วขึ้นเป็น "known divergence" ไม่ใช่ SKIP เงียบ ๆ) ผลคือ
+เจอบั๊กที่ไม่เคยมีเทสต์ครอบ:
+
+1. **`Int / Int` คืน Int** ไม่ใช่ Float — ผิดสัญญาภาษา (`7 / 2 is 3.5`); x64 เดิม
+   ตกไปทาง `idiv` ทั้งที่มี float path อยู่แล้ว แก้ด้วย `cvtsi2sd` + `divsd`
+   (ปัดเป็น half-to-even ตรงกับ `float(int)` ของ interp) ทั้ง safe path
+   ของทั้งสอง backend; `unsafe:` คง truncate แบบ C ตามที่เคยกำหนด
+2. **`%` ตาม C ไม่ตาม Python** — `-7 % 3` ได้ `-1` แทน `2` (เติม divisor
+   เมื่อเศษกับตัวหารคนละเครื่องหมาย)
+3. **nested def ที่เรียกตัวเองพัง** — closure เก็บ capture ก่อน `var_set` ผูกชื่อ
+   ตัวเอง ทำให้อ่านได้แต่ UNBOUND; แก้ด้วยการอ่าน capture **หลัง** `var_set`
+   (AST path) และให้ self-capture ชี้ object ที่กำลังสร้าง (IR path)
+4. **`json_load` ส่ง File ที่ปิดแล้วให้ decoder** — ดัน slot ผิดตำแหน่ง
+   (`add $8` ก่อน `pop`) ไม่มีเทสต์ครอบเลย; json_parse/json_save ผ่านมาตลอด
+   ทำให้เห็นแค่ตอนรันคอร์ปัสเต็ม
+5. **`x_str_cmp` ตัดสินด้วยความยาวอย่างเดียว** — `"ab" < "b"` ได้ false
+   ทำให้ `ls` **กลับดับ**รายการ และ dict lookup ของ key ที่หนึ่งเป็น prefix
+   ของอีกอันพัง; แก้ให้ scan ไบต์ร่วมก่อน แล้วค่อยตัดสินด้วยความยาว
+   (พร้อมแก้ `x_list_sort_str` ที่ใช้ `rcx` ซึ่ง `x_str_cmp` ทำลายทิ้งเป็น
+   swap index ผิด)
+
+ผลข้างเคียงที่ต้องแก้ตาม: `kernel/kmb|kpage|kpmm.hs` ใช้ `/` ในโค้ด safe
+เพื่อหารจำนวนเต็มมานาน (พึ่งบั๊กเดิม) — เปลี่ยนเป็น `int(x / y)`; freestanding
+`1 / 0` ยังคงเป็น `#DE` เพราะ SSE divide ไม่ trap (เพิ่ม `idiv` ตัวดักไว้ให้
+ตัวเอง); `tests/x64/fib.expected` เดิมจด `20 / 4` เป็น `5` ตามบั๊ก — แก้เป็น `5.0`
+ตาม interp; `test_xkernel.py` ให้ session B เวลา 30 วินาที (เดิม 20 วินาที
+คือเส้นชั่วชาต่อเมื่อ image ใหญ่ขึ้น)
+
+หลักฐาน: `test_x64.py` 52 -> 97 (เพิ่มการเดินคอร์ปัสทั้งหมด + 3 CLI),
+`test.py` 42 -> 48, `test_native.py` 43 -> 49, `test_ir.py` 134 -> 138,
+`test_irx64.py` 35 -> 41, `test_xkernel.py` 291/291

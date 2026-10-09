@@ -114,7 +114,7 @@ def count_entries():
   if a == ABI_SPEC:
     mlen = rd32(info() + SPEC_MMAP_LEN)
     esz = rd32(info() + SPEC_MMAP_ENT)
-    n = mlen / esz
+    n = int(mlen / esz)
     n_entries = n
     return n
   n_entries = 0

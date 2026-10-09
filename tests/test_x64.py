@@ -33,6 +33,9 @@ def _test_env(name):
                 e[k.strip()] = v.strip()
     return e
 
+import io
+from contextlib import redirect_stderr, redirect_stdout
+
 fails = 0
 total = 0
 # file.hs uses a fixed scratch file: start clean for determinism.
@@ -48,8 +51,6 @@ with tempfile.TemporaryDirectory() as d:
             continue  # import helpers, built via their importers
         total += 1
         out = os.path.join(d, name)
-        import io
-        from contextlib import redirect_stderr, redirect_stdout
         err = io.StringIO()
         sout = io.StringIO()
         tenv = _test_env(name)
@@ -172,6 +173,138 @@ with tempfile.TemporaryDirectory() as _d:
         fails += 1
     else:
         print("ok   hs.py xkernel CLI builds a freestanding ELF")
+
+# ---------- the whole tests/*.hs corpus through the IR path ----------
+# tests/x64/ only covers the x64-specific features; this pass builds every
+# program the interpreter suite runs and diffs its real output against
+# interp.py, so a regression anywhere in the language shows up here and not
+# months later. Programs outside the hosted x64 subset report SKIP (honest,
+# counted separately) — the same convention test_ir.py uses.
+_CORPUS_SKIP = ("not in x64 subset", "IR: unsupported", "IR: builtin",
+                "IR: not in subset", "IR: '", "x64 subset")
+# Programs the interpreter suite runs against a fixture it starts itself
+# (t_sock needs the throwaway HTTP server in test.py); standalone they
+# cannot run, so this pass leaves them alone.
+_CORPUS_FIXTURE = {"t_sock"}
+# Programs that differ from interp on x64 for a documented reason. They are
+# counted and printed, never silently skipped: the x64 backend's own choices
+# (62-bit Int, type-blind unsafe) are part of its contract, see
+# docs/x64-subset.md.
+_CORPUS_KNOWN = {
+    "err_umix": "unsafe is type-blind on x64 (no I64/U64 mix check)",
+    "t_bits": "62-bit Int: `1 << 61` is the sign bit on x64",
+}
+
+
+def _corpus_env(name):
+    e = dict(_CHILD_ENV)
+    p = os.path.join(HERE, name + ".env")
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            for ln in f:
+                ln = ln.strip()
+                if not ln or ln.startswith("#") or "=" not in ln:
+                    continue
+                k, v = ln.split("=", 1)
+                e[k.strip()] = v.strip()
+    return e
+
+
+def _clean_corpus():
+    for junk in ("hs_fs_test", "hs_json_test", "lsx", "t1", "t2", "t3"):
+        try:
+            import shutil as _sh
+            _sh.rmtree("/tmp/opencode/" + junk)
+        except OSError:
+            pass
+
+
+nskip = 0
+nknown = 0
+with tempfile.TemporaryDirectory() as _d:
+    _out = os.path.join(_d, "corpus")
+    for prog in sorted(glob.glob(os.path.join(HERE, "*.hs"))):
+        name = os.path.splitext(os.path.basename(prog))[0]
+        if name.startswith("mod_"):
+            continue
+        if os.path.exists(os.path.join(HERE, name + ".nativeonly")):
+            continue
+        if name in _CORPUS_FIXTURE:
+            continue
+        total += 1
+        _clean_corpus()
+        _env = _corpus_env(name)
+        _err, _sout = io.StringIO(), io.StringIO()
+        _old = dict(os.environ)
+        os.environ.update(_env)
+        try:
+            with redirect_stderr(_err):
+                with redirect_stdout(_sout):
+                    try:
+                        rc = build_x64(prog, _out)
+                    except Exception as e:
+                        print(str(e), file=_err)
+                        rc = 1
+        finally:
+            os.environ.clear()
+            os.environ.update(_old)
+        if rc != 0:
+            if any(m in _err.getvalue() for m in _CORPUS_SKIP):
+                nskip += 1
+                total -= 1
+                continue
+            # a .fail file means the program is supposed to die; the x64
+            # path is allowed to catch it at build time instead of runtime
+            _fp = os.path.join(HERE, name + ".fail")
+            if os.path.exists(_fp):
+                with open(_fp, encoding="utf-8") as f:
+                    if f.read().strip() in _err.getvalue():
+                        print(f"ok   corpus/{name} (compile error as expected)")
+                        continue
+            print(f"FAIL corpus/{name}: build failed: {_err.getvalue().strip()}")
+            fails += 1
+            continue
+        _sin = None
+        _sp = os.path.join(HERE, name + ".stdin")
+        if os.path.exists(_sp):
+            with open(_sp, "rb") as f:
+                _sin = f.read()
+        _args = []
+        _ap = os.path.join(HERE, name + ".args")
+        if os.path.exists(_ap):
+            with open(_ap, encoding="utf-8") as f:
+                _args = [ln.rstrip("\n") for ln in f if ln.strip() != ""]
+        _clean_corpus()
+        try:
+            _got = subprocess.run([_out] + _args, input=_sin,
+                                  capture_output=True, timeout=60, env=_env)
+            got = (_got.stdout.decode(errors="replace"),
+                   _got.stderr.decode(errors="replace"),
+                   _got.returncode)
+        except subprocess.TimeoutExpired:
+            got = ("TIMEOUT", "", -99)
+        _clean_corpus()
+        _ref = subprocess.run([sys.executable, os.path.join(ROOT, "interp.py"),
+                               prog] + _args, input=_sin,
+                              capture_output=True, timeout=120, env=_env)
+        want = (_ref.stdout.decode(errors="replace"),
+                _ref.stderr.decode(errors="replace"),
+                _ref.returncode)
+        if got == want:
+            print(f"ok   corpus/{name}")
+        elif name in _CORPUS_KNOWN:
+            nknown += 1
+            print(f"ok   corpus/{name} (known x64 divergence: "
+                  f"{_CORPUS_KNOWN[name]})")
+        else:
+            print(f"FAIL corpus/{name}")
+            fails += 1
+            print(f"  interp: rc={want[2]} out={want[0][:200]!r} "
+                  f"err={want[1][-200:]!r}")
+            print(f"  x64:    rc={got[2]} out={got[0][:200]!r} "
+                  f"err={got[1][-200:]!r}")
+print(f"corpus skipped (outside x64 subset): {nskip}")
+print(f"corpus known x64 divergences: {nknown}")
 
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)

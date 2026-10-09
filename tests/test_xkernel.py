@@ -461,8 +461,12 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("kush all assertions pass", m and m.group(1) == "0", out[-800:])
         check("kush ran its checks", out.count("\nok ") >= 12, out[-800:])
-        # session B: exec a real program from VFS (one-shot: no return)
-        out = shboot(["help", "ls /", "run /nope", "run /bin/hi"], 20)
+        # session B: exec a real program from VFS (one-shot: no return).
+        # The teardown after `run` is paced by the kernel timer (the exec'd
+        # program exits, the outer session resumes and reports), so this
+        # needs more slack than session A -- 20s sat right on the boundary
+        # and failed intermittently.
+        out = shboot(["help", "ls /", "run /nope", "run /bin/hi"], 30)
         check("kushexec finished", "kushell-done" in out, out[-800:])
         check("kushexec did not fault", "EXC " not in out, out[-800:])
         for line in ("exec failed", "hi from exec"):

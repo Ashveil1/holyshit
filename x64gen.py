@@ -1056,7 +1056,14 @@ class Gen:
             a.sub_rr("rax", "rcx")
         elif op == "*":
             a.imul_rr("rax", "rcx")
-        elif op in ("/", "%"):
+        elif op == "/":
+            # Int / Int is true division: the result is a Float (AGENTS.md:
+            # "7 / 2 is 3.5", "/ always returns Float"). Hosted builds keep
+            # the catchable divide-by-zero; freestanding traps as before.
+            # (unsafe: sev_bin below keeps C truncation on purpose.)
+            self._int_div_float(ln)
+            a.jmp(lab_fdone)
+        elif op == "%":
             a.push_r("rdx")
             if not self.freestanding:
                 # hosted: catchable divide error; freestanding: hardware #DE
@@ -1067,13 +1074,57 @@ class Gen:
                 a.label(lab_dz)
             a.cqo()
             a.idiv_r("rcx")
-            if op == "%":
-                a.mov_rr("rax", "rdx")
+            # idiv leaves the remainder with the dividend's sign; hs follows
+            # Python, where it takes the divisor's (-7 % 3 == 2).
+            a.mov_rr("rax", "rdx")
+            a.test_rr("rax", "rax")
+            lab_rmok = self.new_tmp("rm")
+            a.jcc("e", lab_rmok)
+            a.mov_rr("r10", "rax")
+            a.xor_rr("r10", "rcx")
+            a.sar_ri8("r10", 63)
+            a.test_rr("r10", "r10")
+            a.jcc("e", lab_rmok)
+            a.add_rr("rax", "rcx")
+            a.label(lab_rmok)
             a.pop_r("rdx")
         else:
             raise HSErr(f"bad operator {op}", ln)
         self.tag_box()
         a.label(lab_fdone)
+
+    def _int_div_float(self, ln):
+        """rax, rcx = raw signed Ints -> rax = a boxed Float of a / b.
+
+        Int / Int is true division in hs (interp: float(l) / float(r)), so
+        the x64 backend converts both operands with cvtsi2sd -- which rounds
+        half-to-even exactly like interp's float(int) -- divides on SSE2 and
+        boxes the result. Hosted builds keep the catchable divide-by-zero;
+        a freestanding build lets the divide trap, as it always has.
+        """
+        a = self.a
+        if self.freestanding:
+            # No catchable errors here: divide by zero must still trap, and
+            # SSE would silently give inf. idiv by a zero divisor is the
+            # hardware #DE the exception table already reports as EXC 0.
+            lab_dz = self.new_tmp("dz")
+            a.test_rr("rcx", "rcx")
+            a.jcc("ne", lab_dz)
+            a.cqo()
+            a.idiv_r("rcx")
+            a.label(lab_dz)
+        else:
+            lab_dz = self.new_tmp("dz")
+            a.test_rr("rcx", "rcx")
+            a.jcc("ne", lab_dz)
+            self.raise_static("division by zero", ln)
+            a.label(lab_dz)
+        a.cvtsi2sd(0, "rax")
+        a.cvtsi2sd(1, "rcx")
+        a.divsd(0, 1)
+        a.movq_rx("rax", 0)
+        a.mov_rr("rdi", "rax")
+        a.call("x_float_new")
 
     def emit_f64_bits(self, vreg, err_label):
         """Convert a tagged value (rax/rcx) to raw f64 bits in rdi/rsi.
@@ -2139,11 +2190,13 @@ class Gen:
             a.mov_ri32("rdx", ln)
             a.call("file_read_all")
             a.push_r("rax")                # the content
-            a.mov_rm("rdi", "rsp", 8)
+            a.mov_rm("rdi", "rsp", 8)      # the File (one slot up)
             a.call("file_close")
-            a.add_ri32("rsp", 8)           # drop the File slot
+            # stack: content, File, path. Pop the content FIRST; popping
+            # after dropping a slot handed js_decode the closed File, and
+            # every decode then died with "len of File".
             a.pop_r("rax")                 # the content
-            a.add_ri32("rsp", 8)           # drop the path slot
+            a.add_ri32("rsp", 16)          # drop the File and path slots
             self.call_js_entry(self.js_label("js_decode", ln))
             self.js_finish(lab_ok, ln, parse=True)
             return
@@ -3104,18 +3157,19 @@ class Gen:
             fs = s["_fs"]
             lab = self.flabels[id(fs)]
             n = len(fs.caplist)
-            for nm in fs.caplist:
-                self.var_get(nm, sc, mod, ln)
-                a.push_r("rax")
             # Func layout: [kind][code][nparams][name][caps...]. nparams and
             # name let every call site check arity with interp's exact
             # message ("g wants 1 args, got 2"), even when the name was
             # reassigned to another function.
+            #
+            # The captures are read AFTER var_set, not before: a nested def
+            # that calls itself captures its own name, and that slot only
+            # holds the Func once var_set below has run. Reading it first
+            # raised "unknown variable 'fact'" for every self-recursive
+            # closure.
             a.mov_ri32("rdi", 8 * (4 + n))
             a.call("x_malloc")
-            for i in reversed(range(n)):
-                a.pop_r("rcx")
-                a.mov_mr("rax", "rcx", 8 * (i + 4))
+            a.push_r("rax")                    # object across var_set
             a.mov_ri32("rcx", 1)
             a.mov_mr("rax", "rcx", 0)          # kind = K_FUNC
             a.lea_rip("rcx", lab)
@@ -3130,6 +3184,12 @@ class Gen:
             a.pop_r("rax")                      # obj
             a.mov_mr("rax", "rcx", 24)         # name
             self.var_set(s["name"], sc, mod, ln)
+            for i, nm in enumerate(fs.caplist):
+                a.push_r("rax")                # keep the object live
+                self.var_get(nm, sc, mod, ln)
+                a.mov_rr("rcx", "rax")
+                a.pop_r("rax")
+                a.mov_mr("rax", "rcx", 8 * (i + 4))
             return
         if t == "if":
             lab_e, lab_x = self.new_tmp("if"), self.new_tmp("if")
@@ -6175,9 +6235,12 @@ class Gen:
         a.mov_rr("r10", "rcx")
         a.add_ri32("r10", 1)
         a.mov_rmx("rsi", "rax", "r10", 8, 0)
-        a.call("x_str_cmp")          # clobbers rax, so reload the buffer
-        a.test_rr("rax", "rax")
+        a.call("x_str_cmp")          # clobbers rax AND rcx, so the swap
+        a.test_rr("rax", "rax")      # index has to be recomputed below
         a.jcc("le", lab_so_up)        # <= 0: already in order (stable)
+        a.mov_rm("rax", "rbp", -24)
+        a.sub_ri32("rax", 1)
+        a.mov_rr("rcx", "rax")
         a.mov_rm("rax", "rbp", -8)
         a.mov_rm("rax", "rax", 24)
         a.mov_rmx("r11", "rax", "rcx", 8, 0)   # a = buf[j-1]
@@ -9484,16 +9547,25 @@ class Gen:
         a.mov_rr("r11", "rsi")
         a.mov_rm("rax", "r10", 8)      # len a
         a.mov_rm("rcx", "r11", 8)      # len b
-        a.cmp_rr("rax", "rcx")
         lab_len, lab_eq = self.new_tmp("sm"), self.new_tmp("sm")
         lab_loop, lab_diff = self.new_tmp("sm"), self.new_tmp("sm")
         lab_fin = self.new_tmp("sm")
-        a.jcc("ne", lab_len)
+        lab_min_b, lab_min_go = self.new_tmp("sm"), self.new_tmp("sm")
+        lab_prefix = self.new_tmp("sm")
+        # Scan min(len a, len b) bytes first: a longer string can still sort
+        # before a shorter one ("ab" < "b"), so the length only decides once
+        # every shared byte matched (a prefix is the smaller string).
+        a.cmp_rr("rax", "rcx")
+        a.jcc("b", lab_min_b)
+        a.mov_rr("rbx", "rax")
+        a.jmp(lab_min_go)
+        a.label(lab_min_b)
+        a.mov_rr("rbx", "rcx")
+        a.label(lab_min_go)
         a.mov_ri32("rcx", 0)
-        a.mov_rm("rbx", "r10", 8)      # len a (movzx clobbers rax below)
         a.label(lab_loop)
         a.cmp_rr("rcx", "rbx")
-        a.jcc("ae", lab_eq)
+        a.jcc("ae", lab_prefix)
         a.movzx_eax_mx("r10", "rcx", 1, 16)
         a.movzx_edx_mx("r11", "rcx", 1, 16)
         a.code += bytes([0x38, 0xD0])  # cmp al, dl
@@ -9508,6 +9580,15 @@ class Gen:
         a.jmp(lab_fin)
         a.label(lab_eq)
         a.mov_ri32("rax", 0)
+        a.jmp(lab_fin)
+        a.label(lab_prefix)             # every shared byte matched
+        a.mov_rm("rax", "r10", 8)      # len a
+        a.mov_rm("rcx", "r11", 8)      # len b
+        a.cmp_rr("rax", "rcx")
+        a.jcc("e", lab_eq)             # same length: the strings are equal
+        a.mov_ri32("rax", 1)
+        a.jcc("a", lab_fin)            # len a > len b -> 1
+        a.mov_ri32("rax", -1)          # len a < len b -> -1 (a is the prefix)
         a.jmp(lab_fin)
         a.label(lab_len)
         a.mov_rm("rax", "r10", 8)

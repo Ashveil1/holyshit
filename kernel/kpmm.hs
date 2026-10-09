@@ -25,7 +25,7 @@ ready_flag = false
 
 def allocate_bitmap():
   # one zeroed, page-aligned block for the frame bitmap
-  nbytes = (pool_frames + 7) / 8 + 8
+  nbytes = int((pool_frames + 7) / 8) + 8
   unsafe:
     Ptr t = alloc(nbytes + 8192)
     I64 a = as_int(t)
@@ -40,8 +40,8 @@ def reserve(lo, hi):
   # mark every frame inside [lo, hi) as used
   if hi <= lo:
     return 0
-  first = (lo - pool_base) / FRAME_BYTES
-  last = (hi - pool_base + FRAME_BYTES - 1) / FRAME_BYTES
+  first = int((lo - pool_base) / FRAME_BYTES)
+  last = int((hi - pool_base + FRAME_BYTES - 1) / FRAME_BYTES)
   if first < 0:
     first = 0
   if last > pool_frames:
@@ -58,7 +58,7 @@ def busy(paddr):
   # callers only ever have to check one answer.
   if paddr < pool_base:
     return true
-  i = (paddr - pool_base) / FRAME_BYTES
+  i = int((paddr - pool_base) / FRAME_BYTES)
   if i >= pool_frames:
     return true
   # bit_get returns 0/1 from inside `unsafe:`; compare here so callers get
@@ -78,7 +78,7 @@ def scan():
   i = 0
   while i < n:
     if kmb.map_type(i) == kmb.TYPE_USABLE:
-      len = kmb.map_len(i) / FRAME_BYTES
+      len = int(kmb.map_len(i) / FRAME_BYTES)
       if len > pool_frames:
         pool_frames = len
         pool_base = kmb.map_base(i)
@@ -111,7 +111,7 @@ def init():
     return 0
   if scan() == 0:
     return 0
-  bitmap_bytes = (pool_frames + 7) / 8 + 8
+  bitmap_bytes = int((pool_frames + 7) / 8) + 8
   bitmap_addr = allocate_bitmap()
   # everything below the pool is off limits: boot structures, kernel image,
   # page tables and stack (the loader places its own data right after the
@@ -172,7 +172,7 @@ def free(paddr):
     return false
   if paddr < pool_base:
     return false
-  i = (paddr - pool_base) / FRAME_BYTES
+  i = int((paddr - pool_base) / FRAME_BYTES)
   if i < 0 or i >= pool_frames:
     return false
   std.bitmap.bit_clear(bitmap_addr, i)
@@ -186,7 +186,7 @@ def free_run(paddr, nframes):
     return false
   if nframes < 1:
     return false
-  i = (paddr - pool_base) / FRAME_BYTES
+  i = int((paddr - pool_base) / FRAME_BYTES)
   if i < 0 or i + nframes > pool_frames:
     return false
   std.bitmap.bit_release(bitmap_addr, i, nframes)

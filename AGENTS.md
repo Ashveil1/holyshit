@@ -73,6 +73,9 @@ Editor configs (VS Code / Neovim / Helix / Zed) live in `editors/`.
 `List` (mixed ok) `Dict` (Str keys only) `Func` (first-class).
 
 - `+`: numbers (Int+Float→Float), Str+Str concat, List+List concat. Else runtime error.
+- `/` is TRUE division on every backend: `7 / 2` is `3.5`, `1 / 3` is `0.3333333333333333`.
+  Wrap in `int(...)` when you meant an integer quotient. Inside `unsafe:` `/`
+  and `%` truncate like C instead (documented below).
 - Float literals may carry an exponent: `1.5e3`, `2.5E-2`, `1e3`, `.5e1`.
   `hs fmt` keeps the spelling; `print`/`str` use the shortest round-trip
   decimal, exactly like Python (`0.1`, `1e+16`, `5e-324`, `inf`, `nan`).

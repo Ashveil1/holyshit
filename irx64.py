@@ -691,7 +691,12 @@ class GenIR(Gen):
                 a.sub_rr("rax", "rcx")
             elif op == "*":
                 a.imul_rr("rax", "rcx")
-            elif op in ("/", "%"):
+            elif op == "/":
+                # Int / Int is true division: the result is a Float
+                # (AGENTS.md: "7 / 2 is 3.5").
+                self._int_div_float(ln)
+                a.jmp(lab_fdone)
+            elif op == "%":
                 a.push_r("rdx")
                 a.test_rr("rcx", "rcx")
                 lab_dz = self.new_tmp("dz")
@@ -700,8 +705,19 @@ class GenIR(Gen):
                 a.label(lab_dz)
                 a.cqo()
                 a.idiv_r("rcx")
-                if op == "%":
-                    a.mov_rr("rax", "rdx")
+                # idiv remainder takes the dividend's sign; hs follows
+                # Python, where it takes the divisor's (-7 % 3 == 2).
+                a.mov_rr("rax", "rdx")
+                a.test_rr("rax", "rax")
+                lab_rmok = self.new_tmp("rm")
+                a.jcc("e", lab_rmok)
+                a.mov_rr("r10", "rax")
+                a.xor_rr("r10", "rcx")
+                a.sar_ri8("r10", 63)
+                a.test_rr("r10", "r10")
+                a.jcc("e", lab_rmok)
+                a.add_rr("rax", "rcx")
+                a.label(lab_rmok)
                 a.pop_r("rdx")
             self.tag_box()
             a.label(lab_fdone)
@@ -2197,11 +2213,12 @@ class GenIR(Gen):
             a.mov_ri32("rdx", ln)
             a.call("file_read_all")
             a.push_r("rax")
-            a.mov_rm("rdi", "rsp", 8)
+            a.mov_rm("rdi", "rsp", 8)      # the File (one slot up)
             a.call("file_close")
-            a.add_ri32("rsp", 8)
+            # stack: content, File, path. Pop the content FIRST; popping
+            # after dropping a slot handed js_decode the closed File.
             a.pop_r("rax")
-            a.add_ri32("rsp", 8)
+            a.add_ri32("rsp", 16)
             self.call_js_entry(self._js_entry("js_decode", ln))
             self._js_finish(dest, ln, fr, parse=True)
             return
@@ -2220,13 +2237,24 @@ class GenIR(Gen):
         a = self.a
         child = self.allfuncs[qname]
         cfr = self.frames[qname]
-        for nm in cfr["caps"]:
+        # A nested def that calls itself captures its own name. That slot
+        # is still UNBOUND here (the stvar that binds the name comes after
+        # this instruction), so the capture takes the object being built
+        # instead of the frame -- the same value the name will hold.
+        selfcap = cfr["caps"].index(child["dispname"]) \
+            if child["dispname"] in cfr["caps"] else None
+        for i, nm in enumerate(cfr["caps"]):
+            if i == selfcap:
+                continue
             self._load(fr, nm, ln)
             a.push_r("rax")
         n = len(cfr["caps"])
         a.mov_ri32("rdi", 8 * (4 + n))
         a.call("x_malloc")
         for i in reversed(range(n)):
+            if i == selfcap:
+                a.mov_mr("rax", "rax", 8 * (i + 4))
+                continue
             a.pop_r("rcx")
             a.mov_mr("rax", "rcx", 8 * (i + 4))
         a.mov_ri32("rcx", Gen.K_FUNC)

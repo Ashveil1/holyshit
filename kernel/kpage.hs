@@ -62,11 +62,11 @@ def split_huge(table, idx, entry, level, user):
   flags = entry & 0xFF
   if level == 2:
     base = entry & MB_MASK
-    child_step = 0x200000 / 512
+    child_step = int(0x200000 / 512)
     child_flags = flags & ~PAGE_HUGE
   else:
     base = entry & GB_MASK
-    child_step = 0x40000000 / 512
+    child_step = int(0x40000000 / 512)
     child_flags = flags
   fresh = new_table()
   i = 0
