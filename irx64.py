@@ -1152,23 +1152,6 @@ class GenIR(Gen):
             raise HSErr(f"IR: '{op}' not in irx64 subset yet", ln)
         a.mov_mr("rbp", "rax", fr["slots"][dest])
 
-    def _load_raw_name(self, fr, name, ln):
-        # plain word load with no unboxing (for as_ptr's var bypass,
-        # mirroring x64gen: dynamic slots stay tagged, raw stay raw).
-        a = self.a
-        if name in fr["pmap"]:
-            a.mov_rm("rax", "rbp", fr["pmap"][name])
-            return
-        if name in fr["locals"] or name in fr.get("rawnames", ()):
-            a.mov_rm("rax", "rbp", fr["slots"][name])
-            return
-        if name in fr.get("caps", ()):
-            a.mov_rm("rax", "r15", 8 * fr["caps"].index(name))
-            return
-        lab = self._glabel(name, fr["mod"])
-        a.lea_rip("rax", lab)
-        a.mov_rm("rax", "rax", 0)
-
     def _scall(self, fr, dest, name, args, ln):
         # transliterated x64gen sev_call (raw words, machine checks only).
         a = self.a

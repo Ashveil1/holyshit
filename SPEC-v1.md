@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.28 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.29 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -1236,3 +1236,16 @@ t_closure/t_circ ผ่าน), `test_irx64.py` 18 -> 22, ฟัซซ์ try 35
 (เทียบ ELF ชน ELF กับ path เก่า, เคสที่ต่างกันขึ้น flag `!!` พร้อมบันทึกว่า
 IR path ตรงกว่า เช่น segfault ของ `tests/ufunc.hs` ที่ path เก่าพัง),
 `test_ir.py` 108 -> 134, ฟัซซ์ 480 เคส (IR + x64) ตรงกันหมด
+
+### 15.43 `hs.py xkernel` กลับมาทำงาน + เคส QEMU ที่ค้างผ่านหมด (v0.6.29)
+
+- บั๊กจริงที่หลุดมาตั้งแต่ v0.6.23: ตอนแทรก branch `ir` ใน `main()` ของ `hs.py`
+  บรรทัด `if argv[1] == "xkernel":` หายไปติดกับ branch `xbuild` ทำให้
+  `hs.py xkernel` ไหลไปเข้า native backend (gcc) แล้วพังด้วย TypeError
+  — ชุดเทสไม่จับเพราะเรียก `x64gen.build_xkernel` ตรง ๆ ไม่ได้ผ่าน CLI
+- เพิ่ม regression 3 เคสใน `test_x64.py`: สแกน AST ของ `hs.py` ยืนยันว่า
+  subcommand แต่ละตัวมี branch นึงและไม่มี branch ซ้ำ (`run` เป็น
+  fall-through ตั้งใจ ไม่มี branch) + สร้าง ELF freestanding จริงผ่าน CLI
+- เคส QEMU ที่ค้างมานาน (`kio` EXC 14 ×3, `kush` sendkey) ผ่านหมดในรอบ
+  เต็ม: `test_xkernel.py` 291/291 — เคยเป็นปัญหา environment ของ QEMU
+  (รันเดี่ยว ๆ ผ่านตั้งแต่ก่อน) ไม่เกี่ยวกับงาน IR

@@ -10,9 +10,9 @@ map); `SPEC-v1.md` has design rationale; this file has rules.
 python3 interp.py prog.hs [args...]        # run now (reference behavior)
 python3 hs.py check prog.hs                # syntax+scope only, no output binary
 python3 hs.py build prog.hs [-o prog]      # native binary
-python3 hs.py run prog.hs [args...]        # build to temp and run
+python3 hs.py run prog.hs [args...]        # build to temp and run (fall-through default)
 python3 hs.py fmt prog.hs [-w|--check]     # canonical 2-space (--check ignores comments)
-python3 hs.py xbuild prog.hs [-o prog]     # x86-64 machine code, no gcc (subset)
+python3 hs.py xbuild prog.hs [-o prog]     # x86-64 machine code, no gcc (via IR)
 python3 hs.py xkernel prog.hs -o k.elf     # freestanding kernel, no gcc/as/ld
 python3 hs.py lsp                          # language server (stdio, no deps)
 python3 interp.py --json prog.hs           # errors as {"file","line","message"} on stderr

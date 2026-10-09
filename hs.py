@@ -1796,6 +1796,7 @@ def main(argv):
         if "-o" in argv:
             out = argv[argv.index("-o") + 1]
         return _x64.build_x64(prog, out)
+    if argv[1] == "xkernel":
         import x64gen as _x64
         prog = argv[2]
         out = "kernel.elf"

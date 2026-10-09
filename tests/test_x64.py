@@ -120,5 +120,58 @@ with tempfile.TemporaryDirectory() as d:
         else:
             print(f"ok   {name}")
 
+# ---------- hs.py CLI dispatch ----------
+# Every `if argv[1] == "cmd"` in main() must exist exactly once: a deleted
+# branch header turns the command into a fall-through into the *previous*
+# backend (that is how `hs.py xkernel` silently became `hs.py build`).
+import ast as _ast
+
+total += 3
+_src = open(os.path.join(ROOT, "hs.py"), encoding="utf-8").read()
+_cmds = []
+for _n in _ast.walk(_ast.parse(_src)):
+    if isinstance(_n, _ast.Compare) and len(_n.ops) == 1 and \
+            isinstance(_n.ops[0], _ast.Eq):
+        _l, _r = _n.left, _n.comparators[0]
+        if isinstance(_r, _ast.Constant) and isinstance(_r.value, str):
+            _fn = _l
+            if isinstance(_fn, _ast.Subscript) and \
+                    isinstance(_fn.slice, _ast.Constant) and \
+                    _fn.slice.value == 1:
+                _cmds.append(_r.value)
+_dupes = sorted({c for c in _cmds if _cmds.count(c) > 1})
+if _dupes:
+    print(f"FAIL hs.py dispatch: duplicated branch(es) {_dupes}")
+    fails += 1
+else:
+    print("ok   hs.py dispatch: no duplicate subcommand branch")
+
+# `run` is deliberately the fall-through default (build to a temp dir, then
+# exec), so it has no branch of its own; every other subcommand must.
+_want = {"build", "check", "fmt", "xbuild", "xrun", "xkernel", "ir", "lsp"}
+_missing = sorted(_want - set(_cmds))
+if _missing:
+    print(f"FAIL hs.py dispatch: missing branch(es) {_missing}")
+    fails += 1
+else:
+    print("ok   hs.py dispatch: every subcommand has a branch")
+
+with tempfile.TemporaryDirectory() as _d:
+    _src2 = os.path.join(_d, "cli.hs")
+    with open(_src2, "w", encoding="utf-8") as _f:
+        _f.write("unsafe:\n  I64 x = 6\n  print x * 7\n")
+    _elf = os.path.join(_d, "cli.elf")
+    _r = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"),
+                         "xkernel", _src2, "-o", _elf],
+                        capture_output=True, text=True, timeout=300,
+                        env=dict(_CHILD_ENV, HSPATH=ROOT))
+    if _r.returncode != 0 or not os.path.exists(_elf) or \
+            _r.stdout.find("no gcc/as/ld") < 0:
+        print(f"FAIL hs.py xkernel CLI: rc={_r.returncode} "
+              f"out={_r.stdout[-200:]!r} err={_r.stderr[-200:]!r}")
+        fails += 1
+    else:
+        print("ok   hs.py xkernel CLI builds a freestanding ELF")
+
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
