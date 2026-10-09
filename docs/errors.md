@@ -438,8 +438,9 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-## ir.py — IR กลาง (build/verify/exec) (72)
+## ir.py — IR กลาง (build/verify/exec) (119)
 
+- `'{name}' already defined in this scope`
 - `IR: bad binop '{op}'`
 - `IR: bad block label`
 - `IR: bad build_dict`
@@ -453,8 +454,12 @@
 - `IR: bad op '{op}'`
 - `IR: bad param`
 - `IR: bad phi`
+- `IR: bad scall`
+- `IR: bad static type`
 - `IR: bad string escape`
 - `IR: bad string literal`
+- `IR: bad sunop '{op}'`
+- `IR: bad svarptr`
 - `IR: bad temp`
 - `IR: bad terminator`
 - `IR: bad terminator '{tm['term']}'`
@@ -476,64 +481,124 @@
 - `IR: phi arm from non-predecessor '{al}'`
 - `IR: phi in entry block`
 - `IR: phi with no arms`
+- `IR: snz of dynamic`
 - `IR: temp '{d}' redefined`
 - `IR: temp '{t}' does not dominate use`
 - `IR: undefined temp '{t}'`
 - `IR: unknown function '{ins['func']}'`
 - `IR: unsupported '{t}'`
+- `alloc of negative size {n}`
+- `alloc wants alloc(n)`
+- `array field '{ins['name']}' needs an index`
+- `array field '{name}' needs an index`
+- `as_int needs Ptr, got {pt}`
+- `as_int needs Ptr, got {v.utype}`
+- `as_int wants as_int(p)`
+- `as_ptr needs an integer, got {at}`
+- `as_ptr needs an integer, got {v.utype}`
+- `as_ptr wants as_ptr(int)`
+- `asm requires native build (hs.py build)`
+- `asm wants asm("...") with a string literal`
 - `bad module name '{s['name']}'`
+- `bad operator {op}`
+- `bad unsafe call {name}`
 - `break outside loop`
+- `cannot access field of {st} (need a struct pointer)`
 - `cannot add {tname(l)} and {tname(r)}`
+- `cannot apply '{op}' to pointers`
 - `cannot assign into {tname(obj)}`
+- `cannot bitwise-not Ptr`
 - `cannot bitwise-not {tname(v)}`
+- `cannot call '{name}' from unsafe (only: {', '.join(sorted(_interp.UNSAFE_BUILTINS))})`
+- `cannot compare I64 and U64 (convert explicitly)`
+- `cannot compare {lt} and {rt}`
 - `cannot compare {tname(l)} and {tname(r)}`
+- `cannot dereference {v.utype} (need Ptr)`
 - `cannot find module '{name}'`
 - `cannot index {tname(obj)}`
+- `cannot mix I64 and U64 with '{op}' (convert explicitly)`
+- `cannot negate Ptr`
 - `cannot negate {tname(v)}`
+- `cannot order pointers (use == / !=)`
 - `cannot slice {tname(obj)}`
+- `cannot store field of {obj.utype} (need a struct pointer)`
+- `cannot store through {pv.utype} (need Ptr)`
+- `cannot store {vv.utype} to memory (need integer)`
 - `circular import '{name}'`
 - `continue outside loop`
 - `dict key must be Str`
 - `division by zero`
+- `extern handled elsewhere or not in x64 subset`
+- `field '{ins['name']}' is not an array`
+- `field '{name}' is not an array`
 - `in module '{name}': {e.msg}`
 - `index must be Int`
 - `index out of range`
+- `index {i} out of range for '{ins['name']}'[{count}]`
+- `index {i} out of range for '{name}'[{count}]`
 - `key {idx} not found`
 - `module '{obj.name}' has no attribute '{nm}'`
 - `not callable: {tname(fn)}`
 - `not iterable: {tname(v)}`
+- `null pointer dereference`
 - `only modules have attributes`
 - `operator '{op}' needs Ints, got {tname(l)} and {tname(r)}`
 - `operator '{op}' needs numbers, got {tname(l)} and {tname(r)}`
 - `raise wants Str`
 - `raise without active exception`
+- `read_mem length must be >= 0`
+- `read_mem wants read_mem(ptr, nbytes)`
 - `recursion too deep`
+- `shift count {b} out of range (0..63)`
 - `shift count {r} out of range (0..63)`
 - `slice index must be Int`
 - `unknown variable '{name}'`
+- `unsafe: address out of bounds`
+- `unsafe: out of memory (1MB sim)`
 - `{fdef['dispname']} wants {len(fdef['params'])} args, got {len(args)}`
+- `{name} needs Ptr, got {pt}`
+- `{name} wants {name}(p)`
+- `{name} wants {name}(p, v)`
 
-## irx64.py — IR ลง x86-64 (20)
+## irx64.py — IR ลง x86-64 (38)
 
+- `'{ins['name']}' already defined in this scope`
+- `'{name}' already defined in this scope`
 - `IR: '{name}' not in irx64 subset yet`
 - `IR: '{op}' not in irx64 subset yet`
 - `IR: attribute assignment only supported on modules (x64)`
 - `IR: attribute needs a direct m.attr chain`
 - `IR: bad const value`
 - `IR: bad terminator`
+- `IR: json entry missing`
+- `alloc wants alloc(n)`
 - `append wants append(list, x)`
+- `array field '{name}' needs an index`
 - `bad module name '{name}'`
 - `builtin '{ref}' is not a value (call it)`
 - `cannot find module '{name}'`
 - `cannot import '{name}': '{top}' is already defined`
+- `cannot read {path}: {e.strerror or e}`
 - `circular import '{dotted}'`
+- `field '{name}' is not an array`
 - `float wants 1 arg`
 - `in module '{dotted}': {e.msg}`
 - `int wants 1 arg`
 - `module '{fr['phantoms'][ref]}' is not a first-class value in x64 subset (use mod.attr)`
+- `module '{m['name']}' is not a first-class value in x64 subset (use mod.attr)`
 - `module '{modrec['name']}' has no attribute '{attr}'`
 - `module '{target['name']}' is not a first-class value in x64 subset (use mod.attr)`
+- `only alloc/load/store/as_* calls allowed in unsafe (x64)`
 - `range wants range(n) or range(a, b)`
+- `read_mem wants read_mem(ptr, nbytes)`
+- `strings not allowed in unsafe (use unsafe: outside)`
+- `struct '{xs}' has no field '{name}'`
+- `struct type unknown (x64)`
+- `type_name wants type_name(x)`
+- `unknown struct '{st}'`
+- `unknown variable '{name}'`
 - `{name} wants 1 arg`
+- `{name} wants {name}(p)`
+- `{name} wants {name}(p, v)`
 
-รวม 490 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 555 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

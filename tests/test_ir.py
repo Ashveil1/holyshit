@@ -131,6 +131,28 @@ CASES = [
      'try:\n  print undefined\nfinally:\n  print "f"\n',
      None, None, 1),
     ("raisestr", 'raise "boom"\n', "", "error: boom at line 1\n", 1),
+    ("unsafebasic",
+     "unsafe:\n  Ptr p = alloc(16)\n  *p = 4660\n  print *p\n"
+     "  print load8(p)\n",
+     "4660\n52\n", "", 0),
+    ("unsafeint",
+     "unsafe:\n  I64 n = 10\n  I64 total = 0\n  while n > 0:\n"
+     "    total = total + n\n    n = n - 1\n  print total\n"
+     "  print 7 / 2\n  print -7 / 2\n  print 7 % 3\n",
+     "55\n3\n-3\n1\n", "", 0),
+    ("unsafebits",
+     "unsafe:\n  print (6 & 3)\n  print (1 << 4)\n  print ~5\n",
+     "2\n16\n-6\n", "", 0),
+    ("unsafestruct",
+     "unsafe:\n  struct P:\n    I64 x\n    I64 y\n  P* p = alloc(sizeof(P))\n"
+     "  p.x = 3\n  p.y = 4\n  print p.x + p.y\n  print sizeof(P)\n",
+     "7\n16\n", "", 0),
+    ("unsafeerr",
+     "unsafe:\n  Ptr p = null\n  print load8(p)\n",
+     None, None, 1),
+    ("unsafemix",
+     "unsafe:\n  I64 x = 5\n  U64 y = 6\n  print x + y\n",
+     None, None, 1),
 ]
 
 fails = 0
@@ -236,8 +258,8 @@ except interp.HSErr as e:
 
 # builder rejects out-of-subset constructs with a clear message
 for caps, src, want in [("raise-outside", "raise\n", "raise without active"),
-                        ("unsafe", "unsafe:\n  Ptr p = alloc(8)\n",
-                         "IR: unsupported")]:
+                        ("extern", 'extern:\n  I64 puts(Str s)\n',
+                         "not in x64 subset")]:
     total += 1
     try:
         build_src(src)
@@ -383,7 +405,8 @@ for prog in sorted(glob.glob(os.path.join(HERE, "*.hs"))):
                        input=text_in, capture_output=True, timeout=120,
                        env=env, text=True)
     if "IR: unsupported" in b.stderr or "IR: builtin" in b.stderr or \
-            "IR: not in subset" in b.stderr:
+            "IR: not in subset" in b.stderr or \
+            "not in x64 subset" in b.stderr:
         nskipped.append(name)
         total -= 1
         continue

@@ -34,7 +34,22 @@ from interp import HSErr
 
 # Builtins the IR runtime reuses verbatim (same function objects as interp,
 # so messages match by construction). Anything else fails at call time.
-IR_BUILTINS = {"len", "str", "int", "float", "range", "append"}
+IR_BUILTINS = {"len", "str", "int", "float", "range", "append",
+               "split", "find", "join"}
+
+# read_mem is special: it reads the *simulated* memory, so the IR needs
+# its own copy bound to _US_MEM (reusing interp's would read the wrong
+# image).
+def _b_read_mem(args, ln):
+    if len(args) != 2 or not is_int(args[0]) or not is_int(args[1]):
+        raise HSErr("read_mem wants read_mem(ptr, nbytes)", ln)
+    p, n = args
+    if n < 0:
+        raise HSErr("read_mem length must be >= 0", ln)
+    if n == 0:
+        return ""
+    _us_check(p, n, ln)
+    return bytes(_US_MEM[p:p + n]).decode("latin-1")
 
 
 def _n(kind, line, **kw):
@@ -63,11 +78,13 @@ class _FuncBuild:
         self.cur = None
         self.loops = []  # {header_exit...}: {"header": blk, "exit": blk}
         self.gnames = set()
+        self.ux = 0  # >0 inside unsafe: blocks (lexical, like interp)
         self.exceptdepth = 0
         # try/finally stack: [(fbody_stmts, owner_id, loopdepth)] innermost
         # last. Mirrors x64gen._fin_stack for abrupt-exit inlining.
         self.trystack = []
         self.finactive = set()
+        self.sdecl = set()
 
     def block(self, hint):
         lab = f"b_{hint}_{len(self.blocks)}"
@@ -149,25 +166,88 @@ class Builder:
         ln = s["line"]
         if t == "pass":
             return
+        if t == "unsafe":
+            fb.ux += 1
+            try:
+                self._body(fb, s["body"])
+            finally:
+                fb.ux -= 1
+            return
+        if t == "struct":
+            return  # layouts registered at parse; no runtime code
+        if t == "udecl":
+            init = self._sexpr(fb, s["init"]) if s["init"] is not None \
+                else None
+            if init is None:
+                init = fb.temp()
+                fb.emit(_n("sconst", ln, dest=init, stype=s["utype"], val=0))
+            fb.emit(_n("sdecl", ln, name=s["name"], utype=s["utype"],
+                       src=init))
+            fb.sdecl.add(s["name"])
+            return
+        if t == "store":
+            pv = self._sexpr(fb, s["ptr"])
+            vv = self._sexpr(fb, s["val"])
+            fb.emit(_n("sstore", ln, ptr=pv, val=vv))
+            return
+        if t == "fstore":
+            obj = self._sexpr(fb, s["obj"])
+            idx = self._sexpr(fb, s["idx"]) if s["idx"] is not None else None
+            vv = self._sexpr(fb, s["val"])
+            fb.emit(_n("sfstore", ln, obj=obj, name=s["name"], idx=idx,
+                       val=vv))
+            return
         if t == "global":
             fb.gnames.update(s["names"])
             return
         if t == "set":
-            v = self._expr(fb, s["val"])
-            if s["name"] in fb.gnames:
-                fb.emit(_n("stglobal", ln, name=s["name"], src=v))
+            if fb.ux:
+                v = self._sexpr(fb, s["val"])
+                fb.emit(_n("sset", ln, name=s["name"], src=v))
+            elif s["name"] in fb.sdecl:
+                v = self._expr(fb, s["val"])
+                fb.emit(_n("dset", ln, name=s["name"], src=v))
             else:
-                fb.emit(_n("stvar", ln, name=s["name"], src=v))
+                v = self._expr(fb, s["val"])
+                if s["name"] in fb.gnames:
+                    fb.emit(_n("stglobal", ln, name=s["name"], src=v))
+                else:
+                    fb.emit(_n("stvar", ln, name=s["name"], src=v))
             return
         if t == "expr":
-            self._expr(fb, s["val"])
+            if fb.ux:
+                self._sexpr(fb, s["val"])
+            else:
+                self._expr(fb, s["val"])
             return
         if t == "print":
-            args = [self._expr(fb, a) for a in s["args"]]
+            if fb.ux:
+                args = []
+                for a in s["args"]:
+                    if a["t"] == "str":
+                        d = fb.temp()
+                        fb.emit(_n("sstr", ln, dest=d, val=a["val"]))
+                        args.append(d)
+                    else:
+                        v = self._sexpr(fb, a)
+                        b = fb.temp()
+                        fb.emit(_n("box", ln, dest=b, src=v))
+                        args.append(b)
+            else:
+                args = [self._expr(fb, a) for a in s["args"]]
             fb.emit(_n("print", ln, args=args))
             return
         if t == "return":
-            v = self._expr(fb, s["val"]) if s["val"] is not None else None
+            if s["val"] is not None:
+                if fb.ux:
+                    v = self._sexpr(fb, s["val"])
+                    b = fb.temp()
+                    fb.emit(_n("box", ln, dest=b, src=v))
+                    v = b
+                else:
+                    v = self._expr(fb, s["val"])
+            else:
+                v = None
             self._finallies(fb, ln)
             if fb.cur is None:
                 return  # a finally already transferred control
@@ -204,6 +284,11 @@ class Builder:
         if t == "for":
             self._for(fb, s)
             return
+        if t == "extern":
+            # accepted but never lowered on this path (x64gen-today
+            # rejects it with the same message at build)
+            raise HSErr("extern handled elsewhere or not in x64 subset",
+                        ln)
         if t == "try":
             self._try(fb, s)
             return
@@ -266,7 +351,7 @@ class Builder:
         branches = [(s["cond"], s["then"])]
         branches += s["elifs"]
         for cond, body in branches:
-            c = self._expr(fb, cond)
+            c = self._cond(fb, cond)
             tb = fb.block("then")
             nb = fb.block("next")
             fb.end(_t("br", cond["line"], cond=c, then=tb["label"],
@@ -286,7 +371,7 @@ class Builder:
         header = fb.block("loop")
         fb.end(_t("jmp", ln, to=header["label"]))
         fb.start(header)
-        c = self._expr(fb, s["cond"])
+        c = self._cond(fb, s["cond"])
         bodyb = fb.block("body")
         exitb = fb.block("exit")
         fb.end(_t("br", s["cond"]["line"], cond=c, then=bodyb["label"],
@@ -425,6 +510,164 @@ class Builder:
             return d
         raise HSErr(f"IR: unsupported '{t}'", ln)
 
+    def _sexpr(self, fb, e):
+        # static expression inside unsafe: mirrors interp.sev shapes.
+        # Errors that depend only on node shape (float/str literals,
+        # collections, attr, slice) fail at BUILD, like x64gen-today;
+        # value/type errors stay runtime, like interp.
+        t = e["t"]
+        ln = e["line"]
+        if t == "num":
+            v = e["val"]
+            d = fb.temp()
+            if v is None:
+                fb.emit(_n("sconst", ln, dest=d, stype="Ptr", val=0))
+            elif isinstance(v, bool):
+                fb.emit(_n("sconst", ln, dest=d, stype="I64",
+                           val=int(v)))
+            elif isinstance(v, int):
+                fb.emit(_n("sconst", ln, dest=d, stype="LIT", val=v))
+            else:
+                d = fb.temp()
+                fb.emit(_n("serr", ln, dest=d,
+                           imsg="float not allowed in unsafe",
+                           xmsg="float not in x64 subset"))
+            return d
+        if t == "str":
+            d = fb.temp()
+            fb.emit(_n("serr", ln, dest=d,
+                       imsg="strings not allowed in unsafe (use alloc + "
+                            "store8)",
+                       xmsg="strings not allowed in unsafe"))
+            return d
+        if t == "var":
+            d = fb.temp()
+            fb.emit(_n("sload", ln, dest=d, name=e["name"]))
+            return d
+        if t == "deref":
+            v = self._sexpr(fb, e["val"])
+            d = fb.temp()
+            fb.emit(_n("sderef", ln, dest=d, v=v))
+            return d
+        if t == "sizeof":
+            d = fb.temp()
+            fb.emit(_n("ssizeof", ln, dest=d, stype=e["stype"]))
+            return d
+        if t == "field":
+            obj = self._sexpr(fb, e["obj"])
+            idx = self._sexpr(fb, e["idx"]) if e["idx"] is not None \
+                else None
+            d = fb.temp()
+            fb.emit(_n("sfield", ln, dest=d, obj=obj, name=e["name"],
+                       idx=idx))
+            return d
+        if t in ("neg", "unot", "not"):
+            v = self._sexpr(fb, e["val"])
+            d = fb.temp()
+            fb.emit(_n("sun", ln, dest=d, unop=t, v=v))
+            return d
+        if t == "bin":
+            if e["op"] in ("and", "or"):
+                return self._slogic(fb, e, e["op"] == "and")
+            l = self._sexpr(fb, e["l"])
+            r = self._sexpr(fb, e["r"])
+            d = fb.temp()
+            fb.emit(_n("sbin", ln, dest=d, binop=e["op"], l=l, r=r))
+            return d
+        if t == "call":
+            fn = e["fn"]
+            if fn["t"] != "var":
+                d = fb.temp()
+                fb.emit(_n("serr", ln, dest=d,
+                           imsg="cannot call result of expression from "
+                                "unsafe",
+                           xmsg="only alloc/load/store/as_* calls allowed "
+                                "in unsafe (x64)"))
+                return d
+            if fn["name"] == "asm":
+                # checked on the AST like interp (the literal is never
+                # evaluated); the call itself always fails at runtime.
+                if len(e["args"]) != 1 or e["args"][0]["t"] != "str":
+                    raise HSErr('asm wants asm("...") with a string '
+                                "literal", ln)
+                d = fb.temp()
+                fb.emit(_n("scall", ln, dest=d, name="asm", args=[]))
+                return d
+            if fn["name"] in ("as_ptr", "as_int") and len(e["args"]) == 1 \
+                    and e["args"][0]["t"] == "var":
+                # direct-var form bypasses sload: x64gen dispatches on the
+                # tagged word itself (heap passes, Int unboxes); sload
+                # would unbox first and reject heap values. `kind` keeps
+                # interp's per-builtin type rules in the IR interpreter.
+                d = fb.temp()
+                fb.emit(_n("svarptr", ln, dest=d, conv=fn["name"],
+                           var=e["args"][0]["name"]))
+                return d
+            args = [self._sexpr(fb, a) for a in e["args"]]
+            d = fb.temp()
+            fb.emit(_n("scall", ln, dest=d, name=fn["name"], args=args))
+            return d
+        if t in ("index", "list", "dict"):
+            d = fb.temp()
+            fb.emit(_n("serr", ln, dest=d,
+                       imsg="collections not allowed in unsafe (use "
+                            "alloc/load/store)",
+                       xmsg=f"{t} not in x64 subset"))
+            return d
+        if t == "attr":
+            d = fb.temp()
+            fb.emit(_n("serr", ln, dest=d,
+                       imsg="attribute access not allowed in unsafe",
+                       xmsg="attr not in x64 subset"))
+            return d
+        if t == "slice":
+            d = fb.temp()
+            fb.emit(_n("serr", ln, dest=d,
+                       imsg="slicing not allowed in unsafe",
+                       xmsg="slice not in x64 subset"))
+            return d
+        raise HSErr(f"IR: unsupported '{t}'", ln)
+
+    def _slogic(self, fb, e, is_and):
+        # unsafe and/or yield strict I64 0/1 with short-circuit (sev_bin).
+        # sraw exposes the raw word for br (an UnsafeVal object would
+        # always test truthy); the rhs truth value comes from sbin !=
+        # computed inside the rhs block so the phi stays valid.
+        ln = e["line"]
+        l = self._sexpr(fb, e["l"])
+        lr = fb.temp()
+        fb.emit(_n("sraw", ln, dest=lr, src=l))
+        brb = fb.cur["label"]
+        rb = fb.block("rhs")
+        jb = fb.block("join")
+        z = fb.temp()
+        fb.emit(_n("sconst", ln, dest=z, stype="I64",
+                   val=0 if is_and else 1))
+        if is_and:
+            fb.end(_t("br", ln, cond=lr, then=rb["label"], els=jb["label"]))
+        else:
+            fb.end(_t("br", ln, cond=lr, then=jb["label"], els=rb["label"]))
+        fb.start(rb)
+        r = self._sexpr(fb, e["r"])
+        rnz = fb.temp()
+        fb.emit(_n("snz", ln, dest=rnz, src=r))
+        rl = fb.cur["label"]
+        fb.end(_t("jmp", ln, to=jb["label"]))
+        fb.start(jb)
+        d = fb.temp()
+        jb["instrs"].append(_n("phi", ln, dest=d,
+                               arms=[(brb, z), (rl, rnz)]))
+        return d
+    def _cond(self, fb, cond):
+        # branch condition: static raw word in unsafe (sev `!= 0`),
+        # dynamic truthiness otherwise.
+        if fb.ux:
+            v = self._sexpr(fb, cond)
+            d = fb.temp()
+            fb.emit(_n("sraw", cond["line"], dest=d, src=v))
+            return d
+        return self._expr(fb, cond)
+
     def _logic(self, fb, e, is_and):
         # short-circuit like interp: only one side's value survives
         ln = e["line"]
@@ -438,7 +681,7 @@ class Builder:
             fb.end(_t("br", ln, cond=l, then=jb["label"], els=rb["label"]))
         fb.start(rb)
         r = self._expr(fb, e["r"])
-        rl = rb["label"]
+        rl = fb.cur["label"]
         fb.end(_t("jmp", ln, to=jb["label"]))
         fb.start(jb)
         d = fb.temp()
@@ -666,7 +909,40 @@ def _verify_func(fn, funcs):
                     # the arm value flows along the edge: its definition
                     # must dominate the predecessor it comes from
                     _use(at, al, ln)
-            elif op in ("const", "load", "stvar", "stglobal", "import"):
+            elif op in ("const", "load", "stvar", "stglobal", "import",
+                          "sconst", "sload", "sstr"):
+                pass
+            elif op == "sdecl":
+                _use(ins["src"], b["label"], ln)
+            elif op in ("sstore",):
+                _use(ins["ptr"], b["label"], ln)
+                _use(ins["val"], b["label"], ln)
+            elif op == "sfstore":
+                _use(ins["obj"], b["label"], ln)
+                _use(ins["val"], b["label"], ln)
+                if ins["idx"] is not None:
+                    _use(ins["idx"], b["label"], ln)
+            elif op in ("sset", "dset"):
+                _use(ins["src"], b["label"], ln)
+            elif op == "sbin":
+                _use(ins["l"], b["label"], ln)
+                _use(ins["r"], b["label"], ln)
+            elif op == "sun":
+                _use(ins["v"], b["label"], ln)
+            elif op == "scall":
+                for x in ins["args"]:
+                    _use(x, b["label"], ln)
+            elif op == "sderef":
+                _use(ins["v"], b["label"], ln)
+            elif op == "sfield":
+                _use(ins["obj"], b["label"], ln)
+                if ins["idx"] is not None:
+                    _use(ins["idx"], b["label"], ln)
+            elif op in ("box", "sraw", "snz"):
+                _use(ins["src"], b["label"], ln)
+            elif op == "svarptr":
+                pass
+            elif op in ("serr", "ssizeof"):
                 pass
             elif op in ("try_push",):
                 if ins["handler"] not in by:
@@ -868,6 +1144,47 @@ def dump_instr(ins):
         return f"{ins['dest']} = call {ins['fn']}({args})"
     if op == "print":
         return "print" + (" " + ", ".join(ins["args"]) if ins["args"] else "")
+    if op == "sconst":
+        return f"{ins['dest']} = sconst {ins['stype']} {ins['val']}"
+    if op == "sload":
+        return f"{ins['dest']} = sload {ins['name']}"
+    if op == "sdecl":
+        return f"sdecl {ins['name']} {ins['utype']} {ins['src']}"
+    if op == "sstore":
+        return f"sstore {ins['ptr']} {ins['val']}"
+    if op == "sfstore":
+        ix = ins["idx"] if ins["idx"] is not None else "-"
+        return f"sfstore {ins['obj']} {ins['name']} {ix} {ins['val']}"
+    if op == "sset":
+        return f"sset {ins['name']} {ins['src']}"
+    if op == "dset":
+        return f"dset {ins['name']} {ins['src']}"
+    if op == "sbin":
+        return f"{ins['dest']} = sbin {ins['binop']} {ins['l']} {ins['r']}"
+    if op == "sun":
+        return f"{ins['dest']} = sun {ins['unop']} {ins['v']}"
+    if op == "scall":
+        args = ", ".join(ins["args"])
+        return f"{ins['dest']} = scall {ins['name']}({args})"
+    if op == "sderef":
+        return f"{ins['dest']} = sderef {ins['v']}"
+    if op == "sfield":
+        ix = ins["idx"] if ins["idx"] is not None else "-"
+        return f"{ins['dest']} = sfield {ins['obj']} {ins['name']} {ix}"
+    if op == "box":
+        return f"{ins['dest']} = box {ins['src']}"
+    if op == "sraw":
+        return f"{ins['dest']} = sraw {ins['src']}"
+    if op == "snz":
+        return f"{ins['dest']} = snz {ins['src']}"
+    if op == "svarptr":
+        return f"{ins['dest']} = svarptr {ins['conv']} {ins['var']}"
+    if op == "sstr":
+        return f"{ins['dest']} = sstr {_q(ins['val'])}"
+    if op == "serr":
+        return f"{ins['dest']} = serr {_q(ins['imsg'])} {_q(ins['xmsg'])}"
+    if op == "ssizeof":
+        return f"{ins['dest']} = ssizeof {ins['stype']}"
     if op == "import":
         return f"import {ins['name']}"
     if op == "try_push":
@@ -1071,6 +1388,23 @@ def _parse_code(code, ln):
         _, o, nm, v = code.split()
         return _n("setattr", ln, obj=_temp(o, ln), name=nm,
                   val=_temp(v, ln))
+    if code.startswith("sdecl "):
+        _, nm, ut, src = code.split()
+        _check_stype(ut, ln)
+        return _n("sdecl", ln, name=nm, utype=ut, src=_temp(src, ln))
+    if code.startswith("sstore "):
+        _, pp, vv = code.split()
+        return _n("sstore", ln, ptr=_temp(pp, ln), val=_temp(vv, ln))
+    if code.startswith("sfstore "):
+        _, o, nm, ix, vv = code.split()
+        return _n("sfstore", ln, obj=_temp(o, ln), name=nm,
+                  idx=None if ix == "-" else _temp(ix, ln), val=_temp(vv, ln))
+    if code.startswith("sset "):
+        _, nm, src = code.split()
+        return _n("sset", ln, name=nm, src=_temp(src, ln))
+    if code.startswith("dset "):
+        _, nm, src = code.split()
+        return _n("dset", ln, name=nm, src=_temp(src, ln))
     if code.startswith("stvar "):
         _, name, src = code.split()
         return _n("stvar", ln, name=name, src=_temp(src, ln))
@@ -1141,6 +1475,49 @@ def _parse_code(code, ln):
                   stop=None if e == "-" else _temp(e, ln))
     if rhs.startswith("iterseq "):
         return _n("iterseq", ln, dest=dest, src=_temp(rhs[8:], ln))
+    if rhs.startswith("sconst "):
+        _, st, vv = rhs.split()
+        _check_stype(st, ln)
+        return _n("sconst", ln, dest=dest, stype=st, val=int(vv, 0))
+    if rhs.startswith("sload "):
+        return _n("sload", ln, dest=dest, name=rhs[6:])
+    if rhs.startswith("sbin "):
+        _, op, l, r = rhs.split()
+        return _n("sbin", ln, dest=dest, binop=op, l=_temp(l, ln),
+                  r=_temp(r, ln))
+    if rhs.startswith("sun "):
+        _, op, v = rhs.split()
+        return _n("sun", ln, dest=dest, unop=op, v=_temp(v, ln))
+    if rhs.startswith("scall "):
+        m2 = _re.match(r"(\w[\w:]*)\((.*)\)$", rhs[6:])
+        if not m2:
+            raise HSErr("IR: bad scall", ln)
+        args = [] if m2.group(2) == "" else [_temp(a.strip(), ln)
+                                            for a in _split_top(m2.group(2))]
+        return _n("scall", ln, dest=dest, name=m2.group(1), args=args)
+    if rhs.startswith("sderef "):
+        return _n("sderef", ln, dest=dest, v=_temp(rhs[7:], ln))
+    if rhs.startswith("sfield "):
+        _, o, nm, ix = rhs.split()
+        return _n("sfield", ln, dest=dest, obj=_temp(o, ln), name=nm,
+                  idx=None if ix == "-" else _temp(ix, ln))
+    if rhs.startswith("box "):
+        return _n("box", ln, dest=dest, src=_temp(rhs[4:], ln))
+    if rhs.startswith("sraw "):
+        return _n("sraw", ln, dest=dest, src=_temp(rhs[5:], ln))
+    if rhs.startswith("snz "):
+        return _n("snz", ln, dest=dest, src=_temp(rhs[4:], ln))
+    if rhs.startswith("svarptr "):
+        conv, var = rhs[8:].split()
+        if conv not in ("as_ptr", "as_int"):
+            raise HSErr("IR: bad svarptr", ln)
+        return _n("svarptr", ln, dest=dest, conv=conv, var=var)
+    if rhs.startswith("sstr "):
+        return _n("sstr", ln, dest=dest, val=_unq(rhs[5:], ln))
+    if rhs.startswith("ssizeof "):
+        st = rhs[8:]
+        _check_stype_dict(st, ln)
+        return _n("ssizeof", ln, dest=dest, stype=st)
     if rhs.startswith("phi "):
         rest = rhs[4:]
         arms = []
@@ -1150,6 +1527,23 @@ def _parse_code(code, ln):
             raise HSErr("IR: bad phi", ln)
         return _n("phi", ln, dest=dest, arms=arms)
     raise HSErr("IR: bad instruction", ln)
+
+
+def _check_stype_dict(st, ln):
+    # ssizeof accepts plain scalar types and struct names (existence
+    # checked at runtime, like interp)
+    if st in ("I64", "U64", "Ptr"):
+        return
+    if not _re.match(r"[A-Za-z_][A-Za-z0-9_]*$", st):
+        raise HSErr("IR: bad static type", ln)
+
+
+def _check_stype(st, ln):
+    if st in ("I64", "U64", "Ptr", "LIT"):
+        return
+    if st.startswith("Ptr:") and _LABEL_RE.match(st[4:]):
+        return
+    raise HSErr("IR: bad static type", ln)
 
 
 def _temp(s, ln):
@@ -1167,7 +1561,281 @@ def _label(s, ln):
 # ---------- reference interpreter (must match interp.py) ----------
 
 from interp import disp, wrap_i64, is_num, is_int, tname
-from interp import HSBuiltin
+from interp import HSBuiltin, UnsafeVal
+from interp import coerce, unbox, box, wrap_u64, is_ptr, ptr_struct
+from interp import struct_field, struct_size
+
+_US_MEM = bytearray(1 << 20)
+_US_TOP = 8
+
+
+def _us_alloc(n, ln):
+    global _US_TOP
+    if n < 0:
+        raise HSErr(f"alloc of negative size {n}", ln)
+    n = (n + 7) & ~7
+    if _US_TOP + n > len(_US_MEM):
+        raise HSErr("unsafe: out of memory (1MB sim)", ln)
+    addr = _US_TOP
+    for i in range(addr, addr + n):
+        _US_MEM[i] = 0
+    _US_TOP += n
+    return addr
+
+
+def _us_check(addr, size, ln):
+    if addr == 0:
+        raise HSErr("null pointer dereference", ln)
+    if addr < 0 or addr + size > len(_US_MEM):
+        raise HSErr("unsafe: address out of bounds", ln)
+
+
+def _us_load(addr, size, ln):
+    _us_check(addr, size, ln)
+    return int.from_bytes(_US_MEM[addr:addr + size], "little")
+
+
+def _us_store(addr, size, v, ln):
+    _us_check(addr, size, ln)
+    _US_MEM[addr:addr + size] = (v & ((1 << (size * 8)) - 1)).to_bytes(
+        size, "little")
+
+
+def _sbinop(op, l, r, ln):
+    # transcribe interp.sev_bin: l/r are UnsafeVal, result is UnsafeVal
+    lt, lv = l.utype, l.val
+    rt, rv = r.utype, r.val
+    if op in ("==", "!="):
+        if is_ptr(lt) or is_ptr(rt):
+            if not (is_ptr(lt) and is_ptr(rt)):
+                raise HSErr(f"cannot compare {lt} and {rt}", ln)
+            eq = 1 if lv == rv else 0
+        else:
+            kinds = {lt, rt} - {"LIT"}
+            if kinds == {"I64", "U64"}:
+                raise HSErr("cannot compare I64 and U64 (convert "
+                            "explicitly)", ln)
+            tgt = (kinds.pop() if kinds else "I64")
+            eq = 1 if coerce(lt, lv, tgt, ln) == coerce(rt, rv, tgt,
+                                                       ln) else 0
+        return UnsafeVal("I64", eq if op == "==" else 1 - eq)
+    if op in ("<", ">", "<=", ">="):
+        if is_ptr(lt) or is_ptr(rt):
+            raise HSErr("cannot order pointers (use == / !=)", ln)
+        if lt != rt and ("I64" in (lt, rt) and "U64" in (lt, rt)):
+            raise HSErr("cannot compare I64 and U64 (convert explicitly)",
+                        ln)
+        tgt = lt if lt != "LIT" else (rt if rt != "LIT" else "I64")
+        a = coerce(lt, lv, tgt, ln)
+        b = coerce(rt, rv, tgt, ln)
+        if op == "<":
+            res = a < b
+        elif op == ">":
+            res = a > b
+        elif op == "<=":
+            res = a <= b
+        else:
+            res = a >= b
+        return UnsafeVal("I64", 1 if res else 0)
+    if is_ptr(lt) or is_ptr(rt):
+        lxs, rxs = ptr_struct(lt), ptr_struct(rt)
+        if op == "+" and lxs and rt in ("I64", "U64", "LIT"):
+            return UnsafeVal(lt, (lv + coerce(rt, rv, "I64", ln) *
+                                  struct_size(lxs, ln)) & ((1 << 64) - 1))
+        if op == "+" and rxs and lt in ("I64", "U64", "LIT"):
+            return UnsafeVal(rt, (rv + coerce(lt, lv, "I64", ln) *
+                                  struct_size(rxs, ln)) & ((1 << 64) - 1))
+        if op == "-" and lxs and rt in ("I64", "U64", "LIT"):
+            return UnsafeVal(lt, (lv - coerce(rt, rv, "I64", ln) *
+                                  struct_size(lxs, ln)) & ((1 << 64) - 1))
+        if op == "-" and lxs and rxs and lxs == rxs:
+            d = lv - rv
+            q = abs(d) // struct_size(lxs, ln)
+            return UnsafeVal("I64", wrap_i64(-q if d < 0 else q))
+        if lt == "Ptr" or rt == "Ptr":
+            if op == "+" and lt == "Ptr" and rt in ("I64", "U64", "LIT"):
+                return UnsafeVal("Ptr", (lv + coerce(rt, rv, "I64", ln)) &
+                                 ((1 << 64) - 1))
+            if op == "+" and rt == "Ptr" and lt in ("I64", "U64", "LIT"):
+                return UnsafeVal("Ptr", (rv + coerce(lt, lv, "I64", ln)) &
+                                 ((1 << 64) - 1))
+            if op == "-" and lt == "Ptr" and rt in ("I64", "U64", "LIT"):
+                return UnsafeVal("Ptr", (lv - coerce(rt, rv, "I64", ln)) &
+                                 ((1 << 64) - 1))
+            if op == "-" and lt == "Ptr" and rt == "Ptr":
+                return UnsafeVal("I64", wrap_i64(lv - rv))
+        raise HSErr(f"cannot apply '{op}' to pointers", ln)
+    if lt != rt and ("I64" in (lt, rt) and "U64" in (lt, rt)):
+        raise HSErr(f"cannot mix I64 and U64 with '{op}' (convert "
+                    "explicitly)", ln)
+    tgt = lt if lt != "LIT" else (rt if rt != "LIT" else "I64")
+    a = coerce(lt, lv, tgt, ln)
+    b = coerce(rt, rv, tgt, ln)
+    if op == "+":
+        res = a + b
+    elif op == "-":
+        res = a - b
+    elif op == "*":
+        res = a * b
+    elif op == "/":
+        if b == 0:
+            raise HSErr("division by zero", ln)
+        res = abs(a) // abs(b)
+        if (a < 0) != (b < 0):
+            res = -res
+    elif op == "%":
+        if b == 0:
+            raise HSErr("division by zero", ln)
+        res = abs(a) % abs(b)
+        if a < 0:
+            res = -res
+    elif op == "&":
+        res = a & b
+    elif op == "|":
+        res = a | b
+    elif op == "^":
+        res = a ^ b
+    elif op == "<<":
+        if b < 0 or b > 63:
+            raise HSErr(f"shift count {b} out of range (0..63)", ln)
+        res = a << b
+    elif op == ">>":
+        if b < 0 or b > 63:
+            raise HSErr(f"shift count {b} out of range (0..63)", ln)
+        res = a >> b
+    else:
+        raise HSErr(f"bad operator {op}", ln)
+    return UnsafeVal(tgt, wrap_i64(res) if tgt == "I64" else wrap_u64(res))
+
+
+def _scallop(name, args, ln):
+    # transcribe interp.sev_call (static builtins only)
+    import interp as _interp
+    if name not in _interp.UNSAFE_BUILTINS:
+        raise HSErr(f"cannot call '{name}' from unsafe (only: "
+                    f"{', '.join(sorted(_interp.UNSAFE_BUILTINS))})", ln)
+    if name == "alloc":
+        if len(args) != 1:
+            raise HSErr("alloc wants alloc(n)", ln)
+        at, av = args[0].utype, args[0].val
+        n = coerce(at, av, "I64", ln)
+        return UnsafeVal("Ptr", _us_alloc(n, ln))
+    if name in ("load8", "load32", "load64"):
+        if len(args) != 1:
+            raise HSErr(f"{name} wants {name}(p)", ln)
+        pt, pv = args[0].utype, args[0].val
+        if not is_ptr(pt):
+            raise HSErr(f"{name} needs Ptr, got {pt}", ln)
+        return UnsafeVal("I64", wrap_i64(_us_load(
+            pv, _interp.UNSAFE_SIZES[name], ln)))
+    if name in ("store8", "store32", "store64"):
+        if len(args) != 2:
+            raise HSErr(f"{name} wants {name}(p, v)", ln)
+        pt, pv = args[0].utype, args[0].val
+        if not is_ptr(pt):
+            raise HSErr(f"{name} needs Ptr, got {pt}", ln)
+        vt, vv = args[1].utype, args[1].val
+        vv = coerce(vt, vv, "I64", ln)
+        size = _interp.UNSAFE_SIZES[name]
+        _us_store(pv, size, vv, ln)
+        return UnsafeVal("I64", wrap_i64(vv & ((1 << (size * 8)) - 1)))
+    if name == "as_ptr":
+        if len(args) != 1:
+            raise HSErr("as_ptr wants as_ptr(int)", ln)
+        at, av = args[0].utype, args[0].val
+        if at not in ("LIT", "I64", "U64") and not is_ptr(at):
+            raise HSErr(f"as_ptr needs an integer, got {at}", ln)
+        return UnsafeVal("Ptr", unbox(av, "Ptr", ln))
+    if name == "as_int":
+        if len(args) != 1:
+            raise HSErr("as_int wants as_int(p)", ln)
+        pt, pv = args[0].utype, args[0].val
+        if not is_ptr(pt):
+            raise HSErr(f"as_int needs Ptr, got {pt}", ln)
+        return UnsafeVal("U64", pv)
+    if name == "asm":
+        raise HSErr("asm requires native build (hs.py build)", ln)
+    raise HSErr(f"bad unsafe call {name}", ln)
+
+
+def _sdecl_exec(frame, name, utype, v, ln):
+    if name in frame.vars:
+        raise HSErr(f"'{name}' already defined in this scope", ln)
+    frame.vars[name] = UnsafeVal(utype, coerce(v.utype, v.val, utype, ln))
+
+
+def _sset_exec(frame, name, v, ln):
+    # mirror ex() set in unsafe: coerce into an existing static, else
+    # box into a dynamic binding (globals-aware like env.set).
+    f = frame
+    while f is not None:
+        if name in f.vars:
+            if isinstance(f.vars[name], UnsafeVal):
+                f.vars[name] = UnsafeVal(
+                    f.vars[name].utype,
+                    coerce(v.utype, v.val, f.vars[name].utype, ln))
+            else:
+                frame.set(name, box(v.utype, v.val, ln))
+            return
+        f = f.parent
+    frame.set(name, box(v.utype, v.val, ln))
+
+
+def _sload_exec(frame, name, ln):
+    f = frame
+    while f is not None:
+        if name in f.vars:
+            v = f.vars[name]
+            if isinstance(v, UnsafeVal):
+                return v
+            return UnsafeVal("I64", unbox(v, "I64", ln))
+        f = f.parent
+    raise HSErr(f"unknown variable '{name}'", ln)
+
+
+def _sfield_exec(obj, name, idx, ln):
+    st, sv = obj.utype, obj.val
+    xs = ptr_struct(st)
+    if xs is None:
+        raise HSErr(f"cannot access field of {st} (need a struct "
+                    "pointer)", ln)
+    if sv == 0:
+        raise HSErr("null pointer dereference", ln)
+    ft, off, count = struct_field(xs, name, ln)
+    if count > 1:
+        if idx is None:
+            raise HSErr(f"array field '{name}' needs an index", ln)
+        i = coerce(idx.utype, idx.val, "I64", ln)
+        if i < 0 or i >= count:
+            raise HSErr(f"index {i} out of range for '{name}'[{count}]",
+                        ln)
+    else:
+        if idx is not None:
+            raise HSErr(f"field '{name}' is not an array", ln)
+        i = 0
+    v = _us_load(sv + off + i * 8, 8, ln)
+    if ft in ("I64", "U64"):
+        return UnsafeVal(ft, wrap_i64(v) if ft == "I64" else wrap_u64(v))
+    return UnsafeVal(ft, v & ((1 << 64) - 1))
+
+
+def _sunop(op, v, ln):
+    st, sv = v.utype, v.val
+    if op == "neg":
+        if is_ptr(st):
+            raise HSErr("cannot negate Ptr", ln)
+        if st == "LIT":
+            return UnsafeVal("LIT", -sv)
+        if st == "I64":
+            return UnsafeVal("I64", wrap_i64(-sv))
+        return UnsafeVal("U64", wrap_u64(-sv))
+    if op == "unot":
+        if is_ptr(st):
+            raise HSErr("cannot bitwise-not Ptr", ln)
+        return UnsafeVal(st, wrap_i64(~sv) if st != "U64" else wrap_u64(~sv))
+    if op == "not":
+        return UnsafeVal("I64", 0 if sv != 0 else 1)
+    raise HSErr(f"IR: bad sunop '{op}'", ln)
 
 
 class IRFunc:
@@ -1483,6 +2151,8 @@ def _iterseq(v, ln):
 
 def _call(fn, args, ln):
     if isinstance(fn, HSBuiltin):
+        if fn.name == "read_mem":
+            return _b_read_mem(args, ln)
         if fn.name not in IR_BUILTINS:
             raise HSErr(f"IR: builtin '{fn.name}' not in subset", ln)
         return fn.fn(args, ln)
@@ -1570,7 +2240,11 @@ def _step(ins, temps, frame, prev):
     if op == "const":
         temps[ins["dest"]] = ins["val"]
     elif op == "load":
-        temps[ins["dest"]] = frame.get(ins["name"], ln)
+        v = frame.get(ins["name"], ln)
+        # dynamic reads auto-box statics, like interp's ev var
+        if isinstance(v, UnsafeVal):
+            v = box(v.utype, v.val, ln)
+        temps[ins["dest"]] = v
     elif op == "stvar":
         frame.set(ins["name"], temps[ins["src"]])
     elif op == "stglobal":
@@ -1658,6 +2332,118 @@ def _step(ins, temps, frame, prev):
             raise HSErr("raise without active exception", ln)
         msg, eline = _ACTIVE[-1]
         raise HSErr(msg, eline)
+    elif op == "sconst":
+        temps[ins["dest"]] = UnsafeVal(ins["stype"], ins["val"])
+    elif op == "sload":
+        temps[ins["dest"]] = _sload_exec(frame, ins["name"], ln)
+    elif op == "sdecl":
+        _sdecl_exec(frame, ins["name"], ins["utype"],
+                    temps[ins["src"]], ln)
+    elif op == "sset":
+        _sset_exec(frame, ins["name"], temps[ins["src"]], ln)
+    elif op == "dset":
+        v = temps[ins["src"]]
+        f = frame
+        while f is not None:
+            if ins["name"] in f.vars:
+                if isinstance(f.vars[ins["name"]], UnsafeVal):
+                    f.vars[ins["name"]] = UnsafeVal(
+                        f.vars[ins["name"]].utype,
+                        unbox(v, f.vars[ins["name"]].utype, ln))
+                else:
+                    f.vars[ins["name"]] = v
+                break
+            f = f.parent
+        else:
+            frame.set(ins["name"], v)
+    elif op == "sstore":
+        pv = temps[ins["ptr"]]
+        vv = temps[ins["val"]]
+        if not is_ptr(pv.utype):
+            raise HSErr(f"cannot store through {pv.utype} (need Ptr)", ln)
+        if vv.utype not in ("LIT", "I64", "U64"):
+            raise HSErr(f"cannot store {vv.utype} to memory (need "
+                        "integer)", ln)
+        _us_store(pv.val, 8, coerce(vv.utype, vv.val, "I64", ln) &
+                  ((1 << 64) - 1), ln)
+    elif op == "sfstore":
+        obj = temps[ins["obj"]]
+        xs = ptr_struct(obj.utype)
+        if xs is None:
+            raise HSErr(f"cannot store field of {obj.utype} (need a "
+                        "struct pointer)", ln)
+        if obj.val == 0:
+            raise HSErr("null pointer dereference", ln)
+        ft, off, count = struct_field(xs, ins["name"], ln)
+        if count > 1:
+            if ins["idx"] is None:
+                raise HSErr(f"array field '{ins['name']}' needs an index",
+                            ln)
+            ix = temps[ins["idx"]]
+            i = coerce(ix.utype, ix.val, "I64", ln)
+            if i < 0 or i >= count:
+                raise HSErr(f"index {i} out of range for "
+                            f"'{ins['name']}'[{count}]", ln)
+        else:
+            if ins["idx"] is not None:
+                raise HSErr(f"field '{ins['name']}' is not an array", ln)
+            i = 0
+        vv = temps[ins["val"]]
+        _us_store(obj.val + off + i * 8, 8,
+                  coerce(vv.utype, vv.val, ft, ln) & ((1 << 64) - 1), ln)
+    elif op == "sbin":
+        temps[ins["dest"]] = _sbinop(ins["binop"], temps[ins["l"]],
+                                     temps[ins["r"]], ln)
+    elif op == "sun":
+        temps[ins["dest"]] = _sunop(ins["unop"], temps[ins["v"]], ln)
+    elif op == "scall":
+        temps[ins["dest"]] = _scallop(
+            ins["name"], [temps[a] for a in ins["args"]], ln)
+    elif op == "sderef":
+        v = temps[ins["v"]]
+        if not is_ptr(v.utype):
+            raise HSErr(f"cannot dereference {v.utype} (need Ptr)", ln)
+        temps[ins["dest"]] = UnsafeVal(
+            "I64", wrap_i64(_us_load(v.val, 8, ln)))
+    elif op == "sfield":
+        temps[ins["dest"]] = _sfield_exec(
+            temps[ins["obj"]], ins["name"],
+            temps[ins["idx"]] if ins["idx"] is not None else None, ln)
+    elif op == "box":
+        v = temps[ins["src"]]
+        temps[ins["dest"]] = box(v.utype, v.val, ln)
+    elif op == "sraw":
+        temps[ins["dest"]] = temps[ins["src"]].val
+    elif op == "snz":
+        v = temps[ins["src"]]
+        if not isinstance(v, UnsafeVal):
+            raise HSErr("IR: snz of dynamic", ln)
+        temps[ins["dest"]] = UnsafeVal("I64", 0 if v.val == 0 else 1)
+    elif op == "svarptr":
+        # as_ptr/as_int of a direct variable: interp evaluates the var
+        # statically (sev) then applies the builtin's own type rule.
+        v = _sload_exec(frame, ins["var"], ln)
+        if ins["conv"] == "as_ptr":
+            if v.utype not in ("LIT", "I64", "U64") and \
+                    not is_ptr(v.utype):
+                raise HSErr(f"as_ptr needs an integer, got {v.utype}", ln)
+            temps[ins["dest"]] = UnsafeVal("Ptr", unbox(v.val, "Ptr", ln))
+        else:
+            if not is_ptr(v.utype):
+                raise HSErr(f"as_int needs Ptr, got {v.utype}", ln)
+            temps[ins["dest"]] = UnsafeVal("U64", v.val)
+    elif op == "sstr":
+        temps[ins["dest"]] = ins["val"]
+    elif op == "serr":
+        raise HSErr(ins["imsg"], ln)
+    elif op == "ssizeof":
+        st = ins["stype"]
+        if st in ("I64", "U64", "Ptr"):
+            temps[ins["dest"]] = UnsafeVal("I64", 8)
+        else:
+            import interp as _interp2
+            temps[ins["dest"]] = UnsafeVal(
+                "I64", _interp2.struct_size(st, ln))
     else:
         raise HSErr(f"IR: bad op '{op}'", ln)
 
@@ -1671,10 +2457,13 @@ def build_module(prog, pfx=""):
 
 
 def run_module(m, basedir=""):
-    global _FUNCS, _BUILTIN_ROOT
+    global _FUNCS, _BUILTIN_ROOT, _US_TOP
     _FUNCS = m["funcs"]
     _IR_MODS.clear()
     _IR_SHELL.clear()
+    _THANDLERS.clear()
+    _ACTIVE.clear()
+    _US_TOP = 8  # deterministic addresses per run (fresh-process parity)
     verify_module(m)
     root = Frame(is_root=True)
     for n, fn in interp.BUILTINS.items():

@@ -42,7 +42,12 @@ INLINE_ONLY = {"float"}
 # (whose type errors carry the stub's line 0, like x64gen-today).
 INLINE_DIRECT = {"float", "len", "str", "int", "range", "append",
                  "read_text", "write_text", "append_text", "exists", "ls",
-                 "mkdir"}
+                 "mkdir", "read_mem"}
+# NOTE: split/find/join also have inline arms in ev_call but are not in
+# INLINE_DIRECT yet: no corpus program triggers their error paths, and
+# their success paths work through the stubs. Same for the other
+# BI_VALUES builtins (argv/input/env/...). Add on demand with a failing
+# differential case in hand.
 
 
 class GenIR(Gen):
@@ -88,34 +93,87 @@ class GenIR(Gen):
         raise HSErr(f"cannot find module '{name}'", ln)
 
     def _load_all(self):
-        # breadth-first over import instrs (top module first): resolve
+        # depth-first over import instrs (top module first): resolve
         # files parent-first like ensure_prefixes, build each module's IR
-        # with a dotted prefix, merge funcs. Circular -> compile error.
+        # with a dotted prefix, merge funcs. A module on the active
+        # chain re-entered -> circular import (compile error, x64gen).
         import os as _os
         self.pending = []
-        busy = []
-        moddir = {"": self.prog_dir}
-        queue = [("", self.irmod)]
-        seen = {""}
+        self._moddir = {"": self.prog_dir}
+        self._seen = {""}
         self.mod_entries = {"": self.irmod["entry"]}
         self.allfuncs.update(self.irmod["funcs"])
         self.allorder.extend(self.irmod["order"])
         for key in self.irmod["order"]:
             self.funcmod[key] = ""
-        while queue:
-            mpref, m = queue.pop(0)
-            for key in m["order"]:
-                for b in m["funcs"][key]["blocks"]:
-                    for ins in b["instrs"]:
-                        if ins["op"] != "import":
-                            continue
-                        _top, chain = self._resolve_import(
-                            ins["name"], moddir[mpref], ins["line"], busy,
-                            moddir, queue, seen, mpref, key)
-                        ins["_chain"] = chain
+        self._load_mod_body("", self.irmod, [])
 
-    def _resolve_import(self, name, from_dir, ln, busy, moddir, queue,
-                        seen, mpref, funckey):
+    def _json_used(self):
+        # textual scan like x64gen uses_json: any call whose callee temp
+        # comes from a `load json_*` (shadowing ignored, also like x64gen
+        # — the helper merely gets compiled in unused).
+        for key in self.allorder:
+            fdef = self.allfuncs[key]
+            loads = {}
+            for b in fdef["blocks"]:
+                for ins in b["instrs"]:
+                    if ins["op"] == "load" and ins.get("dest"):
+                        loads[ins["dest"]] = ins["name"]
+            for b in fdef["blocks"]:
+                for ins in b["instrs"]:
+                    if ins["op"] == "call" and \
+                            loads.get(ins["fn"]) in GenIR.JSON_CALLS:
+                        return True
+        return False
+
+    def _load_json_if_needed(self):
+        # compile runtime/json.hs through the IR like an implicit import
+        # (x64gen does the same from AST). Entries become normal merged
+        # funcs; calls route through the wrapper below.
+        import os as _os
+        if not self._json_used():
+            self.js_entries = {}
+            return
+        path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                             "runtime", "json.hs")
+        try:
+            with open(path, encoding="utf-8") as f:
+                src = f.read()
+        except OSError as e:
+            raise HSErr(f"cannot read {path}: {e.strerror or e}", 1)
+        import ir as _IR
+        interp.reset_parse_state()
+        sub = _IR.build_module(interp.parse_program(src), "<json>.")
+        _IR.verify_module(sub)
+        self.allfuncs.update(sub["funcs"])
+        self.allorder.extend(sub["order"])
+        for k in sub["order"]:
+            self.funcmod[k] = "<json>"
+        self.mod_entries["<json>"] = sub["entry"]
+        self.modtab["<json>"] = {"name": "<json>", "shell": False,
+                                 "submods": {}, "imports": {},
+                                 "irmod": sub,
+                                 "dir": _os.path.dirname(path),
+                                 "pfx": "<json>."}
+        self._moddir["<json>"] = _os.path.dirname(path)
+        self.js_entries = {}
+        for k in sub["order"]:
+            d = sub["funcs"][k]["dispname"]
+            if d in ("js_decode", "js_encode"):
+                self.js_entries[d] = k
+
+    def _load_mod_body(self, mpref, m, active):
+        for key in m["order"]:
+            for b in m["funcs"][key]["blocks"]:
+                for ins in b["instrs"]:
+                    if ins["op"] != "import":
+                        continue
+                    _top, chain = self._resolve_import(
+                        ins["name"], self._moddir[mpref], ins["line"],
+                        active, mpref, key)
+                    ins["_chain"] = chain
+
+    def _resolve_import(self, name, from_dir, ln, active, mpref, funckey):
         parts = name.split(".")
         chain = []
         parent = None
@@ -130,6 +188,8 @@ class GenIR(Gen):
                     raise
                 path = None
                 is_shell = True
+            if dotted in active:
+                raise HSErr(f"circular import '{dotted}'", ln)
             if dotted not in self.modtab:
                 rec = {"name": dotted, "shell": is_shell, "submods": {},
                        "imports": {}, "irmod": None, "dir": None, "pfx": ""}
@@ -141,36 +201,29 @@ class GenIR(Gen):
             parent = rec
             if not is_shell:
                 chain.append(rec)
-                if dotted not in seen:
-                    seen.add(dotted)
-                    if dotted in busy:
-                        raise HSErr(f"circular import '{dotted}'", ln)
-                    busy.append(dotted)
-                    try:
-                        with open(path, encoding="utf-8") as f:
-                            src = f.read()
-                        try:
-                            interp.reset_parse_state()
-                            prog = interp.parse_program(src)
-                        except HSErr as e:
-                            raise HSErr(f"in module '{dotted}': {e.msg}",
-                                        e.line)
-                        import ir as _IR
-                        sub = _IR.build_module(prog, dotted + ".")
-                        _IR.verify_module(sub)
-                    finally:
-                        busy.remove(dotted)
-                    rec["irmod"] = sub
+                if rec["irmod"] is None:
                     import os as _os
+                    with open(path, encoding="utf-8") as f:
+                        src = f.read()
+                    try:
+                        interp.reset_parse_state()
+                        prog = interp.parse_program(src)
+                    except HSErr as e:
+                        raise HSErr(f"in module '{dotted}': {e.msg}",
+                                    e.line)
+                    import ir as _IR
+                    sub = _IR.build_module(prog, dotted + ".")
+                    _IR.verify_module(sub)
+                    rec["irmod"] = sub
                     rec["dir"] = _os.path.dirname(path)
                     rec["pfx"] = dotted + "."
-                    moddir[dotted] = _os.path.dirname(path)
+                    self._moddir[dotted] = _os.path.dirname(path)
                     self.mod_entries[dotted] = sub["entry"]
                     self.allfuncs.update(sub["funcs"])
                     self.allorder.extend(sub["order"])
                     for k in sub["order"]:
                         self.funcmod[k] = dotted
-                    queue.append((dotted, sub))
+                    self._load_mod_body(dotted, sub, active + [dotted])
         topmod = self.modtab.get(parts[0])
         if topmod is None:
             topmod = next(m for m in chain if m["name"] == parts[0])
@@ -194,8 +247,11 @@ class GenIR(Gen):
             if mpref:
                 self.modtab[mpref].setdefault("imports", {})[top] = topmod
 
+    JSON_CALLS = {"json_parse", "json_str", "json_load", "json_save"}
+
     def _plan(self):
         self._load_all()
+        self._load_json_if_needed()
         # exception runtime is needed when any function uses try/raise
         self.exc_used = False
         for key in self.allorder:
@@ -208,12 +264,18 @@ class GenIR(Gen):
                     self.exc_used = True
         # per-module globals: stored names in each module's entry func.
         self.mod_globals = {}
+        self.global_raw = set()
+        self.global_utypes = {}
         for mpref, ekey in self.mod_entries.items():
             names = set()
             for b in self.allfuncs[ekey]["blocks"]:
                 for ins in b["instrs"]:
                     if ins["op"] in ("stvar", "stglobal"):
                         names.add(ins["name"])
+                    if ins["op"] == "sdecl":
+                        self.global_raw.add((mpref, ins["name"]))
+                        self.global_utypes[(mpref, ins["name"])] = \
+                            ins["utype"]
             self.mod_globals[mpref] = names
         self.mglob = self.mod_globals.get("", set())
         for i, key in enumerate(self.allorder):
@@ -247,7 +309,8 @@ class GenIR(Gen):
         while p is not None and p not in seen:
             seen.add(p)
             pf = self.frames[p]
-            if name in pf["pmap"] or name in pf["locals"]:
+            if name in pf["pmap"] or name in pf["locals"] or \
+                    name in pf.get("rawnames", ()):
                 return "cap"
             p = self.parents.get(p)
         if name in self.mod_globals.get(fr["mod"], set()):
@@ -275,30 +338,36 @@ class GenIR(Gen):
                 caps.add(nm)
         fr["res"] = res
         fr["caps"] = sorted(caps)
-        # inline-only builtins (float: no value form in x64) and direct
-        # calls of inlinable builtins (exact error lines): a loaded temp
-        # that is unshadowed and feeds call-fn positions exclusively gets
-        # a dummy value at the load; any other use raises "not a value".
+        # inline-only builtins (float: no value form in x64), direct
+        # calls of inlinable builtins (exact error lines), json_* calls
+        # (routed to the helper entries), and the json-only type_name
+        # hook: a loaded temp that is unshadowed and feeds call-fn
+        # positions exclusively gets a dummy value at the load; any other
+        # use raises "not a value".
         for b in fdef["blocks"]:
             for ins in b["instrs"]:
-                if ins["op"] == "load" and ins["name"] in INLINE_ONLY | \
-                        INLINE_DIRECT and res.get(ins["name"]) in \
-                        ("novalue", "builtin"):
+                if ins["op"] == "load" and (ins["name"] in INLINE_ONLY | \
+                        INLINE_DIRECT | GenIR.JSON_CALLS or
+                        (ins["name"] == "type_name" and
+                         fr.get("mod") == "<json>")) and \
+                        res.get(ins["name"]) in ("novalue", "builtin",
+                                                 "auto"):
                     ds = ins["dest"]
                     if fr["uses"].get(ds, []) and \
                             all(u == ("call", "fn") for u in fr["uses"][ds]):
                         fr["floattemps"].add(ds)
         # import-alias loads feeding chain positions exclusively (attr
-        # obj / print arg resolving to a module / setattr obj) are dead:
-        # every consumer resolves statically, so emit nothing. Any other
-        # use reads UNBOUND at runtime (assignment-copies: known gap).
+        # obj / print arg resolving to a module / setattr obj / alias-copy
+        # stores) are dead: every consumer resolves statically, so emit
+        # nothing. Any other use raises first-class via _load.
         chain_roles = {("attr", "obj"), ("print", "arg"),
-                       ("setattr", "obj")}
+                       ("setattr", "obj"), ("stvar", "src"),
+                       ("stglobal", "src")}
         dead = set()
         for b in fdef["blocks"]:
             for ins in b["instrs"]:
                 if ins["op"] == "load" and \
-                        ins["name"] in fr.get("aliases", {}) and \
+                        self._alias_visible(fr, ins["name"]) is not None and \
                         fr["uses"].get(ins["dest"], []) and \
                         all(u in chain_roles for u in
                             fr["uses"][ins["dest"]]):
@@ -309,6 +378,8 @@ class GenIR(Gen):
         params = list(fdef["params"])
         pmap = {p: 24 + 8 * i for i, p in enumerate(params)}
         stored = set()
+        rawnames = set()
+        utypes = {}
         temps = []
         prov = {}
         uses = {}
@@ -366,6 +437,9 @@ class GenIR(Gen):
                         _use(at, ("phi", "arm"))
                 if ins["op"] == "stvar" and not is_entry:
                     stored.add(ins["name"])
+                if ins["op"] == "sdecl" and not is_entry:
+                    rawnames.add(ins["name"])
+                    utypes[ins["name"]] = ins["utype"]
         slots = {}
         n = [0]
 
@@ -373,13 +447,38 @@ class GenIR(Gen):
             n[0] += 1
             return -8 * n[0]
 
+        definstr = {}
+        for b in fdef["blocks"]:
+            for ins in b["instrs"]:
+                if ins.get("dest") is not None:
+                    definstr[ins["dest"]] = ins
+        # duplicate static declarations fail at build, like x64gen's
+        # collect (order-sensitive: a later sdecl of a bound name
+        # errors; sdecl-then-set is fine).
+        bound = set(params)
+        for b in fdef["blocks"]:
+            for ins in b["instrs"]:
+                if ins["op"] == "stvar":
+                    bound.add(ins["name"])
+                elif ins["op"] == "import":
+                    bound.add(ins["name"].split(".")[0])
+                elif ins["op"] == "sdecl":
+                    if ins["name"] in bound:
+                        raise HSErr(f"'{ins['name']}' already defined in "
+                                    "this scope", ins["line"])
+                    bound.add(ins["name"])
         for t in temps:
             slots[t] = take()
         for nm in sorted(stored):
             slots[nm] = take()
+        for nm in sorted(rawnames):
+            if nm not in slots:
+                slots[nm] = take()
         return {"key": key, "params": params, "pmap": pmap,
                 "locals": stored, "slots": slots, "nloc": n[0],
+                "rawnames": rawnames, "utypes": utypes,
                 "caps": [], "res": {}, "prov": prov, "uses": uses,
+                "definstr": definstr,
                 "floattemps": set(), "mod": modpfx, "is_entry": is_entry}
 
     # ----- operands -----
@@ -395,45 +494,56 @@ class GenIR(Gen):
                             "mod.attr)", ln)
             a.mov_rm("rax", "rbp", fr["slots"][ref])
             return "temp"
-        if ref in fr["pmap"]:
-            a.mov_rm("rax", "rbp", fr["pmap"][ref])
-            return "bound"
-        if ref in fr["locals"]:
+        m = self._alias_visible(fr, ref)
+        if m is not None:
+            raise HSErr(f"module '{m['name']}' is not a first-class "
+                        "value in x64 subset (use mod.attr)", ln)
+        kind = fr["res"].get(ref)
+        if kind is None:
+            # names only ever read through sload/captures (never a
+            # plain load) miss the plan-time map; classify lazily.
+            kind = self._classify(fr["key"], ref)
+            fr["res"][ref] = kind
+        if kind == "bound":
+            if ref in fr["pmap"]:
+                a.mov_rm("rax", "rbp", fr["pmap"][ref])
+                return "bound"
             a.mov_rm("rax", "rbp", fr["slots"][ref])
-            self.check_bound(ref, ln)
+            if ref in fr.get("rawnames", ()):
+                self.tag_box()
+            else:
+                self.check_bound(ref, ln)
             return "bound"
-        kind = fr["res"].get(ref, "auto")
         if kind == "cap":
             a.mov_rm("rax", "r15", 8 * fr["caps"].index(ref))
             return "bound"
-        if ref in fr.get("aliases", {}):
-            # import alias: no runtime value exists on this path (x64gen
-            # parity). Chain positions (attr/print/setattr) resolve
-            # statically and never read the temp; a genuine value read
-            # fails here. (Assignment-copies of modules are a known gap.)
-            a.mov_ri64("rax", Gen.HS_UNBOUND)
-            self.check_bound(ref, ln)
-            return "bound"
-        if kind == "builtin" or ref in Gen.BI_VALUES:
+        if kind == "builtin":
             self.ev_builtin_value(ref)
             return "builtin:" + ref
-        if kind == "novalue" or ref in NOT_A_VALUE:
+        if kind == "novalue":
             raise HSErr(f"builtin '{ref}' is not a value (call it)", ln)
         lab = self._glabel(ref, fr["mod"])
         a.lea_rip("rax", lab)
         a.mov_rm("rax", "rax", 0)
-        self.check_bound(ref, ln)
+        if (fr["mod"], ref) in self.global_raw:
+            self.tag_box()
+        else:
+            self.check_bound(ref, ln)
         return "bound"
 
     def _store(self, fr, name, ln):
-        """rax -> variable slot (params/locals) or module global."""
+        """rax -> variable slot (params/locals/caps) or module global."""
         a = self.a
         if not fr["is_entry"]:
             if name in fr["pmap"]:
                 a.mov_mr("rbp", "rax", fr["pmap"][name])
                 return
-            a.mov_mr("rbp", "rax", fr["slots"][name])
-            return
+            if name in fr["locals"] or name in fr["rawnames"]:
+                a.mov_mr("rbp", "rax", fr["slots"][name])
+                return
+            if name in fr["caps"]:
+                a.mov_mr("r15", "rax", 8 * fr["caps"].index(name))
+                return
         lab = self._glabel(name, fr["mod"])
         a.lea_rip("rcx", lab)
         a.mov_mr("rcx", "rax", 0)
@@ -696,6 +806,31 @@ class GenIR(Gen):
             return
         raise HSErr(f"IR: '{op}' not in irx64 subset yet", ln)
 
+    def _alias_visible(self, fr, name):
+        # innermost module binding for `name` that no value slot
+        # shadows (mirrors Gen.mod_alias_visible): value slots in the
+        # current function win outright (a tie with a same-scope binding
+        # goes to the binding); otherwise walk outward.
+        if name in fr["pmap"] or name in fr["locals"] or \
+                name in fr.get("rawnames", ()):
+            return fr.get("aliases", {}).get(name)
+        m = fr.get("aliases", {}).get(name)
+        if m is not None:
+            return m
+        seen = set()
+        p = self.parents.get(fr["key"])
+        while p is not None and p not in seen:
+            seen.add(p)
+            pf = self.frames[p]
+            if name in pf["pmap"] or name in pf["locals"] or \
+                    name in pf.get("rawnames", ()):
+                return pf.get("aliases", {}).get(name)
+            m = pf.get("aliases", {}).get(name)
+            if m is not None:
+                return m
+            p = self.parents.get(p)
+        return None
+
     def _modref(self, fr, ref):
         # temp -> ("mod", rec) | ("mval", rec, attr) | None, following the
         # static prov chain (import aliases and attr results only; module
@@ -704,7 +839,7 @@ class GenIR(Gen):
         if p is None:
             return None
         if p[0] == "load":
-            m = fr.get("aliases", {}).get(p[1])
+            m = self._alias_visible(fr, p[1])
             return ("mod", m) if m is not None else None
         if p[0] == "attr":
             base = self._modref(fr, p[1])
@@ -733,6 +868,453 @@ class GenIR(Gen):
     def _init_done_label(self, modrec):
         return "hsM_done_" + modrec["name"].replace(".", "_")
 
+    SRAW_OPS = {"sconst", "sbin", "sun", "scall", "sderef", "sfield",
+                "sload", "sraw"}
+
+    def _is_raw_temp(self, fr, t, seen=None):
+        # True when temp t holds an untagged machine word (static world).
+        # phi joins sraw/sbin chains only in practice; consensus keeps it
+        # exact, anything else falls back to tagged (dispatch path).
+        if not t.startswith("%"):
+            return False
+        ins = fr["definstr"].get(t)
+        if ins is None:
+            return False
+        op = ins["op"]
+        if op in GenIR.SRAW_OPS:
+            return True
+        if op == "phi":
+            if seen is None:
+                seen = set()
+            if t in seen:
+                return True
+            seen.add(t)
+            arms = [self._is_raw_temp(fr, at, seen) for _al, at in
+                    ins["arms"]]
+            return bool(arms) and all(arms)
+        return False
+
+    def _struct_of(self, fr, t, seen=None):
+        # struct name behind temp t, for sfield/sfstore layout. Sources:
+        # sloads of Ptr:X declarations, +/- propagation, nested fields,
+        # phi consensus. Anything else -> None -> build error, exactly
+        # like x64gen's "struct type unknown".
+        if not t.startswith("%"):
+            return None
+        if seen is None:
+            seen = set()
+        if t in seen:
+            return None
+        seen.add(t)
+        ins = fr["definstr"].get(t)
+        if ins is None:
+            return None
+        op = ins["op"]
+        if op == "sload":
+            ut = fr["utypes"].get(ins["name"])
+            if ut is None:
+                ut = self.global_utypes.get((fr["mod"], ins["name"]))
+            if ut is not None and ut.startswith("Ptr:"):
+                return ut[4:]
+            return None
+        if op == "sbin" and ins["binop"] in ("+", "-"):
+            xl = self._struct_of(fr, ins["l"], seen)
+            xr = self._struct_of(fr, ins["r"], seen)
+            if xl is not None and xr is None:
+                return xl
+            if xr is not None and xl is None:
+                return xr
+            return None
+        if op == "sfield":
+            xs = self._struct_of(fr, ins["obj"], seen)
+            if xs is None:
+                return None
+            from interp import HS_STRUCTS
+            L = HS_STRUCTS.get(xs)
+            if L is None:
+                return None
+            f = L["fields"].get(ins["name"])
+            if f is None:
+                return None
+            ft = f[0]
+            return ft[4:] if ft.startswith("Ptr:") else None
+        if op == "phi":
+            xs = {self._struct_of(fr, at, seen) for _al, at in ins["arms"]}
+            xs.discard(None)
+            return xs.pop() if len(xs) == 1 else None
+        return None
+
+    def _sconst(self, fr, dest, stype, val, ln):
+        # mirror x64gen sev(num): ints materialize masked-or-raw.
+        a = self.a
+        if isinstance(val, bool):
+            val = int(val)
+        a.mov_ri64("rax", val & ((1 << 64) - 1) if val >= 0 else val)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _sload(self, fr, dest, name, ln):
+        # raw names (locals and module globals) move directly;
+        # dynamic-held names unbox (mirror x64gen sev(var)).
+        a = self.a
+        if name in fr.get("rawnames", ()):
+            a.mov_rm("rax", "rbp", fr["slots"][name])
+        elif (fr["mod"], name) in self.global_raw:
+            a.lea_rip("rax", self._glabel(name, fr["mod"]))
+            a.mov_rm("rax", "rax", 0)
+        else:
+            self._load(fr, name, ln)
+            self.unbox_int_here(ln)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _sdecl(self, fr, name, src, ln):
+        a = self.a
+        if name in fr["pmap"]:
+            raise HSErr(f"'{name}' already defined in this scope", ln)
+        self._load(fr, src, ln)
+        if fr["is_entry"]:
+            lab = self._glabel(name, fr["mod"])
+            a.lea_rip("rcx", lab)
+            a.mov_mr("rcx", "rax", 0)
+        else:
+            a.mov_mr("rbp", "rax", fr["slots"][name])
+
+    def _sset(self, fr, name, src, ln):
+        # mirror _sset_exec resolution, machine-word edition: raw
+        # holders (locals, raws, module-raw globals) take the word;
+        # dynamic holders take it boxed (blind tag_box). x64gen-today
+        # stores raw unconditionally (crashing on mixed flows); the IR
+        # path matches interp instead (documented improvement).
+        a = self.a
+        if name in fr.get("rawnames", ()):
+            self._load(fr, src, ln)
+            a.mov_mr("rbp", "rax", fr["slots"][name])
+            return
+        if name in fr["pmap"] or name in fr["locals"]:
+            self._load(fr, src, ln)
+            self.tag_box()
+            if name in fr["pmap"]:
+                a.mov_mr("rbp", "rax", fr["pmap"][name])
+            else:
+                a.mov_mr("rbp", "rax", fr["slots"][name])
+            return
+        if name in fr.get("caps", ()):
+            self._load(fr, src, ln)
+            self.tag_box()
+            a.mov_mr("r15", "rax", 8 * fr["caps"].index(name))
+            return
+        self._load(fr, src, ln)
+        if (fr["mod"], name) in self.global_raw:
+            lab = self._glabel(name, fr["mod"])
+            a.lea_rip("rcx", lab)
+            a.mov_mr("rcx", "rax", 0)
+        else:
+            self.tag_box()
+            lab = self._glabel(name, fr["mod"])
+            a.lea_rip("rcx", lab)
+            a.mov_mr("rcx", "rax", 0)
+
+    def _sstore(self, fr, ptr, val, ln):
+        # mirror ex_unsafe store: no null check (hardware faults).
+        a = self.a
+        self._load(fr, ptr, ln)
+        a.push_r("rax")
+        self._load(fr, val, ln)
+        a.mov_rr("rcx", "rax")
+        a.pop_r("rax")
+        a.mov_mr("rax", "rcx", 0)
+
+    def _sfstore(self, fr, obj, name, idx, val, ln):
+        # transliterated ex_unsafe fstore (null + bounds checked hosted).
+        from interp import HS_STRUCTS
+        a = self.a
+        xs = self._struct_of(fr, obj)
+        if xs is None or xs not in HS_STRUCTS:
+            raise HSErr("struct type unknown (x64)", ln)
+        f = HS_STRUCTS[xs]["fields"].get(name)
+        if f is None:
+            raise HSErr(f"struct '{xs}' has no field '{name}'", ln)
+        ft, off, count = f
+        self._load(fr, obj, ln)
+        a.push_r("rax")
+        lab_nn = self.new_tmp("nn")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", lab_nn)
+        self.raise_static("null pointer dereference", ln)
+        a.label(lab_nn)
+        a.pop_r("rax")
+        if count > 1:
+            if idx is None:
+                raise HSErr(f"array field '{name}' needs an index", ln)
+            a.push_r("rax")
+            self._load(fr, idx, ln)
+            a.mov_rr("rcx", "rax")
+            a.pop_r("rax")
+            a.cmp_ri32("rcx", count)
+            lab_ok = self.new_tmp("bd")
+            a.jcc("b", lab_ok)
+            self.raise_struct_oob(name, count, ln)
+            a.label(lab_ok)
+            a.lea_m("rax", "rax", off, "rcx", 8)
+        else:
+            if idx is not None:
+                raise HSErr(f"field '{name}' is not an array", ln)
+            a.lea_m("rax", "rax", off)
+        a.push_r("rax")
+        self._load(fr, val, ln)
+        a.mov_rr("rcx", "rax")
+        a.pop_r("rax")
+        a.mov_mr("rax", "rcx", 0)
+
+    def _sbin(self, fr, dest, op, l, r, ln):
+        # type-blind raw words, exactly like x64gen sev_bin (signed ops,
+        # truncating division, no mix checks). interp-strictness lives in
+        # the IR interpreter; the machine matches x64gen-today bit for bit.
+        a = self.a
+        self._load(fr, l, ln)
+        a.push_r("rax")
+        self._load(fr, r, ln)
+        a.mov_rr("rcx", "rax")
+        a.pop_r("rax")
+        if op == "+":
+            a.add_rr("rax", "rcx")
+        elif op == "-":
+            a.sub_rr("rax", "rcx")
+        elif op == "*":
+            a.imul_rr("rax", "rcx")
+        elif op in ("/", "%"):
+            a.push_r("rdx")
+            a.test_rr("rcx", "rcx")
+            lab_dz = self.new_tmp("dz")
+            a.jcc("ne", lab_dz)
+            self.raise_static("division by zero", ln)
+            a.label(lab_dz)
+            a.cqo()
+            a.idiv_r("rcx")
+            if op == "%":
+                a.mov_rr("rax", "rdx")
+            a.pop_r("rdx")
+        elif op in ("==", "!=", "<", ">", "<=", ">="):
+            a.cmp_rr("rax", "rcx")
+            cc = {"==": "e", "!=": "ne", "<": "l", ">": "g",
+                  "<=": "le", ">=": "ge"}[op]
+            a.setcc_al(cc)
+            a.movzx_eax_al()
+        elif op in ("<<", ">>", "&", "|", "^"):
+            self._sbitop(op, ln)
+        else:
+            raise HSErr(f"IR: '{op}' not in irx64 subset yet", ln)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _sbitop(self, op, ln):
+        # rax/rcx raw words in, rax raw out. Mirrors the shared body of
+        # Gen.emit_bitop with dynamic=False (no tag checks, count checks
+        # and 62-bit << truncation kept).
+        a = self.a
+        if op in ("<<", ">>"):
+            lab_sh, lab_bad = self.new_tmp("be"), self.new_tmp("be")
+            a.cmp_ri32("rcx", 63)
+            a.jcc("le", lab_sh)
+            a.jmp(lab_bad)
+            a.label(lab_sh)
+            a.test_rr("rcx", "rcx")
+            a.jcc("s", lab_bad)
+            lab_end = self.new_tmp("be")
+            if op == "<<":
+                a.shl_cl("rax")
+                self.trunc62()
+            else:
+                a.sar_cl("rax")
+            a.jmp(lab_end)
+            a.label(lab_bad)
+            a.mov_rr("rdi", "rcx")
+            a.mov_ri32("rsi", ln)
+            a.jmp("hs_shift_err")
+            a.label(lab_end)
+        elif op == "&":
+            a.and_rr("rax", "rcx")
+        elif op == "|":
+            a.or_rr("rax", "rcx")
+        else:
+            a.xor_rr("rax", "rcx")
+
+    def _sun(self, fr, dest, op, v, ln):
+        a = self.a
+        self._load(fr, v, ln)
+        if op == "neg":
+            a.neg_r("rax")
+        elif op == "not":
+            a.test_rr("rax", "rax")
+            a.setcc_al("e")
+            a.movzx_eax_al()
+        elif op == "unot":
+            a.not_rr("rax")
+        else:
+            raise HSErr(f"IR: '{op}' not in irx64 subset yet", ln)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _load_raw_name(self, fr, name, ln):
+        # plain word load with no unboxing (for as_ptr's var bypass,
+        # mirroring x64gen: dynamic slots stay tagged, raw stay raw).
+        a = self.a
+        if name in fr["pmap"]:
+            a.mov_rm("rax", "rbp", fr["pmap"][name])
+            return
+        if name in fr["locals"] or name in fr.get("rawnames", ()):
+            a.mov_rm("rax", "rbp", fr["slots"][name])
+            return
+        if name in fr.get("caps", ()):
+            a.mov_rm("rax", "r15", 8 * fr["caps"].index(name))
+            return
+        lab = self._glabel(name, fr["mod"])
+        a.lea_rip("rax", lab)
+        a.mov_rm("rax", "rax", 0)
+
+    def _scall(self, fr, dest, name, args, ln):
+        # transliterated x64gen sev_call (raw words, machine checks only).
+        a = self.a
+        if name == "alloc":
+            if len(args) != 1:
+                raise HSErr("alloc wants alloc(n)", ln)
+            self._load(fr, args[0], ln)
+            a.push_r("rax")
+            a.call("x_alloc")
+            a.add_ri32("rsp", 8)
+        elif name in ("load8", "load32", "load64"):
+            if len(args) != 1:
+                raise HSErr(f"{name} wants {name}(p)", ln)
+            self._load(fr, args[0], ln)
+            if name == "load8":
+                a.code += bytes([0x48, 0x0F, 0xB6, 0x00])
+            elif name == "load32":
+                a.code += bytes([0x8B, 0x00])
+            else:
+                a.code += bytes([0x48, 0x8B, 0x00])
+        elif name in ("store8", "store32", "store64"):
+            if len(args) != 2:
+                raise HSErr(f"{name} wants {name}(p, v)", ln)
+            self._load(fr, args[1], ln)
+            a.push_r("rax")
+            self._load(fr, args[0], ln)
+            a.pop_r("rcx")
+            if name == "store8":
+                a.code += bytes([0x88, 0x08])
+            elif name == "store32":
+                a.code += bytes([0x89, 0x08])
+            else:
+                a.code += bytes([0x48, 0x89, 0x08])
+            a.mov_rr("rax", "rcx")
+        elif name in ("as_ptr", "as_int"):
+            if len(args) != 1:
+                raise HSErr(f"{name} wants 1 arg", ln)
+            # non-var args always evaluate to raw words (every _sexpr
+            # result is raw), so they pass through untouched.
+            self._load(fr, args[0], ln)
+        else:
+            raise HSErr("only alloc/load/store/as_* calls allowed in "
+                        "unsafe (x64)", ln)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _svarptr(self, fr, dest, conv, name, ln):
+        # `conv` (as_ptr/as_int) only differs in the IR interpreter; x64gen
+        # emits the same dispatch for both (it never type-checks here).
+        # as_ptr/as_int of a direct variable: raw names pass through;
+        # dynamic-held names dispatch on the tagged word (Int unboxes,
+        # heap passes as the address); anything else is unknown at
+        # build, like x64gen's resolve failure.
+        a = self.a
+        if name in fr.get("rawnames", ()):
+            a.mov_rm("rax", "rbp", fr["slots"][name])
+        elif (fr["mod"], name) in self.global_raw:
+            a.lea_rip("rax", self._glabel(name, fr["mod"]))
+            a.mov_rm("rax", "rax", 0)
+        elif name in fr["pmap"] or name in fr["locals"] or \
+                name in fr.get("caps", ()) or \
+                name in self.mod_globals.get(fr["mod"], set()):
+            if name in fr["pmap"]:
+                a.mov_rm("rax", "rbp", fr["pmap"][name])
+            elif name in fr["locals"]:
+                a.mov_rm("rax", "rbp", fr["slots"][name])
+            elif name in fr.get("caps", ()):
+                a.mov_rm("rax", "r15", 8 * fr["caps"].index(name))
+            else:
+                lab = self._glabel(name, fr["mod"])
+                a.lea_rip("rax", lab)
+                a.mov_rm("rax", "rax", 0)
+            lab_heap, lab_bad, lab_done = (self.new_tmp("az"),
+                                           self.new_tmp("az"),
+                                           self.new_tmp("az"))
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("ne", lab_heap)
+            a.sar_ri8("rax", 2)
+            a.jmp(lab_done)
+            a.label(lab_heap)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_bad)
+            a.jmp(lab_done)
+            a.label(lab_bad)
+            self.type_err()
+            a.label(lab_done)
+        else:
+            raise HSErr(f"unknown variable '{name}'", ln)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _sderef(self, fr, dest, v, ln):
+        a = self.a
+        self._load(fr, v, ln)
+        a.mov_rm("rax", "rax", 0)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _sfield(self, fr, dest, obj, name, idx, ln):
+        # mirror sev_field emission (null + bounds checked hosted).
+        from interp import HS_STRUCTS
+        a = self.a
+        xs = self._struct_of(fr, obj)
+        if xs is None or xs not in HS_STRUCTS:
+            raise HSErr("struct type unknown (x64)", ln)
+        f = HS_STRUCTS[xs]["fields"].get(name)
+        if f is None:
+            raise HSErr(f"struct '{xs}' has no field '{name}'", ln)
+        ft, off, count = f
+        self._load(fr, obj, ln)
+        lab_nn = self.new_tmp("nn")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", lab_nn)
+        self.raise_static("null pointer dereference", ln)
+        a.label(lab_nn)
+        if count > 1:
+            if idx is None:
+                raise HSErr(f"array field '{name}' needs an index", ln)
+            a.push_r("rax")
+            self._load(fr, idx, ln)
+            a.mov_rr("rcx", "rax")
+            a.pop_r("rax")
+            a.cmp_ri32("rcx", count)
+            lab_ok = self.new_tmp("bd")
+            a.jcc("b", lab_ok)
+            self.raise_struct_oob(name, count, ln)
+            a.label(lab_ok)
+            a.mov_rmx("rax", "rax", "rcx", 8, off)
+        else:
+            if idx is not None:
+                raise HSErr(f"field '{name}' is not an array", ln)
+            a.mov_rm("rax", "rax", off)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _sbox(self, fr, dest, src, ln):
+        # static word -> dynamic Int, blind tag (print_unsafe philosophy;
+        # out-of-range U64/Ptr box is an accepted micro-divergence).
+        a = self.a
+        self._load(fr, src, ln)
+        self.tag_box()
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _sraw(self, fr, dest, src, ln):
+        a = self.a
+        self._load(fr, src, ln)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
     def _print(self, fr, args, ln):
         a = self.a
         for i, t in enumerate(args):
@@ -742,7 +1324,6 @@ class GenIR(Gen):
                 self.rt_out()
             r = self._modref(fr, t)
             if r is not None and r[0] == "mod":
-                # `print mod`: <module name>, like try_mod_value in ev_print
                 self._print_str(f"<module {r[1]['name']}>")
                 continue
             if r is not None:
@@ -755,6 +1336,22 @@ class GenIR(Gen):
                     a.call("print_val")
                     continue
                 self._print_str(f"<module {rr[1]['name']}>")
+                continue
+            d = fr["definstr"].get(t)
+            if d is not None and d["op"] == "sstr":
+                # unsafe str literal: printed directly (ex_unsafe parity)
+                b = d["val"].encode()
+                lab = self.rstr(d["val"])
+                a.lea_rip("rdi", lab)
+                a.mov_ri32("rsi", len(b))
+                self.rt_out()
+                continue
+            if d is not None and d["op"] == "box":
+                # unsafe static: raw word via print_int (ex_unsafe parity)
+                self._load(fr, d["src"], ln)
+                a.push_r("rax")
+                a.call("print_int")
+                a.add_ri32("rsp", 8)
                 continue
             self._load(fr, t, ln)
             a.mov_rr("rdi", "rax")
@@ -1077,9 +1674,25 @@ class GenIR(Gen):
         # error lines, like ev_call); first-class uses go through the
         # value/stub protocol (whose type errors carry line 0, also like
         # x64gen-today). `float` has no value form at all.
+        p = fr["prov"].get(fn)
+        pname = p[1] if p is not None and p[0] == "load" else None
+        if pname in GenIR.JSON_CALLS and fr["res"].get(pname) == "novalue":
+            self._json_call(fr, dest, pname, args, ln)
+            return
+        if pname == "type_name" and fr.get("mod") == "<json>" and \
+                fr["res"].get(pname) in ("novalue", "auto"):
+            # private hook for runtime/json.hs only: x_tname. User
+            # code never sees it (resolves unknown at runtime).
+            if len(args) != 1:
+                raise HSErr("type_name wants type_name(x)", ln)
+            self._load(fr, args[0], ln)
+            a = self.a
+            a.mov_rr("rdi", "rax")
+            a.call("x_tname")
+            a.mov_mr("rbp", "rax", fr["slots"][dest])
+            return
         if fn in fr["floattemps"]:
-            p = fr["prov"].get(fn)
-            name = p[1] if p is not None and p[0] == "load" else None
+            name = pname
             if name == "float":
                 self._inline_float(fr, dest, args, ln)
             elif name in ("len", "str"):
@@ -1093,6 +1706,8 @@ class GenIR(Gen):
             elif name in ("read_text", "write_text", "append_text",
                           "exists", "ls", "mkdir"):
                 self._inline_file(fr, dest, name, args, ln)
+            elif name == "read_mem":
+                self._inline_read_mem(fr, dest, args, ln)
             else:
                 raise HSErr(f"IR: '{name}' not in irx64 subset yet", ln)
             return
@@ -1478,6 +2093,144 @@ class GenIR(Gen):
         a.label(lab_fsret)
         a.mov_mr("rbp", "rax", fr["slots"][dest])
 
+    def _inline_read_mem(self, fr, dest, args, ln):
+        a = self.a
+        if len(args) != 2:
+            raise HSErr("read_mem wants read_mem(ptr, nbytes)", ln)
+        self._load(fr, args[0], ln)
+        self.check_int(lambda: self.raise_static(
+            "read_mem wants read_mem(ptr, nbytes)", ln))
+        a.sar_ri8("rax", 2)
+        a.push_r("rax")
+        self._load(fr, args[1], ln)
+        self.check_int(lambda: self.raise_static(
+            "read_mem wants read_mem(ptr, nbytes)", ln))
+        a.sar_ri8("rax", 2)
+        a.mov_rr("rsi", "rax")
+        a.pop_r("rdi")
+        lab_rmok = self.new_tmp("rm")
+        a.test_rr("rsi", "rsi")
+        a.jcc("ns", lab_rmok)
+        self.raise_static("read_mem length must be >= 0", ln)
+        a.label(lab_rmok)
+        a.call("x_str_at")
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _js_entry(self, name, ln):
+        key = self.js_entries.get(name)
+        if key is None:
+            raise HSErr("IR: json entry missing", ln)
+        return self.flabel[key]
+
+    def _js_finish(self, dest, ln, fr, parse=False):
+        # rax = [err_or_null, payload]: payload to dest, else raise at ln
+        # (transliterated Gen.js_finish verbatim).
+        a = self.a
+        lab_ok = self.new_tmp("js")
+        a.mov_rm("r11", "rax", 24)
+        a.mov_rm("r10", "r11", 0)
+        a.cmp_ri32("r10", Gen.HS_NULL)
+        a.jcc("e", lab_ok)
+        a.mov_rr("rcx", "r10")
+        if parse:
+            pre = "json_parse failed: "
+            a.push_r("rcx")
+            a.lea_rip("rdi", self.rstr(pre))
+            a.mov_ri32("rsi", len(pre))
+            a.call("x_str_at")
+            a.pop_r("rsi")
+            a.mov_rr("rdi", "rax")
+            a.call("x_str_cat")
+            a.mov_rr("rdi", "rax")
+        else:
+            a.mov_rr("rdi", "rcx")
+        a.mov_ri32("rsi", ln)
+        a.jmp("hs_raise_msg")
+        a.label(lab_ok)
+        a.mov_rm("rax", "r11", 8)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _json_call(self, fr, dest, name, args, ln):
+        # transliterated Gen.ev_json over temps (same checks, messages,
+        # lines; entries are normal merged IR funcs reached through the
+        # shared call_js_entry convention).
+        a = self.a
+        want = {"json_parse": (1, "json_parse wants json_parse(str)"),
+                "json_str": (1, "json_str wants json_str(x)"),
+                "json_load": (1, "json_load wants json_load(path)"),
+                "json_save": (2, "json_save wants json_save(path, x)")}[name]
+        if len(args) != want[0]:
+            raise HSErr(want[1], ln)
+        a.call(self._init_label(self.modtab["<json>"]))
+        lab_ok = self.new_tmp("js")
+        lab_bad = self.new_tmp("js")
+        lab_go = self.new_tmp("js")
+        for ar in args:
+            self._load(fr, ar, ln)
+            a.push_r("rax")
+        if name in ("json_parse", "json_load", "json_save"):
+            for i in range(len(args)):
+                if name == "json_save" and i == 1:
+                    continue
+                off = 8 * (len(args) - 1 - i)
+                a.mov_rm("r11", "rsp", off)
+                a.and_ri32("r11", 3)
+                a.jcc("ne", lab_bad)
+                a.mov_rm("r11", "rsp", off)
+                a.mov_rm("r11", "r11", 0)
+                a.cmp_ri32("r11", Gen.K_STR)
+                a.jcc("ne", lab_bad)
+            a.jmp(lab_go)
+            a.label(lab_bad)
+            self.raise_static(want[1], ln)
+            a.label(lab_go)
+        if name == "json_save":
+            a.pop_r("rax")
+            self.call_js_entry(self._js_entry("js_encode", ln))
+            self._js_finish(dest, ln, fr)
+            a.push_r("rax")
+            a.mov_rm("rdi", "rsp", 8)
+            a.mov_ri32("rsi", 1)
+            a.mov_ri32("rdx", ln)
+            a.call("file_open")
+            a.push_r("rax")
+            a.mov_ri32("rdx", ln)
+            a.mov_rm("rsi", "rsp", 8)
+            a.mov_rm("rdi", "rsp", 0)
+            a.call("file_write_all")
+            a.mov_rm("rdi", "rsp", 0)
+            a.add_ri32("rsp", 24)
+            a.call("file_close")
+            a.mov_ri64("rax", Gen.HS_NULL)
+            a.mov_mr("rbp", "rax", fr["slots"][dest])
+            return
+        if name == "json_load":
+            a.mov_rm("rdi", "rsp", 0)
+            a.mov_ri32("rsi", 0)
+            a.mov_ri32("rdx", ln)
+            a.call("file_open")
+            a.push_r("rax")
+            a.mov_rr("rdi", "rax")
+            a.mov_ri32("rdx", ln)
+            a.call("file_read_all")
+            a.push_r("rax")
+            a.mov_rm("rdi", "rsp", 8)
+            a.call("file_close")
+            a.add_ri32("rsp", 8)
+            a.pop_r("rax")
+            a.add_ri32("rsp", 8)
+            self.call_js_entry(self._js_entry("js_decode", ln))
+            self._js_finish(dest, ln, fr, parse=True)
+            return
+        a.pop_r("rax")
+        if name == "json_parse":
+            self.call_js_entry(self._js_entry("js_decode", ln))
+            self._js_finish(dest, ln, fr, parse=True)
+            return
+        self.call_js_entry(self._js_entry("js_encode", ln))
+        self._js_finish(dest, ln, fr)
+        return
+
     def _mkfunc(self, fr, dest, qname, ln):
         # transliterated Gen ex-def: captures evaluated in the defining
         # frame, Func = [kind][code][nparams][name][caps...].
@@ -1536,16 +2289,40 @@ class GenIR(Gen):
             elif op == "load":
                 if ins["dest"] in fr["floattemps"]:
                     a.mov_ri32("rax", 0)  # dummy: inline call ignores it
+                    a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
                 elif ins["dest"] in fr.get("deadloads", ()):
                     pass  # chain-only alias use: nothing to materialize
+                elif self._alias_visible(fr, ins["name"]) is not None and \
+                        fr["uses"].get(ins["dest"], []) and all(
+                            u in {("attr", "obj"), ("print", "arg"),
+                                  ("setattr", "obj"), ("stvar", "src"),
+                                  ("stglobal", "src")} for u in
+                            fr["uses"][ins["dest"]]):
+                    pass  # copy-alias use: static only (aliases can be
+                    # recorded mid-emission by an earlier copy)
                 else:
                     self._load(fr, ins["name"], ln)
-                a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
+                    a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
             elif op == "stvar":
+                r = self._modref(fr, ins["src"])
+                sub = None
+                if r is not None and r[0] == "mod":
+                    sub = r[1]
+                elif r is not None:
+                    rr = self._mod_attr(r[1], r[2], ln)
+                    if rr[0] == "sub":
+                        sub = rr[1]
+                if sub is not None:
+                    # module alias copy: rebind, no code (x64gen parity);
+                    # a later plain write drops it again below.
+                    fr.setdefault("aliases", {})[ins["name"]] = sub
+                    continue
                 self._load(fr, ins["src"], ln)
+                fr.get("aliases", {}).pop(ins["name"], None)
                 self._store(fr, ins["name"], ln)
             elif op == "stglobal":
                 self._load(fr, ins["src"], ln)
+                fr.get("aliases", {}).pop(ins["name"], None)
                 lab = self._glabel(ins["name"], fr["mod"])
                 a.lea_rip("rcx", lab)
                 a.mov_mr("rcx", "rax", 0)
@@ -1651,6 +2428,50 @@ class GenIR(Gen):
                 self._iterseq(fr, ins["dest"], ins["src"], ln)
             elif op == "phi":
                 pass  # lowered as moves on incoming edges, not here
+            elif op == "sconst":
+                self._sconst(fr, ins["dest"], ins["stype"], ins["val"], ln)
+            elif op == "sload":
+                self._sload(fr, ins["dest"], ins["name"], ln)
+            elif op == "sdecl":
+                self._sdecl(fr, ins["name"], ins["src"], ln)
+            elif op == "sset":
+                self._sset(fr, ins["name"], ins["src"], ln)
+            elif op == "sstore":
+                self._sstore(fr, ins["ptr"], ins["val"], ln)
+            elif op == "sfstore":
+                self._sfstore(fr, ins["obj"], ins["name"], ins["idx"],
+                              ins["val"], ln)
+            elif op == "sbin":
+                self._sbin(fr, ins["dest"], ins["binop"], ins["l"],
+                           ins["r"], ln)
+            elif op == "sun":
+                self._sun(fr, ins["dest"], ins["unop"], ins["v"], ln)
+            elif op == "scall":
+                self._scall(fr, ins["dest"], ins["name"], ins["args"], ln)
+            elif op == "svarptr":
+                self._svarptr(fr, ins["dest"], ins["conv"], ins["var"], ln)
+            elif op == "sderef":
+                self._sderef(fr, ins["dest"], ins["v"], ln)
+            elif op == "sfield":
+                self._sfield(fr, ins["dest"], ins["obj"], ins["name"],
+                             ins["idx"], ln)
+            elif op == "box":
+                self._sbox(fr, ins["dest"], ins["src"], ln)
+            elif op == "sraw":
+                self._sraw(fr, ins["dest"], ins["src"], ln)
+            elif op == "sstr":
+                raise HSErr("strings not allowed in unsafe (use unsafe: "
+                            "outside)", ln)
+            elif op == "serr":
+                raise HSErr(ins["xmsg"], ln)
+            elif op == "ssizeof":
+                from interp import HS_STRUCTS
+                st = ins["stype"]
+                if st not in ("I64", "U64", "Ptr") and st not in HS_STRUCTS:
+                    raise HSErr(f"unknown struct '{st}'", ln)
+                a.mov_ri32("rax", 8 if st in ("I64", "U64", "Ptr")
+                           else HS_STRUCTS[st]["size"])
+                a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
             else:
                 raise HSErr(f"IR: '{op}' not in irx64 subset yet", ln)
         tm = blk["term"]
@@ -1661,7 +2482,14 @@ class GenIR(Gen):
         elif tm["term"] == "br":
             self._load(fr, tm["cond"], ln)
             lab_e = self.new_tmp("bre")
-            self.truthy_br(lab_e)
+            if self._is_raw_temp(fr, tm["cond"]):
+                # unsafe conditions are raw words (sev `!= 0`): plain
+                # test, not the tagged truthiness path (raw 0 must be
+                # falsy; the tag check would misread it).
+                a.test_rr("rax", "rax")
+                a.jcc("e", lab_e)
+            else:
+                self.truthy_br(lab_e)
             self._phi_moves(fr, blk["label"], by[tm["then"]])
             a.jmp(self._blabel(key, tm["then"]))
             a.label(lab_e)

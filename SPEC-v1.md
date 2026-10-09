@@ -1,6 +1,6 @@
 # holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
 
-> สถานะ: v0.6.27 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
+> สถานะ: v0.6.28 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
 > kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
 > หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
 > งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
@@ -1198,3 +1198,41 @@ unsafe = งานหลัง; ref ปฏิเสธเองอีก 9)
 หลักฐาน: `test_ir.py` 86 -> 108 (10 เคส try + corpus t_try/t_finally/
 t_closure/t_circ ผ่าน), `test_irx64.py` 18 -> 22, ฟัซซ์ try 350 เคส
 บวก x64-diff 370 เคสตรงกันหมด
+
+### 15.42 `unsafe:` บน IR ทั้งสองชั้น + xbuild สับไป IR (v0.6.28, Task 4 part 5 + switchover)
+
+- `ir.py`: static world เป็น ops จริง ไม่ใช่ตัวแปร Python ซ่อนไว้
+  - ค่าคงที่/ดึงตัวแปร/เอาเครื่องหมาย: `sconst`, `sload`, `sraw`, `snz`,
+    `sbin`, `sun`, `sfield`, `sderef`, `ssizeof`, `scall`
+  - พิมพ์/อ่านเขียน/ผูก: `sdecl`, `sset`, `sstore`, `sfstore`, `box`,
+    `svarptr` (as_ptr/as_int ของตัวแปรตรง — x64gen ไม่ unbox ก่อนแต่
+    ให้ dispatch ที่ tag เป็นตัวตัดสิน โค้ดเดียวกับ x64gen)
+  - error ที่ผูกกับ shape (`str`/`float` literal, collections, attr, slice,
+    call ผลลัพธ์) ย้ายไปเป็น `serr` runtime พร้อมข้อความสองฝั่ง (`imsg`
+    ของ interp / `xmsg` ของ x64) เพื่อให้ stdout ตรงกันแม้ตอน error
+    ตำแหน่งจะต่างกัน (build ของ x64gen vs runtime ของ interp)
+  - interpreter: `UnsafeVal` ตาม `interp.sev*` เป๊ะ — I64/U64/Ptr/LIT
+    ห้ามผสม, ชี้เป็น `Ptr` ไม่ได้, `U64` ใหญ่เกิน Int box ไม่ได้; หน่วยความจำ
+    จำลอง 1MB (`_us_alloc/_us_load/_us_store`) + `read_mem` ผูกกับ image นั้น
+  - ตัวแปรที่ถูก `sdecl` แล้วอ่านจาก safe code ต้อง coerce กลับ
+    (`dset`) ไม่ใช่ทับด้วยค่า dynamic ตรงๆ
+- `irx64.py`: lowering ตาม `sev*`/`ex_unsafe` ของ x64gen แบบคำต่อคำ
+  (raw word ไม่มี tag check, `/` ตัดทิ้ง, `print` ใช้ `print_int`, `fstore`
+  ดัน address ก่อนโหลดค่า, `as_ptr` dispatch tag), `struct` ชนิดของ pointer
+  มาจาก `Ptr:X` declaration + propagation `+`/`-` + field ซ้อน (`_struct_of`),
+  ชื่อซ้ำใน scope เดียวกัน fail ตอน build, `serr`/`ssizeof` ใช้ข้อความฝั่ง x64
+- JSON บน IR: `runtime/json.hs` คอมไพล์เป็น module ปกติ (`<json>`) แล้ว
+  `json_*` เรียกผ่าน `call_js_entry` + `js_finish` ชุดเดิม, hook เดียวคือ
+  `type_name` ในโมดูลนั้น (ตรงกับ AST path เดิม)
+- **Switchover**: `x64gen.build_x64` เดิน parse → IR → verify → GenIR แล้ว;
+  path เก่าย้ายไปชื่อ `build_x64_ast` ใช้เป็น reference ของ `test_irx64.py`
+  และยังเป็นทางที่ `xkernel` (freestanding) ใช้อยู่
+- ฟัซซ์จับได้: nested `and`/`or` ทำ phi arm ชี้ non-predecessor
+  (ต้องอ่าน label ปลายทางจริงหลัง evaluate), `sraw` ปนเข้า `sbin`,
+  `ssizeof` ทำให้ struct ไม่รู้จักตอน build, module alias copy
+  (`x = mod`) เคยตายเพราะ alias เกิดตอน emit แต่ dead-load คำนวณตอน plan
+
+หลักฐาน: `test_x64.py` 52/52 ผ่านบน IR path, `test_irx64.py` 22 -> 35
+(เทียบ ELF ชน ELF กับ path เก่า, เคสที่ต่างกันขึ้น flag `!!` พร้อมบันทึกว่า
+IR path ตรงกว่า เช่น segfault ของ `tests/ufunc.hs` ที่ path เก่าพัง),
+`test_ir.py` 108 -> 134, ฟัซซ์ 480 เคส (IR + x64) ตรงกันหมด

@@ -28,6 +28,12 @@ and executes it byte-identically to `interp.py` (`python3 tests/test_ir.py`).
 New backends consume IR, never AST. Gaps fail fast as `IR: unsupported '<t>'`.
 `irx64.py` lowers IR to x86-64 reusing x64gen's runtime/emitters
 (`python3 tests/test_irx64.py`: IR-path ELF vs AST-path ELF).
+Hosted `xbuild` goes through the IR (parse -> IR -> verify -> GenIR); the
+legacy AST-direct backend stays reachable as `x64gen.build_x64_ast` and is
+what `xkernel` (freestanding) still uses. `unsafe:` is part of the IR
+(`sconst/sload/sbin/sfield/scall/...` ops; `IR: unsupported 'udecl'` no
+longer fires) — the IR interpreter follows interp's strict static typing,
+the x64 lowering stays type-blind exactly like the AST path it replaced.
 
 ## Tooling you can call instead of guessing
 

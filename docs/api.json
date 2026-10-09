@@ -1,6 +1,6 @@
 {
  "language": "holyshit",
- "version": "0.6.26",
+ "version": "0.6.28",
  "keywords": {
   "def": "define a function: `def name(params):` + indented body",
   "if": "conditional branch (with `elif` / `else`)",

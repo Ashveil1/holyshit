@@ -10724,6 +10724,45 @@ def build_x64(prog_path, out_path):
     except HSErr as e:
         print(str(e), file=sys.stderr)
         return 1
+    # Hosted x64 builds go through the IR (Task 4 switchover): parse to
+    # IR, verify, lower with GenIR (which reuses Gen's runtime). The AST
+    # path (Gen.build_image) stays for freestanding xkernel builds only.
+    import ir as _IR
+    from irx64 import GenIR
+    try:
+        irm = _IR.build_module(prog)
+        _IR.verify_module(irm)
+    except HSErr as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    g = GenIR(irm, _os.path.dirname(_os.path.abspath(prog_path)))
+    try:
+        img = g.build_ir_image()
+    except HSErr as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    with open(out_path, "wb") as f:
+        f.write(img)
+    _os.chmod(out_path, 0o755)
+    print(f"ok: x64 -> {out_path} ({len(img)} bytes, no gcc)")
+    return 0
+
+
+def build_x64_ast(prog_path, out_path):
+    """Legacy AST-direct hosted build (kept for differential triage)."""
+    import os as _os
+    interp.reset_parse_state()
+    try:
+        with open(prog_path, encoding="utf-8") as f:
+            src = f.read()
+    except OSError as e:
+        print(f"error: cannot read {prog_path}: {e.strerror or e}", file=sys.stderr)
+        return 1
+    try:
+        prog = interp.parse_program(src)
+    except HSErr as e:
+        print(str(e), file=sys.stderr)
+        return 1
     g = Gen(prog, prog_path)
     mod = {"name": "<main>", "prog": prog, "pfx": "",
            "scope": Gen.Scope(),
