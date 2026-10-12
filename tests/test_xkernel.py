@@ -56,6 +56,14 @@ def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None, disk=None):
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.connect(msock)
             s.sendall(f"sendkey {key}\n".encode())
+            # wait for the monitor to consume the command; closing right
+            # away can drop it on a loaded runner
+            s.settimeout(2)
+            try:
+                s.recv(4096)
+                time.sleep(0.3)
+            except OSError:
+                pass
             s.close()
         time.sleep(timeout)
     finally:
