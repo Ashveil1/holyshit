@@ -316,17 +316,18 @@ with tempfile.TemporaryDirectory() as _d:
         print("FAIL gc bound: build failed")
         fails += 1
     else:
-        _of = os.path.join(_d, "out.txt")
-        with open(_of, "w") as _fo:
-            _p = subprocess.Popen([_exe], stdout=_fo)
-            _pid, _status, _ru = os.wait4(_p.pid, 0)
-        _p.returncode = os.waitstatus_to_exitcode(_status)
-        _out = open(_of).read().strip()
-        _mb = _ru.ru_maxrss // 1024
-        if _p.returncode == 0 and _out == "48888890" and _mb < 50:
-            print(f"ok   gc bound: alloc bench peak {_mb} MB (<50)")
+        import resource as _res
+
+        def _cap():
+            # address-space cap: the old bump allocator needed ~690 MB
+            _res.setrlimit(_res.RLIMIT_AS, (100 << 20, 100 << 20))
+        _p = subprocess.run([_exe], stdout=subprocess.PIPE,
+                            preexec_fn=_cap, timeout=120)
+        _out = _p.stdout.decode().strip()
+        if _p.returncode == 0 and _out == "48888890":
+            print("ok   gc bound: alloc bench runs under a 100 MB address-space cap")
         else:
-            print(f"FAIL gc bound: rc={_p.returncode} out={_out!r} peak={_mb} MB")
+            print(f"FAIL gc bound: rc={_p.returncode} out={_out!r} (cap 100 MB)")
             fails += 1
 
 print(f"{total - fails}/{total} passed")
