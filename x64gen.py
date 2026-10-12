@@ -9360,15 +9360,8 @@ class Gen:
         a.pop_r("rbp")
         a.ret()
 
-    def emit_runtime(self):
+    def emit_malloc(self):
         a = self.a
-        self.reserve("cmd_argc_", 8)
-        self.reserve("cmd_argv_", 8)
-        self.emit_argv_build()
-        self.emit_input_read()
-        self.emit_env_scan()
-        self.emit_file_helpers()
-        self.emit_system_run()
         # x_malloc: rdi = bytes -> bump pointer over 16MB mmap arenas.
         # Never frees (arena semantics, like the kernel heap). exit(99) on failure.
         a.label("x_malloc")
@@ -9438,6 +9431,17 @@ class Gen:
         a.mov_rm("rdi", "rsp", 8)
         a.call("x_malloc")
         a.ret()
+
+    def emit_runtime(self):
+        a = self.a
+        self.reserve("cmd_argc_", 8)
+        self.reserve("cmd_argv_", 8)
+        self.emit_argv_build()
+        self.emit_input_read()
+        self.emit_env_scan()
+        self.emit_file_helpers()
+        self.emit_system_run()
+        self.emit_malloc()
         self.emit_fmt_int()
         self.emit_print_int()
         self.emit_val_runtime()
