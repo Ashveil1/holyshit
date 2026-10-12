@@ -82,7 +82,7 @@ python3 tests/test_irx64.py    # IR->x64 เทียบกับ path เก่
 python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (291 เคส)
 python3 tests/test_examples.py # ตัวอย่างทุกไฟล์ยังรันได้จริง (17)
 python3 tests/test_lsp.py      # language server ผ่าน stdio (25 เคส)
-python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (38)
+python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (40)
 ```
 
 กติกาเทส: `tests/<name>.hs` + `.expected` (stdout), `.stdin` (input),
