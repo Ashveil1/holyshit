@@ -1,0 +1,14 @@
+300
+44850
+300
+0
+1
+6
+594
+55
+{: 1, a: 2, ab: 3, abc: 4, b: 5, ba: 6, bab: 7, abcd: 8, abcde: 9, c: 10}
+true
+false
+300
+key 'nope' not found at line 48
+key 'abcdef' not found at line 52

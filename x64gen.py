@@ -8788,8 +8788,12 @@ class Gen:
         a.ret()
 
     def emit_dict_helpers(self):
-        """Dict runtime: K_DICT = [kind][len][cap][buf], buf holding
-        interleaved (key, value) words. Linear key scan, insertion order."""
+        """Dict runtime: K_DICT = [kind][len][cap][buf][idx], buf holding
+        interleaved (key, value) words in insertion order. Up to 7 keys
+        are found by linear scan; from 8 keys on, idx points at an open
+        addressing hash table [mask][slot...] (slot = pair index + 1,
+        0 = empty, FNV-1a of the key bytes, linear probing, load <= 0.5)
+        that is rebuilt when buf grows."""
         a = self.a
         KD = Gen.K_DICT
         # x_dict_new: rdi = n -> rax = dict (len 0, cap n)
@@ -8814,12 +8818,13 @@ class Gen:
         a.call("x_malloc")
         a.mov_mr("rbp", "rax", -24)     # buf
         a.label(lab_dnb2)
-        a.mov_ri32("rdi", 32)
+        a.mov_ri32("rdi", 40)
         a.call("x_malloc")
         a.mov_mr("rbp", "rax", -32)     # obj
         a.mov_ri32("rcx", KD)
         a.mov_mr("rax", "rcx", 0)       # kind
         a.mov_ri32("rcx", 0)
+        a.mov_mr("rax", "rcx", 32)      # idx = 0 (hash index built at 8+ keys)
         a.mov_mr("rax", "rcx", 8)       # len = 0
         a.mov_rm("rcx", "rbp", -8)
         a.mov_mr("rax", "rcx", 16)      # cap = n
@@ -8836,6 +8841,16 @@ class Gen:
         a.sub_ri32("rsp", 48)
         a.mov_mr("rbp", "rdi", -8)      # dict
         a.mov_mr("rbp", "rsi", -16)     # key
+        lab_lin = self.new_tmp("dc")
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 8)       # len
+        a.cmp_ri32("rax", 8)
+        a.jcc("b", lab_lin)             # small dict: linear scan
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 32)      # idx
+        a.test_rr("rax", "rax")
+        a.jcc("ne", "dc_hash_find")
+        a.label(lab_lin)
         a.mov_ri32("rax", 0)
         a.mov_mr("rbp", "rax", -24)     # w
         a.mov_rm("rax", "rbp", -8)
@@ -8870,6 +8885,158 @@ class Gen:
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
         a.ret()
+        # hashed path of x_dict_find (frame: -8 dict, -16 key as above)
+        a.label("dc_hash_find")
+        a.mov_rm("rdi", "rbp", -16)
+        a.call("x_dict_hash")
+        a.mov_rm("rdx", "rbp", -8)
+        a.mov_rm("rcx", "rdx", 32)      # idx
+        a.mov_rm("rcx", "rcx", 0)       # mask
+        a.mov_mr("rbp", "rcx", -32)     # mask
+        a.and_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -24)     # pos
+        lab_hp = self.new_tmp("dc")
+        a.label(lab_hp)
+        a.mov_rm("rdx", "rbp", -8)
+        a.mov_rm("rcx", "rdx", 32)      # idx
+        a.mov_rm("rax", "rbp", -24)     # pos
+        a.mov_rmx("rax", "rcx", "rax", 8, 8)   # slot = idx[1 + pos]
+        a.test_rr("rax", "rax")
+        a.jcc("e", "dc_no")             # empty slot: key absent
+        a.sub_ri32("rax", 1)
+        a.shl_ri8("rax", 1)             # w = (slot - 1) * 2
+        a.mov_mr("rbp", "rax", -40)
+        a.mov_rm("rcx", "rdx", 24)      # buf
+        a.mov_rmx("rdi", "rcx", "rax", 8, 0)
+        a.mov_rm("rsi", "rbp", -16)
+        a.call("x_str_cmp")
+        a.test_rr("rax", "rax")
+        lab_hmiss = self.new_tmp("dc")
+        a.jcc("ne", lab_hmiss)
+        a.mov_rm("rax", "rbp", -40)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        a.label(lab_hmiss)
+        a.mov_rm("rax", "rbp", -24)
+        a.add_ri32("rax", 1)
+        a.mov_rm("rcx", "rbp", -32)
+        a.and_rr("rax", "rcx")
+        a.mov_mr("rbp", "rax", -24)
+        a.jmp(lab_hp)
+        # x_dict_hash: rdi = Str -> rax = FNV-1a 64 of the bytes, folded
+        # (clobbers rax rcx rdx r8 r9 r10)
+        a.label("x_dict_hash")
+        a.mov_rr("r10", "rdi")
+        a.mov_rm("rcx", "r10", 8)       # len
+        a.mov_ri64("rax", 0xCBF29CE484222325)
+        a.mov_ri64("r8", 0x100000001B3)
+        a.mov_ri32("rdx", 0)
+        lab_ht, lab_hd = self.new_tmp("dc"), self.new_tmp("dc")
+        a.label(lab_ht)
+        a.cmp_rr("rdx", "rcx")
+        a.jcc("ae", lab_hd)
+        a.movzx_rm8x("r9", "r10", "rdx", 1, 16)
+        a.xor_rr("rax", "r9")
+        a.imul_rr("rax", "r8")
+        a.add_ri32("rdx", 1)
+        a.jmp(lab_ht)
+        a.label(lab_hd)
+        a.mov_rr("rdx", "rax")
+        a.shr_ri8("rdx", 32)
+        a.xor_rr("rax", "rdx")
+        a.ret()
+        # x_dict_idx_add: rdi = dict, rsi = pair index; the key is known to
+        # be absent from the table and the table has room
+        a.label("x_dict_idx_add")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)      # dict
+        a.mov_mr("rbp", "rsi", -16)     # pair index
+        a.mov_rm("rcx", "rdi", 24)      # buf
+        a.shl_ri8("rsi", 1)
+        a.mov_rmx("rdi", "rcx", "rsi", 8, 0)    # key = buf[2 * i]
+        a.call("x_dict_hash")
+        a.mov_rm("rdx", "rbp", -8)
+        a.mov_rm("rcx", "rdx", 32)      # idx
+        a.mov_rm("rsi", "rcx", 0)       # mask
+        a.and_rr("rax", "rsi")          # pos
+        lab_ap, lab_ad = self.new_tmp("dc"), self.new_tmp("dc")
+        a.label(lab_ap)
+        a.mov_rmx("rdx", "rcx", "rax", 8, 8)
+        a.test_rr("rdx", "rdx")
+        a.jcc("e", lab_ad)
+        a.add_ri32("rax", 1)
+        a.and_rr("rax", "rsi")
+        a.jmp(lab_ap)
+        a.label(lab_ad)
+        a.mov_rm("rdx", "rbp", -16)
+        a.add_ri32("rdx", 1)            # slot = pair index + 1
+        a.mov_mrx("rcx", "rax", 8, 8, "rdx")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_dict_reindex: rdi = dict; (re)build the whole hash table sized
+        # for the current cap (power of two >= 2 * cap)
+        a.label("x_dict_reindex")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)      # dict
+        a.mov_rm("rax", "rdi", 16)      # cap
+        a.shl_ri8("rax", 1)             # want = 2 * cap
+        a.mov_ri32("rcx", 8)            # n = 8
+        lab_rn, lab_rd = self.new_tmp("dc"), self.new_tmp("dc")
+        a.label(lab_rn)
+        a.cmp_rr("rcx", "rax")
+        a.jcc("ae", lab_rd)
+        a.shl_ri8("rcx", 1)
+        a.jmp(lab_rn)
+        a.label(lab_rd)
+        a.mov_mr("rbp", "rcx", -16)     # n
+        a.add_ri32("rcx", 1)
+        a.shl_ri8("rcx", 3)             # (n + 1) * 8 bytes
+        a.mov_mr("rbp", "rcx", -40)     # bytes
+        a.mov_rr("rdi", "rcx")
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -24)     # table
+        a.mov_ri32("rdx", 0)
+        lab_zt, lab_zd = self.new_tmp("dc"), self.new_tmp("dc")
+        a.mov_rm("rcx", "rbp", -40)
+        a.mov_ri32("rsi", 0)
+        a.label(lab_zt)                 # zero the whole table
+        a.cmp_rr("rsi", "rcx")
+        a.jcc("ae", lab_zd)
+        a.mov_mrx("rax", "rsi", 1, 0, "rdx")
+        a.add_ri32("rsi", 8)
+        a.jmp(lab_zt)
+        a.label(lab_zd)
+        a.mov_rm("rcx", "rbp", -16)
+        a.sub_ri32("rcx", 1)            # mask = n - 1
+        a.mov_mr("rax", "rcx", 0)
+        a.mov_rm("rdx", "rbp", -8)
+        a.mov_mr("rdx", "rax", 32)      # dict[32] = table
+        a.mov_ri32("rcx", 0)
+        a.mov_mr("rbp", "rcx", -32)     # i = 0
+        lab_ri, lab_rf = self.new_tmp("dc"), self.new_tmp("dc")
+        a.label(lab_ri)
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rm("rdx", "rbp", -8)
+        a.mov_rm("rcx", "rdx", 8)       # len
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_rf)
+        a.mov_rr("rdi", "rdx")
+        a.mov_rr("rsi", "rax")
+        a.call("x_dict_idx_add")
+        a.mov_rm("rax", "rbp", -32)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -32)
+        a.jmp(lab_ri)
+        a.label(lab_rf)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
         # x_dict_set: rdi = dict, rsi = key Str, rdx = value -> Null
         a.label("x_dict_set")
         a.push_r("rbp")
@@ -8878,6 +9045,8 @@ class Gen:
         a.mov_mr("rbp", "rdi", -8)      # dict
         a.mov_mr("rbp", "rsi", -16)     # key
         a.mov_mr("rbp", "rdx", -24)     # value
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -56)     # isnew = 0
         a.call("x_dict_find")
         a.mov_mr("rbp", "rax", -32)     # w
         a.mov_rr("r11", "rax")
@@ -8913,6 +9082,8 @@ class Gen:
         a.mov_rm("rax", "rbp", -40)
         a.mov_mr("rcx", "rax", 16)      # dict[16] = newcap
         a.label("dc_set_new")
+        a.mov_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -56)     # isnew = 1
         a.mov_rm("rax", "rbp", -8)
         a.mov_rm("rax", "rax", 8)       # len
         a.mov_rr("r11", "rax")
@@ -8932,6 +9103,31 @@ class Gen:
         a.add_ri32("rax", 1)
         a.mov_rm("rdx", "rbp", -24)     # value
         a.mov_mrx("r10", "rax", 8, 0, "rdx")
+        lab_sx = self.new_tmp("dc")
+        a.mov_rm("rax", "rbp", -56)
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_sx)              # overwrite: index unchanged
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rax", "rdi", 8)       # len (already counts the new pair)
+        a.cmp_ri32("rax", 8)
+        a.jcc("b", lab_sx)              # small dict: no index
+        a.mov_rm("rax", "rdi", 32)      # idx
+        lab_rb = self.new_tmp("dc")
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_rb)              # first time at 8 keys: build
+        a.mov_rm("rcx", "rax", 0)       # mask
+        a.add_ri32("rcx", 1)            # table slots
+        a.mov_rm("rdx", "rdi", 16)      # cap
+        a.shl_ri8("rdx", 1)
+        a.cmp_rr("rcx", "rdx")
+        a.jcc("b", lab_rb)              # table smaller than 2 * cap: rebuild
+        a.mov_rm("rsi", "rdi", 8)
+        a.sub_ri32("rsi", 1)            # pair index of the new key
+        a.call("x_dict_idx_add")
+        a.jmp(lab_sx)
+        a.label(lab_rb)
+        a.call("x_dict_reindex")
+        a.label(lab_sx)
         a.mov_ri64("rax", Gen.HS_NULL)
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
