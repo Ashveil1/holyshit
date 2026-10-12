@@ -380,8 +380,12 @@ with tempfile.TemporaryDirectory() as d:
     rc = build_x64(os.path.join(ROOT, "kernel", "uush.hs"), uu)
     check("uush build clean", rc == 0)
     uh = os.path.join(d, "hi.elf")
-    rc = build_x64(os.path.join(ROOT, "kernel", "uuhi.hs"), uh)
-    check("uuhi build clean", rc == 0)
+    import io as _io
+    from contextlib import redirect_stderr as _rs
+    _eb = _io.StringIO()
+    with _rs(_eb):
+        rc = build_x64(os.path.join(ROOT, "kernel", "uuhi.hs"), uh)
+    check("uuhi build clean", rc == 0, _eb.getvalue()[-600:])
     shutil.copy(uu, os.path.join(shd, "bin", "uush"))
     shutil.copy(uh, os.path.join(shd, "bin", "hi"))
     srd = os.path.join(d, "shell.krfs")
