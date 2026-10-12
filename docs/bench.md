@@ -23,3 +23,17 @@
 - งาน int/เรียกฟังก์ชัน เร็วกว่า CPython ~5-6x แล้ว
 - สองจุดที่ต้องแก้ก่อนจะอ้างว่า "เร็วกว่า Python": dict แบบ hash จริง และตัวจัดสรรหน่วยความจำที่ free ได้ (ดู `ROADMAP.md` เฟส 1)
 - ตัวเลข interp.py (tree-walk): fib(22) 436 ms เทียบ CPython 15 ms — ใช้เป็นข้อกำหนดพฤติกรรม ไม่ใช่ทางที่เร็ว
+
+## หลังเพิ่ม GC (P1, branch p1-gc)
+
+conservative mark-sweep บน IR→x64 (`gcrt.py`): เก็บเฉพาะที่ safe point (ทางเข้าฟังก์ชัน / หัวลูป)
+roots = stack + data segment + บล็อก `unsafe alloc` (pinned). `x64`/kernel runtime ไม่เปลี่ยน.
+
+| bench | ก่อน | หลัง |
+|---|---|---|
+| alloc (5M strings) | 0.60 s, 687 MB | 0.45 s, 9-16 MB |
+| fib / loop / dict | - | ไม่ต่างจากเดิมอย่างมีนัย |
+| strings (3M live strs) | 0.32 s | 0.66 s (header 16B + bitmap + GC scan) |
+
+ทดสอบ: `tests/x64/gc_stress.hs` (diff กับ interp), `gc bound` ใน test_x64 (alloc bench < 50 MB),
+และรัน suites ทั้งหมดด้วย GC ทุก 4 KB ผ่าน (ใช้ตอนพัฒนา).

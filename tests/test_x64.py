@@ -306,5 +306,29 @@ with tempfile.TemporaryDirectory() as _d:
 print(f"corpus skipped (outside x64 subset): {nskip}")
 print(f"corpus known x64 divergences: {nknown}")
 
+# ---------- GC: the alloc bench must run in bounded memory ----------
+# 5M short-lived strings used to cost ~690 MB (bump allocator, no free).
+total += 1
+with tempfile.TemporaryDirectory() as _d:
+    _exe = os.path.join(_d, "alloc_bench")
+    _rc = build_x64(os.path.join(ROOT, "bench", "alloc.hs"), _exe)
+    if _rc != 0:
+        print("FAIL gc bound: build failed")
+        fails += 1
+    else:
+        import resource as _res
+
+        def _cap():
+            # address-space cap: the old bump allocator needed ~690 MB
+            _res.setrlimit(_res.RLIMIT_AS, (100 << 20, 100 << 20))
+        _p = subprocess.run([_exe], stdout=subprocess.PIPE,
+                            preexec_fn=_cap, timeout=120)
+        _out = _p.stdout.decode().strip()
+        if _p.returncode == 0 and _out == "48888890":
+            print("ok   gc bound: alloc bench runs under a 100 MB address-space cap")
+        else:
+            print(f"FAIL gc bound: rc={_p.returncode} out={_out!r} (cap 100 MB)")
+            fails += 1
+
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)

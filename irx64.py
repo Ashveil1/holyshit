@@ -51,6 +51,10 @@ INLINE_DIRECT = {"float", "len", "str", "int", "range", "append",
 
 
 class GenIR(Gen):
+    def emit_malloc(self):
+        import gcrt
+        gcrt.emit_gc_malloc(self)
+
     def __init__(self, irmod, prog_dir):
         Gen.__init__(self, [], freestanding=False)
         self.irmod = irmod
@@ -2288,9 +2292,46 @@ class GenIR(Gen):
                     self.a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
                     break
 
+    def _gc_point(self):
+        # safe point: collect when the allocator asked for it. rax is
+        # saved around the flag test (x_gc itself saves every register).
+        a = self.a
+        skip = self.new_tmp("gcp")
+        a.push_r("rax")
+        a.mov_rm_rip("rax", "gc_pend_")
+        a.test_rr("rax", "rax")
+        a.pop_r("rax")
+        a.jcc("e", skip)
+        a.call("x_gc")
+        a.label(skip)
+
+    def _gc_heads(self, by):
+        # labels targeted by a backward (or self) jump: loop headers
+        c = getattr(self, "_gc_head_cache", None)
+        if c is None:
+            c = self._gc_head_cache = {}
+        k = id(by)
+        if k not in c:
+            order = {lab: i for i, lab in enumerate(by)}
+            heads = set()
+            for lab, b in by.items():
+                tm = b["term"]
+                outs = []
+                if tm["term"] == "jmp":
+                    outs = [tm["to"]]
+                elif tm["term"] == "br":
+                    outs = [tm["then"], tm["els"]]
+                for t in outs:
+                    if order[t] <= order[lab]:
+                        heads.add(t)
+            c[k] = (by, heads)  # keep `by` alive so id() stays unique
+        return c[k][1]
+
     def _emit_block(self, fr, key, blk, by):
         a = self.a
         a.label(self._blabel(key, blk["label"]))
+        if self._gc_heads(by).__contains__(blk["label"]):
+            self._gc_point()
         for ins in blk["instrs"]:
             op = ins["op"]
             ln = ins["line"]
@@ -2582,6 +2623,7 @@ class GenIR(Gen):
         if fr["nloc"]:
             a.sub_ri32("rsp", 8 * fr["nloc"])
         self.frame_init_unbound(fr["nloc"])
+        self._gc_point()
         by = {b["label"]: b for b in fdef["blocks"]}
         for blk in fdef["blocks"]:
             self._emit_block(fr, key, blk, by)
@@ -2589,6 +2631,7 @@ class GenIR(Gen):
     # ----- image -----
 
     def build_ir_image(self):
+        self.a.data_label("gc_data_lo")
         self._plan()
         for nm in sorted(self.mglob):
             self._glabel(nm, "")
@@ -2610,6 +2653,7 @@ class GenIR(Gen):
         a.lea_rip("rcx", "cmd_argv_")
         a.mov_mr("rcx", "rax", 0)
         a.and_ri32("rsp", -16)
+        a.mov_mr_rip("gc_stk_", "rsp")
         a.call("hs_main")
         a.mov_rr("rdi", "rax")
         a.mov_ri32("rax", 60)
@@ -2646,6 +2690,9 @@ class GenIR(Gen):
             a.data_qword(0)
             a.data_label("exc_vals")
             a.data_bytes(b"\0" * (Gen.EXC_VSZ * Gen.EXC_VMAX))
+        a.data_label("gc_data_hi")
+        import gcrt
+        gcrt.gc_data(a)
         a.label("sp_")
         a.code += b" "
         a.label("nl_")
