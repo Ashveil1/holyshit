@@ -1,6 +1,7 @@
 # holyshit — วิสัยทัศน์ (VISION)
 
 > เขียนเมื่อ 2026-10-12 ที่สถานะ **v0.6.30** จากเป้าหมายที่เจ้าของโปรเจกต์ (Ash) บอกไว้เอง
+> แก้ครั้งที่ 2 หลังอ่านโค้ดจริง + รันเทส + วัด benchmark เทียบ CPython (ดู `docs/bench.md`)
 > ไฟล์นี้คือ "เป้าหมายที่เปิดดูได้ทุกเมื่อ" — แผนลงมือทำอยู่ที่ [`ROADMAP.md`](ROADMAP.md)
 >
 > ป้ายในไฟล์นี้: **[เอกสาร]** = มีเขียนไว้ใน SPEC/docs/commit จริง ·
@@ -24,15 +25,16 @@ holyshit (hs) จะเป็นภาษาที่:
 
 ## สถานะต่อเป้าหมายแต่ละข้อ (ที่ v0.6.30)
 
-### 1. เร็วกว่า Python — **ทำได้บางส่วน, ยังไม่มี benchmark เทียบ Python**
-- [วัดจริง] SPEC §10, §13: fib(22) interp 0.85s → native 0.009s (~95x); fib(25) interp 3.79s,
-  native(gcc) 0.021s, x64 ตรง ~0.007–0.012s (บนแล็ปท็อป i7-6700HQ)
-- สังเกต: ตัวเลขข้างต้นเทียบกับ `interp.py` ของเราเอง ไม่ใช่ CPython
-  **[ยังไม่มี]** benchmark เทียบ CPython เลย (ไม่พบใน SPEC/docs ที่อ่าน)
-- [เอกสาร] ค่า tagged (Int 62-bit), bump allocator ไม่มี free บน x64, Boehm GC บน native —
-  ต้นทุนเหล่านี้จะกระทบเมื่อโปรแกรมใหญ่ขึ้น
-- [เอกสาร] SPEC §13: การเพิ่ม error-check ทำให้ fib ช้าลงจาก 0.005s → 0.007–0.012s
-  (จ่ายค่า diagnostics) — ต้องตัดสินใจเรื่องความเร็วกับข้อความ error ให้ชัด
+### 1. เร็วกว่า Python — **เร็วกว่าในงาน int/เรียกฟังก์ชัน, มีจุดตายสองจุด**
+- [วัดจริง] `docs/bench.md` (xbuild เทียบ CPython 3.10, เครื่อง sandbox 2 core): fib(32) 5.2x, loop 20M 6.4x,
+  strings 2.1x, alloc 1.7x
+- [วัดจริง] จุดตายที่พบ: (ก) dict ค้น key แบบ linear scan — 200k insert ใช้ 117 วินาที เทียบ CPython 0.1 วินาที
+  (`emit_dict_helpers` ใน `x64gen.py`); แก้แล้วในคอมมิตหลัง baseline (hash index, ดู ROADMAP เฟส 1);
+  (ข) ไม่มีการคืนหน่วยความจำบน x64 (bump allocator) — วน 5M รอบสร้าง string ใช้ 687 MB
+- [เอกสาร] SPEC §10/§13 ตัวเลขเดิมเทียบกับ `interp.py` ไม่ใช่ CPython; `interp.py` ช้ากว่า CPython ~29x (fib 22: 436 ms vs 15 ms)
+  จึงเป็นตัวอ้างอิงพฤติกรรมเท่านั้น
+- [เอกสาร] ค่า tagged (Int 62-bit บน x64 ต่างจาก interp 64-bit), error check ทุก op (SPEC §13 วัดว่าทำให้ช้าลง),
+  IR ยังไม่มี mem2reg/register allocation/optimizer
 
 ### 2. ไม่ต้องคอมไพล์ / JIT — **ยังไม่ทำ (มีแต่ฐาน)**
 - [เอกสาร] `hs.py run` = build ลง temp แล้วรัน (ผ่าน gcc) ผู้ใช้ไม่เห็นขั้นตอน แต่ยังเป็นการคอมไพล์จริง
@@ -43,6 +45,7 @@ holyshit (hs) จะเป็นภาษาที่:
 ### 3. เขียนง่ายกว่า Python — **มีหลักการ, ยังไม่มีตัววัด**
 - [เอกสาร] SPEC หัวไฟล์: indent syntax, dynamic, ไม่ต้องประกาศ type, `print x` เป็น statement,
   งาน low-level อยู่ใน `unsafe:` เท่านั้น; tutorial/cheatsheet/ตัวอย่างรันได้
+- [วัดจริง/อ่านเอกสาร] ภาษายังมีความสามารถน้อยกว่า Python: ไม่มี class/method (`",".join(x)` ใช้ไม่ได้ ต้อง `join(",", x)`), ไม่มี lambda, key ของ dict ต้องเป็น Str — ทำให้ AI ที่คุ้น Python เขียนพลาดและเป็นเหตุผลที่ "ง่ายกว่า" ยังไม่เป็นจริง
 - [ยังไม่มี] นิยามว่า "ง่ายกว่า" วัดอย่างไร (เช่น จำนวน token/บรรทัดต่อโปรแกรมเทียบ Python,
   อัตราที่ AI/คนเขียนผ่านในรอบแรก)
 
@@ -51,6 +54,7 @@ holyshit (hs) จะเป็นภาษาที่:
   cooperative → preemptive scheduler, ramdisk + VFS, ring-3 user mode + syscall, shell ring 3,
   port I/O, ATA PIO driver; `tests/test_xkernel.py` 291 เคส (ผ่านใน v0.6.29)
 - [เอกสาร] ไม่มี C ในสาย kernel แล้ว (ลบ gcc path เมื่อ 2026-10-02)
+- [วัดจริง, v0.6.30 บน sandbox ที่ไม่มี qemu] ชุดเทส interp/x64/IR/irx64/fmt/LSP/docs ผ่านทั้งหมด; ชุด native และ kernel (QEMU) รันไม่ได้ในเครื่องวัด จึงยังไม่ยืนยันเอง
 - ช่องว่าง [ยังไม่มี/อนุมาน]: ไม่พบ network stack, filesystem บนดิสก์จริง (มีแค่ ramdisk/ATA ตัวแรก),
   ACPI/APIC/SMP, USB, กราฟิก, bootloader ของตัวเอง (ปัจจุบันบูตด้วย QEMU multiboot/ELF32 — ต้องตรวจ),
   การรันบนเครื่องจริง; kernel ยังใช้ backend ทาง AST เดิม ไม่ใช่ IR
@@ -61,6 +65,7 @@ holyshit (hs) จะเป็นภาษาที่:
 - ยังพึ่ง [เอกสาร/อนุมาน]: ทั้ง toolchain เขียนด้วย **Python** (`interp.py` เป็น parser + reference,
   `hs.py`, `ir.py`, `x64gen.py`, `lsp.py`); โหมด `build` ยังใช้ gcc + Boehm GC;
   เทสใช้ QEMU; SPEC §15.35 เรียก IR ว่า "ก้าวแรกของแผน self-hosting"
+- [วัดจริง/อ่านโค้ด] runtime ของ x64 (malloc, string, list, dict, float, JSON) ถูกเขียนเป็นโค้ด Python ที่ emit คำสั่งเครื่องทีละคำสั่ง (`x64gen.py` ~11k บรรทัด) — พอร์ตเป็น hs ตรง ๆ ไม่ได้ ต้องเขียน runtime ใหม่เป็น hs บน IR ก่อนจึง self-host ได้
 - [ยังไม่มี] compiler ที่เขียนด้วย hs เอง (self-hosting), stdlib ที่ครบพอ (ไม่มี file/net/time/thread ครบ?
   — ต้องตรวจ `std/`), ตัวจัดการแพ็กเกจ
 
