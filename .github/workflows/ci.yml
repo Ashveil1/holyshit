@@ -1,0 +1,42 @@
+name: ci
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: "17 3 * * *"   # nightly: full suites incl. kernel on QEMU + benchmarks
+  workflow_dispatch:
+
+jobs:
+  quick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: native backend deps (gcc + Boehm GC)
+        run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev
+      - name: tests write scratch files under /tmp/opencode
+        run: mkdir -p /tmp/opencode
+      - name: all suites except the QEMU kernel suite
+        run: python3 tests/run_all.py --quick
+
+  full:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-system-x86
+      - run: mkdir -p /tmp/opencode
+      - name: every suite including xkernel on QEMU
+        run: python3 tests/run_all.py
+      - name: benchmarks vs CPython
+        run: python3 bench/run.py | tee bench-result.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-result
+          path: bench-result.txt

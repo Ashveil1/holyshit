@@ -1,0 +1,25 @@
+# bench — hs เทียบ CPython
+
+รัน: `python3 bench/run.py [ชื่อ ...] [--timeout วินาที]`
+แต่ละเคสมีคู่ `bench/<name>.hs` + `bench/<name>.py` ที่พิมพ์ผลเหมือนกัน (สคริปต์เช็คให้)
+เทียบ `hs.py xbuild` (ELF ตรง ไม่ใช้ gcc) กับ CPython; CI รันทุกคืนแล้วเก็บผลเป็น artifact
+
+## Baseline ที่ v0.6.30 (วัดเมื่อ 2026-10-12)
+
+เครื่อง: sandbox 2 core, CPython 3.10.12 (ตัวเลขสัมบูรณ์ต่างกันตามเครื่อง ดูอัตราส่วนเป็นหลัก)
+
+| เคส | CPython | hs xbuild | เร็วกว่า | MB py | MB hs | หมายเหตุ |
+|---|---|---|---|---|---|---|
+| fib(32) | 0.35 s | 0.07 s | 5.2x | 9 | 9 | เรียกฟังก์ชันซ้ำ |
+| loop 20M (บวก/mod) | 1.38 s | 0.22 s | 6.4x | 9 | 9 | int ล้วน |
+| strings (3M append+join+split) | 0.74 s | 0.36 s | 2.1x | 444 | 406 | |
+| alloc (5M `"abc"+str(i)`) | 1.05 s | 0.60 s | 1.7x | 9 | **687** | ไม่มี free ใน x64 — หน่วยความจำโตไม่หยุด |
+| dict (200k insert + วน) | 0.10 s | **>20 s (timeout)** | **ช้ากว่า ~1000x** | - | - | ค้น key แบบ linear scan (`emit_dict_helpers`) |
+
+ที่วัดไว้ครั้งแรก (ไม่อยู่ใน `bench/`): dict 200k insert = 117.5 s เทียบ CPython 0.096 s
+
+## ข้อสรุป
+
+- งาน int/เรียกฟังก์ชัน เร็วกว่า CPython ~5-6x แล้ว
+- สองจุดที่ต้องแก้ก่อนจะอ้างว่า "เร็วกว่า Python": dict แบบ hash จริง และตัวจัดสรรหน่วยความจำที่ free ได้ (ดู `ROADMAP.md` เฟส 1)
+- ตัวเลข interp.py (tree-walk): fib(22) 436 ms เทียบ CPython 15 ms — ใช้เป็นข้อกำหนดพฤติกรรม ไม่ใช่ทางที่เร็ว
