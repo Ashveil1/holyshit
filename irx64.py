@@ -568,8 +568,8 @@ class GenIR(Gen):
         elif v is None:
             a.mov_ri64("rax", Gen.HS_NULL)
         elif isinstance(v, float):
-            a.mov_ri64("rdi", _st.unpack("<Q", _st.pack("<d", v))[0])
-            a.call("x_float_new")
+            a.lea_rip("rax", self.sfloat(
+                _st.unpack("<Q", _st.pack("<d", v))[0]))
         elif isinstance(v, int):
             a.mov_ri64("rax", self.tag_int(v))
         elif isinstance(v, str):
