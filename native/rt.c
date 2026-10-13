@@ -96,11 +96,30 @@ Val v_list(void) {
     return (Val){T_LIST, {.p = o}};
 }
 
+static int key_eq(Val a, Val b) {
+    if (a.tag != b.tag)
+        return 0;
+    if (a.tag == T_INT)
+        return a.u.i == b.u.i;
+    return strcmp(AS_STR(a)->data, AS_STR(b)->data) == 0;
+}
+
+static int key_ok(Val k) { return k.tag == T_STR || k.tag == T_INT; }
+
+static int64_t dict_find(Dict *d, Val k) {
+    for (int64_t i = 0; i < d->len; i++)
+        if (key_eq(d->keys[i], k))
+            return i;
+    return -1;
+}
+
+static const char *key_disp(Val k);
+
 Val v_dict(void) {
     Dict *o = GC_MALLOC(sizeof(Dict));
     o->len = 0;
     o->cap = 4;
-    o->keys = GC_MALLOC(sizeof(char *) * (size_t)o->cap);
+    o->keys = GC_MALLOC(sizeof(Val) * (size_t)o->cap);
     o->vals = GC_MALLOC(sizeof(Val) * (size_t)o->cap);
     return (Val){T_DICT, {.p = o}};
 }
@@ -383,7 +402,7 @@ Val v_eq(Val a, Val b) {
         for (int64_t i = 0; i < x->len; i++) {
             int found = 0;
             for (int64_t j = 0; j < y->len; j++) {
-                if (strcmp(x->keys[i], y->keys[j]) == 0) {
+                if (key_eq(x->keys[i], y->keys[j])) {
                     found = 1;
                     if (!v_truthy(v_eq(x->vals[i], y->vals[j])))
                         return v_bool(0);
@@ -471,14 +490,13 @@ Val v_index(Val obj, Val idx, int line) {
         return v_strn(s->data + i, 1);
     }
     if (obj.tag == T_DICT) {
-        if (idx.tag != T_STR)
-            hs_err(line, "dict key must be Str");
+        if (!key_ok(idx))
+            hs_err(line, "dict key must be Str or Int");
         Dict *d = AS_DICT(obj);
-        const char *k = AS_STR(idx)->data;
-        for (int64_t i = 0; i < d->len; i++)
-            if (strcmp(d->keys[i], k) == 0)
-                return d->vals[i];
-        hs_err(line, "key '%s' not found", k);
+        int64_t i = dict_find(d, idx);
+        if (i >= 0)
+            return d->vals[i];
+        hs_err(line, "key '%s' not found", key_disp(idx));
     }
     hs_err(line, "cannot index %s", hs_tname(obj));
 }
@@ -497,24 +515,22 @@ void v_setindex(Val obj, Val idx, Val v, int line) {
         return;
     }
     if (obj.tag == T_DICT) {
-        if (idx.tag != T_STR)
-            hs_err(line, "dict key must be Str");
+        if (!key_ok(idx))
+            hs_err(line, "dict key must be Str or Int");
         Dict *d = AS_DICT(obj);
-        const char *k = AS_STR(idx)->data;
-        for (int64_t i = 0; i < d->len; i++) {
-            if (strcmp(d->keys[i], k) == 0) {
-                d->vals[i] = v;
-                return;
-            }
+        int64_t i = dict_find(d, idx);
+        if (i >= 0) {
+            d->vals[i] = v;
+            return;
         }
         if (d->len == d->cap) {
             d->cap *= 2;
-            d->keys = GC_REALLOC(d->keys, sizeof(char *) * (size_t)d->cap);
+            d->keys = GC_REALLOC(d->keys, sizeof(Val) * (size_t)d->cap);
             d->vals = GC_REALLOC(d->vals, sizeof(Val) * (size_t)d->cap);
         }
-        char *kc = GC_MALLOC(strlen(k) + 1);
-        strcpy(kc, k);
-        d->keys[d->len] = kc;
+        if (idx.tag == T_STR)
+            idx = v_str(AS_STR(idx)->data);  // own copy of the key
+        d->keys[d->len] = idx;
         d->vals[d->len] = v;
         d->len++;
         return;
@@ -673,7 +689,7 @@ Val v_seq(Val v, int line) {
             o->items = GC_REALLOC(o->items, sizeof(Val) * (size_t)o->cap);
         }
         for (int64_t i = 0; i < d->len; i++)
-            o->items[i] = v_str(d->keys[i]);
+            o->items[i] = d->keys[i];
         o->len = d->len;
         return r;
     }
@@ -764,6 +780,12 @@ static void fmt_repr(double x, char *out, size_t cap) {
     }
 }
 
+static const char *key_disp(Val k) {
+    if (k.tag == T_STR)
+        return AS_STR(k)->data;
+    return v_disp(k);
+}
+
 const char *v_disp(Val v) {
     char tmp[64];
     switch (v.tag) {
@@ -827,12 +849,13 @@ const char *v_disp(Val v) {
                 buf[n++] = ' ';
             }
             const char *s = v_disp(d->vals[i]);
-            size_t kl = strlen(d->keys[i]), sl = strlen(s);
+            const char *ks = key_disp(d->keys[i]);
+            size_t kl = strlen(ks), sl = strlen(s);
             while (n + kl + sl + 4 >= cap) {
                 cap *= 2;
                 buf = GC_REALLOC(buf, cap);
             }
-            memcpy(buf + n, d->keys[i], kl);
+            memcpy(buf + n, ks, kl);
             n += kl;
             buf[n++] = ':';
             buf[n++] = ' ';
@@ -1913,7 +1936,9 @@ static void js_val(Val v, char **o, size_t *n, size_t *cap, int line, int depth)
         for (int64_t i = 0; i < d->len; i++) {
             if (i > 0)
                 js_buf(o, n, cap, ", ", 2);
-            js_str(o, n, cap, d->keys[i], (int64_t)strlen(d->keys[i]), line);
+            if (d->keys[i].tag != T_STR)
+                hs_err(line, "json_str needs Str keys");
+            js_str(o, n, cap, AS_STR(d->keys[i])->data, (int64_t)strlen(AS_STR(d->keys[i])->data), line);
             js_buf(o, n, cap, ": ", 2);
             js_val(d->vals[i], o, n, cap, line, depth + 1);
         }

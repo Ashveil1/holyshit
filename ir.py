@@ -2093,8 +2093,8 @@ def _index(obj, idx, ln):
             raise HSErr("index out of range", ln)
         return obj[i]
     if isinstance(obj, dict):
-        if not isinstance(idx, str):
-            raise HSErr("dict key must be Str", ln)
+        if not interp._keyok(idx):
+            raise HSErr("dict key must be Str or Int", ln)
         if idx not in obj:
             raise HSErr(f"key {idx!r} not found", ln)
         return obj[idx]
@@ -2134,8 +2134,8 @@ def _setindex(obj, idx, val, ln):
         obj[i] = val
         return
     if isinstance(obj, dict):
-        if not isinstance(idx, str):
-            raise HSErr("dict key must be Str", ln)
+        if not interp._keyok(idx):
+            raise HSErr("dict key must be Str or Int", ln)
         obj[idx] = val
         return
     raise HSErr(f"cannot assign into {tname(obj)}", ln)
@@ -2286,8 +2286,8 @@ def _step(ins, temps, frame, prev):
         d = {}
         for k, v in ins["pairs"]:
             kk = temps[k]
-            if not isinstance(kk, str):
-                raise HSErr("dict key must be Str", ln)
+            if not interp._keyok(kk):
+                raise HSErr("dict key must be Str or Int", ln)
             d[kk] = temps[v]
         temps[ins["dest"]] = d
     elif op == "index":

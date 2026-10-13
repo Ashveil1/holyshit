@@ -111,7 +111,7 @@
 - `close wants close(f)`
 - `collections not allowed in unsafe (use alloc/load/store)`
 - `def not allowed in unsafe`
-- `dict key must be Str`
+- `dict key must be Str or Int`
 - `division by zero`
 - `duplicate field '{fn.v}'`
 - `duplicate param '{a}'`
@@ -526,7 +526,7 @@
 - `cannot store {vv.utype} to memory (need integer)`
 - `circular import '{name}'`
 - `continue outside loop`
-- `dict key must be Str`
+- `dict key must be Str or Int`
 - `division by zero`
 - `extern handled elsewhere or not in x64 subset`
 - `field '{ins['name']}' is not an array`
