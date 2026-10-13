@@ -599,6 +599,43 @@ def parse_post():
     else:
       return e
 
+def parse_listcomp(t, elem, h0):
+  ln = t[2]
+  h1 = len(P["hoist"])
+  nxt()
+  v = expect("ID")
+  if v[1] in KEYWORDS:
+    raise "bad loop variable '" + v[1] + "' at line " + str(v[2])
+  if not atv("ID", "in"):
+    raise "expected 'in', got " + pyrepr(peek()[1]) + " at line " + str(peek()[2])
+  nxt()
+  it = parse_or()
+  h2 = len(P["hoist"])
+  c = null
+  if atv("ID", "if"):
+    nxt()
+    c = parse_or()
+  expectv("OP", "]")
+  pre = P["hoist"][h1:h2]
+  inl = P["hoist"][h0:h1] + P["hoist"][h2:len(P["hoist"])]
+  P["hoist"] = P["hoist"][0:h0]
+  P["nlam"] = P["nlam"] + 1
+  name = "_lc" + str(P["nlam"])
+  r = name + "_r"
+  app = N("expr", ln, {"val": N("call", ln, {"fn": N("var", ln, {"name": "append"}), "args": [N("var", ln, {"name": r}), elem]})})
+  loop_body = inl + [app]
+  if c != null:
+    loop_body = inl + [N("if", ln, {"cond": c, "then": [app], "elifs": [], "els": []})]
+  body = []
+  for s in pre:
+    append(body, s)
+  append(body, N("set", ln, {"name": r, "val": N("list", ln, {"items": []})}))
+  append(body, N("for", ln, {"var": v[1], "iter": it, "body": loop_body}))
+  append(body, N("return", ln, {"val": N("var", ln, {"name": r})}))
+  d = N("def", ln, {"name": name, "params": [], "body": body, "lam": true})
+  append(P["hoist"], d)
+  return N("call", ln, {"fn": N("var", ln, {"name": name}), "args": [], "lc": true, "e": elem, "x": v[1], "it": it, "c": c, "hl": pre + inl})
+
 def parse_lambda():
   t = nxt()
   if P["unsafe"] > 0:
@@ -902,7 +939,17 @@ def parse_atom():
     return e
   if k == "OP" and v == "[":
     nxt()
-    items = parse_args_until("]")
+    items = []
+    if not atv("OP", "]"):
+      h0 = len(P["hoist"])
+      while true:
+        append(items, parse_expr())
+        if len(items) == 1 and atv("ID", "for"):
+          return parse_listcomp(t, items[0], h0)
+        if atv("OP", ","):
+          nxt()
+          continue
+        break
     expectv("OP", "]")
     return N("list", t[2], {"items": items})
   if k == "OP" and v == "{":

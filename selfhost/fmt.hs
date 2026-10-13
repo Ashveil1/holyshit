@@ -129,6 +129,12 @@ def fmt_expr(e):
   if t == "bin":
     p = BIN_PREC[e["op"]]
     return side(e["l"], p, "l", e["op"]) + " " + e["op"] + " " + side(e["r"], p, "r", e["op"])
+  if t == "call" and has(e, "lc"):
+    reg_lams(e["hl"])
+    cs = ""
+    if e["c"] != null:
+      cs = " if " + fmt_expr(e["c"])
+    return "[" + fmt_expr(e["e"]) + " for " + e["x"] + " in " + fmt_expr(e["it"]) + cs + "]"
   if t == "call" and has(e, "inop"):
     return side(e["args"][1], 3, "l", "in") + " in " + side(e["args"][0], 3, "r", "in")
   if t == "call" and has(e, "mcall"):

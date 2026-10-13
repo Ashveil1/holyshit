@@ -1378,6 +1378,49 @@ def _is_modref(e, mods):
     return e["t"] == "var" and e["name"] in mods
 
 
+def parse_listcomp(p, t, elem, h0):
+    """[E for x in IT if C] -> `_lcN()`, with a hoisted
+    `def _lcN(): r = []; for x in IT: (if C:) append(r, E); return r`.
+    Closures see the enclosing scope and x stays local, like Python 3.
+    The call keeps lc/e/x/it/c so fmt prints the comprehension back."""
+    ln = t.line
+    h1 = len(p.hoist)
+    p.next()  # for
+    v = p.expect("ID")
+    if v.v in KEYWORDS:
+        raise HSErr(f"bad loop variable '{v.v}'", v.line)
+    if not p.at("ID", "in"):
+        raise HSErr(f"expected 'in', got '{p.peek().v}'", p.peek().line)
+    p.next()
+    it = parse_or(p)
+    h2 = len(p.hoist)
+    c = None
+    if p.at("ID", "if"):
+        p.next()
+        c = parse_or(p)
+    p.expect("OP", "]")
+    # lambdas in IT go before the loop; lambdas in E and C go inside it,
+    # before the statement that uses them (closures copy at def time)
+    pre = p.hoist[h1:h2]
+    inl = p.hoist[h0:h1] + p.hoist[h2:]
+    del p.hoist[h0:]
+    p.nlam += 1
+    name = f"_lc{p.nlam}"
+    r = name + "_r"
+    app = N("expr", ln, val=N("call", ln, fn=N("var", ln, name="append"),
+                              args=[N("var", ln, name=r), elem]))
+    loop_body = inl + ([app] if c is None else [
+        N("if", ln, cond=c, then=[app], elifs=[], els=[])])
+    d = N("def", ln, name=name, params=[],
+          body=pre + [N("set", ln, name=r, val=N("list", ln, items=[])),
+                        N("for", ln, var=v.v, iter=it, body=loop_body),
+                        N("return", ln, val=N("var", ln, name=r))],
+          lam=True)
+    p.hoist.append(d)
+    return N("call", ln, fn=N("var", ln, name=name), args=[],
+             lc=True, e=elem, x=v.v, it=it, c=c, hl=pre + inl)
+
+
 def parse_lambda(p):
     """lambda a, b: expr  ->  a fresh `def _lamN(a, b): return expr` emitted
     just before the enclosing statement, and the expression becomes `_lamN`.
@@ -1503,8 +1546,11 @@ def parse_atom(p):
         p.next()
         items = []
         if not p.at("OP", "]"):
+            h0 = len(p.hoist)
             while True:
                 items.append(parse_expr(p))
+                if len(items) == 1 and p.at("ID", "for"):
+                    return parse_listcomp(p, t, items[0], h0)
                 if p.at("OP", ","):
                     p.next()
                     continue
