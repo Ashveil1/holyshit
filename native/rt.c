@@ -598,7 +598,7 @@ Val v_builtin(const char *name) {
         {b_ticks, "ticks"}, {b_readkey, "readkey"},
         {b_pmm_alloc, "pmm_alloc"}, {b_meminfo, "meminfo"},
         {b_append, "append"}, {b_split, "split"},
-        {b_find, "find"}, {b_join, "join"}, {b_has, "has"},
+        {b_find, "find"}, {b_join, "join"}, {b_has, "has"}, {b_contains, "contains"},
         {b_argv, "argv"}, {b_env, "env"}, {b_system, "system"},
         {b_tcp_connect, "tcp_connect"}, {b_tcp_send, "tcp_send"},
         {b_tcp_recv, "tcp_recv"}, {b_tcp_close, "tcp_close"},
@@ -2177,6 +2177,37 @@ Val b_has(Val *args, int nargs, int line) {
     if (!key_ok(args[1]))
         hs_err(line, "dict key must be Str or Int");
     return v_bool(dict_find(AS_DICT(args[0]), args[1]) >= 0);
+}
+
+Val b_contains(Val *args, int nargs, int line) {
+    if (nargs != 2)
+        hs_err(line, "contains wants contains(container, x)");
+    Val c = args[0], x = args[1];
+    if (c.tag == T_STR) {
+        if (x.tag != T_STR)
+            hs_err(line, "'in <Str>' needs a Str, got %s", hs_tname(x));
+        Str *s = AS_STR(c), *sub = AS_STR(x);
+        if (sub->len == 0)
+            return v_bool(1);
+        for (int64_t i = 0; i + sub->len <= s->len; i++)
+            if (memcmp(s->data + i, sub->data, (size_t)sub->len) == 0)
+                return v_bool(1);
+        return v_bool(0);
+    }
+    if (c.tag == T_DICT) {
+        if (!key_ok(x))
+            hs_err(line, "dict key must be Str or Int");
+        return v_bool(dict_find(AS_DICT(c), x) >= 0);
+    }
+    if (c.tag == T_LIST) {
+        List *l = AS_LIST(c);
+        for (int64_t i = 0; i < l->len; i++)
+            if (v_truthy(v_eq(l->items[i], x)))
+                return v_bool(1);
+        return v_bool(0);
+    }
+    hs_err(line, "'in' needs a Str, List or Dict, got %s", hs_tname(c));
+    return v_bool(0);
 }
 
 Val b_join(Val *args, int nargs, int line) {

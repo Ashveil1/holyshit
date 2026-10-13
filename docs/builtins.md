@@ -19,6 +19,8 @@
 | | Int value -> Ptr (unsafe only) |||||
 | `close` | `close(f)` | ✓ | ✓ | ✓ |   |
 | | close a file (hosted only) |||||
+| `contains` | `contains(c, x)` | ✓ | ✓ | ✓ | ✓ |
+| | what `x in c` means: Str substring, List element or Dict key |||||
 | `env` | `env(name)` | ✓ | ✓ | ✓ |   |
 | | env var or Null (hosted only) |||||
 | `exists` | `exists(path)` | ✓ | ✓ | ✓ |   |

@@ -42,7 +42,7 @@ INLINE_ONLY = {"float"}
 # (whose type errors carry the stub's line 0, like x64gen-today).
 INLINE_DIRECT = {"float", "len", "str", "int", "range", "append",
                  "read_text", "write_text", "append_text", "exists", "ls",
-                 "mkdir", "read_mem", "has"}
+                 "mkdir", "read_mem", "has", "contains"}
 # NOTE: split/find/join also have inline arms in ev_call but are not in
 # INLINE_DIRECT yet: no corpus program triggers their error paths, and
 # their success paths work through the stubs. Same for the other
@@ -1721,6 +1721,17 @@ class GenIR(Gen):
                 self._inline_read_mem(fr, dest, args, ln)
             elif name == "has":
                 self._inline_has(fr, dest, args, ln)
+            elif name == "contains":
+                if len(args) != 2:
+                    raise HSErr("contains wants contains(container, x)", ln)
+                self._load(fr, args[0], ln)
+                self.a.push_r("rax")
+                self._load(fr, args[1], ln)
+                self.a.mov_rr("rsi", "rax")
+                self.a.pop_r("rdi")
+                self.a.mov_ri32("rdx", ln)
+                self.a.call("x_contains")
+                self.a.mov_mr("rbp", "rax", fr["slots"][dest])
             else:
                 raise HSErr(f"IR: '{name}' not in irx64 subset yet", ln)
             return

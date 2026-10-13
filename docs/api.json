@@ -167,6 +167,16 @@
     "xkernel"
    ]
   },
+  "contains": {
+   "sig": "contains(c, x)",
+   "desc": "what `x in c` means: Str substring, List element or Dict key",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
   "has": {
    "sig": "has(dict, key)",
    "desc": "true when the dict has the key",

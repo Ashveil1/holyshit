@@ -406,6 +406,7 @@ class Gen:
         "find": (2, 2, "find wants find(s, sub)"),
         "join": (2, 2, "join wants join(sep, list)"),
         "has": (2, 2, "has wants has(dict, key)"),
+        "contains": (2, 2, "contains wants contains(container, x)"),
         "read_mem": (2, 2, "read_mem wants read_mem(ptr, nbytes)"),
         # hosted only (a freestanding build keeps the subset error)
         "argv": (0, 0, "argv takes no args"),
@@ -422,7 +423,7 @@ class Gen:
                  "close", "scall"}
 
     XBUILTINS = {"print", "int", "len", "str", "range", "append",
-                 "split", "find", "join", "has", "read_mem",
+                 "split", "find", "join", "has", "contains", "read_mem",
                  "alloc", "load8", "load32", "load64", "store8",
                  "store32", "store64", "as_ptr", "as_int"}
 
@@ -814,7 +815,7 @@ class Gen:
             # become unbound globals (runtime error).
             if name in ("print", "len", "range", "str", "int", "float", "input",
                         "open", "read", "write", "close", "argv", "env", "system",
-                        "append", "split", "find", "join", "has", "ticks", "readkey",
+                        "append", "split", "find", "join", "has", "contains", "ticks", "readkey",
                         "pmm_alloc", "meminfo", "tcp_connect", "tcp_send",
                         "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
                         "http_get", "json_parse", "json_str", "read_text",
@@ -1588,6 +1589,17 @@ class Gen:
             self.raise_static("find wants find(s, sub)", ln)
             a.label(lab_fok)
             a.call("x_find")
+            return
+        if fn["t"] == "var" and fn["name"] == "contains":
+            if len(e["args"]) != 2:
+                raise HSErr("contains wants contains(container, x)", ln)
+            self.ev(e["args"][0], sc, mod)
+            a.push_r("rax")
+            self.ev(e["args"][1], sc, mod)
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            a.mov_ri32("rdx", ln)
+            a.call("x_contains")
             return
         if fn["t"] == "var" and fn["name"] == "has":
             if len(e["args"]) != 2:
@@ -9240,6 +9252,132 @@ class Gen:
         a.mov_rm("rax", "rbp", -8)
         a.mov_rm("rax", "rax", 24)      # buf
         a.mov_rmx("rax", "rax", "r11", 8, 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_contains: rdi = container, rsi = x, rdx = line -> tagged Bool
+        # (`x in container`: Str substring, List element, Dict key)
+        a.label("x_contains")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 48)
+        a.mov_mr("rbp", "rdi", -8)
+        a.mov_mr("rbp", "rsi", -16)
+        a.mov_mr("rbp", "rdx", -24)
+        lab_cbad = self.new_tmp("cn")
+        lab_cstr, lab_clist, lab_cdict = (self.new_tmp("cn"), self.new_tmp("cn"),
+                                          self.new_tmp("cn"))
+        a.mov_rr("r11", "rdi")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_cbad)
+        a.mov_rm("r11", "rdi", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_cstr)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("e", lab_clist)
+        a.cmp_ri32("r11", Gen.K_DICT)
+        a.jcc("e", lab_cdict)
+        a.label(lab_cbad)
+        a.mov_rm("rdi", "rbp", -8)
+        a.call("x_tname")
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr("'in' needs a Str, List or Dict, got "))
+        a.mov_ri32("rsi", len("'in' needs a Str, List or Dict, got "))
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.pop_r("rsi")
+        a.call("x_str_cat")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -24)
+        a.jmp("hs_raise_msg")
+        # ---- Str
+        a.label(lab_cstr)
+        lab_csok = self.new_tmp("cn")
+        lab_csbad = self.new_tmp("cn")
+        a.mov_rr("r11", "rsi")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_csbad)
+        a.mov_rm("r11", "rsi", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_csok)
+        a.label(lab_csbad)
+        a.mov_rm("rdi", "rbp", -16)
+        a.call("x_tname")
+        a.push_r("rax")
+        a.lea_rip("rdi", self.rstr("'in <Str>' needs a Str, got "))
+        a.mov_ri32("rsi", len("'in <Str>' needs a Str, got "))
+        a.call("x_str_at")
+        a.mov_rr("rdi", "rax")
+        a.pop_r("rsi")
+        a.call("x_str_cat")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rbp", -24)
+        a.jmp("hs_raise_msg")
+        a.label(lab_csok)
+        a.mov_rm("rdi", "rbp", -8)
+        a.mov_rm("rsi", "rbp", -16)
+        a.call("x_find")
+        lab_cstrno, lab_cret = self.new_tmp("cn"), self.new_tmp("cn")
+        a.cmp_ri32("rax", -3)            # tagged -1
+        a.jcc("e", lab_cstrno)
+        a.mov_ri64("rax", Gen.HS_TRUE)
+        a.jmp(lab_cret)
+        a.label(lab_cstrno)
+        a.mov_ri64("rax", Gen.HS_FALSE)
+        a.jmp(lab_cret)
+        # ---- Dict
+        a.label(lab_cdict)
+        lab_cdok, lab_cdbad = self.new_tmp("cn"), self.new_tmp("cn")
+        a.mov_rr("r11", "rsi")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("e", lab_cdok)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_cdbad)
+        a.mov_rm("r11", "rsi", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_cdok)
+        a.label(lab_cdbad)
+        a.lea_rip("rdi", self.rstr("dict key must be Str or Int"))
+        a.mov_ri32("rsi", len("dict key must be Str or Int"))
+        a.mov_rm("rdx", "rbp", -24)
+        a.call("hs_raise_raw")
+        a.label(lab_cdok)
+        a.call("x_dict_find")
+        a.test_rr("rax", "rax")
+        a.jcc("s", lab_cstrno)
+        a.mov_ri64("rax", Gen.HS_TRUE)
+        a.jmp(lab_cret)
+        # ---- List
+        a.label(lab_clist)
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -32)      # idx
+        lab_ctop = self.new_tmp("cn")
+        a.label(lab_ctop)
+        a.mov_rm("rax", "rbp", -32)
+        a.mov_rm("rcx", "rbp", -8)
+        a.mov_rm("rcx", "rcx", 8)        # len
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_cstrno)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 24)       # buf
+        a.mov_rm("rcx", "rbp", -32)
+        a.mov_rmx("rdi", "rax", "rcx", 8, 0)
+        a.mov_rm("rsi", "rbp", -16)
+        a.call("x_eq")
+        a.test_rr("rax", "rax")
+        lab_cnext = self.new_tmp("cn")
+        a.jcc("e", lab_cnext)
+        a.mov_ri64("rax", Gen.HS_TRUE)
+        a.jmp(lab_cret)
+        a.label(lab_cnext)
+        a.mov_rm("rax", "rbp", -32)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -32)
+        a.jmp(lab_ctop)
+        a.label(lab_cret)
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
         a.ret()

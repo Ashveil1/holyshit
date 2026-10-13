@@ -1071,22 +1071,42 @@ def parse_not(p):
     return parse_cmp(p)
 
 
+def _cmp_node(op, l, r, ln):
+    if op == "in":
+        return N("call", ln, fn=N("var", ln, name="contains"), args=[r, l],
+                 inop=True)
+    if op == "not in":
+        return N("not", ln, val=_cmp_node("in", l, r, ln), notin=True)
+    return N("bin", ln, op=op, l=l, r=r)
+
+
 def parse_cmp(p):
     l = parse_add(p)
     ops = []
-    while p.at("OP") and p.peek().v in ("==", "!=", "<", ">", "<=", ">="):
-        t = p.next()
-        ops.append((t.v, parse_add(p), t.line))
+    while True:
+        if p.at("OP") and p.peek().v in ("==", "!=", "<", ">", "<=", ">="):
+            t = p.next()
+            ops.append((t.v, parse_add(p), t.line))
+        elif p.at("ID", "in"):
+            t = p.next()
+            ops.append(("in", parse_add(p), t.line))
+        elif p.at("ID", "not") and p.i + 1 < len(p.t) and \
+                p.t[p.i + 1].k == "ID" and p.t[p.i + 1].v == "in":
+            t = p.next()
+            p.next()
+            ops.append(("not in", parse_add(p), t.line))
+        else:
+            break
     if not ops:
         return l
     if len(ops) == 1:
         op, r, ln = ops[0]
-        return N("bin", ln, op=op, l=l, r=r)
+        return _cmp_node(op, l, r, ln)
     # a < b < c  ->  (a<b) and (b<c)
     out = None
     prev = l
     for op, r, ln in ops:
-        one = N("bin", ln, op=op, l=prev, r=r)
+        one = _cmp_node(op, prev, r, ln)
         out = one if out is None else N("bin", ln, op="and", l=out, r=one)
         prev = r
     return out
@@ -2434,6 +2454,29 @@ def b_has(args, ln):
     return k in args[0]
 
 
+def b_contains(args, ln):
+    if len(args) != 2:
+        raise HSErr("contains wants contains(container, x)", ln)
+    c, x = args
+    if isinstance(c, str):
+        if not isinstance(x, str):
+            raise HSErr(f"'in <Str>' needs a Str, got {tname(x)}", ln)
+        return x in c
+    if isinstance(c, dict):
+        if isinstance(x, bool) or not isinstance(x, (str, int)):
+            raise HSErr("dict key must be Str or Int", ln)
+        return x in c
+    if isinstance(c, list):
+        for e in c:
+            try:
+                if e == x:
+                    return True
+            except Exception:
+                pass
+        return False
+    raise HSErr(f"'in' needs a Str, List or Dict, got {tname(c)}", ln)
+
+
 def b_join(args, ln):
     if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], list):
         raise HSErr("join wants join(sep, list)", ln)
@@ -2791,7 +2834,7 @@ BUILTINS = {
     "as_ptr": b_as_ptr, "as_int": b_as_int,
     "ticks": b_ticks, "readkey": b_readkey,
     "pmm_alloc": b_pmm_alloc, "meminfo": b_meminfo,
-    "append": b_append, "split": b_split, "find": b_find, "join": b_join, "has": b_has,
+    "append": b_append, "split": b_split, "find": b_find, "join": b_join, "has": b_has, "contains": b_contains,
     "argv": b_argv, "env": b_env, "system": b_system,
     "tcp_connect": b_tcp_connect, "tcp_send": b_tcp_send,
     "tcp_recv": b_tcp_recv, "tcp_close": b_tcp_close,

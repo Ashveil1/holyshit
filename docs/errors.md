@@ -28,8 +28,10 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (223)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (226)
 
+- `'in <Str>' needs a Str, got {tname(x)}`
+- `'in' needs a Str, List or Dict, got {tname(c)}`
 - `'{d['name']}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
 - `'{v}' is reserved for future use`
@@ -113,6 +115,7 @@
 - `circular import '{name}'`
 - `close wants close(f)`
 - `collections not allowed in unsafe (use alloc/load/store)`
+- `contains wants contains(container, x)`
 - `def not allowed in unsafe`
 - `dict key must be Str or Int`
 - `division by zero`
@@ -339,7 +342,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (105)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (106)
 
 - `'{n}' already defined in this scope`
 - `alloc wants alloc(n)`
@@ -374,6 +377,7 @@
 - `cannot read {path}: {e.strerror or e}`
 - `circular import '{m['name']}'`
 - `close wants close(f)`
+- `contains wants contains(container, x)`
 - `continue outside loop`
 - `ctx_swap wants ctx_swap(save, load)`
 - `dup data reserve {name}`
@@ -574,7 +578,7 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-## irx64.py — IR ลง x86-64 (43)
+## irx64.py — IR ลง x86-64 (44)
 
 - `'{ins['name']}' already defined in this scope`
 - `'{name}' already defined in this scope`
@@ -595,6 +599,7 @@
 - `cannot import '{name}': '{top}' is already defined`
 - `cannot read {path}: {e.strerror or e}`
 - `circular import '{dotted}'`
+- `contains wants contains(container, x)`
 - `extern from '{lib}': a C source needs a C compiler; xbuild calls none (pass a prebuilt .so)`
 - `ffi '{name}': xbuild passes at most 6 args`
 - `ffi '{name}': xbuild passes at most 8 F64 args`
@@ -620,4 +625,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 574 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 579 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

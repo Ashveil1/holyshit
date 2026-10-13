@@ -64,6 +64,7 @@ BUILTINS = {
     "append": ("append(list, x)", "push x, returns Null", ALL),
     "split": ("split(s) | split(s, sep)", "split Str to List", ALL),
     "find": ("find(s, sub)", "byte index of sub or -1", ALL),
+    "contains": ("contains(c, x)", "what `x in c` means: Str substring, List element or Dict key", ALL),
     "has": ("has(dict, key)", "true when the dict has the key", ALL),
     "join": ("join(sep, list)", "join List of Str", ALL),
     "argv": ("argv()", "program args as List (hosted only)", HOSTED),
