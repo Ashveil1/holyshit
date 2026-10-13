@@ -809,6 +809,97 @@ def pack(code, data, entry_off, lo):
     return bytes(img)
 
 
+def layout_dyn(text_len, data_len):
+    """Like layout() but with room for the 3 extra program headers a
+    dynamically linked image needs (INTERP, DYNAMIC, GNU_STACK)."""
+    lo = layout(text_len, data_len)
+    nph = 5
+    text_off = lo["ehsize"] + nph * lo["phentsize"]
+    data_off = (text_off + text_len + 0xFFF) & ~0xFFF
+    lo.update({"nph": nph, "text_off": text_off, "text_vaddr": BASE + text_off,
+               "data_off": data_off, "data_vaddr": BASE + data_off})
+    return lo
+
+
+def pack_dyn(code, data, entry_off, lo, libs, syms, got_off):
+    """Dynamically linked ET_EXEC: ld.so loads `libs`, fills one 8-byte GOT
+    slot per name in `syms` (at data offset got_off + 8*i) and jumps to the
+    entry point with the kernel's initial stack. The dynamic tables live at
+    the end of the data segment. Still no gcc/ld: only the runtime loader."""
+    d = bytearray(data)
+    while len(d) % 8:
+        d.append(0)
+    dv = lo["data_vaddr"]
+
+    def va(off):
+        return dv + off
+
+    strtab = bytearray(b"\0")
+
+    def sname(n):
+        o = len(strtab)
+        strtab.extend(n.encode() + b"\0")
+        return o
+
+    interp = b"/lib64/ld-linux-x86-64.so.2\0"
+    interp_off = len(d)
+    d += interp
+    while len(d) % 8:
+        d.append(0)
+    needed = [sname(l) for l in libs]
+    symoff = [sname(n) for n in syms]
+    str_off = len(d)
+    d += strtab
+    while len(d) % 8:
+        d.append(0)
+    nsym = len(syms) + 1
+    sym_off = len(d)
+    d += b"\0" * 24
+    for o in symoff:
+        d += struct.pack("<IBBHQQ", o, 0x12, 0, 0, 0, 0)  # GLOBAL FUNC, UNDEF
+    hash_off = len(d)
+    chain = [0] * nsym
+    for i in range(1, nsym - 1):
+        chain[i] = i + 1
+    d += struct.pack("<II", 1, nsym) + struct.pack("<I", 1 if nsym > 1 else 0)
+    d += b"".join(struct.pack("<I", c) for c in chain)
+    while len(d) % 8:
+        d.append(0)
+    rela_off = len(d)
+    for i in range(len(syms)):
+        d += struct.pack("<QQq", va(got_off + 8 * i), ((i + 1) << 32) | 6, 0)
+    dyn_off = len(d)
+    ent = [(1, va(0) * 0 + n) for n in needed]
+    ent += [(5, va(str_off)), (6, va(sym_off)), (10, len(strtab)), (11, 24),
+            (4, va(hash_off)), (7, va(rela_off)), (8, 24 * len(syms)),
+            (9, 24), (0x1e, 8), (0, 0)]   # FLAGS = BIND_NOW
+    for tag, val in ent:
+        d += struct.pack("<qQ", tag, val)
+    dyn_len = len(d) - dyn_off
+    eh = struct.pack("<16sHHIQQQIHHHHHH",
+                     b"\x7fELF\x02\x01\x01" + b"\0" * 9,
+                     2, 62, 1, lo["text_vaddr"] + entry_off, lo["ehsize"],
+                     0, 0, lo["ehsize"], lo["phentsize"], lo["nph"], 0, 0, 0)
+    # the first LOAD maps the file from offset 0 so the program headers are
+    # in memory (ld.so finds them through AT_PHDR)
+    tl = lo["text_off"] + len(code)
+    ph = struct.pack("<IIQQQQQQ", 1, 5, 0, BASE, BASE, tl, tl, 0x1000)
+    ph += struct.pack("<IIQQQQQQ", 1, 6, lo["data_off"], dv, dv,
+                      len(d), len(d), 0x1000)
+    ph += struct.pack("<IIQQQQQQ", 3, 4, lo["data_off"] + interp_off,
+                      va(interp_off), va(interp_off), len(interp), len(interp), 1)
+    ph += struct.pack("<IIQQQQQQ", 2, 6, lo["data_off"] + dyn_off,
+                      va(dyn_off), va(dyn_off), dyn_len, dyn_len, 8)
+    ph += struct.pack("<IIQQQQQQ", 0x6474e551, 6, 0, 0, 0, 0, 0, 16)
+    img = bytearray()
+    img += eh + ph
+    assert len(img) == lo["text_off"]
+    img += code
+    img += b"\0" * (lo["data_off"] - len(img))
+    img += d
+    return bytes(img)
+
+
 def link_elf(code, data=b"", entry_off=0, ro_extra=None):
     """Build a static ELF64 with RX text (+rodata) and RW data segments."""
     text = bytes(code) + (bytes(ro_extra) if ro_extra else b"")

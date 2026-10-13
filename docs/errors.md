@@ -532,6 +532,7 @@
 - `cannot negate Ptr`
 - `cannot negate {tname(v)}`
 - `cannot order pointers (use == / !=)`
+- `cannot shadow builtin '{d['name']}'`
 - `cannot slice {tname(obj)}`
 - `cannot store field of {obj.utype} (need a struct pointer)`
 - `cannot store through {pv.utype} (need Ptr)`
@@ -540,7 +541,6 @@
 - `continue outside loop`
 - `dict key must be Str or Int`
 - `division by zero`
-- `extern handled elsewhere or not in x64 subset`
 - `field '{ins['name']}' is not an array`
 - `field '{name}' is not an array`
 - `in module '{name}': {e.msg}`
@@ -567,12 +567,12 @@
 - `unknown variable '{name}'`
 - `unsafe: address out of bounds`
 - `unsafe: out of memory (1MB sim)`
-- `{fdef['dispname']} wants {len(fdef['params'])} args, got {len(args)}`
+- `{fdef.get('xname', fdef['dispname'])} wants {len(fdef['params'])} args, got {len(args)}`
 - `{name} needs Ptr, got {pt}`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-## irx64.py — IR ลง x86-64 (38)
+## irx64.py — IR ลง x86-64 (42)
 
 - `'{ins['name']}' already defined in this scope`
 - `'{name}' already defined in this scope`
@@ -588,10 +588,14 @@
 - `array field '{name}' needs an index`
 - `bad module name '{name}'`
 - `builtin '{ref}' is not a value (call it)`
+- `cannot find ffi library '{lib}'`
 - `cannot find module '{name}'`
 - `cannot import '{name}': '{top}' is already defined`
 - `cannot read {path}: {e.strerror or e}`
 - `circular import '{dotted}'`
+- `extern from '{lib}': a C source needs a C compiler; xbuild calls none (pass a prebuilt .so)`
+- `ffi '{name}': xbuild passes at most 6 args`
+- `ffi F64 is not supported by xbuild yet ('{name}')`
 - `field '{name}' is not an array`
 - `float wants 1 arg`
 - `in module '{dotted}': {e.msg}`
@@ -613,4 +617,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 567 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 571 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

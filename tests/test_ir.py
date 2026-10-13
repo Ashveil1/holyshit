@@ -258,8 +258,8 @@ except interp.HSErr as e:
 
 # builder rejects out-of-subset constructs with a clear message
 for caps, src, want in [("raise-outside", "raise\n", "raise without active"),
-                        ("extern", 'extern:\n  I64 puts(Str s)\n',
-                         "not in x64 subset")]:
+                        ("extern-shadow", 'extern:\n  I64 len(Str s)\n',
+                         "cannot shadow builtin")]:
     total += 1
     try:
         build_src(src)

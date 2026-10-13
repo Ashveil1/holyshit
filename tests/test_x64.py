@@ -181,7 +181,8 @@ with tempfile.TemporaryDirectory() as _d:
 # months later. Programs outside the hosted x64 subset report SKIP (honest,
 # counted separately) — the same convention test_ir.py uses.
 _CORPUS_SKIP = ("not in x64 subset", "IR: unsupported", "IR: builtin",
-                "IR: not in subset", "IR: '", "x64 subset")
+                "IR: not in subset", "IR: '", "x64 subset",
+                "not supported by xbuild", "needs a C compiler")
 # Programs the interpreter suite runs against a fixture it starts itself
 # (t_sock needs the throwaway HTTP server in test.py); standalone they
 # cannot run, so this pass leaves them alone.

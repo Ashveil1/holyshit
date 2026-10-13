@@ -285,10 +285,8 @@ class Builder:
             self._for(fb, s)
             return
         if t == "extern":
-            # accepted but never lowered on this path (x64gen-today
-            # rejects it with the same message at build)
-            raise HSErr("extern handled elsewhere or not in x64 subset",
-                        ln)
+            self._extern(fb, s)
+            return
         if t == "try":
             self._try(fb, s)
             return
@@ -320,6 +318,35 @@ class Builder:
             fb.emit(_n("setattr", ln, obj=obj, name=s["name"], val=val))
             return
         raise HSErr(f"IR: unsupported '{t}'", ln)
+
+    def _extern(self, fb, s):
+        """Each extern decl becomes a function whose body is one `ffi`
+        instruction over its own parameters, bound like an ordinary def."""
+        for d in s["decls"]:
+            ln = d["line"]
+            if d["name"] in interp.BUILTINS:
+                raise HSErr(f"cannot shadow builtin '{d['name']}'", ln)
+            qname = f"{self.pfx}{d['name']}$L{ln}"
+            pn = [p for p, _ in d["params"]]
+            child = _FuncBuild(self, qname, pn, d["name"], ast=[])
+            entry = child.block("entry")
+            child.start(entry)
+            r = child.temp()
+            child.emit(_n("ffi", ln, dest=r, sym=d["name"], lib=s["lib"],
+                          rtype=d["rtype"], ptypes=[t for _, t in d["params"]],
+                          pnames=pn))
+            child.end(_t("ret", ln, val=r))
+            self.funcs[qname] = {"name": qname, "dispname": d["name"],
+                                 "params": pn, "blocks": child.blocks,
+                                 "entry": entry["label"], "globals": [],
+                                 "xname": f"ffi '{d['name']}'"}
+            self.order.append(qname)
+            t = fb.temp()
+            fb.emit(_n("mkfunc", ln, dest=t, func=qname))
+            if d["name"] in fb.gnames:
+                fb.emit(_n("stglobal", ln, name=d["name"], src=t))
+            else:
+                fb.emit(_n("stvar", ln, name=d["name"], src=t))
 
     def _def(self, fb, s):
         ln = s["line"]
@@ -910,7 +937,7 @@ def _verify_func(fn, funcs):
                     # must dominate the predecessor it comes from
                     _use(at, al, ln)
             elif op in ("const", "load", "stvar", "stglobal", "import",
-                          "sconst", "sload", "sstr"):
+                          "sconst", "sload", "sstr", "ffi"):
                 pass
             elif op == "sdecl":
                 _use(ins["src"], b["label"], ln)
@@ -1135,6 +1162,9 @@ def dump_instr(ins):
         return f"stglobal {ins['name']} {ins['src']}"
     if op == "mkfunc":
         return f"{ins['dest']} = mkfunc {ins['func']}"
+    if op == "ffi":
+        return (f"{ins['dest']} = ffi {ins['rtype']} {ins['sym']}("
+                f"{', '.join(ins['ptypes'])}) from {_q(ins['lib'])}")
     if op == "bin":
         return f"{ins['dest']} = bin {ins['binop']} {ins['l']} {ins['r']}"
     if op == "un":
@@ -2159,12 +2189,13 @@ def _call(fn, args, ln):
     if isinstance(fn, IRFunc):
         fdef = fn.fdef
         if len(args) != len(fdef["params"]):
-            raise HSErr(f"{fdef['dispname']} wants {len(fdef['params'])} "
+            raise HSErr(f"{fdef.get('xname', fdef['dispname'])} wants {len(fdef['params'])} "
                         f"args, got {len(args)}", ln)
         fr = Frame(parent=fn.closure, root=fn.closure.root,
                    gnames=fdef["globals"])
         for n, v in zip(fdef["params"], args):
             fr.vars[n] = v
+        fr.call_ln = ln
         try:
             _exec(fdef, fr)
         except _Ret as r:
@@ -2251,6 +2282,16 @@ def _step(ins, temps, frame, prev):
         frame.root.vars[ins["name"]] = temps[ins["src"]]
     elif op == "mkfunc":
         temps[ins["dest"]] = IRFunc(_FUNCS[ins["func"]], frame, ln)
+    elif op == "ffi":
+        ex = ins.get("_ex")
+        if ex is None:
+            cdll = interp.ffi_load(ins["lib"], frame.basedir, ln)
+            ex = ins["_ex"] = interp.HSExtern(
+                ins["sym"], ins["rtype"],
+                list(zip(ins["pnames"], ins["ptypes"])), cdll, ln)
+        temps[ins["dest"]] = ex.call(
+            [frame.get(n, ln) for n in ins["pnames"]],
+            getattr(frame, "call_ln", ln))
     elif op == "bin":
         temps[ins["dest"]] = _binop(ins["binop"], temps[ins["l"]],
                                     temps[ins["r"]], ln)
