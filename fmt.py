@@ -25,6 +25,8 @@ _BIN_PREC = {
 
 
 def _prec(e):
+    if e["t"] == "var" and e["name"] in _LAM:
+        return 0  # a lambda extends as far right as possible: parenthesize as an operand
     if e["t"] == "bin":
         return _BIN_PREC[e["op"]]
     if e["t"] == "not":
@@ -79,6 +81,12 @@ def fmt_expr(e):
     if t == "str":
         return '"' + esc(e["val"]) + '"'
     if t == "var":
+        d = _LAM.get(e["name"])
+        if d is not None:
+            _reg_lams(d["body"])
+            ps = ", ".join(d["params"])
+            ret = d["body"][-1]["val"]
+            return ("lambda " + ps if ps else "lambda") + ": " + fmt_expr(ret)
         return e["name"]
     if t == "list":
         return "[" + ", ".join(fmt_expr(x) for x in e["items"]) + "]"
@@ -100,7 +108,7 @@ def fmt_expr(e):
         return (_atom(e["args"][0], 9) + "." + e["method"] + "(" +
                 ", ".join(fmt_expr(a) for a in e["args"][1:]) + ")")
     if t == "call":
-        return fmt_expr(e["fn"]) + "(" + ", ".join(fmt_expr(a) for a in e["args"]) + ")"
+        return _atom(e["fn"], 9) + "(" + ", ".join(fmt_expr(a) for a in e["args"]) + ")"
     if t == "index":
         return f"{_atom(e['obj'], 9)}[{fmt_expr(e['idx'])}]"
     if t == "slice":
@@ -139,9 +147,21 @@ def _side(e, parent, side, op):
     return fmt_expr(e)
 
 
+_LAM = {}  # parse-time lambda defs (name -> def node), re-inlined on print
+
+
+def _reg_lams(body):
+    for s in body:
+        if s["t"] == "def" and s.get("lam"):
+            _LAM[s["name"]] = s
+
+
 def fmt_block(body, ind):
     out = []
+    _reg_lams(body)
     for s in body:
+        if s["t"] == "def" and s.get("lam"):
+            continue  # printed where it is used, as `lambda ...`
         out.extend(fmt_stmt(s, ind))
     return out
 
