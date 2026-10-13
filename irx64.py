@@ -1719,6 +1719,8 @@ class GenIR(Gen):
                 self._inline_file(fr, dest, name, args, ln)
             elif name == "read_mem":
                 self._inline_read_mem(fr, dest, args, ln)
+            elif name == "has":
+                self._inline_has(fr, dest, args, ln)
             else:
                 raise HSErr(f"IR: '{name}' not in irx64 subset yet", ln)
             return
@@ -2029,6 +2031,49 @@ class GenIR(Gen):
         a.mov_rr("rsi", "rax")
         a.pop_r("rdi")
         a.call("x_append")
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _inline_has(self, fr, dest, args, ln):
+        a = self.a
+        if len(args) != 2:
+            raise HSErr("has wants has(dict, key)", ln)
+        self._load(fr, args[0], ln)
+        a.push_r("rax")
+        self._load(fr, args[1], ln)
+        a.mov_rr("rsi", "rax")
+        a.pop_r("rdi")
+        lab_bad, lab_k, lab_ok = (self.new_tmp("hs"), self.new_tmp("hs"),
+                                  self.new_tmp("hs"))
+        a.mov_rr("r11", "rdi")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_bad)
+        a.mov_rm("r11", "rdi", 0)
+        a.cmp_ri32("r11", Gen.K_DICT)
+        a.jcc("ne", lab_bad)
+        a.mov_rr("r11", "rsi")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("e", lab_ok)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", lab_k)
+        a.mov_rm("r11", "rsi", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("e", lab_ok)
+        a.label(lab_k)
+        self.raise_static("dict key must be Str or Int", ln)
+        a.label(lab_bad)
+        self.raise_static("has wants has(dict, key)", ln)
+        a.label(lab_ok)
+        a.call("x_dict_find")
+        lab_f, lab_d = self.new_tmp("hs"), self.new_tmp("hs")
+        a.test_rr("rax", "rax")
+        a.jcc("s", lab_f)
+        a.mov_ri64("rax", Gen.HS_TRUE)
+        a.jmp(lab_d)
+        a.label(lab_f)
+        a.mov_ri64("rax", Gen.HS_FALSE)
+        a.label(lab_d)
         a.mov_mr("rbp", "rax", fr["slots"][dest])
 
     def _inline_file(self, fr, dest, name, args, ln):

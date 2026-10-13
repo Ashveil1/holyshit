@@ -574,7 +574,7 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-## irx64.py — IR ลง x86-64 (42)
+## irx64.py — IR ลง x86-64 (43)
 
 - `'{ins['name']}' already defined in this scope`
 - `'{name}' already defined in this scope`
@@ -600,6 +600,7 @@
 - `ffi F64 is not supported by xbuild yet ('{name}')`
 - `field '{name}' is not an array`
 - `float wants 1 arg`
+- `has wants has(dict, key)`
 - `in module '{dotted}': {e.msg}`
 - `int wants 1 arg`
 - `module '{fr['phantoms'][ref]}' is not a first-class value in x64 subset (use mod.attr)`
@@ -619,4 +620,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 573 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 574 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
