@@ -53,10 +53,15 @@ PROGS = {
     'dict_words': 'def count(ws):\n  c = {}\n  for w in ws:\n    if w in c:\n      c[w] = c[w] + 1\n    else:\n      c[w] = 1\n  return c\nc = count(["a", "b", "a", "c" + "d", "cd", "a"])\nprint c, c["a"], c["cd"]\nprint c == {"cd": 2, "a": 3, "b": 1}, c == {"a": 3}, {"x": {"y": [1]}} == {"x": {"y": [1]}}\n',
     'contains': 'print 3 in [1, 2, 3], 4 in [1, 2, 3], "ell" in "hello", "z" in "hello", "" in "x", "hello!" in "hello", 5 not in [1], "a" in ["b", "a"]\n',
     "slice_str": 's = "hello world"\nprint s[0:5], s[6:], s[:5], s[-5:], s[:-6], s[3:3], s[5:2], s[-100:100], s[:], s[2:4] + "!"\nl = [1, 2, 3, 4, 5]\nprint l[1:3], l[:2], l[-2:], l[2:], l[:], l[4:1], l[9:], l[:-1]\nm = l[1:4]\nappend(m, 9)\nprint m, l, len(l[0:0])\nprint str(0), str(-45) + "|", str(123456789012), str(true), str(false), str(null), str("x"), len(str(4611686018427387903)), str(-4611686018427387903)\nn = 0\nt = ""\nwhile n < 5:\n  t = t + str(n * n) + ","\n  n = n + 1\nprint t\n',
+    "builtins": 'print find("hello", "ll"), find("hello", "z"), find("abc", ""), find("", "a")\np = split("a,b,,c", ",")\nprint p, len(p), split("abc", ","), split("a--b--", "--")\nprint int("123"), int("-45") + 1, int("0")\ntry:\n  x = int("12x")\n  print "no"\nexcept as e:\n  print "caught"\ntry:\n  print "in try"\nexcept as e2:\n  print "never"\ndef f(n):\n  if n > 2:\n    raise "too big: " + str(n)\n  return n\ntry:\n  print f(1)\n  print f(5)\n  print "unreach"\nexcept as err:\n  print "caught2"\nprint "after"\na = argv()\nprint len(a)\nwrite_bytes("/tmp/_cc_wb.out", [72, 105, 10])\nprint read_text("/tmp/_cc_wb.out"), len(read_text("/tmp/_cc_wb.out"))\n',
+    "list_add": 'a = [1, 2]\nb = [3]\nprint a + b, a + [] , [] + b, len(a + b + a), [] + []\nx = a + b\nappend(x, 9)\nprint x, a, b\n',
+    "for_str": 'for ch in "abc":\n  print ch\nfor k in {"x": 1, "y": 2}:\n  print k\nn = 0\nfor c in "hello world":\n  if c == "o":\n    n = n + 1\nprint n\n',
     "noreturn": "def p(n):\n  print n\np(5)\np(6)\n",
 }
 
 ERRS = {
+    "raise_uncaught": "print 1\nraise \"bye\"\n",
+    "raise_in_fn": "def f():\n  raise \"x\"\ntry:\n  f()\nexcept as e:\n  print 5\nf()\n",
     'dict_nokey': 'd = {"a": 1}\nprint d["a"]\nprint d["b"]\n',
     'keys_int': 'print keys(5)\n',
     'in_int': 'print 1 in 5\n',
@@ -157,6 +162,41 @@ with tempfile.TemporaryDirectory() as d:
         c = compile_prog(p, out)
         check(f"cc rejects {name}", c.returncode != 0 and "error:" in c.stdout
               and not os.path.exists(out), (c.returncode, c.stdout, c.stderr))
+    # M5: bootstrap. cc1 = cc.hs run by interp; cc2 = ELF cc1 makes from cc.hs;
+    # cc3 = ELF cc2 makes from cc.hs. cc2 == cc3 byte for byte (fixed point),
+    # and cc2 compiles every program above to the same bytes as cc1 did.
+    cc2 = os.path.join(d, "cc2")
+    cc3 = os.path.join(d, "cc3")
+    c = compile_prog(CC, cc2)
+    ok2 = c.returncode == 0 and os.path.exists(cc2)
+    check("bootstrap: cc1 compiles cc.hs", ok2, c.stderr + c.stdout)
+    if ok2:
+        os.chmod(cc2, 0o755)
+        r = subprocess.run([cc2, CC, cc3], capture_output=True, text=True)
+        same = r.returncode == 0 and open(cc2, "rb").read() == open(cc3, "rb").read()
+        check("bootstrap: cc2 == cc3 (fixed point)", same, (r.returncode, r.stdout, r.stderr))
+        bad = []
+        # cc2 itself has 63-bit Ints, so literals >= 2^61 (tagged 2n+1 would
+        # overflow) are the documented limit: those programs need cc1
+        biglit = {"arith", "bigint", "slice_str"}
+        for name, src in PROGS.items():
+            if name in biglit:
+                continue
+            p = os.path.join(d, name + ".hs")
+            o1 = os.path.join(d, name + ".bin")
+            o2 = os.path.join(d, name + ".cc2")
+            r = subprocess.run([cc2, p, o2], capture_output=True, text=True)
+            if r.returncode != 0 or not os.path.exists(o2) or open(o1, "rb").read() != open(o2, "rb").read():
+                bad.append(name)
+        check("bootstrap: cc2 emits the same ELF as cc1 for every program", not bad, bad)
+        rej = []
+        for name, src in BAD.items():
+            p = os.path.join(d, "bad_" + name + ".hs")
+            o2 = os.path.join(d, "bad_" + name + ".cc2")
+            r = subprocess.run([cc2, p, o2], capture_output=True, text=True)
+            if r.returncode == 0 or os.path.exists(o2):
+                rej.append(name)
+        check("bootstrap: cc2 rejects what cc1 rejects", not rej, rej)
     # the same compiler run natively (gcc) emits identical bytes
     p = os.path.join(d, "fib.hs")
     o1, o2 = os.path.join(d, "fib.i"), os.path.join(d, "fib.n")
