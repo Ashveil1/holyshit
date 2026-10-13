@@ -34,6 +34,7 @@ class Gen:
         self.mod_by_path = {}
         self.funcs = []  # (node, fscope, label)
         self.strs = {}  # literal -> ro label
+        self.sstrs = {}  # literal -> static Str object (data label)
         self.ro = bytearray()
         self.tmpn = 0
         self.loop_stack = []  # (break_label, cont_label)
@@ -468,6 +469,20 @@ class Gen:
             self.strs[s] = f"str{len(self.strs)}"
         return self.strs[s]
 
+    def sstr(self, s):
+        """Label of an immutable static Str object [kind][len][bytes+NUL]
+        for a string literal: no allocation per evaluation."""
+        if s not in self.sstrs:
+            a = self.a
+            b = s.encode()
+            lab = f"sstr_{len(self.sstrs)}"
+            self.sstrs[s] = lab
+            a.data_label(lab)
+            a.data_qword(0)
+            a.data_qword(len(b))
+            a.data_bytes(b + b"\0" * (8 - len(b) % 8))
+        return self.sstrs[s]
+
     def emit_str_table(self):
         for s, lab in self.strs.items():
             self.a.label(lab)
@@ -499,11 +514,7 @@ class Gen:
                 a.mov_ri64("rax", self.tag_int(v))
             return
         if t == "str":
-            b = e["val"].encode()
-            lab = self.rstr(e["val"])
-            a.lea_rip("rdi", lab)
-            a.mov_ri32("rsi", len(b))
-            a.call("x_str_at")
+            a.lea_rip("rax", self.sstr(e["val"]))
             return
         if t == "var":
             self.var_get(e["name"], sc, mod, ln)
