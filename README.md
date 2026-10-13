@@ -11,6 +11,7 @@ python3 hs.py run prog.hs [args...]   # build ลง temp แล้วรัน�
 HS_BACKEND=auto|x64|native|interp     # เลือก backend ของ run (หรือ run prog.hs --backend X)
 python3 hs.py fmt prog.hs [-w|--check] # จัดรูป canonical (2-space, ตัดคอมเมนต์)
 python3 hs.py test file_or_dir...      # รันทุก `def test_*()` (assert = เทส); --json สำหรับเอเจนต์, exit 1 ถ้ามีที่ fail
+python3 hs.py repl                       # REPL: state ค้างข้ามบรรทัด, นิพจน์เปล่าพิมพ์ค่า, error ไม่ทำให้หลุด
 python3 hs.py xbuild prog.hs [-o prog] # machine code ตรง ไม่ใช้ gcc (subset)
 python3 hs.py xkernel prog.hs -o k.elf # kernel freestanding ไม่ใช้ gcc/as/ld
 python3 hs.py lsp                     # language server (stdio, ไม่มี dependency)

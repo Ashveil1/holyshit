@@ -1841,6 +1841,10 @@ def main(argv):
     if "--json" in argv:
         as_json = True
         argv = [a for a in argv if a != "--json"]
+    if len(argv) >= 2 and argv[1] == "repl":
+        return subprocess.run([sys.executable, os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "interp.py"),
+            "--repl"]).returncode
     if len(argv) >= 2 and argv[1] == "lsp":
         import lsp as _lsp
         _lsp.main()
@@ -1849,7 +1853,7 @@ def main(argv):
                                      "xbuild", "xrun", "xkernel", "ir", "test"):
         print("usage: hs.py [--json] build prog.hs [-o prog] | hs.py run prog.hs [args...] "
               "| hs.py check prog.hs | hs.py fmt prog.hs [-w|--check] "
-              "| hs.py test file|dir... "
+              "| hs.py test file|dir... | hs.py repl "
               "| hs.py xbuild prog.hs [-o prog] | hs.py xrun prog.hs "
               "| hs.py xkernel prog.hs -o kernel.elf | hs.py ir prog.hs | hs.py lsp",
               file=sys.stderr)

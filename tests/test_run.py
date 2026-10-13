@@ -97,5 +97,12 @@ with tempfile.TemporaryDirectory() as d:
           and "1 passed, 0 failed" in r.stdout, (r.returncode, r.stdout))
     check("hs test leaves no temp file", os.listdir(d) == ["test_x.hs"],
           os.listdir(d))
+r = subprocess.run([sys.executable, HS, "repl"], capture_output=True, text=True,
+                   input="x = 5\nx * 2\ndef f(a):\n  return a + x\n\nf(1)\n"
+                         "print \"hi\"\nnope\nf(2)\nnull\n")
+check("hs repl keeps state, echoes values, survives errors",
+      r.returncode == 0 and r.stdout.splitlines()
+      == ["10", "6", "hi", "error: unknown variable 'nope' at line 1", "7"],
+      (r.returncode, r.stdout, r.stderr))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
