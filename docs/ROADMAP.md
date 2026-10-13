@@ -15,12 +15,12 @@
 | เร็วกว่า Python | `bench/run.py` ด้านล่าง: loop/fib ~5-6x, alloc 2.6x, dict 1.3-1.5x, strings 1.3-1.5x (ช่วงจากหลายรอบ) | ~65% |
 | JIT / ไม่มีขั้นตอน compile | `hs run` ใช้ x64 เป็นค่าเริ่มต้น (build+รัน ~0.1 s ไม่ใช้ gcc) fallback เองเมื่อนอก subset / Int เกิน 62-bit | ~55% |
 | ง่ายกว่า Python | f-string, lambda, class/inherit, `in`, ternary, keys/values/has, prelude (abs/min/max/sum/sorted/...), stack overflow เป็น error สะอาด; assert + list comprehension มีแล้ว; enumerate + `for i, x in` มีแล้ว; ยังไม่มี default args | ~55% |
-| พึ่งตัวเองได้ | x64 + kernel + FFI ไม่ใช้ gcc; lexer/parser/formatter เขียนด้วย hs ตรงกับ Python ทุกไบต์บนไฟล์ในรีโป (808 เช็ค) และ parse ตัวเองได้; `selfhost/cc.hs` = compiler เขียนด้วย hs (parse ด้วย parselib.hs → ELF x86-64 ตรงด้วย `write_bytes`, subset Int/def/recursion/while/print) ผลตรง interp 24 เคส; ยังเล็ก (ไม่มี list/str/dict/float) ต้องขยายจนคอมไพล์ตัวเองได้ | ~50% |
+| พึ่งตัวเองได้ | x64 + kernel + FFI ไม่ใช้ gcc; lexer/parser/formatter เขียนด้วย hs ตรงกับ Python ทุกไบต์บนไฟล์ในรีโป (808 เช็ค) และ parse ตัวเองได้; `selfhost/cc.hs` = compiler เขียนด้วย hs (parse ด้วย parselib.hs → ELF x86-64 ตรงด้วย `write_bytes`, subset Int/def/recursion/while/print) ผลตรง interp 24 เคส; ยังเล็ก (ไม่มี list/str/dict/float) ต้องขยายจนคอมไพล์ตัวเองได้ ; **bootstrap fixed point**: cc.hs (ผ่าน interp) → cc2 (ELF) → cc3 โดย cc2 == cc3 ไบต์ต่อไบต์ (test_cc 67 เคส) และ `hs cc prog.hs` ใช้ compiler ที่เขียนด้วย hs นี้; subset ยังไม่มี Float/class/GC/FFI ไม่แทน x64gen/irx64 ทั้งหมด | ~60% |
 | FFI | native + x64 (I64/U64/Ptr/Str/F64); ยังไม่มี struct/callback | ~55% |
 | เขียน OS ด้วยตัวเอง | kernel บูตบน QEMU, xkernel 291 เคส (VFS, shell ring3, paging, preempt, float, JSON) | ~70% |
 | AI-first | error แบบมีโครงสร้าง (`--json`), LSP, docs/api.json, `hs fmt`; `hs test` (test runner, `--json`) มีแล้ว; `hs repl` มีแล้ว | ~40% |
 
-ภาพรวม ~57% (ยังไม่ถึง 80%) ส่วนที่ใหญ่ที่สุดที่เหลือ: code generator ใน hs (self-host เต็ม), JIT จริง, GC ให้เร็วขึ้นเมื่อ live heap ใหญ่ (strings/alloc/dict)
+ภาพรวม ~60% (ยังไม่ถึง 80%) ส่วนที่ใหญ่ที่สุดที่เหลือ: code generator ใน hs (self-host เต็ม), JIT จริง, GC ให้เร็วขึ้นเมื่อ live heap ใหญ่ (strings/alloc/dict)
 
 ```
 case          cpython  hs xbuild    ratio   MB py   MB hs  output
@@ -33,7 +33,7 @@ strings        0.778s     0.627s    1.24x     443     469  same
 
 ## เส้นทางสู่ self-host เต็ม (compiler ใน hs คอมไพล์ตัวเองได้)
 
-สถานะ: `selfhost/cc.hs` (M1) คอมไพล์ subset Int ได้ ผลตรง interp (tests/test_cc.py). ขนาดงานที่เหลือ **ใหญ่** (ฝั่ง Python คือ x64gen/irx64/gcrt ~15k บรรทัด) จึงแบ่งเป็นขั้นที่วัดได้:
+สถานะ: `selfhost/cc.hs` ผ่าน M1-M5 ครบสำหรับ subset (bootstrap fixed point พิสูจน์ใน tests/test_cc.py). ที่เหลือคือขยาย subset จนแทน x64gen/irx64 (Float, class, GC, FFI, kernel) ซึ่งยัง **ใหญ่** — แบ่งเป็นขั้นด้านล่าง
 
 | ขั้น | เนื้อหา | เกณฑ์ผ่าน (รันได้) |
 |---|---|---|
