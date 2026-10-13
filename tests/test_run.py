@@ -64,5 +64,10 @@ check("big literal falls back", out == "240\n" and rc == 0, (rc, out, err))
 rc, out, err = run("print true == 1, 1 == true, false == 0, true == 2\n")
 check("Bool == Int like interp", out == "true true true false\n",
       (rc, out, err))
+REC = "def f(n):\n  return f(n + 1) + 1\nprint f(0)\n"
+for be in ("interp", "native"):
+    rc, out, err = run(REC, {"HS_BACKEND": be})
+    check(f"runaway recursion is a clean error ({be})",
+          rc == 1 and "stack overflow" in err and out == "", (rc, out, err))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)

@@ -1,4 +1,7 @@
 // holyshit native runtime (เฟส 3a). Build: gcc rt.c prog.c -lgc
+#define _GNU_SOURCE
+#include <signal.h>
+#include <ucontext.h>
 #include <gc.h>
 #include <math.h>
 #include <setjmp.h>
@@ -22,9 +25,33 @@
 
 static int hs_init_done = 0;
 
+// A fault right at the stack pointer is runaway recursion: report it like
+// interp/x64 do instead of dying with a bare SIGSEGV.
+static void hs_segv(int sig, siginfo_t *si, void *ctx) {
+    ucontext_t *uc = (ucontext_t *)ctx;
+    uintptr_t sp = (uintptr_t)uc->uc_mcontext.gregs[REG_RSP];
+    uintptr_t a = (uintptr_t)si->si_addr;
+    if (a + 65536 >= sp && a <= sp + 65536) {
+        static const char m[] = "error: stack overflow (recursion too deep)\n";
+        ssize_t r = write(2, m, sizeof(m) - 1);
+        (void)r;
+        _exit(1);
+    }
+    signal(sig, SIG_DFL);  // not ours: fault again with the default action
+}
+
 static void hs_init(void) {
     if (!hs_init_done) {
         GC_INIT();
+        static char altstack[65536];
+        stack_t ss = {.ss_sp = altstack, .ss_size = sizeof(altstack), .ss_flags = 0};
+        sigaltstack(&ss, NULL);
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_sigaction = hs_segv;
+        sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+        sigemptyset(&sa.sa_mask);
+        sigaction(SIGSEGV, &sa, NULL);
         hs_init_done = 1;
     }
 }

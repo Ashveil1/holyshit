@@ -3021,8 +3021,28 @@ def main():
     except HSErr as e:
         fail(e.msg, e.line)
     except RecursionError:
-        fail("recursion too deep", None)
+        fail("stack overflow (recursion too deep)", None)
+
+
+def _main_big_stack():
+    """Run main() on a thread with a large C stack: the recursion limit
+    (20000 Python frames) is then reached before the C stack overflows, so
+    runaway recursion is the clean error 'recursion too deep', not a crash."""
+    import threading
+    code = [0]
+
+    def run():
+        try:
+            main()
+        except SystemExit as e:
+            code[0] = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
+    threading.stack_size(512 * 1024 * 1024)
+    t = threading.Thread(target=run)
+    t.start()
+    t.join()
+    sys.stdout.flush()
+    sys.exit(code[0])
 
 
 if __name__ == "__main__":
-    main()
+    _main_big_stack()
