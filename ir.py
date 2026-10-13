@@ -2453,7 +2453,10 @@ _FUNCS = {}
 
 def build_module(prog, pfx=""):
     b = Builder(pfx)
-    return b.build(prog, pfx)
+    m = b.build(prog, pfx)
+    import iropt
+    iropt.optimize_module(m)
+    return m
 
 
 def run_module(m, basedir=""):
