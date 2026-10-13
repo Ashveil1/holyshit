@@ -100,7 +100,7 @@ for k in {"a": 1}:       # วน key
   (formatter คงรูป method ไว้). ถ้า receiver เป็น path ที่ขึ้นต้นด้วยโมดูลที่ `import` ไว้
   (`std.heap.find(...)`) ยังหมายถึงฟังก์ชันของโมดูลตามเดิม.
   `join(sep, list)`, slice `s[a:b]` / `s[:b]` / `s[a:]` (list ก็ได้, index ติดลบได้)
-- **lambda (v0.7):** `lambda x, y: expr` (ไม่มี body หลายบรรทัด) แปลงตอน parse เป็น `def _lamN` ที่ยกขึ้นก่อน statement; ไม่มี closure จับตัวแปรนอก (ใช้แค่ param/global). formatter พิมพ์กลับเป็น `lambda`.
+- **lambda (v0.7):** `lambda x, y: expr` (ไม่มี body หลายบรรทัด) แปลงตอน parse เป็น `def _lamN` ที่ยกขึ้นก่อน statement. formatter พิมพ์กลับเป็น `lambda`.
 - **f-string (v0.7):** `f"x={x}, sum={a + b}"` แปลงตอน parse เป็น `"x=" + str(x) + ...`; `{{` `}}` = วงเล็บจริง; ใน `{}` ใส่ string literal ที่มี `"` ไม่ได้. formatter คงรูป f-string.
 - Process: `argv()` → List ของ args (ไม่รวมชื่อโปรแกรม), `env(name)` → Str/Null,
   `system(cmd)` → Int exit status (ผ่าน shell)
