@@ -71,3 +71,8 @@ print 1.5 + 2.5  # Float: 4.0
 import os        # ไม่มีโมดูลนี้: cannot find module
 print argv()     # argv: not in x64 subset
 ```
+
+## Rekursi ไม่จบ (runaway recursion)
+
+interp และ native รายงาน `error: stack overflow (recursion too deep)` (exit 1)
+แต่ x64 backend ยังไม่มี guard — recursion ไม่จบจะ segfault (ยังไม่ได้ทำ)
