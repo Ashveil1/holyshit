@@ -4,16 +4,16 @@
 --quick skips test_xkernel.py (needs qemu-system-x86_64 and boots 24 kernels).
 
 Suites:
-  test.py         49  interpreter (reference semantics)
-  test_native.py  49  gcc native backend, byte-identical to interp
+  test.py         50  interpreter (reference semantics)
+  test_native.py  51  gcc native backend, byte-identical to interp
   test_fmt.py      4  formatter canonical + idempotent + same behavior
-  test_x64.py     98  x86-64 backend, static ELF, no gcc
-  test_ir.py     139  IR: build/verify/exec byte-identical to interp
-  test_irx64.py   42  IR->x64 ELF agrees with AST-path ELF
+  test_x64.py    101  x86-64 backend, static ELF, no gcc
+  test_ir.py     140  IR: build/verify/exec byte-identical to interp
+  test_irx64.py   43  IR->x64 ELF agrees with AST-path ELF
   test_xkernel.py 291 freestanding kernel booting on QEMU
   test_examples.py 17  every examples/*.hs still runs (interp + native)
   test_lsp.py     25  language server over stdio
-  test_docs.py    38  doc examples really run, links + api.json stay in sync
+  test_docs.py    41  doc examples really run, links + api.json stay in sync
 """
 import os
 import subprocess

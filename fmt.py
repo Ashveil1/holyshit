@@ -95,6 +95,10 @@ def fmt_expr(e):
         l = _side(e["l"], p, "l", e["op"])
         r = _side(e["r"], p, "r", e["op"])
         return f"{l} {e['op']} {r}"
+    if t == "call" and e.get("method"):
+        # method sugar: keep the receiver.name(args) spelling
+        return (_atom(e["args"][0], 9) + "." + e["method"] + "(" +
+                ", ".join(fmt_expr(a) for a in e["args"][1:]) + ")")
     if t == "call":
         return fmt_expr(e["fn"]) + "(" + ", ".join(fmt_expr(a) for a in e["args"]) + ")"
     if t == "index":

@@ -93,6 +93,7 @@ bitwise ผูกแน่นกว่า `+ -` แต่หลวมกว่�
 ```hs
 print(x, y)   len(x)   range(n) | range(a, b)   str(x)   int(x)
 append(xs, v)        split(s) | split(s, sep)    find(s, sub)
+# เขียนเป็น method ก็ได้: xs.append(v)  s.split(",")  s.find(sub)  ",".join(xs)
 join(sep, xs)        input()   open/read/write/close (hosted)
 argv()  env(k)  system(cmd)          json_*  read_text/write_text (hosted)
 read_mem(p, n)  # n ไบต์ดิบที่ address p เป็น Str (ทุก backend)

@@ -94,6 +94,10 @@ for k in {"a": 1}:       # วน key
 - File (น้อยสุดที่พอใช้): `open(path, mode)` + `read(f)` + `write(f, s)` + `close(f)` โดย mode `"r"`/`"w"`
 - `len` ใช้กับ Dict = จำนวน key
 - String/List: `append(a, x)`, `split(s)` / `split(s, sep)`, `find(s, sub)` (-1 ถ้าไม่เจอ),
+- **Method sugar (v0.7):** `x.append(v)`, `s.split(sep)`, `s.find(sub)`, `sep.join(list)` เขียนแบบ
+  method ได้ แปลงตอน parse เป็น `append(x, v)` ฯลฯ ทุก backend เห็นการเรียก builtin ธรรมดา
+  (formatter คงรูป method ไว้). ถ้า receiver เป็น path ที่ขึ้นต้นด้วยโมดูลที่ `import` ไว้
+  (`std.heap.find(...)`) ยังหมายถึงฟังก์ชันของโมดูลตามเดิม.
   `join(sep, list)`, slice `s[a:b]` / `s[:b]` / `s[a:]` (list ก็ได้, index ติดลบได้)
 - Process: `argv()` → List ของ args (ไม่รวมชื่อโปรแกรม), `env(name)` → Str/Null,
   `system(cmd)` → Int exit status (ผ่าน shell)
