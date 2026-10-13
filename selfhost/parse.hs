@@ -1,12 +1,14 @@
 # Self-hosted parser (core grammar). Reads a .hs file, prints the AST as JSON,
 # which must equal `python3 selfhost/dump_parse.py FILE` (interp.parse_program).
-# Not yet covered: class, extern, unsafe, lambda, f-strings (prints
-# "unsupported" and fails).
 import lexlib
 
 KEYWORDS = ["def", "if", "elif", "else", "while", "for", "in", "return", "break", "continue", "global", "and", "or", "not", "true", "false", "null", "pass", "import", "try", "except", "as", "extern", "raise", "lambda", "class"]
 METHODS = ["split", "find", "join", "append"]
-P = {"t": [], "i": 0, "mods": {}}
+FFTYPE = ["U0", "I64", "U64", "F64", "Str", "Ptr"]
+UTYPES = ["I64", "U64", "Ptr"]
+# names a struct may not take (keep in sync with interp.BUILTINS)
+BUILTINS = ["alloc", "append", "append_text", "argv", "as_int", "as_ptr", "close", "contains", "env", "exists", "find", "float", "has", "http_get", "input", "int", "join", "json_load", "json_parse", "json_save", "json_str", "keys", "len", "load32", "load64", "load8", "ls", "meminfo", "mkdir", "open", "pmm_alloc", "print", "range", "read", "read_mem", "read_text", "readkey", "split", "store32", "store64", "store8", "str", "system", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "values", "write", "write_text"]
+P = {"unsafe": 0, "structs": {}, "t": [], "i": 0, "mods": {}, "hoist": [], "nlam": 0, "classes": {}}
 
 def N(t, line, d):
   d["t"] = t
@@ -47,9 +49,6 @@ def skip_nl():
   while at("NEWLINE"):
     nxt()
 
-def unsupported(what):
-  raise "unsupported: " + what
-
 def parse_body(top):
   body = []
   skip_nl()
@@ -57,7 +56,17 @@ def parse_body(top):
     if at("INDENT"):
       t = nxt()
       raise "unexpected indent at line " + str(t[2])
-    append(body, parse_stmt())
+    outer = P["hoist"]
+    P["hoist"] = []
+    st = null
+    if P["unsafe"] > 0:
+      st = parse_ustmt()
+    else:
+      st = parse_stmt()
+    for h in P["hoist"]:
+      append(body, h)
+    P["hoist"] = outer
+    append(body, st)
     skip_nl()
   if not top:
     if at("DEDENT"):
@@ -98,8 +107,12 @@ def parse_stmt():
   if k == "ID":
     if v == "def":
       return parse_def()
-    if v == "class" or v == "extern" or v == "unsafe" or v == "lambda":
-      unsupported(v)
+    if v == "unsafe":
+      return parse_unsafe()
+    if v == "class":
+      return parse_class()
+    if v == "extern":
+      return parse_extern()
     if v == "if":
       return parse_if()
     if v == "while":
@@ -192,6 +205,148 @@ def parse_stmt():
     if e["t"] == "attr":
       return N("setattr", ln, {"obj": e["obj"], "name": e["name"], "val": rhs})
     raise "cannot assign to this at line " + str(ln)
+  return N("expr", ln, {"val": e})
+
+def parse_unsafe():
+  t = expect("ID")
+  if P["unsafe"] > 0:
+    raise "unsafe inside unsafe at line " + str(t[2])
+  expectv("OP", ":")
+  if not at("NEWLINE"):
+    raise "expected ':' then a new line at line " + str(t[2])
+  nxt()
+  if not at("INDENT"):
+    raise "expected indented block at line " + str(peek()[2])
+  nxt()
+  P["unsafe"] = P["unsafe"] + 1
+  body = []
+  skip_nl()
+  while not at("EOF") and not at("DEDENT"):
+    if at("INDENT"):
+      u = nxt()
+      raise "unexpected indent at line " + str(u[2])
+    append(body, parse_ustmt())
+    skip_nl()
+  if at("DEDENT"):
+    nxt()
+  else:
+    raise "expected indented block at line " + str(peek()[2])
+  P["unsafe"] = P["unsafe"] - 1
+  return N("unsafe", t[2], {"body": body})
+
+def parse_struct():
+  t = expect("ID")
+  nm = expect("ID")
+  if nm[1] in KEYWORDS or nm[1] in UTYPES or nm[1] in FFTYPE or nm[1] in BUILTINS:
+    raise "bad struct name '" + nm[1] + "' at line " + str(nm[2])
+  expectv("OP", ":")
+  if not at("NEWLINE"):
+    raise "expected ':' then a new line at line " + str(t[2])
+  nxt()
+  if not at("INDENT"):
+    raise "expected indented block at line " + str(peek()[2])
+  nxt()
+  fields = {}
+  off = 0
+  skip_nl()
+  while not at("EOF") and not at("DEDENT"):
+    if at("INDENT"):
+      u = nxt()
+      raise "unexpected indent at line " + str(u[2])
+    ft = expect("ID")
+    ftype = ""
+    if ft[1] in UTYPES:
+      ftype = ft[1]
+    elif has(P["structs"], ft[1]) or ft[1] == nm[1]:
+      ftype = ft[1]
+    else:
+      raise "bad field type '" + ft[1] + "' at line " + str(ft[2])
+    if atv("OP", "*"):
+      if ftype in UTYPES:
+        raise "scalar type '" + ft[1] + "' cannot use '*' at line " + str(ft[2])
+      nxt()
+      ftype = "Ptr:" + ftype
+    fn = expect("ID")
+    if fn[1] in KEYWORDS:
+      raise "bad field name '" + fn[1] + "' at line " + str(fn[2])
+    if has(fields, fn[1]):
+      raise "duplicate field '" + fn[1] + "' at line " + str(fn[2])
+    count = 1
+    if atv("OP", "["):
+      nxt()
+      cn = expect("NUM")
+      cv = num_node(cn)["val"]
+      if find(cn[1], ".") >= 0 or cv <= 0:
+        raise "array size must be a positive integer at line " + str(cn[2])
+      count = cv
+      expectv("OP", "]")
+    fields[fn[1]] = [ftype, off, count]
+    off = off + 8 * count
+    skip_nl()
+  if at("DEDENT"):
+    nxt()
+  else:
+    raise "expected indented block at line " + str(peek()[2])
+  if len(fields) == 0:
+    raise "struct needs at least one field at line " + str(t[2])
+  lay = {"fields": fields, "size": off}
+  if has(P["structs"], nm[1]) and P["structs"][nm[1]] != lay:
+    raise "struct '" + nm[1] + "' redefined with a different layout at line " + str(nm[2])
+  P["structs"][nm[1]] = lay
+  return N("struct", t[2], {"name": nm[1]})
+
+def parse_ustmt():
+  t = peek()
+  k = t[0]
+  v = t[1]
+  ln = t[2]
+  if k == "ID" and v == "struct":
+    return parse_struct()
+  if k == "ID" and (v in UTYPES or has(P["structs"], v)) and P["i"] + 1 < len(P["t"]) and (P["t"][P["i"] + 1][0] == "ID" or has(P["structs"], v)):
+    typ = nxt()[1]
+    utype = typ
+    if has(P["structs"], typ):
+      expectv("OP", "*")
+      utype = "Ptr:" + typ
+    name = expect("ID")[1]
+    init = null
+    if atv("OP", "="):
+      nxt()
+      init = parse_expr()
+    return N("udecl", ln, {"utype": utype, "name": name, "init": init})
+  if k == "OP" and v == "*":
+    nxt()
+    ptr = parse_un()
+    expectv("OP", "=")
+    val = parse_expr()
+    return N("store", ln, {"ptr": ptr, "val": val})
+  if k == "ID" and v == "def":
+    raise "def not allowed in unsafe at line " + str(ln)
+  if k == "ID" and v == "for":
+    raise "for not allowed in unsafe (use while) at line " + str(ln)
+  if k == "ID" and v == "try":
+    raise "try not allowed in unsafe (wrap the unsafe block instead) at line " + str(ln)
+  if k == "ID" and v == "extern":
+    raise "extern not allowed in unsafe (declare at top level) at line " + str(ln)
+  if k == "ID" and v == "raise":
+    nxt()
+    e = null
+    if not end_of_stmt():
+      e = parse_expr()
+    return N("raise", ln, {"val": e})
+  if k == "ID" and v == "unsafe":
+    raise "unsafe inside unsafe at line " + str(ln)
+  if k == "ID" and v in ["if", "while", "return", "break", "continue", "pass", "global", "print"]:
+    return parse_stmt()
+  e = parse_expr()
+  if atv("OP", "="):
+    nxt()
+    rhs = parse_expr()
+    if e["t"] == "var":
+      return N("set", ln, {"name": e["name"], "val": rhs})
+    if e["t"] == "field":
+      return N("fstore", ln, {"obj": e["obj"], "name": e["name"], "idx": e["idx"], "val": rhs})
+    raise "cannot assign to this in unsafe (use *p = v for memory) at line " + str(ln)
   return N("expr", ln, {"val": e})
 
 def parse_def():
@@ -353,6 +508,17 @@ def parse_un():
   if atv("OP", "-"):
     t = nxt()
     return N("neg", t[2], {"val": parse_un()})
+  if P["unsafe"] > 0 and atv("OP", "*"):
+    t = nxt()
+    return N("deref", t[2], {"val": parse_un()})
+  if P["unsafe"] > 0 and atv("ID", "sizeof"):
+    t = nxt()
+    expectv("OP", "(")
+    tn = expect("ID")
+    if not tn[1] in UTYPES and not has(P["structs"], tn[1]):
+      raise "sizeof wants a type, got '" + tn[1] + "' at line " + str(tn[2])
+    expectv("OP", ")")
+    return N("sizeof", t[2], {"stype": tn[1]})
   return parse_post()
 
 def pure_recv(e):
@@ -398,12 +564,267 @@ def parse_post():
     elif atv("OP", "."):
       t = nxt()
       nm = expect("ID")
-      if is_modref(e):
+      if P["unsafe"] > 0:
+        idx = null
+        if atv("OP", "["):
+          nxt()
+          idx = parse_expr()
+          expectv("OP", "]")
+        e = N("field", t[2], {"obj": e, "name": nm[1], "idx": idx})
+      elif is_modref(e):
         e = N("attr", t[2], {"obj": e, "name": nm[1]})
       else:
         e = N("index", t[2], {"obj": e, "idx": N("str", t[2], {"val": nm[1]}), "dot": nm[1]})
     else:
       return e
+
+def parse_lambda():
+  t = nxt()
+  if P["unsafe"] > 0:
+    raise "lambda not allowed in unsafe at line " + str(t[2])
+  params = []
+  if not atv("OP", ":"):
+    while true:
+      a = expect("ID")[1]
+      if a in KEYWORDS:
+        raise "bad parameter name '" + a + "' at line " + str(t[2])
+      if a in params:
+        raise "duplicate param '" + a + "' at line " + str(t[2])
+      append(params, a)
+      if atv("OP", ","):
+        nxt()
+        continue
+      break
+  expectv("OP", ":")
+  outer = P["hoist"]
+  P["hoist"] = []
+  body = parse_expr()
+  inner = P["hoist"]
+  P["hoist"] = outer
+  P["nlam"] = P["nlam"] + 1
+  name = "_lam" + str(P["nlam"])
+  d = N("def", t[2], {"name": name, "params": params, "body": inner + [N("return", t[2], {"val": body})], "lam": true})
+  append(P["hoist"], d)
+  return N("var", t[2], {"name": name})
+
+def is_blank(s):
+  i = 0
+  while i < len(s):
+    if not (s[i] == " " or s[i] == "\t" or s[i] == "\n" or s[i] == "\r"):
+      return false
+    i = i + 1
+  return true
+
+def parse_fstring(t):
+  raw = t[1]
+  ln = t[2]
+  parts = []
+  kinds = []
+  lit = ""
+  i = 0
+  while i < len(raw):
+    c = raw[i]
+    if c == "\\" and i + 1 < len(raw):
+      lit = lit + raw[i:i + 2]
+      i = i + 2
+    elif raw[i:i + 2] == "{{":
+      lit = lit + "{"
+      i = i + 2
+    elif raw[i:i + 2] == "}}":
+      lit = lit + "}"
+      i = i + 2
+    elif c == "}":
+      raise "single '}' in f-string (write }}) at line " + str(ln)
+    elif c == "{":
+      depth = 1
+      j = i + 1
+      while j < len(raw) and depth > 0:
+        if raw[j] == "{":
+          depth = depth + 1
+        if raw[j] == "}":
+          depth = depth - 1
+        j = j + 1
+      if depth > 0:
+        raise "unclosed '{' in f-string at line " + str(ln)
+      src = raw[i + 1:j - 1]
+      if is_blank(src):
+        raise "empty {} in f-string at line " + str(ln)
+      if len(lit) > 0:
+        append(parts, lexlib.unesc("\"" + lit + "\""))
+        append(kinds, true)
+        lit = ""
+      sub = []
+      lexlib.lex_line(sub, src, ln)
+      append(sub, ["EOF", "", ln])
+      saved_t = P["t"]
+      saved_i = P["i"]
+      P["t"] = sub
+      P["i"] = 0
+      e = parse_expr()
+      if not at("EOF"):
+        raise "bad expression in f-string at line " + str(ln)
+      P["t"] = saved_t
+      P["i"] = saved_i
+      append(parts, e)
+      append(kinds, false)
+      i = j
+    else:
+      lit = lit + c
+      i = i + 1
+  if len(lit) > 0:
+    append(parts, lexlib.unesc("\"" + lit + "\""))
+    append(kinds, true)
+  node = null
+  qi = 0
+  while qi < len(parts):
+    q = parts[qi]
+    x = null
+    if kinds[qi]:
+      x = N("str", ln, {"val": q})
+    else:
+      x = N("call", ln, {"fn": N("var", ln, {"name": "str"}), "args": [q]})
+    qi = qi + 1
+    if node == null:
+      node = x
+    else:
+      node = N("bin", ln, {"op": "+", "l": node, "r": x})
+  if node == null:
+    node = N("str", ln, {"val": ""})
+  if node["t"] != "bin":
+    node = N("bin", ln, {"op": "+", "l": N("str", ln, {"val": ""}), "r": node})
+  node["fs"] = parts
+  return node
+
+def parse_extern():
+  t = expect("ID")
+  lib = null
+  if atv("ID", "from"):
+    nxt()
+    lib = expect("STR")[1]
+  expectv("OP", ":")
+  if not at("NEWLINE"):
+    raise "expected ':' then a new line at line " + str(t[2])
+  nxt()
+  if not at("INDENT"):
+    raise "expected indented block at line " + str(peek()[2])
+  nxt()
+  decls = []
+  skip_nl()
+  while not at("EOF") and not at("DEDENT"):
+    if at("INDENT"):
+      u = nxt()
+      raise "unexpected indent at line " + str(u[2])
+    rt = expect("ID")
+    if not rt[1] in FFTYPE:
+      raise "bad ffi type '" + rt[1] + "' (want one of U0 I64 U64 F64 Str Ptr) at line " + str(rt[2])
+    nm = expect("ID")
+    if nm[1] in KEYWORDS or nm[1] in FFTYPE or nm[1] in UTYPES:
+      raise "bad extern name '" + nm[1] + "' at line " + str(nm[2])
+    expectv("OP", "(")
+    params = []
+    if not atv("OP", ")"):
+      while true:
+        ft = expect("ID")
+        if not ft[1] in FFTYPE or ft[1] == "U0":
+          raise "bad ffi param type '" + ft[1] + "' at line " + str(ft[2])
+        pn = expect("ID")
+        if pn[1] in KEYWORDS:
+          raise "bad param name '" + pn[1] + "' at line " + str(pn[2])
+        append(params, [pn[1], ft[1]])
+        if atv("OP", ","):
+          nxt()
+          continue
+        break
+    expectv("OP", ")")
+    append(decls, {"name": nm[1], "rtype": rt[1], "params": params, "line": nm[2]})
+    skip_nl()
+  if at("DEDENT"):
+    nxt()
+  else:
+    raise "expected indented block at line " + str(peek()[2])
+  if len(decls) == 0:
+    raise "extern block is empty at line " + str(t[2])
+  return N("extern", t[2], {"decls": decls, "lib": lib})
+
+def parse_class():
+  t = expect("ID")
+  name = expect("ID")[1]
+  base = null
+  if atv("OP", "("):
+    nxt()
+    bt = expect("ID")
+    base = bt[1]
+    if not has(P["classes"], base):
+      raise "unknown base class '" + base + "' (define it first) at line " + str(bt[2])
+    expectv("OP", ")")
+  expectv("OP", ":")
+  if not at("NEWLINE"):
+    raise "expected ':' then a new line at line " + str(t[2])
+  nxt()
+  if not at("INDENT"):
+    raise "expected indented block at line " + str(peek()[2])
+  nxt()
+  methods = []
+  skip_nl()
+  while not at("EOF") and not at("DEDENT"):
+    if atv("ID", "pass"):
+      nxt()
+    elif atv("ID", "def"):
+      outer = P["hoist"]
+      P["hoist"] = []
+      d = parse_def()
+      d["body"] = P["hoist"] + d["body"]
+      P["hoist"] = outer
+      if len(d["params"]) == 0 or d["params"][0] != "self":
+        raise "method '" + d["name"] + "' must take 'self' first at line " + str(d["line"])
+      if d["name"] in METHODS:
+        raise "method name '" + d["name"] + "' is taken by a builtin (split/find/join/append) at line " + str(d["line"])
+      for m in methods:
+        if m["name"] == d["name"]:
+          raise "duplicate method '" + d["name"] + "' at line " + str(d["line"])
+      append(methods, d)
+    else:
+      raise "a class body holds only def at line " + str(peek()[2])
+    skip_nl()
+  if at("DEDENT"):
+    nxt()
+  ln = t[2]
+  table = {}
+  init_fn = null
+  params = []
+  if base != null:
+    info = P["classes"][base]
+    btab = info[0]
+    init_fn = info[1]
+    params = info[2]
+    for k in keys(btab):
+      table[k] = btab[k]
+  for m in methods:
+    orig = m["name"]
+    m["orig"] = orig
+    if orig[0:2] == "__":
+      m["name"] = name + orig
+    else:
+      m["name"] = name + "__" + orig
+    m["clsmember"] = true
+    append(P["hoist"], m)
+    if orig == "__init__":
+      init_fn = m["name"]
+      params = m["params"][1:len(m["params"])]
+    else:
+      table[orig] = m["name"]
+  P["classes"][name] = [table, init_fn, params]
+  pairs = []
+  for k in keys(table):
+    append(pairs, [N("str", ln, {"val": k}), N("var", ln, {"name": table[k]})])
+  body = [N("set", ln, {"name": "self", "val": N("dict", ln, {"pairs": pairs})})]
+  if init_fn != null:
+    cargs = [N("var", ln, {"name": "self"})]
+    for a in params:
+      append(cargs, N("var", ln, {"name": a}))
+    append(body, N("expr", ln, {"val": N("call", ln, {"fn": N("var", ln, {"name": init_fn}), "args": cargs})}))
+  append(body, N("return", ln, {"val": N("var", ln, {"name": "self"})}))
+  return N("def", ln, {"name": name, "params": params, "body": body, "cls": name, "methods": methods, "base": base})
 
 def hexval(s):
   n = 0
@@ -436,7 +857,8 @@ def parse_atom():
     nxt()
     return N("str", t[2], {"val": v})
   if k == "FSTR":
-    unsupported("f-string")
+    nxt()
+    return parse_fstring(t)
   if k == "ID" and (v == "true" or v == "false" or v == "null"):
     nxt()
     val = null
@@ -448,7 +870,7 @@ def parse_atom():
   if k == "ID" and v == "print":
     raise "print is a statement, use: print ... at line " + str(t[2])
   if k == "ID" and v == "lambda":
-    unsupported("lambda")
+    return parse_lambda()
   if k == "ID":
     nxt()
     return N("var", t[2], {"name": v})
