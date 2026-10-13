@@ -66,6 +66,16 @@ def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None, disk=None):
                 pass
             s.close()
         time.sleep(timeout)
+        # emulation speed varies on shared runners: if the guest is still
+        # printing, keep waiting (up to 4x) instead of cutting it off
+        end = time.time() + 3 * timeout
+        last = -1
+        while time.time() < end:
+            size = os.path.getsize(slog) if os.path.exists(slog) else 0
+            if size == last:
+                break
+            last = size
+            time.sleep(2)
     finally:
         p.terminate()
         try:
