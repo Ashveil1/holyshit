@@ -28,7 +28,7 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (210)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (212)
 
 - `'{d['name']}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -65,6 +65,7 @@
 - `bad node {t}`
 - `bad operator {op}`
 - `bad param name '{pn.v}'`
+- `bad parameter name '{a}'`
 - `bad static type {target}`
 - `bad static type {utype}`
 - `bad stmt {t}`
@@ -162,6 +163,7 @@
 - `json_str needs Str keys`
 - `json_str wants json_str(x)`
 - `key {idx} not found`
+- `lambda not allowed in unsafe`
 - `len of {tname(a)}`
 - `len wants 1 arg, got {len(args)}`
 - `ls failed: {e.strerror or e}`
@@ -601,4 +603,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 555 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 557 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

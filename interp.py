@@ -381,7 +381,7 @@ def disp(v):
 KEYWORDS = {"def", "if", "elif", "else", "while", "for", "in", "return",
             "break", "continue", "global", "and", "or", "not",
             "true", "false", "null", "pass", "import", "try", "except", "as",
-            "extern", "raise"}
+            "extern", "raise", "lambda"}
 RESERVED = {"module"}
 UTYPES = {"I64", "U64", "Ptr"}
 FFTYPE = {"U0", "I64", "U64", "F64", "Str", "Ptr"}
@@ -509,6 +509,8 @@ class P:
         self.t = toks
         self.i = 0
         self.unsafe = 0
+        self.hoist = []   # defs for lambdas seen in the statement being parsed
+        self.nlam = 0
         self.mods = set()  # first segment of every `import` seen so far
 
     def peek(self):
@@ -554,7 +556,11 @@ def parse_body(p, top=False):
             t = p.next()
             raise HSErr("unexpected indent", t.line)
         # nested blocks inside unsafe: keep static statement parsing
-        body.append(parse_ustmt(p) if p.unsafe > 0 else parse_stmt(p))
+        outer, p.hoist = p.hoist, []
+        st = parse_ustmt(p) if p.unsafe > 0 else parse_stmt(p)
+        body.extend(p.hoist)   # lambda defs go right before their statement
+        p.hoist = outer
+        body.append(st)
         p.skip_nl()
     if not top:
         if p.at("DEDENT"):
@@ -1114,6 +1120,40 @@ def _is_modref(e, mods):
     return e["t"] == "var" and e["name"] in mods
 
 
+def parse_lambda(p):
+    """lambda a, b: expr  ->  a fresh `def _lamN(a, b): return expr` emitted
+    just before the enclosing statement, and the expression becomes `_lamN`.
+    Closures already capture the enclosing scope, so this matches Python's
+    lambda for every case the language can express."""
+    t = p.next()  # lambda
+    if p.unsafe > 0:
+        raise HSErr("lambda not allowed in unsafe", t.line)
+    params = []
+    if not p.at("OP", ":"):
+        while True:
+            a = p.expect("ID").v
+            if a in KEYWORDS:
+                raise HSErr(f"bad parameter name '{a}'", t.line)
+            if a in params:
+                raise HSErr(f"duplicate param '{a}'", t.line)
+            params.append(a)
+            if p.at("OP", ","):
+                p.next()
+                continue
+            break
+    p.expect("OP", ":")
+    outer, p.hoist = p.hoist, []
+    body = parse_expr(p)
+    inner = p.hoist      # lambdas nested in the body live inside this one
+    p.hoist = outer
+    p.nlam += 1
+    name = f"_lam{p.nlam}"
+    d = N("def", t.line, name=name, params=params,
+          body=inner + [N("return", t.line, val=body)], lam=True)
+    p.hoist.append(d)
+    return N("var", t.line, name=name)
+
+
 def parse_atom(p):
     t = p.peek()
     if t.k == "NUM":
@@ -1127,6 +1167,8 @@ def parse_atom(p):
         return N("num", t.line, val={"true": True, "false": False, "null": None}[t.v])
     if t.k == "ID" and t.v == "print":
         raise HSErr("print is a statement, use: print ...", t.line)
+    if t.k == "ID" and t.v == "lambda":
+        return parse_lambda(p)
     if t.k == "ID":
         p.next()
         return N("var", t.line, name=t.v)
