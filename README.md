@@ -105,3 +105,7 @@ python3 scripts/lsp_client.py --diag prog.hs       # คำสั่งเดี
 อ่าน `AGENTS.md` ก่อนเขียน `.hs` เสมอ — reference กระชับครบกฎทั้งหมด
 รวม gotchas และ fix loop (`check` → `interp` → `build`, error มี `--json`)
 สั้นกว่านั้นดู `docs/for-agents.md`
+
+## License
+
+Apache License 2.0 - see `LICENSE`. Copyright 2026 Ashveil1.
