@@ -18,7 +18,7 @@
 | พึ่งตัวเองได้ | x64 + kernel + FFI ไม่ใช้ gcc; lexer/parser/formatter เขียนด้วย hs ตรงกับ Python ทุกไบต์บนไฟล์ในรีโป (808 เช็ค) และ parse ตัวเองได้; ยังไม่มี code generator ใน hs | ~45% |
 | FFI | native + x64 (I64/U64/Ptr/Str/F64); ยังไม่มี struct/callback | ~55% |
 | เขียน OS ด้วยตัวเอง | kernel บูตบน QEMU, xkernel 291 เคส (VFS, shell ring3, paging, preempt, float, JSON) | ~70% |
-| AI-first | error แบบมีโครงสร้าง (`--json`), LSP, docs/api.json, `hs fmt`; `hs test` (test runner, `--json`) มีแล้ว; ยังไม่มี REPL | ~40% |
+| AI-first | error แบบมีโครงสร้าง (`--json`), LSP, docs/api.json, `hs fmt`; `hs test` (test runner, `--json`) มีแล้ว; `hs repl` มีแล้ว | ~40% |
 
 ภาพรวม ~57% (ยังไม่ถึง 80%) ส่วนที่ใหญ่ที่สุดที่เหลือ: code generator ใน hs (self-host เต็ม), JIT จริง, GC ให้เร็วขึ้นเมื่อ live heap ใหญ่ (strings/alloc/dict)
 

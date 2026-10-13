@@ -3063,9 +3063,59 @@ BUILTINS = {
 }
 
 
+def repl():
+    """`hs repl`: read-eval-print on one persistent global env. A line that
+    ends with ':' continues until a blank line. A bare expression prints its
+    value (null prints nothing). Errors are reported and the session goes on."""
+    global BUILTINS_ENV
+    import os as _os
+    tty = sys.stdin.isatty()
+    BUILTINS_ENV = Env()
+    for n, fn in BUILTINS.items():
+        BUILTINS_ENV.vars[n] = HSBuiltin(n, fn)
+    env = Env(parent=BUILTINS_ENV, basedir=_os.getcwd())
+    env.gbase = env
+    if tty:
+        print(f"hs {open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'VERSION')).read().strip()} repl (ctrl-d to quit)")
+    while True:
+        try:
+            line = input(">>> " if tty else "")
+        except EOFError:
+            break
+        lines = [line]
+        if line.rstrip().endswith(":"):
+            while True:
+                try:
+                    more = input("... " if tty else "")
+                except EOFError:
+                    more = ""
+                if more.strip() == "":
+                    break
+                lines.append(more)
+        src = "\n".join(lines) + "\n"
+        if not src.strip():
+            continue
+        try:
+            prog = parse_program(src)
+            for st in prog:
+                if st["t"] == "expr":
+                    v = ev(st["val"], env)
+                    if v is not None:
+                        print(disp(v))
+                else:
+                    ex(st, env)
+        except HSErr as e:
+            print(f"error: {e.msg}" + (f" at line {e.line}" if e.line else ""))
+        except RecursionError:
+            print("error: stack overflow (recursion too deep)")
+        sys.stdout.flush()
+
+
 def main():
     global BUILTINS_ENV
     raw = sys.argv[1:]
+    if raw == ["--repl"]:
+        return repl()
     as_json = False
     if "--json" in raw:
         as_json = True
