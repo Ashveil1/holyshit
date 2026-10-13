@@ -93,5 +93,41 @@ with tempfile.TemporaryDirectory() as d:
             print(f"  differs at char {k}: got {g[max(0, k - 60):k + 60]!r}")
             print(f"                      want {w[max(0, k - 60):k + 60]!r}")
 print(f"parser: {nskip} files skipped (unsupported construct)")
+
+# ---- formatter: selfhost/fmt.hs vs fmt.py, x64 build ----
+with tempfile.TemporaryDirectory() as d:
+    exe = os.path.join(d, "fmths")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = build_x64(os.path.join(ROOT, "selfhost", "fmt.hs"), exe)
+    if rc != 0:
+        print("FAIL build selfhost/fmt.hs with xbuild")
+        sys.exit(1)
+    for f in files:
+        rel = os.path.relpath(f, ROOT)
+        want, wrc = run([sys.executable,
+                         os.path.join(ROOT, "selfhost", "dump_fmt.py"), f])
+        r = subprocess.run([exe, f], capture_output=True, text=True,
+                           errors="replace")
+        how = "x64"
+        if r.stdout.rstrip("\n") != want.rstrip("\n") and "0x" in open(
+                f, encoding="utf-8", errors="replace").read():
+            r = subprocess.run([sys.executable, os.path.join(ROOT, "interp.py"),
+                                os.path.join(ROOT, "selfhost", "fmt.hs"), f],
+                               capture_output=True, text=True, errors="replace")
+            how = "interp (x64 Int is 62-bit)"
+        total += 1
+        if r.stdout.rstrip("\n") == want.rstrip("\n") and \
+                (r.returncode == 0) == (wrc == 0):
+            print(f"ok   fmt[{how}] {rel}")
+        else:
+            fails += 1
+            print(f"FAIL fmt[{how}] {rel}")
+            gl, wl = r.stdout.split("\n"), want.split("\n")
+            for i, (g, w) in enumerate(zip(gl, wl)):
+                if g != w:
+                    print(f"  line {i + 1}: got {g!r} want {w!r}")
+                    break
+            else:
+                print(f"  length differs: got {len(gl)} want {len(wl)}")
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
