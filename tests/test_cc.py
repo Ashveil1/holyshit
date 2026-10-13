@@ -48,10 +48,18 @@ PROGS = {
     'for_ctl': 'for i in range(10):\n  if i == 2:\n    continue\n  if i == 6:\n    break\n  for j in range(i, 3):\n    print i, j\nprint "done"\nfor i in range(5, 3):\n  print "never"\n',
     'list_eq': 'a = [1, [2, "x"], [], "s"]\nb = [1, [2, "x"], [], "s"]\nprint a == b, a != b, a == [1], [1, 2] == [1, 3], [[1]] == [[1]], [1] == 1, "a" == ["a"]\nb[1][1] = "y"\nprint a == b, b\n',
     'list_fn': 'def mk(n):\n  r = []\n  for i in range(n):\n    append(r, [i, "v" + "x"])\n  return r\ndef total(xs):\n  t = 0\n  for p in xs:\n    t = t + p[0]\n  return t\nq = mk(20)\nprint total(q), len(q), q[19], q[-20]\n',
+    'dict_basic': 'd = {"a": 1, "b": [2], 3: "x"}\nprint d, len(d), d["a"], d[3]\nd["c"] = 5\nd["a"] = 0\nprint d, "a" in d, "z" in d, has(d, "b"), keys(d), values(d)\nprint d == {"a": 0, "b": [2], 3: "x", "c": 5}, {} == {}, not {}\nfor k in keys(d):\n  print k, d[k]\n',
+    'dict_grow': 'd = {}\nfor i in range(300):\n  d[i] = i * 2\nd["k"] = []\nappend(d["k"], 5)\nt = 0\nfor k in keys(d):\n  if k != "k":\n    t = t + d[k]\nprint len(d), t, d[299], d["k"], has(d, 150), has(d, 300)\nfor i in range(300):\n  d[i] = 0\nprint values(d)[7], len(d)\n',
+    'dict_words': 'def count(ws):\n  c = {}\n  for w in ws:\n    if w in c:\n      c[w] = c[w] + 1\n    else:\n      c[w] = 1\n  return c\nc = count(["a", "b", "a", "c" + "d", "cd", "a"])\nprint c, c["a"], c["cd"]\nprint c == {"cd": 2, "a": 3, "b": 1}, c == {"a": 3}, {"x": {"y": [1]}} == {"x": {"y": [1]}}\n',
+    'contains': 'print 3 in [1, 2, 3], 4 in [1, 2, 3], "ell" in "hello", "z" in "hello", "" in "x", "hello!" in "hello", 5 not in [1], "a" in ["b", "a"]\n',
     "noreturn": "def p(n):\n  print n\np(5)\np(6)\n",
 }
 
 ERRS = {
+    'dict_nokey': 'd = {"a": 1}\nprint d["a"]\nprint d["b"]\n',
+    'keys_int': 'print keys(5)\n',
+    'in_int': 'print 1 in 5\n',
+    'str_in_int': 'print 1 in "abc"\n',
     'list_oob': 'x = [1]\nprint 1\nprint x[1]\n',
     'list_set_oob': 'x = [1]\nx[1] = 2\n',
     'list_idx_type': 'x = [1]\nprint x[true]\n',
