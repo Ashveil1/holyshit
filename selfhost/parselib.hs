@@ -1,7 +1,7 @@
 # Self-hosted parser library: parse(src) -> AST (same dicts as interp.parse_program).
 import lexlib
 
-KEYWORDS = ["def", "if", "elif", "else", "while", "for", "in", "return", "break", "continue", "global", "and", "or", "not", "true", "false", "null", "pass", "import", "try", "except", "as", "extern", "raise", "lambda", "class"]
+KEYWORDS = ["def", "if", "elif", "else", "while", "for", "in", "return", "break", "continue", "global", "and", "or", "not", "true", "false", "null", "pass", "import", "try", "except", "as", "extern", "raise", "lambda", "class", "assert"]
 METHODS = ["split", "find", "join", "append"]
 FFTYPE = ["U0", "I64", "U64", "F64", "Str", "Ptr"]
 UTYPES = ["I64", "U64", "Ptr"]
@@ -136,6 +136,17 @@ def parse_stmt():
       if not end_of_stmt():
         e = parse_expr()
       return N(v, ln, {"val": e})
+    if v == "assert":
+      nxt()
+      c = parse_expr()
+      m = null
+      if atv("OP", ","):
+        nxt()
+        m = parse_expr()
+      msg = m
+      if m == null:
+        msg = N("str", ln, {"val": "assertion failed"})
+      return N("if", ln, {"cond": N("not", ln, {"val": c}), "then": [N("raise", ln, {"val": msg})], "elifs": [], "els": [], "asrt": true, "c": c, "m": m})
     if v == "break" or v == "continue" or v == "pass":
       nxt()
       return N(v, ln, {})
