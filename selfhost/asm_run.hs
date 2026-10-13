@@ -1,0 +1,124 @@
+# asm_run.hs: assemble a script (one instruction per line: op arg arg ...,
+# registers and labels as words, numbers as Ints, `label NAME` defines a
+# label) with asm.hs and print the bytes as hex. tests/test_asm.py compares
+# the output with x64.py.
+import asm
+
+def arg(w):
+  c = w[0]
+  if c == "-" or find("0123456789", c) >= 0:
+    return int(w)
+  return w
+
+def run(op, a):
+  n = len(a)
+  if op == "label":
+    asm.label(a[0])
+  elif op == "push_r":
+    asm.push_r(a[0])
+  elif op == "pop_r":
+    asm.pop_r(a[0])
+  elif op == "mov_rr":
+    asm.mov_rr(a[0], a[1])
+  elif op == "mov_ri32":
+    asm.mov_ri32(a[0], a[1])
+  elif op == "mov_ri64":
+    asm.mov_ri64(a[0], a[1])
+  elif op == "mov_rm":
+    asm.mov_rm(a[0], a[1], a[2])
+  elif op == "mov_rmx":
+    asm.mov_rmx(a[0], a[1], a[2], a[3], a[4])
+  elif op == "mov_mr":
+    asm.mov_mr(a[0], a[1], a[2])
+  elif op == "lea_m":
+    asm.lea_m(a[0], a[1], a[2])
+  elif op == "lea_mx":
+    asm.lea_mx(a[0], a[1], a[2], a[3], a[4])
+  elif op == "lea_rip":
+    asm.lea_rip(a[0], a[1])
+  elif op == "mov_rm_rip":
+    asm.mov_rm_rip(a[0], a[1])
+  elif op == "mov_mr_rip":
+    asm.mov_mr_rip(a[0], a[1])
+  elif op == "mov_mr8":
+    asm.mov_mr8(a[0], a[1], a[2])
+  elif op == "add_rr":
+    asm.add_rr(a[0], a[1])
+  elif op == "sub_rr":
+    asm.sub_rr(a[0], a[1])
+  elif op == "cmp_rr":
+    asm.cmp_rr(a[0], a[1])
+  elif op == "and_rr":
+    asm.and_rr(a[0], a[1])
+  elif op == "or_rr":
+    asm.or_rr(a[0], a[1])
+  elif op == "xor_rr":
+    asm.xor_rr(a[0], a[1])
+  elif op == "test_rr":
+    asm.test_rr(a[0], a[1])
+  elif op == "add_ri32":
+    asm.add_ri32(a[0], a[1])
+  elif op == "sub_ri32":
+    asm.sub_ri32(a[0], a[1])
+  elif op == "cmp_ri32":
+    asm.cmp_ri32(a[0], a[1])
+  elif op == "and_ri32":
+    asm.and_ri32(a[0], a[1])
+  elif op == "imul_rr":
+    asm.imul_rr(a[0], a[1])
+  elif op == "cqo":
+    asm.cqo()
+  elif op == "idiv_r":
+    asm.idiv_r(a[0])
+  elif op == "div_r":
+    asm.div_r(a[0])
+  elif op == "not_r":
+    asm.not_r(a[0])
+  elif op == "neg_r":
+    asm.neg_r(a[0])
+  elif op == "shl_ri8":
+    asm.shl_ri8(a[0], a[1])
+  elif op == "shr_ri8":
+    asm.shr_ri8(a[0], a[1])
+  elif op == "sar_ri8":
+    asm.sar_ri8(a[0], a[1])
+  elif op == "shl_cl":
+    asm.shl_cl(a[0])
+  elif op == "shr_cl":
+    asm.shr_cl(a[0])
+  elif op == "sar_cl":
+    asm.sar_cl(a[0])
+  elif op == "movzx_rm8x":
+    asm.movzx_rm8x(a[0], a[1], a[2], a[3], a[4])
+  elif op == "jmp":
+    asm.jmp(a[0])
+  elif op == "jcc":
+    asm.jcc(a[0], a[1])
+  elif op == "call":
+    asm.call(a[0])
+  elif op == "ret":
+    asm.ret()
+  elif op == "syscall":
+    asm.syscall()
+  elif op == "nop":
+    asm.nop()
+  elif op == "setcc_al":
+    asm.setcc_al(a[0])
+  elif op == "movzx_eax_al":
+    asm.movzx_eax_al()
+  else:
+    raise "unknown op " + op
+
+HEX = "0123456789abcdef"
+asm.reset()
+for line in split(read_text(argv()[0]), "\n"):
+  w = split(line)
+  if len(w) > 0:
+    args = []
+    for x in w[1:len(w)]:
+      append(args, arg(x))
+    run(w[0], args)
+out = ""
+for b in asm.resolve():
+  out = out + HEX[b >> 4] + HEX[b & 15]
+print out
