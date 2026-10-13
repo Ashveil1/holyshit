@@ -93,6 +93,7 @@ for k in {"a": 1}:       # วน key
 - `input()` อ่าน 1 บรรทัดจาก stdin → Str
 - File (น้อยสุดที่พอใช้): `open(path, mode)` + `read(f)` + `write(f, s)` + `close(f)` โดย mode `"r"`/`"w"`
 - `len` ใช้กับ Dict = จำนวน key
+- **Dict key (v0.7):** key เป็น `Str` หรือ `Int` (Bool/Float/อื่นๆ ขึ้น `dict key must be Str or Int`; Bool ไม่รับเพราะ `true == 1`). `{1: "a", "k": 2}`, `d[5] = x`. `json_str` ยังต้องการ key เป็น Str. ทุก backend (interp/IR/native/x64) ตรงกัน; แก้บั๊ก `==` ของ dict บน x64 ที่เคยตอบ true เสมอด้วย.
 - String/List: `append(a, x)`, `split(s)` / `split(s, sep)`, `find(s, sub)` (-1 ถ้าไม่เจอ),
 - **Method sugar (v0.7):** `x.append(v)`, `s.split(sep)`, `s.find(sub)`, `sep.join(list)` เขียนแบบ
   method ได้ แปลงตอน parse เป็น `append(x, v)` ฯลฯ ทุก backend เห็นการเรียก builtin ธรรมดา

@@ -1218,8 +1218,8 @@ def ev(e, env):
         d = {}
         for k, v in e["pairs"]:
             kk = ev(k, env)
-            if not isinstance(kk, str):
-                raise HSErr("dict key must be Str", ln)
+            if not _keyok(kk):
+                raise HSErr("dict key must be Str or Int", ln)
             d[kk] = ev(v, env)
         return d
     if t == "neg":
@@ -1253,6 +1253,11 @@ def ev(e, env):
     if t == "slice":
         return ev_slice(e, env)
     raise HSErr(f"bad node {t}", ln)
+
+
+def _keyok(k):
+    # dict keys: Str or Int (Bool is excluded: True == 1 would alias)
+    return isinstance(k, str) or (isinstance(k, int) and not isinstance(k, bool))
 
 
 def ev_slice(e, env):
@@ -1381,8 +1386,8 @@ def ev_index(e, env):
             raise HSErr("index out of range", ln)
         return obj[i]
     if isinstance(obj, dict):
-        if not isinstance(idx, str):
-            raise HSErr("dict key must be Str", ln)
+        if not _keyok(idx):
+            raise HSErr("dict key must be Str or Int", ln)
         if idx not in obj:
             raise HSErr(f"key {idx!r} not found", ln)
         return obj[idx]
@@ -1876,8 +1881,8 @@ def ex(s, env, ux=False):
             obj[i] = val
             return
         if isinstance(obj, dict):
-            if not isinstance(idx, str):
-                raise HSErr("dict key must be Str", ln)
+            if not _keyok(idx):
+                raise HSErr("dict key must be Str or Int", ln)
             obj[idx] = val
             return
         raise HSErr(f"cannot assign into {tname(obj)}", ln)

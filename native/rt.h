@@ -46,7 +46,7 @@ typedef struct {
 
 typedef struct {
     int64_t len, cap;
-    char **keys;
+    Val *keys;  // Str or Int
     Val *vals;
 } Dict;
 

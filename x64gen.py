@@ -1259,13 +1259,15 @@ class Gen:
         a.jcc("ne", lab_notdict)
         a.mov_rr("r11", "rcx")
         a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)   # Int keys are fine
+        a.jcc("e", lab_dget)
         a.test_rr("r11", "r11")
         a.jcc("ne", lab_dkey)
         a.mov_rm("r11", "rcx", 0)
         a.cmp_ri32("r11", Gen.K_STR)
         a.jcc("e", lab_dget)
         a.label(lab_dkey)
-        self.raise_static("dict key must be Str", ln)
+        self.raise_static("dict key must be Str or Int", ln)
         a.label(lab_dget)
         a.mov_rr("rdi", "rax")
         a.mov_rr("rsi", "rcx")
@@ -3319,13 +3321,15 @@ class Gen:
         a.jcc("ne", lab_snotdict)
         a.mov_rr("r11", "rcx")
         a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)   # Int keys are fine
+        a.jcc("e", lab_sdset)
         a.test_rr("r11", "r11")
         a.jcc("ne", lab_sdkey)
         a.mov_rm("r11", "rcx", 0)
         a.cmp_ri32("r11", Gen.K_STR)
         a.jcc("e", lab_sdset)
         a.label(lab_sdkey)
-        self.raise_static("dict key must be Str", ln)
+        self.raise_static("dict key must be Str or Int", ln)
         a.label(lab_sdset)
         a.mov_rr("rdi", "rax")
         a.mov_rr("rsi", "rcx")
@@ -8869,7 +8873,7 @@ class Gen:
         a.mov_rm("rcx", "rbp", -24)
         a.mov_rmx("rdi", "rax", "rcx", 8, 0)
         a.mov_rm("rsi", "rbp", -16)
-        a.call("x_str_cmp")
+        a.call("x_key_cmp")
         a.test_rr("rax", "rax")
         a.jcc("e", "dc_hit")
         a.mov_rm("rax", "rbp", -24)
@@ -8910,7 +8914,7 @@ class Gen:
         a.mov_rm("rcx", "rdx", 24)      # buf
         a.mov_rmx("rdi", "rcx", "rax", 8, 0)
         a.mov_rm("rsi", "rbp", -16)
-        a.call("x_str_cmp")
+        a.call("x_key_cmp")
         a.test_rr("rax", "rax")
         lab_hmiss = self.new_tmp("dc")
         a.jcc("ne", lab_hmiss)
@@ -8925,9 +8929,36 @@ class Gen:
         a.and_rr("rax", "rcx")
         a.mov_mr("rbp", "rax", -24)
         a.jmp(lab_hp)
-        # x_dict_hash: rdi = Str -> rax = FNV-1a 64 of the bytes, folded
+        # x_key_cmp: rdi, rsi = keys (Str or tagged Int) -> rax == 0 iff equal.
+        # Heap keys go to x_str_cmp (which clobbers rbx); a tagged word
+        # never equals a heap pointer, so the word difference decides.
+        a.label("x_key_cmp")
+        a.mov_rr("rax", "rdi")
+        a.or_rr("rax", "rsi")
+        a.and_ri32("rax", 3)
+        lab_kstr = self.new_tmp("dc")
+        a.jcc("e", lab_kstr)
+        a.mov_rr("rax", "rdi")
+        a.sub_rr("rax", "rsi")
+        a.ret()
+        a.label(lab_kstr)
+        a.jmp("x_str_cmp")
+        # x_dict_hash: rdi = Str or Int key -> rax = FNV-1a 64 of the bytes, folded
         # (clobbers rax rcx rdx r8 r9 r10)
         a.label("x_dict_hash")
+        lab_hstr = self.new_tmp("dc")
+        a.mov_rr("rax", "rdi")
+        a.and_ri32("rax", 3)
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_hstr)
+        a.mov_rr("rax", "rdi")          # Int key: multiplicative mix
+        a.mov_ri64("r8", 0x9E3779B97F4A7C15)
+        a.imul_rr("rax", "r8")
+        a.mov_rr("rdx", "rax")
+        a.shr_ri8("rdx", 32)
+        a.xor_rr("rax", "rdx")
+        a.ret()
+        a.label(lab_hstr)
         a.mov_rr("r10", "rdi")
         a.mov_rm("rcx", "r10", 8)       # len
         a.mov_ri64("rax", 0xCBF29CE484222325)
@@ -9185,8 +9216,10 @@ class Gen:
         a.jcc("ne", "dc_eq_no")
         a.mov_ri32("rax", 0)
         a.mov_mr("rbp", "rax", -24)     # w
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rax", "rax", 8)       # len
         a.shl_ri8("rax", 1)
-        a.mov_mr("rbp", "rax", -32)     # limit
+        a.mov_mr("rbp", "rax", -32)     # limit = 2 * len
         lab_de_top = self.new_tmp("dc")
         a.label(lab_de_top)
         a.mov_rm("rax", "rbp", -24)
@@ -9214,9 +9247,9 @@ class Gen:
         a.mov_rr("rcx", "r11")
         a.add_ri32("rcx", 1)            # b value word
         a.mov_rmx("rsi", "rsi", "rcx", 8, 0)
-        a.call("x_eq")
+        a.call("x_eq")                  # al = 1 when equal
         a.test_rr("rax", "rax")
-        a.jcc("ne", "dc_eq_no")
+        a.jcc("e", "dc_eq_no")
         a.mov_rm("rax", "rbp", -24)
         a.add_ri32("rax", 2)
         a.mov_mr("rbp", "rax", -24)
