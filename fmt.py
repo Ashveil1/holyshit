@@ -30,7 +30,9 @@ def _prec(e):
     if e["t"] == "bin":
         return 9 if e.get("fs") is not None else _BIN_PREC[e["op"]]
     if e["t"] == "not":
-        return 7
+        return 3 if e.get("notin") else 7
+    if e["t"] == "call" and e.get("inop"):
+        return 3
     if e["t"] == "neg":
         return 8
     if e["t"] == "unot":
@@ -94,6 +96,11 @@ def fmt_expr(e):
         return "{" + ", ".join(f"{fmt_expr(k)}: {fmt_expr(v)}" for k, v in e["pairs"]) + "}"
     if t == "neg":
         return "-" + _atom(e["val"], 8)
+    if t == "not" and e.get("notin"):
+        c = e["val"]
+        l = _side(c["args"][1], 3, "l", "in")
+        r = _side(c["args"][0], 3, "r", "in")
+        return f"{l} not in {r}"
     if t == "not":
         return "not " + _atom(e["val"], 7)
     if t == "unot":
@@ -111,6 +118,10 @@ def fmt_expr(e):
         l = _side(e["l"], p, "l", e["op"])
         r = _side(e["r"], p, "r", e["op"])
         return f"{l} {e['op']} {r}"
+    if t == "call" and e.get("inop"):
+        l = _side(e["args"][1], 3, "l", "in")
+        r = _side(e["args"][0], 3, "r", "in")
+        return f"{l} in {r}"
     if t == "call" and e.get("mcall"):
         return (fmt_expr(e["fn"]) + "(" +
                 ", ".join(fmt_expr(a) for a in e["args"][1:]) + ")")
