@@ -1094,6 +1094,8 @@ class Gen:
             a.sub_rr("rax", "rcx")
         elif op == "*":
             a.imul_rr("rax", "rcx")
+            if self.checked_int():
+                a.jcc("o", "int_ovf")
         elif op == "/":
             # Int / Int is true division: the result is a Float (AGENTS.md:
             # "7 / 2 is 3.5", "/ always returns Float"). Hosted builds keep
@@ -2823,7 +2825,9 @@ class Gen:
                 raise HSErr("strings not allowed in unsafe (use unsafe: outside)",
                             ln)
             self.sev(ar, sc, mod)
+            self.wrap_int = True    # raw machine word: no 62-bit check
             self.tag_box()
+            self.wrap_int = False
             a.call("print_val")
 
     def ev_print(self, args, sc, mod, ln):
@@ -2972,10 +2976,22 @@ class Gen:
 
     BIT_OPS = ("<<", ">>", "&", "|", "^")
 
+    def checked_int(self):
+        """Hosted builds trap (exit 97) when an Int outgrows the 62-bit
+        payload instead of silently wrapping. The kernel keeps wrapping."""
+        return not self.freestanding and not getattr(self, "wrap_int", False)
+
     def trunc62(self):
         """Keep the low 62 bits of rax as a signed value (x64 Int payload).
         shl 2 drops the top two bits; sar 2 re-sign-extends from bit 61."""
         a = self.a
+        if self.checked_int():
+            a.add_rr("rax", "rax")
+            a.jcc("o", "int_ovf")
+            a.add_rr("rax", "rax")
+            a.jcc("o", "int_ovf")
+            a.sar_ri8("rax", 2)
+            return
         a.shl_ri8("rax", 2)
         a.sar_ri8("rax", 2)
 
@@ -3894,12 +3910,22 @@ class Gen:
     # ----- tagged-value codegen helpers -----
     def tag_int(self, v):
         """Python int -> tagged 64-bit pattern (62-bit payload)."""
+        if self.checked_int() and not -(1 << 61) <= v < (1 << 61):
+            raise HSErr(f"Int literal {v} is outside the 62-bit range of "
+                        "the x64 backend", 0)
         return ((v * 4) + 1) & ((1 << 64) - 1)
 
     def tag_box(self):
         """rax = raw int -> rax = tagged Int"""
         a = self.a
-        a.shl_ri8("rax", 2)
+        if self.checked_int():
+            # shl 2 as two doublings so OF flags a value wider than 62 bits
+            a.add_rr("rax", "rax")
+            a.jcc("o", "int_ovf")
+            a.add_rr("rax", "rax")
+            a.jcc("o", "int_ovf")
+        else:
+            a.shl_ri8("rax", 2)
         a.or_ri8("rax", 1)
 
     def box_bool_al(self):
@@ -5243,6 +5269,17 @@ class Gen:
         else:
             a.jmp("hs_fatal_msgline")
         # type_err: generic fallback for runtime-internal failures.
+        if not self.freestanding:
+            a.label("int_ovf")
+            msg = "error: Int outside the 62-bit range of the x64 backend (HS_BACKEND=native or interp has 64-bit Int)\n"
+            a.lea_rip("rsi", self.rstr(msg))
+            a.mov_ri32("rdx", len(msg))
+            a.mov_ri32("rdi", 2)
+            a.mov_ri32("rax", 1)
+            a.syscall()
+            a.mov_ri32("rdi", 97)
+            a.mov_ri32("rax", 60)
+            a.syscall()
         a.label("type_err")
         a.lea_rip("rdi", self.rstr("type error"))
         a.mov_ri32("rsi", 10)
@@ -10184,6 +10221,20 @@ class Gen:
         a.mov_ri32("rax", 0)
         a.ret()
         a.label("eq_noflt")
+        # Python semantics: a Bool equals the Int 0/1. Normalise Bool words
+        # ((b<<3)|2) to Int words ((b<<2)|1) before comparing.
+        for reg in ("r10", "r11"):
+            lab_nb = self.new_tmp("eqb")
+            a.mov_rr("rax", reg)
+            a.and_ri32("rax", 3)
+            a.cmp_ri32("rax", B)
+            a.jcc("ne", lab_nb)
+            a.mov_rr("rax", reg)
+            a.and_ri32("rax", 8)
+            a.shr_ri8("rax", 1)
+            a.or_ri8("rax", 1)
+            a.mov_rr(reg, "rax")
+            a.label(lab_nb)
         a.mov_rr("rax", "r10")
         a.and_ri32("rax", 3)
         a.cmp_ri32("rax", I)

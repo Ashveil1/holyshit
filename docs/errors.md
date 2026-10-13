@@ -344,9 +344,10 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (106)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (107)
 
 - `'{n}' already defined in this scope`
+- `Int literal {v} is outside the 62-bit range of the x64 backend`
 - `alloc wants alloc(n)`
 - `append wants append(list, x)`
 - `argv takes no args`
@@ -627,4 +628,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 581 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 582 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

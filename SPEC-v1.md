@@ -1294,3 +1294,17 @@ IR path ตรงกว่า เช่น segfault ของ `tests/ufunc.hs` �
 หลักฐาน: `test_x64.py` 52 -> 97 (เพิ่มการเดินคอร์ปัสทั้งหมด + 3 CLI),
 `test.py` 42 -> 48, `test_native.py` 43 -> 49, `test_ir.py` 134 -> 138,
 `test_irx64.py` 35 -> 41, `test_xkernel.py` 291/291
+
+## ขีดจำกัดของ x64 backend และการเลือก backend ของ `hs run`
+
+- `hs run` ลอง x64 ก่อน (build ~0.1s ไม่ใช้ gcc) ถ้าโปรแกรมอยู่นอก subset
+  หรือมี Int literal เกิน 62-bit จะ fallback ไป native (gcc) หรือ interp เอง
+- **Int บน x64 กว้าง 62-bit** (-2^61 .. 2^61-1) แต่ interp เป็น Python int
+  (ไม่จำกัด) และ native เป็น 64-bit ค่าที่ล้น 62-bit จะ **ไม่ถูกตัดเงียบ ๆ**:
+  build hosted จะ trap ด้วย `error: Int outside the 62-bit range ...` exit 97
+  (บวก/ลบ/คูณ/shift/ประกอบ tag) ถ้ายังไม่มี output/side effect `hs run`
+  จะรันซ้ำด้วย backend ที่ช้ากว่าให้เอง ไม่งั้นพิมพ์ error ชัดเจน + hint
+- ค่าใน `unsafe:` เป็น machine word ดิบ ไม่ตรวจ 62-bit; kernel (freestanding)
+  ยังตัดเป็น 62-bit เหมือนเดิม
+- `true == 1` เป็น `true` ทุก backend (เหมือน Python/interp)
+- บังคับ backend: `HS_BACKEND=auto|x64|native|interp` หรือ `hs.py run prog.hs --backend X`
