@@ -51,5 +51,37 @@ with tempfile.TemporaryDirectory() as d:
                         break
                 else:
                     print(f"  length differs: got {len(gl)} want {len(wl)}")
+
+# ---- parser: selfhost/parse.hs vs interp.parse_program (JSON), x64 build ----
+nskip = 0
+with tempfile.TemporaryDirectory() as d:
+    exe = os.path.join(d, "parsehs")
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = build_x64(os.path.join(ROOT, "selfhost", "parse.hs"), exe)
+    if rc != 0:
+        print("FAIL build selfhost/parse.hs with xbuild")
+        sys.exit(1)
+    for f in files:
+        rel = os.path.relpath(f, ROOT)
+        r = subprocess.run([exe, f], capture_output=True, text=True,
+                           errors="replace")
+        if "unsupported:" in r.stdout + r.stderr:
+            nskip += 1
+            continue
+        want, wrc = run([sys.executable,
+                         os.path.join(ROOT, "selfhost", "dump_parse.py"), f])
+        total += 1
+        if r.stdout.rstrip("\n") == want.rstrip("\n") and \
+                (r.returncode == 0) == (wrc == 0):
+            print(f"ok   parse[x64] {rel}")
+        else:
+            fails += 1
+            print(f"FAIL parse[x64] {rel}")
+            g, w = r.stdout.rstrip("\n"), want.rstrip("\n")
+            k = next((i for i in range(min(len(g), len(w))) if g[i] != w[i]),
+                     min(len(g), len(w)))
+            print(f"  differs at char {k}: got {g[max(0, k - 60):k + 60]!r}")
+            print(f"                      want {w[max(0, k - 60):k + 60]!r}")
+print(f"parser: {nskip} files skipped (class/extern/unsafe/lambda/f-string)")
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
