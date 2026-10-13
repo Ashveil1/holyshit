@@ -5,5 +5,5 @@ import parselib
 try:
   print json_str(parselib.parse(read_text(argv()[0])))
 except as e:
-  print "error: " + e
+  print "error: " + parselib.strip_raise(e)
   raise "parse failed"

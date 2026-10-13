@@ -415,7 +415,18 @@ def parse_print():
   return N("print", t[2], {"args": args})
 
 def parse_expr():
-  return parse_or()
+  a = parse_or()
+  if atv("ID", "if"):
+    t = nxt()
+    c = parse_or()
+    if not atv("ID", "else"):
+      raise "expected else, got " + pyrepr(peek()[1]) + " at line " + str(t[2])
+    nxt()
+    b = parse_expr()
+    ln = t[2]
+    sel = N("bin", ln, {"op": "or", "l": N("bin", ln, {"op": "and", "l": c, "r": N("list", ln, {"items": [a]})}), "r": N("list", ln, {"items": [b]})})
+    return N("index", ln, {"obj": sel, "idx": N("num", ln, {"val": 0, "raw": null}), "tern": true, "c": c, "a": a, "b": b})
+  return a
 
 def parse_or():
   l = parse_and()
@@ -912,3 +923,18 @@ def parse(src):
   body = parse_body(true)
   expect("EOF")
   return body
+
+def strip_raise(e):
+  # hs `raise` appends " at line N" of the raise site; the Python parser's
+  # message is the part before it
+  last = 0 - 1
+  i = 0
+  while true:
+    j = find(e[i:], " at line ")
+    if j < 0:
+      break
+    last = i + j
+    i = i + j + 1
+  if last < 0:
+    return e
+  return e[:last]
