@@ -2217,6 +2217,8 @@ def compile(prog):
   top = []
   for s in prog:
     if s["t"] == "def":
+      if has(s, "defaults"):
+        fail("default args are not supported by cc", s["line"])
       if s["name"] in ST["funcs"]:
         fail("function '" + s["name"] + "' defined twice", s["line"])
       ST["funcs"][s["name"]] = len(s["params"])

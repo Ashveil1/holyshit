@@ -48,6 +48,8 @@ raise "msg"                 # Str เท่านั้น; ใน except ใช
 assert x > 0, "msg"        # ไม่จริง = raise "msg" (ไม่ใส่ msg = "assertion failed")
 print [x * 2 for x in xs if x > 0]   # list comprehension (1 for + optional if)
 for i, x in enumerate(xs):          # tuple loop vars + enumerate (prelude)
+def greet(name, hi="hello"):        # default args: a call f("a") gets the default
+  return hi + ", " + name           # appended at parse time (evaluated per call; not on methods)
 import mod.sub              # หาใน: โฟลเดอร์โปรแกรม -> HSPATH -> cwd
 global x                    # เขียนชื่อระดับ module จากใน def
 ```

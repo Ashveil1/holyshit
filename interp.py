@@ -655,8 +655,57 @@ def parse_program(src, raw=False):
     body = parse_body(p, top=True)
     p.expect("EOF")
     if not raw:
+        _apply_defaults(body)
         body = _inject_prelude(body, src)
     return body
+
+
+def _apply_defaults(body):
+    """Default args are a parse-time desugar: a call f(a) to a def with
+    defaults gets the missing trailing arguments appended (a fresh copy of the
+    default expression, evaluated at each call). Backends only see full calls."""
+    import copy
+    table = {}
+
+    def find(x):
+        if isinstance(x, dict):
+            if x.get("t") == "def" and "defaults" in x:
+                table.setdefault(x["name"], []).append(x)
+            for v in x.values():
+                find(v)
+        elif isinstance(x, list):
+            for v in x:
+                find(v)
+    find(body)
+
+    def fill(x):
+        if isinstance(x, dict):
+            if x.get("t") == "call" and x["fn"].get("t") == "var" \
+                    and len(table.get(x["fn"]["name"], [])) == 1:
+                d = table[x["fn"]["name"]][0]
+                n, k = len(d["params"]), len(d["defaults"])
+                if n - k <= len(x["args"]) < n:
+                    x["args"] = x["args"] + [copy.deepcopy(e)
+                                             for e in d["defaults"][len(x["args"]) - (n - k):]]
+            for v in x.values():
+                fill(v)
+        elif isinstance(x, list):
+            for v in x:
+                fill(v)
+    fill(body)
+    # args of the filled calls may themselves hold calls with defaults
+    fill(body)
+
+    def strip(x):
+        if isinstance(x, dict):
+            if x.get("t") == "def":
+                x.pop("defaults", None)
+            for v in x.values():
+                strip(v)
+        elif isinstance(x, list):
+            for v in x:
+                strip(v)
+    strip(body)
 
 
 def parse_body(p, top=False):
@@ -930,6 +979,8 @@ def parse_class(p):
             p.hoist = outer
             if not d["params"] or d["params"][0] != "self":
                 raise HSErr(f"method '{d['name']}' must take 'self' first", d["line"])
+            if "defaults" in d:
+                raise HSErr("default args are not supported on methods", d["line"])
             if d["name"] in METHODS:
                 raise HSErr(f"method name '{d['name']}' is taken by a builtin "
                             "(split/find/join/append)", d["line"])
@@ -974,19 +1025,29 @@ def parse_def(p):
     name = p.expect("ID").v
     p.expect("OP", "(")
     params = []
+    defaults = []
     if not p.at("OP", ")"):
         while True:
             a = p.expect("ID").v
             if a in params:
                 raise HSErr(f"duplicate param '{a}'", t.line)
             params.append(a)
+            if p.at("OP", "="):
+                p.next()
+                defaults.append(parse_expr(p))
+            elif defaults:
+                raise HSErr(f"param '{a}' without a default follows one with a default",
+                            t.line)
             if p.at("OP", ","):
                 p.next()
                 continue
             break
     p.expect("OP", ")")
     p.expect("OP", ":")
-    return N("def", t.line, name=name, params=params, body=parse_block(p, t.line))
+    d = N("def", t.line, name=name, params=params, body=parse_block(p, t.line))
+    if defaults:
+        d["defaults"] = defaults
+    return d
 
 
 def parse_unsafe(p):

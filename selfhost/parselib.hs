@@ -381,19 +381,28 @@ def parse_def():
   name = expect("ID")[1]
   expectv("OP", "(")
   params = []
+  defaults = []
   if not atv("OP", ")"):
     while true:
       a = expect("ID")[1]
       if a in params:
         raise "duplicate param '" + a + "' at line " + str(t[2])
       append(params, a)
+      if atv("OP", "="):
+        nxt()
+        append(defaults, parse_expr())
+      elif len(defaults) > 0:
+        raise "param '" + a + "' without a default follows one with a default at line " + str(t[2])
       if atv("OP", ","):
         nxt()
         continue
       break
   expectv("OP", ")")
   expectv("OP", ":")
-  return N("def", t[2], {"name": name, "params": params, "body": parse_block(t[2])})
+  d = N("def", t[2], {"name": name, "params": params, "body": parse_block(t[2])})
+  if len(defaults) > 0:
+    d["defaults"] = defaults
+  return d
 
 def parse_if():
   t = expect("ID")
@@ -852,6 +861,8 @@ def parse_class():
       P["hoist"] = outer
       if len(d["params"]) == 0 or d["params"][0] != "self":
         raise "method '" + d["name"] + "' must take 'self' first at line " + str(d["line"])
+      if has(d, "defaults"):
+        raise "default args are not supported on methods at line " + str(d["line"])
       if d["name"] in METHODS:
         raise "method name '" + d["name"] + "' is taken by a builtin (split/find/join/append) at line " + str(d["line"])
       for m in methods:

@@ -239,7 +239,15 @@ def fmt_stmt(s, ind, out):
     if len(s["methods"]) == 0:
       append(out, p + "  pass")
   elif t == "def":
-    append(out, p + "def " + s["name"] + "(" + join(", ", s["params"]) + "):")
+    ps = s["params"] + []
+    if has(s, "defaults"):
+      nd = len(s["defaults"])
+      di = 0
+      while di < nd:
+        pj = len(ps) - nd + di
+        ps[pj] = ps[pj] + "=" + fmt_expr(s["defaults"][di])
+        di = di + 1
+    append(out, p + "def " + s["name"] + "(" + join(", ", ps) + "):")
     fmt_block(s["body"], ind + 1, out)
   elif t == "if" and has(s, "asrt"):
     if s["m"] == null:
