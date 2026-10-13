@@ -515,6 +515,7 @@ class P:
         self.hoist = []   # defs for lambdas seen in the statement being parsed
         self.nlam = 0
         self.mods = set()  # first segment of every `import` seen so far
+        self.classes = {}  # class name -> (method table, init fn name, init params)
 
     def peek(self):
         return self.t[self.i]
@@ -762,6 +763,14 @@ def parse_class(p):
     obj.f is obj["f"]; obj.m(x) is obj["m"](obj, x). No inheritance."""
     t = p.expect("ID")  # class
     name = p.expect("ID").v
+    base = None
+    if p.at("OP", "("):
+        p.next()
+        bt = p.expect("ID")
+        base = bt.v
+        if base not in p.classes:
+            raise HSErr(f"unknown base class '{base}' (define it first)", bt.line)
+        p.expect("OP", ")")
     p.expect("OP", ":")
     if not p.at("NEWLINE"):
         raise HSErr("expected ':' then a new line", t.line)
@@ -793,27 +802,31 @@ def parse_class(p):
     if p.at("DEDENT"):
         p.next()
     ln = t.line
-    pairs = []
-    init = None
+    table = {}     # method name -> function name (base's first, then own)
+    init_fn, params = None, []
+    if base is not None:
+        btab, init_fn, params = p.classes[base]
+        table.update(btab)
     for m in methods:
         orig = m["name"]
         m["orig"] = orig
-        m["name"] = f"{name}__{orig}"
+        m["name"] = name + orig if orig.startswith("__") else f"{name}__{orig}"
         m["clsmember"] = True
         p.hoist.append(m)
         if orig == "__init__":
-            init = m
+            init_fn, params = m["name"], m["params"][1:]
         else:
-            pairs.append((N("str", ln, val=orig), N("var", ln, name=m["name"])))
-    params = init["params"][1:] if init else []
+            table[orig] = m["name"]
+    p.classes[name] = (table, init_fn, params)
+    pairs = [(N("str", ln, val=k), N("var", ln, name=v)) for k, v in table.items()]
     body = [N("set", ln, name="self", val=N("dict", ln, pairs=pairs))]
-    if init:
-        body.append(N("expr", ln, val=N("call", ln, fn=N("var", ln, name=init["name"]),
+    if init_fn:
+        body.append(N("expr", ln, val=N("call", ln, fn=N("var", ln, name=init_fn),
                       args=[N("var", ln, name="self")] +
                       [N("var", ln, name=a) for a in params])))
     body.append(N("return", ln, val=N("var", ln, name="self")))
     return N("def", ln, name=name, params=params, body=body,
-             cls=name, methods=methods)
+             cls=name, methods=methods, base=base)
 
 
 def parse_def(p):

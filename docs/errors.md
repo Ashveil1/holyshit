@@ -28,7 +28,7 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (221)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (222)
 
 - `'{d['name']}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -233,6 +233,7 @@
 - `try without except or finally`
 - `unclosed '{' in f-string`
 - `unexpected indent`
+- `unknown base class '{base}' (define it first)`
 - `unknown ffi symbol '{name}'`
 - `unknown struct '{sname}'`
 - `unknown variable '{name}'`
@@ -612,4 +613,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 566 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 567 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
