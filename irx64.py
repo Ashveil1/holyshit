@@ -2315,9 +2315,9 @@ class GenIR(Gen):
         fflush(NULL) so C stdio and hs output stay in program order."""
         a = self.a
         name, pt, rt = ins["sym"], ins["ptypes"], ins["rtype"]
-        if "F64" in pt or rt == "F64":
-            raise HSErr("ffi F64 is not supported by xbuild yet "
-                        f"('{name}')", ln)
+        nf = pt.count("F64")
+        if nf > 8:
+            raise HSErr(f"ffi '{name}': xbuild passes at most 8 F64 args", ln)
         if len(pt) > 6:
             raise HSErr(f"ffi '{name}': xbuild passes at most 6 args", ln)
         self._ffi_lib(ins["lib"], ln)
@@ -2328,7 +2328,26 @@ class GenIR(Gen):
             msg = f"ffi '{name}' arg {i + 1} wants {ft}, got "
             lab_bad = self.new_tmp("ff")
             lab_after = self.new_tmp("ff")
-            if ft == "Str":
+            if ft == "F64":
+                lab_fi, lab_fok = self.new_tmp("ff"), self.new_tmp("ff")
+                a.mov_rr("r11", "rax")
+                a.and_ri32("r11", 3)
+                a.cmp_ri32("r11", Gen.TAG_INT)
+                a.jcc("e", lab_fi)
+                a.test_rr("r11", "r11")
+                a.jcc("ne", lab_bad)
+                a.mov_rm("r11", "rax", 0)
+                a.cmp_ri32("r11", Gen.K_FLOAT)
+                a.jcc("ne", lab_bad)
+                a.mov_rm("rax", "rax", 8)
+                a.jmp(lab_fok)
+                a.label(lab_fi)
+                a.sar_ri8("rax", 2)
+                a.cvtsi2sd(0, "rax")
+                a.movq_rx("rax", 0)
+                a.label(lab_fok)
+                a.push_r("rax")
+            elif ft == "Str":
                 lab_ok = self.new_tmp("ff")
                 a.mov_rr("r11", "rax")
                 a.and_ri32("r11", 3)
@@ -2369,24 +2388,39 @@ class GenIR(Gen):
             a.mov_rm("rsi", "rbp", fr["slots"]["%cline"])
             a.jmp("hs_raise_msg")
             a.label(lab_after)
-        for r in reversed(["rdi", "rsi", "rdx", "rcx", "r8", "r9"][:len(pt)]):
-            a.pop_r(r)
+        iregs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"]
+        ni = len(pt) - nf
+        fi, ii = nf, ni
+        for ft in reversed(pt):
+            if ft == "F64":
+                fi -= 1
+                a.pop_r("rax")
+                a.movq_xr(fi, "rax")
+            else:
+                ii -= 1
+                a.pop_r(iregs[ii])
 
-        def ccall(idx):
+        def ccall(idx, nfl=nf):
             a.mov_rr("r10", "rsp")
             a.and_ri32("rsp", -16)
             a.sub_ri32("rsp", 16)
             a.mov_mr("rsp", "r10", 0)
             a.lea_rip("r11", "ffi_got_")
-            a.mov_rm("rax", "r11", 8 * idx)
-            a.call_rax()
+            a.mov_rm("r11", "r11", 8 * idx)
+            a.mov_ri32("rax", nfl)       # varargs: number of vector regs
+            a.call_r11()
             a.mov_rm("rsp", "rsp", 0)
         ccall(gi)
+        if rt == "F64":
+            a.movq_rx("rax", 0)
         a.push_r("rax")
         a.mov_ri32("rdi", 0)
-        ccall(fl)
+        ccall(fl, 0)
         a.pop_r("rax")
-        if rt == "U0":
+        if rt == "F64":
+            a.mov_rr("rdi", "rax")
+            a.call("x_float_new")
+        elif rt == "U0":
             a.mov_ri64("rax", Gen.HS_NULL)
         elif rt == "Str":
             lab_nn, lab_done = self.new_tmp("ff"), self.new_tmp("ff")
