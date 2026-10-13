@@ -405,6 +405,7 @@ class Gen:
         "split": (1, 2, "split wants split(s) or split(s, sep)"),
         "find": (2, 2, "find wants find(s, sub)"),
         "join": (2, 2, "join wants join(sep, list)"),
+        "has": (2, 2, "has wants has(dict, key)"),
         "read_mem": (2, 2, "read_mem wants read_mem(ptr, nbytes)"),
         # hosted only (a freestanding build keeps the subset error)
         "argv": (0, 0, "argv takes no args"),
@@ -421,7 +422,7 @@ class Gen:
                  "close", "scall"}
 
     XBUILTINS = {"print", "int", "len", "str", "range", "append",
-                 "split", "find", "join", "read_mem",
+                 "split", "find", "join", "has", "read_mem",
                  "alloc", "load8", "load32", "load64", "store8",
                  "store32", "store64", "as_ptr", "as_int"}
 
@@ -813,7 +814,7 @@ class Gen:
             # become unbound globals (runtime error).
             if name in ("print", "len", "range", "str", "int", "float", "input",
                         "open", "read", "write", "close", "argv", "env", "system",
-                        "append", "split", "find", "join", "ticks", "readkey",
+                        "append", "split", "find", "join", "has", "ticks", "readkey",
                         "pmm_alloc", "meminfo", "tcp_connect", "tcp_send",
                         "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
                         "http_get", "json_parse", "json_str", "read_text",
@@ -1587,6 +1588,47 @@ class Gen:
             self.raise_static("find wants find(s, sub)", ln)
             a.label(lab_fok)
             a.call("x_find")
+            return
+        if fn["t"] == "var" and fn["name"] == "has":
+            if len(e["args"]) != 2:
+                raise HSErr("has wants has(dict, key)", ln)
+            self.ev(e["args"][0], sc, mod)
+            a.push_r("rax")
+            self.ev(e["args"][1], sc, mod)
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            lab_hbad, lab_hk, lab_hok = (self.new_tmp("hs"), self.new_tmp("hs"),
+                                         self.new_tmp("hs"))
+            a.mov_rr("r11", "rdi")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_hbad)
+            a.mov_rm("r11", "rdi", 0)
+            a.cmp_ri32("r11", Gen.K_DICT)
+            a.jcc("ne", lab_hbad)
+            a.mov_rr("r11", "rsi")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("e", lab_hok)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_hk)
+            a.mov_rm("r11", "rsi", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_hok)
+            a.label(lab_hk)
+            self.raise_static("dict key must be Str or Int", ln)
+            a.label(lab_hbad)
+            self.raise_static("has wants has(dict, key)", ln)
+            a.label(lab_hok)
+            a.call("x_dict_find")
+            lab_hf, lab_hd = self.new_tmp("hs"), self.new_tmp("hs")
+            a.test_rr("rax", "rax")
+            a.jcc("s", lab_hf)
+            a.mov_ri64("rax", Gen.HS_TRUE)
+            a.jmp(lab_hd)
+            a.label(lab_hf)
+            a.mov_ri64("rax", Gen.HS_FALSE)
+            a.label(lab_hd)
             return
         if fn["t"] == "var" and fn["name"] == "join":
             if len(e["args"]) != 2:

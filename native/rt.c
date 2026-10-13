@@ -598,7 +598,7 @@ Val v_builtin(const char *name) {
         {b_ticks, "ticks"}, {b_readkey, "readkey"},
         {b_pmm_alloc, "pmm_alloc"}, {b_meminfo, "meminfo"},
         {b_append, "append"}, {b_split, "split"},
-        {b_find, "find"}, {b_join, "join"},
+        {b_find, "find"}, {b_join, "join"}, {b_has, "has"},
         {b_argv, "argv"}, {b_env, "env"}, {b_system, "system"},
         {b_tcp_connect, "tcp_connect"}, {b_tcp_send, "tcp_send"},
         {b_tcp_recv, "tcp_recv"}, {b_tcp_close, "tcp_close"},
@@ -2169,6 +2169,14 @@ Val b_find(Val *args, int nargs, int line) {
         if (memcmp(s->data + i, sub->data, (size_t)sub->len) == 0)
             return v_int(i);
     return v_int(-1);
+}
+
+Val b_has(Val *args, int nargs, int line) {
+    if (nargs != 2 || args[0].tag != T_DICT)
+        hs_err(line, "has wants has(dict, key)");
+    if (!key_ok(args[1]))
+        hs_err(line, "dict key must be Str or Int");
+    return v_bool(dict_find(AS_DICT(args[0]), args[1]) >= 0);
 }
 
 Val b_join(Val *args, int nargs, int line) {

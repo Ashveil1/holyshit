@@ -42,7 +42,7 @@ INLINE_ONLY = {"float"}
 # (whose type errors carry the stub's line 0, like x64gen-today).
 INLINE_DIRECT = {"float", "len", "str", "int", "range", "append",
                  "read_text", "write_text", "append_text", "exists", "ls",
-                 "mkdir", "read_mem"}
+                 "mkdir", "read_mem", "has"}
 # NOTE: split/find/join also have inline arms in ev_call but are not in
 # INLINE_DIRECT yet: no corpus program triggers their error paths, and
 # their success paths work through the stubs. Same for the other

@@ -2425,6 +2425,15 @@ def b_find(args, ln):
     return args[0].find(args[1])
 
 
+def b_has(args, ln):
+    if len(args) != 2 or not isinstance(args[0], dict):
+        raise HSErr("has wants has(dict, key)", ln)
+    k = args[1]
+    if isinstance(k, bool) or not isinstance(k, (str, int)):
+        raise HSErr("dict key must be Str or Int", ln)
+    return k in args[0]
+
+
 def b_join(args, ln):
     if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], list):
         raise HSErr("join wants join(sep, list)", ln)
@@ -2782,7 +2791,7 @@ BUILTINS = {
     "as_ptr": b_as_ptr, "as_int": b_as_int,
     "ticks": b_ticks, "readkey": b_readkey,
     "pmm_alloc": b_pmm_alloc, "meminfo": b_meminfo,
-    "append": b_append, "split": b_split, "find": b_find, "join": b_join,
+    "append": b_append, "split": b_split, "find": b_find, "join": b_join, "has": b_has,
     "argv": b_argv, "env": b_env, "system": b_system,
     "tcp_connect": b_tcp_connect, "tcp_send": b_tcp_send,
     "tcp_recv": b_tcp_recv, "tcp_close": b_tcp_close,
