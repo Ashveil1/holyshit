@@ -1779,7 +1779,7 @@ def main(argv):
                 with open(path, encoding="utf-8") as f:
                     src = f.read()
                 interp.reset_parse_state()
-                out = _fmt.fmt_program(interp.parse_program(src))
+                out = _fmt.fmt_program(interp.parse_program(src, raw=True))
             except HSErr as e:
                 print(f"{path}: {e}", file=sys.stderr)
                 rc = 1

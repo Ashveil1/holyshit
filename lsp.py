@@ -91,7 +91,7 @@ class Doc:
         self.uses = []
         interp.reset_parse_state()
         try:
-            self.ast = interp.parse_program(self.text)
+            self.ast = interp.parse_program(self.text, raw=True)
         except HSErr as e:
             self.perr = e
             return
@@ -341,7 +341,7 @@ def load_module_doc(path):
         return None
     interp.reset_parse_state()
     try:
-        ast = interp.parse_program(text)
+        ast = interp.parse_program(text, raw=True)
     except HSErr:
         return None
     doc = {"path": path, "text": text, "ast": ast, "symbols": [], "uses": []}
@@ -987,7 +987,7 @@ class Server:
             return []
         try:
             interp.reset_parse_state()
-            ast = interp.parse_program(doc.text)
+            ast = interp.parse_program(doc.text, raw=True)
             out = _fmt.fmt_program(ast)
         except HSErr:
             return []

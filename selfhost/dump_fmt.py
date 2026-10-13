@@ -11,7 +11,7 @@ def main(path):
     src = open(path, encoding="utf-8", newline="").read()
     try:
         interp.reset_parse_state()
-        out = fmt.fmt_program(interp.parse_program(src))
+        out = fmt.fmt_program(interp.parse_program(src, raw=True))
     except interp.HSErr as e:
         print(f"error: {e.msg} at line {e.line}")
         return 1

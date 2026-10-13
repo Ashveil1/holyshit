@@ -384,7 +384,7 @@ def main(argv):
         src = f.read()
     try:
         interp.reset_parse_state()
-        prog = interp.parse_program(src)
+        prog = interp.parse_program(src, raw=True)
         out = fmt_program(prog)
     except HSErr as e:
         print(str(e), file=sys.stderr)

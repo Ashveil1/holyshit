@@ -23,7 +23,7 @@ for prog in sorted(glob.glob(os.path.join(HERE, "fmt", "*.hs"))):
         src = f.read()
     try:
         interp.reset_parse_state()
-        once = _fmt.fmt_program(interp.parse_program(src))
+        once = _fmt.fmt_program(interp.parse_program(src, raw=True))
     except interp.HSErr as e:
         print(f"FAIL {name}: fmt crashed: {e}")
         fails += 1
@@ -36,7 +36,7 @@ for prog in sorted(glob.glob(os.path.join(HERE, "fmt", "*.hs"))):
         continue
     try:
         interp.reset_parse_state()
-        twice = _fmt.fmt_program(interp.parse_program(once))
+        twice = _fmt.fmt_program(interp.parse_program(once, raw=True))
     except interp.HSErr as e:
         print(f"FAIL {name}: refmt crashed: {e}")
         fails += 1
@@ -75,7 +75,7 @@ for sub in ("examples", "std", "tests", "tests/x64", "kernel"):
             src = f.read()
         try:
             interp.reset_parse_state()
-            out = _fmt.fmt_program(interp.parse_program(src))
+            out = _fmt.fmt_program(interp.parse_program(src, raw=True))
         except interp.HSErr:
             continue  # syntax-error fixtures are exempt
         if not _fmt.is_canonical(src, out):
