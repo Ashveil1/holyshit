@@ -10,6 +10,7 @@ notes:
 """
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1809,10 +1810,14 @@ def main(argv):
         prog = argv[2]
         with _tf.TemporaryDirectory() as d:
             out = os.path.join(d, "hsxbin")
-            rc = _x64.build_x64(prog, out)
+            import contextlib as _cl
+            import io as _io
+            with _cl.redirect_stdout(_io.StringIO()):
+                rc = _x64.build_x64(prog, out)
             if rc != 0:
                 return rc
-            r = subprocess.run([out])
+            sys.stdout.flush()
+            r = subprocess.run([out] + argv[3:])
             return r.returncode
     if argv[1] == "build":
         prog = argv[2]
@@ -1821,6 +1826,9 @@ def main(argv):
             out = argv[argv.index("-o") + 1]
         return build(prog, out, as_json)
     prog = argv[2]
+    if shutil.which("gcc") is None:
+        # no C compiler: run through the self-hosted x64 backend
+        return main([argv[0], "xrun"] + argv[2:])
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, "hsbin")
         rc = build(prog, out)

@@ -307,6 +307,26 @@ with tempfile.TemporaryDirectory() as _d:
 print(f"corpus skipped (outside x64 subset): {nskip}")
 print(f"corpus known x64 divergences: {nknown}")
 
+# ---------- `hs run` without a C compiler falls back to x64 ----------
+total += 1
+import subprocess as _sp
+with tempfile.TemporaryDirectory() as _d:
+    _src = os.path.join(_d, "p.hs")
+    with open(_src, "w") as _f:
+        _f.write('print "hi", len(argv())\n')
+    _bin = os.path.join(_d, "bin")
+    os.mkdir(_bin)
+    os.symlink(sys.executable, os.path.join(_bin, "python3"))
+    _r = _sp.run([os.path.join(_bin, "python3"), os.path.join(ROOT, "hs.py"),
+                  "run", _src, "a", "b"], capture_output=True, text=True,
+                 env={"PATH": _bin})
+    if _r.returncode == 0 and _r.stdout == "hi 2\n":
+        print("ok   hs run falls back to x64 when gcc is missing")
+    else:
+        print(f"FAIL hs run no-gcc fallback: rc={_r.returncode} "
+              f"out={_r.stdout!r} err={_r.stderr[-200:]!r}")
+        fails += 1
+
 # ---------- GC: the alloc bench must run in bounded memory ----------
 # 5M short-lived strings used to cost ~690 MB (bump allocator, no free).
 total += 1
