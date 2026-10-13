@@ -120,6 +120,12 @@ def fmt_expr(e):
         l = _side(e["l"], p, "l", e["op"])
         r = _side(e["r"], p, "r", e["op"])
         return f"{l} {e['op']} {r}"
+    if t == "call" and e.get("lc"):
+        _reg_lams(e["hl"])
+        c = e.get("c")
+        return ("[" + fmt_expr(e["e"]) + " for " + e["x"] + " in "
+                + fmt_expr(e["it"]) + ("" if c is None else " if " + fmt_expr(c))
+                + "]")
     if t == "call" and e.get("inop"):
         l = _side(e["args"][1], 3, "l", "in")
         r = _side(e["args"][0], 3, "r", "in")
