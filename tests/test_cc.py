@@ -14,6 +14,8 @@ CC = os.path.join(ROOT, "selfhost", "cc.hs")
 total = fails = 0
 
 PROGS = {
+    "ternary": 'def f(n):\n  return "big" if n > 5 else "small"\n\ndef g(n):\n  return n * 2 if n > 0 else (0 - n if n < 0 else 99)\n\nx = 3\nprint f(x), f(9)\nprint g(4), g(0 - 3), g(0)\nprint 1 if false else 2\nprint (x if x else 7)\n',
+    "defaults": 'K = 5\n\ndef f(a, b=10, c=K + 1):\n  return a * 100 + b * 10 + c\n\ndef g(s, sep=", "):\n  return s + sep + s\n\nprint f(1), f(1, 2), f(1, 2, 3)\nprint g("x"), g("x", "-")\n',
     "fib": "def fib(n):\n  if n < 2:\n    return n\n  return fib(n - 1) + fib(n - 2)\nprint fib(22)\n",
     "arith": "a = 17\nb = 5\nprint a + b, a - b, a * b, a % b, -a % b, a % -b, -a % -b\n"
              "print 0, -1, 4611686018427387903, -4611686018427387903\n",
