@@ -98,6 +98,8 @@ class HSExtern:
     """A C function imported via extern. Calls go through ctypes."""
 
     def __init__(self, name, rtype, params, cdll, line):
+        global FFI_USED
+        FFI_USED = True
         self.name = name
         self.rtype = rtype
         self.params = params  # [(pname, ftype)]
@@ -190,6 +192,7 @@ class UnsafeVal:
 # Flat byte-addressable memory. Pointers are integer addresses. Addr 0 = NULL.
 US_MEM = bytearray(1 << 20)
 US_TOP = 8
+FFI_USED = False  # a program with extern may load/store C memory (real addresses)
 MASK64 = (1 << 64) - 1
 
 
@@ -216,20 +219,31 @@ def us_alloc(n, line):
     return addr
 
 
+def us_foreign(addr, size):
+    return FFI_USED and addr >= len(US_MEM) and addr + size <= (1 << 63)
+
+
 def us_check(addr, size, line):
     if addr == 0:
         raise HSErr("null pointer dereference", line)
+    if us_foreign(addr, size):
+        return
     if addr < 0 or addr + size > len(US_MEM):
         raise HSErr("unsafe: address out of bounds", line)
 
 
 def us_load(addr, size, line):
     us_check(addr, size, line)
+    if us_foreign(addr, size):
+        return int.from_bytes(_ctypes.string_at(addr, size), "little")
     return int.from_bytes(US_MEM[addr:addr + size], "little")
 
 
 def us_store(addr, size, v, line):
     us_check(addr, size, line)
+    if us_foreign(addr, size):
+        _ctypes.memmove(addr, (v & ((1 << (size * 8)) - 1)).to_bytes(size, "little"), size)
+        return
     US_MEM[addr:addr + size] = (v & ((1 << (size * 8)) - 1)).to_bytes(size, "little")
 
 

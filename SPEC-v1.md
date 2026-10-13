@@ -258,7 +258,8 @@ extern from "helper.c":       # ซอร์ส C (เช่น ส่วน ker
 - เรียกได้จาก safe code เท่านั้น (ห้ามใน `unsafe`, ห้ามใน kernel — kernel ไม่มี libc)
 - native ไม่ emit prototype แต่ `dlsym` ตรง (`-rdynamic -ldl`) เลยไม่ชนชื่อฟังก์ชัน libc
 - interp รันผ่าน `ctypes` (รวม `.c` ที่คอมไพล์เป็น .so ชั่วคราวให้) ผลตรง native ทุกตัวอักษร
-- ทำไม่ได้: struct, callback, variadic (เช่น `printf` ตรงๆ) — เขียน wrapper C ครอบเอา
+- struct by pointer ทำได้: `malloc` แล้ว `store*/load*` ใน `unsafe:` ตาม offset (tests/t_ffistruct.hs ใช้ `gmtime_r` เติม `struct tm`) — โปรแกรมที่มี `extern` เท่านั้นที่ load/store ที่อยู่จริงของ C ได้ (interp ใช้ ctypes), ไม่มี extern ยังเป็น arena จำลองตรวจขอบเขต
+- ทำไม่ได้: struct by value, callback, variadic (เช่น `printf` ตรงๆ) — เขียน wrapper C ครอบเอา
 - ต่างภาษา = ต่างแค่ต้นทาง: Rust/Zig/C++/Go(cgo) ที่ export C ABI เอา `.so`/`.a`/`.o`
   มา `from` ได้หมด; ซอร์ส C ของ kernel เอามาลิงก์ตรงได้แบบ `helper.c` ข้างบน
 
