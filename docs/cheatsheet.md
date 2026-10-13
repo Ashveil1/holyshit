@@ -71,6 +71,8 @@ global x                    # เขียนชื่อระดับ module 
 `and or not` (คืน operand ไม่ใช่ Bool), `a[i]`, `a[i] = v`,
 `s[a:b]` (ค่าติดลบได้), `len(x)`
 
+ternary: `a if cond else b` (ประเมินเฉพาะฝั่งที่เลือก, ซ้อนได้ ขวาไปซ้าย)
+
 bitwise (Int เท่านั้น — Bool ไม่ใช่ Int):
 
 ```hs

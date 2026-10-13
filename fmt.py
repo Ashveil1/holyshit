@@ -33,6 +33,8 @@ def _prec(e):
         return 3 if e.get("notin") else 7
     if e["t"] == "call" and e.get("inop"):
         return 3
+    if e["t"] == "index" and e.get("tern"):
+        return 0  # ternary binds loosest: parenthesize as an operand
     if e["t"] == "neg":
         return 8
     if e["t"] == "unot":
@@ -131,6 +133,9 @@ def fmt_expr(e):
                 ", ".join(fmt_expr(a) for a in e["args"][1:]) + ")")
     if t == "call":
         return _atom(e["fn"], 9) + "(" + ", ".join(fmt_expr(a) for a in e["args"]) + ")"
+    if t == "index" and e.get("tern"):
+        return (f"{_atom(e['a'], 1)} if {_atom(e['c'], 1)} else "
+                f"{fmt_expr(e['b'])}")
     if t == "index" and e.get("dot") is not None:
         return f"{_atom(e['obj'], 9)}.{e['dot']}"
     if t == "index":

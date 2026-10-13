@@ -1,0 +1,2 @@
+x = 1 if true
+print x

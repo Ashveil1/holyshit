@@ -28,7 +28,7 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (228)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (229)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -126,6 +126,7 @@
 - `env wants env(name)`
 - `expected ':' then a new line`
 - `expected 'in', got {it.v}`
+- `expected else, got '{p.peek().v}'`
 - `expected indented block`
 - `expected {v or k}, got {x.v}`
 - `expression expected, got {t.v}`
@@ -628,4 +629,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 582 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 583 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

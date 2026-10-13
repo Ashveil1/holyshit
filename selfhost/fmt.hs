@@ -60,6 +60,8 @@ def prec(e):
     return 7
   if t == "call" and has(e, "inop"):
     return 3
+  if t == "index" and has(e, "tern"):
+    return 0
   if t == "neg" or t == "unot":
     return 8
   return 9
@@ -135,6 +137,8 @@ def fmt_expr(e):
     return atom(e["args"][0], 9) + "." + e["method"] + "(" + join_exprs(e["args"][1:len(e["args"])]) + ")"
   if t == "call":
     return atom(e["fn"], 9) + "(" + join_exprs(e["args"]) + ")"
+  if t == "index" and has(e, "tern"):
+    return atom(e["a"], 1) + " if " + atom(e["c"], 1) + " else " + fmt_expr(e["b"])
   if t == "index" and has(e, "dot"):
     return atom(e["obj"], 9) + "." + e["dot"]
   if t == "index":
@@ -299,5 +303,5 @@ try:
   fmt_block(prog, 0, out)
   print join("\n", out)
 except as e:
-  print "error: " + e
+  print "error: " + parselib.strip_raise(e)
   raise "fmt failed"

@@ -1045,7 +1045,24 @@ def parse_print(p):
 
 
 def parse_expr(p):
-    return parse_or(p)
+    a = parse_or(p)
+    if p.at("ID", "if"):
+        # `A if C else B` desugars to (C and [A] or [B])[0]: lazy in both
+        # branches, so every backend gets it for free. fmt prints the
+        # original form from the tern marker.
+        t = p.next()
+        c = parse_or(p)
+        if not p.at("ID", "else"):
+            raise HSErr(f"expected else, got '{p.peek().v}'", t.line)
+        p.next()
+        b = parse_expr(p)
+        ln = t.line
+        sel = N("bin", ln, op="or",
+                l=N("bin", ln, op="and", l=c, r=N("list", ln, items=[a])),
+                r=N("list", ln, items=[b]))
+        return N("index", ln, obj=sel, idx=N("num", ln, val=0, raw=None),
+                 tern=True, c=c, a=a, b=b)
+    return a
 
 
 def parse_or(p):
