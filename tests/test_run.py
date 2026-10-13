@@ -69,5 +69,33 @@ for be in ("interp", "native", "x64"):
     rc, out, err = run(REC, {"HS_BACKEND": be})
     check(f"runaway recursion is a clean error ({be})",
           rc == 1 and "stack overflow" in err and out == "", (rc, out, err))
+TESTSRC = ("def test_ok():\n  assert 1 + 1 == 2\n"
+           "def test_bad():\n  assert 1 == 2, \"nope\"\n"
+           "def test_boom():\n  x = [1][3]\n"
+           "def helper():\n  return 1\n")
+with tempfile.TemporaryDirectory() as d:
+    tp = os.path.join(d, "test_x.hs")
+    open(tp, "w").write(TESTSRC)
+    r = subprocess.run([sys.executable, HS, "test", d],
+                       capture_output=True, text=True)
+    check("hs test reports pass and fail, exit 1",
+          r.returncode == 1 and "ok   " in r.stdout and "test_ok" in r.stdout
+          and "FAIL" in r.stdout and "nope" in r.stdout
+          and "1 passed, 2 failed" in r.stdout, (r.returncode, r.stdout))
+    r = subprocess.run([sys.executable, HS, "--json", "test", tp],
+                       capture_output=True, text=True)
+    import json
+    j = json.loads(r.stdout)
+    check("hs test --json", j["passed"] == 1 and j["failed"] == 2
+          and [x["test"] for x in j["results"]]
+          == ["test_ok", "test_bad", "test_boom"]
+          and "helper" not in r.stdout, r.stdout)
+    open(tp, "w").write("def test_a():\n  assert true\n")
+    r = subprocess.run([sys.executable, HS, "test", tp],
+                       capture_output=True, text=True)
+    check("hs test all green exits 0", r.returncode == 0
+          and "1 passed, 0 failed" in r.stdout, (r.returncode, r.stdout))
+    check("hs test leaves no temp file", os.listdir(d) == ["test_x.hs"],
+          os.listdir(d))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
