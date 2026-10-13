@@ -31,6 +31,20 @@ loop           1.506s     0.246s    6.13x       9       9  same
 strings        0.778s     0.627s    1.24x     443     469  same
 ```
 
+## เส้นทางสู่ self-host เต็ม (compiler ใน hs คอมไพล์ตัวเองได้)
+
+สถานะ: `selfhost/cc.hs` (M1) คอมไพล์ subset Int ได้ ผลตรง interp (tests/test_cc.py). ขนาดงานที่เหลือ **ใหญ่** (ฝั่ง Python คือ x64gen/irx64/gcrt ~15k บรรทัด) จึงแบ่งเป็นขั้นที่วัดได้:
+
+| ขั้น | เนื้อหา | เกณฑ์ผ่าน (รันได้) |
+|---|---|---|
+| M1 ✔ | Int, def/recursion, while/if, print Int/str literal → ELF | test_cc 24 เคส, ELF จาก interp = จาก native |
+| M2 | ค่าแบบ tagged เหมือน x64 (Int/Bool/Null/Str/List), heap bump + runtime str/list/append/len/index ที่ emit จาก hs | โปรแกรมที่ใช้ str/list รันตรง interp ผ่าน cc.hs |
+| M3 | dict, for, try/except, f-string/method ที่ desugar แล้ว, import | โปรแกรมขนาด tests/*.hs ส่วนใหญ่ผ่าน |
+| M4 | builtins ที่ cc.hs ใช้เอง (read_text/write_bytes/argv/keys/...) | cc.hs คอมไพล์ cc.hs ได้ ELF ที่รันได้ |
+| M5 | bootstrap: cc1 (ELF จาก cc.hs ผ่าน Python) คอมไพล์ cc.hs ได้ cc2 และ cc2 == cc1 ไบต์ต่อไบต์ | test_cc: fixed point |
+
+จนกว่า M4-M5 ผ่าน จะไม่ claim ว่า "พึ่งตัวเองเต็ม" (ตอนนี้ยังพึ่ง Python สำหรับ x64gen/irx64 + gcc สำหรับ native)
+
 ## ที่วัดได้ก่อนเริ่ม (v0.6.30, ดู `bench.md`)
 
 - เทส interp/x64/IR/irx64/fmt/LSP/docs ผ่านทั้งหมด; native และ kernel (QEMU) รันไม่ได้ในเครื่องวัด → ให้ CI ยืนยัน
