@@ -228,7 +228,7 @@ def fmt_stmt(s, ind):
     if t == "setattr":
         return [p + f"{fmt_expr(s['obj'])}.{s['name']} = " + fmt_expr(s["val"])]
     if t == "def" and s.get("cls"):
-        out = [p + f"class {s['cls']}:"]
+        out = [p + f"class {s['cls']}" + (f"({s['base']})" if s.get("base") else "") + ":"]
         for i, m in enumerate(s["methods"]):
             out.extend(fmt_stmt(dict(m, name=m["orig"], clsmember=False), ind + 1))
         if not s["methods"]:
