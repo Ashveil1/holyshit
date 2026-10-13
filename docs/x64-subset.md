@@ -72,7 +72,8 @@ import os        # ไม่มีโมดูลนี้: cannot find module
 print argv()     # argv: not in x64 subset
 ```
 
-## Rekursi ไม่จบ (runaway recursion)
+## Recursion ไม่จบ (runaway recursion)
 
-interp และ native รายงาน `error: stack overflow (recursion too deep)` (exit 1)
-แต่ x64 backend ยังไม่มี guard — recursion ไม่จบจะ segfault (ยังไม่ได้ทำ)
+ทุก backend รายงาน `error: stack overflow (recursion too deep)` (exit 1):
+interp ผ่าน recursion limit, native ผ่าน SIGSEGV handler, x64 ผ่าน guard ที่ทางเข้า
+ฟังก์ชัน (เทียบ rsp กับ stack ที่ใช้ไป 7MB; ถ้า `ulimit -s` เล็กกว่านั้นยัง segfault)

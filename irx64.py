@@ -2866,6 +2866,10 @@ class GenIR(Gen):
             a.label(self.flabel[key])
         a.push_r("rbp")
         a.mov_rr("rbp", "rsp")
+        # runaway recursion: stop 1MB before the 8MB default stack ends
+        a.mov_rm_rip("r11", "stk_lim_")
+        a.cmp_rr("rsp", "r11")
+        a.jcc("b", "stk_ovf")
         if fr["nloc"]:
             a.sub_ri32("rsp", 8 * fr["nloc"])
         a.mov_rr("r10", "rsi")           # caller line (ffi errors report it)
@@ -2903,8 +2907,20 @@ class GenIR(Gen):
         a.mov_mr("rcx", "rax", 0)
         a.and_ri32("rsp", -16)
         a.mov_mr_rip("gc_stk_", "rsp")
+        a.lea_m("rax", "rsp", -0x700000)   # 7MB of stack before the guard fires
+        a.mov_mr_rip("stk_lim_", "rax")
         a.call("hs_main")
         a.mov_rr("rdi", "rax")
+        a.mov_ri32("rax", 60)
+        a.syscall()
+        msg = "error: stack overflow (recursion too deep)\n"
+        a.label("stk_ovf")
+        a.lea_rip("rsi", self.rstr(msg))
+        a.mov_ri32("rdx", len(msg))
+        a.mov_ri32("rdi", 2)
+        a.mov_ri32("rax", 1)
+        a.syscall()
+        a.mov_ri32("rdi", 1)
         a.mov_ri32("rax", 60)
         a.syscall()
         self.emit_runtime()
@@ -2941,6 +2957,8 @@ class GenIR(Gen):
             a.data_bytes(b"\0" * (Gen.EXC_VSZ * Gen.EXC_VMAX))
         a.data_label("gc_data_hi")
         import gcrt
+        a.data_label("stk_lim_")
+        a.data_qword(0)
         gcrt.gc_data(a)
         a.label("sp_")
         a.code += b" "
