@@ -514,6 +514,13 @@ class Gen:
                 a.mov_ri64("rax", self.tag_int(v))
             return
         if t == "str":
+            if self.freestanding:
+                # the kernel image lays out its own data; keep the heap copy
+                b = e["val"].encode()
+                a.lea_rip("rdi", self.rstr(e["val"]))
+                a.mov_ri32("rsi", len(b))
+                a.call("x_str_at")
+                return
             a.lea_rip("rax", self.sstr(e["val"]))
             return
         if t == "var":
