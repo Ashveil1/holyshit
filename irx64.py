@@ -2866,10 +2866,6 @@ class GenIR(Gen):
             a.label(self.flabel[key])
         a.push_r("rbp")
         a.mov_rr("rbp", "rsp")
-        # runaway recursion: stop 1MB before the 8MB default stack ends
-        a.mov_rm_rip("r11", "stk_lim_")
-        a.cmp_rr("rsp", "r11")
-        a.jcc("b", "stk_ovf")
         if fr["nloc"]:
             a.sub_ri32("rsp", 8 * fr["nloc"])
         a.mov_rr("r10", "rsi")           # caller line (ffi errors report it)
@@ -2907,20 +2903,70 @@ class GenIR(Gen):
         a.mov_mr("rcx", "rax", 0)
         a.and_ri32("rsp", -16)
         a.mov_mr_rip("gc_stk_", "rsp")
-        a.lea_m("rax", "rsp", -0x700000)   # 7MB of stack before the guard fires
-        a.mov_mr_rip("stk_lim_", "rax")
+        # runaway recursion: report instead of dying on SIGSEGV. Costs nothing
+        # per call (a guard compare cost ~15% on fib). rt_sigaction needs
+        # SA_RESTORER on x86-64; the handler never returns, so the restorer
+        # is just a valid address. Unknown syscalls (kernel user mode)
+        # return -ENOSYS, which is harmless here.
+        a.lea_rip("rdi", "segv_stack_")
+        a.lea_rip("rax", "segv_ss_")
+        a.mov_mr("rax", "rdi", 0)          # ss_sp
+        a.mov_ri32("rdi", 0)
+        a.mov_mr("rax", "rdi", 8)          # ss_flags (+pad)
+        a.mov_ri32("rdi", 8192)
+        a.mov_mr("rax", "rdi", 16)         # ss_size
+        a.mov_rr("rdi", "rax")
+        a.mov_ri32("rsi", 0)
+        a.mov_ri32("rax", 131)             # sigaltstack
+        a.syscall()
+        a.lea_rip("rax", "segv_sa_")
+        a.lea_rip("rdi", "segv_handler")
+        a.mov_mr("rax", "rdi", 0)          # sa_handler
+        a.mov_ri64("rdi", 0x8C000004)      # +SA_RESETHAND
+        a.mov_mr("rax", "rdi", 8)
+        a.lea_rip("rdi", "segv_rest")
+        a.mov_mr("rax", "rdi", 16)         # sa_restorer
+        a.mov_ri32("rdi", 0)
+        a.mov_mr("rax", "rdi", 24)         # sa_mask
+        a.mov_ri32("rdi", 11)              # SIGSEGV
+        a.mov_rr("rsi", "rax")
+        a.mov_ri32("rdx", 0)
+        a.mov_ri32("r10", 8)
+        a.mov_ri32("rax", 13)              # rt_sigaction
+        a.syscall()
         a.call("hs_main")
         a.mov_rr("rdi", "rax")
         a.mov_ri32("rax", 60)
         a.syscall()
-        msg = "error: stack overflow (recursion too deep)\n"
-        a.label("stk_ovf")
-        a.lea_rip("rsi", self.rstr(msg))
-        a.mov_ri32("rdx", len(msg))
+        # SIGSEGV handler (rsi = siginfo, rdx = ucontext): a fault within 64KB
+        # of the faulting rsp is runaway recursion (exit 1, like interp and
+        # native); any other fault re-raises.
+        msg1 = "error: stack overflow (recursion too deep)\n"
+        a.label("segv_handler")
+        a.mov_rm("rax", "rsi", 16)         # si_addr
+        a.mov_rm("rcx", "rdx", 160)        # uc_mcontext.gregs[REG_RSP]
+        a.mov_rr("rdx", "rax")
+        a.sub_rr("rdx", "rcx")             # addr - rsp (wraps when below)
+        a.add_ri32("rdx", 65536)
+        a.cmp_ri32("rdx", 131072)
+        a.jcc("a", "segv_other")
+        a.jmp("segv_stack_out")
+        a.label("segv_other")
+        # not recursion: return, so the default action re-raises SIGSEGV
+        # (SA_RESETHAND) and the process dies exactly as a native one would
+        a.ret()
+        a.label("segv_rest")
+        a.mov_ri32("rax", 15)
+        a.syscall()
+        a.label("segv_stack_out")
+        a.lea_rip("rsi", self.rstr(msg1))
+        a.mov_ri32("rdx", len(msg1))
+        a.mov_ri32("r8", 1)
+        a.label("segv_out")
         a.mov_ri32("rdi", 2)
         a.mov_ri32("rax", 1)
         a.syscall()
-        a.mov_ri32("rdi", 1)
+        a.mov_rr("rdi", "r8")
         a.mov_ri32("rax", 60)
         a.syscall()
         self.emit_runtime()
@@ -2957,8 +3003,12 @@ class GenIR(Gen):
             a.data_bytes(b"\0" * (Gen.EXC_VSZ * Gen.EXC_VMAX))
         a.data_label("gc_data_hi")
         import gcrt
-        a.data_label("stk_lim_")
-        a.data_qword(0)
+        a.data_label("segv_ss_")
+        a.data_bytes(b"\0" * 24)
+        a.data_label("segv_sa_")
+        a.data_bytes(b"\0" * 32)
+        a.data_label("segv_stack_")
+        a.data_bytes(b"\0" * 8192)
         gcrt.gc_data(a)
         a.label("sp_")
         a.code += b" "

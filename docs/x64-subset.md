@@ -75,5 +75,5 @@ print argv()     # argv: not in x64 subset
 ## Recursion ไม่จบ (runaway recursion)
 
 ทุก backend รายงาน `error: stack overflow (recursion too deep)` (exit 1):
-interp ผ่าน recursion limit, native ผ่าน SIGSEGV handler, x64 ผ่าน guard ที่ทางเข้า
+interp ผ่าน recursion limit, native ผ่าน SIGSEGV handler, x64 ผ่าน SIGSEGV handler (rt_sigaction + sigaltstack ตอน _start; ไม่มีต้นทุนต่อการเรียก)
 ฟังก์ชัน (เทียบ rsp กับ stack ที่ใช้ไป 7MB; ถ้า `ulimit -s` เล็กกว่านั้นยัง segfault)

@@ -8,6 +8,29 @@
 > หลักการ: ทุกเฟสต้องมี **เกณฑ์ผ่านที่รันได้** (คำสั่ง + ผลที่คาด), เทสเดิมต้องเขียวตลอด
 > (`python3 tests/run_all.py`), ทุกการเปลี่ยนมี benchmark ตามด้วย
 
+## สถานะล่าสุด (วัดจริง, เทสเขียวใน CI เต็ม)
+
+| เป้า | หลักฐาน | ประเมิน |
+|---|---|---|
+| เร็วกว่า Python | `bench/run.py` ด้านล่าง: loop/fib ~5-6x, alloc 2.6x, dict 1.3-1.5x, strings 1.3-1.5x (ช่วงจากหลายรอบ) | ~65% |
+| JIT / ไม่มีขั้นตอน compile | `hs run` ใช้ x64 เป็นค่าเริ่มต้น (build+รัน ~0.1 s ไม่ใช้ gcc) fallback เองเมื่อนอก subset / Int เกิน 62-bit | ~55% |
+| ง่ายกว่า Python | f-string, lambda, class/inherit, `in`, ternary, keys/values/has, prelude (abs/min/max/sum/sorted/...), stack overflow เป็น error สะอาด; ยังไม่มี list comprehension / enumerate / assert / default args | ~55% |
+| พึ่งตัวเองได้ | x64 + kernel + FFI ไม่ใช้ gcc; lexer/parser/formatter เขียนด้วย hs ตรงกับ Python ทุกไบต์บนไฟล์ในรีโป (808 เช็ค) และ parse ตัวเองได้; ยังไม่มี code generator ใน hs | ~45% |
+| FFI | native + x64 (I64/U64/Ptr/Str/F64); ยังไม่มี struct/callback | ~55% |
+| เขียน OS ด้วยตัวเอง | kernel บูตบน QEMU, xkernel 291 เคส (VFS, shell ring3, paging, preempt, float, JSON) | ~70% |
+| AI-first | error แบบมีโครงสร้าง (`--json`), LSP, docs/api.json, `hs fmt`; ยังไม่มี test runner / REPL | ~40% |
+
+ภาพรวม ~57% (ยังไม่ถึง 80%) ส่วนที่ใหญ่ที่สุดที่เหลือ: code generator ใน hs (self-host เต็ม), JIT จริง, GC ให้เร็วขึ้นเมื่อ live heap ใหญ่ (strings/alloc/dict)
+
+```
+case          cpython  hs xbuild    ratio   MB py   MB hs  output
+alloc          0.967s     0.405s    2.39x       9      16  same
+dict           0.083s     0.065s    1.29x      39      27  same
+fib            0.325s     0.093s    3.50x       9       9  same
+loop           1.506s     0.246s    6.13x       9       9  same
+strings        0.778s     0.627s    1.24x     443     469  same
+```
+
 ## ที่วัดได้ก่อนเริ่ม (v0.6.30, ดู `bench.md`)
 
 - เทส interp/x64/IR/irx64/fmt/LSP/docs ผ่านทั้งหมด; native และ kernel (QEMU) รันไม่ได้ในเครื่องวัด → ให้ CI ยืนยัน
