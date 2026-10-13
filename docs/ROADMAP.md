@@ -39,8 +39,8 @@ strings        0.778s     0.627s    1.24x     443     469  same
 |---|---|---|
 | M1 ✔ | Int, def/recursion, while/if, print Int/str literal → ELF | test_cc 24 เคส, ELF จาก interp = จาก native |
 | M1.5 ✔ | `selfhost/asm.hs`: assembler เขียนด้วย hs (subset จำนวนเต็มของ x64.py) | test_asm: ไบต์ตรง x64.py 17.8k คำสั่ง |
-| M2 | ค่าแบบ tagged เหมือน x64 (Int/Bool/Null/Str/List), heap bump + runtime str/list/append/len/index ที่ emit จาก hs | โปรแกรมที่ใช้ str/list รันตรง interp ผ่าน cc.hs |
-| M3 | dict, for, try/except, f-string/method ที่ desugar แล้ว, import | โปรแกรมขนาด tests/*.hs ส่วนใหญ่ผ่าน |
+| M2 ✔ | ค่าแบบ tagged (Int 63 บิต/Bool/Null/Str/List/Dict), heap bump (ไม่มี GC), str + len index == < print, list literal/append/get/set/for/==, dict literal/get/set/in/keys/values/== ที่ emit จาก hs | test_cc 56 เคส: stdout ตรง interp + error ออก exit≠0 เหมือนกัน |
+| M3 | try/except, f-string/method ที่ desugar แล้ว, import, ค่า/builtins ที่เหลือ | โปรแกรมขนาด tests/*.hs ส่วนใหญ่ผ่าน |
 | M4 | builtins ที่ cc.hs ใช้เอง (read_text/write_bytes/argv/keys/...) | cc.hs คอมไพล์ cc.hs ได้ ELF ที่รันได้ |
 | M5 | bootstrap: cc1 (ELF จาก cc.hs ผ่าน Python) คอมไพล์ cc.hs ได้ cc2 และ cc2 == cc1 ไบต์ต่อไบต์ | test_cc: fixed point |
 
