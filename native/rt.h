@@ -180,6 +180,7 @@ Val b_append(Val *args, int nargs, int line);
 Val b_split(Val *args, int nargs, int line);
 Val b_find(Val *args, int nargs, int line);
 Val b_join(Val *args, int nargs, int line);
+Val b_has(Val *args, int nargs, int line);
 Val b_ticks(Val *args, int nargs, int line);
 Val b_readkey(Val *args, int nargs, int line);
 Val b_pmm_alloc(Val *args, int nargs, int line);

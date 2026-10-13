@@ -35,7 +35,7 @@ from interp import HSErr
 # Builtins the IR runtime reuses verbatim (same function objects as interp,
 # so messages match by construction). Anything else fails at call time.
 IR_BUILTINS = {"len", "str", "int", "float", "range", "append",
-               "split", "find", "join"}
+               "split", "find", "join", "has"}
 
 # read_mem is special: it reads the *simulated* memory, so the IR needs
 # its own copy bound to _US_MEM (reusing interp's would read the wrong

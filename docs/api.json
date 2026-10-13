@@ -167,6 +167,16 @@
     "xkernel"
    ]
   },
+  "has": {
+   "sig": "has(dict, key)",
+   "desc": "true when the dict has the key",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
   "join": {
    "sig": "join(sep, list)",
    "desc": "join List of Str",

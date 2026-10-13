@@ -28,7 +28,7 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (222)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (223)
 
 - `'{d['name']}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -139,6 +139,7 @@
 - `float not allowed in unsafe`
 - `float wants 1 arg, got {len(args)}`
 - `for not allowed in unsafe (use while)`
+- `has wants has(dict, key)`
 - `http status {status}`
 - `http_get bad port in url`
 - `http_get bad url`
@@ -338,7 +339,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (104)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (105)
 
 - `'{n}' already defined in this scope`
 - `alloc wants alloc(n)`
@@ -386,6 +387,7 @@
 - `find wants find(s, sub)`
 - `float not in x64 subset`
 - `float wants 1 arg`
+- `has wants has(dict, key)`
 - `image_end takes no args`
 - `in module '{name}': {e.msg}`
 - `input takes no args`
@@ -617,4 +619,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 571 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 573 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

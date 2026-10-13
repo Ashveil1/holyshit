@@ -27,6 +27,8 @@
 | | byte index of sub or -1 |||||
 | `float` | `float(x)` | ✓ | ✓ | ✓ | ✓ |
 | | convert to Float |||||
+| `has` | `has(dict, key)` | ✓ | ✓ | ✓ | ✓ |
+| | true when the dict has the key |||||
 | `http_get` | `http_get(url)` | ✓ | ✓ |   |   |
 | | http GET body as Str (hosted only) |||||
 | `input` | `input()` | ✓ | ✓ | ✓ |   |
