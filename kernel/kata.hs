@@ -132,4 +132,8 @@ def write(lba, count, src):
     hi = rd8(src, i + 1)
     ioport_out(DATA, lo | (hi << 8), 2)
     i = i + 2
+  # the drive is busy committing the sector: the next command is ignored
+  # while BSY is set, so wait for it to finish
+  if not wait_ready():
+    raise "ata write did not complete"
   return true

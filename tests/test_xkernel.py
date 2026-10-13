@@ -66,6 +66,16 @@ def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None, disk=None):
                 pass
             s.close()
         time.sleep(timeout)
+        # emulation speed varies on shared runners: if the guest is still
+        # printing, keep waiting (up to 4x) instead of cutting it off
+        end = time.time() + 3 * timeout
+        last = -1
+        while time.time() < end:
+            size = os.path.getsize(slog) if os.path.exists(slog) else 0
+            if size == last:
+                break
+            last = size
+            time.sleep(2)
     finally:
         p.terminate()
         try:
@@ -433,8 +443,21 @@ with tempfile.TemporaryDirectory() as d:
                               "-initrd", srd],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
+            booted = False
+            nret = 1
             for delay, key in shkeys(lines):
                 time.sleep(delay)
+                if not booted:
+                    # slow runners: do not type before the guest is up
+                    t_end = time.time() + 60
+                    while time.time() < t_end:
+                        try:
+                            if "boot info found" in open(slog, errors="replace").read():
+                                break
+                        except OSError:
+                            pass
+                        time.sleep(0.5)
+                    booted = True
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 s.settimeout(5)
                 s.connect(msock)
@@ -448,7 +471,27 @@ with tempfile.TemporaryDirectory() as d:
                 s.close()
                 check(f"sendkey {key} accepted", "error" not in rep.lower()
                       and "unknown" not in rep.lower(), rep[-200:])
+                if key == "ret":
+                    # let the guest finish the line (new prompt) before
+                    # typing the next one; a slow guest drops keys otherwise
+                    t_end = time.time() + 20
+                    while time.time() < t_end:
+                        try:
+                            if open(slog, errors="replace").read().count("sh> ") > nret:
+                                break
+                        except OSError:
+                            pass
+                        time.sleep(0.3)
+                    nret += 1
             time.sleep(timeout)
+            end = time.time() + 3 * timeout
+            last = -1
+            while time.time() < end:
+                size = os.path.getsize(slog) if os.path.exists(slog) else 0
+                if size == last:
+                    break
+                last = size
+                time.sleep(2)
         finally:
             p.terminate()
             try:

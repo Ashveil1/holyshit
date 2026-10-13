@@ -4643,6 +4643,7 @@ class Gen:
         a.push_r("rax")  # save scancode
         a.lea_rip("rcx", "kbdmap_")
         a.pop_r("rax")
+        a.and_ri32("rax", 0xFF)  # in al,dx leaves the old upper bits: index by al only
         a.movzx_eax_mx("rcx", "rax", 1, 0)  # al = map[scancode] (0 = unknown)
         a.test_rr("rax", "rax")
         lab_ign = self.new_tmp("kb")
