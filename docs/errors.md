@@ -28,7 +28,7 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (234)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (236)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -118,6 +118,7 @@
 - `collections not allowed in unsafe (use alloc/load/store)`
 - `contains wants contains(container, x)`
 - `def not allowed in unsafe`
+- `default args are not supported on methods`
 - `dict key must be Str or Int`
 - `division by zero`
 - `duplicate field '{fn.v}'`
@@ -197,6 +198,7 @@
 - `open wants open(path, mode)`
 - `operator '{op}' needs Ints, got {tname(l)} and {tname(r)}`
 - `operator '{op}' needs numbers, got {tname(l)} and {tname(r)}`
+- `param '{a}' without a default follows one with a default`
 - `pmm_alloc wants pmm_alloc(npages)`
 - `pmm_alloc: out of memory`
 - `print is a statement, use: print ...`
@@ -634,4 +636,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 588 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 590 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

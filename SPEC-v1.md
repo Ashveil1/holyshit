@@ -1308,3 +1308,14 @@ IR path ตรงกว่า เช่น segfault ของ `tests/ufunc.hs` �
   ยังตัดเป็น 62-bit เหมือนเดิม
 - `true == 1` เป็น `true` ทุก backend (เหมือน Python/interp)
 - บังคับ backend: `HS_BACKEND=auto|x64|native|interp` หรือ `hs.py run prog.hs --backend X`
+
+### Default args (parse-time desugar)
+
+- `def f(a, b=1 + 2):` ค่า default ต้องอยู่หลัง param ที่ไม่มี default เท่านั้น
+  (ผิด = error ตอน parse)
+- เรียก `f(x)` (มี f เป็น `def` ระดับบนที่ชื่อไม่ซ้ำ) ตัว parser เติม argument ท้ายที่ขาด
+  ด้วยสำเนาของ expression default **ทุกครั้งที่เรียก** (ต่างจาก Python ที่คำนวณตอน def;
+  `[]` ได้ list ใหม่ทุกครั้ง) backend ทุกตัวจึงเห็นแต่การเรียกเต็ม arity
+- ยังไม่รองรับ: method ใน class (error ตอน parse), เรียกผ่านตัวแปรอื่น/lambda
+  (จะได้ error arity ตามปกติ), `selfhost/cc.hs` (reject)
+- ทดสอบ: `tests/t_defaults.hs` (ทุก backend), `tests/err_defaults.hs`

@@ -257,7 +257,12 @@ def fmt_stmt(s, ind):
             out.append(p + "  pass")
         return out
     if t == "def":
-        out = [p + f"def {s['name']}(" + ", ".join(s["params"]) + "):"]
+        ps = list(s["params"])
+        dfl = s.get("defaults", [])
+        for i, e in enumerate(dfl):
+            j = len(ps) - len(dfl) + i
+            ps[j] = ps[j] + "=" + fmt_expr(e)
+        out = [p + f"def {s['name']}(" + ", ".join(ps) + "):"]
         out.extend(fmt_block(s["body"], ind + 1))
         return out
     if t == "if" and s.get("asrt"):
