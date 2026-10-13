@@ -16,6 +16,7 @@ Suites:
   test_docs.py    41  doc examples really run, links + api.json stay in sync
   test_selfhost.py 808 self-hosted lexer/parser/formatter (hs) match the Python ones on every repo .hs
   test_run.py     23  `hs run` backend choice, fallback, overrides
+  test_cc.py      24  selfhost/cc.hs (compiler written in hs) emits ELFs equal to interp
 """
 import os
 import subprocess
@@ -36,6 +37,7 @@ SUITES = [
     ("test_docs.py", "docs"),
     ("test_selfhost.py", "self-hosted lexer/parser/fmt vs Python"),
     ("test_run.py", "hs run backend selection"),
+    ("test_cc.py", "compiler written in hs (selfhost/cc.hs)"),
 ]
 
 
