@@ -328,6 +328,13 @@ def ret():
 def syscall():
   bn([15, 5])
 
+def jmp_r(r):
+  rn = regn(r)
+  if rn >= 8:
+    b1(65)
+  b1(255)
+  b1(192 | (4 << 3) | (rn & 7))
+
 def nop():
   b1(144)
 

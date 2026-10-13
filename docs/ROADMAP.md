@@ -40,11 +40,11 @@ strings        0.778s     0.627s    1.24x     443     469  same
 | M1 ✔ | Int, def/recursion, while/if, print Int/str literal → ELF | test_cc 24 เคส, ELF จาก interp = จาก native |
 | M1.5 ✔ | `selfhost/asm.hs`: assembler เขียนด้วย hs (subset จำนวนเต็มของ x64.py) | test_asm: ไบต์ตรง x64.py 17.8k คำสั่ง |
 | M2 ✔ | ค่าแบบ tagged (Int 63 บิต/Bool/Null/Str/List/Dict), heap bump (ไม่มี GC), str + len index == < print, list literal/append/get/set/for/==, dict literal/get/set/in/keys/values/== ที่ emit จาก hs | test_cc 56 เคส: stdout ตรง interp + error ออก exit≠0 เหมือนกัน |
-| M3 | try/except, f-string/method ที่ desugar แล้ว, import, ค่า/builtins ที่เหลือ | โปรแกรมขนาด tests/*.hs ส่วนใหญ่ผ่าน |
-| M4 | builtins ที่ cc.hs ใช้เอง (read_text/write_bytes/argv/keys/...) | cc.hs คอมไพล์ cc.hs ได้ ELF ที่รันได้ |
-| M5 | bootstrap: cc1 (ELF จาก cc.hs ผ่าน Python) คอมไพล์ cc.hs ได้ cc2 และ cc2 == cc1 ไบต์ต่อไบต์ | test_cc: fixed point |
+| M3 ✔ | import (flatten โมดูล), slice, str(), try/except/raise, argv/read_text/write_bytes/find/split/int, for บน Str/Dict | cc.hs คอมไพล์ parselib+lexlib+asm+cc ทั้งชุดได้ |
+| M4 ✔ | builtins ที่ cc.hs ใช้เอง | cc.hs (ผ่าน interp) คอมไพล์ cc.hs → ELF cc2 (275KB) ที่รันได้ คอมไพล์โปรแกรมทดสอบทั้งหมดได้ไบต์ตรง cc1 |
+| M5 ✔ | bootstrap: cc1 (cc.hs รันด้วย interp) → cc2 (ELF) → cc3; cc2 == cc3 ไบต์ต่อไบต์ | test_cc "bootstrap: fixed point" (cc2 คอมไพล์ cc.hs ใน 0.4 วิ เทียบ ~10 วิ ด้วย interp) |
 
-จนกว่า M4-M5 ผ่าน จะไม่ claim ว่า "พึ่งตัวเองเต็ม" (ตอนนี้ยังพึ่ง Python สำหรับ x64gen/irx64 + gcc สำหรับ native)
+**ขอบเขตที่พิสูจน์แล้ว**: คอมไพเลอร์ subset (cc.hs) ทำ fixed-point ได้ แต่ subset นี้ยังไม่มี Float, class, closure/lambda ใน runtime (lambda desugar ที่ parse ได้), GC (bump heap 1GB), Int แค่ 63 บิต (literal >= 2^61 ต้องใช้ cc1), dict ค้นแบบเชิงเส้น, error จาก runtime จับด้วย try ไม่ได้ (raise string จับได้). `hs` ตัวเต็ม (x64gen/irx64 ใน Python, native ผ่าน gcc, FFI, kernel) ยังไม่ถูก port — จึงยังไม่ claim ว่า "พึ่งตัวเองเต็ม"
 
 ## ที่วัดได้ก่อนเริ่ม (v0.6.30, ดู `bench.md`)
 
