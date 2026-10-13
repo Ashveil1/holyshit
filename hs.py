@@ -1745,6 +1745,94 @@ def build(prog_path, out_path, as_json=False):
     return 0
 
 
+def _test_files(paths):
+    out = []
+    for p in paths:
+        if os.path.isdir(p):
+            for root, _d, fs in sorted(os.walk(p)):
+                for f in sorted(fs):
+                    if f.endswith(".hs") and f.startswith(("test_", "t_")):
+                        out.append(os.path.join(root, f))
+        else:
+            out.append(p)
+    return out
+
+
+def cmd_test(paths, as_json):
+    """hs test FILE|DIR...: run every top-level `def test_*()` of each file
+    (a directory means its test_*.hs / t_*.hs files). A test passes when it
+    returns; it fails when it raises (assert, raise, runtime error). Files
+    run on the interpreter; their top-level code runs too. Exit 1 on any
+    failure. --json prints one machine-readable object."""
+    import json as _json
+    results = []
+    for path in _test_files(paths):
+        try:
+            with open(path, encoding="utf-8") as f:
+                src = f.read()
+            interp.reset_parse_state()
+            prog = interp.parse_program(src, raw=True)
+        except (HSErr, OSError) as e:
+            results.append({"file": path, "test": None, "ok": False,
+                            "error": str(e)})
+            continue
+        names = [n["name"] for n in prog if n["t"] == "def"
+                 and n["name"].startswith("test_") and not n["params"]
+                 and not n.get("lam")]
+        if not names:
+            continue
+        drv = [src.rstrip("\n"), "", "_hs_fail = 0"]
+        for nm in names:
+            drv += ["try:", f"  {nm}()",
+                    f'  print "@@hs-test ok {nm}"',
+                    "except as _hs_e:",
+                    "  _hs_fail = _hs_fail + 1",
+                    f'  print "@@hs-test FAIL {nm} " + _hs_e']
+        tmp = os.path.join(os.path.dirname(os.path.abspath(path)),
+                           f"_hs_test_tmp_{os.getpid()}.hs")
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write("\n".join(drv) + "\n")
+            r = subprocess.run(
+                [sys.executable, os.path.join(os.path.dirname(
+                    os.path.abspath(__file__)), "interp.py"), tmp],
+                capture_output=True, text=True)
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+        seen = set()
+        for line in r.stdout.splitlines():
+            if line.startswith("@@hs-test ok "):
+                nm = line[13:]
+                seen.add(nm)
+                results.append({"file": path, "test": nm, "ok": True})
+            elif line.startswith("@@hs-test FAIL "):
+                nm, _, msg = line[15:].partition(" ")
+                seen.add(nm)
+                results.append({"file": path, "test": nm, "ok": False,
+                                "error": msg})
+        for nm in names:
+            if nm not in seen:
+                err = (r.stderr.strip().splitlines() or ["did not run"])[-1]
+                results.append({"file": path, "test": nm, "ok": False,
+                                "error": err})
+    failed = [x for x in results if not x["ok"]]
+    if as_json:
+        print(_json.dumps({"passed": len(results) - len(failed),
+                           "failed": len(failed), "results": results}))
+    else:
+        for x in results:
+            nm = x["test"] or "(parse)"
+            if x["ok"]:
+                print(f"ok   {x['file']}::{nm}")
+            else:
+                print(f"FAIL {x['file']}::{nm}: {x['error']}")
+        print(f"{len(results) - len(failed)} passed, {len(failed)} failed")
+    return 1 if failed or not results else 0
+
+
 def main(argv):
     if "--version" in argv or "-V" in argv:
         print(f"hs {_version()}")
@@ -1758,13 +1846,16 @@ def main(argv):
         _lsp.main()
         return 0
     if len(argv) < 3 or argv[1] not in ("build", "run", "check", "fmt",
-                                     "xbuild", "xrun", "xkernel", "ir"):
+                                     "xbuild", "xrun", "xkernel", "ir", "test"):
         print("usage: hs.py [--json] build prog.hs [-o prog] | hs.py run prog.hs [args...] "
               "| hs.py check prog.hs | hs.py fmt prog.hs [-w|--check] "
+              "| hs.py test file|dir... "
               "| hs.py xbuild prog.hs [-o prog] | hs.py xrun prog.hs "
               "| hs.py xkernel prog.hs -o kernel.elf | hs.py ir prog.hs | hs.py lsp",
               file=sys.stderr)
         return 2
+    if argv[1] == "test":
+        return cmd_test([a for a in argv[2:] if not a.startswith("-")], as_json)
     if argv[1] == "fmt":
         import fmt as _fmt
         write = "-w" in argv

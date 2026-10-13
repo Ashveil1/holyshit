@@ -15,7 +15,7 @@ Suites:
   test_lsp.py     25  language server over stdio
   test_docs.py    41  doc examples really run, links + api.json stay in sync
   test_selfhost.py 808 self-hosted lexer/parser/formatter (hs) match the Python ones on every repo .hs
-  test_run.py     15  `hs run` backend choice, fallback, overrides
+  test_run.py     19  `hs run` backend choice, fallback, overrides
 """
 import os
 import subprocess
