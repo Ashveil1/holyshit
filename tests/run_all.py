@@ -50,6 +50,10 @@ def main(argv):
         print(f"{mark} {script:18s} ({label}): {summary}")
         if p.returncode != 0:
             failed.append(script)
+            # failure lines first: the tail of a long suite can hide them
+            fl = [ln for ln in p.stdout.split("\n") if ln.startswith("FAIL")]
+            if fl:
+                print("\n".join(x[:1500] for x in fl[:30]))
             print(p.stdout[-4000:])
             print(p.stderr[-2000:])
     if failed:
