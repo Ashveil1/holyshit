@@ -14,6 +14,7 @@ Suites:
   test_examples.py 17  every examples/*.hs still runs (interp + native)
   test_lsp.py     25  language server over stdio
   test_docs.py    41  doc examples really run, links + api.json stay in sync
+  test_selfhost.py 388 self-hosted lexer (hs) matches interp lexer on every repo .hs
 """
 import os
 import subprocess
@@ -32,6 +33,7 @@ SUITES = [
     ("test_examples.py", "examples"),
     ("test_lsp.py", "language server"),
     ("test_docs.py", "docs"),
+    ("test_selfhost.py", "self-hosted lexer vs interp lexer"),
 ]
 
 
