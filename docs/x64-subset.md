@@ -14,9 +14,9 @@ xbuild/xkernel บอกว่า builtin ไหนใช้ได้. กฎส
 - `def` ของผู้ใช้ shadow builtin ชื่อเดียวกันได้ (เหมือน interp/native)
   แต่ชื่อที่อยู่ในรายการ builtin ของ subset นี้คงเป็น builtin เสมอ
 
-`extern` (libc/.so) รองรับแล้ว: ELF แบบ dynamic ให้ ld.so ผูกสัญลักษณ์ ไม่ต้องมี gcc; ชนิด I64/U64/Ptr/Str ≤6 อาร์กิวเมนต์
+`extern` (libc/.so) รองรับแล้ว: ELF แบบ dynamic ให้ ld.so ผูกสัญลักษณ์ ไม่ต้องมี gcc; ชนิด I64/U64/F64/Ptr/Str ≤6 อาร์กิวเมนต์
 
-ไม่มี (compile error ตั้งใจ): `extern` ที่ใช้ F64 หรือ `.c`,
+ไม่มี (compile error ตั้งใจ): `extern` จาก `.c`,
 `open/read/write/close` บน kernel, `json_load`/`json_save` บน kernel, `tcp_*`,
 `http_get`,
 ส่งโมดูลเข้าคำนวณ/call/index, `print`/`str` ของ

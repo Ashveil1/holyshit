@@ -704,6 +704,9 @@ class Asm:
         self.code.append(0xE8)
         self._rel32(label)
 
+    def call_r11(self):
+        self.code += bytes([0x41, 0xFF, 0xD3])
+
     def call_rax(self):
         self.code += bytes([0xFF, 0xD0])
 
