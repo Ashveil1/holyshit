@@ -235,6 +235,11 @@ def fmt_stmt(s, ind, out):
   elif t == "def":
     append(out, p + "def " + s["name"] + "(" + join(", ", s["params"]) + "):")
     fmt_block(s["body"], ind + 1, out)
+  elif t == "if" and has(s, "asrt"):
+    if s["m"] == null:
+      append(out, p + "assert " + fmt_expr(s["c"]))
+    else:
+      append(out, p + "assert " + fmt_expr(s["c"]) + ", " + fmt_expr(s["m"]))
   elif t == "if":
     suite("if " + fmt_expr(s["cond"]) + ":", s["then"], ind, out)
     for ec in s["elifs"]:

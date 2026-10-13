@@ -27,6 +27,7 @@ KEYWORDS = {
     "as": "bind the error string in `except as e`",
     "finally": "cleanup block: runs on every exit of `try`",
     "raise": "`raise \"msg\"` throws; bare `raise` re-throws in `except`",
+    "assert": "`assert cond` or `assert cond, \"msg\"` raises when cond is false (desugars to `if not cond: raise`)",
     "true": "boolean true",
     "false": "boolean false",
     "null": "the Null value",

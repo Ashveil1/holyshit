@@ -381,7 +381,7 @@ def disp(v):
 KEYWORDS = {"def", "if", "elif", "else", "while", "for", "in", "return",
             "break", "continue", "global", "and", "or", "not",
             "true", "false", "null", "pass", "import", "try", "except", "as",
-            "extern", "raise", "lambda", "class"}
+            "extern", "raise", "lambda", "class", "assert"}
 RESERVED = {"module"}
 UTYPES = {"I64", "U64", "Ptr"}
 FFTYPE = {"U0", "I64", "U64", "F64", "Str", "Ptr"}
@@ -720,6 +720,20 @@ def parse_stmt(p):
         if not p.at("NEWLINE") and not p.at("EOF") and not p.at("DEDENT"):
             e = parse_expr(p)
         return N("return", t.line, val=e)
+    if t.k == "ID" and t.v == "assert":
+        # `assert C[, MSG]` desugars to `if not C: raise MSG`; the asrt
+        # marker lets fmt print the original form.
+        p.next()
+        c = parse_expr(p)
+        m = None
+        if p.at("OP", ","):
+            p.next()
+            m = parse_expr(p)
+        ln = t.line
+        msg = m if m is not None else N("str", ln, val="assertion failed")
+        return N("if", ln, cond=N("not", ln, val=c),
+                 then=[N("raise", ln, val=msg)], elifs=[], els=[],
+                 asrt=True, c=c, m=m)
     if t.k == "ID" and t.v == "raise":
         p.next()
         e = None

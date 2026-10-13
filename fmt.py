@@ -254,6 +254,10 @@ def fmt_stmt(s, ind):
         out = [p + f"def {s['name']}(" + ", ".join(s["params"]) + "):"]
         out.extend(fmt_block(s["body"], ind + 1))
         return out
+    if t == "if" and s.get("asrt"):
+        m = s.get("m")
+        return [p + "assert " + fmt_expr(s["c"])
+                + ("" if m is None else ", " + fmt_expr(m))]
     if t == "if":
         out = _suite(f"if {fmt_expr(s['cond'])}:", s["then"], ind)
         for ec, eb in s["elifs"]:
