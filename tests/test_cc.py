@@ -16,7 +16,7 @@ total = fails = 0
 PROGS = {
     "fib": "def fib(n):\n  if n < 2:\n    return n\n  return fib(n - 1) + fib(n - 2)\nprint fib(22)\n",
     "arith": "a = 17\nb = 5\nprint a + b, a - b, a * b, a % b, -a % b, a % -b, -a % -b\n"
-             "print 0, -1, 9223372036854775807, -9223372036854775807\n",
+             "print 0, -1, 4611686018427387903, -4611686018427387903\n",
     "bits": "x = 0xF0F0\nprint x & 255, x | 15, x ^ 255, x << 4, x >> 4, -256 >> 4\n",
     "loop": "i = 0\nt = 0\nwhile i < 1000:\n  t = t + i * i % 7\n  i = i + 1\nprint t\n",
     "breakcont": "i = 0\nt = 0\nwhile 1 == 1:\n  i = i + 1\n  if i % 2 == 0:\n    continue\n"
@@ -33,6 +33,11 @@ PROGS = {
     "deep": "def s(n):\n  if n == 0:\n    return 0\n  return n + s(n - 1)\nprint s(1000)\n",
     "mutual": "def ev(n):\n  if n == 0:\n    return 1\n  return od(n - 1)\ndef od(n):\n  if n == 0:\n    return 0\n"
               "  return ev(n - 1)\nprint ev(10), od(7), ev(7)\n",
+    "bools": "x = 1 < 2\nprint x, 1 > 2, true, false, null, not x, not 0, not 5\nprint true == 1, 1 == true, null == false, 3 != 4\n",
+    "andor_val": "x = 5 and 7\nprint x, 0 or 9, null or 3, 1 and null, false or false\n",
+    "truthy": "if 0:\n  print 1\nelse:\n  print 2\nif null:\n  print 3\nif -1:\n  print 4\nif false or 0:\n  print 5\nelse:\n  print 6\n",
+    "boolarg": "def f(a, b):\n  if a:\n    return b\n  return a\nprint f(1 < 2, 5), f(2 < 1, 5), f(null, 1)\n",
+    "bigint": "x = 4611686018427387903\nprint x, -x, x - 1, -x - 1\n",
     "noreturn": "def p(n):\n  print n\np(5)\np(6)\n",
 }
 
@@ -40,11 +45,9 @@ BAD = {
     "float": "print 1.5\n",
     "list": "x = [1]\nprint x\n",
     "div": "print 7 / 2\n",
-    "boolprint": "print 1 < 2\n",
-    "boolstore": "x = 1 < 2\nprint x\n",
     "unknown": "print y\n",
+    "bigliteral": "print 4611686018427387904\n",
     "arity": "def f(a):\n  return a\nprint f(1, 2)\n",
-    "boollit": "x = true\nprint x\n",
     "for": "for i in range(3):\n  print i\n",
 }
 
