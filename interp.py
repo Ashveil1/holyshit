@@ -406,7 +406,8 @@ class Tok:
 
 
 SC = re.compile(r"""
-    (?P<str>"(?:[^"\\\n]|\\.)*")
+    (?P<fstr>f"(?:[^"\\\n]|\\.)*")
+  | (?P<str>"(?:[^"\\\n]|\\.)*")
   | (?P<float>[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?
               |\.[0-9]+([eE][+-]?[0-9]+)?
               |[0-9]+[eE][+-]?[0-9]+)
@@ -453,6 +454,8 @@ def lex_line(content, line):
             continue
         if g == "str":
             toks.append(Tok("STR", unesc(v, line), line))
+        elif g == "fstr":
+            toks.append(Tok("FSTR", v[2:-1], line))
         elif g == "float":
             # raw keeps the spelling (1.5e3 stays 1.5e3 in `hs fmt`)
             toks.append(Tok("NUM", float(v), line, raw=v))
@@ -1154,6 +1157,67 @@ def parse_lambda(p):
     return N("var", t.line, name=name)
 
 
+def parse_fstring(p, t):
+    """f"a{x}b" -> "a" + str(x) + "b" (parse-time desugar; every backend
+    sees plain + and str()). `fs` keeps the parts so fmt can print it back.
+    {{ and }} are literal braces. Expressions cannot contain a double quote."""
+    raw, ln = t.v, t.line
+    parts = []
+    lit = []
+    i = 0
+    while i < len(raw):
+        c = raw[i]
+        if c == "\\" and i + 1 < len(raw):
+            lit.append(raw[i:i + 2])
+            i += 2
+        elif raw[i:i + 2] == "{{":
+            lit.append("{")
+            i += 2
+        elif raw[i:i + 2] == "}}":
+            lit.append("}")
+            i += 2
+        elif c == "}":
+            raise HSErr("single '}' in f-string (write }})", ln)
+        elif c == "{":
+            depth, j = 1, i + 1
+            while j < len(raw) and depth:
+                depth += (raw[j] == "{") - (raw[j] == "}")
+                j += 1
+            if depth:
+                raise HSErr("unclosed '{' in f-string", ln)
+            src = raw[i + 1:j - 1]
+            if not src.strip():
+                raise HSErr("empty {} in f-string", ln)
+            if lit:
+                parts.append(unesc('"' + "".join(lit) + '"', ln))
+                lit = []
+            sp = P(lex_line(src, ln) + [Tok("EOF", "", ln)])
+            sp.unsafe, sp.mods = p.unsafe, p.mods
+            e = parse_expr(sp)
+            if not sp.at("EOF"):
+                raise HSErr("bad expression in f-string", ln)
+            parts.append(e)
+            i = j
+        else:
+            lit.append(c)
+            i += 1
+    if lit:
+        parts.append(unesc('"' + "".join(lit) + '"', ln))
+    node = None
+    for q in parts:
+        if isinstance(q, str):
+            x = N("str", ln, val=q)
+        else:
+            x = N("call", ln, fn=N("var", ln, name="str"), args=[q])
+        node = x if node is None else N("bin", ln, op="+", l=node, r=x)
+    if node is None:
+        node = N("str", ln, val="")
+    if node["t"] != "bin":
+        node = N("bin", ln, op="+", l=N("str", ln, val=""), r=node)
+    node["fs"] = parts
+    return node
+
+
 def parse_atom(p):
     t = p.peek()
     if t.k == "NUM":
@@ -1162,6 +1226,9 @@ def parse_atom(p):
     if t.k == "STR":
         p.next()
         return N("str", t.line, val=t.v)
+    if t.k == "FSTR":
+        p.next()
+        return parse_fstring(p, t)
     if t.k == "ID" and t.v in ("true", "false", "null"):
         p.next()
         return N("num", t.line, val={"true": True, "false": False, "null": None}[t.v])

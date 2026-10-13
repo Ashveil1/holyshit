@@ -28,7 +28,7 @@ def _prec(e):
     if e["t"] == "var" and e["name"] in _LAM:
         return 0  # a lambda extends as far right as possible: parenthesize as an operand
     if e["t"] == "bin":
-        return _BIN_PREC[e["op"]]
+        return 9 if e.get("fs") is not None else _BIN_PREC[e["op"]]
     if e["t"] == "not":
         return 7
     if e["t"] == "neg":
@@ -98,6 +98,14 @@ def fmt_expr(e):
         return "not " + _atom(e["val"], 7)
     if t == "unot":
         return "~" + _atom(e["val"], 8)
+    if t == "bin" and e.get("fs") is not None:
+        out = []
+        for q in e["fs"]:
+            if isinstance(q, str):
+                out.append(esc(q).replace("{", "{{").replace("}", "}}"))
+            else:
+                out.append("{" + fmt_expr(q) + "}")
+        return 'f"' + "".join(out) + '"'
     if t == "bin":
         p = _BIN_PREC[e["op"]]
         l = _side(e["l"], p, "l", e["op"])
