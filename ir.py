@@ -1616,17 +1616,23 @@ def _us_alloc(n, ln):
 def _us_check(addr, size, ln):
     if addr == 0:
         raise HSErr("null pointer dereference", ln)
+    if interp.us_foreign(addr, size):
+        return
     if addr < 0 or addr + size > len(_US_MEM):
         raise HSErr("unsafe: address out of bounds", ln)
 
 
 def _us_load(addr, size, ln):
     _us_check(addr, size, ln)
+    if interp.us_foreign(addr, size):
+        return interp.us_load(addr, size, ln)
     return int.from_bytes(_US_MEM[addr:addr + size], "little")
 
 
 def _us_store(addr, size, v, ln):
     _us_check(addr, size, ln)
+    if interp.us_foreign(addr, size):
+        return interp.us_store(addr, size, v, ln)
     _US_MEM[addr:addr + size] = (v & ((1 << (size * 8)) - 1)).to_bytes(
         size, "little")
 

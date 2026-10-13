@@ -16,7 +16,7 @@
 | JIT / ไม่มีขั้นตอน compile | `hs run` ใช้ x64 เป็นค่าเริ่มต้น (build+รัน ~0.1 s ไม่ใช้ gcc) fallback เองเมื่อนอก subset / Int เกิน 62-bit | ~55% |
 | ง่ายกว่า Python | f-string, lambda, class/inherit, `in`, ternary, keys/values/has, prelude (abs/min/max/sum/sorted/...), stack overflow เป็น error สะอาด; assert + list comprehension มีแล้ว; enumerate + `for i, x in` มีแล้ว; default args (def f(a, b=expr)) มีแล้ว | ~60% |
 | พึ่งตัวเองได้ | x64 + kernel + FFI ไม่ใช้ gcc; lexer/parser/formatter เขียนด้วย hs ตรงกับ Python ทุกไบต์บนไฟล์ในรีโป (808 เช็ค) และ parse ตัวเองได้; `selfhost/cc.hs` = compiler เขียนด้วย hs (parse ด้วย parselib.hs → ELF x86-64 ตรงด้วย `write_bytes`, subset Int/def/recursion/while/print) ผลตรง interp 24 เคส; ยังเล็ก (ไม่มี list/str/dict/float) ต้องขยายจนคอมไพล์ตัวเองได้ ; **bootstrap fixed point**: cc.hs (ผ่าน interp) → cc2 (ELF) → cc3 โดย cc2 == cc3 ไบต์ต่อไบต์ (test_cc 67 เคส) และ `hs cc prog.hs` ใช้ compiler ที่เขียนด้วย hs นี้; subset ยังไม่มี Float/class/GC/FFI ไม่แทน x64gen/irx64 ทั้งหมด | ~60% |
-| FFI | native + x64 (I64/U64/Ptr/Str/F64); ยังไม่มี struct/callback | ~55% |
+| FFI | native + x64 (I64/U64/Ptr/Str/F64); struct by pointer ผ่าน malloc+load/store (เทสกับ gmtime_r ตรงกัน interp/native/x64); ยังไม่มี struct by value/callback | ~57% |
 | เขียน OS ด้วยตัวเอง | kernel บูตบน QEMU, xkernel 291 เคส (VFS, shell ring3, paging, preempt, float, JSON) | ~70% |
 | AI-first | error แบบมีโครงสร้าง (`--json`), LSP, docs/api.json, `hs fmt`; `hs test` (test runner, `--json`) มีแล้ว; `hs repl` มีแล้ว | ~40% |
 
