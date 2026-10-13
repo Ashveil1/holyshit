@@ -11,7 +11,7 @@ import asm
 
 STRS = []
 SOBJ = []
-ST = {"lbl": 0, "fn": null, "locals": {}, "funcs": {}, "globals": {}, "loops": [], "tryd": 0, "trace": false}
+ST = {"lbl": 0, "fn": null, "locals": {}, "funcs": {}, "defs": {}, "globals": {}, "loops": [], "tryd": 0, "trace": false}
 BASE = 4194304 + 120
 HEAP_END = 4194304 + 1073741824
 
@@ -154,8 +154,17 @@ def gen(e):
       asm.mov_rm("rsi", "rsp", 0)
       asm.call("rt_dset")
     asm.pop_r("rax")
+  elif t == "index" and has(e, "tern"):
+    els = new_label("L")
+    end = new_label("L")
+    gen_cond_jz(e["c"], els)
+    gen(e["a"])
+    asm.jmp(end)
+    asm.label(els)
+    gen(e["b"])
+    asm.label(end)
   elif t == "index":
-    if has(e, "tern") or has(e, "dot"):
+    if has(e, "dot"):
       fail("expression 'index' form not supported", ln)
     gen(e["obj"])
     asm.push_r("rax")
@@ -384,14 +393,20 @@ def gen(e):
       return 0
     if not (nm in ST["funcs"]):
       fail("call of unknown function '" + nm + "'", ln)
-    if len(e["args"]) != ST["funcs"][nm]:
+    cargs = e["args"]
+    if nm in ST["defs"]:
+      dfl = ST["defs"][nm]
+      nreq = ST["funcs"][nm] - len(dfl)
+      if len(cargs) < ST["funcs"][nm] and len(cargs) >= nreq:
+        cargs = cargs + dfl[len(cargs) - nreq:]
+    if len(cargs) != ST["funcs"][nm]:
       fail("function '" + nm + "' wants " + str(ST["funcs"][nm]) + " args", ln)
-    for a in e["args"]:
+    for a in cargs:
       gen(a)
       asm.push_r("rax")
     asm.call("f_" + nm)
-    if len(e["args"]) > 0:
-      asm.add_ri32("rsp", 8 * len(e["args"]))
+    if len(cargs) > 0:
+      asm.add_ri32("rsp", 8 * len(cargs))
   else:
     fail("expression '" + t + "' not supported", ln)
 
@@ -2084,11 +2099,13 @@ def rw(e):
     e["r"] = rw(e["r"])
   elif t == "not" or t == "neg":
     e["val"] = rw(e["val"])
+  elif t == "index" and has(e, "tern"):
+    e["c"] = rw(e["c"])
+    e["a"] = rw(e["a"])
+    e["b"] = rw(e["b"])
   elif t == "index":
     e["obj"] = rw(e["obj"])
     e["idx"] = rw(e["idx"])
-    if has(e, "tern"):
-      fail("conditional expression not supported", e["line"])
   elif t == "slice":
     e["obj"] = rw(e["obj"])
     if e["start"] != null:
@@ -2182,6 +2199,8 @@ def load_module(prog, pre):
       RN["names"] = names
       RN["mods"] = imps
       RN["locs"] = {}
+      if has(s, "defaults"):
+        rw_list(s["defaults"])
       for p in s["params"]:
         RN["locs"][p] = true
       collect_sets(s["body"], RN["locs"])
@@ -2218,7 +2237,7 @@ def compile(prog):
   for s in prog:
     if s["t"] == "def":
       if has(s, "defaults"):
-        fail("default args are not supported by cc", s["line"])
+        ST["defs"][s["name"]] = s["defaults"]
       if s["name"] in ST["funcs"]:
         fail("function '" + s["name"] + "' defined twice", s["line"])
       ST["funcs"][s["name"]] = len(s["params"])
