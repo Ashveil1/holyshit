@@ -17,7 +17,7 @@ Suites:
   test_selfhost.py 808 self-hosted lexer/parser/formatter (hs) match the Python ones on every repo .hs
   test_run.py     23  `hs run` backend choice, fallback, overrides
   test_asm.py      1  selfhost/asm.hs (assembler in hs) == x64.py byte for byte (17.8k instrs)
-  test_cc.py      37  selfhost/cc.hs (compiler written in hs) emits ELFs equal to interp
+  test_cc.py      48  selfhost/cc.hs (compiler written in hs) emits ELFs equal to interp
 """
 import os
 import subprocess

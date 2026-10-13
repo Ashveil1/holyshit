@@ -42,10 +42,22 @@ PROGS = {
     "str_eq": "a = \"x\" + \"y\"\nprint a == \"xy\", \"xy\" == a, a == 1, 1 == a, a == null, a != \"xz\"\nprint \"abc\" < \"abd\", \"abc\" <= \"abc\", \"b\" > \"abc\", \"\" < \"a\"\n",
     "str_fn": "def f(s, n):\n  if n == 0:\n    return s\n  return f(s + s, n - 1)\nx = f(\"ab\", 10)\nprint len(x), x[1023], x[-1], len(f(\"\", 5))\n",
     "str_print": "print \"a\", \"b\" + \"c\", 1, \"d\"\nx = \"q\"\nprint x, true\n",
+    'list_basic': 'x = [1, "a", true, null, [2, 3], ""]\nprint x\nprint len(x), x[1], x[-1]\nx[0] = 9\nappend(x, 7)\nprint x == [9, "a", true, null, [2, 3], "", 7], [] == [], [1] == [2], x[4][1]\nprint not [], [] or 5\nfor v in [1, 2]:\n  print v\nfor i in range(3):\n  print i\n',
+    'list_grow': 'xs = []\nfor i in range(1000):\n  append(xs, i * i)\nt = 0\nfor v in xs:\n  t = t + v\nprint len(xs), t, xs[999], xs[-1], xs[500]\nys = [xs[3], xs[4]]\nprint ys\n',
+    'sieve': 'def sieve(n):\n  p = []\n  i = 0\n  while i <= n:\n    append(p, true)\n    i = i + 1\n  p[0] = false\n  p[1] = false\n  for i in range(2, n + 1):\n    if p[i]:\n      j = i * i\n      while j <= n:\n        p[j] = false\n        j = j + i\n  out = []\n  for i in range(n + 1):\n    if p[i]:\n      append(out, i)\n  return out\nprint sieve(100)\nprint len(sieve(5000))\n',
+    'for_ctl': 'for i in range(10):\n  if i == 2:\n    continue\n  if i == 6:\n    break\n  for j in range(i, 3):\n    print i, j\nprint "done"\nfor i in range(5, 3):\n  print "never"\n',
+    'list_eq': 'a = [1, [2, "x"], [], "s"]\nb = [1, [2, "x"], [], "s"]\nprint a == b, a != b, a == [1], [1, 2] == [1, 3], [[1]] == [[1]], [1] == 1, "a" == ["a"]\nb[1][1] = "y"\nprint a == b, b\n',
+    'list_fn': 'def mk(n):\n  r = []\n  for i in range(n):\n    append(r, [i, "v" + "x"])\n  return r\ndef total(xs):\n  t = 0\n  for p in xs:\n    t = t + p[0]\n  return t\nq = mk(20)\nprint total(q), len(q), q[19], q[-20]\n',
     "noreturn": "def p(n):\n  print n\np(5)\np(6)\n",
 }
 
 ERRS = {
+    'list_oob': 'x = [1]\nprint 1\nprint x[1]\n',
+    'list_set_oob': 'x = [1]\nx[1] = 2\n',
+    'list_idx_type': 'x = [1]\nprint x[true]\n',
+    'for_int': 'for v in 5:\n  print v\n',
+    'append_int': 'append(3, 4)\n',
+    'range_type': 'for i in range("a"):\n  print i\n',
     "str_plus_int": "print 1\nprint \"a\" + 1\n",
     "str_cmp_int": "print 2\nprint \"a\" < 1\n",
     "str_idx_oob": "s = \"abc\"\nprint 3\nprint s[3]\n",
@@ -56,12 +68,11 @@ ERRS = {
 
 BAD = {
     "float": "print 1.5\n",
-    "list": "x = [1]\nprint x\n",
     "div": "print 7 / 2\n",
     "unknown": "print y\n",
     "bigliteral": "print 4611686018427387904\n",
     "arity": "def f(a):\n  return a\nprint f(1, 2)\n",
-    "for": "for i in range(3):\n  print i\n",
+    "range3": "for i in range(0, 5, 2):\n  print i\n",
 }
 
 
