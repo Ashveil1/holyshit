@@ -28,7 +28,7 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (212)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (216)
 
 - `'{d['name']}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -53,6 +53,7 @@
 - `asm wants asm("...") with a string literal`
 - `attribute access not allowed in unsafe`
 - `bad character {content[j]}`
+- `bad expression in f-string`
 - `bad extern name '{nm.v}'`
 - `bad ffi param type '{ft.v}'`
 - `bad ffi type '{rt.v}' (want one of U0 I64 U64 F64 Str Ptr)`
@@ -116,6 +117,7 @@
 - `division by zero`
 - `duplicate field '{fn.v}'`
 - `duplicate param '{a}'`
+- `empty {} in f-string`
 - `env wants env(name)`
 - `expected ':' then a new line`
 - `expected 'in', got {it.v}`
@@ -197,6 +199,7 @@
 - `scalar type '{ft.v}' cannot use '*'`
 - `shift count {b} out of range (0..63)`
 - `shift count {r} out of range (0..63)`
+- `single '}' in f-string (write }})`
 - `sizeof wants a type, got '{tn.v}'`
 - `slice index must be Int`
 - `slicing not allowed in unsafe`
@@ -223,6 +226,7 @@
 - `ticks takes no args`
 - `try not allowed in unsafe (wrap the unsafe block instead)`
 - `try without except or finally`
+- `unclosed '{' in f-string`
 - `unexpected indent`
 - `unknown ffi symbol '{name}'`
 - `unknown struct '{sname}'`
@@ -603,4 +607,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 557 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 561 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
