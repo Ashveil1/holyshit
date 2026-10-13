@@ -550,6 +550,8 @@ def N(t, line, **kw):
 # only when the program refers to them and does not define the name itself.
 # min/max with two arguments call _min2/_max2; with one argument, the list form.
 PRELUDE = {
+    "enumerate": ("def enumerate(xs):\n  out = []\n  i = 0\n  for x in xs:\n"
+                  "    append(out, [i, x])\n    i = i + 1\n  return out\n", ()),
     "abs": ("def abs(x):\n  if x < 0:\n    return 0 - x\n  return x\n", ()),
     "_min2": ("def _min2(a, b):\n  if b < a:\n    return b\n  return a\n", ()),
     "_max2": ("def _max2(a, b):\n  if b > a:\n    return b\n  return a\n", ()),
@@ -582,7 +584,7 @@ PRELUDE = {
               "    if k >= 0:\n      out = out + \"abcdefghijklmnopqrstuvwxyz\"[k:k + 1]\n"
               "    else:\n      out = out + ch\n    i = i + 1\n  return out\n", ()),
 }
-_PRELUDE_USER = ("abs", "min", "max", "sum", "reversed", "sorted", "upper", "lower")
+_PRELUDE_USER = ("enumerate", "abs", "min", "max", "sum", "reversed", "sorted", "upper", "lower")
 
 
 def _prelude_walk(node, calls, defs):
@@ -708,12 +710,31 @@ def parse_stmt(p):
         v = p.expect("ID")
         if v.v in ("true", "false", "null") or v.v in KEYWORDS:
             raise HSErr(f"bad loop variable '{v.v}'", v.line)
+        names = [v.v]
+        while p.at("OP", ","):
+            p.next()
+            v2 = p.expect("ID")
+            if v2.v in ("true", "false", "null") or v2.v in KEYWORDS:
+                raise HSErr(f"bad loop variable '{v2.v}'", v2.line)
+            names.append(v2.v)
         it = p.expect("ID")
         if it.v != "in":
             raise HSErr(f"expected 'in', got {it.v!r}", it.line)
         e = parse_expr(p)
         p.expect("OP", ":")
-        return N("for", t.line, var=v.v, iter=e, body=parse_block(p, t.line))
+        body = parse_block(p, t.line)
+        if len(names) == 1:
+            return N("for", t.line, var=v.v, iter=e, body=body)
+        # `for a, b in it:` -> `for _tN in it: a = _tN[0]; b = _tN[1]; ...`
+        # (tup keeps the names so fmt prints the original form)
+        ln = t.line
+        p.nlam += 1
+        tv = f"_t{p.nlam}"
+        pre = [N("set", ln, name=nm,
+                 val=N("index", ln, obj=N("var", ln, name=tv),
+                       idx=N("num", ln, val=i, raw=None)))
+               for i, nm in enumerate(names)]
+        return N("for", ln, var=tv, iter=e, body=pre + body, tup=names)
     if t.k == "ID" and t.v == "return":
         p.next()
         e = None

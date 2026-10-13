@@ -273,6 +273,9 @@ def fmt_stmt(s, ind):
         return out
     if t == "while":
         return _suite(f"while {fmt_expr(s['cond'])}:", s["body"], ind)
+    if t == "for" and s.get("tup"):
+        return _suite(f"for {', '.join(s['tup'])} in {fmt_expr(s['iter'])}:",
+                      s["body"][len(s["tup"]):], ind)
     if t == "for":
         return _suite(f"for {s['var']} in {fmt_expr(s['iter'])}:", s["body"], ind)
     if t == "try":
