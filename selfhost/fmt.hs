@@ -254,6 +254,8 @@ def fmt_stmt(s, ind, out):
       suite("else:", s["els"], ind, out)
   elif t == "while":
     suite("while " + fmt_expr(s["cond"]) + ":", s["body"], ind, out)
+  elif t == "for" and has(s, "tup"):
+    suite("for " + join(", ", s["tup"]) + " in " + fmt_expr(s["iter"]) + ":", s["body"][len(s["tup"]):len(s["body"])], ind, out)
   elif t == "for":
     suite("for " + s["var"] + " in " + fmt_expr(s["iter"]) + ":", s["body"], ind, out)
   elif t == "try":

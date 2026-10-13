@@ -28,7 +28,7 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (230)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (231)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -63,6 +63,7 @@
 - `bad field name '{fn.v}'`
 - `bad field type '{ft.v}'`
 - `bad loop variable '{v.v}'`
+- `bad loop variable '{v2.v}'`
 - `bad module name '{full}.{part.v}'`
 - `bad module name '{name.v}'`
 - `bad module name '{name}'`
@@ -630,4 +631,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 584 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 585 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

@@ -124,12 +124,29 @@ def parse_stmt():
       var = expect("ID")
       if var[1] in KEYWORDS:
         raise "bad loop variable '" + var[1] + "' at line " + str(var[2])
+      names = [var[1]]
+      while atv("OP", ","):
+        nxt()
+        v2 = expect("ID")
+        if v2[1] in KEYWORDS:
+          raise "bad loop variable '" + v2[1] + "' at line " + str(v2[2])
+        append(names, v2[1])
       it = expect("ID")
       if it[1] != "in":
         raise "expected 'in', got " + pyrepr(it[1]) + " at line " + str(it[2])
       e = parse_expr()
       expectv("OP", ":")
-      return N("for", ln, {"var": var[1], "iter": e, "body": parse_block(ln)})
+      body = parse_block(ln)
+      if len(names) == 1:
+        return N("for", ln, {"var": var[1], "iter": e, "body": body})
+      P["nlam"] = P["nlam"] + 1
+      tv = "_t" + str(P["nlam"])
+      pre = []
+      k = 0
+      for nm in names:
+        append(pre, N("set", ln, {"name": nm, "val": N("index", ln, {"obj": N("var", ln, {"name": tv}), "idx": N("num", ln, {"val": k, "raw": null})})}))
+        k = k + 1
+      return N("for", ln, {"var": tv, "iter": e, "body": pre + body, "tup": names})
     if v == "return" or v == "raise":
       nxt()
       e = null

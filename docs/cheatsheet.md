@@ -47,6 +47,7 @@ finally:
 raise "msg"                 # Str เท่านั้น; ใน except ใช้ raise ซ้ำได้
 assert x > 0, "msg"        # ไม่จริง = raise "msg" (ไม่ใส่ msg = "assertion failed")
 print [x * 2 for x in xs if x > 0]   # list comprehension (1 for + optional if)
+for i, x in enumerate(xs):          # tuple loop vars + enumerate (prelude)
 import mod.sub              # หาใน: โฟลเดอร์โปรแกรม -> HSPATH -> cwd
 global x                    # เขียนชื่อระดับ module จากใน def
 ```
