@@ -42,7 +42,8 @@ INLINE_ONLY = {"float"}
 # (whose type errors carry the stub's line 0, like x64gen-today).
 INLINE_DIRECT = {"float", "len", "str", "int", "range", "append",
                  "read_text", "write_text", "append_text", "exists", "ls",
-                 "mkdir", "read_mem", "has", "contains"}
+                 "mkdir", "read_mem", "has", "contains",
+                 "keys", "values"}
 # NOTE: split/find/join also have inline arms in ev_call but are not in
 # INLINE_DIRECT yet: no corpus program triggers their error paths, and
 # their success paths work through the stubs. Same for the other
@@ -1721,6 +1722,26 @@ class GenIR(Gen):
                 self._inline_read_mem(fr, dest, args, ln)
             elif name == "has":
                 self._inline_has(fr, dest, args, ln)
+            elif name in ("keys", "values"):
+                msg = f"{name} wants {name}(dict)"
+                if len(args) != 1:
+                    raise HSErr(msg, ln)
+                self._load(fr, args[0], ln)
+                lb, lo = self.new_tmp("kv"), self.new_tmp("kv")
+                self.a.mov_rr("r11", "rax")
+                self.a.and_ri32("r11", 3)
+                self.a.test_rr("r11", "r11")
+                self.a.jcc("ne", lb)
+                self.a.mov_rm("r11", "rax", 0)
+                self.a.cmp_ri32("r11", Gen.K_DICT)
+                self.a.jcc("e", lo)
+                self.a.label(lb)
+                self.raise_static(msg, ln)
+                self.a.label(lo)
+                self.a.mov_rr("rdi", "rax")
+                self.a.mov_ri32("rsi", 0 if name == "keys" else 1)
+                self.a.call("x_dict_items")
+                self.a.mov_mr("rbp", "rax", fr["slots"][dest])
             elif name == "contains":
                 if len(args) != 2:
                     raise HSErr("contains wants contains(container, x)", ln)

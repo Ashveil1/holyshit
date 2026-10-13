@@ -598,7 +598,7 @@ Val v_builtin(const char *name) {
         {b_ticks, "ticks"}, {b_readkey, "readkey"},
         {b_pmm_alloc, "pmm_alloc"}, {b_meminfo, "meminfo"},
         {b_append, "append"}, {b_split, "split"},
-        {b_find, "find"}, {b_join, "join"}, {b_has, "has"}, {b_contains, "contains"},
+        {b_find, "find"}, {b_join, "join"}, {b_has, "has"}, {b_keys, "keys"}, {b_values, "values"}, {b_contains, "contains"},
         {b_argv, "argv"}, {b_env, "env"}, {b_system, "system"},
         {b_tcp_connect, "tcp_connect"}, {b_tcp_send, "tcp_send"},
         {b_tcp_recv, "tcp_recv"}, {b_tcp_close, "tcp_close"},
@@ -2208,6 +2208,26 @@ Val b_contains(Val *args, int nargs, int line) {
     }
     hs_err(line, "'in' needs a Str, List or Dict, got %s", hs_tname(c));
     return v_bool(0);
+}
+
+Val b_keys(Val *args, int nargs, int line) {
+    if (nargs != 1 || args[0].tag != T_DICT)
+        hs_err(line, "keys wants keys(dict)");
+    Dict *d = AS_DICT(args[0]);
+    Val out = v_list();
+    for (int64_t i = 0; i < d->len; i++)
+        v_push(out, d->keys[i], line);
+    return out;
+}
+
+Val b_values(Val *args, int nargs, int line) {
+    if (nargs != 1 || args[0].tag != T_DICT)
+        hs_err(line, "values wants values(dict)");
+    Dict *d = AS_DICT(args[0]);
+    Val out = v_list();
+    for (int64_t i = 0; i < d->len; i++)
+        v_push(out, d->vals[i], line);
+    return out;
 }
 
 Val b_join(Val *args, int nargs, int line) {

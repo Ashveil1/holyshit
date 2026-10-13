@@ -177,6 +177,26 @@
     "xkernel"
    ]
   },
+  "keys": {
+   "sig": "keys(dict)",
+   "desc": "List of the dict keys in insertion order",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "values": {
+   "sig": "values(dict)",
+   "desc": "List of the dict values in insertion order",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
   "has": {
    "sig": "has(dict, key)",
    "desc": "true when the dict has the key",

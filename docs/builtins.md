@@ -47,6 +47,8 @@
 | | save value as JSON (hosted only) |||||
 | `json_str` | `json_str(x)` | ✓ | ✓ | ✓ | ✓ |
 | | value to JSON Str |||||
+| `keys` | `keys(dict)` | ✓ | ✓ | ✓ | ✓ |
+| | List of the dict keys in insertion order |||||
 | `len` | `len(x)` | ✓ | ✓ | ✓ | ✓ |
 | | length of Str/List/Dict |||||
 | `load32` | `load32(p)` | ✓ | ✓ | ✓ | ✓ |
@@ -107,6 +109,8 @@
 | | send bytes (hosted only) |||||
 | `ticks` | `ticks()` | ✓ | ✓ |   | ✓ |
 | | ms ticks hosted, 100Hz timer on kernel |||||
+| `values` | `values(dict)` | ✓ | ✓ | ✓ | ✓ |
+| | List of the dict values in insertion order |||||
 | `write` | `write(f, s)` | ✓ | ✓ | ✓ |   |
 | | write Str (hosted only) |||||
 | `write_text` | `write_text(path, s)` | ✓ | ✓ | ✓ |   |

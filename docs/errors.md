@@ -28,7 +28,7 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (226)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (228)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -171,6 +171,7 @@
 - `json_str needs Str keys`
 - `json_str wants json_str(x)`
 - `key {idx} not found`
+- `keys wants keys(dict)`
 - `lambda not allowed in unsafe`
 - `len of {tname(a)}`
 - `len wants 1 arg, got {len(args)}`
@@ -245,6 +246,7 @@
 - `unsafe op needs Int, got {tname(a)}`
 - `unsafe: address out of bounds`
 - `unsafe: out of memory (1MB sim)`
+- `values wants values(dict)`
 - `write failed: {e.strerror or e}`
 - `write wants write(f, str)`
 - `write_text failed: {e.strerror or e}`
@@ -625,4 +627,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 579 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 581 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
