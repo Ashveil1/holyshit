@@ -1833,6 +1833,48 @@ def cmd_test(paths, as_json):
     return 1 if failed or not results else 0
 
 
+def _cc_selfhost_elf():
+    """Path of the self-hosted compiler ELF (selfhost/cc.hs compiled by itself
+    through the interpreter once, then cached by source hash)."""
+    import hashlib
+    here = os.path.dirname(os.path.abspath(__file__))
+    sh = os.path.join(here, "selfhost")
+    h = hashlib.sha1()
+    for nm in ("cc.hs", "asm.hs", "parselib.hs", "lexlib.hs"):
+        with open(os.path.join(sh, nm), "rb") as f:
+            h.update(f.read())
+    root = os.environ.get("HS_CC_CACHE") or os.path.join(
+        os.path.expanduser("~"), ".cache", "hs")
+    os.makedirs(root, exist_ok=True)
+    elf = os.path.join(root, "cc-" + h.hexdigest()[:16])
+    if not os.path.exists(elf):
+        tmp = elf + f".tmp{os.getpid()}"
+        r = subprocess.run([sys.executable, os.path.join(here, "hs.py"), "run",
+                            os.path.join(sh, "cc.hs"), "--backend", "interp",
+                            os.path.join(sh, "cc.hs"), tmp],
+                           capture_output=True, text=True)
+        if r.returncode != 0 or not os.path.exists(tmp):
+            print("error: cannot build the self-hosted compiler:\n"
+                  + r.stdout + r.stderr, file=sys.stderr)
+            return None
+        os.chmod(tmp, 0o755)
+        os.replace(tmp, elf)
+    return elf
+
+
+def cmd_cc(path, out):
+    """hs cc prog.hs [-o out]: compile with the compiler written in hs
+    (selfhost/cc.hs, its own ELF). Only the cc subset: Int/Bool/Str/List/Dict,
+    functions, modules, try/except; no Float/class/FFI (those error out)."""
+    elf = _cc_selfhost_elf()
+    if elf is None:
+        return 1
+    r = subprocess.run([elf, path, out], capture_output=True, text=True)
+    sys.stdout.write(r.stdout)
+    sys.stderr.write(r.stderr)
+    return r.returncode
+
+
 def main(argv):
     if "--version" in argv or "-V" in argv:
         print(f"hs {_version()}")
@@ -1850,14 +1892,20 @@ def main(argv):
         _lsp.main()
         return 0
     if len(argv) < 3 or argv[1] not in ("build", "run", "check", "fmt",
-                                     "xbuild", "xrun", "xkernel", "ir", "test"):
+                                     "xbuild", "xrun", "xkernel", "ir", "test", "cc"):
         print("usage: hs.py [--json] build prog.hs [-o prog] | hs.py run prog.hs [args...] "
               "| hs.py check prog.hs | hs.py fmt prog.hs [-w|--check] "
               "| hs.py test file|dir... | hs.py repl "
               "| hs.py xbuild prog.hs [-o prog] | hs.py xrun prog.hs "
-              "| hs.py xkernel prog.hs -o kernel.elf | hs.py ir prog.hs | hs.py lsp",
+              "| hs.py xkernel prog.hs -o kernel.elf | hs.py ir prog.hs | hs.py lsp "
+              "| hs.py cc prog.hs [-o prog]",
               file=sys.stderr)
         return 2
+    if argv[1] == "cc":
+        outp = os.path.splitext(argv[2])[0]
+        if "-o" in argv and argv.index("-o") + 1 < len(argv):
+            outp = argv[argv.index("-o") + 1]
+        return cmd_cc(argv[2], outp)
     if argv[1] == "test":
         return cmd_test([a for a in argv[2:] if not a.startswith("-")], as_json)
     if argv[1] == "fmt":

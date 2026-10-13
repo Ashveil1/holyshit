@@ -110,5 +110,22 @@ for be in ("interp", "native", "auto"):
     rc, out, err = run(WB, {"HS_BACKEND": be})
     check(f"write_bytes writes exact bytes, mode 755 ({be})",
           rc == 0 and out == WB_OUT, (rc, out, err))
+with tempfile.TemporaryDirectory() as d:
+    env = dict(os.environ, HS_CC_CACHE=os.path.join(d, "cache"))
+    src = os.path.join(d, "p.hs")
+    open(src, "w").write('def f(n):\n  if n < 2:\n    return n\n  return f(n - 1) + f(n - 2)\nprint f(20), "ok" + "!", [1, 2][1]\n')
+    r = subprocess.run([sys.executable, HS, "cc", src, "-o", os.path.join(d, "p")],
+                       capture_output=True, text=True, env=env)
+    r2 = subprocess.run([os.path.join(d, "p")], capture_output=True, text=True)
+    check("hs cc compiles with the compiler written in hs",
+          r.returncode == 0 and r2.stdout == "6765 ok! 2\n", (r.stdout, r.stderr, r2.stdout))
+    check("hs cc caches its own compiler ELF", len(os.listdir(os.path.join(d, "cache"))) == 1,
+          os.listdir(os.path.join(d, "cache")))
+    open(src, "w").write("print 1.5\n")
+    r = subprocess.run([sys.executable, HS, "cc", src, "-o", os.path.join(d, "q")],
+                       capture_output=True, text=True, env=env)
+    check("hs cc rejects what the cc subset cannot do",
+          r.returncode != 0 and "error:" in r.stdout + r.stderr and not os.path.exists(os.path.join(d, "q")),
+          (r.returncode, r.stdout, r.stderr))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
