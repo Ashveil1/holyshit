@@ -545,10 +545,115 @@ def N(t, line, **kw):
     return kw
 
 
-def parse_program(src):
+# Prelude: everyday helpers written in hs itself, so every backend gets them
+# with no per-backend work. They are injected (at the top of the program)
+# only when the program refers to them and does not define the name itself.
+# min/max with two arguments call _min2/_max2; with one argument, the list form.
+PRELUDE = {
+    "abs": ("def abs(x):\n  if x < 0:\n    return 0 - x\n  return x\n", ()),
+    "_min2": ("def _min2(a, b):\n  if b < a:\n    return b\n  return a\n", ()),
+    "_max2": ("def _max2(a, b):\n  if b > a:\n    return b\n  return a\n", ()),
+    "min": ("def min(xs):\n  if len(xs) == 0:\n    raise \"min of empty list\"\n"
+            "  best = xs[0]\n  for x in xs:\n    if x < best:\n      best = x\n"
+            "  return best\n", ()),
+    "max": ("def max(xs):\n  if len(xs) == 0:\n    raise \"max of empty list\"\n"
+            "  best = xs[0]\n  for x in xs:\n    if x > best:\n      best = x\n"
+            "  return best\n", ()),
+    "sum": ("def sum(xs):\n  t = 0\n  for x in xs:\n    t = t + x\n  return t\n", ()),
+    "reversed": ("def reversed(xs):\n  out = []\n  i = len(xs) - 1\n"
+                 "  while i >= 0:\n    append(out, xs[i])\n    i = i - 1\n"
+                 "  return out\n", ()),
+    "_msort": ("def _msort(a):\n  n = len(a)\n  if n <= 1:\n    return a\n"
+               "  mid = int(n / 2)\n  l = _msort(a[:mid])\n  r = _msort(a[mid:])\n"
+               "  out = []\n  i = 0\n  j = 0\n"
+               "  while i < len(l) and j < len(r):\n"
+               "    if r[j] < l[i]:\n      append(out, r[j])\n      j = j + 1\n"
+               "    else:\n      append(out, l[i])\n      i = i + 1\n"
+               "  while i < len(l):\n    append(out, l[i])\n    i = i + 1\n"
+               "  while j < len(r):\n    append(out, r[j])\n    j = j + 1\n"
+               "  return out\n", ()),
+    "sorted": ("def sorted(xs):\n  return _msort(xs)\n", ("_msort",)),
+    "upper": ("def upper(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n"
+              "    ch = s[i]\n    k = find(\"abcdefghijklmnopqrstuvwxyz\", ch)\n"
+              "    if k >= 0:\n      out = out + \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"[k:k + 1]\n"
+              "    else:\n      out = out + ch\n    i = i + 1\n  return out\n", ()),
+    "lower": ("def lower(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n"
+              "    ch = s[i]\n    k = find(\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\", ch)\n"
+              "    if k >= 0:\n      out = out + \"abcdefghijklmnopqrstuvwxyz\"[k:k + 1]\n"
+              "    else:\n      out = out + ch\n    i = i + 1\n  return out\n", ()),
+}
+_PRELUDE_USER = ("abs", "min", "max", "sum", "reversed", "sorted", "upper", "lower")
+
+
+def _prelude_walk(node, calls, defs):
+    """Collect calls to prelude names (call nodes) and user def names."""
+    if isinstance(node, list):
+        for x in node:
+            _prelude_walk(x, calls, defs)
+        return
+    if not isinstance(node, dict):
+        return
+    t = node.get("t")
+    if t == "call" and node["fn"].get("t") == "var" \
+            and node["fn"]["name"] in _PRELUDE_USER:
+        calls.append(node)
+    elif t == "def":
+        defs.add(node["name"])
+    elif t == "extern":
+        for d in node["decls"]:
+            defs.add(d["name"])
+    for k, v in node.items():
+        if isinstance(v, (list, dict)):
+            _prelude_walk(v, calls, defs)
+
+
+def _inject_prelude(body, src):
+    calls, defs = [], set()
+    _prelude_walk(body, calls, defs)
+    if not calls:
+        return body
+    # user-defined or user-assigned names win: leave those calls alone
+    toks = lex(src)
+    assigned = set()
+    for i, tk in enumerate(toks):
+        if tk.k == "ID" and tk.v in _PRELUDE_USER and i + 1 < len(toks) \
+                and toks[i + 1].k == "OP" and toks[i + 1].v == "=":
+            assigned.add(tk.v)
+    found = set()
+    for c in calls:
+        nm = c["fn"]["name"]
+        if nm in defs or nm in assigned:
+            continue
+        if nm in ("min", "max") and len(c["args"]) == 2:
+            c["fn"]["name"] = "_" + nm + "2"
+            nm = "_" + nm + "2"
+        found.add(nm)
+    if not found:
+        return body
+    need = []
+
+    def add(nm):
+        if nm in need:
+            return
+        for d in PRELUDE[nm][1]:
+            add(d)
+        need.append(nm)
+    for nm in sorted(found):
+        add(nm)
+    pre = []
+    for nm in need:
+        pre.extend(parse_body(P(lex(PRELUDE[nm][0])), top=True))
+    for st in pre:
+        st["prelude"] = True
+    return pre + body
+
+
+def parse_program(src, raw=False):
     p = P(lex(src))
     body = parse_body(p, top=True)
     p.expect("EOF")
+    if not raw:
+        body = _inject_prelude(body, src)
     return body
 
 

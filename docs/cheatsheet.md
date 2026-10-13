@@ -102,6 +102,10 @@ read_mem(p, n)  # n ไบต์ดิบที่ address p เป็น Str (�
 ```
 
 `alloc/load8/load32/store8/store32/as_ptr/as_int` ใช้ใน `unsafe:` เท่านั้น
+
+prelude (เขียนด้วย hs เอง ใส่ให้เฉพาะเมื่อโปรแกรมเรียกใช้ และไม่ได้ `def`/ตั้งชื่อเดียวกันเอง):
+`abs(x)  min(xs) | min(a, b)  max(xs) | max(a, b)  sum(xs)  sorted(xs)  reversed(xs)  upper(s)  lower(s)`
+(`sorted` เป็น merge sort คืน list ใหม่; ไม่มีตัวหาร int — ใช้ `int(a / b)`)
 ดูตารางครบทุกตัว + backend ที่รองรับที่ [`builtins.md`](builtins.md)
 
 ## `unsafe:` — ชนิดคงที่ (ไม่มี dynamic)
