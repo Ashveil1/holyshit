@@ -10,8 +10,10 @@ import parselib
 import asm
 
 STRS = []
+SOBJ = []
 ST = {"lbl": 0, "fn": null, "locals": {}, "funcs": {}, "globals": {}, "loops": []}
 BASE = 4194304 + 120
+HEAP_END = 4194304 + 268435456
 
 def fail(msg, ln):
   raise "cc: " + msg + " (line " + str(ln) + ")"
@@ -104,6 +106,19 @@ def gen(e):
       asm.mov_ri64("rax", v * 2 + 1)
   elif t == "var":
     load_var(e["name"], ln)
+  elif t == "str":
+    lab = new_label("O")
+    append(SOBJ, [lab, e["val"], ln])
+    asm.lea_rip("rax", lab)
+  elif t == "index":
+    if has(e, "tern") or has(e, "dot"):
+      fail("expression 'index' form not supported", ln)
+    gen(e["obj"])
+    asm.push_r("rax")
+    gen(e["idx"])
+    asm.mov_rr("rcx", "rax")
+    asm.pop_r("rax")
+    asm.call("rt_index")
   elif t == "neg":
     gen(e["val"])
     asm.mov_rr("rdx", "rax")
@@ -141,16 +156,35 @@ def gen(e):
         asm.xor_rr("rax", "rdx")
     elif op in CMP:
       gen_pair(e)
-      chk_int2()
+      lf = new_label("L")
+      ld = new_label("L")
+      asm.mov_rr("rdx", "rax")
+      asm.and_rr("rdx", "rcx")
+      asm.and_ri32("rdx", 1)
+      asm.jcc("ne", lf)
+      asm.call("rt_scmp")
+      asm.cmp_ri32("rdx", 0)
+      asm.jmp(ld)
+      asm.label(lf)
       asm.cmp_rr("rax", "rcx")
+      asm.label(ld)
       asm.setcc_al(CMP[op])
       to_bool()
     elif op == "+":
       gen_pair(e)
-      chk_int2()
+      lf = new_label("L")
+      ld = new_label("L")
+      asm.mov_rr("rdx", "rax")
+      asm.and_rr("rdx", "rcx")
+      asm.and_ri32("rdx", 1)
+      asm.jcc("ne", lf)
+      asm.call("rt_str_add")
+      asm.jmp(ld)
+      asm.label(lf)
       asm.sub_ri32("rax", 1)
       asm.add_rr("rax", "rcx")
       asm.jcc("o", "rt_err_ovf")
+      asm.label(ld)
     elif op == "-":
       gen_pair(e)
       chk_int2()
@@ -222,6 +256,16 @@ def gen(e):
     if e["fn"]["t"] != "var":
       fail("only direct calls to defined functions", ln)
     nm = e["fn"]["name"]
+    if nm == "len" and not (nm in ST["funcs"]):
+      if len(e["args"]) != 1:
+        fail("len wants 1 arg", ln)
+      gen(e["args"][0])
+      asm.mov_rr("rdx", "rax")
+      asm.and_ri32("rdx", 7)
+      asm.jcc("ne", "rt_err_type")
+      asm.mov_rm("rax", "rax", 8)
+      retag()
+      return 0
     if not (nm in ST["funcs"]):
       fail("call of unknown function '" + nm + "'", ln)
     if len(e["args"]) != ST["funcs"][nm]:
@@ -451,7 +495,7 @@ def data_text(lab, text):
   for ch in text:
     asm.b1(ascii_byte(ch, 0))
 
-MSG = [["m_true", "true"], ["m_false", "false"], ["m_null", "null"], ["m_ovf", "error: Int outside the 63-bit range of the cc backend\n"], ["m_type", "error: type error (cc backend)\n"], ["m_div", "error: division by zero\n"], ["m_shift", "error: shift count out of range\n"]]
+MSG = [["m_true", "true"], ["m_false", "false"], ["m_null", "null"], ["m_ovf", "error: Int outside the 63-bit range of the cc backend\n"], ["m_type", "error: type error (cc backend)\n"], ["m_div", "error: division by zero\n"], ["m_shift", "error: shift count out of range\n"], ["m_oom", "error: out of memory\n"], ["m_idx", "error: index out of range\n"]]
 
 def gen_runtime2():
   # rt_truthy: rdx = 1 if rax is truthy else 0 (rax kept). falsy: 0, false, null
@@ -462,6 +506,13 @@ def gen_runtime2():
   asm.jcc("e", "tr_f")
   asm.cmp_ri32("rax", 6)
   asm.jcc("e", "tr_f")
+  asm.mov_rr("rdx", "rax")
+  asm.and_ri32("rdx", 7)
+  asm.jcc("ne", "tr_t")
+  asm.mov_rm("rdx", "rax", 8)
+  asm.test_rr("rdx", "rdx")
+  asm.jcc("e", "tr_f")
+  asm.label("tr_t")
   asm.mov_ri32("rdx", 1)
   asm.ret()
   asm.label("tr_f")
@@ -471,6 +522,10 @@ def gen_runtime2():
   asm.label("rt_eq")
   asm.cmp_rr("rax", "rcx")
   asm.jcc("e", "eq_yes")
+  asm.mov_rr("rdx", "rax")
+  asm.or_rr("rdx", "rcx")
+  asm.and_ri32("rdx", 7)
+  asm.jcc("e", "rt_streq")
   asm.cmp_ri32("rcx", 10)
   asm.jcc("ne", "eq_1")
   asm.mov_ri32("rdx", 3)
@@ -506,6 +561,9 @@ def gen_runtime2():
   # rt_print: print the tagged value in rax (no newline)
   asm.label("rt_print")
   asm.mov_rr("rdx", "rax")
+  asm.and_ri32("rdx", 7)
+  asm.jcc("e", "pr_ptr")
+  asm.mov_rr("rdx", "rax")
   asm.and_ri32("rdx", 1)
   asm.jcc("e", "pr_imm")
   asm.sar_ri8("rax", 1)
@@ -522,10 +580,180 @@ def gen_runtime2():
   asm.cmp_ri32("rax", 6)
   asm.jcc("ne", "rt_err_type")
   write_lit("m_null", 4)
+  asm.label("pr_ptr")
+  asm.mov_rm("rdx", "rax", 8)
+  asm.lea_m("rsi", "rax", 16)
+  asm.mov_ri32("rdi", 1)
+  asm.mov_ri32("rax", 1)
+  asm.syscall()
+  asm.ret()
+  gen_runtime3()
+  err_routine("rt_err_oom", "m_oom", len(MSG[7][1]), 1)
+  err_routine("rt_err_idx", "m_idx", len(MSG[8][1]), 1)
   err_routine("rt_err_ovf", "m_ovf", len(MSG[3][1]), 97)
   err_routine("rt_err_type", "m_type", len(MSG[4][1]), 1)
   err_routine("rt_err_div", "m_div", len(MSG[5][1]), 1)
   err_routine("rt_err_shift", "m_shift", len(MSG[6][1]), 1)
+
+def chk_str2():
+  # rax, rcx must both be heap Strs (low 3 bits 0, kind 1)
+  asm.mov_rr("rdx", "rax")
+  asm.or_rr("rdx", "rcx")
+  asm.and_ri32("rdx", 7)
+  asm.jcc("ne", "rt_err_type")
+  asm.mov_rm("rdx", "rax", 0)
+  asm.cmp_ri32("rdx", 1)
+  asm.jcc("ne", "rt_err_type")
+  asm.mov_rm("rdx", "rcx", 0)
+  asm.cmp_ri32("rdx", 1)
+  asm.jcc("ne", "rt_err_type")
+
+def gen_runtime3():
+  # rt_alloc: rdi = bytes (multiple of 8) -> rax = zeroed bump block
+  asm.label("rt_alloc")
+  asm.mov_rm_rip("rax", "hp")
+  asm.mov_rr("rdx", "rax")
+  asm.add_rr("rdx", "rdi")
+  asm.mov_ri64("rsi", HEAP_END)
+  asm.cmp_rr("rdx", "rsi")
+  asm.jcc("g", "rt_err_oom")
+  asm.mov_mr_rip("hp", "rdx")
+  asm.ret()
+  # rt_memcpy: copy rdx bytes rsi -> rdi; rdi ends past the copy
+  asm.label("rt_memcpy")
+  asm.xor_rr("r11", "r11")
+  asm.label("mc_l")
+  asm.cmp_rr("r11", "rdx")
+  asm.jcc("e", "mc_d")
+  asm.movzx_rm8x("r10", "rsi", "r11", 1, 0)
+  asm.mov_mr8("rdi", 10, 0)
+  asm.add_ri32("rdi", 1)
+  asm.add_ri32("r11", 1)
+  asm.jmp("mc_l")
+  asm.label("mc_d")
+  asm.ret()
+  # rt_str_add: rax + rcx (both Str) -> new Str
+  asm.label("rt_str_add")
+  chk_str2()
+  asm.mov_rm("r8", "rax", 8)
+  asm.mov_rm("r9", "rcx", 8)
+  asm.push_r("rax")
+  asm.push_r("rcx")
+  asm.mov_rr("rdi", "r8")
+  asm.add_rr("rdi", "r9")
+  asm.add_ri32("rdi", 23)
+  asm.and_ri32("rdi", 0 - 8)
+  asm.call("rt_alloc")
+  asm.mov_ri32("rdx", 1)
+  asm.mov_mr("rax", "rdx", 0)
+  asm.mov_rr("rdx", "r8")
+  asm.add_rr("rdx", "r9")
+  asm.mov_mr("rax", "rdx", 8)
+  asm.push_r("rax")
+  asm.mov_rm("rsi", "rsp", 16)
+  asm.add_ri32("rsi", 16)
+  asm.lea_m("rdi", "rax", 16)
+  asm.mov_rr("rdx", "r8")
+  asm.call("rt_memcpy")
+  asm.mov_rm("rsi", "rsp", 8)
+  asm.add_ri32("rsi", 16)
+  asm.mov_rr("rdx", "r9")
+  asm.call("rt_memcpy")
+  asm.pop_r("rax")
+  asm.add_ri32("rsp", 16)
+  asm.ret()
+  # rt_scmp: Str compare of rax, rcx -> rdx = -1 / 0 / 1
+  asm.label("rt_scmp")
+  chk_str2()
+  asm.mov_rm("r8", "rax", 8)
+  asm.mov_rm("r9", "rcx", 8)
+  asm.add_ri32("rax", 16)
+  asm.add_ri32("rcx", 16)
+  asm.xor_rr("r11", "r11")
+  asm.label("sc_l")
+  asm.cmp_rr("r11", "r8")
+  asm.jcc("e", "sc_ae")
+  asm.cmp_rr("r11", "r9")
+  asm.jcc("e", "sc_gt")
+  asm.movzx_rm8x("r10", "rax", "r11", 1, 0)
+  asm.movzx_rm8x("rsi", "rcx", "r11", 1, 0)
+  asm.cmp_rr("r10", "rsi")
+  asm.jcc("l", "sc_lt")
+  asm.jcc("g", "sc_gt")
+  asm.add_ri32("r11", 1)
+  asm.jmp("sc_l")
+  asm.label("sc_ae")
+  asm.cmp_rr("r11", "r9")
+  asm.jcc("ne", "sc_lt")
+  asm.mov_ri32("rdx", 0)
+  asm.ret()
+  asm.label("sc_lt")
+  asm.mov_ri32("rdx", 0)
+  asm.sub_ri32("rdx", 1)
+  asm.ret()
+  asm.label("sc_gt")
+  asm.mov_ri32("rdx", 1)
+  asm.ret()
+  # rt_streq: both heap pointers, not identical -> tagged Bool in rax
+  asm.label("rt_streq")
+  asm.mov_rm("rdx", "rax", 0)
+  asm.cmp_ri32("rdx", 1)
+  asm.jcc("ne", "eq_no")
+  asm.mov_rm("rdx", "rcx", 0)
+  asm.cmp_ri32("rdx", 1)
+  asm.jcc("ne", "eq_no")
+  asm.mov_rm("rdx", "rax", 8)
+  asm.mov_rm("rsi", "rcx", 8)
+  asm.cmp_rr("rdx", "rsi")
+  asm.jcc("ne", "eq_no")
+  asm.add_ri32("rax", 16)
+  asm.add_ri32("rcx", 16)
+  asm.xor_rr("r11", "r11")
+  asm.label("se_l")
+  asm.cmp_rr("r11", "rdx")
+  asm.jcc("e", "eq_yes")
+  asm.movzx_rm8x("r10", "rax", "r11", 1, 0)
+  asm.movzx_rm8x("rsi", "rcx", "r11", 1, 0)
+  asm.cmp_rr("r10", "rsi")
+  asm.jcc("ne", "eq_no")
+  asm.add_ri32("r11", 1)
+  asm.jmp("se_l")
+  # rt_index: rax[rcx] on a Str -> 1-char Str
+  asm.label("rt_index")
+  asm.mov_rr("rdx", "rax")
+  asm.and_ri32("rdx", 7)
+  asm.jcc("ne", "rt_err_type")
+  asm.mov_rr("rdx", "rcx")
+  asm.and_ri32("rdx", 1)
+  asm.jcc("e", "rt_err_type")
+  asm.mov_rm("rdx", "rax", 0)
+  asm.cmp_ri32("rdx", 1)
+  asm.jcc("ne", "rt_err_type")
+  asm.sar_ri8("rcx", 1)
+  asm.mov_rm("r8", "rax", 8)
+  asm.test_rr("rcx", "rcx")
+  asm.jcc("ns", "ix_p")
+  asm.add_rr("rcx", "r8")
+  asm.label("ix_p")
+  asm.cmp_ri32("rcx", 0)
+  asm.jcc("l", "rt_err_idx")
+  asm.cmp_rr("rcx", "r8")
+  asm.jcc("ge", "rt_err_idx")
+  asm.add_ri32("rax", 16)
+  asm.movzx_rm8x("r10", "rax", "rcx", 1, 0)
+  asm.mov_ri32("rdi", 24)
+  asm.push_r("r10")
+  asm.call("rt_alloc")
+  asm.pop_r("r10")
+  asm.mov_ri32("rdx", 1)
+  asm.mov_mr("rax", "rdx", 0)
+  asm.mov_mr("rax", "rdx", 8)
+  asm.mov_mr8("rax", 10, 16)
+  asm.ret()
+
+def pad8():
+  while asm.pos() % 8 != 0:
+    asm.b1(0)
 
 def compile(prog):
   asm.reset()
@@ -541,6 +769,8 @@ def compile(prog):
   collect_sets(top, gl)
   for k in keys(gl):
     ST["globals"][k] = true
+  asm.lea_rip("rax", "heap_base")
+  asm.mov_mr_rip("hp", "rax")
   gen_body(top)
   asm.mov_ri32("rdi", 0)
   asm.mov_ri32("rax", 60)
@@ -556,9 +786,21 @@ def compile(prog):
     asm.label(st[0])
     for ch in st[1]:
       asm.b1(ascii_byte(ch, st[2]))
+  pad8()
+  for so in SOBJ:
+    asm.label(so[0])
+    asm.bn(le64(1))
+    asm.bn(le64(len(so[1])))
+    for ch in so[1]:
+      asm.b1(ascii_byte(ch, so[2]))
+    pad8()
+  asm.label("hp")
+  asm.bn([0, 0, 0, 0, 0, 0, 0, 0])
   for k in keys(ST["globals"]):
     asm.label("g_" + k)
     asm.bn([0, 0, 0, 0, 0, 0, 0, 0])
+  pad8()
+  asm.label("heap_base")
 
 def le64(v):
   out = []
@@ -575,7 +817,7 @@ def elf(code):
   h = h + le64(BASE) + le64(64) + le64(0)
   h = h + [0, 0, 0, 0, 64, 0, 56, 0, 1, 0, 0, 0, 0, 0, 0, 0]
   h = h + [1, 0, 0, 0, 7, 0, 0, 0] + le64(0) + le64(4194304) + le64(4194304)
-  h = h + le64(n) + le64(n) + le64(4096)
+  h = h + le64(n) + le64(268435456) + le64(4096)
   return h + code
 
 a = argv()

@@ -38,7 +38,20 @@ PROGS = {
     "truthy": "if 0:\n  print 1\nelse:\n  print 2\nif null:\n  print 3\nif -1:\n  print 4\nif false or 0:\n  print 5\nelse:\n  print 6\n",
     "boolarg": "def f(a, b):\n  if a:\n    return b\n  return a\nprint f(1 < 2, 5), f(2 < 1, 5), f(null, 1)\n",
     "bigint": "x = 4611686018427387903\nprint x, -x, x - 1, -x - 1\n",
+    "str_basic": 's = "hello" + " " + "world"\nprint s, len(s), s[0], s[-1], s[4]\nprint s == "hello world", s != "x", "a" < "b", "ab" < "a", "b" >= "b", "" == ""\nprint "" or "dflt", "x" and "y", not ""\ndef rep(a, n):\n  r = ""\n  i = 0\n  while i < n:\n    r = r + a\n    i = i + 1\n  return r\nt = rep("ab", 50)\nprint len(t), t[99], t == rep("ab", 50), rep("x", 3) + "!"\n',
+    "str_eq": "a = \"x\" + \"y\"\nprint a == \"xy\", \"xy\" == a, a == 1, 1 == a, a == null, a != \"xz\"\nprint \"abc\" < \"abd\", \"abc\" <= \"abc\", \"b\" > \"abc\", \"\" < \"a\"\n",
+    "str_fn": "def f(s, n):\n  if n == 0:\n    return s\n  return f(s + s, n - 1)\nx = f(\"ab\", 10)\nprint len(x), x[1023], x[-1], len(f(\"\", 5))\n",
+    "str_print": "print \"a\", \"b\" + \"c\", 1, \"d\"\nx = \"q\"\nprint x, true\n",
     "noreturn": "def p(n):\n  print n\np(5)\np(6)\n",
+}
+
+ERRS = {
+    "str_plus_int": "print 1\nprint \"a\" + 1\n",
+    "str_cmp_int": "print 2\nprint \"a\" < 1\n",
+    "str_idx_oob": "s = \"abc\"\nprint 3\nprint s[3]\n",
+    "str_idx_neg_oob": "s = \"abc\"\nprint s[-3]\nprint s[-4]\n",
+    "str_idx_type": "s = \"abc\"\nprint s[\"a\"]\n",
+    "len_int": "print len(5)\n",
 }
 
 BAD = {
@@ -85,6 +98,18 @@ with tempfile.TemporaryDirectory() as d:
             continue
         r = subprocess.run([out], capture_output=True, text=True)
         check(f"cc {name}", rc == 0 and r.returncode == 0 and r.stdout == want,
+              (rc, want, r.returncode, r.stdout, r.stderr))
+    for name, src in ERRS.items():
+        p = os.path.join(d, "err_" + name + ".hs")
+        out = os.path.join(d, "err_" + name + ".bin")
+        open(p, "w").write(src)
+        rc, want = interp(p)
+        c = compile_prog(p, out)
+        if c.returncode != 0:
+            check(f"cc err {name}", False, c.stderr + c.stdout)
+            continue
+        r = subprocess.run([out], capture_output=True, text=True)
+        check(f"cc err {name}", rc != 0 and r.returncode != 0 and r.stdout == want,
               (rc, want, r.returncode, r.stdout, r.stderr))
     for name, src in BAD.items():
         p = os.path.join(d, "bad_" + name + ".hs")
