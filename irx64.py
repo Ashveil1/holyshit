@@ -696,6 +696,8 @@ class GenIR(Gen):
                 a.sub_rr("rax", "rcx")
             elif op == "*":
                 a.imul_rr("rax", "rcx")
+                if self.checked_int():
+                    a.jcc("o", "int_ovf")
             elif op == "/":
                 # Int / Int is true division: the result is a Float
                 # (AGENTS.md: "7 / 2 is 3.5").
@@ -1311,7 +1313,9 @@ class GenIR(Gen):
         # out-of-range U64/Ptr box is an accepted micro-divergence).
         a = self.a
         self._load(fr, src, ln)
+        self.wrap_int = True        # unsafe word: no 62-bit trap
         self.tag_box()
+        self.wrap_int = False
         a.mov_mr("rbp", "rax", fr["slots"][dest])
 
     def _sraw(self, fr, dest, src, ln):

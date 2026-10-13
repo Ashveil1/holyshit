@@ -59,15 +59,20 @@ def load_segment(p, mod_base):
   memsz = ph_memsz(p)
   if memsz <= 0:
     return 0
-  if ksyscall.map_user_pages(vaddr, memsz, 7) * PAGE < memsz:
+  # map whole pages covering [vaddr, vaddr+memsz): a segment that starts
+  # mid-page (vaddr % PAGE != 0) can spill into one more page than
+  # ceil(memsz / PAGE)
+  pbase = vaddr - vaddr % PAGE
+  span = vaddr + memsz - pbase
+  if ksyscall.map_user_pages(pbase, span, 7) * PAGE < span:
     return 0
   filesz = ph_filesz(p)
   if filesz > 0:
     copy_in(vaddr, mod_base + ph_offset(p), filesz)
   if ph_flags(p) & PF_W == 0:
     off = 0
-    while off < memsz:
-      kpage.protect(cr3(), vaddr + off, 5)
+    while off < span:
+      kpage.protect(cr3(), pbase + off, 5)
       off = off + PAGE
   return 1
 def load_image(mod_base, size):

@@ -1624,6 +1624,64 @@ def _jerr(path, msg, line):
           file=sys.stderr)
 
 
+# builtins whose effects must not run twice, so no silent re-run after the
+# x64 Int-overflow trap once the program could have done I/O
+_SIDE_EFFECT_WORDS = ("input", "open", "read", "write", "append_text",
+                      "write_text", "mkdir", "system", "tcp_connect",
+                      "tcp_send", "tcp_listen", "http_get", "json_save",
+                      "readkey", "file", "close", "read_text", "read_mem")
+
+
+def _run_auto(prog, rest):
+    """Default `hs run`: build with the x64 backend (no C compiler, ~0.1s).
+    Returns the exit code, or None when the caller should use the slower
+    native/interp path: the program is outside the x64 subset, or it hit the
+    x64 62-bit Int limit before producing any output or side effect."""
+    import re
+    import contextlib as _cl
+    import io as _io
+    import x64gen as _x64
+    try:
+        with open(prog, encoding="utf-8") as f:
+            src = f.read()
+    except OSError:
+        return None
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "hsxbin")
+        with _cl.redirect_stdout(_io.StringIO()), \
+                _cl.redirect_stderr(_io.StringIO()):
+            try:
+                rc = _x64.build_x64(prog, out)
+            except Exception:
+                rc = 1
+        if rc != 0:
+            return None
+        sys.stdout.flush()
+        errf = os.path.join(d, "stderr")
+        with open(errf, "w+b") as ef:
+            p = subprocess.Popen([out] + rest, stdout=subprocess.PIPE,
+                                 stderr=ef)
+            nbytes = 0
+            while True:
+                chunk = os.read(p.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                nbytes += len(chunk)
+                os.write(1, chunk)
+            code = p.wait()
+            ef.seek(0)
+            err = ef.read()
+        if code == 97 and b"62-bit" in err:
+            risky = nbytes > 0 or any(
+                re.search(r"\b" + w + r"\b", src) for w in _SIDE_EFFECT_WORDS)
+            if not risky:
+                return None
+            err += (b"hint: run with HS_BACKEND=native or HS_BACKEND=interp "
+                    b"for 64-bit Int\n")
+        os.write(2, err)
+        return code
+
+
 def build(prog_path, out_path, as_json=False):
     interp.reset_parse_state()
     def fail(msg, line):
@@ -1826,9 +1884,29 @@ def main(argv):
             out = argv[argv.index("-o") + 1]
         return build(prog, out, as_json)
     prog = argv[2]
+    backend = os.environ.get("HS_BACKEND", "auto")
+    rest = argv[3:]
+    if len(argv) > 3 and argv[3] == "--backend" and len(argv) > 4:
+        backend, rest = argv[4], argv[5:]
+    if backend not in ("auto", "x64", "native", "interp"):
+        print("error: backend must be auto, x64, native or interp",
+              file=sys.stderr)
+        return 2
+    if backend == "x64":
+        return main([argv[0], "xrun", prog] + rest)
+    if backend == "interp":
+        return subprocess.run([sys.executable, os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "interp.py"),
+            prog] + rest).returncode
+    if backend == "auto":
+        rc = _run_auto(prog, rest)
+        if rc is not None:
+            return rc
     if shutil.which("gcc") is None:
-        # no C compiler: run through the self-hosted x64 backend
-        return main([argv[0], "xrun"] + argv[2:])
+        return subprocess.run([sys.executable, os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "interp.py"),
+            prog] + rest).returncode
+    argv = argv[:3] + rest
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, "hsbin")
         rc = build(prog, out)

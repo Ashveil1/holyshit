@@ -7,7 +7,8 @@
 python3 interp.py prog.hs [args...]   # รันทันที (tree-walk)
 python3 hs.py check prog.hs           # ตรวจ syntax/scope อย่างเดียว
 python3 hs.py build prog.hs [-o prog] # เป็น native binary (gcc + Boehm GC)
-python3 hs.py run prog.hs [args...]   # build ลง temp แล้วรันทันที
+python3 hs.py run prog.hs [args...]   # build ลง temp แล้วรันทันที (ค่าเริ่มต้น: x64 ไม่ใช้ gcc, fallback เอง)
+HS_BACKEND=auto|x64|native|interp     # เลือก backend ของ run (หรือ run prog.hs --backend X)
 python3 hs.py fmt prog.hs [-w|--check] # จัดรูป canonical (2-space, ตัดคอมเมนต์)
 python3 hs.py xbuild prog.hs [-o prog] # machine code ตรง ไม่ใช้ gcc (subset)
 python3 hs.py xkernel prog.hs -o k.elf # kernel freestanding ไม่ใช้ gcc/as/ld

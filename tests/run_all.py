@@ -14,7 +14,8 @@ Suites:
   test_examples.py 17  every examples/*.hs still runs (interp + native)
   test_lsp.py     25  language server over stdio
   test_docs.py    41  doc examples really run, links + api.json stay in sync
-  test_selfhost.py 792 self-hosted lexer (hs) matches interp lexer on every repo .hs
+  test_selfhost.py 796 self-hosted lexer/parser/formatter (hs) match the Python ones on every repo .hs
+  test_run.py     12  `hs run` backend choice, fallback, overrides
 """
 import os
 import subprocess
@@ -33,7 +34,8 @@ SUITES = [
     ("test_examples.py", "examples"),
     ("test_lsp.py", "language server"),
     ("test_docs.py", "docs"),
-    ("test_selfhost.py", "self-hosted lexer vs interp lexer"),
+    ("test_selfhost.py", "self-hosted lexer/parser/fmt vs Python"),
+    ("test_run.py", "hs run backend selection"),
 ]
 
 

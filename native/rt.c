@@ -374,6 +374,11 @@ Val v_neg(Val v, int line) {
 Val v_not(Val v) { return v_bool(!v_truthy(v)); }
 
 Val v_eq(Val a, Val b) {
+    /* Python semantics: a Bool equals the Int/Float 0/1 */
+    if (a.tag == T_BOOL && (b.tag == T_INT || b.tag == T_FLOAT))
+        a = v_int(a.u.b ? 1 : 0);
+    else if (b.tag == T_BOOL && (a.tag == T_INT || a.tag == T_FLOAT))
+        b = v_int(b.u.b ? 1 : 0);
     if (a.tag == T_INT && b.tag == T_INT)
         return v_bool(a.u.i == b.u.i);
     if (is_num(a) && is_num(b))
