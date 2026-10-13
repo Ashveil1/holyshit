@@ -67,6 +67,8 @@ class GenIR(Gen):
         self.mod_globals = {}  # modpfx -> set(stored names)
         self.allfuncs = {}
         self.allorder = []
+        self.ffi_syms = []   # extern C symbols (GOT slot order)
+        self.ffi_libs = []   # DT_NEEDED sonames beyond libc
 
     # ----- planning (no code): slots, caps, globals -----
 
@@ -478,6 +480,8 @@ class GenIR(Gen):
         for nm in sorted(rawnames):
             if nm not in slots:
                 slots[nm] = take()
+        if fdef.get("xname"):
+            slots["%cline"] = take()   # ffi: the caller's line (rsi at entry)
         return {"key": key, "params": params, "pmap": pmap,
                 "locals": stored, "slots": slots, "nloc": n[0],
                 "rawnames": rawnames, "utypes": utypes,
@@ -2239,6 +2243,130 @@ class GenIR(Gen):
         self._js_finish(dest, ln, fr)
         return
 
+    def _ffi_sym(self, name):
+        if name not in self.ffi_syms:
+            self.ffi_syms.append(name)
+        return self.ffi_syms.index(name)
+
+    def _ffi_lib(self, lib, ln):
+        import ctypes.util as _cu
+        if lib is None:
+            so = "libc.so.6"
+        elif lib.endswith(".c"):
+            raise HSErr(f"extern from '{lib}': a C source needs a C compiler; "
+                        "xbuild calls none (pass a prebuilt .so)", ln)
+        elif "/" in lib or lib.endswith(".so") or ".so." in lib:
+            so = lib
+        else:
+            so = _cu.find_library(lib)
+            if so is None:
+                raise HSErr(f"cannot find ffi library '{lib}'", ln)
+        if so not in self.ffi_libs:
+            self.ffi_libs.append(so)
+
+    def _ffi(self, fr, ins, ln):
+        """extern call: tagged hs values -> C ABI (rdi rsi rdx rcx r8 r9),
+        call through the GOT slot ld.so fills, convert rax back, then
+        fflush(NULL) so C stdio and hs output stay in program order."""
+        a = self.a
+        name, pt, rt = ins["sym"], ins["ptypes"], ins["rtype"]
+        if "F64" in pt or rt == "F64":
+            raise HSErr("ffi F64 is not supported by xbuild yet "
+                        f"('{name}')", ln)
+        if len(pt) > 6:
+            raise HSErr(f"ffi '{name}': xbuild passes at most 6 args", ln)
+        self._ffi_lib(ins["lib"], ln)
+        gi = self._ffi_sym(name)
+        fl = self._ffi_sym("fflush")
+        for i, (pn, ft) in enumerate(zip(ins["pnames"], pt)):
+            self._load(fr, pn, ln)
+            msg = f"ffi '{name}' arg {i + 1} wants {ft}, got "
+            lab_bad = self.new_tmp("ff")
+            lab_after = self.new_tmp("ff")
+            if ft == "Str":
+                lab_ok = self.new_tmp("ff")
+                a.mov_rr("r11", "rax")
+                a.and_ri32("r11", 3)
+                a.test_rr("r11", "r11")
+                a.jcc("ne", lab_bad)
+                a.mov_rm("r11", "rax", 0)
+                a.cmp_ri32("r11", Gen.K_STR)
+                a.jcc("e", lab_ok)
+                a.jmp(lab_bad)
+                a.label(lab_ok)
+                a.push_r("rax")
+                a.mov_rm("rdi", "rax", 8)
+                a.add_ri32("rdi", 24)
+                a.call("x_malloc")           # zeroed: NUL terminator for free
+                a.pop_r("rsi")
+                a.mov_rm("rcx", "rsi", 8)
+                a.add_ri32("rsi", 16)
+                a.mov_rr("rdi", "rax")
+                a.push_r("rax")
+                self.copy_bytes()
+            else:
+                self.check_int(lambda lb=lab_bad: a.jmp(lb))
+                a.sar_ri8("rax", 2)
+                a.push_r("rax")
+            a.jmp(lab_after)
+            # bad argument (rax = the value): "... wants T, got <type>"
+            a.label(lab_bad)
+            a.mov_rr("rdi", "rax")
+            a.call("x_tname")
+            a.push_r("rax")
+            a.lea_rip("rdi", self.rstr(msg))
+            a.mov_ri32("rsi", len(msg.encode()))
+            a.call("x_str_at")
+            a.mov_rr("rdi", "rax")
+            a.pop_r("rsi")
+            a.call("x_str_cat")
+            a.mov_rr("rdi", "rax")
+            a.mov_rm("rsi", "rbp", fr["slots"]["%cline"])
+            a.jmp("hs_raise_msg")
+            a.label(lab_after)
+        for r in reversed(["rdi", "rsi", "rdx", "rcx", "r8", "r9"][:len(pt)]):
+            a.pop_r(r)
+
+        def ccall(idx):
+            a.mov_rr("r10", "rsp")
+            a.and_ri32("rsp", -16)
+            a.sub_ri32("rsp", 16)
+            a.mov_mr("rsp", "r10", 0)
+            a.lea_rip("r11", "ffi_got_")
+            a.mov_rm("rax", "r11", 8 * idx)
+            a.call_rax()
+            a.mov_rm("rsp", "rsp", 0)
+        ccall(gi)
+        a.push_r("rax")
+        a.mov_ri32("rdi", 0)
+        ccall(fl)
+        a.pop_r("rax")
+        if rt == "U0":
+            a.mov_ri64("rax", Gen.HS_NULL)
+        elif rt == "Str":
+            lab_nn, lab_done = self.new_tmp("ff"), self.new_tmp("ff")
+            lab_lt, lab_le = self.new_tmp("ff"), self.new_tmp("ff")
+            a.test_rr("rax", "rax")
+            a.jcc("ne", lab_nn)
+            a.mov_ri64("rax", Gen.HS_NULL)
+            a.jmp(lab_done)
+            a.label(lab_nn)
+            a.mov_rr("rdi", "rax")
+            a.mov_ri32("rcx", 0)
+            a.label(lab_lt)
+            a.movzx_eax_mx("rdi", "rcx", 1, 0)
+            a.test_rr("rax", "rax")
+            a.jcc("e", lab_le)
+            a.add_ri32("rcx", 1)
+            a.jmp(lab_lt)
+            a.label(lab_le)
+            a.mov_rr("rsi", "rcx")
+            a.call("x_str_at")
+            a.label(lab_done)
+        else:
+            self.tag_box()
+        a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
+
     def _mkfunc(self, fr, dest, qname, ln):
         # transliterated Gen ex-def: captures evaluated in the defining
         # frame, Func = [kind][code][nparams][name][caps...].
@@ -2272,8 +2400,9 @@ class GenIR(Gen):
         a.mov_ri32("rcx", len(child["params"]))
         a.mov_mr("rax", "rcx", 16)
         a.push_r("rax")
-        a.lea_rip("rdi", self.rstr(child["dispname"]))
-        a.mov_ri32("rsi", len(child["dispname"].encode()))
+        fname = child.get("xname", child["dispname"])
+        a.lea_rip("rdi", self.rstr(fname))
+        a.mov_ri32("rsi", len(fname.encode()))
         a.call("x_str_at")
         a.mov_rr("rcx", "rax")
         a.pop_r("rax")
@@ -2382,6 +2511,8 @@ class GenIR(Gen):
                 lab = self._glabel(ins["name"], fr["mod"])
                 a.lea_rip("rcx", lab)
                 a.mov_mr("rcx", "rax", 0)
+            elif op == "ffi":
+                self._ffi(fr, ins, ln)
             elif op == "mkfunc":
                 self._mkfunc(fr, ins["dest"], ins["func"], ln)
             elif op == "bin":
@@ -2626,7 +2757,10 @@ class GenIR(Gen):
         a.mov_rr("rbp", "rsp")
         if fr["nloc"]:
             a.sub_ri32("rsp", 8 * fr["nloc"])
+        a.mov_rr("r10", "rsi")           # caller line (ffi errors report it)
         self.frame_init_unbound(fr["nloc"])
+        if "%cline" in fr["slots"]:
+            a.mov_mr("rbp", "r10", fr["slots"]["%cline"])
         self._gc_point()
         by = {b["label"]: b for b in fdef["blocks"]}
         for blk in fdef["blocks"]:
@@ -2706,7 +2840,17 @@ class GenIR(Gen):
         for c in b" \t\n\v\f\r\x1c\x1d\x1e\x1f":
             ws[c] = 1
         a.code += bytes(ws)
-        from x64 import layout, pack
+        from x64 import layout, pack, layout_dyn, pack_dyn
+        if self.ffi_syms:
+            # dynamically linked image: ld.so + libc fill the GOT slots
+            a.data_label("ffi_got_")
+            a.data_bytes(b"\0" * (8 * len(self.ffi_syms)))
+            lo = layout_dyn(len(self.a.code), len(self.a.data))
+            code = self.a.resolve(lo["text_vaddr"], lo["data_vaddr"])
+            libs = ["libc.so.6"] + [l for l in self.ffi_libs if l != "libc.so.6"]
+            return pack_dyn(code, bytes(self.a.data),
+                            self.a.labels["_start"], lo, libs,
+                            self.ffi_syms, self.a.data_labels["ffi_got_"])
         lo = layout(len(self.a.code), len(self.a.data))
         code = self.a.resolve(lo["text_vaddr"], lo["data_vaddr"])
         start_off = self.a.labels["_start"]
