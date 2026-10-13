@@ -115,6 +115,22 @@ def gen(e):
     lab = new_label("O")
     append(SOBJ, [lab, e["val"], ln])
     asm.lea_rip("rax", lab)
+  elif t == "slice":
+    gen(e["obj"])
+    asm.push_r("rax")
+    if e["start"] == null:
+      asm.mov_ri32("rax", 6)
+    else:
+      gen(e["start"])
+    asm.push_r("rax")
+    if e["stop"] == null:
+      asm.mov_ri32("rax", 6)
+    else:
+      gen(e["stop"])
+    asm.mov_rr("rdx", "rax")
+    asm.pop_r("rcx")
+    asm.pop_r("rax")
+    asm.call("rt_slice")
   elif t == "list":
     for it in e["items"]:
       gen(it)
@@ -310,6 +326,12 @@ def gen(e):
       else:
         asm.mov_ri32("rcx", 8)
       asm.call("rt_dkv")
+      return 0
+    if nm == "str" and not (nm in ST["funcs"]):
+      if len(e["args"]) != 1:
+        fail("str wants 1 arg", ln)
+      gen(e["args"][0])
+      asm.call("rt_tostr")
       return 0
     if nm == "append" and not (nm in ST["funcs"]):
       if len(e["args"]) != 2:
@@ -803,6 +825,7 @@ def gen_runtime2():
   gen_runtime3()
   gen_runtime4()
   gen_runtime5()
+  gen_runtime5b()
   err_routine("rt_err_oom", "m_oom", len(MSG[7][1]), 1)
   err_routine("rt_err_key", "m_key", len(MSG[9][1]), 1)
   err_routine("rt_err_idx", "m_idx", len(MSG[8][1]), 1)
@@ -1149,7 +1172,187 @@ def gen_runtime4():
   asm.add_ri32("rsp", 32)
   asm.jmp("eq_no")
 
+def gen_clamp(src, dst, at_end):
+  # dst = slice bound from tagged src (null = default), clamped to 0..r8
+  l1 = new_label("K")
+  l2 = new_label("K")
+  l4 = new_label("K")
+  asm.cmp_ri32(src, 6)
+  asm.jcc("ne", l1)
+  if at_end:
+    asm.mov_rr(dst, "r8")
+  else:
+    asm.mov_ri32(dst, 0)
+  asm.jmp(l4)
+  asm.label(l1)
+  asm.mov_rr("rdi", src)
+  asm.and_ri32("rdi", 1)
+  asm.jcc("e", "rt_err_type")
+  asm.mov_rr(dst, src)
+  asm.sar_ri8(dst, 1)
+  asm.test_rr(dst, dst)
+  asm.jcc("ns", l2)
+  asm.add_rr(dst, "r8")
+  asm.test_rr(dst, dst)
+  asm.jcc("ns", l2)
+  asm.mov_ri32(dst, 0)
+  asm.label(l2)
+  asm.cmp_rr(dst, "r8")
+  asm.jcc("le", l4)
+  asm.mov_rr(dst, "r8")
+  asm.label(l4)
+
 def gen_runtime5():
+  # rt_slice: rax[rcx:rdx] (Str or List; bounds tagged Int or null)
+  asm.label("rt_slice")
+  asm.mov_rr("rsi", "rax")
+  asm.mov_rr("rdi", "rsi")
+  asm.and_ri32("rdi", 7)
+  asm.jcc("ne", "rt_err_type")
+  asm.mov_rm("r8", "rsi", 8)
+  gen_clamp("rcx", "r9", false)
+  gen_clamp("rdx", "r10", true)
+  asm.cmp_rr("r10", "r9")
+  asm.jcc("ge", "sl_ok")
+  asm.mov_rr("r10", "r9")
+  asm.label("sl_ok")
+  asm.push_r("rsi")
+  asm.push_r("r9")
+  asm.push_r("r10")
+  asm.mov_rm("rdx", "rsi", 0)
+  asm.cmp_ri32("rdx", 1)
+  asm.jcc("e", "sl_str")
+  asm.cmp_ri32("rdx", 2)
+  asm.jcc("ne", "rt_err_type")
+  asm.mov_rm("r8", "rsp", 0)
+  asm.mov_rm("rdx", "rsp", 8)
+  asm.sub_rr("r8", "rdx")
+  asm.mov_ri32("rdi", 32)
+  asm.push_r("r8")
+  asm.call("rt_alloc")
+  asm.pop_r("r8")
+  asm.push_r("rax")
+  asm.mov_rr("rdi", "r8")
+  asm.shl_ri8("rdi", 3)
+  asm.call("rt_alloc")
+  asm.mov_rm("rsi", "rsp", 0)
+  asm.mov_ri32("rdx", 2)
+  asm.mov_mr("rsi", "rdx", 0)
+  asm.mov_mr("rsi", "r8", 8)
+  asm.mov_mr("rsi", "r8", 16)
+  asm.mov_mr("rsi", "rax", 24)
+  asm.mov_rr("rdi", "rax")
+  asm.mov_rm("rax", "rsp", 24)
+  asm.mov_rm("rax", "rax", 24)
+  asm.mov_rm("rdx", "rsp", 16)
+  asm.shl_ri8("rdx", 3)
+  asm.add_rr("rax", "rdx")
+  asm.mov_rr("rsi", "rax")
+  asm.mov_rr("rdx", "r8")
+  asm.shl_ri8("rdx", 3)
+  asm.call("rt_memcpy")
+  asm.pop_r("rax")
+  asm.add_ri32("rsp", 24)
+  asm.ret()
+  asm.label("sl_str")
+  asm.mov_rm("r8", "rsp", 0)
+  asm.mov_rm("rdx", "rsp", 8)
+  asm.sub_rr("r8", "rdx")
+  asm.mov_rr("rdi", "r8")
+  asm.add_ri32("rdi", 23)
+  asm.and_ri32("rdi", 0 - 8)
+  asm.call("rt_alloc")
+  asm.mov_ri32("rdx", 1)
+  asm.mov_mr("rax", "rdx", 0)
+  asm.mov_mr("rax", "r8", 8)
+  asm.push_r("rax")
+  asm.mov_rm("rsi", "rsp", 24)
+  asm.add_ri32("rsi", 16)
+  asm.mov_rm("rdx", "rsp", 16)
+  asm.add_rr("rsi", "rdx")
+  asm.lea_m("rdi", "rax", 16)
+  asm.mov_rr("rdx", "r8")
+  asm.call("rt_memcpy")
+  asm.pop_r("rax")
+  asm.add_ri32("rsp", 24)
+  asm.ret()
+  # rt_tostr: Int / Bool / null / Str -> Str
+  asm.label("rt_tostr")
+  asm.mov_rr("rdx", "rax")
+  asm.and_ri32("rdx", 7)
+  asm.jcc("ne", "ts_np")
+  asm.mov_rm("rdx", "rax", 0)
+  asm.cmp_ri32("rdx", 1)
+  asm.jcc("ne", "rt_err_type")
+  asm.ret()
+  asm.label("ts_np")
+  asm.mov_rr("rdx", "rax")
+  asm.and_ri32("rdx", 1)
+  asm.jcc("ne", "ts_int")
+  asm.cmp_ri32("rax", 10)
+  asm.jcc("ne", "ts_1")
+  asm.lea_rip("rax", "so_true")
+  asm.ret()
+  asm.label("ts_1")
+  asm.cmp_ri32("rax", 2)
+  asm.jcc("ne", "ts_2")
+  asm.lea_rip("rax", "so_false")
+  asm.ret()
+  asm.label("ts_2")
+  asm.lea_rip("rax", "so_null")
+  asm.ret()
+  asm.label("ts_int")
+  asm.push_r("rbp")
+  asm.mov_rr("rbp", "rsp")
+  asm.sub_ri32("rsp", 48)
+  asm.sar_ri8("rax", 1)
+  asm.mov_rr("rcx", "rax")
+  asm.lea_m("rsi", "rbp", 0 - 1)
+  asm.mov_ri32("rdi", 0)
+  asm.test_rr("rcx", "rcx")
+  asm.jcc("ns", "ts_pos")
+  asm.neg_r("rcx")
+  asm.mov_ri32("rdi", 1)
+  asm.label("ts_pos")
+  asm.mov_ri32("r9", 10)
+  asm.label("ts_loop")
+  asm.xor_rr("rdx", "rdx")
+  asm.mov_rr("rax", "rcx")
+  asm.div_r("r9")
+  asm.add_ri32("rdx", 48)
+  asm.mov_mr8("rsi", 2, 0)
+  asm.sub_ri32("rsi", 1)
+  asm.mov_rr("rcx", "rax")
+  asm.test_rr("rcx", "rcx")
+  asm.jcc("ne", "ts_loop")
+  asm.test_rr("rdi", "rdi")
+  asm.jcc("e", "ts_skip")
+  asm.mov_ri32("rdx", 45)
+  asm.mov_mr8("rsi", 2, 0)
+  asm.sub_ri32("rsi", 1)
+  asm.label("ts_skip")
+  asm.add_ri32("rsi", 1)
+  asm.mov_rr("r8", "rbp")
+  asm.sub_rr("r8", "rsi")
+  asm.push_r("rsi")
+  asm.mov_rr("rdi", "r8")
+  asm.add_ri32("rdi", 23)
+  asm.and_ri32("rdi", 0 - 8)
+  asm.call("rt_alloc")
+  asm.pop_r("rsi")
+  asm.mov_ri32("rdx", 1)
+  asm.mov_mr("rax", "rdx", 0)
+  asm.mov_mr("rax", "r8", 8)
+  asm.lea_m("rdi", "rax", 16)
+  asm.mov_rr("rdx", "r8")
+  asm.push_r("rax")
+  asm.call("rt_memcpy")
+  asm.pop_r("rax")
+  asm.mov_rr("rsp", "rbp")
+  asm.pop_r("rbp")
+  asm.ret()
+
+def gen_runtime5b():
   asm.label("rt_newdict")
   asm.mov_ri32("rdi", 32)
   asm.call("rt_alloc")
@@ -1440,6 +1643,152 @@ def pad8():
   while asm.pos() % 8 != 0:
     asm.b1(0)
 
+# ---- imports: flatten every module into one program ------------------
+# Module M's top-level names become "M.name"; "M.name" in another module is
+# the same variable. Init order: imported modules first, in import order.
+RN = {"pre": "", "names": {}, "locs": {}, "mods": {}}
+FLAT = {"defs": [], "top": [], "loaded": {}, "dir": ""}
+
+def rn_name(n):
+  if n in RN["locs"]:
+    return n
+  if n in RN["names"]:
+    return RN["pre"] + n
+  return n
+
+def rw(e):
+  t = e["t"]
+  if t == "var":
+    e["name"] = rn_name(e["name"])
+  elif t == "attr":
+    o = e["obj"]
+    if o["t"] == "var" and (o["name"] in RN["mods"]) and not (o["name"] in RN["locs"]):
+      return {"t": "var", "name": o["name"] + "." + e["name"], "line": e["line"]}
+    fail("attribute access on a non-module", e["line"])
+  elif t == "call":
+    e["fn"] = rw(e["fn"])
+    rw_list(e["args"])
+  elif t == "bin":
+    e["l"] = rw(e["l"])
+    e["r"] = rw(e["r"])
+  elif t == "not" or t == "neg":
+    e["val"] = rw(e["val"])
+  elif t == "index":
+    e["obj"] = rw(e["obj"])
+    e["idx"] = rw(e["idx"])
+    if has(e, "tern"):
+      fail("conditional expression not supported", e["line"])
+  elif t == "slice":
+    e["obj"] = rw(e["obj"])
+    if e["start"] != null:
+      e["start"] = rw(e["start"])
+    if e["stop"] != null:
+      e["stop"] = rw(e["stop"])
+  elif t == "list":
+    rw_list(e["items"])
+  elif t == "dict":
+    for pr in e["pairs"]:
+      pr[0] = rw(pr[0])
+      pr[1] = rw(pr[1])
+  return e
+
+def rw_list(xs):
+  i = 0
+  while i < len(xs):
+    xs[i] = rw(xs[i])
+    i = i + 1
+
+def rw_body(body):
+  for s in body:
+    rw_stmt(s)
+
+def rw_stmt(s):
+  t = s["t"]
+  if t == "set":
+    s["name"] = rn_name(s["name"])
+    s["val"] = rw(s["val"])
+  elif t == "setindex":
+    s["obj"] = rw(s["obj"])
+    s["idx"] = rw(s["idx"])
+    s["val"] = rw(s["val"])
+  elif t == "expr" or t == "raise":
+    s["val"] = rw(s["val"])
+  elif t == "return":
+    if s["val"] != null:
+      s["val"] = rw(s["val"])
+  elif t == "print":
+    rw_list(s["args"])
+  elif t == "if":
+    s["cond"] = rw(s["cond"])
+    rw_body(s["then"])
+    for ec in s["elifs"]:
+      ec[0] = rw(ec[0])
+      rw_body(ec[1])
+    rw_body(s["els"])
+  elif t == "while":
+    s["cond"] = rw(s["cond"])
+    rw_body(s["body"])
+  elif t == "for":
+    s["var"] = rn_name(s["var"])
+    s["iter"] = rw(s["iter"])
+    rw_body(s["body"])
+
+def dir_of(path):
+  i = len(path) - 1
+  while i >= 0:
+    if path[i] == "/":
+      return path[0:i + 1]
+    i = i - 1
+  return ""
+
+def load_module(prog, pre):
+  imps = {}
+  for s in prog:
+    if s["t"] == "import":
+      imps[s["name"]] = true
+      if not (s["name"] in FLAT["loaded"]):
+        FLAT["loaded"][s["name"]] = true
+        sub = parselib.parse(read_text(FLAT["dir"] + s["name"] + ".hs"))
+        load_module(sub, s["name"] + ".")
+  names = {}
+  tops = []
+  if pre != "":
+    for s in prog:
+      if s["t"] == "def":
+        names[s["name"]] = true
+      elif s["t"] != "import":
+        append(tops, s)
+    collect_sets(tops, names)
+  for s in prog:
+    if s["t"] == "import":
+      pass
+    elif s["t"] == "def":
+      RN["pre"] = pre
+      RN["names"] = names
+      RN["mods"] = imps
+      RN["locs"] = {}
+      for p in s["params"]:
+        RN["locs"][p] = true
+      collect_sets(s["body"], RN["locs"])
+      rw_body(s["body"])
+      s["name"] = rn_name_def(pre, s["name"])
+      append(FLAT["defs"], s)
+    else:
+      RN["pre"] = pre
+      RN["names"] = names
+      RN["mods"] = imps
+      RN["locs"] = {}
+      rw_stmt(s)
+      append(FLAT["top"], s)
+
+def rn_name_def(pre, n):
+  return pre + n
+
+def flatten(prog, dirp):
+  FLAT["dir"] = dirp
+  load_module(prog, "")
+  return FLAT["defs"] + FLAT["top"]
+
 def compile(prog):
   asm.reset()
   top = []
@@ -1472,6 +1821,9 @@ def compile(prog):
     for ch in st[1]:
       asm.b1(ascii_byte(ch, st[2]))
   pad8()
+  append(SOBJ, ["so_true", "true", 0])
+  append(SOBJ, ["so_false", "false", 0])
+  append(SOBJ, ["so_null", "null", 0])
   for so in SOBJ:
     asm.label(so[0])
     asm.bn(le64(1))
@@ -1511,7 +1863,7 @@ if len(a) != 2:
   raise "usage"
 try:
   prog = parselib.parse(read_text(a[0]))
-  compile(prog)
+  compile(flatten(prog, dir_of(a[0])))
   write_bytes(a[1], elf(asm.resolve()))
 except as e:
   print "error: " + parselib.strip_raise(e)

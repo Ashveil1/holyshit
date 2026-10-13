@@ -52,6 +52,7 @@ PROGS = {
     'dict_grow': 'd = {}\nfor i in range(300):\n  d[i] = i * 2\nd["k"] = []\nappend(d["k"], 5)\nt = 0\nfor k in keys(d):\n  if k != "k":\n    t = t + d[k]\nprint len(d), t, d[299], d["k"], has(d, 150), has(d, 300)\nfor i in range(300):\n  d[i] = 0\nprint values(d)[7], len(d)\n',
     'dict_words': 'def count(ws):\n  c = {}\n  for w in ws:\n    if w in c:\n      c[w] = c[w] + 1\n    else:\n      c[w] = 1\n  return c\nc = count(["a", "b", "a", "c" + "d", "cd", "a"])\nprint c, c["a"], c["cd"]\nprint c == {"cd": 2, "a": 3, "b": 1}, c == {"a": 3}, {"x": {"y": [1]}} == {"x": {"y": [1]}}\n',
     'contains': 'print 3 in [1, 2, 3], 4 in [1, 2, 3], "ell" in "hello", "z" in "hello", "" in "x", "hello!" in "hello", 5 not in [1], "a" in ["b", "a"]\n',
+    "slice_str": 's = "hello world"\nprint s[0:5], s[6:], s[:5], s[-5:], s[:-6], s[3:3], s[5:2], s[-100:100], s[:], s[2:4] + "!"\nl = [1, 2, 3, 4, 5]\nprint l[1:3], l[:2], l[-2:], l[2:], l[:], l[4:1], l[9:], l[:-1]\nm = l[1:4]\nappend(m, 9)\nprint m, l, len(l[0:0])\nprint str(0), str(-45) + "|", str(123456789012), str(true), str(false), str(null), str("x"), len(str(4611686018427387903)), str(-4611686018427387903)\nn = 0\nt = ""\nwhile n < 5:\n  t = t + str(n * n) + ","\n  n = n + 1\nprint t\n',
     "noreturn": "def p(n):\n  print n\np(5)\np(6)\n",
 }
 
@@ -72,6 +73,10 @@ ERRS = {
     "str_idx_neg_oob": "s = \"abc\"\nprint s[-3]\nprint s[-4]\n",
     "str_idx_type": "s = \"abc\"\nprint s[\"a\"]\n",
     "len_int": "print len(5)\n",
+}
+
+MODS = {
+    "modules": {'main': 'import util\nprint util.count, util.total(), util.bump(1), util.K\n', 'util': 'import sub\nK = [1, 2, 3]\ncount = 0\ndef bump(n):\n  global_total = n + sub.base()\n  return global_total\ndef total():\n  t = 0\n  for v in K:\n    t = t + v\n  return t\ncount = bump(10)\n', 'sub': 'B = 100\ndef base():\n  return B\n'},
 }
 
 BAD = {
@@ -117,6 +122,21 @@ with tempfile.TemporaryDirectory() as d:
             continue
         r = subprocess.run([out], capture_output=True, text=True)
         check(f"cc {name}", rc == 0 and r.returncode == 0 and r.stdout == want,
+              (rc, want, r.returncode, r.stdout, r.stderr))
+    for name, files in MODS.items():
+        md = os.path.join(d, "mod_" + name)
+        os.makedirs(md)
+        for fn, src in files.items():
+            open(os.path.join(md, fn + ".hs"), "w").write(src)
+        p = os.path.join(md, "main.hs")
+        out = os.path.join(md, "main.bin")
+        rc, want = interp(p)
+        c = compile_prog(p, out)
+        if c.returncode != 0:
+            check(f"cc mod {name}", False, c.stderr + c.stdout)
+            continue
+        r = subprocess.run([out], capture_output=True, text=True)
+        check(f"cc mod {name}", rc == 0 and r.returncode == 0 and r.stdout == want,
               (rc, want, r.returncode, r.stdout, r.stderr))
     for name, src in ERRS.items():
         p = os.path.join(d, "err_" + name + ".hs")
