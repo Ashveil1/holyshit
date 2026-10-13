@@ -573,11 +573,7 @@ class GenIR(Gen):
         elif isinstance(v, int):
             a.mov_ri64("rax", self.tag_int(v))
         elif isinstance(v, str):
-            b = v.encode()
-            lab = self.rstr(v)
-            a.lea_rip("rdi", lab)
-            a.mov_ri32("rsi", len(b))
-            a.call("x_str_at")
+            a.lea_rip("rax", self.sstr(v))
         else:
             raise HSErr("IR: bad const value", ln)
 
