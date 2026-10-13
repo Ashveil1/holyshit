@@ -35,7 +35,8 @@ def check(name, cond, detail=""):
         fails += 1
 
 
-def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None, disk=None):
+def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None, disk=None,
+         until=()):
     d = tempfile.mkdtemp(prefix="xkboot_")
     slog = os.path.join(d, "serial.log")
     msock = os.path.join(d, "mon.sock")
@@ -72,7 +73,16 @@ def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None, disk=None):
         last = -1
         while time.time() < end:
             size = os.path.getsize(slog) if os.path.exists(slog) else 0
-            if size == last:
+            if until:
+                # a test with a long silent compute phase names its final
+                # marker, so a quiet 2s window is not mistaken for the end
+                try:
+                    txt = open(slog, errors="replace").read()
+                except OSError:
+                    txt = ""
+                if any(m in txt for m in until):
+                    break
+            elif size == last:
                 break
             last = size
             time.sleep(2)
@@ -180,7 +190,7 @@ with tempfile.TemporaryDirectory() as d:
     rc = build_xkernel(os.path.join(ROOT, "kernel", "kfloattest.hs"), kf)
     check("kfloattest build clean", rc == 0)
     if rc == 0 and QEMU is not None:
-        out = boot(kf, timeout=10)
+        out = boot(kf, timeout=10, until=("kfloattest ok", "kfloattest fails"))
         check("kfloattest finished", "kfloattest ok" in out, out[-800:])
         check("kfloattest did not fault", "EXC " not in out, out[-800:])
         check("kfloattest ran its checks",
