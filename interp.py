@@ -509,6 +509,7 @@ class P:
         self.t = toks
         self.i = 0
         self.unsafe = 0
+        self.mods = set()  # first segment of every `import` seen so far
 
     def peek(self):
         return self.t[self.i]
@@ -640,6 +641,7 @@ def parse_stmt(p):
             if part.v in KEYWORDS or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", part.v):
                 raise HSErr(f"bad module name '{full}.{part.v}'", part.line)
             full = full + "." + part.v
+        p.mods.add(full.split(".")[0])
         return N("import", t.line, name=full)
     if t.k == "ID" and t.v == "try":
         p.next()
@@ -1059,7 +1061,14 @@ def parse_post(p):
                         continue
                     break
             p.expect("OP", ")")
-            e = N("call", t.line, fn=e, args=args)
+            if e["t"] == "attr" and e["name"] in METHODS and \
+                    not _is_modref(e["obj"], p.mods):
+                # x.name(args) on a value == name(x, args) (method sugar,
+                # resolved here so every backend sees the plain builtin call)
+                e = N("call", t.line, fn=N("var", t.line, name=METHODS[e["name"]]),
+                      args=[e["obj"]] + args, method=e["name"])
+            else:
+                e = N("call", t.line, fn=e, args=args)
         elif p.at("OP", "["):
             t = p.next()
             if p.at("OP", ":"):
@@ -1092,6 +1101,17 @@ def parse_post(p):
                 e = N("attr", t.line, obj=e, name=nm.v)
         else:
             return e
+
+
+# method sugar: receiver.name(args) -> builtin(receiver, args). Receivers that
+# are (a dotted path rooted at) an imported module keep their module meaning.
+METHODS = {"split": "split", "find": "find", "join": "join", "append": "append"}
+
+
+def _is_modref(e, mods):
+    while e["t"] == "attr":
+        e = e["obj"]
+    return e["t"] == "var" and e["name"] in mods
 
 
 def parse_atom(p):
