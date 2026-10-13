@@ -207,6 +207,7 @@ Val b_json_str(Val *args, int nargs, int line);
 Val b_read_text(Val *args, int nargs, int line);
 Val b_read_mem(Val *args, int nargs, int line);
 Val b_write_text(Val *args, int nargs, int line);
+Val b_write_bytes(Val *args, int nargs, int line);
 Val b_append_text(Val *args, int nargs, int line);
 Val b_exists(Val *args, int nargs, int line);
 Val b_ls(Val *args, int nargs, int line);

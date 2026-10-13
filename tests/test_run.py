@@ -104,5 +104,11 @@ check("hs repl keeps state, echoes values, survives errors",
       r.returncode == 0 and r.stdout.splitlines()
       == ["10", "6", "hi", "error: unknown variable 'nope' at line 1", "7"],
       (r.returncode, r.stdout, r.stderr))
+WB = 'write_bytes("/tmp/_hs_wb.bin", [0, 1, 127, 128, 200, 255, 10])\nprint system("test $(wc -c < /tmp/_hs_wb.bin) -eq 7")\nprint system("test \\"$(od -An -tu1 /tmp/_hs_wb.bin | xargs)\\" = \\"0 1 127 128 200 255 10\\"")\nprint system("test -x /tmp/_hs_wb.bin")\ntry:\n  write_bytes("/tmp/_hs_wb.bin", [256])\nexcept as e:\n  print e\ntry:\n  write_bytes("/tmp/_hs_wb.bin", "x")\nexcept as e:\n  print e\nsystem("rm -f /tmp/_hs_wb.bin")\n'
+WB_OUT = '0\n0\n0\nwrite_bytes wants a list of Ints 0..255 at line 6\nwrite_bytes wants write_bytes(path, [Int 0..255]) at line 10\n'
+for be in ("interp", "native", "auto"):
+    rc, out, err = run(WB, {"HS_BACKEND": be})
+    check(f"write_bytes writes exact bytes, mode 755 ({be})",
+          rc == 0 and out == WB_OUT, (rc, out, err))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
