@@ -483,6 +483,18 @@ class Gen:
             a.data_bytes(b + b"\0" * (8 - len(b) % 8))
         return self.sstrs[s]
 
+    def sfloat(self, bits):
+        """Static immutable Float object [K_FLOAT][bits] (hosted builds)."""
+        key = ("f", bits)
+        if key not in self.sstrs:
+            a = self.a
+            lab = f"sflt_{len(self.sstrs)}"
+            self.sstrs[key] = lab
+            a.data_label(lab)
+            a.data_qword(Gen.K_FLOAT)
+            a.data_qword(bits - (1 << 64) if bits >= (1 << 63) else bits)
+        return self.sstrs[key]
+
     def emit_str_table(self):
         for s, lab in self.strs.items():
             self.a.label(lab)
@@ -507,7 +519,11 @@ class Gen:
                 a.mov_ri64("rax", Gen.HS_NULL)
             elif isinstance(v, float):
                 import struct as _st
-                a.mov_ri64("rdi", _st.unpack("<Q", _st.pack("<d", v))[0])
+                bits = _st.unpack("<Q", _st.pack("<d", v))[0]
+                if not self.freestanding:
+                    a.lea_rip("rax", self.sfloat(bits))
+                    return
+                a.mov_ri64("rdi", bits)
                 a.call("x_float_new")
                 return
             else:
