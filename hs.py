@@ -31,7 +31,7 @@ BUILTINS = {"print", "len", "range", "str", "int", "float",
             "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
             "tcp_listen", "tcp_accept", "http_get",
             "json_parse", "json_str",
-            "read_text", "read_mem", "write_text", "append_text", "exists", "ls",
+            "read_text", "read_mem", "write_text", "write_bytes", "append_text", "exists", "ls",
             "mkdir", "json_load", "json_save"}
 
 
@@ -1627,7 +1627,7 @@ def _jerr(path, msg, line):
 # builtins whose effects must not run twice, so no silent re-run after the
 # x64 Int-overflow trap once the program could have done I/O
 _SIDE_EFFECT_WORDS = ("input", "open", "read", "write", "append_text",
-                      "write_text", "mkdir", "system", "tcp_connect",
+                      "write_text", "write_bytes", "mkdir", "system", "tcp_connect",
                       "tcp_send", "tcp_listen", "http_get", "json_save",
                       "readkey", "file", "close", "read_text", "read_mem")
 

@@ -28,7 +28,7 @@ NOT_A_VALUE = {
     "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen",
     "tcp_accept", "http_get", "json_parse", "json_str", "read_text",
     "write_text", "append_text", "exists", "ls", "mkdir", "json_load",
-    "json_save", "alloc", "load8", "load32", "load64", "store8",
+    "json_save", "write_bytes", "alloc", "load8", "load32", "load64", "store8",
     "store32", "store64", "as_ptr", "as_int", "asm",
 }
 

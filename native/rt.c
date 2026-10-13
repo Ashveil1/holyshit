@@ -20,6 +20,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "rt.h"
 
@@ -638,7 +639,7 @@ Val v_builtin(const char *name) {
         {b_http_get, "http_get"},
         {b_json_parse, "json_parse"}, {b_json_str, "json_str"},
         {b_read_text, "read_text"}, {b_read_mem, "read_mem"},
-        {b_write_text, "write_text"},
+        {b_write_text, "write_text"}, {b_write_bytes, "write_bytes"},
         {b_append_text, "append_text"}, {b_exists, "exists"},
         {b_ls, "ls"}, {b_mkdir, "mkdir"},
         {b_json_load, "json_load"}, {b_json_save, "json_save"},
@@ -2052,6 +2053,36 @@ Val b_write_text(Val *args, int nargs, int line) {
         hs_err(line, "write_text failed: cannot write '%s'", path);
     }
     fclose(f);
+    return v_null();
+}
+
+Val b_write_bytes(Val *args, int nargs, int line) {
+    if (nargs != 2 || args[1].tag != T_LIST)
+        hs_err(line, "write_bytes wants write_bytes(path, [Int 0..255])");
+    const char *path = hs_fs_str(args[0], "write_bytes", line);
+    List *l = AS_LIST(args[1]);
+    unsigned char *buf = (unsigned char *)malloc(l->len ? (size_t)l->len : 1);
+    for (int64_t i = 0; i < l->len; i++) {
+        Val x = l->items[i];
+        if (x.tag != T_INT || x.u.i < 0 || x.u.i > 255) {
+            free(buf);
+            hs_err(line, "write_bytes wants a list of Ints 0..255");
+        }
+        buf[i] = (unsigned char)x.u.i;
+    }
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0755);
+    if (fd < 0) {
+        free(buf);
+        hs_err(line, "write_bytes failed: cannot open '%s'", path);
+    }
+    FILE *f = fdopen(fd, "wb");
+    if (l->len > 0 && fwrite(buf, 1, (size_t)l->len, f) != (size_t)l->len) {
+        fclose(f);
+        free(buf);
+        hs_err(line, "write_bytes failed: cannot write '%s'", path);
+    }
+    fclose(f);
+    free(buf);
     return v_null();
 }
 

@@ -2740,6 +2740,21 @@ def b_write_text(args, ln):
     return None
 
 
+def b_write_bytes(args, ln):
+    if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], list):
+        raise HSErr("write_bytes wants write_bytes(path, [Int 0..255])", ln)
+    for b in args[1]:
+        if not is_int(b) or b < 0 or b > 255:
+            raise HSErr("write_bytes wants a list of Ints 0..255", ln)
+    try:
+        fd = _os.open(args[0], _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC, 0o755)
+        with _os.fdopen(fd, "wb") as f:
+            f.write(bytes(args[1]))
+    except OSError as e:
+        raise HSErr(f"write_bytes failed: {e.strerror or e}", ln)
+    return None
+
+
 def b_append_text(args, ln):
     if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], str):
         raise HSErr("append_text wants append_text(path, str)", ln)
@@ -3057,7 +3072,7 @@ BUILTINS = {
     "http_get": b_http_get,
     "json_parse": b_json_parse, "json_str": b_json_str,
     "read_text": b_read_text, "read_mem": b_read_mem,
-    "write_text": b_write_text,
+    "write_text": b_write_text, "write_bytes": b_write_bytes,
     "append_text": b_append_text, "exists": b_exists, "ls": b_ls,
     "mkdir": b_mkdir, "json_load": b_json_load, "json_save": b_json_save,
 }

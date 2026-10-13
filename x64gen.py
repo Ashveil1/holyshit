@@ -856,7 +856,7 @@ class Gen:
                         "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
                         "http_get", "json_parse", "json_str", "read_text",
                         "write_text", "append_text", "exists", "ls", "mkdir",
-                        "json_load", "json_save", "alloc", "load8", "load32",
+                        "json_load", "json_save", "write_bytes", "alloc", "load8", "load32",
                         "load64", "store8", "store32", "store64",
                         "as_ptr", "as_int", "asm"):
                 raise HSErr(f"builtin '{name}' is not a value (call it)", ln)
@@ -2181,7 +2181,7 @@ class Gen:
                 "syscall_register", "user_stop", "enter_user", "exec_enter",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
-                "json_str", "json_load", "json_save", "asm"):
+                "json_str", "json_load", "json_save", "write_bytes", "asm"):
             if self.freestanding and fn["name"] in (
                     "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
                     "mb_info", "mb_magic", "image_end", "cr2", "cr3",

@@ -349,6 +349,14 @@
     "xbuild"
    ]
   },
+  "write_bytes": {
+   "sig": "write_bytes(path, xs)",
+   "desc": "write a binary file from a List of Ints 0..255, mode 0755 (interp/native only)",
+   "backends": [
+    "interp",
+    "native"
+   ]
+  },
   "append_text": {
    "sig": "append_text(path, s)",
    "desc": "append file (hosted only)",
