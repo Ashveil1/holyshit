@@ -28,12 +28,13 @@
 | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (216)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (221)
 
 - `'{d['name']}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
 - `'{v}' is reserved for future use`
 - `U64 value {v} too large for Int`
+- `a class body holds only def`
 - `address too large for Int`
 - `alloc of negative size {n}`
 - `alloc wants alloc(n)`
@@ -116,6 +117,7 @@
 - `dict key must be Str or Int`
 - `division by zero`
 - `duplicate field '{fn.v}'`
+- `duplicate method '{d['name']}'`
 - `duplicate param '{a}'`
 - `empty {} in f-string`
 - `env wants env(name)`
@@ -170,6 +172,9 @@
 - `len wants 1 arg, got {len(args)}`
 - `ls failed: {e.strerror or e}`
 - `meminfo takes no args`
+- `method '{d['name']}' must take 'self' first`
+- `method name '{d['name']}' is taken by a builtin (split/find/join/append)`
+- `method receiver must be a name or a field (assign it to a variable first)`
 - `mkdir failed: {e.strerror or e}`
 - `module '{obj.name}' has no attribute '{e['name']}'`
 - `negative value {sv} as U64`
@@ -607,4 +612,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 561 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 566 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

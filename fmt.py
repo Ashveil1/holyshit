@@ -111,12 +111,17 @@ def fmt_expr(e):
         l = _side(e["l"], p, "l", e["op"])
         r = _side(e["r"], p, "r", e["op"])
         return f"{l} {e['op']} {r}"
+    if t == "call" and e.get("mcall"):
+        return (fmt_expr(e["fn"]) + "(" +
+                ", ".join(fmt_expr(a) for a in e["args"][1:]) + ")")
     if t == "call" and e.get("method"):
         # method sugar: keep the receiver.name(args) spelling
         return (_atom(e["args"][0], 9) + "." + e["method"] + "(" +
                 ", ".join(fmt_expr(a) for a in e["args"][1:]) + ")")
     if t == "call":
         return _atom(e["fn"], 9) + "(" + ", ".join(fmt_expr(a) for a in e["args"]) + ")"
+    if t == "index" and e.get("dot") is not None:
+        return f"{_atom(e['obj'], 9)}.{e['dot']}"
     if t == "index":
         return f"{_atom(e['obj'], 9)}[{fmt_expr(e['idx'])}]"
     if t == "slice":
@@ -168,8 +173,8 @@ def fmt_block(body, ind):
     out = []
     _reg_lams(body)
     for s in body:
-        if s["t"] == "def" and s.get("lam"):
-            continue  # printed where it is used, as `lambda ...`
+        if s["t"] == "def" and (s.get("lam") or s.get("clsmember")):
+            continue  # lambda: printed where used; method: printed by its class
         out.extend(fmt_stmt(s, ind))
     return out
 
@@ -216,10 +221,19 @@ def fmt_stmt(s, ind):
         return [p + "import " + s["name"]]
     if t == "set":
         return [p + f"{s['name']} = " + fmt_expr(s["val"])]
+    if t == "setindex" and s.get("dot") is not None:
+        return [p + f"{fmt_expr(s['obj'])}.{s['dot']} = " + fmt_expr(s["val"])]
     if t == "setindex":
         return [p + f"{fmt_expr(s['obj'])}[{fmt_expr(s['idx'])}] = " + fmt_expr(s["val"])]
     if t == "setattr":
         return [p + f"{fmt_expr(s['obj'])}.{s['name']} = " + fmt_expr(s["val"])]
+    if t == "def" and s.get("cls"):
+        out = [p + f"class {s['cls']}:"]
+        for i, m in enumerate(s["methods"]):
+            out.extend(fmt_stmt(dict(m, name=m["orig"], clsmember=False), ind + 1))
+        if not s["methods"]:
+            out.append(p + "  pass")
+        return out
     if t == "def":
         out = [p + f"def {s['name']}(" + ", ".join(s["params"]) + "):"]
         out.extend(fmt_block(s["body"], ind + 1))

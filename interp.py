@@ -381,7 +381,7 @@ def disp(v):
 KEYWORDS = {"def", "if", "elif", "else", "while", "for", "in", "return",
             "break", "continue", "global", "and", "or", "not",
             "true", "false", "null", "pass", "import", "try", "except", "as",
-            "extern", "raise", "lambda"}
+            "extern", "raise", "lambda", "class"}
 RESERVED = {"module"}
 UTYPES = {"I64", "U64", "Ptr"}
 FFTYPE = {"U0", "I64", "U64", "F64", "Str", "Ptr"}
@@ -588,6 +588,8 @@ def parse_stmt(p):
     t = p.peek()
     if t.k == "ID" and t.v == "def":
         return parse_def(p)
+    if t.k == "ID" and t.v == "class":
+        return parse_class(p)
     if t.k == "ID" and t.v == "if":
         return parse_if(p)
     if t.k == "ID" and t.v == "while":
@@ -685,9 +687,12 @@ def parse_stmt(p):
         p.next()
         rhs = parse_expr(p)
         if e["t"] == "var":
+            if rhs["t"] == "var" and rhs["name"] in p.mods:
+                p.mods.add(e["name"])   # x = some_module: x.attr stays a module access
             return N("set", t.line, name=e["name"], val=rhs)
         if e["t"] == "index":
-            return N("setindex", t.line, obj=e["obj"], idx=e["idx"], val=rhs)
+            return N("setindex", t.line, obj=e["obj"], idx=e["idx"], val=rhs,
+                     dot=e.get("dot"))
         if e["t"] == "attr":
             return N("setattr", t.line, obj=e["obj"], name=e["name"], val=rhs)
         raise HSErr("cannot assign to this", t.line)
@@ -745,6 +750,70 @@ def parse_extern(p):
     if not decls:
         raise HSErr("extern block is empty", t.line)
     return N("extern", t.line, decls=decls, lib=lib)
+
+
+def parse_class(p):
+    """class C: def __init__(self, a): ... def m(self): ...
+
+    Parse-time desugar (every backend sees plain defs and dicts):
+      def C__m(self, ...)  one top-level function per method (hoisted)
+      def C(a, ...)        constructor: self = {"m": C__m, ...};
+                           C____init__(self, a, ...); return self
+    obj.f is obj["f"]; obj.m(x) is obj["m"](obj, x). No inheritance."""
+    t = p.expect("ID")  # class
+    name = p.expect("ID").v
+    p.expect("OP", ":")
+    if not p.at("NEWLINE"):
+        raise HSErr("expected ':' then a new line", t.line)
+    p.next()
+    if not p.at("INDENT"):
+        raise HSErr("expected indented block", p.peek().line)
+    p.next()
+    methods = []
+    p.skip_nl()
+    while not p.at("EOF") and not p.at("DEDENT"):
+        if p.at("ID", "pass"):
+            p.next()
+        elif p.at("ID", "def"):
+            outer, p.hoist = p.hoist, []
+            d = parse_def(p)
+            d["body"] = p.hoist + d["body"]
+            p.hoist = outer
+            if not d["params"] or d["params"][0] != "self":
+                raise HSErr(f"method '{d['name']}' must take 'self' first", d["line"])
+            if d["name"] in METHODS:
+                raise HSErr(f"method name '{d['name']}' is taken by a builtin "
+                            "(split/find/join/append)", d["line"])
+            if any(m["name"] == d["name"] for m in methods):
+                raise HSErr(f"duplicate method '{d['name']}'", d["line"])
+            methods.append(d)
+        else:
+            raise HSErr("a class body holds only def", p.peek().line)
+        p.skip_nl()
+    if p.at("DEDENT"):
+        p.next()
+    ln = t.line
+    pairs = []
+    init = None
+    for m in methods:
+        orig = m["name"]
+        m["orig"] = orig
+        m["name"] = f"{name}__{orig}"
+        m["clsmember"] = True
+        p.hoist.append(m)
+        if orig == "__init__":
+            init = m
+        else:
+            pairs.append((N("str", ln, val=orig), N("var", ln, name=m["name"])))
+    params = init["params"][1:] if init else []
+    body = [N("set", ln, name="self", val=N("dict", ln, pairs=pairs))]
+    if init:
+        body.append(N("expr", ln, val=N("call", ln, fn=N("var", ln, name=init["name"]),
+                      args=[N("var", ln, name="self")] +
+                      [N("var", ln, name=a) for a in params])))
+    body.append(N("return", ln, val=N("var", ln, name="self")))
+    return N("def", ln, name=name, params=params, body=body,
+             cls=name, methods=methods)
 
 
 def parse_def(p):
@@ -1070,12 +1139,19 @@ def parse_post(p):
                         continue
                     break
             p.expect("OP", ")")
-            if e["t"] == "attr" and e["name"] in METHODS and \
-                    not _is_modref(e["obj"], p.mods):
+            if e["t"] == "index" and e.get("dot") in METHODS:
                 # x.name(args) on a value == name(x, args) (method sugar,
                 # resolved here so every backend sees the plain builtin call)
-                e = N("call", t.line, fn=N("var", t.line, name=METHODS[e["name"]]),
-                      args=[e["obj"]] + args, method=e["name"])
+                e = N("call", t.line, fn=N("var", t.line, name=METHODS[e["dot"]]),
+                      args=[e["obj"]] + args, method=e["dot"])
+            elif e["t"] == "index" and e.get("dot") is not None:
+                # obj.m(args) -> obj["m"](obj, args): the object is a dict
+                # that holds its methods (see parse_class)
+                if not _pure_recv(e["obj"]):
+                    raise HSErr("method receiver must be a name or a field "
+                                "(assign it to a variable first)", t.line)
+                e = N("call", t.line, fn=e, args=[e["obj"]] + args,
+                      mcall=e["dot"])
             else:
                 e = N("call", t.line, fn=e, args=args)
         elif p.at("OP", "["):
@@ -1106,8 +1182,12 @@ def parse_post(p):
                     idx = parse_expr(p)
                     p.expect("OP", "]")
                 e = N("field", t.line, obj=e, name=nm.v, idx=idx)
-            else:
+            elif _is_modref(e, p.mods):
                 e = N("attr", t.line, obj=e, name=nm.v)
+            else:
+                # value.field == value["field"] (objects are dicts)
+                e = N("index", t.line, obj=e, idx=N("str", t.line, val=nm.v),
+                      dot=nm.v)
         else:
             return e
 
@@ -1115,6 +1195,12 @@ def parse_post(p):
 # method sugar: receiver.name(args) -> builtin(receiver, args). Receivers that
 # are (a dotted path rooted at) an imported module keep their module meaning.
 METHODS = {"split": "split", "find": "find", "join": "join", "append": "append"}
+
+
+def _pure_recv(e):
+    while e["t"] == "index" and e.get("dot") is not None:
+        e = e["obj"]
+    return e["t"] == "var"
 
 
 def _is_modref(e, mods):
