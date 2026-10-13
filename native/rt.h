@@ -181,6 +181,8 @@ Val b_split(Val *args, int nargs, int line);
 Val b_find(Val *args, int nargs, int line);
 Val b_join(Val *args, int nargs, int line);
 Val b_has(Val *args, int nargs, int line);
+Val b_keys(Val *args, int nargs, int line);
+Val b_values(Val *args, int nargs, int line);
 Val b_contains(Val *args, int nargs, int line);
 Val b_ticks(Val *args, int nargs, int line);
 Val b_readkey(Val *args, int nargs, int line);

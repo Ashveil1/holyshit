@@ -2477,6 +2477,18 @@ def b_contains(args, ln):
     raise HSErr(f"'in' needs a Str, List or Dict, got {tname(c)}", ln)
 
 
+def b_keys(args, ln):
+    if len(args) != 1 or not isinstance(args[0], dict):
+        raise HSErr("keys wants keys(dict)", ln)
+    return list(args[0].keys())
+
+
+def b_values(args, ln):
+    if len(args) != 1 or not isinstance(args[0], dict):
+        raise HSErr("values wants values(dict)", ln)
+    return list(args[0].values())
+
+
 def b_join(args, ln):
     if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], list):
         raise HSErr("join wants join(sep, list)", ln)
@@ -2834,7 +2846,7 @@ BUILTINS = {
     "as_ptr": b_as_ptr, "as_int": b_as_int,
     "ticks": b_ticks, "readkey": b_readkey,
     "pmm_alloc": b_pmm_alloc, "meminfo": b_meminfo,
-    "append": b_append, "split": b_split, "find": b_find, "join": b_join, "has": b_has, "contains": b_contains,
+    "append": b_append, "split": b_split, "find": b_find, "join": b_join, "has": b_has, "keys": b_keys, "values": b_values, "contains": b_contains,
     "argv": b_argv, "env": b_env, "system": b_system,
     "tcp_connect": b_tcp_connect, "tcp_send": b_tcp_send,
     "tcp_recv": b_tcp_recv, "tcp_close": b_tcp_close,

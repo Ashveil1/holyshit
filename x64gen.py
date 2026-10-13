@@ -407,6 +407,8 @@ class Gen:
         "join": (2, 2, "join wants join(sep, list)"),
         "has": (2, 2, "has wants has(dict, key)"),
         "contains": (2, 2, "contains wants contains(container, x)"),
+        "keys": (1, 1, "keys wants keys(dict)"),
+        "values": (1, 1, "values wants values(dict)"),
         "read_mem": (2, 2, "read_mem wants read_mem(ptr, nbytes)"),
         # hosted only (a freestanding build keeps the subset error)
         "argv": (0, 0, "argv takes no args"),
@@ -423,7 +425,7 @@ class Gen:
                  "close", "scall"}
 
     XBUILTINS = {"print", "int", "len", "str", "range", "append",
-                 "split", "find", "join", "has", "contains", "read_mem",
+                 "split", "find", "join", "has", "contains", "keys", "values", "read_mem",
                  "alloc", "load8", "load32", "load64", "store8",
                  "store32", "store64", "as_ptr", "as_int"}
 
@@ -815,7 +817,7 @@ class Gen:
             # become unbound globals (runtime error).
             if name in ("print", "len", "range", "str", "int", "float", "input",
                         "open", "read", "write", "close", "argv", "env", "system",
-                        "append", "split", "find", "join", "has", "contains", "ticks", "readkey",
+                        "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey",
                         "pmm_alloc", "meminfo", "tcp_connect", "tcp_send",
                         "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
                         "http_get", "json_parse", "json_str", "read_text",
@@ -1589,6 +1591,27 @@ class Gen:
             self.raise_static("find wants find(s, sub)", ln)
             a.label(lab_fok)
             a.call("x_find")
+            return
+        if fn["t"] == "var" and fn["name"] in ("keys", "values"):
+            nm = fn["name"]
+            msg = f"{nm} wants {nm}(dict)"
+            if len(e["args"]) != 1:
+                raise HSErr(msg, ln)
+            self.ev(e["args"][0], sc, mod)
+            lab_kbad, lab_kok = self.new_tmp("kv"), self.new_tmp("kv")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_kbad)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_DICT)
+            a.jcc("e", lab_kok)
+            a.label(lab_kbad)
+            self.raise_static(msg, ln)
+            a.label(lab_kok)
+            a.mov_rr("rdi", "rax")
+            a.mov_ri32("rsi", 0 if nm == "keys" else 1)
+            a.call("x_dict_items")
             return
         if fn["t"] == "var" and fn["name"] == "contains":
             if len(e["args"]) != 2:
@@ -9252,6 +9275,42 @@ class Gen:
         a.mov_rm("rax", "rbp", -8)
         a.mov_rm("rax", "rax", 24)      # buf
         a.mov_rmx("rax", "rax", "r11", 8, 0)
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
+        # x_dict_items: rdi = dict, rsi = 0 keys / 1 values -> List
+        a.label("x_dict_items")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 32)
+        a.mov_mr("rbp", "rdi", -8)
+        a.mov_mr("rbp", "rsi", -16)
+        a.mov_rm("rdi", "rdi", 8)        # n = len
+        a.call("x_list_new")
+        a.mov_mr("rbp", "rax", -24)      # list
+        a.mov_ri32("rcx", 0)
+        a.mov_mr("rbp", "rcx", -32)      # i
+        lab_ditop, lab_didone = self.new_tmp("di"), self.new_tmp("di")
+        a.label(lab_ditop)
+        a.mov_rm("rcx", "rbp", -32)
+        a.mov_rm("rax", "rbp", -8)
+        a.mov_rm("rdx", "rax", 8)
+        a.cmp_rr("rcx", "rdx")
+        a.jcc("ae", lab_didone)
+        a.mov_rm("rax", "rax", 24)       # dict buf
+        a.mov_rr("rdx", "rcx")
+        a.shl_ri8("rdx", 1)
+        a.mov_rm("rsi", "rbp", -16)
+        a.add_rr("rdx", "rsi")           # word = 2i + mode
+        a.mov_rmx("rax", "rax", "rdx", 8, 0)
+        a.mov_rm("rdx", "rbp", -24)
+        a.mov_rm("rdx", "rdx", 24)       # list buf
+        a.mov_mrx("rdx", "rcx", 8, 0, "rax")
+        a.add_ri32("rcx", 1)
+        a.mov_mr("rbp", "rcx", -32)
+        a.jmp(lab_ditop)
+        a.label(lab_didone)
+        a.mov_rm("rax", "rbp", -24)
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
         a.ret()
