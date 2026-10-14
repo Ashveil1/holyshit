@@ -215,6 +215,48 @@ A separate seeded boundary matrix checks arithmetic folding near the 62-bit
 limits. Multiplication is bounded before it can wrap into a false constant.
 This stage still consumes canonical IR JSON; parser normalization and the
 full compiler driver are not part of this checkpoint.
+S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
+SSA definitions, dominance, phi predecessors and instruction uses. Valid
+corpus modules and deliberately malformed modules are checked against the
+Python verifier, through interp and x64. Out-of-width IR constants remain
+interp-only. This is a compiler-stage check, not a full bootstrap claim.
+Compiler-depth regression gate: repeated returns from an except handler
+must pop the active exception value, not the already-consumed try frame.
+`tests/t_exceptreturn.hs` exercises 300 handled returns with and without
+finally. The Python IR builder and its hs translation share this cleanup
+rule; interp remains the output oracle.
+
+Native hosted-compiler checkpoint: `selfhost/be/compile_hex.hs` builds through
+Python stage0, then the resulting native compiler builds itself. The test
+requires stage1 == stage2 == stage3 byte for byte. Output is chunked hex to
+bound memory; this driver is not a polished CLI. `test_native_compiler.py`
+also compares hosted ELF output against Python across the source corpus.
+One full-width unsafe-constant program remains explicitly deferred. A
+successful hosted fixed point does not cover the separate kernel backend,
+all 64-bit unsafe values, or the missing x64 write_bytes helper. No binary
+seed is yet committed. The Python source remains the reference/test oracle.
+
+The x64 IR path now supports direct `write_bytes(path, [Int 0..255])`.
+Validation runs before opening the file; empty data and embedded zero bytes
+are preserved. `test_write_bytes_x64.py` compares exact file bytes and
+catchable failures with interp, including invalid elements and non-list
+inputs. First-class write_bytes values remain outside the x64 subset.
+
+Source-to-ELF driver checkpoint: `selfhost/be/compile.hs SOURCE OUTPUT`
+connects normalized parsing, optimized IR, verification, module loading,
+JSON helper compilation and static/dynamic ELF emission. Its interp-run
+image must equal the Python backend byte for byte, including module and
+FFI programs. This is not yet a Python-free bootstrap: compiling this
+compiler to x64 and reaching a fixed point remain separate gates.
+
+S5c parser normalization: `be/normalize.hs` applies default-argument filling,
+range-step lowering and prelude injection after `parselib.parse`. Prelude
+source is copied from the reference as data by `scripts/mkprelude.py`.
+`test_normalize.py` compares the full normalized AST; `test_pipeline.py`
+compares source -> optimized CFG through interp and compiled x64. The
+13k-line backend emitter is explicitly deferred to a separate slow bootstrap
+gate, and out-of-width ASTs are interp-only. Modules are lowered individually
+here; linking their imports belongs to the compiler-driver stage.
 Compiler-depth regression gate: repeated returns from an except handler
 must pop the active exception value, not the already-consumed try frame.
 `tests/t_exceptreturn.hs` exercises 300 handled returns with and without
@@ -247,3 +289,7 @@ Validation runs before opening the file; empty data and embedded zero bytes
 are preserved. `test_write_bytes_x64.py` compares exact file bytes and
 catchable failures with interp, including invalid elements and non-list
 inputs. First-class write_bytes values remain outside the x64 subset.
+Measured binary-driver fixed point: scripts/bootstrap-hosted.sh produced
+three identical 9,080,008-byte ELF compilers locally. Stages two and three
+were built by the native compiler with no Python process in those steps.
+The seed is not committed and full CI remains the merge gate.
