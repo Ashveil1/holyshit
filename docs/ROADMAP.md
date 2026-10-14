@@ -225,3 +225,10 @@ SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the
 Python verifier, through interp and x64. Out-of-width IR constants remain
 interp-only. This is a compiler-stage check, not a full bootstrap claim.
+
+### S7a boot assembler
+`selfhost/asm32.hs` supplies the 32-bit instruction/fixup layer used by the
+multiboot-to-long-mode stub. `tests/test_asm32.py` checks all instruction
+forms, register pairs, immediate boundaries and symbolic fixes byte for
+byte against `x64.Asm32`, through both interp and compiled x64. This is a
+kernel-bootstrap component only, not a native kernel compiler claim.
