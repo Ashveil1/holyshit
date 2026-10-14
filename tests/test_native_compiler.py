@@ -45,5 +45,28 @@ with tempfile.TemporaryDirectory() as d:
         ok="".join(r.stdout.split())==want
         passed+=int(ok);failed+=int(not ok)
         if not ok:print('FAIL native compiler',Path(f).name,r.stderr[-180:],flush=True)
+    # Native compiler builds itself, then the resulting compiler repeats it.
+    source = str(ROOT/'selfhost/be/compile_hex.hs')
+    previous = Path(exe).read_bytes()
+    for generation in [2, 3]:
+        outpath = Path(d)/f'stage{generation}.hex'
+        errpath = Path(d)/f'stage{generation}.err'
+        with outpath.open('w') as out, errpath.open('w') as err:
+            result = subprocess.run([exe, source], stdout=out, stderr=err,
+                env=env, timeout=600)
+        try:
+            image = bytes.fromhex(''.join(outpath.read_text().split()))
+            ok = result.returncode == 0 and image == previous
+        except Exception:
+            ok = False
+        passed += int(ok)
+        failed += int(not ok)
+        if not ok:
+            print('FAIL fixed point stage',generation,errpath.read_text()[-200:])
+            break
+        exe = str(Path(d)/f'stage{generation}')
+        Path(exe).write_bytes(image)
+        Path(exe).chmod(0o755)
+        previous = image
 print(f'{passed}/{passed+failed} passed ({rejected} rejected by Python emitter; {width} full-width unsafe gate deferred)')
 sys.exit(bool(failed) or not passed)
