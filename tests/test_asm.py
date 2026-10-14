@@ -79,6 +79,7 @@ for r in ("rax", "r9"):
     L("lea_rip", r, "fwd")
     L("mov_rm_rip", r, "back")
     L("mov_mr_rip", "fwd", r)
+L("call_rax")
 L("cqo")
 L("ret")
 L("syscall")

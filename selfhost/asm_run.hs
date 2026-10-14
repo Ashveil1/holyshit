@@ -86,6 +86,8 @@ def run(op, a):
     asm.movq_xr(a[0], a[1])
   elif op == "movq_rx":
     asm.movq_rx(a[0], a[1])
+  elif op == "call_rax":
+    asm.call_rax()
   elif op == "cqo":
     asm.cqo()
   elif op == "idiv_r":
