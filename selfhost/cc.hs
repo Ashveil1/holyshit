@@ -2073,7 +2073,7 @@ def pad8():
 # Module M's top-level names become "M.name"; "M.name" in another module is
 # the same variable. Init order: imported modules first, in import order.
 RN = {"pre": "", "names": {}, "locs": {}, "mods": {}}
-FLAT = {"defs": [], "top": [], "loaded": {}, "dir": ""}
+FLAT = {"defs": [], "top": [], "loaded": {}, "dir": "", "used": {}, "udef": {}}
 
 def rn_name(n):
   if n in RN["locs"]:
@@ -2094,6 +2094,13 @@ def rw(e):
   elif t == "call":
     e["fn"] = rw(e["fn"])
     rw_list(e["args"])
+    if e["fn"]["t"] == "var":
+      pn = e["fn"]["name"]
+      if (pn == "min" or pn == "max") and len(e["args"]) == 2 and not (pn in FLAT["udef"]):
+        pn = "_" + pn + "2"
+        e["fn"]["name"] = pn
+      if pn in PLX:
+        FLAT["used"][pn] = true
   elif t == "bin":
     e["l"] = rw(e["l"])
     e["r"] = rw(e["r"])
@@ -2176,6 +2183,9 @@ def dir_of(path):
 def load_module(prog, pre):
   imps = {}
   for s in prog:
+    if s["t"] == "def":
+      FLAT["udef"][pre + s["name"]] = true
+  for s in prog:
     if s["t"] == "import":
       imps[s["name"]] = true
       if not (s["name"] in FLAT["loaded"]):
@@ -2226,10 +2236,27 @@ def prelude():
     text = text + l + "\n"
   return parselib.parse(text)
 
+PLX = {"enumerate": "def enumerate(xs):\n  out = []\n  i = 0\n  for x in xs:\n    append(out, [i, x])\n    i = i + 1\n  return out\n", "abs": "def abs(x):\n  if x < 0:\n    return 0 - x\n  return x\n", "_min2": "def _min2(a, b):\n  if b < a:\n    return b\n  return a\n", "_max2": "def _max2(a, b):\n  if b > a:\n    return b\n  return a\n", "min": "def min(xs):\n  if len(xs) == 0:\n    raise \"min of empty list\"\n  best = xs[0]\n  for x in xs:\n    if x < best:\n      best = x\n  return best\n", "max": "def max(xs):\n  if len(xs) == 0:\n    raise \"max of empty list\"\n  best = xs[0]\n  for x in xs:\n    if x > best:\n      best = x\n  return best\n", "sum": "def sum(xs):\n  t = 0\n  for x in xs:\n    t = t + x\n  return t\n", "reversed": "def reversed(xs):\n  out = []\n  i = len(xs) - 1\n  while i >= 0:\n    append(out, xs[i])\n    i = i - 1\n  return out\n", "_msort": "def _msort(a):\n  n = len(a)\n  if n <= 1:\n    return a\n  mid = n >> 1\n  l = _msort(a[:mid])\n  r = _msort(a[mid:])\n  out = []\n  i = 0\n  j = 0\n  while i < len(l) and j < len(r):\n    if r[j] < l[i]:\n      append(out, r[j])\n      j = j + 1\n    else:\n      append(out, l[i])\n      i = i + 1\n  while i < len(l):\n    append(out, l[i])\n    i = i + 1\n  while j < len(r):\n    append(out, r[j])\n    j = j + 1\n  return out\n", "sorted": "def sorted(xs):\n  return _msort(xs)\n", "upper": "def upper(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n    ch = s[i]\n    k = find(\"abcdefghijklmnopqrstuvwxyz\", ch)\n    if k >= 0:\n      out = out + \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"[k:k + 1]\n    else:\n      out = out + ch\n    i = i + 1\n  return out\n", "lower": "def lower(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n    ch = s[i]\n    k = find(\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\", ch)\n    if k >= 0:\n      out = out + \"abcdefghijklmnopqrstuvwxyz\"[k:k + 1]\n    else:\n      out = out + ch\n    i = i + 1\n  return out\n"}
+
+def prelude_user(defs):
+  have = {}
+  for d in defs:
+    have[d["name"]] = true
+  need = []
+  for nm in keys(FLAT["used"]):
+    if not (nm in have):
+      append(need, nm)
+  if "sorted" in need and not ("_msort" in have):
+    append(need, "_msort")
+  text = ""
+  for nm in need:
+    text = text + PLX[nm]
+  return parselib.parse(text)
+
 def flatten(prog, dirp):
   FLAT["dir"] = dirp
   load_module(prog, "")
-  return prelude() + FLAT["defs"] + FLAT["top"]
+  return prelude() + prelude_user(FLAT["defs"]) + FLAT["defs"] + FLAT["top"]
 
 def compile(prog):
   asm.reset()
