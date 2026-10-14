@@ -190,3 +190,21 @@ strings        0.778s     0.627s    1.24x     443     469  same
 - ต้องการให้ OS รันบนเครื่องจริงหรือแค่ QEMU
 - ยอมให้ Python เป็น stage0 ของ bootstrap ถาวร (แค่ครั้งแรก) หรือไม่
 - ลำดับความสำคัญระหว่างเฟส 4 (JIT) กับเฟส 5 (self-host) กับเฟส 7 (OS)
+
+## B-path compiler port checkpoints (2026-10-14)
+
+- S1: `asm.hs` + `elf.hs` emit the same static ELF bytes as Python.
+- S2: `irlib.hs` reads the existing textual IR interchange.
+- S3: `gcrt.hs` and `be/be.hs` emit byte-identical hosted images on the
+  single-file differential corpus. Module source lowering, dynamic ELF/FFI,
+  and a full compiler fixed point are not yet proved.
+- S5a: `be/irbuild.hs` lowers the canonical parser AST to the unoptimized
+  flat CFG used by `ir.py`. `_n`/`_t` records, block/temp numbering, functions,
+  unsafe operations, closures and finally inlining must match structurally.
+  `test_irbuild.py` feeds the same canonical AST JSON to Python and hs,
+  validates each result with the Python verifier, and compares the whole
+  module. The hs builder is tested through interp and a compiled x64 driver;
+  ASTs containing integers outside the x64 62-bit payload are explicitly
+  interp-only. Parser normalization (defaults/range/prelude), the optimizer,
+  the self-hosted verifier, module loading and bootstrap are separate gates.
+  This checkpoint does not claim a Python-free compiler.
