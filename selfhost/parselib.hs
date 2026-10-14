@@ -926,6 +926,12 @@ def hexval(s):
 
 def num_node(x):
   s = x[1]
+  if (P["unsafe"] > 0 or (has(P, "kernel_wide") and P["kernel_wide"])) and has(P, "wide_literals") and P["wide_literals"] and find(s, ".") < 0:
+    ishex = len(s) > 1 and (s[1] == "x" or s[1] == "X")
+    if ishex or (find(s, "e") < 0 and find(s, "E") < 0):
+      bs = wide_number(s, ishex)
+      if bs[7] >= 32:
+        return N("num", x[2], {"val": {"wide": bs}, "raw": s})
   if len(s) > 1 and (s[1] == "x" or s[1] == "X"):
     return N("num", x[2], {"val": hexval(s), "raw": s})
   if find(s, ".") >= 0 or find(s, "e") >= 0 or find(s, "E") >= 0:
@@ -1005,7 +1011,8 @@ def parse(src):
   P["nlam"] = 0
   P["classes"] = {}
   P["unsafe"] = 0
-  P["structs"] = {}
+  if not (has(P, "kernel_wide") and P["kernel_wide"]):
+    P["structs"] = {}
   body = parse_body(true)
   expect("EOF")
   return body
@@ -1024,3 +1031,24 @@ def strip_raise(e):
   if last < 0:
     return e
   return e[:last]
+
+
+def wide_number(s, ishex):
+  base = 10
+  start = 0
+  if ishex:
+    base = 16
+    start = 2
+  bs = [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(start, len(s)):
+    digit = find("0123456789abcdef", s[i])
+    if digit < 0:
+      digit = find("ABCDEF", s[i]) + 10
+    carry = digit
+    for j in range(8):
+      v = bs[j] * base + carry
+      bs[j] = v & 255
+      carry = v >> 8
+    if carry != 0:
+      raise "integer literal exceeds 64 bits"
+  return bs

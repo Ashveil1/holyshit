@@ -288,3 +288,41 @@ Measured binary-driver fixed point: scripts/bootstrap-hosted.sh produced
 three identical 9,080,008-byte ELF compilers locally. Stages two and three
 were built by the native compiler with no Python process in those steps.
 The seed is not committed and full CI remains the merge gate.
+
+### S6 native unsafe words
+The native compiler parses unsafe integer literals through 64 bits as eight
+little-endian bytes when they exceed its tagged integer range. This is a
+compiler-internal AST/IR transport only, not a change to language integers.
+Decimal and hex words, including unary minus, must produce the same ELF as
+the reference compiler. Larger unsafe literals fail rather than truncate.
+The t_load64 exclusion is removed; boundary cases and the two-generation
+compiler fixed point remain required tests. This does not claim kernel
+self-hosting or change safe integer overflow behavior.
+### S7a boot assembler
+`selfhost/asm32.hs` supplies the 32-bit instruction/fixup layer used by the
+multiboot-to-long-mode stub. `tests/test_asm32.py` checks all instruction
+forms, register pairs, immediate boundaries and symbolic fixes byte for
+byte against `x64.Asm32`, through both interp and compiled x64. This is a
+kernel-bootstrap component only, not a native kernel compiler claim.
+
+### S7b multiboot linker
+`selfhost/klink.hs` lays out ELF32 headers, multiboot headers, boot32 code,
+GDT/TSS, long-mode payload, IRQ gates, page tables and stack patches. Its
+inputs are the payload assembler state and stack-patch offset. The test
+captures real AST-backend payloads before the Python linker mutates them,
+then requires byte-identical complete ELF images from the hs linker on
+interp and compiled x64. It covers heap, ring3, syscall, preemption, JSON
+and user-shell kernels. This proves linking only: source-to-kernel native
+compilation and the kernel IR migration remain separate gates.
+
+### S7c native kernel compiler prototype
+`selfhost/be/kernel_hex.hs` uses the maintained AST kernel backend and hs
+multiboot linker. Seven complete kernel ELF images match the reference:
+basic runtime, heap, ring3, syscall, preemption, JSON and user shell.
+Port fixes cover Scope identity, module parsing, global names, assembler
+defaults, wide kernel literals and UTF-8 data emission. Backend regeneration
+must remain exact. The UTF-8 helper initially exhausted memory during self-build. Avoiding
+per-ASCII-character JSON allocation restores the hosted fixed-point gate
+(24/24 targeted gates, including two generations). Full CI is pending;
+kernel IR migration and Python-free seed packaging are still separate work.
+

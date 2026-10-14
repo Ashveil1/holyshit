@@ -44,12 +44,16 @@ class Gen:
       raise pyrt.py_err("bad module name '" + str(name) + "'", line)
     hspath = [d for d in pyrt.py_split(pyrt.py_hspath(), ":") if d]
     rel = pyrt.py_replace(name, ".", "/") + ".hs"
+    found = false
     for d in [from_dir] + hspath + [pyrt.py_os_getcwd()]:
       if not d:
         continue
       p = pyrt.py_os_path_abspath(pyrt.py_os_path_join(d, rel))
       if pyrt.py_os_path_isfile(p):
+        found = true
         break
+    if not found:
+      raise pyrt.py_err("cannot find module '" + name + "'", line)
     if p in self.mod_by_path:
       return self.mod_by_path[p]
     f = pyrt.py_open(p, null)
@@ -128,7 +132,7 @@ class Gen:
         self.collect_unsafe(s["body"], sc)
       elif t == "import":
         srcmod = sc._mod
-        from_dir = srcmod["dir"] if srcmod else null
+        from_dir = srcmod["dir"] if srcmod != null else null
         _t123 = self.ensure_prefixes(s["name"], from_dir, s["line"])
         topmod = _t123[0]
         chain = _t123[1]
@@ -170,7 +174,8 @@ class Gen:
         self.ann_expr(s["val"], sc, false)
       elif t in ["pass", "break", "continue", "global", "extern", "struct"]:
         if t == "global":
-          pyrt.py_update(sc.globs, s["names"])
+          for global_name in s["names"]:
+            pyrt.py_add(sc.globs, global_name)
         pass
       else:
         raise pyrt.py_err(str(t) + " not in x64 subset", s["line"])
@@ -209,7 +214,8 @@ class Gen:
             m = m.parent
           pyrt.py_add(m.raw_names, s["name"])
         elif t == "global":
-          pyrt.py_update(sc.globs, s["names"])
+          for global_name in s["names"]:
+            pyrt.py_add(sc.globs, global_name)
         elif t == "print":
           for ar in s["args"]:
             self.ann_expr(ar, sc, true)
@@ -317,7 +323,7 @@ class Gen:
     for fs in self.all_fs:
       caps = pyrt.py_set(null)
       for s, nm in self.reads:
-        if s != fs:
+        if pyrt.py_id(s) != pyrt.py_id(fs):
           continue
         if nm in fs.params or nm in fs.loc or nm in fs.uloc or nm in fs.globs:
           continue
@@ -326,7 +332,7 @@ class Gen:
         p = fs.parent
         outer = false
         while p != null:
-          if p == ms or pyrt.py_isinstance(pyrt.py_getattr(p, "_mod", null), ["dict"]) and p == pyrt.py_get(p._mod, "scope", null):
+          if pyrt.py_id(p) == pyrt.py_id(ms) or pyrt.py_isinstance(pyrt.py_getattr(p, "_mod", null), ["dict"]) and pyrt.py_id(p) == pyrt.py_id(pyrt.py_get(p._mod, "scope", null)):
             break
           if nm in p.globs:
             break
@@ -385,9 +391,19 @@ class Gen:
         if not self.freestanding:
           asm.lea_rip("rax", self.sfloat(bits))
           return null
-        asm.mov_ri64("rdi", bits)
+        asm.mov_ri64_bytes("rdi", bits)
         asm.call("x_float_new")
         return null
+      elif pyrt.py_type(v) == "dict" and has(v, "wide"):
+        if not self.freestanding:
+          raise "wide safe literal only supported in kernel mode"
+        bs = []
+        carry = 1
+        for byte in v["wide"]:
+          n = byte * 4 + carry
+          append(bs, n & 255)
+          carry = n >> 8
+        asm.mov_ri64_bytes("rax", bs)
       else:
         asm.mov_tagged_int("rax", v)
       return null
@@ -555,13 +571,13 @@ class Gen:
   def resolve_var(self, name, sc, mod, ln):
     reader = sc
     while reader != null and not reader.is_func:
-      if reader == mod["scope"]:
+      if pyrt.py_id(reader) == pyrt.py_id(mod["scope"]):
         reader = null
         break
       reader = reader.parent
     s = sc
     while s != null:
-      if s == mod["scope"]:
+      if pyrt.py_id(s) == pyrt.py_id(mod["scope"]):
         if name in s.uloc:
           return ["guloc", name]
         if name in s.loc:
@@ -571,15 +587,15 @@ class Gen:
         s = s.parent
         continue
       if name in s.params:
-        if reader != null and s != reader:
+        if reader != null and pyrt.py_id(s) != pyrt.py_id(reader):
           return ["cap", self.cap_index(reader, name, ln)]
         return ["param", s.loc[name]]
       if name in s.uloc:
-        if reader != null and s != reader:
+        if reader != null and pyrt.py_id(s) != pyrt.py_id(reader):
           return ["cap", self.cap_index(reader, name, ln)]
         return ["uloc", s.uloc[name]]
       if name in s.loc:
-        if reader != null and s != reader:
+        if reader != null and pyrt.py_id(s) != pyrt.py_id(reader):
           return ["cap", self.cap_index(reader, name, ln)]
         return ["loc", s.loc[name]]
       s = s.parent
@@ -626,7 +642,7 @@ class Gen:
       if name in cur.globs:
         cur = cur.parent
         continue
-      if mod == null or cur == mod["scope"]:
+      if mod == null or pyrt.py_id(cur) == pyrt.py_id(mod["scope"]):
         break
       cur = cur.parent
     return null
@@ -691,7 +707,7 @@ class Gen:
       return null
     if kind in ["guloc", "gloc"]:
       asm.lea_rip("rax", self.glabel(mod, name))
-      asm.mov_rm("rax", "rax")
+      asm.mov_rm("rax", "rax", 0)
       if check and kind == "gloc":
         self.check_bound(name, ln)
       return null
@@ -705,17 +721,20 @@ class Gen:
     for i, part in pyrt.py_enumerate(parts):
       dotted = pyrt.py_join(".", parts[0:i + 1])
       last = i == len(parts) - 1
+      result = [null, false]
       try:
-        m = self.load_module(dotted, from_dir, line)
-        is_shell = false
+        result[0] = self.load_module(dotted, from_dir, line)
       except as e:
         if last or not ("cannot find module '" + str(dotted) + "'" in str(e)):
           raise
-        m = pyrt.py_get(self.shell_mods, dotted, null)
-        if m == null:
-          m = {"name": dotted, "prog": [], "dir": from_dir, "pfx": "", "scope": null, "shell": true, "submods": {}}
-          self.shell_mods[dotted] = m
-        is_shell = true
+        shell = pyrt.py_get(self.shell_mods, dotted, null)
+        if shell == null:
+          shell = {"name": dotted, "prog": [], "dir": from_dir, "pfx": "", "scope": null, "shell": true, "submods": {}}
+          self.shell_mods[dotted] = shell
+        result[0] = shell
+        result[1] = true
+      m = result[0]
+      is_shell = result[1]
       pyrt.py_setdefault(m, "submods", {})
       if parent != null:
         pyrt.py_setdefault(parent, "submods", {})[part] = m
@@ -724,7 +743,7 @@ class Gen:
         append(chain, m)
     topmod = pyrt.py_get(self.shell_mods, parts[0], null)
     if topmod == null:
-      topmod = next([m for m in chain if m["name"] == parts[0]])
+      topmod = [m for m in chain if m["name"] == parts[0]][0]
     return [topmod, chain]
   def find_binding(self, name, sc):
     s = sc
@@ -1951,7 +1970,7 @@ class Gen:
       if name in cur.globs:
         cur = cur.parent
         continue
-      if cur == mod["scope"]:
+      if pyrt.py_id(cur) == pyrt.py_id(mod["scope"]):
         break
       cur = cur.parent
     return false
@@ -2484,6 +2503,8 @@ class Gen:
         asm.mov_ri32("rax", int(v))
       elif pyrt.py_isinstance(v, ["int"]):
         asm.mov_ri64("rax", v if v >= 0 else v)
+      elif pyrt.py_type(v) == "dict" and has(v, "wide"):
+        asm.mov_ri64_bytes("rax", v["wide"])
       else:
         raise pyrt.py_err("float not in x64 subset", ln)
       return null
@@ -2593,7 +2614,7 @@ class Gen:
     asm.shl_ri8("rax", 2)
     asm.sar_ri8("rax", 2)
   def emit_bitop(self, op, e, sc, mod, ln, dynamic):
-    evalfn = self.ev if dynamic else self.sev
+    evalfn = (lambda x, scope_, mod_: self.ev(x, scope_, mod_)) if dynamic else (lambda x, scope_, mod_: self.sev(x, scope_, mod_))
     evalfn(e["l"], sc, mod)
     asm.push_r("rax")
     evalfn(e["r"], sc, mod)
@@ -3739,7 +3760,7 @@ class Gen:
         for x in node:
           walk(x)
         return null
-      if not pyrt.py_isinstance(node, ["dict"]):
+      if not pyrt.py_isinstance(node, ["dict"]) or has(node, "nloc"):
         return null
       if pyrt.py_get(node, "t", null) == "call":
         fn = pyrt.py_get(node, "fn", null)
@@ -3793,7 +3814,7 @@ class Gen:
     self.finalize(mod)
     for m in [mod] + [x for x in self.modules if pyrt.py_get(x, "collected", null)]:
       self.emit_data(m)
-      if m != mod:
+      if pyrt.py_id(m) != pyrt.py_id(mod):
         asm.data_label("hsM_done_" + str(m["pfx"]))
         asm.data_qword(0)
     if self.freestanding:
@@ -3894,7 +3915,7 @@ class Gen:
       asm.data_label("exc_vals")
       asm.data_bytes(pyrt.py_rep([0], Gen_EXC_VSZ * Gen_EXC_VMAX))
     if self.freestanding:
-      return self.a
+      return asm.state()
     lo = elf.layout(len(asm.state()["code"]))
     code = asm.resolve_at(lo["text_vaddr"], lo["data_vaddr"])
     start_off = asm.state()["labels"]["_start"]
@@ -4266,7 +4287,7 @@ class Gen:
     asm.lea_rip("rax", "user_saved_rsp_")
     asm.mov_rm("rsp", "rax", 0)
     asm.lea_rip("rax", "user_cont_")
-    asm.jmp_m("rax")
+    asm.jmp_m("rax", 0)
     self.reserve("syscall_fn_", 8)
     self.reserve("syscall_stop_", 8)
     self.reserve("ret_rip_", 8)
@@ -10607,7 +10628,7 @@ class GenIR(Gen):
           self._load_mod_body(dotted, sub, active + [dotted])
     topmod = pyrt.py_get(self.modtab, parts[0], null)
     if topmod == null:
-      topmod = next([m for m in chain if m["name"] == parts[0]])
+      topmod = [m for m in chain if m["name"] == parts[0]][0]
     top = parts[0]
     append(self.pending, [funckey, top, name, chain, ln, mpref, self.modtab[parts[0]]])
     return [topmod, chain]
@@ -11243,7 +11264,10 @@ class GenIR(Gen):
   def _sconst(self, fr, dest, stype, val, ln):
     if pyrt.py_isinstance(val, ["bool"]):
       val = int(val)
-    asm.mov_ri64("rax", val if val >= 0 else val)
+    if pyrt.py_type(val) == "dict" and has(val, "wide"):
+      asm.mov_ri64_bytes("rax", val["wide"])
+    else:
+      asm.mov_ri64("rax", val if val >= 0 else val)
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _sload(self, fr, dest, name, ln):
     if name in pyrt.py_get(fr, "rawnames", []):
@@ -13247,3 +13271,8 @@ def build_irx64(prog_path, out_path):
   pyrt.py_os_chmod(out_path, 493)
   pyrt.py_print(["ok: irx64 -> " + str(out_path) + " (" + str(len(img)) + " bytes, via IR, no gcc)"])
   return 0
+
+def ptr_struct(t):
+  if pyrt.py_type(t) == "str" and pyrt.py_startswith(t, "Ptr:"):
+    return t[4:len(t)]
+  return null
