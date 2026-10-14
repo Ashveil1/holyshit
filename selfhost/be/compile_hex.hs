@@ -10,7 +10,7 @@ verify.verify_module(m)
 g = be.GenIR(m, pyrt.py_os_path_dirname(srcpath))
 img = g.build_ir_image()
 HEX = "0123456789abcdef"
-out = ""
+out = []
 for b in img:
-  out = out + HEX[b >> 4] + HEX[b & 15]
-print out
+  append(out, HEX[b >> 4] + HEX[b & 15])
+print join("", out)
