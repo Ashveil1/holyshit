@@ -9815,22 +9815,29 @@ class Gen:
         a.mov_mr8("rsi", 1, 0)     # [rsi] = cl
         a.jmp(lab_dn)
         a.label(lab_nz)
+        a.push_r("r9")             # (push keeps flags)
         a.mov_ri32("rcx", 0)       # sign flag
         a.jcc("ns", lab_lp)
         a.neg_r("rax")
         a.mov_ri32("rcx", 1)
         a.label(lab_lp)
+        # q = n / 10 via multiply by the reciprocal (0xCCCCCCCCCCCCCCCD, >> 67):
+        # exact for every unsigned 64-bit n and ~10x cheaper than div
+        a.mov_rr("r9", "rax")
+        a.mov_ri64("r8", 0xCCCCCCCCCCCCCCCD)
+        a.mul_r("r8")              # rdx = high 64 bits of n * magic
+        a.shr_ri8("rdx", 3)        # rdx = q
         a.mov_ri32("r8", 10)
-        a.mov_ri32("rdx", 0)
-        a.div_r("r8")              # rax = q, rdx = digit
-        a.add_ri8("rdx", 48)
-        a.push_r("rax")
-        a.mov_rr("rax", "rdx")
+        a.mov_rr("rax", "rdx")     # rax = q (next n)
+        a.imul_rr("rdx", "r8")     # rdx = q * 10
+        a.sub_rr("r9", "rdx")      # r9 = n - q*10 = digit
+        a.add_ri8("r9", 48)
+        a.mov_rr("rdx", "r9")
         a.sub_ri32("rsi", 1)
-        a.mov_mr8("rsi", 0, 0)     # [rsi] = al (the digit)
-        a.pop_r("rax")
+        a.mov_mr8("rsi", 2, 0)     # [rsi] = dl (the digit)
         a.test_rr("rax", "rax")
         a.jcc("ne", lab_lp)
+        a.pop_r("r9")
         a.test_rr("rcx", "rcx")
         a.jcc("e", lab_dn)
         a.sub_ri32("rsi", 1)
