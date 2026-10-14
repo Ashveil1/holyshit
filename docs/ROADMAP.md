@@ -215,3 +215,8 @@ A separate seeded boundary matrix checks arithmetic folding near the 62-bit
 limits. Multiplication is bounded before it can wrap into a false constant.
 This stage still consumes canonical IR JSON; parser normalization and the
 full compiler driver are not part of this checkpoint.
+S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
+SSA definitions, dominance, phi predecessors and instruction uses. Valid
+corpus modules and deliberately malformed modules are checked against the
+Python verifier, through interp and x64. Out-of-width IR constants remain
+interp-only. This is a compiler-stage check, not a full bootstrap claim.
