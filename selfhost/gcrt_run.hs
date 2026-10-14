@@ -1,0 +1,21 @@
+# gcrt_run.hs: emit the allocator/GC with gcrt.hs + asm.hs and print
+# "<code hex> <data hex>" (tests/test_gcrt.py compares with gcrt.py).
+import asm
+import gcrt
+HEX = "0123456789abcdef"
+def hexs(xs):
+  out = ""
+  for b in xs:
+    out = out + HEX[b >> 4] + HEX[b & 15]
+  return out
+asm.reset()
+asm.data_reset()
+asm.data_label("gc_data_lo")
+asm.data_label("bump_ptr_")
+asm.data_qword(0)
+asm.data_label("bump_end_")
+asm.data_qword(0)
+asm.data_label("gc_data_hi")
+gcrt.gc_data()
+gcrt.emit_gc_malloc()
+print hexs(asm.resolve_at(4194304, 5242880)) + " " + hexs(asm.D["data"])

@@ -19,6 +19,7 @@ Suites:
   test_asm.py      1  selfhost/asm.hs (assembler in hs) == x64.py byte for byte (17.8k instrs)
   test_elf.py      1  selfhost/elf.hs (ELF writer in hs) == x64.py pack() byte for byte
   test_irlib.py    1  selfhost/irlib.hs (IR loader in hs) == ir.parse_module on every lowerable repo program
+  test_gcrt.py     1  selfhost/gcrt.hs (allocator/GC emitter in hs) == gcrt.py byte for byte
   test_cc.py      79  selfhost/cc.hs (compiler written in hs) emits ELFs equal to interp
 """
 import os
@@ -43,6 +44,7 @@ SUITES = [
     ("test_asm.py", "assembler written in hs vs x64.py"),
     ("test_elf.py", "ELF writer written in hs vs x64.py"),
     ("test_irlib.py", "IR loader written in hs vs ir.py"),
+    ("test_gcrt.py", "allocator/GC emitter written in hs vs gcrt.py"),
     ("test_cc.py", "compiler written in hs (selfhost/cc.hs)"),
 ]
 
