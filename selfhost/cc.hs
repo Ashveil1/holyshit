@@ -176,8 +176,6 @@ def gen(e):
     gen(e["b"])
     asm.label(end)
   elif t == "index":
-    if has(e, "dot"):
-      fail("expression 'index' form not supported", ln)
     gen(e["obj"])
     asm.push_r("rax")
     gen(e["idx"])
@@ -744,8 +742,6 @@ def gen_stmt(s):
     gen_body(s["ebody"])
     asm.label(en)
   elif t == "setindex":
-    if s["dot"] != null:
-      fail("attribute assignment not supported", ln)
     gen(s["obj"])
     asm.push_r("rax")
     gen(s["idx"])
