@@ -8,6 +8,12 @@ def hexs(xs):
   for b in xs:
     out = out + HEX[b >> 4] + HEX[b & 15]
   return out
+class GG:
+  def __init__(self):
+    self.n = 0
+  def new_tmp(self, pfx):
+    self.n = self.n + 1
+    return pfx + str(self.n)
 asm.reset()
 asm.data_reset()
 asm.data_label("gc_data_lo")
@@ -17,5 +23,5 @@ asm.data_label("bump_end_")
 asm.data_qword(0)
 asm.data_label("gc_data_hi")
 gcrt.gc_data()
-gcrt.emit_gc_malloc()
+gcrt.emit_gc_malloc(GG())
 print hexs(asm.resolve_at(4194304, 5242880)) + " " + hexs(asm.state()["data"])

@@ -151,6 +151,8 @@ class T:
             if isinstance(v, float):
                 return repr(v)
             if isinstance(v, int):
+                if 2 ** 63 <= v < 2 ** 64:
+                    v -= 2 ** 64
                 return str(v) if v >= 0 else "(0 - %d)" % -v
             raise Unsupported(repr(v))
         if t is ast.Name:
@@ -183,6 +185,10 @@ class T:
                 return self.e(x.operand)
         if t is ast.BinOp:
             op = type(x.op)
+            if op is ast.Mult and (self.seqish(x.left) or self.seqish(x.right)):
+                return "py_rep(%s, %s)" % (self.e(x.left), self.e(x.right))
+            if op is ast.BitAnd and self.is_mask64(x.right):
+                return self.e(x.left)
             if op is ast.BitOr and (self.setish(x.left) or self.setish(x.right)):
                 return "py_union(%s, %s)" % (self.e(x.left), self.e(x.right))
             if op in BIN:
@@ -268,6 +274,15 @@ class T:
                 return True
         return False
 
+    def seqish(self, x):
+        return isinstance(x, (ast.List, ast.Tuple)) or (isinstance(x, ast.Constant) and isinstance(x.value, (bytes, str)))
+
+    def is_mask64(self, x):
+        try:
+            return eval(compile(ast.Expression(x), "m", "eval")) == 2 ** 64 - 1
+        except Exception:
+            return False
+
     def setish(self, x):
         if isinstance(x, ast.Call) and isinstance(x.func, ast.Name) and x.func.id == "set":
             return True
@@ -315,6 +330,12 @@ class T:
         return body + "".join(clauses)
 
     def cmp(self, l, op, r):
+        if isinstance(op, (ast.Is, ast.IsNot)) and isinstance(r, ast.Constant) \
+                and isinstance(r.value, bool):
+            le = self.e(l)
+            t = "(py_type(%s) == \"bool\" and %s == %s)" % (
+                le, le, "true" if r.value else "false")
+            return t if isinstance(op, ast.Is) else "(not %s)" % t
         if isinstance(op, (ast.Is, ast.Eq)):
             return "(%s == %s)" % (self.e(l), self.e(r))
         if isinstance(op, (ast.IsNot, ast.NotEq)):
@@ -410,14 +431,14 @@ class T:
             if n == "isinstance" and len(x.args) == 2:
                 tn = x.args[1]
                 names = [t.id for t in (tn.elts if isinstance(tn, ast.Tuple) else [tn])]
-                return "pyrt.py_isinstance(%s, [%s])" % (self.e(x.args[0]), ", ".join('"%s"' % t for t in names))
+                return "py_isinstance(%s, [%s])" % (self.e(x.args[0]), ", ".join('"%s"' % t for t in names))
             if n in FUNCS and n not in self.sigs:
                 pos = [self.e(a) for a in x.args] + [self.e(k.value) for k in x.keywords if k.arg not in ("file",)]
                 return padded(FUNCS[n], pos)
             if n == "HSErr":
                 return padded("py_err", [self.e(a) for a in x.args])
-            if n == "len":
-                return "len(" + self.args(x) + ")"
+            if n in ("len", "range"):
+                return n + "(" + self.args(x) + ")"
             if n in ("str", "int", "float"):
                 return n + "(" + self.args(x) + ")"
             return self.nm(n) + "(" + self.args(x, self.sigs.get(n)) + ")"
@@ -431,7 +452,9 @@ class T:
                     and f.value.value.id in ("_os", "os") and f.value.attr == "path":
                 return "py_os_path_%s(%s)" % (at, self.args(x))
             if isinstance(f.value, ast.Name) and f.value.id == "Gen" and at == "Scope":
-                return "Gen_Scope(" + self.args(x, self.sigs.get("Scope.__init__")) + ")"
+                a = [p for p in self.args(x, self.sigs.get("Scope.__init__")).split(", ") if p]
+                a += ["null", "false"][len(a):]
+                return "Gen_Scope(" + ", ".join(a) + ")"
             if isinstance(f.value, ast.Name) and at == "__init__":
                 rest = self.args(ast.Call(func=x.func, args=x.args[1:], keywords=x.keywords), self.sigs.get(f.value.id + ".__init__"))
                 return "%s__init__(%s%s)" % (f.value.id, self.e(x.args[0]), (", " + rest) if rest else "")
@@ -441,6 +464,8 @@ class T:
                 if at == "lea_m" and len(x.args) == 5:
                     d, b, disp, ix, sc = [self.e(y) for y in x.args]
                     return "asm.lea_mx(%s, %s, %s, %s, %s)" % (d, b, ix, sc, disp)
+                if at == "resolve" and len(x.args) == 2:
+                    at = "resolve_at"
                 return "asm." + at + "(" + self.args(x, self.sigs.get("asm." + at)) + ")"
             if isinstance(f.value, ast.Name) and f.value.id == "self" or at in self.sigs and at not in METHODS:
                 a = self.args(x, self.sigs.get(at))
@@ -591,6 +616,12 @@ class T:
                 self.w(ind, "%s = %s %% %s" % (tg, tg, self.e(s.value)))
             else:
                 raise Unsupported("augassign " + op.__name__)
+            return
+        if t is ast.Assign and len(s.targets) > 1:
+            first = s.targets[0]
+            self.st(ast.Assign(targets=[s.targets[-1]], value=s.value), ind)
+            for extra in s.targets[:-1]:
+                self.st(ast.Assign(targets=[extra], value=s.targets[-1]), ind)
             return
         if t is ast.Assign:
             tg = s.targets[0]

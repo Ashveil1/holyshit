@@ -49,9 +49,23 @@ def py_chr(n):
 
 def py_ord(c):
   i = find(ASCII, c)
-  if i < 0:
-    raise "py_ord: unsupported char"
-  return i + 32
+  if i >= 0:
+    return i + 32
+  if c == "\n":
+    return 10
+  if c == "\t":
+    return 9
+  if c == "\r":
+    return 13
+  if c == "\0":
+    return 0
+  j = json_str(c)
+  if len(j) == 8 and j[1] == "\\" and j[2] == "u":
+    v = 0
+    for h in j[3:7]:
+      v = v * 16 + find("0123456789abcdef", h)
+    return v
+  raise "py_ord: unsupported char"
 
 def py_assert(c):
   if not c:
@@ -460,7 +474,16 @@ def py_strip(s):
 def py_encode(s, enc):
   out = []
   for c in s:
-    append(out, py_ord(c))
+    o = py_ord(c)
+    if o < 128:
+      append(out, o)
+    elif o < 2048:
+      append(out, 192 | (o >> 6))
+      append(out, 128 | (o & 63))
+    else:
+      append(out, 224 | (o >> 12))
+      append(out, 128 | ((o >> 6) & 63))
+      append(out, 128 | (o & 63))
   return out
 
 def py_bytes(x):
@@ -615,3 +638,21 @@ def py_union(a, b):
   for k in keys(b):
     d[k] = b[k]
   return d
+
+def py_rep(a, n):
+  if py_type(a) == "int":
+    return py_rep(n, a)
+  if py_type(a) == "str":
+    out = ""
+    i = 0
+    while i < n:
+      out = out + a
+      i = i + 1
+    return out
+  out = []
+  i = 0
+  while i < n:
+    for x in a:
+      append(out, x)
+    i = i + 1
+  return out
