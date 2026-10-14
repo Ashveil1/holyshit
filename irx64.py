@@ -21,6 +21,7 @@ from interp import HSErr
 import ir as IR
 from x64gen import Gen
 
+RAW_KERNEL_BUILTINS = {"alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int"}
 KERNEL_BUILTINS = {"ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
     "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg",
     "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on",
@@ -362,11 +363,12 @@ class GenIR(Gen):
             for ins in b["instrs"]:
                 if ins["op"] == "load" and (ins["name"] in INLINE_ONLY | \
                         INLINE_DIRECT | GenIR.JSON_CALLS or
-                        (self.freestanding and ins["name"] in KERNEL_BUILTINS) or
+                        (self.freestanding and ins["name"] in KERNEL_BUILTINS | RAW_KERNEL_BUILTINS) or
                         (ins["name"] == "type_name" and
                          fr.get("mod") == "<json>")) and \
-                        res.get(ins["name"]) in ("novalue", "builtin",
-                                                 "auto"):
+                        (res.get(ins["name"]) in ("novalue", "builtin", "auto") or
+                         (self.freestanding and ins["name"] in KERNEL_BUILTINS and
+                          ins["name"] in self.mglob)):
                     ds = ins["dest"]
                     if fr["uses"].get(ds, []) and \
                             all(u == ("call", "fn") for u in fr["uses"][ds]):
@@ -1703,10 +1705,22 @@ class GenIR(Gen):
         # x64gen-today). `float` has no value form at all.
         p = fr["prov"].get(fn)
         pname = p[1] if p is not None and p[0] == "load" else None
-        if self.freestanding and pname in KERNEL_BUILTINS and fr["res"].get(pname) == "novalue" and pname not in GenIR.JSON_CALLS:
+        if self.freestanding and pname in KERNEL_BUILTINS and fr["res"].get(pname) in ("novalue", "global") and pname not in GenIR.JSON_CALLS:
             nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
             self._kernel_frame = fr
             Gen.ev_kdev(self, pname, nodes, None, None, ln)
+            self.a.mov_mr("rbp", "rax", fr["slots"][dest])
+            return
+        if self.freestanding and pname in RAW_KERNEL_BUILTINS and fr["res"].get(pname) == "novalue":
+            nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
+            self._kernel_frame = fr
+            self._kernel_raw_dynamic = True
+            try:
+                Gen.sev_call(self, pname, nodes, None, None, ln)
+            finally:
+                self._kernel_raw_dynamic = False
+            if pname == "as_int":
+                self.tag_box()
             self.a.mov_mr("rbp", "rax", fr["slots"][dest])
             return
         if pname in GenIR.JSON_CALLS and fr["res"].get(pname) == "novalue":
@@ -2991,6 +3005,8 @@ class GenIR(Gen):
     def sev(self, e, sc, mod):
         if e.get("t") == "irtemp":
             self._load(self._kernel_frame, e["ref"], e["line"])
+            if getattr(self, "_kernel_raw_dynamic", False):
+                self.a.sar_ri8("rax", 2)
             return
         return Gen.sev(self, e, sc, mod)
 
