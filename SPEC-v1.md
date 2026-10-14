@@ -1372,3 +1372,8 @@ returns to the compiler driver; final memory cleanup belongs to the OS.
 Runtime output/errors match the reference on the differential cases;
 compile-time diagnostics are still experimental, not a parity claim. The
 normal hs run command and its fallback/cache behavior are unchanged.
+
+`scripts/run-jit-native.sh SOURCE [args...]` packages the experiment with a
+verified seed, an isolated temporary native driver and cleanup. It needs
+no Python/gcc at runtime, but builds the driver each time. This extra build
+time is excluded from any already-built-driver startup measurements.
