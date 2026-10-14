@@ -11445,7 +11445,7 @@ SEL_UCODE = 0x20
 SEL_TSS = 0x28
 
 
-def build_xkernel(prog_path, out_path):
+def build_xkernel(prog_path, out_path, ir_backend=False):
     import os as _os
     import struct as _st
     from x64 import Asm32, link_elf32
@@ -11461,12 +11461,17 @@ def build_xkernel(prog_path, out_path):
     except HSErr as e:
         print(str(e), file=sys.stderr)
         return 1
-    g = Gen(prog, prog_path, freestanding=True)
+    if ir_backend:
+        import ir
+        from irx64 import GenIR
+        g = GenIR(ir.build_module(prog), _os.path.dirname(_os.path.abspath(prog_path)), freestanding=True)
+    else:
+        g = Gen(prog, prog_path, freestanding=True)
     mod = {"name": "<main>", "prog": prog, "pfx": "",
            "scope": Gen.Scope(),
            "dir": _os.path.dirname(_os.path.abspath(prog_path))}
     try:
-        asm64 = g.build_image(mod)
+        asm64 = g.build_kernel_image() if ir_backend else g.build_image(mod)
     except HSErr as e:
         print(str(e), file=sys.stderr)
         return 1
