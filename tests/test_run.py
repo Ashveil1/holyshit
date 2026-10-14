@@ -191,7 +191,7 @@ check("explain unknown message exits 1", r.returncode == 1 and "no catalog entry
 EV = os.path.join(ROOT, "evals", "run.py")
 r = subprocess.run([sys.executable, EV, "--reference", "--json"], capture_output=True, text=True)
 j = _json.loads(r.stdout) if r.stdout.startswith("{") else {}
-check("evals: every reference solution passes its task", r.returncode == 0 and j.get("passed") == j.get("total") and j.get("total", 0) >= 24, r.stdout[:300])
+check("evals: every reference solution passes its task", r.returncode == 0 and j.get("passed") == j.get("total") and j.get("total", 0) >= 39, r.stdout[:300])
 with tempfile.TemporaryDirectory() as d:
     open(os.path.join(d, "gcd.hs"), "w").write("print 1\n")
     r = subprocess.run([sys.executable, EV, "--solutions", d, "--task", "gcd", "--json"], capture_output=True, text=True)
