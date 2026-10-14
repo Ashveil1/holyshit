@@ -26,7 +26,7 @@ KERNEL_BUILTINS = {"ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
     "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg",
     "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on",
     "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop",
-    "enter_user", "exec_enter"}
+    "enter_user", "exec_enter", "ioport_in", "ioport_out"}
 
 NOT_A_VALUE = {
     # var_get's "is not a value (call it)" list minus BI_VALUES (which take
@@ -368,7 +368,7 @@ class GenIR(Gen):
                          fr.get("mod") == "<json>")) and \
                         (res.get(ins["name"]) in ("novalue", "builtin", "auto") or
                          (self.freestanding and ins["name"] in KERNEL_BUILTINS and
-                          ins["name"] in self.mglob)):
+                          ins["name"] in self.mod_globals.get(fr["mod"], set()))):
                     ds = ins["dest"]
                     if fr["uses"].get(ds, []) and \
                             all(u == ("call", "fn") for u in fr["uses"][ds]):
@@ -1710,7 +1710,12 @@ class GenIR(Gen):
             self._kernel_frame = fr
             self._kernel_raw_dynamic = True
             try:
-                Gen.ev_kdev(self, pname, nodes, None, None, ln)
+                if pname in {"ioport_in", "ioport_out"}:
+                    scope = Gen.Scope()
+                    mod = {"scope": scope}
+                    Gen.ev_call(self, {"fn": {"t": "var", "name": pname}, "args": nodes, "line": ln}, scope, mod)
+                else:
+                    Gen.ev_kdev(self, pname, nodes, None, None, ln)
             finally:
                 self._kernel_raw_dynamic = False
             self.a.mov_mr("rbp", "rax", fr["slots"][dest])
