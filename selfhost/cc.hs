@@ -2321,12 +2321,18 @@ def rw(e):
   t = e["t"]
   if t == "var":
     e["name"] = rn_name(e["name"])
+    vn = e["name"]
+    if vn in VW and not has(e, "callee") and not (vn in RN["locs"]) and not (vn in FLAT["udef"]):
+      e["name"] = VW[vn]
+      FLAT["used"][VW[vn]] = true
   elif t == "attr":
     o = e["obj"]
     if o["t"] == "var" and (o["name"] in RN["mods"]) and not (o["name"] in RN["locs"]):
       return {"t": "var", "name": o["name"] + "." + e["name"], "line": e["line"]}
     fail("attribute access on a non-module", e["line"])
   elif t == "call":
+    if e["fn"]["t"] == "var":
+      e["fn"]["callee"] = true
     e["fn"] = rw(e["fn"])
     rw_list(e["args"])
     if e["fn"]["t"] == "var":
@@ -2473,7 +2479,10 @@ def prelude():
     text = text + l + "\n"
   return parselib.parse(text)
 
-PLX = {"join": "def join(sep, xs):\n  out = \"\"\n  i = 0\n  for x in xs:\n    if i > 0:\n      out = out + sep\n    out = out + x\n    i = i + 1\n  return out\n", "enumerate": "def enumerate(xs):\n  out = []\n  i = 0\n  for x in xs:\n    append(out, [i, x])\n    i = i + 1\n  return out\n", "abs": "def abs(x):\n  if x < 0:\n    return 0 - x\n  return x\n", "_min2": "def _min2(a, b):\n  if b < a:\n    return b\n  return a\n", "_max2": "def _max2(a, b):\n  if b > a:\n    return b\n  return a\n", "min": "def min(xs):\n  if len(xs) == 0:\n    raise \"min of empty list\"\n  best = xs[0]\n  for x in xs:\n    if x < best:\n      best = x\n  return best\n", "max": "def max(xs):\n  if len(xs) == 0:\n    raise \"max of empty list\"\n  best = xs[0]\n  for x in xs:\n    if x > best:\n      best = x\n  return best\n", "sum": "def sum(xs):\n  t = 0\n  for x in xs:\n    t = t + x\n  return t\n", "reversed": "def reversed(xs):\n  out = []\n  i = len(xs) - 1\n  while i >= 0:\n    append(out, xs[i])\n    i = i - 1\n  return out\n", "_msort": "def _msort(a):\n  n = len(a)\n  if n <= 1:\n    return a\n  mid = n >> 1\n  l = _msort(a[:mid])\n  r = _msort(a[mid:])\n  out = []\n  i = 0\n  j = 0\n  while i < len(l) and j < len(r):\n    if r[j] < l[i]:\n      append(out, r[j])\n      j = j + 1\n    else:\n      append(out, l[i])\n      i = i + 1\n  while i < len(l):\n    append(out, l[i])\n    i = i + 1\n  while j < len(r):\n    append(out, r[j])\n    j = j + 1\n  return out\n", "sorted": "def sorted(xs):\n  return _msort(xs)\n", "upper": "def upper(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n    ch = s[i]\n    k = find(\"abcdefghijklmnopqrstuvwxyz\", ch)\n    if k >= 0:\n      out = out + \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"[k:k + 1]\n    else:\n      out = out + ch\n    i = i + 1\n  return out\n", "lower": "def lower(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n    ch = s[i]\n    k = find(\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\", ch)\n    if k >= 0:\n      out = out + \"abcdefghijklmnopqrstuvwxyz\"[k:k + 1]\n    else:\n      out = out + ch\n    i = i + 1\n  return out\n"}
+# builtins used as values (f = has) become calls to a small wrapper def
+VW = {"has": "__v_has", "contains": "__v_contains", "keys": "__v_keys", "values": "__v_values", "len": "__v_len"}
+
+PLX = {"__v_has": "def __v_has(d, k):\n  return has(d, k)\n", "__v_contains": "def __v_contains(d, k):\n  return contains(d, k)\n", "__v_keys": "def __v_keys(d):\n  return keys(d)\n", "__v_values": "def __v_values(d):\n  return values(d)\n", "__v_len": "def __v_len(x):\n  return len(x)\n", "join": "def join(sep, xs):\n  out = \"\"\n  i = 0\n  for x in xs:\n    if i > 0:\n      out = out + sep\n    out = out + x\n    i = i + 1\n  return out\n", "enumerate": "def enumerate(xs):\n  out = []\n  i = 0\n  for x in xs:\n    append(out, [i, x])\n    i = i + 1\n  return out\n", "abs": "def abs(x):\n  if x < 0:\n    return 0 - x\n  return x\n", "_min2": "def _min2(a, b):\n  if b < a:\n    return b\n  return a\n", "_max2": "def _max2(a, b):\n  if b > a:\n    return b\n  return a\n", "min": "def min(xs):\n  if len(xs) == 0:\n    raise \"min of empty list\"\n  best = xs[0]\n  for x in xs:\n    if x < best:\n      best = x\n  return best\n", "max": "def max(xs):\n  if len(xs) == 0:\n    raise \"max of empty list\"\n  best = xs[0]\n  for x in xs:\n    if x > best:\n      best = x\n  return best\n", "sum": "def sum(xs):\n  t = 0\n  for x in xs:\n    t = t + x\n  return t\n", "reversed": "def reversed(xs):\n  out = []\n  i = len(xs) - 1\n  while i >= 0:\n    append(out, xs[i])\n    i = i - 1\n  return out\n", "_msort": "def _msort(a):\n  n = len(a)\n  if n <= 1:\n    return a\n  mid = n >> 1\n  l = _msort(a[:mid])\n  r = _msort(a[mid:])\n  out = []\n  i = 0\n  j = 0\n  while i < len(l) and j < len(r):\n    if r[j] < l[i]:\n      append(out, r[j])\n      j = j + 1\n    else:\n      append(out, l[i])\n      i = i + 1\n  while i < len(l):\n    append(out, l[i])\n    i = i + 1\n  while j < len(r):\n    append(out, r[j])\n    j = j + 1\n  return out\n", "sorted": "def sorted(xs):\n  return _msort(xs)\n", "upper": "def upper(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n    ch = s[i]\n    k = find(\"abcdefghijklmnopqrstuvwxyz\", ch)\n    if k >= 0:\n      out = out + \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"[k:k + 1]\n    else:\n      out = out + ch\n    i = i + 1\n  return out\n", "lower": "def lower(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n    ch = s[i]\n    k = find(\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\", ch)\n    if k >= 0:\n      out = out + \"abcdefghijklmnopqrstuvwxyz\"[k:k + 1]\n    else:\n      out = out + ch\n    i = i + 1\n  return out\n"}
 
 def prelude_user(defs):
   have = {}

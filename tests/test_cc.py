@@ -23,6 +23,7 @@ PROGS = {
     "closure_cap": "def make(k):\n  def add(x):\n    return x + k\n  return add\nf = make(10)\ng = make(100)\nprint f(5), g(5)\ndef two(a, b):\n  def inner(c):\n    def deep(d):\n      return a * 1000 + b * 100 + c * 10 + d\n    return deep\n  return inner\nprint two(1, 2)(3)(4)\ndef fact_outer(n):\n  def fact(m):\n    if m <= 1:\n      return 1\n    return m * fact(m - 1)\n  return fact(n)\nprint fact_outer(6)\n",
     "lambda_hof": "sq = lambda x: x * x\nprint sq(7)\ndef apply(f, v):\n  return f(v)\nprint apply(lambda n: n + 100, 5)\ndef add_k(k):\n  return lambda x: x + k\nprint add_k(3)(4)\ndef sq2(x):\n  return x * x\nh = sq2\nprint apply(h, 9)\nfs = []\ni = 0\nwhile i < 3:\n  append(fs, lambda z: z + 1)\n  i = i + 1\nprint fs[2](41), len(fs)\n",
     "listcomp": "def f(n):\n  return [x * x for x in range(n) if x % 2 == 0]\nprint f(9)\nk = 3\nprint [x + k for x in [1, 2, 3]]\n",
+    "builtin_values": "d = {\"a\": 1}\nf = has\nprint f(d, \"a\"), f(d, \"b\")\ng = keys\nprint g(d)\nh = len\nprint h([1, 2, 3])\ndef apply(fn, x):\n  return fn(x)\nprint apply(len, \"abcd\")\n",
     "fib": "def fib(n):\n  if n < 2:\n    return n\n  return fib(n - 1) + fib(n - 2)\nprint fib(22)\n",
     "arith": "a = 17\nb = 5\nprint a + b, a - b, a * b, a % b, -a % b, a % -b, -a % -b\n"
              "print 0, -1, 4611686018427387903, -4611686018427387903\n",
