@@ -35,6 +35,7 @@ SUITES = [
     ("test_fmt.py", "formatter"),
     ("test_x64.py", "x64 backend"),
     ("test_ir.py", "IR (build/verify/exec)"),
+    ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
     ("test_irx64.py", "IR->x64 differential"),
     ("test_xkernel.py", "kernel on QEMU"),
     ("test_examples.py", "examples"),
