@@ -1361,8 +1361,7 @@ not whole-program entry execution or ELF loading.
 the driver with the native hs compiler, then it parses/normalizes source,
 verifies optimized IR, emits code in hs, relocates into RX code/RW data and
 invokes the generated entry in the same native process. It does not write
-or exec a target ELF. The current emitter still constructs a discarded ELF
-byte list while finalizing code. The driver forwards argv and reads the
+or exec a target ELF. The sections-only emitter finalizes code/data without packing an ELF. The driver forwards argv and reads the
 initial process environment from /proc/self/environ. Extern symbols are
 rejected because no dynamic-symbol loader binds them in this path.
 

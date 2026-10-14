@@ -24,8 +24,7 @@ bootstrap/hs-hosted-x86_64 selfhost/be/jit_run.hs /tmp/hs-jit
 The native hs driver compiles source to machine code, relocates it into
 owned code/data mappings and invokes it inside the same process. Code is
 RW while copied, then RX. Data remains RW, never executable. No target ELF
-is written or executed. The current emitter still builds a discarded ELF
-byte list; avoiding that overhead is later work.
+is written or executed. The sections-only emitter does not pack an intermediate ELF.
 
 The generated process entry exits the driver. There is no return to the
 compiler, code unloading, first-call compilation, type feedback, tiering or
