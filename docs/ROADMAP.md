@@ -235,3 +235,9 @@ One full-width unsafe-constant program remains explicitly deferred. A
 successful hosted fixed point does not cover the separate kernel backend,
 all 64-bit unsafe values, or the missing x64 write_bytes helper. No binary
 seed is yet committed. The Python source remains the reference/test oracle.
+
+The x64 IR path now supports direct `write_bytes(path, [Int 0..255])`.
+Validation runs before opening the file; empty data and embedded zero bytes
+are preserved. `test_write_bytes_x64.py` compares exact file bytes and
+catchable failures with interp, including invalid elements and non-list
+inputs. First-class write_bytes values remain outside the x64 subset.
