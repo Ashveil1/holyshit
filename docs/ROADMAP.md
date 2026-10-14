@@ -241,3 +241,24 @@ Validation runs before opening the file; empty data and embedded zero bytes
 are preserved. `test_write_bytes_x64.py` compares exact file bytes and
 catchable failures with interp, including invalid elements and non-list
 inputs. First-class write_bytes values remain outside the x64 subset.
+
+Source-to-ELF driver checkpoint: `selfhost/be/compile.hs SOURCE OUTPUT`
+connects normalized parsing, optimized IR, verification, module loading,
+JSON helper compilation and static/dynamic ELF emission. Its interp-run
+image must equal the Python backend byte for byte, including module and
+FFI programs. This is not yet a Python-free bootstrap: compiling this
+compiler to x64 and reaching a fixed point remain separate gates.
+
+S5c parser normalization: `be/normalize.hs` applies default-argument filling,
+range-step lowering and prelude injection after `parselib.parse`. Prelude
+source is copied from the reference as data by `scripts/mkprelude.py`.
+`test_normalize.py` compares the full normalized AST; `test_pipeline.py`
+compares source -> optimized CFG through interp and compiled x64. The
+13k-line backend emitter is explicitly deferred to a separate slow bootstrap
+gate, and out-of-width ASTs are interp-only. Modules are lowered individually
+here; linking their imports belongs to the compiler-driver stage.
+S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
+SSA definitions, dominance, phi predecessors and instruction uses. Valid
+corpus modules and deliberately malformed modules are checked against the
+Python verifier, through interp and x64. Out-of-width IR constants remain
+interp-only. This is a compiler-stage check, not a full bootstrap claim.
