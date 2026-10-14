@@ -215,6 +215,11 @@ A separate seeded boundary matrix checks arithmetic folding near the 62-bit
 limits. Multiplication is bounded before it can wrap into a false constant.
 This stage still consumes canonical IR JSON; parser normalization and the
 full compiler driver are not part of this checkpoint.
+Compiler-depth regression gate: repeated returns from an except handler
+must pop the active exception value, not the already-consumed try frame.
+`tests/t_exceptreturn.hs` exercises 300 handled returns with and without
+finally. The Python IR builder and its hs translation share this cleanup
+rule; interp remains the output oracle.
 S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
 SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the

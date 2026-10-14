@@ -159,7 +159,10 @@ class Builder:
                 finally:
                     fb.finactive.discard(id(fbody))
             if fb.cur is not None:
-                fb.emit(_n("try_pop", ln))
+                if not entry.get("caught") or entry.get("handler_guard"):
+                    fb.emit(_n("try_pop", ln))
+                if entry.get("caught"):
+                    fb.emit(_n("exc_pop", ln))
 
     def _stmt(self, fb, s):
         t = s["t"]
@@ -734,6 +737,7 @@ class Builder:
                     self._body(fb, s["fbody"])
                 fb.end(_t("jmp", ln, to=done["label"]))
             fb.start(handler)
+            fb.trystack[-1]["caught"] = True
             if has_except:
                 if has_finally:
                     # an error inside the handler still runs this finally:
@@ -741,6 +745,7 @@ class Builder:
                     hfail = fb.block("hfail")
                     hok = fb.block("hok")
                     fb.emit(_n("try_push", ln, handler=hfail["label"]))
+                    fb.trystack[-1]["handler_guard"] = True
                     self._handler_body(fb, s, ename, ln)
                     if fb.cur is not None:
                         fb.emit(_n("try_pop", ln))
