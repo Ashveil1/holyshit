@@ -1356,6 +1356,28 @@ checking undefined labels and signed rel32 reach before resolving. Multiple
 images have independent data and lifetime. This is relocation groundwork,
 not whole-program entry execution or ELF loading.
 
+### Experimental eager in-process compiler execution
+`selfhost/be/jit_run.hs SOURCE [args...]` is a Linux x86-64 experiment. Build
+the driver with the native hs compiler, then it parses/normalizes source,
+verifies optimized IR, emits code in hs, relocates into RX code/RW data and
+invokes the generated entry in the same native process. It does not write
+or exec a target ELF. The current emitter still constructs a discarded ELF
+byte list while finalizing code. The driver forwards argv and reads the
+initial process environment from /proc/self/environ. Extern symbols are
+rejected because no dynamic-symbol loader binds them in this path.
+
+This is eager whole-program in-memory compilation, not compile-on-first-call
+or a tiering JIT. The generated _start exits the process, so control never
+returns to the compiler driver; final memory cleanup belongs to the OS.
+Runtime output/errors match the reference on the differential cases;
+compile-time diagnostics are still experimental, not a parity claim. The
+normal hs run command and its fallback/cache behavior are unchanged.
+
+`scripts/run-jit-native.sh SOURCE [args...]` packages the experiment with a
+verified seed, an isolated temporary native driver and cleanup. It needs
+no Python/gcc at runtime, but builds the driver each time. This extra build
+time is excluded from any already-built-driver startup measurements.
+
 ### Formatter preservation of NUL
 The canonical spelling of an embedded NUL byte is `\0`, the string escape
 accepted by the parser. Formatting a string must preserve its contents and
