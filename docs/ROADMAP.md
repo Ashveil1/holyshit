@@ -209,6 +209,11 @@ strings        0.778s     0.627s    1.24x     443     469  same
   the self-hosted verifier, module loading and bootstrap are separate gates.
   This checkpoint does not claim a Python-free compiler.
 
+Compiler-depth regression gate: repeated returns from an except handler
+must pop the active exception value, not the already-consumed try frame.
+`tests/t_exceptreturn.hs` exercises 300 handled returns with and without
+finally. The Python IR builder and its hs translation share this cleanup
+rule; interp remains the output oracle.
 S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
 SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the
