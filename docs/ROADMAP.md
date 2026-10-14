@@ -257,6 +257,11 @@ compares source -> optimized CFG through interp and compiled x64. The
 13k-line backend emitter is explicitly deferred to a separate slow bootstrap
 gate, and out-of-width ASTs are interp-only. Modules are lowered individually
 here; linking their imports belongs to the compiler-driver stage.
+Compiler-depth regression gate: repeated returns from an except handler
+must pop the active exception value, not the already-consumed try frame.
+`tests/t_exceptreturn.hs` exercises 300 handled returns with and without
+finally. The Python IR builder and its hs translation share this cleanup
+rule; interp remains the output oracle.
 S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
 SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the
@@ -267,3 +272,13 @@ Measured binary-driver fixed point: scripts/bootstrap-hosted.sh produced
 three identical 9,080,008-byte ELF compilers locally. Stages two and three
 were built by the native compiler with no Python process in those steps.
 The seed is not committed and full CI remains the merge gate.
+
+### S6 native unsafe words
+The native compiler parses unsafe integer literals through 64 bits as eight
+little-endian bytes when they exceed its tagged integer range. This is a
+compiler-internal AST/IR transport only, not a change to language integers.
+Decimal and hex words, including unary minus, must produce the same ELF as
+the reference compiler. Larger unsafe literals fail rather than truncate.
+The t_load64 exclusion is removed; boundary cases and the two-generation
+compiler fixed point remain required tests. This does not claim kernel
+self-hosting or change safe integer overflow behavior.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Compiled hs source compiler emits Python-identical ELF images.
-The full 64-bit unsafe-constant case is an explicit remaining width gate.
+Unsafe words through 64 bits are decoded without tagged-Int truncation.
 """
 import contextlib
 import glob
@@ -17,7 +17,7 @@ import ir
 import irx64
 from x64gen import build_x64
 env=dict(os.environ,HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'),HSROOT=str(ROOT))
-passed=failed=rejected=width=0
+passed=failed=rejected=0
 with tempfile.TemporaryDirectory() as d:
     exe=str(Path(d)/'hs-compiler')
     old=os.environ.get('HSPATH')
@@ -38,13 +38,23 @@ with tempfile.TemporaryDirectory() as d:
         except Exception:
             rejected+=1
             continue
-        if Path(f).name=='t_load64.hs':
-            width+=1
-            continue
         r=subprocess.run([exe,f],env=env,capture_output=True,text=True,errors='replace',timeout=120)
         ok="".join(r.stdout.split())==want
         passed+=int(ok);failed+=int(not ok)
         if not ok:print('FAIL native compiler',Path(f).name,r.stderr[-180:],flush=True)
+    # Boundary unsafe literals, including decimal, uppercase hex and unary minus.
+    words = [2**61-1, 2**61, 2**63-1, 2**63, 2**64-1]
+    for word in words:
+        for literal in [str(word), hex(word), "0X"+format(word,"X"), "-"+hex(word)]:
+            source_text = "unsafe:\n  U64 v = "+literal+"\n  print v\n"
+            f = str(Path(d)/"word.hs")
+            Path(f).write_text(source_text)
+            interp.reset_parse_state()
+            want = irx64.GenIR(ir.build_module(interp.parse_program(source_text)),d).build_ir_image().hex()
+            r = subprocess.run([exe,f],env=env,capture_output=True,text=True,timeout=120)
+            ok = r.returncode == 0 and "".join(r.stdout.split()) == want
+            passed += int(ok); failed += int(not ok)
+            if not ok: print("FAIL unsafe literal",literal,r.stderr[-180:])
     # Native compiler builds itself, then the resulting compiler repeats it.
     source = str(ROOT/'selfhost/be/compile_hex.hs')
     previous = Path(exe).read_bytes()
@@ -88,5 +98,5 @@ with tempfile.TemporaryDirectory() as d:
     passed += int(ok)
     failed += int(not ok)
     if not ok:print('FAIL native binary-output compiler')
-print(f'{passed}/{passed+failed} passed ({rejected} rejected by Python emitter; {width} full-width unsafe gate deferred)')
+print(f'{passed}/{passed+failed} passed ({rejected} rejected by Python emitter)')
 sys.exit(bool(failed) or not passed)
