@@ -7,6 +7,7 @@ import asm
 import klink
 srcpath = argv()[0]
 parselib.P["kernel_wide"] = true
+parselib.P["wide_literals"] = true
 prog = normalize.parse(read_text(srcpath))
 g = be.Gen(prog, srcpath, true)
 mod = {"name": "<main>", "prog": prog, "pfx": "", "scope": be.Gen_Scope(null, false), "dir": pyrt.py_os_path_dirname(srcpath)}

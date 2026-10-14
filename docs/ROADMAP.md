@@ -309,3 +309,4 @@ must remain exact. The UTF-8 helper initially exhausted memory during self-build
 per-ASCII-character JSON allocation restores the hosted fixed-point gate
 (24/24 targeted gates, including two generations). Full CI is pending;
 kernel IR migration and Python-free seed packaging are still separate work.
+
