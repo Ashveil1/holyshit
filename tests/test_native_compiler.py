@@ -68,5 +68,25 @@ with tempfile.TemporaryDirectory() as d:
         Path(exe).write_bytes(image)
         Path(exe).chmod(0o755)
         previous = image
+    # Binary-output driver can write and run a program without hex decoding.
+    binary_exe = str(Path(d)/'hs-binary')
+    os.environ['HSPATH'] = env['HSPATH']
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = build_x64(str(ROOT/'selfhost/be/compile.hs'), binary_exe)
+    finally:
+        if old is None:os.environ.pop('HSPATH',None)
+        else:os.environ['HSPATH']=old
+    target = str(Path(d)/'fib')
+    result = subprocess.run([binary_exe,str(ROOT/'tests/fib.hs'),target],env=env,
+        capture_output=True,text=True,timeout=120) if not rc else None
+    ok = result is not None and result.returncode == 0 and Path(target).exists()
+    if ok:
+        interp.reset_parse_state()
+        expected = irx64.GenIR(ir.build_module(interp.parse_program((ROOT/'tests/fib.hs').read_text())),str(ROOT/'tests')).build_ir_image()
+        ok = Path(target).read_bytes() == expected
+    passed += int(ok)
+    failed += int(not ok)
+    if not ok:print('FAIL native binary-output compiler')
 print(f'{passed}/{passed+failed} passed ({rejected} rejected by Python emitter; {width} full-width unsafe gate deferred)')
 sys.exit(bool(failed) or not passed)
