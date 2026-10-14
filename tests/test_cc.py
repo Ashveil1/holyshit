@@ -24,6 +24,7 @@ PROGS = {
     "lambda_hof": "sq = lambda x: x * x\nprint sq(7)\ndef apply(f, v):\n  return f(v)\nprint apply(lambda n: n + 100, 5)\ndef add_k(k):\n  return lambda x: x + k\nprint add_k(3)(4)\ndef sq2(x):\n  return x * x\nh = sq2\nprint apply(h, 9)\nfs = []\ni = 0\nwhile i < 3:\n  append(fs, lambda z: z + 1)\n  i = i + 1\nprint fs[2](41), len(fs)\n",
     "listcomp": "def f(n):\n  return [x * x for x in range(n) if x % 2 == 0]\nprint f(9)\nk = 3\nprint [x + k for x in [1, 2, 3]]\n",
     "builtin_values": "d = {\"a\": 1}\nf = has\nprint f(d, \"a\"), f(d, \"b\")\ng = keys\nprint g(d)\nh = len\nprint h([1, 2, 3])\ndef apply(fn, x):\n  return fn(x)\nprint apply(len, \"abcd\")\n",
+    "classes": 'class A:\n  def __init__(self, n):\n    self.n = n\n  def val(self):\n    return self.n\n  def bump(self):\n    self.n = self.n + 1\nclass B(A):\n  def __init__(self, n):\n    self.n = n * 2\n  def twice(self):\n    return self.val() * 2\na = A(3)\nb = B(4)\na.bump()\nprint a.val(), b.val(), b.twice()\nitems = [A(i) for i in range(3)]\nprint items[2].n\n',
     "fib": "def fib(n):\n  if n < 2:\n    return n\n  return fib(n - 1) + fib(n - 2)\nprint fib(22)\n",
     "arith": "a = 17\nb = 5\nprint a + b, a - b, a * b, a % b, -a % b, a % -b, -a % -b\n"
              "print 0, -1, 4611686018427387903, -4611686018427387903\n",
