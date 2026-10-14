@@ -10449,8 +10449,8 @@ SEL_UDATA = 24
 SEL_UCODE = 32
 SEL_TSS = 40
 NOT_A_VALUE = pyrt.py_set(["float", "ticks", "readkey", "pmm_alloc", "meminfo", "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept", "http_get", "json_parse", "json_str", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "json_load", "json_save", "write_bytes", "alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int", "asm"])
-INLINE_ONLY = pyrt.py_set(["float"])
-INLINE_DIRECT = pyrt.py_set(["float", "len", "str", "int", "range", "append", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "read_mem", "has", "contains", "keys", "values"])
+INLINE_ONLY = pyrt.py_set(["float", "write_bytes"])
+INLINE_DIRECT = pyrt.py_set(["write_bytes", "float", "len", "str", "int", "range", "append", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "read_mem", "has", "contains", "keys", "values"])
 class GenIR(Gen):
   def emit_malloc(self):
     gcrt.emit_gc_malloc(self)
@@ -11905,6 +11905,8 @@ class GenIR(Gen):
         self._inline_range(fr, dest, args, ln)
       elif name == "append":
         self._inline_append(fr, dest, args, ln)
+      elif name == "write_bytes":
+        self._inline_write_bytes(fr, dest, args, ln)
       elif name in ["read_text", "write_text", "append_text", "exists", "ls", "mkdir"]:
         self._inline_file(fr, dest, name, args, ln)
       elif name == "read_mem":
@@ -11916,9 +11918,9 @@ class GenIR(Gen):
         if len(args) != 1:
           raise pyrt.py_err(msg, ln)
         self._load(fr, args[0], ln)
-        _t11935 = [self.new_tmp("kv"), self.new_tmp("kv")]
-        lb = _t11935[0]
-        lo = _t11935[1]
+        _t11937 = [self.new_tmp("kv"), self.new_tmp("kv")]
+        lb = _t11937[0]
+        lo = _t11937[1]
         asm.mov_rr("r11", "rax")
         asm.and_ri32("r11", 3)
         asm.test_rr("r11", "r11")
@@ -11992,15 +11994,15 @@ class GenIR(Gen):
     if len(args) != 1:
       raise pyrt.py_err("float wants 1 arg", ln)
     self._load(fr, args[0], ln)
-    _t12011 = [self.new_tmp("fl"), self.new_tmp("fl")]
-    lab_fok = _t12011[0]
-    lab_fnum = _t12011[1]
-    _t12014 = [self.new_tmp("fl"), self.new_tmp("fl")]
-    lab_fflt = _t12014[0]
-    lab_fstr = _t12014[1]
-    _t12017 = [self.new_tmp("fl"), self.new_tmp("fl")]
-    lab_fbool = _t12017[0]
-    lab_fquote = _t12017[1]
+    _t12013 = [self.new_tmp("fl"), self.new_tmp("fl")]
+    lab_fok = _t12013[0]
+    lab_fnum = _t12013[1]
+    _t12016 = [self.new_tmp("fl"), self.new_tmp("fl")]
+    lab_fflt = _t12016[0]
+    lab_fstr = _t12016[1]
+    _t12019 = [self.new_tmp("fl"), self.new_tmp("fl")]
+    lab_fbool = _t12019[0]
+    lab_fquote = _t12019[1]
     lab_fint = self.new_tmp("fl")
     asm.push_r("rax")
     asm.mov_rr("r11", "rax")
@@ -12101,9 +12103,9 @@ class GenIR(Gen):
       raise pyrt.py_err(str(name) + " wants 1 arg", ln)
     self._load(fr, args[0], ln)
     if name == "len":
-      _t12120 = [self.new_tmp("ln"), self.new_tmp("ln")]
-      lab_lok = _t12120[0]
-      lab_lck = _t12120[1]
+      _t12122 = [self.new_tmp("ln"), self.new_tmp("ln")]
+      lab_lok = _t12122[0]
+      lab_lck = _t12122[1]
       asm.mov_rr("r11", "rax")
       asm.and_ri32("r11", 3)
       asm.test_rr("r11", "r11")
@@ -12125,15 +12127,15 @@ class GenIR(Gen):
     if len(args) != 1:
       raise pyrt.py_err("int wants 1 arg", ln)
     self._load(fr, args[0], ln)
-    _t12144 = [self.new_tmp("in"), self.new_tmp("in")]
-    lab_iok = _t12144[0]
-    lab_inum = _t12144[1]
-    _t12147 = [self.new_tmp("in"), self.new_tmp("in")]
-    lab_iflt = _t12147[0]
-    lab_istr = _t12147[1]
-    _t12150 = [self.new_tmp("in"), self.new_tmp("in")]
-    lab_ibool = _t12150[0]
-    lab_iquote = _t12150[1]
+    _t12146 = [self.new_tmp("in"), self.new_tmp("in")]
+    lab_iok = _t12146[0]
+    lab_inum = _t12146[1]
+    _t12149 = [self.new_tmp("in"), self.new_tmp("in")]
+    lab_iflt = _t12149[0]
+    lab_istr = _t12149[1]
+    _t12152 = [self.new_tmp("in"), self.new_tmp("in")]
+    lab_ibool = _t12152[0]
+    lab_iquote = _t12152[1]
     lab_iint = self.new_tmp("in")
     asm.push_r("rax")
     asm.mov_rr("r11", "rax")
@@ -12233,9 +12235,9 @@ class GenIR(Gen):
     if len(args) != 2:
       raise pyrt.py_err("append wants append(list, x)", ln)
     self._load(fr, args[0], ln)
-    _t12252 = [self.new_tmp("ap"), self.new_tmp("ap")]
-    lab_apok = _t12252[0]
-    lab_apbad = _t12252[1]
+    _t12254 = [self.new_tmp("ap"), self.new_tmp("ap")]
+    lab_apok = _t12254[0]
+    lab_apbad = _t12254[1]
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -12260,10 +12262,10 @@ class GenIR(Gen):
     self._load(fr, args[1], ln)
     asm.mov_rr("rsi", "rax")
     asm.pop_r("rdi")
-    _t12279 = [self.new_tmp("hs"), self.new_tmp("hs"), self.new_tmp("hs")]
-    lab_bad = _t12279[0]
-    lab_k = _t12279[1]
-    lab_ok = _t12279[2]
+    _t12281 = [self.new_tmp("hs"), self.new_tmp("hs"), self.new_tmp("hs")]
+    lab_bad = _t12281[0]
+    lab_k = _t12281[1]
+    lab_ok = _t12281[2]
     asm.mov_rr("r11", "rdi")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -12286,9 +12288,9 @@ class GenIR(Gen):
     self.raise_static("has wants has(dict, key)", ln)
     asm.label(lab_ok)
     asm.call("x_dict_find")
-    _t12305 = [self.new_tmp("hs"), self.new_tmp("hs")]
-    lab_f = _t12305[0]
-    lab_d = _t12305[1]
+    _t12307 = [self.new_tmp("hs"), self.new_tmp("hs")]
+    lab_f = _t12307[0]
+    lab_d = _t12307[1]
     asm.test_rr("rax", "rax")
     asm.jcc("s", lab_f)
     asm.mov_ri64("rax", Gen_HS_TRUE)
@@ -12299,12 +12301,12 @@ class GenIR(Gen):
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _inline_file(self, fr, dest, name, args, ln):
     want = {"read_text": [1, "read_text wants read_text(path)"], "write_text": [2, "write_text wants write_text(path, str)"], "append_text": [2, "append_text wants append_text(path, str)"], "exists": [1, "exists wants exists(path)"], "ls": [1, "ls wants ls(dir)"], "mkdir": [1, "mkdir wants mkdir(path)"]}[name]
-    _t12318 = want
-    n_want = _t12318[0]
-    msg = _t12318[1]
-    _t12321 = [self.new_tmp("fs"), self.new_tmp("fs")]
-    lab_fsbad = _t12321[0]
-    lab_fsret = _t12321[1]
+    _t12320 = want
+    n_want = _t12320[0]
+    msg = _t12320[1]
+    _t12323 = [self.new_tmp("fs"), self.new_tmp("fs")]
+    lab_fsbad = _t12323[0]
+    lab_fsret = _t12323[1]
     if len(args) != n_want:
       raise pyrt.py_err(msg, ln)
     for ar in args:
@@ -12363,6 +12365,85 @@ class GenIR(Gen):
     asm.label(lab_fsbad)
     self.raise_static(msg, ln)
     asm.label(lab_fsret)
+    asm.mov_mr("rbp", "rax", fr["slots"][dest])
+  def _inline_write_bytes(self, fr, dest, args, ln):
+    msg = "write_bytes wants write_bytes(path, [Int 0..255])"
+    if len(args) != 2:
+      raise pyrt.py_err(msg, ln)
+    _t12389 = [self.new_tmp("wb") for _ in range(3)]
+    bad = _t12389[0]
+    loop = _t12389[1]
+    done = _t12389[2]
+    self._load(fr, args[0], ln)
+    asm.push_r("rax")
+    asm.mov_rr("r11", "rax")
+    asm.and_ri32("r11", 3)
+    asm.test_rr("r11", "r11")
+    asm.jcc("ne", bad)
+    asm.test_rr("rax", "rax")
+    asm.jcc("e", bad)
+    asm.mov_rm("r11", "rax", 0)
+    asm.cmp_ri32("r11", Gen_K_STR)
+    asm.jcc("ne", bad)
+    self._load(fr, args[1], ln)
+    asm.mov_rr("r11", "rax")
+    asm.and_ri32("r11", 3)
+    asm.test_rr("r11", "r11")
+    asm.jcc("ne", bad)
+    asm.test_rr("rax", "rax")
+    asm.jcc("e", bad)
+    asm.mov_rm("r11", "rax", 0)
+    asm.cmp_ri32("r11", Gen_K_LIST)
+    asm.jcc("ne", bad)
+    asm.push_r("rax")
+    asm.mov_rm("rdi", "rax", 8)
+    asm.add_ri32("rdi", 24)
+    asm.call("x_malloc")
+    asm.push_r("rax")
+    asm.mov_ri32("r11", Gen_K_STR)
+    asm.mov_mr("rax", "r11", 0)
+    asm.mov_rm("rsi", "rsp", 8)
+    asm.mov_rm("rcx", "rsi", 8)
+    asm.mov_mr("rax", "rcx", 8)
+    asm.mov_rm("rsi", "rsi", 24)
+    asm.lea_m("rdi", "rax", 16)
+    asm.mov_ri32("r8", 0)
+    asm.label(loop)
+    asm.cmp_rr("r8", "rcx")
+    asm.jcc("ae", done)
+    asm.mov_rmx("rax", "rsi", "r8", 8, 0)
+    asm.mov_rr("r11", "rax")
+    asm.and_ri32("r11", 3)
+    asm.cmp_ri32("r11", Gen_TAG_INT)
+    asm.jcc("ne", bad)
+    asm.sar_ri8("rax", 2)
+    asm.cmp_ri32("rax", 255)
+    asm.jcc("a", bad)
+    asm.mov_mr8("rdi", 0, 0)
+    asm.add_ri32("rdi", 1)
+    asm.add_ri32("r8", 1)
+    asm.jmp(loop)
+    asm.label(done)
+    asm.mov_ri32("rax", 0)
+    asm.mov_mr8("rdi", 0, 0)
+    asm.mov_rm("rdi", "rsp", 16)
+    asm.mov_ri32("rsi", 1)
+    asm.mov_ri32("rdx", ln)
+    asm.call("file_open")
+    asm.push_r("rax")
+    asm.mov_rr("rdi", "rax")
+    asm.mov_rm("rsi", "rsp", 8)
+    asm.mov_ri32("rdx", ln)
+    asm.call("file_write_all")
+    asm.mov_rm("rdi", "rsp", 0)
+    asm.call("file_close")
+    asm.add_ri32("rsp", 32)
+    asm.mov_ri32("rax", Gen_HS_NULL)
+    end = self.new_tmp("wb")
+    asm.jmp(end)
+    asm.label(bad)
+    self.raise_static(msg, ln)
+    asm.label(end)
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _inline_read_mem(self, fr, dest, args, ln):
     if len(args) != 2:
@@ -12502,10 +12583,10 @@ class GenIR(Gen):
     if not (so in self.ffi_libs):
       append(self.ffi_libs, so)
   def _ffi(self, fr, ins, ln):
-    _t12521 = [ins["sym"], ins["ptypes"], ins["rtype"]]
-    name = _t12521[0]
-    pt = _t12521[1]
-    rt = _t12521[2]
+    _t12602 = [ins["sym"], ins["ptypes"], ins["rtype"]]
+    name = _t12602[0]
+    pt = _t12602[1]
+    rt = _t12602[2]
     nf = pyrt.py_count(pt, "F64")
     if nf > 8:
       raise pyrt.py_err("ffi '" + str(name) + "': xbuild passes at most 8 F64 args", ln)
@@ -12514,17 +12595,17 @@ class GenIR(Gen):
     self._ffi_lib(ins["lib"], ln)
     gi = self._ffi_sym(name)
     fl = self._ffi_sym("fflush")
-    for i, _f12533_1 in pyrt.py_enumerate(pyrt.py_zip(ins["pnames"], pt)):
-      pn = _f12533_1[0]
-      ft = _f12533_1[1]
+    for i, _f12614_1 in pyrt.py_enumerate(pyrt.py_zip(ins["pnames"], pt)):
+      pn = _f12614_1[0]
+      ft = _f12614_1[1]
       self._load(fr, pn, ln)
       msg = "ffi '" + str(name) + "' arg " + str(i + 1) + " wants " + str(ft) + ", got "
       lab_bad = self.new_tmp("ff")
       lab_after = self.new_tmp("ff")
       if ft == "F64":
-        _t12541 = [self.new_tmp("ff"), self.new_tmp("ff")]
-        lab_fi = _t12541[0]
-        lab_fok = _t12541[1]
+        _t12622 = [self.new_tmp("ff"), self.new_tmp("ff")]
+        lab_fi = _t12622[0]
+        lab_fok = _t12622[1]
         asm.mov_rr("r11", "rax")
         asm.and_ri32("r11", 3)
         asm.cmp_ri32("r11", Gen_TAG_INT)
@@ -12584,9 +12665,9 @@ class GenIR(Gen):
       asm.label(lab_after)
     iregs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"]
     ni = len(pt) - nf
-    _t12603 = [nf, ni]
-    fi = _t12603[0]
-    ii = _t12603[1]
+    _t12684 = [nf, ni]
+    fi = _t12684[0]
+    ii = _t12684[1]
     for ft in pyrt.py_reversed(pt):
       if ft == "F64":
         fi = fi - 1
@@ -12618,12 +12699,12 @@ class GenIR(Gen):
     elif rt == "U0":
       asm.mov_ri64("rax", Gen_HS_NULL)
     elif rt == "Str":
-      _t12637 = [self.new_tmp("ff"), self.new_tmp("ff")]
-      lab_nn = _t12637[0]
-      lab_done = _t12637[1]
-      _t12640 = [self.new_tmp("ff"), self.new_tmp("ff")]
-      lab_lt = _t12640[0]
-      lab_le = _t12640[1]
+      _t12718 = [self.new_tmp("ff"), self.new_tmp("ff")]
+      lab_nn = _t12718[0]
+      lab_done = _t12718[1]
+      _t12721 = [self.new_tmp("ff"), self.new_tmp("ff")]
+      lab_lt = _t12721[0]
+      lab_le = _t12721[1]
       asm.test_rr("rax", "rax")
       asm.jcc("ne", lab_nn)
       asm.mov_ri64("rax", Gen_HS_NULL)
@@ -12705,7 +12786,7 @@ class GenIR(Gen):
     c = {}
     k = 0
     if not (k in c):
-      order = pyrt.py_dict([[_p12723_0[1], _p12723_0[0]] for _p12723_0 in pyrt.py_enumerate(by)])
+      order = pyrt.py_dict([[_p12804_0[1], _p12804_0[0]] for _p12804_0 in pyrt.py_enumerate(by)])
       heads = pyrt.py_set(null)
       for lab, b in pyrt.py_items(by):
         tm = b["term"]
@@ -12995,7 +13076,7 @@ class GenIR(Gen):
     self._plan()
     for nm in pyrt.py_sorted(self.mglob, null):
       self._glabel(nm, "")
-    inits = pyrt.py_set([_p13013_0[1] for _p13013_0 in pyrt.py_items(self.mod_entries) if _p13013_0[0] != ""])
+    inits = pyrt.py_set([_p13094_0[1] for _p13094_0 in pyrt.py_items(self.mod_entries) if _p13094_0[0] != ""])
     for key in self.allorder:
       if key in inits:
         continue
