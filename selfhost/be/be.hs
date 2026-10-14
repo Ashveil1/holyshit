@@ -2,6 +2,7 @@ import pyrt
 import asm
 import gcrt
 import elf
+import parselib
 import normalize
 import irbuild
 import iropt
@@ -271,7 +272,7 @@ class Gen:
       return null
     if t == "sizeof":
       st = e["stype"]
-      if not (st in ["I64", "U64", "Ptr"]) and not (st in HS_STRUCTS):
+      if not (st in ["I64", "U64", "Ptr"]) and not (st in parselib.P["structs"]):
         raise pyrt.py_err("unknown struct '" + str(st) + "'", e["line"])
       return null
     if t == "field":
@@ -297,9 +298,9 @@ class Gen:
       raise pyrt.py_err("unknown variable '" + str(obj["name"]) + "'", ln)
     if obj["t"] == "field":
       xs = pyrt.py_get(obj, "_st", null)
-      if xs == null or not (xs in HS_STRUCTS):
+      if xs == null or not (xs in parselib.P["structs"]):
         raise pyrt.py_err("struct type unknown (x64)", ln)
-      f = pyrt.py_get(HS_STRUCTS[xs]["fields"], obj["name"], null)
+      f = pyrt.py_get(parselib.P["structs"][xs]["fields"], obj["name"], null)
       if f == null:
         raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(obj["name"]) + "'", ln)
       xs2 = ptr_struct(f[0])
@@ -2519,9 +2520,9 @@ class Gen:
       if st in ["I64", "U64", "Ptr"]:
         asm.mov_ri32("rax", 8)
       else:
-        if not (st in HS_STRUCTS):
+        if not (st in parselib.P["structs"]):
           raise pyrt.py_err("unknown struct '" + str(st) + "'", ln)
-        asm.mov_ri32("rax", HS_STRUCTS[st]["size"])
+        asm.mov_ri32("rax", parselib.P["structs"][st]["size"])
       return null
     if t == "field":
       self.sev_field(e, sc, mod)
@@ -2541,9 +2542,9 @@ class Gen:
     self.sev(e["obj"], sc, mod)
     asm.push_r("rax")
     xs = pyrt.py_get(e, "_st", null)
-    if xs == null or not (xs in HS_STRUCTS):
+    if xs == null or not (xs in parselib.P["structs"]):
       raise pyrt.py_err("struct type unknown (x64)", ln)
-    L = HS_STRUCTS[xs]
+    L = parselib.P["structs"][xs]
     f = pyrt.py_get(L["fields"], e["name"], null)
     if f == null:
       raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(e["name"]) + "'", ln)
@@ -3323,7 +3324,7 @@ class Gen:
         asm.mov_mr("rax", "rcx", 0)
       elif t == "fstore":
         xs = self.field_base(x["obj"], sc, ln)
-        L = HS_STRUCTS[xs]
+        L = parselib.P["structs"][xs]
         f = pyrt.py_get(L["fields"], x["name"], null)
         if f == null:
           raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(x["name"]) + "'", ln)
@@ -11216,7 +11217,7 @@ class GenIR(Gen):
       xs = self._struct_of(fr, ins["obj"], seen)
       if xs == null:
         return null
-      L = pyrt.py_get(HS_STRUCTS, xs, null)
+      L = pyrt.py_get(parselib.P["structs"], xs, null)
       if L == null:
         return null
       f = pyrt.py_get(L["fields"], ins["name"], null)
@@ -11291,9 +11292,9 @@ class GenIR(Gen):
     asm.mov_mr("rax", "rcx", 0)
   def _sfstore(self, fr, obj, name, idx, val, ln):
     xs = self._struct_of(fr, obj, null)
-    if xs == null or not (xs in HS_STRUCTS):
+    if xs == null or not (xs in parselib.P["structs"]):
       raise pyrt.py_err("struct type unknown (x64)", ln)
-    f = pyrt.py_get(HS_STRUCTS[xs]["fields"], name, null)
+    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
     if f == null:
       raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
     _t11316 = f
@@ -11488,9 +11489,9 @@ class GenIR(Gen):
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _sfield(self, fr, dest, obj, name, idx, ln):
     xs = self._struct_of(fr, obj, null)
-    if xs == null or not (xs in HS_STRUCTS):
+    if xs == null or not (xs in parselib.P["structs"]):
       raise pyrt.py_err("struct type unknown (x64)", ln)
-    f = pyrt.py_get(HS_STRUCTS[xs]["fields"], name, null)
+    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
     if f == null:
       raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
     _t11513 = f
@@ -12563,7 +12564,7 @@ class GenIR(Gen):
         asm.push_r("rax")
         self.copy_bytes()
       else:
-        self.check_int(lambda lb: asm.jmp(lb), "rax")
+        self.check_int(lambda: asm.jmp(lab_bad), "rax")
         asm.sar_ri8("rax", 2)
         asm.push_r("rax")
       asm.jmp(lab_after)
@@ -12888,9 +12889,9 @@ class GenIR(Gen):
         raise pyrt.py_err(ins["xmsg"], ln)
       elif op == "ssizeof":
         st = ins["stype"]
-        if not (st in ["I64", "U64", "Ptr"]) and not (st in HS_STRUCTS):
+        if not (st in ["I64", "U64", "Ptr"]) and not (st in parselib.P["structs"]):
           raise pyrt.py_err("unknown struct '" + str(st) + "'", ln)
-        asm.mov_ri32("rax", 8 if st in ["I64", "U64", "Ptr"] else HS_STRUCTS[st]["size"])
+        asm.mov_ri32("rax", 8 if st in ["I64", "U64", "Ptr"] else parselib.P["structs"][st]["size"])
         asm.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
       else:
         raise pyrt.py_err("IR: '" + str(op) + "' not in irx64 subset yet", ln)
