@@ -1,516 +1,792 @@
 [
- {
-  "id": "fizzbuzz",
-  "prompt": "Read N from the first command-line argument. Print the numbers 1..N one per line, but print Fizz for multiples of 3, Buzz for multiples of 5 and FizzBuzz for multiples of both.",
-  "cases": [
-   {
-    "args": [
-     "5"
-    ],
-    "out": "1\n2\nFizz\n4\nBuzz\n"
-   },
-   {
-    "args": [
-     "15"
-    ],
-    "out": "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n"
-   }
-  ]
- },
- {
-  "id": "sum_digits",
-  "prompt": "Read an integer from the first argument and print the sum of its decimal digits (ignore a leading minus sign).",
-  "cases": [
-   {
-    "args": [
-     "123"
-    ],
-    "out": "6\n"
-   },
-   {
-    "args": [
-     "-908"
-    ],
-    "out": "17\n"
-   },
-   {
-    "args": [
-     "0"
-    ],
-    "out": "0\n"
-   }
-  ]
- },
- {
-  "id": "reverse_words",
-  "prompt": "Print the command-line arguments in reverse order, separated by single spaces, on one line.",
-  "cases": [
-   {
-    "args": [
-     "a",
-     "b",
-     "c"
-    ],
-    "out": "c b a\n"
-   },
-   {
-    "args": [
-     "solo"
-    ],
-    "out": "solo\n"
-   }
-  ]
- },
- {
-  "id": "is_prime",
-  "prompt": "Read N from the first argument. Print true if N is prime, otherwise false.",
-  "cases": [
-   {
-    "args": [
-     "2"
-    ],
-    "out": "true\n"
-   },
-   {
-    "args": [
-     "1"
-    ],
-    "out": "false\n"
-   },
-   {
-    "args": [
-     "97"
-    ],
-    "out": "true\n"
-   },
-   {
-    "args": [
-     "91"
-    ],
-    "out": "false\n"
-   }
-  ]
- },
- {
-  "id": "fib_n",
-  "prompt": "Read N from the first argument and print the Nth Fibonacci number (fib(0)=0, fib(1)=1).",
-  "cases": [
-   {
-    "args": [
-     "0"
-    ],
-    "out": "0\n"
-   },
-   {
-    "args": [
-     "1"
-    ],
-    "out": "1\n"
-   },
-   {
-    "args": [
-     "10"
-    ],
-    "out": "55\n"
-   },
-   {
-    "args": [
-     "30"
-    ],
-    "out": "832040\n"
-   }
-  ]
- },
- {
-  "id": "word_count",
-  "prompt": "Count how many times each argument occurs. Print one line per distinct argument in order of first appearance, formatted as word:count.",
-  "cases": [
-   {
-    "args": [
-     "a",
-     "b",
-     "a",
-     "c",
-     "b",
-     "a"
-    ],
-    "out": "a:3\nb:2\nc:1\n"
-   }
-  ]
- },
- {
-  "id": "max_arg",
-  "prompt": "Print the largest integer among the command-line arguments.",
-  "cases": [
-   {
-    "args": [
-     "3",
-     "9",
-     "2"
-    ],
-    "out": "9\n"
-   },
-   {
-    "args": [
-     "-5",
-     "-2",
-     "-9"
-    ],
-    "out": "-2\n"
-   }
-  ]
- },
- {
-  "id": "palindrome",
-  "prompt": "Read a word from the first argument. Print true if it reads the same forwards and backwards, otherwise false.",
-  "cases": [
-   {
-    "args": [
-     "racecar"
-    ],
-    "out": "true\n"
-   },
-   {
-    "args": [
-     "hello"
-    ],
-    "out": "false\n"
-   },
-   {
-    "args": [
-     "a"
-    ],
-    "out": "true\n"
-   }
-  ]
- },
- {
-  "id": "gcd",
-  "prompt": "Read two integers from the arguments and print their greatest common divisor.",
-  "cases": [
-   {
-    "args": [
-     "12",
-     "18"
-    ],
-    "out": "6\n"
-   },
-   {
-    "args": [
-     "17",
-     "5"
-    ],
-    "out": "1\n"
-   },
-   {
-    "args": [
-     "0",
-     "7"
-    ],
-    "out": "7\n"
-   }
-  ]
- },
- {
-  "id": "factorial_big",
-  "prompt": "Read N from the first argument and print N factorial (N <= 20).",
-  "cases": [
-   {
-    "args": [
-     "0"
-    ],
-    "out": "1\n"
-   },
-   {
-    "args": [
-     "5"
-    ],
-    "out": "120\n"
-   },
-   {
-    "args": [
-     "20"
-    ],
-    "out": "2432902008176640000\n"
-   }
-  ]
- },
- {
-  "id": "class_counter",
-  "prompt": "Define a class Counter with a method inc() that adds 1 and a method get() that returns the count. Read N from the first argument, call inc() N times on a new Counter and print get().",
-  "cases": [
-   {
-    "args": [
-     "0"
-    ],
-    "out": "0\n"
-   },
-   {
-    "args": [
-     "7"
-    ],
-    "out": "7\n"
-   }
-  ]
- },
- {
-  "id": "try_parse",
-  "prompt": "For each argument print its integer value plus 1, or the word bad if it is not a valid integer (use try/except).",
-  "cases": [
-   {
-    "args": [
-     "1",
-     "x",
-     "-4"
-    ],
-    "out": "2\nbad\n-3\n"
-   }
-  ]
- },
- {
-  "id": "count_vowels",
-  "prompt": "Read a word from the first argument and print how many of its letters are vowels (a, e, i, o, u; lowercase only).",
-  "cases": [
-   {
-    "args": [
-     "education"
-    ],
-    "out": "5\n"
-   },
-   {
-    "args": [
-     "rhythm"
-    ],
-    "out": "0\n"
-   }
-  ]
- },
- {
-  "id": "sort_args",
-  "prompt": "Print the integer arguments sorted ascending, one per line.",
-  "cases": [
-   {
-    "args": [
-     "3",
-     "1",
-     "2"
-    ],
-    "out": "1\n2\n3\n"
-   },
-   {
-    "args": [
-     "10",
-     "-2",
-     "7",
-     "7"
-    ],
-    "out": "-2\n7\n7\n10\n"
-   }
-  ]
- },
- {
-  "id": "binary",
-  "prompt": "Read a non-negative integer from the first argument and print it in binary (no prefix).",
-  "cases": [
-   {
-    "args": [
-     "0"
-    ],
-    "out": "0\n"
-   },
-   {
-    "args": [
-     "5"
-    ],
-    "out": "101\n"
-   },
-   {
-    "args": [
-     "255"
-    ],
-    "out": "11111111\n"
-   }
-  ]
- },
- {
-  "id": "caesar",
-  "prompt": "Shift each lowercase letter of the first argument forward by the integer in the second argument (wrapping z to a). Leave other characters unchanged. Print the result.",
-  "cases": [
-   {
-    "args": [
-     "abc",
-     "1"
-    ],
-    "out": "bcd\n"
-   },
-   {
-    "args": [
-     "xyz",
-     "3"
-    ],
-    "out": "abc\n"
-   },
-   {
-    "args": [
-     "hi there",
-     "13"
-    ],
-    "out": "uv gurer\n"
-   }
-  ]
- },
- {
-  "id": "anagram",
-  "prompt": "Print true if the two arguments are anagrams of each other (same letters, same counts), otherwise false.",
-  "cases": [
-   {
-    "args": [
-     "listen",
-     "silent"
-    ],
-    "out": "true\n"
-   },
-   {
-    "args": [
-     "abc",
-     "abd"
-    ],
-    "out": "false\n"
-   },
-   {
-    "args": [
-     "aab",
-     "abb"
-    ],
-    "out": "false\n"
-   }
-  ]
- },
- {
-  "id": "matrix_sum",
-  "prompt": "Arguments are the numbers of a 2x2 matrix in row-major order. Print the sum of the diagonal, then the sum of the anti-diagonal, each on its own line.",
-  "cases": [
-   {
-    "args": [
-     "1",
-     "2",
-     "3",
-     "4"
-    ],
-    "out": "5\n5\n"
-   },
-   {
-    "args": [
-     "10",
-     "0",
-     "0",
-     "10"
-    ],
-    "out": "20\n0\n"
-   }
-  ]
- },
- {
-  "id": "collatz",
-  "prompt": "Read N from the first argument and print how many steps the Collatz sequence takes to reach 1 (n/2 if even, 3n+1 if odd).",
-  "cases": [
-   {
-    "args": [
-     "1"
-    ],
-    "out": "0\n"
-   },
-   {
-    "args": [
-     "6"
-    ],
-    "out": "8\n"
-   },
-   {
-    "args": [
-     "27"
-    ],
-    "out": "111\n"
-   }
-  ]
- },
- {
-  "id": "dedupe",
-  "prompt": "Print the distinct arguments in order of first appearance, one per line.",
-  "cases": [
-   {
-    "args": [
-     "b",
-     "a",
-     "b",
-     "c",
-     "a"
-    ],
-    "out": "b\na\nc\n"
-   }
-  ]
- },
- {
-  "id": "string_repeat",
-  "prompt": "Read a word and a count from the arguments and print the word repeated count times on one line with no separator.",
-  "cases": [
-   {
-    "args": [
-     "ab",
-     "3"
-    ],
-    "out": "ababab\n"
-   },
-   {
-    "args": [
-     "x",
-     "0"
-    ],
-    "out": "\n"
-   }
-  ]
- },
- {
-  "id": "running_total",
-  "prompt": "Print the running totals of the integer arguments, one per line.",
-  "cases": [
-   {
-    "args": [
-     "1",
-     "2",
-     "3",
-     "4"
-    ],
-    "out": "1\n3\n6\n10\n"
-   }
-  ]
- },
- {
-  "id": "dict_invert",
-  "prompt": "Arguments come in key value pairs. Build a dict from them and print one line per entry as value=key, in the order the keys first appeared.",
-  "cases": [
-   {
-    "args": [
-     "a",
-     "1",
-     "b",
-     "2"
-    ],
-    "out": "1=a\n2=b\n"
-   }
-  ]
- },
- {
-  "id": "fstring_report",
-  "prompt": "Read a name and an integer age from the arguments and print: NAME is AGE years old (use an f-string).",
-  "cases": [
-   {
-    "args": [
-     "Ann",
-     "30"
-    ],
-    "out": "Ann is 30 years old\n"
-   }
-  ]
- }
+  {
+    "id": "fizzbuzz",
+    "prompt": "Read N from the first command-line argument. Print the numbers 1..N one per line, but print Fizz for multiples of 3, Buzz for multiples of 5 and FizzBuzz for multiples of both.",
+    "cases": [
+      {
+        "args": [
+          "5"
+        ],
+        "out": "1\n2\nFizz\n4\nBuzz\n"
+      },
+      {
+        "args": [
+          "15"
+        ],
+        "out": "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n"
+      }
+    ]
+  },
+  {
+    "id": "sum_digits",
+    "prompt": "Read an integer from the first argument and print the sum of its decimal digits (ignore a leading minus sign).",
+    "cases": [
+      {
+        "args": [
+          "123"
+        ],
+        "out": "6\n"
+      },
+      {
+        "args": [
+          "-908"
+        ],
+        "out": "17\n"
+      },
+      {
+        "args": [
+          "0"
+        ],
+        "out": "0\n"
+      }
+    ]
+  },
+  {
+    "id": "reverse_words",
+    "prompt": "Print the command-line arguments in reverse order, separated by single spaces, on one line.",
+    "cases": [
+      {
+        "args": [
+          "a",
+          "b",
+          "c"
+        ],
+        "out": "c b a\n"
+      },
+      {
+        "args": [
+          "solo"
+        ],
+        "out": "solo\n"
+      }
+    ]
+  },
+  {
+    "id": "is_prime",
+    "prompt": "Read N from the first argument. Print true if N is prime, otherwise false.",
+    "cases": [
+      {
+        "args": [
+          "2"
+        ],
+        "out": "true\n"
+      },
+      {
+        "args": [
+          "1"
+        ],
+        "out": "false\n"
+      },
+      {
+        "args": [
+          "97"
+        ],
+        "out": "true\n"
+      },
+      {
+        "args": [
+          "91"
+        ],
+        "out": "false\n"
+      }
+    ]
+  },
+  {
+    "id": "fib_n",
+    "prompt": "Read N from the first argument and print the Nth Fibonacci number (fib(0)=0, fib(1)=1).",
+    "cases": [
+      {
+        "args": [
+          "0"
+        ],
+        "out": "0\n"
+      },
+      {
+        "args": [
+          "1"
+        ],
+        "out": "1\n"
+      },
+      {
+        "args": [
+          "10"
+        ],
+        "out": "55\n"
+      },
+      {
+        "args": [
+          "30"
+        ],
+        "out": "832040\n"
+      }
+    ]
+  },
+  {
+    "id": "word_count",
+    "prompt": "Count how many times each argument occurs. Print one line per distinct argument in order of first appearance, formatted as word:count.",
+    "cases": [
+      {
+        "args": [
+          "a",
+          "b",
+          "a",
+          "c",
+          "b",
+          "a"
+        ],
+        "out": "a:3\nb:2\nc:1\n"
+      }
+    ]
+  },
+  {
+    "id": "max_arg",
+    "prompt": "Print the largest integer among the command-line arguments.",
+    "cases": [
+      {
+        "args": [
+          "3",
+          "9",
+          "2"
+        ],
+        "out": "9\n"
+      },
+      {
+        "args": [
+          "-5",
+          "-2",
+          "-9"
+        ],
+        "out": "-2\n"
+      }
+    ]
+  },
+  {
+    "id": "palindrome",
+    "prompt": "Read a word from the first argument. Print true if it reads the same forwards and backwards, otherwise false.",
+    "cases": [
+      {
+        "args": [
+          "racecar"
+        ],
+        "out": "true\n"
+      },
+      {
+        "args": [
+          "hello"
+        ],
+        "out": "false\n"
+      },
+      {
+        "args": [
+          "a"
+        ],
+        "out": "true\n"
+      }
+    ]
+  },
+  {
+    "id": "gcd",
+    "prompt": "Read two integers from the arguments and print their greatest common divisor.",
+    "cases": [
+      {
+        "args": [
+          "12",
+          "18"
+        ],
+        "out": "6\n"
+      },
+      {
+        "args": [
+          "17",
+          "5"
+        ],
+        "out": "1\n"
+      },
+      {
+        "args": [
+          "0",
+          "7"
+        ],
+        "out": "7\n"
+      }
+    ]
+  },
+  {
+    "id": "factorial_big",
+    "prompt": "Read N from the first argument and print N factorial (N <= 20).",
+    "cases": [
+      {
+        "args": [
+          "0"
+        ],
+        "out": "1\n"
+      },
+      {
+        "args": [
+          "5"
+        ],
+        "out": "120\n"
+      },
+      {
+        "args": [
+          "20"
+        ],
+        "out": "2432902008176640000\n"
+      }
+    ]
+  },
+  {
+    "id": "class_counter",
+    "prompt": "Define a class Counter with a method inc() that adds 1 and a method get() that returns the count. Read N from the first argument, call inc() N times on a new Counter and print get().",
+    "cases": [
+      {
+        "args": [
+          "0"
+        ],
+        "out": "0\n"
+      },
+      {
+        "args": [
+          "7"
+        ],
+        "out": "7\n"
+      }
+    ]
+  },
+  {
+    "id": "try_parse",
+    "prompt": "For each argument print its integer value plus 1, or the word bad if it is not a valid integer (use try/except).",
+    "cases": [
+      {
+        "args": [
+          "1",
+          "x",
+          "-4"
+        ],
+        "out": "2\nbad\n-3\n"
+      }
+    ]
+  },
+  {
+    "id": "count_vowels",
+    "prompt": "Read a word from the first argument and print how many of its letters are vowels (a, e, i, o, u; lowercase only).",
+    "cases": [
+      {
+        "args": [
+          "education"
+        ],
+        "out": "5\n"
+      },
+      {
+        "args": [
+          "rhythm"
+        ],
+        "out": "0\n"
+      }
+    ]
+  },
+  {
+    "id": "sort_args",
+    "prompt": "Print the integer arguments sorted ascending, one per line.",
+    "cases": [
+      {
+        "args": [
+          "3",
+          "1",
+          "2"
+        ],
+        "out": "1\n2\n3\n"
+      },
+      {
+        "args": [
+          "10",
+          "-2",
+          "7",
+          "7"
+        ],
+        "out": "-2\n7\n7\n10\n"
+      }
+    ]
+  },
+  {
+    "id": "binary",
+    "prompt": "Read a non-negative integer from the first argument and print it in binary (no prefix).",
+    "cases": [
+      {
+        "args": [
+          "0"
+        ],
+        "out": "0\n"
+      },
+      {
+        "args": [
+          "5"
+        ],
+        "out": "101\n"
+      },
+      {
+        "args": [
+          "255"
+        ],
+        "out": "11111111\n"
+      }
+    ]
+  },
+  {
+    "id": "caesar",
+    "prompt": "Shift each lowercase letter of the first argument forward by the integer in the second argument (wrapping z to a). Leave other characters unchanged. Print the result.",
+    "cases": [
+      {
+        "args": [
+          "abc",
+          "1"
+        ],
+        "out": "bcd\n"
+      },
+      {
+        "args": [
+          "xyz",
+          "3"
+        ],
+        "out": "abc\n"
+      },
+      {
+        "args": [
+          "hi there",
+          "13"
+        ],
+        "out": "uv gurer\n"
+      }
+    ]
+  },
+  {
+    "id": "anagram",
+    "prompt": "Print true if the two arguments are anagrams of each other (same letters, same counts), otherwise false.",
+    "cases": [
+      {
+        "args": [
+          "listen",
+          "silent"
+        ],
+        "out": "true\n"
+      },
+      {
+        "args": [
+          "abc",
+          "abd"
+        ],
+        "out": "false\n"
+      },
+      {
+        "args": [
+          "aab",
+          "abb"
+        ],
+        "out": "false\n"
+      }
+    ]
+  },
+  {
+    "id": "matrix_sum",
+    "prompt": "Arguments are the numbers of a 2x2 matrix in row-major order. Print the sum of the diagonal, then the sum of the anti-diagonal, each on its own line.",
+    "cases": [
+      {
+        "args": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "out": "5\n5\n"
+      },
+      {
+        "args": [
+          "10",
+          "0",
+          "0",
+          "10"
+        ],
+        "out": "20\n0\n"
+      }
+    ]
+  },
+  {
+    "id": "collatz",
+    "prompt": "Read N from the first argument and print how many steps the Collatz sequence takes to reach 1 (n/2 if even, 3n+1 if odd).",
+    "cases": [
+      {
+        "args": [
+          "1"
+        ],
+        "out": "0\n"
+      },
+      {
+        "args": [
+          "6"
+        ],
+        "out": "8\n"
+      },
+      {
+        "args": [
+          "27"
+        ],
+        "out": "111\n"
+      }
+    ]
+  },
+  {
+    "id": "dedupe",
+    "prompt": "Print the distinct arguments in order of first appearance, one per line.",
+    "cases": [
+      {
+        "args": [
+          "b",
+          "a",
+          "b",
+          "c",
+          "a"
+        ],
+        "out": "b\na\nc\n"
+      }
+    ]
+  },
+  {
+    "id": "string_repeat",
+    "prompt": "Read a word and a count from the arguments and print the word repeated count times on one line with no separator.",
+    "cases": [
+      {
+        "args": [
+          "ab",
+          "3"
+        ],
+        "out": "ababab\n"
+      },
+      {
+        "args": [
+          "x",
+          "0"
+        ],
+        "out": "\n"
+      }
+    ]
+  },
+  {
+    "id": "running_total",
+    "prompt": "Print the running totals of the integer arguments, one per line.",
+    "cases": [
+      {
+        "args": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "out": "1\n3\n6\n10\n"
+      }
+    ]
+  },
+  {
+    "id": "dict_invert",
+    "prompt": "Arguments come in key value pairs. Build a dict from them and print one line per entry as value=key, in the order the keys first appeared.",
+    "cases": [
+      {
+        "args": [
+          "a",
+          "1",
+          "b",
+          "2"
+        ],
+        "out": "1=a\n2=b\n"
+      }
+    ]
+  },
+  {
+    "id": "fstring_report",
+    "prompt": "Read a name and an integer age from the arguments and print: NAME is AGE years old (use an f-string).",
+    "cases": [
+      {
+        "args": [
+          "Ann",
+          "30"
+        ],
+        "out": "Ann is 30 years old\n"
+      }
+    ]
+  },
+  {
+    "id": "sum_args",
+    "prompt": "Print the sum of all integer arguments.",
+    "cases": [
+      {
+        "args": [
+          "1",
+          "2",
+          "3"
+        ],
+        "out": "6\n"
+      },
+      {
+        "args": [
+          "10",
+          "-4"
+        ],
+        "out": "6\n"
+      }
+    ]
+  },
+  {
+    "id": "min_arg",
+    "prompt": "Print the smallest integer argument.",
+    "cases": [
+      {
+        "args": [
+          "5",
+          "2",
+          "9"
+        ],
+        "out": "2\n"
+      },
+      {
+        "args": [
+          "-1",
+          "-7",
+          "3"
+        ],
+        "out": "-7\n"
+      }
+    ]
+  },
+  {
+    "id": "count_evens",
+    "prompt": "Print how many of the integer arguments are even.",
+    "cases": [
+      {
+        "args": [
+          "1",
+          "2",
+          "4",
+          "7"
+        ],
+        "out": "2\n"
+      },
+      {
+        "args": [
+          "3",
+          "5"
+        ],
+        "out": "0\n"
+      }
+    ]
+  },
+  {
+    "id": "power",
+    "prompt": "Read base and exponent (non-negative ints) and print base to the power exponent.",
+    "cases": [
+      {
+        "args": [
+          "2",
+          "10"
+        ],
+        "out": "1024\n"
+      },
+      {
+        "args": [
+          "7",
+          "0"
+        ],
+        "out": "1\n"
+      }
+    ]
+  },
+  {
+    "id": "triangle",
+    "prompt": "Read n and print n lines; line i (from 1) has i stars.",
+    "cases": [
+      {
+        "args": [
+          "3"
+        ],
+        "out": "*\n**\n***\n"
+      }
+    ]
+  },
+  {
+    "id": "join_args",
+    "prompt": "Print all arguments joined with a dash.",
+    "cases": [
+      {
+        "args": [
+          "a",
+          "b",
+          "c"
+        ],
+        "out": "a-b-c\n"
+      },
+      {
+        "args": [
+          "x"
+        ],
+        "out": "x\n"
+      }
+    ]
+  },
+  {
+    "id": "longest_word",
+    "prompt": "Print the longest argument (first one if tied).",
+    "cases": [
+      {
+        "args": [
+          "hi",
+          "hello",
+          "hey"
+        ],
+        "out": "hello\n"
+      },
+      {
+        "args": [
+          "ab",
+          "cd"
+        ],
+        "out": "ab\n"
+      }
+    ]
+  },
+  {
+    "id": "char_count",
+    "prompt": "Read a string and a single character; print how many times the character occurs.",
+    "cases": [
+      {
+        "args": [
+          "banana",
+          "a"
+        ],
+        "out": "3\n"
+      },
+      {
+        "args": [
+          "xyz",
+          "q"
+        ],
+        "out": "0\n"
+      }
+    ]
+  },
+  {
+    "id": "to_upper",
+    "prompt": "Print the first argument in upper case.",
+    "cases": [
+      {
+        "args": [
+          "hello"
+        ],
+        "out": "HELLO\n"
+      }
+    ]
+  },
+  {
+    "id": "first_dup",
+    "prompt": "Print the first argument that appears twice or more; print none if all are distinct.",
+    "cases": [
+      {
+        "args": [
+          "a",
+          "b",
+          "a",
+          "c"
+        ],
+        "out": "a\n"
+      },
+      {
+        "args": [
+          "x",
+          "y"
+        ],
+        "out": "none\n"
+      }
+    ]
+  },
+  {
+    "id": "digits_rev",
+    "prompt": "Read a non-negative integer and print its digits in reverse order as a number string (keep zeros).",
+    "cases": [
+      {
+        "args": [
+          "1200"
+        ],
+        "out": "0021\n"
+      },
+      {
+        "args": [
+          "345"
+        ],
+        "out": "543\n"
+      }
+    ]
+  },
+  {
+    "id": "mult_table",
+    "prompt": "Read n and print the multiplication table row n x 1 .. n x 5, one per line as N x K = P.",
+    "cases": [
+      {
+        "args": [
+          "3"
+        ],
+        "out": "3 x 1 = 3\n3 x 2 = 6\n3 x 3 = 9\n3 x 4 = 12\n3 x 5 = 15\n"
+      }
+    ]
+  },
+  {
+    "id": "safe_div",
+    "prompt": "Read two ints a and b; print a divided by b using integer division, or the text error if b is 0 (use try/except).",
+    "cases": [
+      {
+        "args": [
+          "7",
+          "2"
+        ],
+        "out": "3\n"
+      },
+      {
+        "args": [
+          "5",
+          "0"
+        ],
+        "out": "error\n"
+      }
+    ]
+  },
+  {
+    "id": "squares_dict",
+    "prompt": "Read n and print the dict-free list of squares 1..n separated by spaces.",
+    "cases": [
+      {
+        "args": [
+          "4"
+        ],
+        "out": "1 4 9 16\n"
+      }
+    ]
+  },
+  {
+    "id": "is_sorted",
+    "prompt": "Print yes if the integer arguments are in non-decreasing order, otherwise no.",
+    "cases": [
+      {
+        "args": [
+          "1",
+          "2",
+          "2",
+          "5"
+        ],
+        "out": "yes\n"
+      },
+      {
+        "args": [
+          "3",
+          "1"
+        ],
+        "out": "no\n"
+      }
+    ]
+  }
 ]
