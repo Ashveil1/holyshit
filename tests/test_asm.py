@@ -79,6 +79,40 @@ for b in ("rax", "r9", "r13"):
         L("mov_mrx", b, ix, 8, 40, "rdx")
         L("movzx_eax_mx", b, ix, 1, 300)
 L("call_r11")
+for op in ("cli", "hlt", "sti", "sahf", "iretq", "sysret", "in_al_dx", "out_dx_al",
+           "in_ax_dx", "in_eax_dx", "out_dx_ax", "out_dx_eax", "fprem", "fnstsw_ax",
+           "fstp_st1"):
+    L(op)
+for r in REGS:
+    for imm in (0, 7, -3, 100000):
+        for op in ("or_ri32", "xor_ri32", "adc_ri32"):
+            L(op, r, imm)
+    L("mul_r", r)
+    L("mov_ri16", r, 4660)
+    L("add_ri8", r, 5)
+    L("mov_rcr64", r, 3)
+    L("mov_cr64", 4, r)
+for b in ("rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi"):
+    for d in (0, 8, -8, 300):
+        if b in ("rsp",) and d != 0:
+            continue
+        L("fld_m64", b, d)
+        L("fstp_m64", b, d)
+for b in REGS:
+    for d in (0, 8, -8, 300):
+        if b in ("rsp", "r12") and d != 0:
+            continue
+        L("movzx_eax_m8", b, d)
+        L("jmp_m", b, d)
+        L("push_m", b, d)
+L("mov_ax_imm16", 4660)
+L("mov_seg16", 3, 0)
+L("test_al_imm8", 7)
+L("movzx_edx_mx", "rax", "rcx", 4, 9)
+L("xchg_rip", "rcx", "dd")
+L("lidt_rip", "dd")
+L("inc_mrip", "dd")
+L("dec_mrip", "dd")
 L("data_label", "dd")
 L("data_qword", -5)
 L("data_qword", 1 << 40)

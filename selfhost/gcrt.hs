@@ -2,10 +2,10 @@
 # scripts/py2hs.py, then maintained here. tests/test_gcrt.py checks the emitted
 # machine code byte for byte against gcrt.py.
 import asm
-TMP = {"n": 0}
+G = {"g": null}
 def new_tmp(pfx):
-  TMP["n"] = TMP["n"] + 1
-  return pfx + str(TMP["n"])
+  gg = G["g"]
+  return gg.new_tmp(pfx)
 def reversed(xs):
   out = []
   for x in xs:
@@ -22,7 +22,8 @@ def gc_data():
   asm.data_label("gc_free_")
   for _ in range(NCLASS):
     asm.data_qword(0)
-def emit_gc_malloc():
+def emit_gc_malloc(g):
+  G["g"] = g
   def mmap_rsi():
     asm.mov_ri32("rdi", 0)
     asm.mov_ri32("rdx", 3)
