@@ -18,6 +18,10 @@ byte list; avoiding that overhead is later work.
 The generated process entry exits the driver. There is no return to the
 compiler, code unloading, first-call compilation, type feedback, tiering or
 deoptimization. Extern symbols are rejected, not silently left unbound.
+Safe Ints retain the x64 62-bit limit. Out-of-range results can fail with
+exit 97 instead of the reference interpreter's 64-bit behavior. There is no
+interpreter fallback.
+
 Arguments are forwarded and the initial environment comes from Linux procfs.
 Compilation diagnostics remain experimental. The existing `hs run` route is
 unchanged. This path is not the default and has no startup-performance claim.
