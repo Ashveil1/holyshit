@@ -262,3 +262,8 @@ SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the
 Python verifier, through interp and x64. Out-of-width IR constants remain
 interp-only. This is a compiler-stage check, not a full bootstrap claim.
+
+Measured binary-driver fixed point: scripts/bootstrap-hosted.sh produced
+three identical 9,080,008-byte ELF compilers locally. Stages two and three
+were built by the native compiler with no Python process in those steps.
+The seed is not committed and full CI remains the merge gate.
