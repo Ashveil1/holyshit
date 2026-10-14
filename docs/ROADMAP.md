@@ -242,3 +242,8 @@ then requires byte-identical complete ELF images from the hs linker on
 interp and compiled x64. It covers heap, ring3, syscall, preemption, JSON
 and user-shell kernels. This proves linking only: source-to-kernel native
 compilation and the kernel IR migration remain separate gates.
+The x64 IR path now supports direct `write_bytes(path, [Int 0..255])`.
+Validation runs before opening the file; empty data and embedded zero bytes
+are preserved. `test_write_bytes_x64.py` compares exact file bytes and
+catchable failures with interp, including invalid elements and non-list
+inputs. First-class write_bytes values remain outside the x64 subset.

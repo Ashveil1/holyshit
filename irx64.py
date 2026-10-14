@@ -35,12 +35,12 @@ NOT_A_VALUE = {
 # builtins with an inline call emitter but no value form in x64gen-today.
 # A `load` of one whose temp feeds call-fn positions exclusively gets a
 # dummy value (the inline path ignores it); any other use raises.
-INLINE_ONLY = {"float"}
+INLINE_ONLY = {"float", "write_bytes"}
 
 # builtins where a DIRECT call must use the inline emitter (exact error
 # lines) while first-class uses go through the value/stub protocol
 # (whose type errors carry the stub's line 0, like x64gen-today).
-INLINE_DIRECT = {"float", "len", "str", "int", "range", "append",
+INLINE_DIRECT = {"write_bytes", "float", "len", "str", "int", "range", "append",
                  "read_text", "write_text", "append_text", "exists", "ls",
                  "mkdir", "read_mem", "has", "contains",
                  "keys", "values"}
@@ -1715,6 +1715,8 @@ class GenIR(Gen):
                 self._inline_range(fr, dest, args, ln)
             elif name == "append":
                 self._inline_append(fr, dest, args, ln)
+            elif name == "write_bytes":
+                self._inline_write_bytes(fr, dest, args, ln)
             elif name in ("read_text", "write_text", "append_text",
                           "exists", "ls", "mkdir"):
                 self._inline_file(fr, dest, name, args, ln)
@@ -2179,6 +2181,86 @@ class GenIR(Gen):
         a.label(lab_fsbad)
         self.raise_static(msg, ln)
         a.label(lab_fsret)
+        a.mov_mr("rbp", "rax", fr["slots"][dest])
+
+    def _inline_write_bytes(self, fr, dest, args, ln):
+        a = self.a
+        msg = "write_bytes wants write_bytes(path, [Int 0..255])"
+        if len(args) != 2:
+            raise HSErr(msg, ln)
+        bad, bytebad, loop, done = (self.new_tmp("wb") for _ in range(4))
+        self._load(fr, args[0], ln)
+        a.push_r("rax")
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", bad)
+        a.test_rr("rax", "rax")
+        a.jcc("e", bad)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_STR)
+        a.jcc("ne", bad)
+        self._load(fr, args[1], ln)
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.test_rr("r11", "r11")
+        a.jcc("ne", bad)
+        a.test_rr("rax", "rax")
+        a.jcc("e", bad)
+        a.mov_rm("r11", "rax", 0)
+        a.cmp_ri32("r11", Gen.K_LIST)
+        a.jcc("ne", bad)
+        a.push_r("rax")
+        a.mov_rm("rdi", "rax", 8)
+        a.add_ri32("rdi", 24)
+        a.call("x_malloc")
+        a.push_r("rax")
+        a.mov_ri32("r11", Gen.K_STR)
+        a.mov_mr("rax", "r11", 0)
+        a.mov_rm("rsi", "rsp", 8)
+        a.mov_rm("rcx", "rsi", 8)
+        a.mov_mr("rax", "rcx", 8)
+        a.mov_rm("rsi", "rsi", 24)
+        a.lea_m("rdi", "rax", 16)
+        a.mov_ri32("r8", 0)
+        a.label(loop)
+        a.cmp_rr("r8", "rcx")
+        a.jcc("ae", done)
+        a.mov_rmx("rax", "rsi", "r8", 8, 0)
+        a.mov_rr("r11", "rax")
+        a.and_ri32("r11", 3)
+        a.cmp_ri32("r11", Gen.TAG_INT)
+        a.jcc("ne", bytebad)
+        a.sar_ri8("rax", 2)
+        a.cmp_ri32("rax", 255)
+        a.jcc("a", bytebad)
+        a.mov_mr8("rdi", 0, 0)
+        a.add_ri32("rdi", 1)
+        a.add_ri32("r8", 1)
+        a.jmp(loop)
+        a.label(done)
+        a.mov_ri32("rax", 0)
+        a.mov_mr8("rdi", 0, 0)
+        a.mov_rm("rdi", "rsp", 16)
+        a.mov_ri32("rsi", 3)
+        a.mov_ri32("rdx", ln)
+        a.call("file_open")
+        a.push_r("rax")
+        a.mov_rr("rdi", "rax")
+        a.mov_rm("rsi", "rsp", 8)
+        a.mov_ri32("rdx", ln)
+        a.call("file_write_all")
+        a.mov_rm("rdi", "rsp", 0)
+        a.call("file_close")
+        a.add_ri32("rsp", 32)
+        a.mov_ri32("rax", Gen.HS_NULL)
+        end = self.new_tmp("wb")
+        a.jmp(end)
+        a.label(bytebad)
+        self.raise_static("write_bytes wants a list of Ints 0..255", ln)
+        a.label(bad)
+        self.raise_static(msg, ln)
+        a.label(end)
         a.mov_mr("rbp", "rax", fr["slots"][dest])
 
     def _inline_read_mem(self, fr, dest, args, ln):
