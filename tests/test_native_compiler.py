@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory() as d:
             width+=1
             continue
         r=subprocess.run([exe,f],env=env,capture_output=True,text=True,errors='replace',timeout=120)
-        ok=r.stdout.strip()==want
+        ok="".join(r.stdout.split())==want
         passed+=int(ok);failed+=int(not ok)
         if not ok:print('FAIL native compiler',Path(f).name,r.stderr[-180:],flush=True)
 print(f'{passed}/{passed+failed} passed ({rejected} rejected by Python emitter; {width} full-width unsafe gate deferred)')

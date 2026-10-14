@@ -13,4 +13,7 @@ HEX = "0123456789abcdef"
 out = []
 for b in img:
   append(out, HEX[b >> 4] + HEX[b & 15])
+  if len(out) >= 4096:
+    print join("", out)
+    out = []
 print join("", out)
