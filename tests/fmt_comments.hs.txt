@@ -1,0 +1,16 @@
+# header comment
+# second line
+
+def f(a):  # trailing on def
+  # inside body
+  x = a + 1   # trail x
+  if x > 2:
+    # in if
+    return "has # hash"  # after string
+  # before else
+  else:
+    return 0
+  # end of f
+
+print f(3)  // slash comment
+# the end

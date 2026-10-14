@@ -18,7 +18,7 @@
 | พึ่งตัวเองได้ | x64 + kernel + FFI ไม่ใช้ gcc; lexer/parser/formatter เขียนด้วย hs ตรงกับ Python ทุกไบต์บนไฟล์ในรีโป (808 เช็ค) และ parse ตัวเองได้; `selfhost/cc.hs` = compiler เขียนด้วย hs (parse ด้วย parselib.hs → ELF x86-64 ตรงด้วย `write_bytes`, subset Int/def/recursion/while/print) ผลตรง interp 24 เคส; ยังเล็ก (ไม่มี list/str/dict/float) ต้องขยายจนคอมไพล์ตัวเองได้ ; **bootstrap fixed point**: cc.hs (ผ่าน interp) → cc2 (ELF) → cc3 โดย cc2 == cc3 ไบต์ต่อไบต์ (test_cc 72 เคส; cc รองรับ ternary + default args) และ `hs cc prog.hs` ใช้ compiler ที่เขียนด้วย hs นี้; subset ยังไม่มี Float/class/GC/FFI ไม่แทน x64gen/irx64 ทั้งหมด | ~60% |
 | FFI | native + x64 (I64/U64/Ptr/Str/F64); struct by pointer ผ่าน malloc+load/store (เทสกับ gmtime_r ตรงกัน interp/native/x64); ยังไม่มี struct by value/callback | ~57% |
 | เขียน OS ด้วยตัวเอง | kernel บูตบน QEMU, xkernel 291 เคส (VFS, shell ring3, paging, preempt, float, JSON) | ~70% |
-| AI-first | error แบบมีโครงสร้าง (`--json`), LSP, docs/api.json, `hs fmt`; `hs test` (test runner, `--json`) มีแล้ว; `hs repl` มีแล้ว | ~40% |
+| AI-first | error แบบมีโครงสร้าง (`--json`), LSP, docs/api.json, `hs fmt` (เก็บคอมเมนต์แล้ว); `hs test` (test runner, `--json`) มีแล้ว; `hs repl` มีแล้ว | ~40% |
 
 ภาพรวม ~60% (ยังไม่ถึง 80%) ส่วนที่ใหญ่ที่สุดที่เหลือ: code generator ใน hs (self-host เต็ม), JIT จริง, GC ให้เร็วขึ้นเมื่อ live heap ใหญ่ (strings/alloc/dict)
 
@@ -157,7 +157,7 @@ strings        0.778s     0.627s    1.24x     443     469  same
 
 1. **eval suite:** 50–100 โจทย์เขียนโปรแกรม (`evals/*.md` + เทสอัตโนมัติ); รันกับโมเดลหลายตัวในโหมด "มีเอกสาร" และ "ไม่มีเอกสาร"; ตัวชี้วัด: pass@1, จำนวนรอบแก้, token ต่อโปรแกรม; เทียบ Python บนโจทย์เดียวกัน
 2. ทุก error มีรหัส + คำแนะนำแก้ (`E0xx: …; hint: …`) เป็น JSON (ต่อยอด errors.md)
-3. `hs fmt` canonical ที่ไม่ตัดคอมเมนต์ (ตอนนี้ `-w` ตัดคอมเมนต์ [เอกสาร]) — AI เขียนคอมเมนต์ได้โดยไม่หาย
+3. `hs fmt` canonical ที่ไม่ตัดคอมเมนต์ (ทำแล้ว: `fmt -w` เก็บคอมเมนต์ (ตำแหน่งอาจขยับ blank line ยังหาย)) — AI เขียนคอมเมนต์ได้โดยไม่หาย
 4. คำสั่ง "agent mode": `hs check --json`, `hs explain <error>`, `hs test` ที่ส่งผลเป็น JSON; LSP ที่ใช้ได้ผ่าน MCP/CLI
 5. ตัดความกำกวมของภาษา (มีทางเขียนเดียว), ลบ divergence ที่ต้องจำ (เช่น `/` ใน unsafe ต่างจาก safe)
 6. ชุดตัวอย่าง "โจทย์→โค้ด" ที่รันได้ ให้โมเดลเรียนจากบริบท
