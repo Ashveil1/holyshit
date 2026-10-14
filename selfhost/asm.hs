@@ -230,6 +230,58 @@ def imul_rr(d, s):
   bn([15, 175])
   modrm(3, dn & 7, sn & 7)
 
+def xmm_rr(pre, opc, xd, xs):
+  b1(pre)
+  b1(15)
+  b1(opc)
+  modrm(3, xd, xs)
+
+def addsd(xd, xs):
+  xmm_rr(242, 88, xd, xs)
+
+def subsd(xd, xs):
+  xmm_rr(242, 92, xd, xs)
+
+def mulsd(xd, xs):
+  xmm_rr(242, 89, xd, xs)
+
+def divsd(xd, xs):
+  xmm_rr(242, 94, xd, xs)
+
+def xorpd(xd, xs):
+  xmm_rr(102, 87, xd, xs)
+
+def ucomisd(xa, xb):
+  xmm_rr(102, 46, xa, xb)
+
+def cvtsi2sd(xd, rs):
+  rn = regn(rs)
+  b1(242)
+  rex(1, 0, 0, (rn >> 3) & 1)
+  bn([15, 42])
+  modrm(3, xd, rn & 7)
+
+def cvttsd2si(rd, xs):
+  dn = regn(rd)
+  b1(242)
+  rex(1, 0, 0, (dn >> 3) & 1)
+  bn([15, 44])
+  modrm(3, xs, dn & 7)
+
+def movq_xr(xd, rs):
+  rn = regn(rs)
+  b1(102)
+  rex(1, 0, 0, (rn >> 3) & 1)
+  bn([15, 110])
+  modrm(3, xd, rn & 7)
+
+def movq_rx(rd, xs):
+  dn = regn(rd)
+  b1(102)
+  rex(1, 0, 0, (dn >> 3) & 1)
+  bn([15, 126])
+  modrm(3, xs, dn & 7)
+
 def cqo():
   bn([72, 153])
 
