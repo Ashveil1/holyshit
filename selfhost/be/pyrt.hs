@@ -44,12 +44,13 @@ def py_chr(n):
     return ASCII[n - 32]
   raise "py_chr: unsupported code " + str(n)
 def py_ord(c):
-  for n in range(32):
-    if c == py_chr(n):
-      return n
   i = find(ASCII, c)
   if i >= 0:
     return i + 32
+  if c == json_parse("\"\\b\""):
+    return 8
+  if c == json_parse("\"\\f\""):
+    return 12
   if c == "\n":
     return 10
   if c == "\t":

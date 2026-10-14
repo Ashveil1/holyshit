@@ -299,12 +299,13 @@ interp and compiled x64. It covers heap, ring3, syscall, preemption, JSON
 and user-shell kernels. This proves linking only: source-to-kernel native
 compilation and the kernel IR migration remain separate gates.
 
-### S7c native kernel compiler prototype (not merge-ready)
+### S7c native kernel compiler prototype
 `selfhost/be/kernel_hex.hs` uses the maintained AST kernel backend and hs
 multiboot linker. Seven complete kernel ELF images match the reference:
 basic runtime, heap, ring3, syscall, preemption, JSON and user shell.
 Port fixes cover Scope identity, module parsing, global names, assembler
 defaults, wide kernel literals and UTF-8 data emission. Backend regeneration
-must remain exact. The hosted compiler fixed-point regression currently
-fails at stage two after the UTF-8 change. This must be fixed before merge;
+must remain exact. The UTF-8 helper initially exhausted memory during self-build. Avoiding
+per-ASCII-character JSON allocation restores the hosted fixed-point gate
+(24/24 targeted gates, including two generations). Full CI is pending;
 kernel IR migration and Python-free seed packaging are still separate work.
