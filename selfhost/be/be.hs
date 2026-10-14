@@ -353,13 +353,13 @@ class Gen:
       asm.data_bytes(b + pyrt.py_rep([0], 8 - len(b) % 8))
     return self.sstrs[s]
   def sfloat(self, bits):
-    key = pyrt.py_key(["f", bits])
+    key = "f" + json_str(bits)
     if not (key in self.sstrs):
       lab = "sflt_" + str(len(self.sstrs))
       self.sstrs[key] = lab
       asm.data_label(lab)
       asm.data_qword(Gen_K_FLOAT)
-      asm.data_qword(bits)
+      asm.data_bytes(bits)
     return self.sstrs[key]
   def emit_str_table(self):
     for s, lab in pyrt.py_items(self.strs):
