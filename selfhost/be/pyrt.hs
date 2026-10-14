@@ -672,6 +672,12 @@ def py_f64bits(v):
   while m < 1.0:
     m = m * 2.0
     e = e - 1
+  if e < -1022:
+    k = -1022 - e
+    while k > 0:
+      m = m / 2.0
+      k = k - 1
+    return (sign << 63) | int(m * 4503599627370496.0)
   mant = int((m - 1.0) * 4503599627370496.0)
   return (sign << 63) | ((e + 1023) << 52) | mant
 
@@ -694,3 +700,15 @@ def py_has_key(k, d):
   if k == null:
     return false
   return py_k(k) in d
+
+class PyFile:
+  def __init__(self, path):
+    self.path = path
+  def read_(self):
+    return read_text(self.path)
+
+def py_open(path, mode):
+  return PyFile(path)
+
+def py_close(f):
+  return null

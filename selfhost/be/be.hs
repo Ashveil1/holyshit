@@ -49,7 +49,7 @@ class Gen:
         break
     if (p in self.mod_by_path):
       return self.mod_by_path[p]
-    f = pyrt.py_open(p)
+    f = pyrt.py_open(p, null)
     src = f.read_()
     pyrt.py_close(f)
     try:
@@ -357,7 +357,7 @@ class Gen:
       self.sstrs[key] = lab
       asm.data_label(lab)
       asm.data_qword(Gen_K_FLOAT)
-      asm.data_qword(((bits - (1 << 64)) if (bits >= (1 << 63)) else bits))
+      asm.data_qword(bits)
     return self.sstrs[key]
   def emit_str_table(self):
     for s, lab in pyrt.py_items(self.strs):
@@ -3752,7 +3752,7 @@ class Gen:
   def load_json_helper(self):
     path = (pyrt.py_root() + "/runtime/json.hs")
     try:
-      f = pyrt.py_open(path)
+      f = pyrt.py_open(path, null)
       src = f.read_()
       pyrt.py_close(f)
     except as e:
@@ -10396,7 +10396,7 @@ class Gen_Scope:
 def build_x64(prog_path, out_path):
   interp.reset_parse_state()
   try:
-    f = pyrt.py_open(prog_path)
+    f = pyrt.py_open(prog_path, null)
     src = f.read_()
     pyrt.py_close(f)
   except as e:
@@ -10429,7 +10429,7 @@ def build_x64(prog_path, out_path):
 def build_x64_ast(prog_path, out_path):
   interp.reset_parse_state()
   try:
-    f = pyrt.py_open(prog_path)
+    f = pyrt.py_open(prog_path, null)
     src = f.read_()
     pyrt.py_close(f)
   except as e:
@@ -10543,7 +10543,7 @@ class GenIR(Gen):
       return null
     path = (pyrt.py_root() + "/runtime/json.hs")
     try:
-      f = pyrt.py_open(path)
+      f = pyrt.py_open(path, null)
       src = f.read_()
       pyrt.py_close(f)
     except as e:
@@ -10603,7 +10603,7 @@ class GenIR(Gen):
       if (not is_shell):
         append(chain, rec)
         if (rec["irmod"] == null):
-          f = pyrt.py_open(path)
+          f = pyrt.py_open(path, null)
           src = f.read_()
           pyrt.py_close(f)
           try:
@@ -13156,7 +13156,7 @@ GenIR_SRAW_OPS = pyrt.py_set(["sconst", "sbin", "sun", "scall", "sderef", "sfiel
 def build_irx64(prog_path, out_path):
   interp.reset_parse_state()
   try:
-    f = pyrt.py_open(prog_path)
+    f = pyrt.py_open(prog_path, null)
     src = f.read_()
     pyrt.py_close(f)
   except as e:
