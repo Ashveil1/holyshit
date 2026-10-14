@@ -14,3 +14,4 @@ for old, new in PATCHES:
     s = s.replace(old, new)
 open('selfhost/be/be.hs', 'w').write(s)
 PY
+python3 hs.py fmt selfhost/be/be.hs -w
