@@ -46,6 +46,7 @@ SUITES = [
     ("test_elf.py", "ELF writer written in hs vs x64.py"),
     ("test_irlib.py", "IR loader written in hs vs ir.py"),
     ("test_gcrt.py", "allocator/GC emitter written in hs vs gcrt.py"),
+    ("test_iropt_hs.py", "CFG optimizer in hs vs iropt.py (interp + x64)"),
     ("test_verify_hs.py", "CFG verifier in hs vs ir.py (valid + malformed modules)"),
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
     ("test_be.py", "x64 backend written in hs vs irx64.py"),
