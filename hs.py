@@ -1066,7 +1066,7 @@ class Gen:
                 return f"v_float({repr(v)})"
             return f"v_int({v}LL)"
         if t == "str":
-            return f'v_str("{c_esc(e["val"])}")'
+            return f'v_strn("{c_esc(e["val"])}", {len(e["val"].encode("utf-8"))})'
         if t == "var":
             res = e["_res"]
             kind = res[0]
@@ -1240,7 +1240,7 @@ class Gen:
                 parts = []
                 for a in s["args"]:
                     if a["t"] == "str":
-                        parts.append(f'(v_str("{c_esc(a["val"])}"))')
+                        parts.append(f'(v_strn("{c_esc(a["val"])}", {len(a["val"].encode("utf-8"))}))')
                     else:
                         st, sc, _ = self.emit_sexpr(a, scope, out)
                         parts.append(self.box_c(st, sc, ln))

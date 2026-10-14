@@ -18,6 +18,8 @@ def esc(s):
       out = out + "\\n"
     elif ch == "\t":
       out = out + "\\t"
+    elif ch == "\0":
+      out = out + "\\0"
     elif ch == "\r":
       out = out + "\\r"
     else:

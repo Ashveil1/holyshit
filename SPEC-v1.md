@@ -1377,3 +1377,9 @@ normal hs run command and its fallback/cache behavior are unchanged.
 verified seed, an isolated temporary native driver and cleanup. It needs
 no Python/gcc at runtime, but builds the driver each time. This extra build
 time is excluded from any already-built-driver startup measurements.
+
+### Formatter preservation of NUL
+The canonical spelling of an embedded NUL byte is `\0`, the string escape
+accepted by the parser. Formatting a string must preserve its contents and
+must not rewrite NUL as an unsupported Unicode escape. The gcc-native
+backend emits literal byte lengths explicitly, preserving embedded NUL.

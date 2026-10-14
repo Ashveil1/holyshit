@@ -54,6 +54,8 @@ def esc(s):
             out.append("\\n")
         elif ch == "\t":
             out.append("\\t")
+        elif ch == "\0":
+            out.append("\\0")
         elif ch == "\r":
             out.append("\\r")
         elif o < 0x20:
