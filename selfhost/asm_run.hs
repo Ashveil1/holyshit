@@ -128,11 +128,30 @@ def run(op, a):
     asm.setcc_al(a[0])
   elif op == "movzx_eax_al":
     asm.movzx_eax_al()
+  elif op == "bsr_rr":
+    asm.bsr_rr(a[0], a[1])
+  elif op == "call_r11":
+    asm.call_r11()
+  elif op == "mov_mrx":
+    asm.mov_mrx(a[0], a[1], a[2], a[3], a[4])
+  elif op == "not_rr":
+    asm.not_rr(a[0])
+  elif op == "or_ri8":
+    asm.or_ri8(a[0], a[1])
+  elif op == "movq_xm":
+    asm.movq_xm(a[0], a[1], a[2])
+  elif op == "movzx_eax_mx":
+    asm.movzx_eax_mx(a[0], a[1], a[2], a[3])
+  elif op == "data_label":
+    asm.data_label(a[0])
+  elif op == "data_qword":
+    asm.data_qword(a[0])
   else:
     raise "unknown op " + op
 
 HEX = "0123456789abcdef"
 asm.reset()
+asm.data_reset()
 for line in split(read_text(argv()[0]), "\n"):
   w = split(line)
   if len(w) > 0:
@@ -141,6 +160,6 @@ for line in split(read_text(argv()[0]), "\n"):
       append(args, arg(x))
     run(w[0], args)
 out = ""
-for b in asm.resolve():
+for b in asm.resolve_at(4194304, 5242880):
   out = out + HEX[b >> 4] + HEX[b & 15]
 print out

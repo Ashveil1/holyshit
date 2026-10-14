@@ -1,0 +1,22 @@
+# elf_run.hs: read "<entry_off> <code hex> <data hex>" and print the packed
+# static ELF as hex (tests/test_elf.py).
+import elf
+
+def unhex(s):
+  out = []
+  H = "0123456789abcdef"
+  i = 0
+  while i + 1 < len(s):
+    append(out, find(H, s[i]) * 16 + find(H, s[i + 1]))
+    i = i + 2
+  return out
+
+w = split(read_text(argv()[0]), "\n")
+code = unhex(w[1])
+data = unhex(w[2])
+lo = elf.layout(len(code))
+H = "0123456789abcdef"
+out = ""
+for b in elf.pack(code, data, int(w[0]), lo):
+  out = out + H[b >> 4] + H[b & 15]
+print out
