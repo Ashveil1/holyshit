@@ -6098,7 +6098,14 @@ class Gen:
         a.mov_ri32("rax", 257)  # sys_openat
         a.mov_ri32("rdi", -100)  # AT_FDCWD
         a.mov_rm("rsi", "rbp", -32)
-        a.mov_ri32("r10", 420)  # 0644
+        a.mov_ri32("r10", 420)  # 0644; write_bytes mode 3 uses 0755
+        a.mov_rm("rax", "rbp", -16)
+        a.cmp_ri32("rax", 3)
+        mode_ok = self.new_tmp("fh")
+        a.jcc("ne", mode_ok)
+        a.mov_ri32("r10", 493)
+        a.label(mode_ok)
+        a.mov_ri32("rax", 257)
         a.syscall()
         a.test_rr("rax", "rax")
         lab_fook = self.new_tmp("fh")
