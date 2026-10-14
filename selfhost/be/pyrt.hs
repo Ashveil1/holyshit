@@ -580,13 +580,14 @@ def py_rep(a, n):
     i = i + 1
   return out
 def py_f64bits(v):
-  if v == 0:
-    return 0
+  # Return eight little-endian bytes, never a host-width integer.
   sign = 0
   m = v
   if m < 0:
     sign = 1
     m = 0.0 - m
+  if m == 0:
+    return [0, 0, 0, 0, 0, 0, 0, sign * 128]
   e = 0
   while m >= 2.0:
     m = m / 2.0
@@ -594,14 +595,22 @@ def py_f64bits(v):
   while m < 1.0:
     m = m * 2.0
     e = e - 1
+  exp = e + 1023
   if e < -1022:
     k = -1022 - e
     while k > 0:
       m = m / 2.0
       k = k - 1
-    return sign << 63 | int(m * 4503599627370496.0)
-  mant = int((m - 1.0) * 4503599627370496.0)
-  return sign << 63 | ((e + 1023) << 52) | mant
+    mant = int(m * 4503599627370496.0)
+    exp = 0
+  else:
+    mant = int((m - 1.0) * 4503599627370496.0)
+  bs = []
+  for i in range(6):
+    append(bs, mant >> (8 * i) & 255)
+  append(bs, mant >> 48 & 15 | (exp & 15 << 4))
+  append(bs, exp >> 4 | (sign << 7))
+  return bs
 def py_root():
   r = env("HSROOT")
   if r == null:

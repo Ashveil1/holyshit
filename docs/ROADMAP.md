@@ -220,6 +220,27 @@ SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the
 Python verifier, through interp and x64. Out-of-width IR constants remain
 interp-only. This is a compiler-stage check, not a full bootstrap claim.
+Compiler-depth regression gate: repeated returns from an except handler
+must pop the active exception value, not the already-consumed try frame.
+`tests/t_exceptreturn.hs` exercises 300 handled returns with and without
+finally. The Python IR builder and its hs translation share this cleanup
+rule; interp remains the output oracle.
+
+Native hosted-compiler checkpoint: `selfhost/be/compile_hex.hs` builds through
+Python stage0, then the resulting native compiler builds itself. The test
+requires stage1 == stage2 == stage3 byte for byte. Output is chunked hex to
+bound memory; this driver is not a polished CLI. `test_native_compiler.py`
+also compares hosted ELF output against Python across the source corpus.
+One full-width unsafe-constant program remains explicitly deferred. A
+successful hosted fixed point does not cover the separate kernel backend,
+all 64-bit unsafe values, or the missing x64 write_bytes helper. No binary
+seed is yet committed. The Python source remains the reference/test oracle.
+
+The x64 IR path now supports direct `write_bytes(path, [Int 0..255])`.
+Validation runs before opening the file; empty data and embedded zero bytes
+are preserved. `test_write_bytes_x64.py` compares exact file bytes and
+catchable failures with interp, including invalid elements and non-list
+inputs. First-class write_bytes values remain outside the x64 subset.
 
 Source-to-ELF driver checkpoint: `selfhost/be/compile.hs SOURCE OUTPUT`
 connects normalized parsing, optimized IR, verification, module loading,
@@ -247,8 +268,7 @@ corpus modules and deliberately malformed modules are checked against the
 Python verifier, through interp and x64. Out-of-width IR constants remain
 interp-only. This is a compiler-stage check, not a full bootstrap claim.
 
-The x64 IR path now supports direct `write_bytes(path, [Int 0..255])`.
-Validation runs before opening the file; empty data and embedded zero bytes
-are preserved. `test_write_bytes_x64.py` compares exact file bytes and
-catchable failures with interp, including invalid elements and non-list
-inputs. First-class write_bytes values remain outside the x64 subset.
+Measured binary-driver fixed point: scripts/bootstrap-hosted.sh produced
+three identical 9,080,008-byte ELF compilers locally. Stages two and three
+were built by the native compiler with no Python process in those steps.
+The seed is not committed and full CI remains the merge gate.

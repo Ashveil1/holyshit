@@ -9,4 +9,5 @@ m = irbuild.build_module(normalize.parse(read_text(srcpath)), "")
 verify.verify_module(m)
 g = be.GenIR(m, pyrt.py_os_path_dirname(srcpath))
 img = g.build_ir_image()
-write_bytes(argv()[1], img)
+outpath = argv()[1]
+write_bytes(outpath, img)
