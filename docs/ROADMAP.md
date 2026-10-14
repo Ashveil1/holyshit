@@ -232,3 +232,8 @@ multiboot-to-long-mode stub. `tests/test_asm32.py` checks all instruction
 forms, register pairs, immediate boundaries and symbolic fixes byte for
 byte against `x64.Asm32`, through both interp and compiled x64. This is a
 kernel-bootstrap component only, not a native kernel compiler claim.
+The x64 IR path now supports direct `write_bytes(path, [Int 0..255])`.
+Validation runs before opening the file; empty data and embedded zero bytes
+are preserved. `test_write_bytes_x64.py` compares exact file bytes and
+catchable failures with interp, including invalid elements and non-list
+inputs. First-class write_bytes values remain outside the x64 subset.
