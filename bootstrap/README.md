@@ -34,3 +34,12 @@ method JIT or interpreter fallback. Imports use the source directory and
 `HSPATH`; execution keeps the caller's working directory. The compiler
 still supports only its documented hosted subset and reports unsupported
 programs rather than falling back to Python. No persistent cache is used.
+
+## Build a kernel without Python
+
+`scripts/build-kernel-native.sh source.hs kernel.elf` verifies the pinned
+hosted seed, uses it to build the native hs IR kernel driver, then writes
+the kernel ELF through the hs IR backend and linker. It needs only shell
+utilities at runtime, not Python, gcc, as or ld. It does not boot the kernel
+or package a ramdisk. Source and output paths may contain spaces. An
+existing output is preserved when parsing or compilation fails.

@@ -61,6 +61,7 @@ SUITES = [
     ("test_hosted_seed.py", "verified seed + Python-free bootstrap"),
     ("test_native_kernel.py", "native kernel compiler complete ELF images"),
     ("test_native_kernel_ir.py", "native IR kernel compiler complete ELF images"),
+    ("test_native_kernel_command.py", "Python-free native IR kernel command"),
     ("test_native_compiler.py", "native hs compiler image equality + full hosted fixed point"),
     ("test_compile_hs.py", "source-to-ELF compiler in hs vs Python backend"),
     ("test_be.py", "x64 backend written in hs vs irx64.py"),

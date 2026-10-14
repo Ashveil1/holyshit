@@ -351,3 +351,10 @@ and address spaces. AST image equality remains a separate reference gate.
 Kernel adapter methods preserve tagged versus raw words, builtin precedence
 and runtime allocation of literal strings/floats. Hosted compiler
 self-compilation and source-audited pinned seed gates still apply.
+
+### S9 Python-free kernel command
+`scripts/build-kernel-native.sh source.hs kernel.elf` builds the hs IR kernel
+driver with the audited seed and runs it. Integration gates compare complete
+ELFs with the Python IR oracle under a PATH without Python/gcc and verify
+that a compile failure leaves an existing output unchanged. This packages
+the native path; it is not a kernel boot command or a standalone OS image.
