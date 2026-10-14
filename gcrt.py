@@ -623,16 +623,7 @@ def emit_gc_malloc(g):
     a.mov_rmx("rdx", "r9", "r11", 8, 0)
     a.jmp(M2)
     a.label(M3)                     # rcx = index of highest set bit of rdx
-    a.mov_ri32("rcx", 0)
-    for sh in (32, 16, 8, 4, 2, 1):
-        sk = T("gm")
-        a.mov_rr("rax", "rdx")
-        a.shr_ri8("rax", sh)
-        a.test_rr("rax", "rax")
-        a.jcc("e", sk)
-        a.mov_rr("rdx", "rax")
-        a.add_ri32("rcx", sh)
-        a.label(sk)
+    a.bsr_rr("rcx", "rdx")
     a.mov_rr("rax", "r11")
     a.shl_ri8("rax", 6)
     a.add_rr("rax", "rcx")
