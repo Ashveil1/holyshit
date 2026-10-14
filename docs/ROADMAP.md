@@ -282,3 +282,19 @@ the reference compiler. Larger unsafe literals fail rather than truncate.
 The t_load64 exclusion is removed; boundary cases and the two-generation
 compiler fixed point remain required tests. This does not claim kernel
 self-hosting or change safe integer overflow behavior.
+### S7a boot assembler
+`selfhost/asm32.hs` supplies the 32-bit instruction/fixup layer used by the
+multiboot-to-long-mode stub. `tests/test_asm32.py` checks all instruction
+forms, register pairs, immediate boundaries and symbolic fixes byte for
+byte against `x64.Asm32`, through both interp and compiled x64. This is a
+kernel-bootstrap component only, not a native kernel compiler claim.
+
+### S7b multiboot linker
+`selfhost/klink.hs` lays out ELF32 headers, multiboot headers, boot32 code,
+GDT/TSS, long-mode payload, IRQ gates, page tables and stack patches. Its
+inputs are the payload assembler state and stack-patch offset. The test
+captures real AST-backend payloads before the Python linker mutates them,
+then requires byte-identical complete ELF images from the hs linker on
+interp and compiled x64. It covers heap, ring3, syscall, preemption, JSON
+and user-shell kernels. This proves linking only: source-to-kernel native
+compilation and the kernel IR migration remain separate gates.
