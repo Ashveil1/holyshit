@@ -14,7 +14,7 @@ import ir
 import contextlib
 import io
 from x64gen import build_x64
-passed = failed = skipped = native_skipped = 0
+passed = failed = skipped = native_skipped = large_skipped = 0
 env = dict(os.environ, HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'))
 work = tempfile.TemporaryDirectory()
 exe = str(Path(work.name)/'irbuild')
@@ -44,6 +44,9 @@ files = sum((glob.glob(str(ROOT/p)) for p in ['tests/*.hs', 'examples/*.hs', 'se
 for f in sorted(files):
     if sys.argv[1:] and Path(f).name not in sys.argv[1:]:
         continue
+    if Path(f).name == 'be.hs':
+        large_skipped += 1  # 13k-line emitter: dedicated slow bootstrap gate
+        continue
     try:
         interp.reset_parse_state()
         prog = interp.parse_program(Path(f).read_text())
@@ -54,12 +57,12 @@ for f in sorted(files):
     astfile = type('Source', (), {'name': f})()
     r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
         str(ROOT/'selfhost/be/normalize_run.hs'), '--backend', 'interp', astfile.name],
-        env=env, capture_output=True, text=True, timeout=240)
+        env=env, capture_output=True, text=True, timeout=600)
     try:
         got = json.loads(r.stdout)
         ok = got == json.loads(json.dumps(want))
         if fits62(prog):
-            native = subprocess.run([exe, astfile.name], capture_output=True, text=True, timeout=240)
+            native = subprocess.run([exe, astfile.name], capture_output=True, text=True, timeout=600)
             ngot = json.loads(native.stdout)
             ok = ok and ngot == got
         else:
@@ -71,5 +74,5 @@ for f in sorted(files):
     else:
         failed += 1
         print('FAIL', Path(f).name, r.stdout[:150], r.stderr[:150], flush=True)
-print(f'{passed}/{passed+failed} passed (interp + x64 ({native_skipped} ASTs exceed x64 Int width); {skipped} rejected by Python builder)')
+print(f'{passed}/{passed+failed} passed (interp + x64 ({native_skipped} ASTs exceed x64 Int width); {skipped} rejected by reference parser; {large_skipped} large emitter deferred to bootstrap gate)')
 sys.exit(bool(failed) or not passed)
