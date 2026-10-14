@@ -2,6 +2,10 @@ import pyrt
 import asm
 import gcrt
 import elf
+import normalize
+import irbuild
+import iropt
+import verify
 SUBSET_ERR = "x64 backend subset"
 class Gen:
   def __init__(self, prog, main_path, freestanding):
@@ -35,7 +39,7 @@ class Gen:
     self.js_mod = null
     self.js_fns = {}
   def load_module(self, name, from_dir, line):
-    if not pyrt.py_match(__import__("re"), "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$", name):
+    if not pyrt.py_module_name(name):
       raise pyrt.py_err("bad module name '" + str(name) + "'", line)
     hspath = [d for d in pyrt.py_split(pyrt.py_hspath(), ":") if d]
     rel = pyrt.py_replace(name, ".", "/") + ".hs"
@@ -51,7 +55,7 @@ class Gen:
     src = f.read_()
     pyrt.py_close(f)
     try:
-      prog = interp.parse_program(src)
+      prog = normalize.parse(src)
     except as e:
       raise pyrt.py_err("in module '" + str(name) + "': " + str(e.msg), e.line)
     mod = {"name": name, "prog": prog, "dir": pyrt.py_os_path_dirname(p), "pfx": "m" + str(len(self.modules)) + "_"}
@@ -692,7 +696,7 @@ class Gen:
       return null
     raise pyrt.py_err("bad var kind " + str(kind) + " for '" + str(name) + "'", ln)
   def ensure_prefixes(self, fullname, from_dir, line):
-    if not pyrt.py_match(__import__("re"), "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$", fullname):
+    if not pyrt.py_module_name(fullname):
       raise pyrt.py_err("bad module name '" + str(fullname) + "'", line)
     parts = pyrt.py_split(fullname, ".")
     chain = []
@@ -3755,7 +3759,7 @@ class Gen:
       pyrt.py_close(f)
     except as e:
       raise pyrt.py_err("cannot read " + str(path) + ": " + str(e.strerror or e), 1)
-    prog = interp.parse_program(src)
+    prog = normalize.parse(src)
     mod = {"name": "<json>", "prog": prog, "pfx": "js_", "scope": Gen_Scope(null, false), "dir": pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(path))}
     mod["scope"]._mod = mod
     base = len(self.all_fs)
@@ -10377,7 +10381,7 @@ class Gen_Scope:
     self.bi_ids = {}
     self.bi_stubs = {}
 def build_x64(prog_path, out_path):
-  interp.reset_parse_state()
+  pyrt.py_noop()
   try:
     f = pyrt.py_open(prog_path, null)
     src = f.read_()
@@ -10386,13 +10390,13 @@ def build_x64(prog_path, out_path):
     pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
     return 1
   try:
-    prog = interp.parse_program(src)
+    prog = normalize.parse(src)
   except as e:
     pyrt.py_print([str(e)])
     return 1
   try:
-    irm = _IR.build_module(prog)
-    _IR.verify_module(irm)
+    irm = irbuild.build_module(prog, "")
+    verify.verify_module(irm)
   except as e:
     pyrt.py_print([str(e)])
     return 1
@@ -10409,7 +10413,7 @@ def build_x64(prog_path, out_path):
   pyrt.py_print(["ok: x64 -> " + str(out_path) + " (" + str(len(img)) + " bytes, no gcc)"])
   return 0
 def build_x64_ast(prog_path, out_path):
-  interp.reset_parse_state()
+  pyrt.py_noop()
   try:
     f = pyrt.py_open(prog_path, null)
     src = f.read_()
@@ -10418,7 +10422,7 @@ def build_x64_ast(prog_path, out_path):
     pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
     return 1
   try:
-    prog = interp.parse_program(src)
+    prog = normalize.parse(src)
   except as e:
     pyrt.py_print([str(e)])
     return 1
@@ -10518,9 +10522,9 @@ class GenIR(Gen):
       pyrt.py_close(f)
     except as e:
       raise pyrt.py_err("cannot read " + str(path) + ": " + str(e.strerror or e), 1)
-    interp.reset_parse_state()
-    sub = _IR.build_module(interp.parse_program(src), "<json>.")
-    _IR.verify_module(sub)
+    pyrt.py_noop()
+    sub = irbuild.build_module(normalize.parse(src), "<json>.")
+    verify.verify_module(sub)
     pyrt.py_update(self.allfuncs, sub["funcs"])
     pyrt.py_extend(self.allorder, sub["order"])
     for k in sub["order"]:
@@ -10543,6 +10547,13 @@ class GenIR(Gen):
           _top = _t10565[0]
           chain = _t10565[1]
           ins["_chain"] = chain
+  def _resolve_path(self, dotted, from_dir, ln, last):
+    try:
+      return [self._find_module(dotted, from_dir, ln), false]
+    except as e:
+      if last or not ("cannot find module '" + str(dotted) + "'" in str(e)):
+        raise
+      return [null, true]
   def _resolve_import(self, name, from_dir, ln, active, mpref, funckey):
     parts = pyrt.py_split(name, ".")
     chain = []
@@ -10550,16 +10561,9 @@ class GenIR(Gen):
     for i, part in pyrt.py_enumerate(parts):
       dotted = pyrt.py_join(".", parts[0:i + 1])
       last = i == len(parts) - 1
-      is_shell = false
-      path = null
-      try:
-        path = self._find_module(dotted, from_dir, ln)
-        is_shell = false
-      except as e:
-        if last or not ("cannot find module '" + str(dotted) + "'" in str(e)):
-          raise
-        path = null
-        is_shell = true
+      resolved = self._resolve_path(dotted, from_dir, ln, last)
+      path = resolved[0]
+      is_shell = resolved[1]
       if dotted in active:
         raise pyrt.py_err("circular import '" + str(dotted) + "'", ln)
       if not (dotted in self.modtab):
@@ -10577,12 +10581,12 @@ class GenIR(Gen):
           src = f.read_()
           pyrt.py_close(f)
           try:
-            interp.reset_parse_state()
-            prog = interp.parse_program(src)
+            pyrt.py_noop()
+            prog = normalize.parse(src)
           except as e:
             raise pyrt.py_err("in module '" + str(dotted) + "': " + str(e.msg), e.line)
-          sub = _IR.build_module(prog, dotted + ".")
-          _IR.verify_module(sub)
+          sub = irbuild.build_module(prog, dotted + ".")
+          verify.verify_module(sub)
           rec["irmod"] = sub
           rec["dir"] = pyrt.py_os_path_dirname(path)
           rec["pfx"] = dotted + "."
@@ -10696,7 +10700,7 @@ class GenIR(Gen):
     dead = pyrt.py_set(null)
     for b in fdef["blocks"]:
       for ins in b["instrs"]:
-        if ins["op"] == "load" and self._alias_visible(fr, ins["name"]) != null and pyrt.py_get(fr["uses"], ins["dest"], []) and pyrt.py_all([u in chain_roles for u in fr["uses"][ins["dest"]]]):
+        if ins["op"] == "load" and self._alias_visible(fr, ins["name"]) != null and pyrt.py_get(fr["uses"], ins["dest"], []) and pyrt.py_all([pyrt.py_key(u) in chain_roles for u in fr["uses"][ins["dest"]]]):
           pyrt.py_add(dead, ins["dest"])
     fr["deadloads"] = dead
   def _plan_func(self, key, fdef, modpfx, is_entry):
@@ -13121,7 +13125,7 @@ class GenIR(Gen):
 GenIR_JSON_CALLS = pyrt.py_set(["json_parse", "json_str", "json_load", "json_save"])
 GenIR_SRAW_OPS = pyrt.py_set(["sconst", "sbin", "sun", "scall", "sderef", "sfield", "sload", "sraw"])
 def build_irx64(prog_path, out_path):
-  interp.reset_parse_state()
+  pyrt.py_noop()
   try:
     f = pyrt.py_open(prog_path, null)
     src = f.read_()
@@ -13130,7 +13134,7 @@ def build_irx64(prog_path, out_path):
     pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
     return 1
   try:
-    prog = interp.parse_program(src)
+    prog = normalize.parse(src)
     irm = IR.build_module(prog)
     IR.verify_module(irm)
   except as e:
