@@ -42,6 +42,7 @@ SUITES = [
     ("test_docs.py", "docs"),
     ("test_selfhost.py", "self-hosted lexer/parser/fmt vs Python"),
     ("test_run.py", "hs run backend selection"),
+    ("test_klink.py", "multiboot linker in hs vs Python kernel ELF"),
     ("test_asm32.py", "boot assembler in hs vs x64.Asm32"),
     ("test_asm.py", "assembler written in hs vs x64.py"),
     ("test_elf.py", "ELF writer written in hs vs x64.py"),
