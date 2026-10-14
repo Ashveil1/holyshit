@@ -169,7 +169,7 @@
      mod = {"name": "<json>", "prog": prog, "pfx": "js_", "scope": Gen_Scope(null, false), "dir": pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(path))}
      mod["scope"]._mod = mod
      base = len(self.all_fs)
-@@ -5996,7 +6001,7 @@
+@@ -6003,7 +6008,7 @@
      asm.mov_rm("rcx", "rbp", 0 - 16)
      asm.mov_rr("r11", "rax")
      asm.mov_rr("r10", "rcx")
@@ -178,7 +178,7 @@
      asm.and_rr("r11", "rcx")
      asm.and_rr("r10", "rcx")
      asm.cmp_rr("r11", "r10")
-@@ -6414,7 +6419,7 @@
+@@ -6421,7 +6426,7 @@
      asm.sub_ri32("rsp", BW * 8)
      asm.mov_ri32("rax", 0)
      asm.mov_mr("rbp", "rax", 0 - 40)
@@ -187,7 +187,7 @@
      asm.mov_mr("rbp", "rax", 0 - 48)
      asm.mov_ri32("rax", 63)
      asm.mov_mr("rbp", "rax", 0 - 56)
-@@ -6473,7 +6478,7 @@
+@@ -6480,7 +6485,7 @@
      asm.jmp("nd_sign")
      asm.label("nd_round")
      asm.mov_rm("rax", "rbp", 0 - 40)
@@ -196,7 +196,7 @@
      asm.cmp_rr("rax", "rcx")
      asm.jcc("e", "nd_infedge")
      asm.mov_rr("rdi", "rax")
-@@ -6540,10 +6545,10 @@
+@@ -6547,10 +6552,10 @@
      asm.call("dec_cmp")
      asm.test_rr("rax", "rax")
      asm.jcc("l", "nd_maxdbl")
@@ -209,7 +209,7 @@
      asm.jmp("nd_sign")
      asm.label("nd_sign")
      asm.mov_rm("rcx", "rbp", 0 - 32)
-@@ -6623,7 +6628,7 @@
+@@ -6630,7 +6635,7 @@
      asm.or_ri32("rax", 32)
      asm.cmp_ri32("rax", 110)
      asm.jcc("ne", "pf_bad")
@@ -218,7 +218,7 @@
      asm.mov_ri32("rdx", 1)
      asm.mov_rr("rsp", "rbp")
      asm.pop_r("rbp")
-@@ -6667,7 +6672,7 @@
+@@ -6674,7 +6679,7 @@
      asm.cmp_ri32("rax", 121)
      asm.jcc("ne", "pf_bad")
      asm.label("pf_inf3")
@@ -227,7 +227,7 @@
      asm.mov_rm("rcx", "rbp", 0 - 32)
      asm.shl_ri8("rcx", 63)
      asm.or_rr("rax", "rcx")
-@@ -6926,7 +6931,7 @@
+@@ -6933,7 +6938,7 @@
      asm.pop_r("rbp")
      asm.ret()
      asm.label("pf_infret")
@@ -236,7 +236,7 @@
      asm.mov_rm("rcx", "rbp", 0 - 32)
      asm.shl_ri8("rcx", 63)
      asm.or_rr("rax", "rcx")
-@@ -7160,7 +7165,7 @@
+@@ -7167,7 +7172,7 @@
      asm.mov_ri32("rax", 1)
      asm.mov_mr("rbp", "rax", 0 - 104)
      asm.mov_rm("rax", "rbp", 0 - 16)
@@ -245,7 +245,7 @@
      asm.and_rr("rax", "r11")
      asm.mov_mr("rbp", "rax", 0 - 152)
      asm.mov_rr("r11", "rax")
-@@ -7216,7 +7221,7 @@
+@@ -7223,7 +7228,7 @@
      asm.label("fb_up")
      asm.mov_rm("rax", "rbp", 0 - 152)
      asm.add_ri32("rax", 1)
@@ -254,7 +254,7 @@
      asm.cmp_rr("rax", "rcx")
      asm.jcc("e", "fb_infedge")
      asm.mov_rr("rdi", "rax")
-@@ -7925,7 +7930,7 @@
+@@ -7932,7 +7937,7 @@
      asm.test_rr("rax", "rax")
      asm.jcc("ns", "iparse_pos")
      asm.mov_rr("rax", "rdx")
@@ -263,7 +263,7 @@
      asm.cmp_rr("rax", "rcx")
      asm.jcc("a", "iparse_bad")
      asm.jcc("e", "iparse_min")
-@@ -7936,14 +7941,14 @@
+@@ -7943,14 +7948,14 @@
      asm.pop_r("rbp")
      asm.ret()
      asm.label("iparse_min")
@@ -280,7 +280,7 @@
      asm.cmp_rr("rax", "rcx")
      asm.jcc("a", "iparse_bad")
      asm.mov_ri32("rdx", 1)
-@@ -8100,7 +8105,7 @@
+@@ -8107,7 +8112,7 @@
      asm.test_rr("rax", "rax")
      asm.jcc("e", lab_hstr)
      asm.mov_rr("rax", "rdi")
@@ -289,7 +289,7 @@
      asm.imul_rr("rax", "r8")
      asm.mov_rr("rdx", "rax")
      asm.shr_ri8("rdx", 32)
-@@ -8109,7 +8114,7 @@
+@@ -8116,7 +8121,7 @@
      asm.label(lab_hstr)
      asm.mov_rr("r10", "rdi")
      asm.mov_rm("rcx", "r10", 8)
@@ -297,8 +297,8 @@
 +    asm.mov_ri64_bytes("rax", [37, 35, 34, 132, 228, 156, 242, 203])
      asm.mov_ri64("r8", 1099511628211)
      asm.mov_ri32("rdx", 0)
-     _t8110 = [self.new_tmp("dc"), self.new_tmp("dc")]
-@@ -8812,7 +8817,7 @@
+     _t8117 = [self.new_tmp("dc"), self.new_tmp("dc")]
+@@ -8819,7 +8824,7 @@
      asm.mov_ri32("rcx", 1)
      asm.label(lab_lp)
      asm.mov_rr("r9", "rax")
@@ -307,7 +307,7 @@
      asm.mul_r("r8")
      asm.shr_ri8("rdx", 3)
      asm.mov_ri32("r8", 10)
-@@ -10377,7 +10382,7 @@
+@@ -10384,7 +10389,7 @@
      self.bi_ids = {}
      self.bi_stubs = {}
  def build_x64(prog_path, out_path):
@@ -316,7 +316,7 @@
    try:
      f = pyrt.py_open(prog_path, null)
      src = f.read_()
-@@ -10386,13 +10391,13 @@
+@@ -10393,13 +10398,13 @@
      pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
      return 1
    try:
@@ -333,7 +333,7 @@
    except as e:
      pyrt.py_print([str(e)])
      return 1
-@@ -10409,7 +10414,7 @@
+@@ -10416,7 +10421,7 @@
    pyrt.py_print(["ok: x64 -> " + str(out_path) + " (" + str(len(img)) + " bytes, no gcc)"])
    return 0
  def build_x64_ast(prog_path, out_path):
@@ -342,7 +342,7 @@
    try:
      f = pyrt.py_open(prog_path, null)
      src = f.read_()
-@@ -10418,7 +10423,7 @@
+@@ -10425,7 +10430,7 @@
      pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
      return 1
    try:
@@ -351,7 +351,7 @@
    except as e:
      pyrt.py_print([str(e)])
      return 1
-@@ -10518,9 +10523,9 @@
+@@ -10525,9 +10530,9 @@
        pyrt.py_close(f)
      except as e:
        raise pyrt.py_err("cannot read " + str(path) + ": " + str(e.strerror or e), 1)
@@ -364,9 +364,9 @@
      pyrt.py_update(self.allfuncs, sub["funcs"])
      pyrt.py_extend(self.allorder, sub["order"])
      for k in sub["order"]:
-@@ -10543,6 +10548,13 @@
-           _top = _t10565[0]
-           chain = _t10565[1]
+@@ -10550,6 +10555,13 @@
+           _top = _t10572[0]
+           chain = _t10572[1]
            ins["_chain"] = chain
 +  def _resolve_path(self, dotted, from_dir, ln, last):
 +    try:
@@ -378,7 +378,7 @@
    def _resolve_import(self, name, from_dir, ln, active, mpref, funckey):
      parts = pyrt.py_split(name, ".")
      chain = []
-@@ -10550,16 +10562,9 @@
+@@ -10557,16 +10569,9 @@
      for i, part in pyrt.py_enumerate(parts):
        dotted = pyrt.py_join(".", parts[0:i + 1])
        last = i == len(parts) - 1
@@ -398,7 +398,7 @@
        if dotted in active:
          raise pyrt.py_err("circular import '" + str(dotted) + "'", ln)
        if not (dotted in self.modtab):
-@@ -10577,12 +10582,12 @@
+@@ -10584,12 +10589,12 @@
            src = f.read_()
            pyrt.py_close(f)
            try:
@@ -415,7 +415,7 @@
            rec["irmod"] = sub
            rec["dir"] = pyrt.py_os_path_dirname(path)
            rec["pfx"] = dotted + "."
-@@ -10696,7 +10701,7 @@
+@@ -10703,7 +10708,7 @@
      dead = pyrt.py_set(null)
      for b in fdef["blocks"]:
        for ins in b["instrs"]:
@@ -424,7 +424,7 @@
            pyrt.py_add(dead, ins["dest"])
      fr["deadloads"] = dead
    def _plan_func(self, key, fdef, modpfx, is_entry):
-@@ -10859,7 +10864,7 @@
+@@ -10866,7 +10871,7 @@
      elif pyrt.py_isinstance(v, ["float"]):
        asm.lea_rip("rax", self.sfloat(pyrt.py_f64bits(v)))
      elif pyrt.py_isinstance(v, ["int"]):
@@ -433,7 +433,7 @@
      elif pyrt.py_isinstance(v, ["str"]):
        asm.lea_rip("rax", self.sstr(v))
      else:
-@@ -11087,7 +11092,7 @@
+@@ -11094,7 +11099,7 @@
        asm.jcc("ne", lab_nno)
        asm.label(lab_nfl)
        asm.mov_rm("rdi", "rax", 8)
@@ -442,7 +442,7 @@
        asm.xor_rr("rdi", "r11")
        asm.call("x_float_new")
        asm.jmp(lab_ndone)
-@@ -11212,7 +11217,7 @@
+@@ -11219,7 +11224,7 @@
        xs = self._struct_of(fr, ins["obj"], seen)
        if xs == null:
          return null
@@ -451,7 +451,7 @@
        if L == null:
          return null
        f = pyrt.py_get(L["fields"], ins["name"], null)
-@@ -11287,9 +11292,9 @@
+@@ -11294,9 +11299,9 @@
      asm.mov_mr("rax", "rcx", 0)
    def _sfstore(self, fr, obj, name, idx, val, ln):
      xs = self._struct_of(fr, obj, null)
@@ -462,8 +462,8 @@
 +    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
      if f == null:
        raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-     _t11316 = f
-@@ -11484,9 +11489,9 @@
+     _t11323 = f
+@@ -11491,9 +11496,9 @@
      asm.mov_mr("rbp", "rax", fr["slots"][dest])
    def _sfield(self, fr, dest, obj, name, idx, ln):
      xs = self._struct_of(fr, obj, null)
@@ -474,8 +474,8 @@
 +    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
      if f == null:
        raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-     _t11513 = f
-@@ -12159,9 +12164,9 @@
+     _t11520 = f
+@@ -12168,9 +12173,9 @@
      asm.movq_xm(0, "rax", 8)
      asm.cvttsd2si("rax", 0)
      asm.mov_rr("rcx", "rax")
@@ -487,7 +487,7 @@
      asm.cmp_rr("rcx", "r11")
      asm.jcc("ae", lab_inum)
      self.tag_box()
-@@ -12176,9 +12181,9 @@
+@@ -12185,9 +12190,9 @@
      asm.test_rr("rdx", "rdx")
      asm.jcc("e", lab_iquote)
      asm.mov_rr("rcx", "rax")
@@ -499,7 +499,7 @@
      asm.cmp_rr("rcx", "r11")
      asm.jcc("ae", lab_iquote)
      self.tag_box()
-@@ -12559,7 +12564,7 @@
+@@ -12650,7 +12655,7 @@
          asm.push_r("rax")
          self.copy_bytes()
        else:
@@ -508,7 +508,7 @@
          asm.sar_ri8("rax", 2)
          asm.push_r("rax")
        asm.jmp(lab_after)
-@@ -12600,7 +12605,7 @@
+@@ -12691,7 +12696,7 @@
        asm.mov_ri32("rax", nfl)
        asm.call_r11()
        asm.mov_rm("rsp", "rsp", 0)
@@ -517,7 +517,7 @@
      if rt == "F64":
        asm.movq_rx("rax", 0)
      asm.push_r("rax")
-@@ -12884,9 +12889,9 @@
+@@ -12975,9 +12980,9 @@
          raise pyrt.py_err(ins["xmsg"], ln)
        elif op == "ssizeof":
          st = ins["stype"]
@@ -529,7 +529,7 @@
          asm.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
        else:
          raise pyrt.py_err("IR: '" + str(op) + "' not in irx64 subset yet", ln)
-@@ -13110,10 +13115,10 @@
+@@ -13201,10 +13206,10 @@
      if self.ffi_syms:
        asm.data_label("ffi_got_")
        asm.data_bytes(pyrt.py_rep([0], 8 * len(self.ffi_syms)))
@@ -542,7 +542,7 @@
      lo = elf.layout(len(asm.state()["code"]))
      code = asm.resolve_at(lo["text_vaddr"], lo["data_vaddr"])
      start_off = asm.state()["labels"]["_start"]
-@@ -13121,7 +13126,7 @@
+@@ -13212,7 +13217,7 @@
  GenIR_JSON_CALLS = pyrt.py_set(["json_parse", "json_str", "json_load", "json_save"])
  GenIR_SRAW_OPS = pyrt.py_set(["sconst", "sbin", "sun", "scall", "sderef", "sfield", "sload", "sraw"])
  def build_irx64(prog_path, out_path):
@@ -551,7 +551,7 @@
    try:
      f = pyrt.py_open(prog_path, null)
      src = f.read_()
-@@ -13130,7 +13135,7 @@
+@@ -13221,7 +13226,7 @@
      pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
      return 1
    try:
