@@ -208,3 +208,9 @@ strings        0.778s     0.627s    1.24x     443     469  same
   interp-only. Parser normalization (defaults/range/prelude), the optimizer,
   the self-hosted verifier, module loading and bootstrap are separate gates.
   This checkpoint does not claim a Python-free compiler.
+
+S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
+SSA definitions, dominance, phi predecessors and instruction uses. Valid
+corpus modules and deliberately malformed modules are checked against the
+Python verifier, through interp and x64. Out-of-width IR constants remain
+interp-only. This is a compiler-stage check, not a full bootstrap claim.
