@@ -57,6 +57,7 @@ SUITES = [
     ("test_iropt_hs.py", "CFG optimizer in hs vs iropt.py (interp + x64)"),
     ("test_verify_hs.py", "CFG verifier in hs vs ir.py (valid + malformed modules)"),
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
+    ("test_jitrun.py", "experimental eager in-process hs JIT"),
     ("test_jitimage.py", "relocated RX code and RW data in hs"),
     ("test_jitmem.py", "executable-memory groundwork, W^X and generated code"),
     ("test_call0.py", "unsafe zero-argument C ABI entry invocation"),
