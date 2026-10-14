@@ -1,6 +1,18 @@
 # Experimental eager in-process execution
 
-Linux x86-64 only. From the repository root:
+Linux x86-64 only. One-command route:
+
+```
+scripts/run-jit-native.sh tests/fib.hs
+```
+
+This verifies the pinned seed, builds an isolated native hs JIT driver,
+runs the source with arguments, forwards the exit status and removes the
+temporary driver. It needs shell/checksum utilities and procfs, not Python
+or gcc. Driver compilation happens on every invocation and can be slow.
+It is deliberately separate from `hs run`, with no fallback or cache.
+
+For repeated experiments, build the driver once from the repository root:
 
 ```
 export HSPATH="$PWD/selfhost:$PWD/selfhost/be"
