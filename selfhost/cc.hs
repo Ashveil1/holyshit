@@ -181,6 +181,15 @@ def gen(e):
     asm.sub_rr("rdx", "rax")
     asm.jcc("o", "rt_err_ovf")
     asm.mov_rr("rax", "rdx")
+  elif t == "unot":
+    gen(e["val"])
+    asm.mov_rr("rdx", "rax")
+    asm.and_ri32("rdx", 1)
+    asm.jcc("e", "rt_err_type")
+    asm.mov_ri32("rdx", 0)
+    asm.sub_rr("rdx", "rax")
+    asm.jcc("o", "rt_err_ovf")
+    asm.mov_rr("rax", "rdx")
   elif t == "not":
     gen(e["val"])
     asm.call("rt_truthy")
@@ -342,6 +351,8 @@ def gen(e):
       return 0
     if (nm == "split" or nm == "int") and not (nm in ST["funcs"]):
       nm = "__" + nm
+      if nm == "__split" and len(e["args"]) == 1:
+        nm = "__split1"
     if nm == "float" and not (nm in ST["funcs"]):
       for a in e["args"]:
         gen(a)
@@ -2104,7 +2115,7 @@ def rw(e):
   elif t == "bin":
     e["l"] = rw(e["l"])
     e["r"] = rw(e["r"])
-  elif t == "not" or t == "neg":
+  elif t == "not" or t == "neg" or t == "unot":
     e["val"] = rw(e["val"])
   elif t == "index" and has(e, "tern"):
     e["c"] = rw(e["c"])
@@ -2230,8 +2241,10 @@ def rn_name_def(pre, n):
 
 PL = ["def __split(s, sep):", "  out = []", "  n = len(s)", "  m = len(sep)", "  st = 0", "  i = 0", "  while i + m <= n:", "    if s[i:i + m] == sep:", "      append(out, s[st:i])", "      i = i + m", "      st = i", "    else:", "      i = i + 1", "  append(out, s[st:n])", "  return out", "def __int(s):", "  i = 0", "  neg = false", "  if len(s) > 0 and s[0] == \"-\":", "    neg = true", "    i = 1", "  if i >= len(s):", "    raise \"invalid Int literal\"", "  v = 0", "  while i < len(s):", "    d = find(\"0123456789\", s[i])", "    if d < 0:", "      raise \"invalid Int literal\"", "    v = v * 10 + d", "    i = i + 1", "  if neg:", "    return 0 - v", "  return v"]
 
+PL1 = "def __split1(s):\n  out = []\n  n = len(s)\n  i = 0\n  while i < n:\n    while i < n and (s[i] == \" \" or s[i] == \"\\t\" or s[i] == \"\\n\" or s[i] == \"\\r\"):\n      i = i + 1\n    st = i\n    while i < n and not (s[i] == \" \" or s[i] == \"\\t\" or s[i] == \"\\n\" or s[i] == \"\\r\"):\n      i = i + 1\n    if i > st:\n      append(out, s[st:i])\n  return out\n"
+
 def prelude():
-  text = ""
+  text = PL1
   for l in PL:
     text = text + l + "\n"
   return parselib.parse(text)
