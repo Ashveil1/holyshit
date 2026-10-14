@@ -1347,3 +1347,11 @@ reservation is released together, including on callback failure.
 checking undefined labels and signed rel32 reach before resolving. Multiple
 images have independent data and lifetime. This is relocation groundwork,
 not whole-program entry execution or ELF loading.
+### Unsafe C ABI entry invocation (Linux x86-64)
+`unsafe: I64 result = call0(Ptr)` invokes a non-null address using the C ABI
+with no arguments and an I64 return. The caller owns executable memory, ABI
+correctness and lifetime. The interpreter permits only foreign pointers
+when extern has enabled foreign memory; simulated arena pointers are
+rejected. Null is a catchable error. Invalid non-null addresses can crash,
+as with other unsafe memory operations. This does not call hs functions
+with their internal ABI and is unavailable in freestanding kernel mode.

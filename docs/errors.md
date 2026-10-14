@@ -28,7 +28,7 @@
 | `E011` | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `E012` | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (236)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (240)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -77,6 +77,10 @@
 - `bad struct name '{nm.v}'`
 - `bad unsafe call {name}`
 - `bad unsafe expr {t}`
+- `call0 needs Ptr`
+- `call0 needs foreign executable memory`
+- `call0 needs non-null Ptr`
+- `call0 wants call0(p)`
 - `cannot access field of {st} (need a struct pointer)`
 - `cannot add {tname(l)} and {tname(r)}`
 - `cannot apply '{op}' to pointers`
@@ -267,7 +271,7 @@
 - `{want} arg count mismatch`
 - `{what} wants an open socket`
 
-## hs.py — native backend ผ่าน gcc (82)
+## hs.py — native backend ผ่าน gcc (84)
 
 - `'{n}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -295,6 +299,8 @@
 - `bad unsafe call {name}`
 - `bad unsafe expr {t}`
 - `break outside loop`
+- `call0 needs Ptr`
+- `call0 wants call0(p)`
 - `cannot access field of {pt} (need a struct pointer)`
 - `cannot apply '{op}' to pointers`
 - `cannot assign to extern '{s['name']}'`
@@ -352,7 +358,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (107)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (109)
 
 - `'{n}' already defined in this scope`
 - `Int literal {v} is outside the 62-bit range of the x64 backend`
@@ -380,6 +386,8 @@
 - `builtin '{fn['name']}' not in x64 subset`
 - `builtin '{name}' is not a value (call it)`
 - `builtin '{name}' not in x64 subset`
+- `call0 not in kernel`
+- `call0 wants call0(p)`
 - `cannot access field of dynamic '{obj['name']}'`
 - `cannot access field of {ut}`
 - `cannot capture '{name}' (x64)`
@@ -467,7 +475,7 @@
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-## ir.py — IR กลาง (build/verify/exec) (119)
+## ir.py — IR กลาง (build/verify/exec) (120)
 
 - `'{name}' already defined in this scope`
 - `IR: bad binop '{op}'`
@@ -532,6 +540,7 @@
 - `bad operator {op}`
 - `bad unsafe call {name}`
 - `break outside loop`
+- `call0 wants call0(p)`
 - `cannot access field of {st} (need a struct pointer)`
 - `cannot add {tname(l)} and {tname(r)}`
 - `cannot apply '{op}' to pointers`
@@ -589,7 +598,7 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-## irx64.py — IR ลง x86-64 (45)
+## irx64.py — IR ลง x86-64 (47)
 
 - `'{ins['name']}' already defined in this scope`
 - `'{name}' already defined in this scope`
@@ -605,6 +614,8 @@
 - `array field '{name}' needs an index`
 - `bad module name '{name}'`
 - `builtin '{ref}' is not a value (call it)`
+- `call0 not in kernel`
+- `call0 wants call0(p)`
 - `cannot find ffi library '{lib}'`
 - `cannot find module '{name}'`
 - `cannot import '{name}': '{top}' is already defined`
@@ -637,4 +648,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 591 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 602 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

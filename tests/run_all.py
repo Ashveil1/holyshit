@@ -59,6 +59,7 @@ SUITES = [
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
     ("test_jitimage.py", "relocated RX code and RW data in hs"),
     ("test_jitmem.py", "executable-memory groundwork, W^X and generated code"),
+    ("test_call0.py", "unsafe zero-argument C ABI entry invocation"),
     ("test_native_run.py", "one-command native source runner without Python/gcc"),
     ("test_hosted_seed.py", "verified seed + Python-free bootstrap"),
     ("test_native_kernel.py", "native kernel compiler complete ELF images"),
