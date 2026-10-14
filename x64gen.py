@@ -10045,7 +10045,7 @@ class Gen:
         a.mov_mr("rbp", "rdi", -8)     # src
         a.mov_mr("rbp", "rsi", -16)    # len
         a.mov_rr("rax", "rsi")
-        a.add_ri32("rax", 48)          # 16 header + payload + slack
+        a.add_ri32("rax", 31)          # round up 16-byte header + exact payload
         a.and_ri32("rax", -16)
         a.mov_rr("rdi", "rax")
         a.call("x_malloc")
@@ -10074,7 +10074,7 @@ class Gen:
         a.mov_mr("rbp", "rcx", -24)    # len b
         a.mov_mr("rbp", "rax", -32)    # len a
         a.add_rr("rax", "rcx")
-        a.add_ri32("rax", 48)
+        a.add_ri32("rax", 31)
         a.and_ri32("rax", -16)
         a.mov_rr("rdi", "rax")
         a.call("x_malloc")

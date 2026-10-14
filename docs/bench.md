@@ -37,3 +37,13 @@ roots = stack + data segment + บล็อก `unsafe alloc` (pinned). `x64`/ke
 
 ทดสอบ: `tests/x64/gc_stress.hs` (diff กับ interp), `gc bound` ใน test_x64 (alloc bench < 50 MB),
 และรัน suites ทั้งหมดด้วย GC ทุก 4 KB ผ่าน (ใช้ตอนพัฒนา).
+
+## Compact immutable strings (2026-10-14)
+
+Removing unnecessary extra slack from x_str_at/x_str_cat reduces the
+3-million-string benchmark's local peak RSS from 469 MB to 377 MB.
+Nine alternating baseline/candidate runs on the same host measured
+medians 0.580149s and 0.520208s (about 10% lower runtime). All outputs
+match. This is a local result, not a cross-machine speed guarantee.
+The GC arena-cache experiment was discarded after it did not improve
+alternating-run medians. Allocation churn remains bounded by GC.

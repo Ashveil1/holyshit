@@ -1321,3 +1321,9 @@ IR path ตรงกว่า เช่น segfault ของ `tests/ufunc.hs` �
 - ยังไม่รองรับ: method ใน class (error ตอน parse), เรียกผ่านตัวแปรอื่น/lambda
   (จะได้ error arity ตามปกติ), `selfhost/cc.hs` (reject)
 - ทดสอบ: `tests/t_defaults.hs` (ทุก backend), `tests/err_defaults.hs`
+
+### Runtime allocation: strings
+String length and contents are unchanged. x64 string copy/concatenation
+allocates the 16-byte object header plus payload, rounded up to 16 bytes.
+No extra spare block is required: strings are immutable and all readers use
+the stored byte length. C-string conversion keeps its separate terminator.
