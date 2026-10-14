@@ -15,7 +15,7 @@ Suites:
   test_lsp.py     25  language server over stdio
   test_docs.py    41  doc examples really run, links + api.json stay in sync
   test_selfhost.py 808 self-hosted lexer/parser/formatter (hs) match the Python ones on every repo .hs
-  test_run.py     30  `hs run` backend choice, fallback, overrides
+  test_run.py     34  `hs run` backend choice, fallback, overrides
   test_asm.py      1  selfhost/asm.hs (assembler in hs) == x64.py byte for byte (17.8k instrs)
   test_cc.py      72  selfhost/cc.hs (compiler written in hs) emits ELFs equal to interp
 """

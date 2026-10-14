@@ -12,6 +12,7 @@ python3 hs.py check prog.hs                # syntax+scope only, no output binary
 python3 hs.py build prog.hs [-o prog]      # native binary
 python3 hs.py run prog.hs [args...]        # build to temp and run (fall-through default)
 python3 hs.py fmt prog.hs [-w|--check]     # canonical 2-space (keeps comments; --check ignores them)
+python3 hs.py explain "<error message>"           # meaning + fix for an error (add --json for machine use)
 python3 hs.py xbuild prog.hs [-o prog]     # x86-64 machine code, no gcc (via IR)
 python3 hs.py xkernel prog.hs -o k.elf     # freestanding kernel, no gcc/as/ld
 python3 hs.py lsp                          # language server (stdio, no deps)

@@ -1862,6 +1862,74 @@ def _cc_selfhost_elf():
     return elf
 
 
+def _explain_load():
+    """Rows from docs/errors.md: (pattern text, meaning|None, fix|None, section)."""
+    import re as _re
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "errors.md")
+    rows = []
+    sect = ""
+    try:
+        lines = open(path, encoding="utf-8").read().split("\n")
+    except OSError:
+        return rows
+    for ln in lines:
+        if ln.startswith("## "):
+            sect = ln[3:].strip()
+        m = _re.match(r"^\| `(.+?)` \| (.+?) \| (.+?) \|$", ln)
+        if m:
+            rows.append((m.group(1), m.group(2), m.group(3), sect))
+            continue
+        m = _re.match(r"^- `(.+)`$", ln)
+        if m:
+            rows.append((m.group(1), None, None, sect))
+    return rows
+
+
+def _explain_regex(pat):
+    import re as _re
+    parts = _re.split(r"(\{[^}]*\}|<[^>]*>)", pat)
+    rx = "".join(".+?" if (i % 2 and (x[0] in "{<")) else _re.escape(x)
+                 for i, x in enumerate(parts))
+    return _re.compile("^" + rx + "$")
+
+
+def cmd_explain(msg, as_json):
+    import re as _re
+    import difflib
+    import json
+    m = msg.strip()
+    m = _re.sub(r"^error:\s*", "", m)
+    m = _re.sub(r"\s+at line \d+$", "", m)
+    rows = _explain_load()
+    hits = []
+    for pat, meaning, fix, sect in rows:
+        lit = _re.sub(r"\{[^}]*\}|<[^>]*>", "", pat).strip()
+        if len(lit) < 6:
+            continue  # too generic ("{want}"): would match any message
+        if _explain_regex(pat).match(m):
+            hits.append({"pattern": pat, "meaning": meaning, "fix": fix, "source": sect})
+    hits.sort(key=lambda h: (h["meaning"] is None, -len(h["pattern"])))
+    near = []
+    if not hits:
+        near = difflib.get_close_matches(m, [r[0] for r in rows], n=3, cutoff=0.5)
+    if as_json:
+        print(json.dumps({"message": m, "matches": hits[:3], "nearest": near}, ensure_ascii=False))
+    elif hits:
+        h = hits[0]
+        print(f"message: {m}")
+        print(f"pattern: {h['pattern']}  ({h['source']})")
+        if h["meaning"]:
+            print(f"meaning: {h['meaning']}")
+            print(f"fix: {h['fix']}")
+        else:
+            print("no curated fix; see docs/errors.md and docs/for-agents.md")
+    else:
+        print(f"no catalog entry for: {m}")
+        for n in near:
+            print(f"similar: {n}")
+    return 0 if hits else 1
+
+
 def cmd_cc(path, out):
     """hs cc prog.hs [-o out]: compile with the compiler written in hs
     (selfhost/cc.hs, its own ELF). Only the cc subset: Int/Bool/Str/List/Dict,
@@ -1891,13 +1959,15 @@ def main(argv):
         import lsp as _lsp
         _lsp.main()
         return 0
+    if len(argv) >= 3 and argv[1] == "explain":
+        return cmd_explain(" ".join(a for a in argv[2:] if a != "--json"), as_json)
     if len(argv) < 3 or argv[1] not in ("build", "run", "check", "fmt",
                                      "xbuild", "xrun", "xkernel", "ir", "test", "cc"):
         print("usage: hs.py [--json] build prog.hs [-o prog] | hs.py run prog.hs [args...] "
               "| hs.py check prog.hs | hs.py fmt prog.hs [-w|--check] "
               "| hs.py test file|dir... | hs.py repl "
               "| hs.py xbuild prog.hs [-o prog] | hs.py xrun prog.hs "
-              "| hs.py xkernel prog.hs -o kernel.elf | hs.py ir prog.hs | hs.py lsp "
+              "| hs.py xkernel prog.hs -o kernel.elf | hs.py ir prog.hs | hs.py explain \"<error message>\" | hs.py lsp "
               "| hs.py cc prog.hs [-o prog]",
               file=sys.stderr)
         return 2
