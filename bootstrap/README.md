@@ -23,3 +23,14 @@ the seed rather than silently accepting an old binary or updating the hash.
 The hosted compiler is not the kernel compiler. Its full-width unsafe
 literal gate now covers decimal and hex words through 64 bits. Safe tagged
 integer behavior is unchanged. Kernel compilation is a separate artifact.
+
+## Run source without Python
+
+`scripts/run-native.sh path/to/program.hs [args...]` verifies the pinned
+seed, compiles to an isolated temporary executable, runs it, returns the
+program's exit code and removes the temporary directory. No explicit build
+step, Python or gcc is needed. This is native compile-and-run, not a
+method JIT or interpreter fallback. Imports use the source directory and
+`HSPATH`; execution keeps the caller's working directory. The compiler
+still supports only its documented hosted subset and reports unsupported
+programs rather than falling back to Python. No persistent cache is used.
