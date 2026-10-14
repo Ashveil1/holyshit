@@ -1708,7 +1708,11 @@ class GenIR(Gen):
         if self.freestanding and pname in KERNEL_BUILTINS and fr["res"].get(pname) in ("novalue", "global") and pname not in GenIR.JSON_CALLS:
             nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
             self._kernel_frame = fr
-            Gen.ev_kdev(self, pname, nodes, None, None, ln)
+            self._kernel_raw_dynamic = True
+            try:
+                Gen.ev_kdev(self, pname, nodes, None, None, ln)
+            finally:
+                self._kernel_raw_dynamic = False
             self.a.mov_mr("rbp", "rax", fr["slots"][dest])
             return
         if self.freestanding and pname in RAW_KERNEL_BUILTINS and fr["res"].get(pname) == "novalue":
