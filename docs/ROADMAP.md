@@ -225,3 +225,13 @@ must pop the active exception value, not the already-consumed try frame.
 `tests/t_exceptreturn.hs` exercises 300 handled returns with and without
 finally. The Python IR builder and its hs translation share this cleanup
 rule; interp remains the output oracle.
+
+Native hosted-compiler checkpoint: `selfhost/be/compile_hex.hs` builds through
+Python stage0, then the resulting native compiler builds itself. The test
+requires stage1 == stage2 == stage3 byte for byte. Output is chunked hex to
+bound memory; this driver is not a polished CLI. `test_native_compiler.py`
+also compares hosted ELF output against Python across the source corpus.
+One full-width unsafe-constant program remains explicitly deferred. A
+successful hosted fixed point does not cover the separate kernel backend,
+all 64-bit unsafe values, or the missing x64 write_bytes helper. No binary
+seed is yet committed. The Python source remains the reference/test oracle.
