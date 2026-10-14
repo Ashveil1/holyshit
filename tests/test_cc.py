@@ -19,6 +19,7 @@ PROGS = {
     "prelude": 'xs = [5, 3, 9, 1, 7, 3]\nprint abs(0 - 4), abs(6), min(xs), max(xs), sum(xs), min(2, 1), max(2, 8)\nprint sorted(xs), reversed(xs), enumerate([7, 8])\nprint upper("hello World"), lower("HeLLo")\nfor p in enumerate(["a", "b"]):\n  print p[0], p[1]\n',
     "prelude_user": 'def max(a, b):\n  return a * 100 + b\n\ndef abs(x):\n  return 7\n\nprint max(1, 2), abs(0 - 5), min(4, 2), sum([1, 2])\n',
     "bnot_split1": 'print 6 | 3\nprint 6 ^ 3\nprint ~0\nprint ~6\nx = 5\nprint ~x, ~(0 - 3)\nprint split("a b  c")\nprint split("  lead\\ttab\\nnl  "), split("")\nprint split("a,b,", ",")\n',
+    "join": 'print join(",", ["a", "b", "c"])\nprint join("", [])\nprint join("--", ["x"])\nparts = []\nfor i in range(4):\n  append(parts, str(i * i))\nprint join(" ", parts)\ndef join2(a, b):\n  return join("+", [a, b])\nprint join2("p", "q")\n',
     "fib": "def fib(n):\n  if n < 2:\n    return n\n  return fib(n - 1) + fib(n - 2)\nprint fib(22)\n",
     "arith": "a = 17\nb = 5\nprint a + b, a - b, a * b, a % b, -a % b, a % -b, -a % -b\n"
              "print 0, -1, 4611686018427387903, -4611686018427387903\n",
