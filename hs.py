@@ -1620,8 +1620,17 @@ def gen_c(src, main_path="<main>"):
 
 def _jerr(path, msg, line):
     import json as _json
-    print(_json.dumps({"file": path, "line": line, "message": msg}),
-          file=sys.stderr)
+    d = {"file": path, "line": line, "message": msg}
+    try:
+        import re as _re
+        for pat, meaning, fix, sect, code in _explain_load():
+            if code and _explain_regex(pat, True).match(msg):
+                d["code"] = code
+                d["hint"] = fix
+                break
+    except Exception:
+        pass
+    print(_json.dumps(d, ensure_ascii=False), file=sys.stderr)
 
 
 # builtins whose effects must not run twice, so no silent re-run after the
@@ -1875,22 +1884,22 @@ def _explain_load():
     for ln in lines:
         if ln.startswith("## "):
             sect = ln[3:].strip()
-        m = _re.match(r"^\| `(.+?)` \| (.+?) \| (.+?) \|$", ln)
+        m = _re.match(r"^\| `(E\d+)` \| `(.+?)` \| (.+?) \| (.+?) \|$", ln)
         if m:
-            rows.append((m.group(1), m.group(2), m.group(3), sect))
+            rows.append((m.group(2), m.group(3), m.group(4), sect, m.group(1)))
             continue
         m = _re.match(r"^- `(.+)`$", ln)
         if m:
-            rows.append((m.group(1), None, None, sect))
+            rows.append((m.group(1), None, None, sect, None))
     return rows
 
 
-def _explain_regex(pat):
+def _explain_regex(pat, loose=False):
     import re as _re
     parts = _re.split(r"(\{[^}]*\}|<[^>]*>)", pat)
     rx = "".join(".+?" if (i % 2 and (x[0] in "{<")) else _re.escape(x)
                  for i, x in enumerate(parts))
-    return _re.compile("^" + rx + "$")
+    return _re.compile("^" + rx + ("" if loose else "$"))
 
 
 def cmd_explain(msg, as_json):
@@ -1902,12 +1911,17 @@ def cmd_explain(msg, as_json):
     m = _re.sub(r"\s+at line \d+$", "", m)
     rows = _explain_load()
     hits = []
-    for pat, meaning, fix, sect in rows:
+    if _re.match(r"^E\d{3}$", m):  # look up by code
+        for pat, meaning, fix, sect, code in rows:
+            if code == m:
+                m = pat
+                break
+    for pat, meaning, fix, sect, code in rows:
         lit = _re.sub(r"\{[^}]*\}|<[^>]*>", "", pat).strip()
         if len(lit) < 6:
             continue  # too generic ("{want}"): would match any message
-        if _explain_regex(pat).match(m):
-            hits.append({"pattern": pat, "meaning": meaning, "fix": fix, "source": sect})
+        if _explain_regex(pat, bool(code)).match(m):
+            hits.append({"code": code, "pattern": pat, "meaning": meaning, "fix": fix, "source": sect})
     hits.sort(key=lambda h: (h["meaning"] is None, -len(h["pattern"])))
     near = []
     if not hits:
@@ -1917,7 +1931,7 @@ def cmd_explain(msg, as_json):
     elif hits:
         h = hits[0]
         print(f"message: {m}")
-        print(f"pattern: {h['pattern']}  ({h['source']})")
+        print(f"pattern: {h['pattern']}  ({h['source']})" + (f"  [{h['code']}]" if h["code"] else ""))
         if h["meaning"]:
             print(f"meaning: {h['meaning']}")
             print(f"fix: {h['fix']}")
