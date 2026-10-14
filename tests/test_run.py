@@ -169,5 +169,22 @@ for sub in ("tests", "selfhost", "kernel", "bench", "examples"):
                 _fmt.squash(_fmt.strip_comments(withc)) != _fmt.squash(plain):
             bad.append(fn)
 check("fmt with comments: all repo .hs keep comments and structure", not bad and nfiles > 50, (bad[:5], nfiles))
+
+# ---- hs explain: error message -> meaning + fix from docs/errors.md ----
+def explain(msg, js=False):
+    cmd = [sys.executable, HS] + (["--json"] if js else []) + ["explain", msg]
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+import json as _json  # noqa: E402
+r = explain("error: cannot add Int and Str at line 4")
+check("explain curated error (strips error: / at line)", r.returncode == 0 and "str(x) + str(y)" in r.stdout, r.stdout)
+r = explain("key 'zz' not found at line 9")
+check("explain matches <placeholder> patterns", r.returncode == 0 and "Dict" in r.stdout, r.stdout)
+r = explain("alloc of negative size -3", js=True)
+j = _json.loads(r.stdout)
+check("explain --json lists catalog matches", r.returncode == 0 and j["matches"] and j["matches"][0]["pattern"].startswith("alloc of negative"), r.stdout)
+r = explain("zzz nonsense")
+check("explain unknown message exits 1", r.returncode == 1 and "no catalog entry" in r.stdout, (r.returncode, r.stdout))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
