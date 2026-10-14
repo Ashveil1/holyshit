@@ -211,5 +211,17 @@ with tempfile.TemporaryDirectory() as d:
     out = r.stdout + r.stderr
     j = _json.loads(out.strip().split("\n")[-1])
     check("check --json carries code and hint for a cataloged error", j.get("code") == "E006" and j.get("hint") and j["line"] == 1, out)
+
+# ---- run --json: runtime errors as one JSON object ----
+with tempfile.TemporaryDirectory() as d:
+    rp = os.path.join(d, "r.hs")
+    open(rp, "w").write("print 5\nxs = [1]\nprint xs[argv()[0] == \"go\" and 5 or 0]\n")
+    r = subprocess.run([sys.executable, HS, "--json", "run", rp, "go"], capture_output=True, text=True)
+    j = _json.loads(r.stderr.strip().split("\n")[-1]) if r.stderr.strip() else {}
+    check("run --json: runtime error is JSON with code, stdout kept, exit 1",
+          r.returncode == 1 and r.stdout == "5\n" and j.get("message") == "index out of range" and j.get("code") == "E002" and j.get("line") == 3,
+          (r.returncode, r.stdout, r.stderr))
+    r = subprocess.run([sys.executable, HS, "--json", "run", rp, "no"], capture_output=True, text=True)
+    check("run --json: success passes output through untouched", r.returncode == 0 and r.stdout == "5\n1\n" and r.stderr == "", (r.returncode, r.stdout, r.stderr))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
