@@ -80,7 +80,10 @@ class Builder:
         finally:
           fb.finactive[pyrt.py_id(entry)] = false
       if fb.cur != null:
-        fb.emit(_n("try_pop", ln, {}))
+        if not pyrt.py_get(entry, "caught", null) or pyrt.py_get(entry, "handler_guard", null):
+          fb.emit(_n("try_pop", ln, {}))
+        if pyrt.py_get(entry, "caught", null):
+          fb.emit(_n("exc_pop", ln, {}))
   def _stmt(self, fb, s):
     t = s["t"]
     ln = s["line"]
@@ -238,12 +241,12 @@ class Builder:
       if d["name"] in parselib.BUILTINS:
         raise pyrt.py_err("cannot shadow builtin '" + str(d["name"]) + "'", ln)
       qname = str(self.pfx) + str(d["name"]) + "$L" + str(ln)
-      pn = [_p230_0[0] for _p230_0 in d["params"]]
+      pn = [_p233_0[0] for _p233_0 in d["params"]]
       child = _FuncBuild(self, qname, pn, d["name"], [])
       entry = child.block("entry")
       child.start(entry)
       r = child.temp()
-      child.emit(_n("ffi", ln, {"dest": r, "sym": d["name"], "lib": s["lib"], "rtype": d["rtype"], "ptypes": [_p235_0[1] for _p235_0 in d["params"]], "pnames": pn}))
+      child.emit(_n("ffi", ln, {"dest": r, "sym": d["name"], "lib": s["lib"], "rtype": d["rtype"], "ptypes": [_p238_0[1] for _p238_0 in d["params"]], "pnames": pn}))
       child.end(_t("ret", ln, {"val": r}))
       self.funcs[qname] = {"name": qname, "dispname": d["name"], "params": pn, "blocks": child.blocks, "entry": entry["label"], "globals": [], "xname": "ffi '" + str(d["name"]) + "'"}
       append(self.order, qname)
@@ -378,7 +381,7 @@ class Builder:
       fb.emit(_n("build_list", ln, {"dest": d, "items": items}))
       return d
     if t == "dict":
-      pairs = [[self._expr(fb, _p370_0[0]), self._expr(fb, _p370_0[1])] for _p370_0 in e["pairs"]]
+      pairs = [[self._expr(fb, _p373_0[0]), self._expr(fb, _p373_0[1])] for _p373_0 in e["pairs"]]
       d = fb.temp()
       fb.emit(_n("build_dict", ln, {"dest": d, "pairs": pairs}))
       return d
@@ -573,11 +576,13 @@ class Builder:
           self._body(fb, s["fbody"])
         fb.end(_t("jmp", ln, {"to": done["label"]}))
       fb.start(handler)
+      fb.trystack[0 - 1]["caught"] = true
       if has_except:
         if has_finally:
           hfail = fb.block("hfail")
           hok = fb.block("hok")
           fb.emit(_n("try_push", ln, {"handler": hfail["label"]}))
+          fb.trystack[0 - 1]["handler_guard"] = true
           self._handler_body(fb, s, ename, ln)
           if fb.cur != null:
             fb.emit(_n("try_pop", ln, {}))
