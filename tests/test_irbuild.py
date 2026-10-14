@@ -15,10 +15,19 @@ import contextlib
 import io
 from x64gen import build_x64
 passed = failed = skipped = native_skipped = 0
+env = dict(os.environ, HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'))
 work = tempfile.TemporaryDirectory()
 exe = str(Path(work.name)/'irbuild')
-with contextlib.redirect_stdout(io.StringIO()):
-    rc = build_x64(str(ROOT/'selfhost/be/irbuild_run.hs'), exe)
+oldpath = os.environ.get('HSPATH')
+os.environ['HSPATH'] = env['HSPATH']
+try:
+    with contextlib.redirect_stdout(io.StringIO()):
+        rc = build_x64(str(ROOT/'selfhost/be/irbuild_run.hs'), exe)
+finally:
+    if oldpath is None:
+        os.environ.pop('HSPATH', None)
+    else:
+        os.environ['HSPATH'] = oldpath
 if rc:
     raise SystemExit('FAIL x64 build of irbuild driver')
 env = dict(os.environ, HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'))
