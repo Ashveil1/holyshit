@@ -1327,3 +1327,13 @@ String length and contents are unchanged. x64 string copy/concatenation
 allocates the 16-byte object header plus payload, rounded up to 16 bytes.
 No extra spare block is required: strings are immutable and all readers use
 the stored byte length. C-string conversion keeps its separate terminator.
+
+### Executable memory groundwork (Linux x86-64)
+`selfhost/jitmem.hs` owns a page-rounded mapping for nonempty byte lists of
+at most 16 MiB. `publish` validates before mapping, copies into RW (not X)
+memory and changes the whole mapping to RX (not W). Failure releases the
+mapping. `release` unmaps it once and clears its handle; double release is
+an error. The caller must not use an address after release or while it is
+being released. This internal module does not call generated code, change
+`hs run`, provide first-call compilation, or constitute a JIT. It currently
+uses the system C ABI for mmap/mprotect/munmap, not a libc-free runtime.

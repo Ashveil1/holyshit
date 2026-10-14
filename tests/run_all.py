@@ -57,6 +57,7 @@ SUITES = [
     ("test_iropt_hs.py", "CFG optimizer in hs vs iropt.py (interp + x64)"),
     ("test_verify_hs.py", "CFG verifier in hs vs ir.py (valid + malformed modules)"),
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
+    ("test_jitmem.py", "executable-memory groundwork, W^X and generated code"),
     ("test_native_run.py", "one-command native source runner without Python/gcc"),
     ("test_hosted_seed.py", "verified seed + Python-free bootstrap"),
     ("test_native_kernel.py", "native kernel compiler complete ELF images"),
