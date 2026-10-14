@@ -1,0 +1,270 @@
+[
+ {
+  "id": "fizzbuzz",
+  "prompt": "Read N from the first command-line argument. Print the numbers 1..N one per line, but print Fizz for multiples of 3, Buzz for multiples of 5 and FizzBuzz for multiples of both.",
+  "cases": [
+   {
+    "args": [
+     "5"
+    ],
+    "out": "1\n2\nFizz\n4\nBuzz\n"
+   },
+   {
+    "args": [
+     "15"
+    ],
+    "out": "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n"
+   }
+  ]
+ },
+ {
+  "id": "sum_digits",
+  "prompt": "Read an integer from the first argument and print the sum of its decimal digits (ignore a leading minus sign).",
+  "cases": [
+   {
+    "args": [
+     "123"
+    ],
+    "out": "6\n"
+   },
+   {
+    "args": [
+     "-908"
+    ],
+    "out": "17\n"
+   },
+   {
+    "args": [
+     "0"
+    ],
+    "out": "0\n"
+   }
+  ]
+ },
+ {
+  "id": "reverse_words",
+  "prompt": "Print the command-line arguments in reverse order, separated by single spaces, on one line.",
+  "cases": [
+   {
+    "args": [
+     "a",
+     "b",
+     "c"
+    ],
+    "out": "c b a\n"
+   },
+   {
+    "args": [
+     "solo"
+    ],
+    "out": "solo\n"
+   }
+  ]
+ },
+ {
+  "id": "is_prime",
+  "prompt": "Read N from the first argument. Print true if N is prime, otherwise false.",
+  "cases": [
+   {
+    "args": [
+     "2"
+    ],
+    "out": "true\n"
+   },
+   {
+    "args": [
+     "1"
+    ],
+    "out": "false\n"
+   },
+   {
+    "args": [
+     "97"
+    ],
+    "out": "true\n"
+   },
+   {
+    "args": [
+     "91"
+    ],
+    "out": "false\n"
+   }
+  ]
+ },
+ {
+  "id": "fib_n",
+  "prompt": "Read N from the first argument and print the Nth Fibonacci number (fib(0)=0, fib(1)=1).",
+  "cases": [
+   {
+    "args": [
+     "0"
+    ],
+    "out": "0\n"
+   },
+   {
+    "args": [
+     "1"
+    ],
+    "out": "1\n"
+   },
+   {
+    "args": [
+     "10"
+    ],
+    "out": "55\n"
+   },
+   {
+    "args": [
+     "30"
+    ],
+    "out": "832040\n"
+   }
+  ]
+ },
+ {
+  "id": "word_count",
+  "prompt": "Count how many times each argument occurs. Print one line per distinct argument in order of first appearance, formatted as word:count.",
+  "cases": [
+   {
+    "args": [
+     "a",
+     "b",
+     "a",
+     "c",
+     "b",
+     "a"
+    ],
+    "out": "a:3\nb:2\nc:1\n"
+   }
+  ]
+ },
+ {
+  "id": "max_arg",
+  "prompt": "Print the largest integer among the command-line arguments.",
+  "cases": [
+   {
+    "args": [
+     "3",
+     "9",
+     "2"
+    ],
+    "out": "9\n"
+   },
+   {
+    "args": [
+     "-5",
+     "-2",
+     "-9"
+    ],
+    "out": "-2\n"
+   }
+  ]
+ },
+ {
+  "id": "palindrome",
+  "prompt": "Read a word from the first argument. Print true if it reads the same forwards and backwards, otherwise false.",
+  "cases": [
+   {
+    "args": [
+     "racecar"
+    ],
+    "out": "true\n"
+   },
+   {
+    "args": [
+     "hello"
+    ],
+    "out": "false\n"
+   },
+   {
+    "args": [
+     "a"
+    ],
+    "out": "true\n"
+   }
+  ]
+ },
+ {
+  "id": "gcd",
+  "prompt": "Read two integers from the arguments and print their greatest common divisor.",
+  "cases": [
+   {
+    "args": [
+     "12",
+     "18"
+    ],
+    "out": "6\n"
+   },
+   {
+    "args": [
+     "17",
+     "5"
+    ],
+    "out": "1\n"
+   },
+   {
+    "args": [
+     "0",
+     "7"
+    ],
+    "out": "7\n"
+   }
+  ]
+ },
+ {
+  "id": "factorial_big",
+  "prompt": "Read N from the first argument and print N factorial (N <= 20).",
+  "cases": [
+   {
+    "args": [
+     "0"
+    ],
+    "out": "1\n"
+   },
+   {
+    "args": [
+     "5"
+    ],
+    "out": "120\n"
+   },
+   {
+    "args": [
+     "20"
+    ],
+    "out": "2432902008176640000\n"
+   }
+  ]
+ },
+ {
+  "id": "class_counter",
+  "prompt": "Define a class Counter with a method inc() that adds 1 and a method get() that returns the count. Read N from the first argument, call inc() N times on a new Counter and print get().",
+  "cases": [
+   {
+    "args": [
+     "0"
+    ],
+    "out": "0\n"
+   },
+   {
+    "args": [
+     "7"
+    ],
+    "out": "7\n"
+   }
+  ]
+ },
+ {
+  "id": "try_parse",
+  "prompt": "For each argument print its integer value plus 1, or the word bad if it is not a valid integer (use try/except).",
+  "cases": [
+   {
+    "args": [
+     "1",
+     "x",
+     "-4"
+    ],
+    "out": "2\nbad\n-3\n"
+   }
+  ]
+ }
+]
