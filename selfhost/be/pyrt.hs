@@ -630,3 +630,15 @@ def py_close(f):
 def py_extend_set(d, xs):
   for x in xs:
     d[py_k(x)] = true
+def py_noop():
+  return null
+def py_module_name(s):
+  for part in split(s, "."):
+    if len(part) == 0:
+      return false
+    if find("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_", part[0]) < 0:
+      return false
+    for c in part:
+      if find("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789", c) < 0:
+        return false
+  return true
