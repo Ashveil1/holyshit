@@ -2115,6 +2115,24 @@ def main(argv):
             out = argv[argv.index("-o") + 1]
         return build(prog, out, as_json)
     prog = argv[2]
+    if as_json and argv[1] == "run" and not os.environ.get("HS_JSON_INNER"):
+        # --json: a runtime error becomes one JSON object on stderr
+        # ({file, line, message, code?, hint?}); stdout and the exit code pass through
+        import re as _re
+        env = dict(os.environ)
+        env["HS_JSON_INNER"] = "1"
+        r = subprocess.run([sys.executable, os.path.abspath(__file__), "run"] + argv[2:],
+                           stderr=subprocess.PIPE, text=True, env=env)
+        err = r.stderr.rstrip("\n").split("\n") if r.stderr.strip() else []
+        if r.returncode != 0 and err and err[-1].startswith("error: "):
+            for ln in err[:-1]:
+                print(ln, file=sys.stderr)
+            m = _re.match(r"^error: (.*?)(?: at line (\d+))?$", err[-1])
+            _jerr(prog, m.group(1), int(m.group(2)) if m.group(2) else None)
+        else:
+            for ln in err:
+                print(ln, file=sys.stderr)
+        return r.returncode
     backend = os.environ.get("HS_BACKEND", "auto")
     rest = argv[3:]
     if len(argv) > 3 and argv[3] == "--backend" and len(argv) > 4:

@@ -12,7 +12,7 @@ python3 hs.py check prog.hs                # syntax+scope only, no output binary
 python3 hs.py build prog.hs [-o prog]      # native binary
 python3 hs.py run prog.hs [args...]        # build to temp and run (fall-through default)
 python3 hs.py fmt prog.hs [-w|--check]     # canonical 2-space (keeps comments; --check ignores them)
-python3 hs.py explain "<error message>"           # or: hs.py explain E004 -- meaning + fix (add --json); check --json errors carry code+hint
+python3 hs.py explain "<error message>"           # or: hs.py explain E004 -- meaning + fix (add --json); --json errors (check, build, run) carry code+hint
 python3 evals/run.py --solutions DIR [--json]     # score DIR/<task>.hs against evals/tasks.json (pass@1); --reference validates the suite
 python3 hs.py xbuild prog.hs [-o prog]     # x86-64 machine code, no gcc (via IR)
 python3 hs.py xkernel prog.hs -o k.elf     # freestanding kernel, no gcc/as/ld
