@@ -1,9 +1,11 @@
 # Source -> ELF hex for the compiled compiler differential gate.
+import parselib
 import normalize
 import irbuild
 import verify
 import be
 import pyrt
+parselib.P["wide_literals"] = true
 srcpath = argv()[0]
 m = irbuild.build_module(normalize.parse(read_text(srcpath)), "")
 verify.verify_module(m)
