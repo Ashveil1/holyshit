@@ -282,6 +282,9 @@ def movq_rx(rd, xs):
   bn([15, 126])
   modrm(3, xs, dn & 7)
 
+def call_rax():
+  bn([255, 208])
+
 def cqo():
   bn([72, 153])
 

@@ -114,7 +114,19 @@ def gen(e):
         fail("Int literal outside the 63-bit range of cc", ln)
       asm.mov_ri64("rax", v * 2 + 1)
   elif t == "var":
-    load_var(e["name"], ln)
+    nm = e["name"]
+    if not (nm in ST["locals"]) and not (nm in ST["globals"]) and nm in ST["funcs"]:
+      gen_funcval("f_" + nm, ST["funcs"][nm], [], ln)
+    else:
+      load_var(nm, ln)
+  elif t == "mkclo":
+    gen_funcval("f_" + e["fn"], e["np"], e["caps"], ln)
+    if e["self"] in e["caps"]:
+      k = 0
+      while k < len(e["caps"]):
+        if e["caps"][k] == e["self"]:
+          asm.mov_mr("r8", "r8", 24 + 8 * k)
+        k = k + 1
   elif t == "str":
     lab = new_label("O")
     append(SOBJ, [lab, e["val"], ln])
@@ -315,8 +327,9 @@ def gen(e):
     else:
       fail("operator '" + op + "' not supported", ln)
   elif t == "call":
-    if e["fn"]["t"] != "var":
-      fail("only direct calls to defined functions", ln)
+    if e["fn"]["t"] != "var" or e["fn"]["name"] in ST["locals"] or e["fn"]["name"] in ST["globals"]:
+      gen_callv(e)
+      return 0
     nm = e["fn"]["name"]
     if nm == "len" and not (nm in ST["funcs"]):
       if len(e["args"]) != 1:
@@ -420,6 +433,205 @@ def gen(e):
       asm.add_ri32("rsp", 8 * len(cargs))
   else:
     fail("expression '" + t + "' not supported", ln)
+
+# ---- closures: function values, calls through a value ---------------
+# Func object: [4, code, nparams, cap0, cap1, ...] (captures by value at def).
+# The callee prologue copies the captures from [r10 + 24 + 8k], r10 = the
+# closure pointer the caller left in rdx.
+def gen_funcval(code, np, caps, ln):
+  asm.mov_ri32("rdi", 24 + 8 * len(caps))
+  asm.call("rt_alloc")
+  asm.mov_rr("r8", "rax")
+  asm.mov_ri32("rcx", 4)
+  asm.mov_mr("r8", "rcx", 0)
+  asm.lea_rip("rcx", code)
+  asm.mov_mr("r8", "rcx", 8)
+  asm.mov_ri32("rcx", np)
+  asm.mov_mr("r8", "rcx", 16)
+  k = 0
+  while k < len(caps):
+    load_var(caps[k], ln)
+    asm.mov_mr("r8", "rax", 24 + 8 * k)
+    k = k + 1
+  asm.mov_rr("rax", "r8")
+
+def gen_callv(e):
+  gen(e["fn"])
+  asm.push_r("rax")
+  n = len(e["args"])
+  for a in e["args"]:
+    gen(a)
+    asm.push_r("rax")
+  asm.mov_rm("rdx", "rsp", 8 * n)
+  asm.mov_rr("rax", "rdx")
+  asm.and_ri32("rax", 7)
+  asm.jcc("ne", "rt_err_type")
+  asm.mov_rm("rax", "rdx", 0)
+  asm.cmp_ri32("rax", 4)
+  asm.jcc("ne", "rt_err_type")
+  asm.mov_rm("rax", "rdx", 16)
+  asm.cmp_ri32("rax", n)
+  asm.jcc("ne", "rt_err_type")
+  asm.mov_rm("rax", "rdx", 8)
+  asm.call_rax()
+  asm.add_ri32("rsp", 8 * (n + 1))
+
+# ---- closures: lift nested defs to top level -------------------------
+# A nested def becomes a top-level function taking its captured outer
+# locals from the closure object; the def statement becomes
+# name = mkclo(...). Captured names are the names the body reads that are
+# locals of an enclosing function and not bound in the nested def itself.
+LIFT = {"out": [], "n": 0}
+
+def fv_list(xs, reads):
+  for x in xs:
+    fv_expr(x, reads)
+
+def fv_expr(e, reads):
+  t = e["t"]
+  if t == "var":
+    reads[e["name"]] = true
+  elif t == "mkclo":
+    for c in e["caps"]:
+      reads[c] = true
+  elif t == "slice":
+    fv_expr(e["obj"], reads)
+    if e["start"] != null:
+      fv_expr(e["start"], reads)
+    if e["stop"] != null:
+      fv_expr(e["stop"], reads)
+  elif t == "list":
+    fv_list(e["items"], reads)
+  elif t == "dict":
+    for pr in e["pairs"]:
+      fv_expr(pr[0], reads)
+      fv_expr(pr[1], reads)
+  elif t == "index" and has(e, "tern"):
+    fv_expr(e["c"], reads)
+    fv_expr(e["a"], reads)
+    fv_expr(e["b"], reads)
+  elif t == "index":
+    fv_expr(e["obj"], reads)
+    if has(e, "idx"):
+      fv_expr(e["idx"], reads)
+  elif t == "neg" or t == "not" or t == "unot":
+    fv_expr(e["val"], reads)
+  elif t == "bin":
+    fv_expr(e["l"], reads)
+    fv_expr(e["r"], reads)
+  elif t == "call":
+    fv_expr(e["fn"], reads)
+    fv_list(e["args"], reads)
+
+def fv_body(body, reads):
+  for s in body:
+    t = s["t"]
+    if t == "set":
+      fv_expr(s["val"], reads)
+    elif t == "setindex":
+      fv_expr(s["obj"], reads)
+      fv_expr(s["idx"], reads)
+      fv_expr(s["val"], reads)
+    elif t == "expr" or t == "raise":
+      fv_expr(s["val"], reads)
+    elif t == "return":
+      if s["val"] != null:
+        fv_expr(s["val"], reads)
+    elif t == "print":
+      fv_list(s["args"], reads)
+    elif t == "if":
+      fv_expr(s["cond"], reads)
+      fv_body(s["then"], reads)
+      for ec in s["elifs"]:
+        fv_expr(ec[0], reads)
+        fv_body(ec[1], reads)
+      fv_body(s["els"], reads)
+    elif t == "while":
+      fv_expr(s["cond"], reads)
+      fv_body(s["body"], reads)
+    elif t == "try":
+      fv_body(s["body"], reads)
+      fv_body(s["ebody"], reads)
+    elif t == "for":
+      fv_expr(s["iter"], reads)
+      fv_body(s["body"], reads)
+
+def def_names(body, out):
+  for s in body:
+    t = s["t"]
+    if t == "def":
+      out[s["name"]] = true
+    elif t == "if":
+      def_names(s["then"], out)
+      for ec in s["elifs"]:
+        def_names(ec[1], out)
+      def_names(s["els"], out)
+    elif t == "while" or t == "for":
+      def_names(s["body"], out)
+    elif t == "try":
+      def_names(s["body"], out)
+      def_names(s["ebody"], out)
+
+def scope_of(d):
+  sc = {}
+  for p in d["params"]:
+    sc[p] = true
+  collect_sets(d["body"], sc)
+  def_names(d["body"], sc)
+  return sc
+
+def lift_stmts(body, outer):
+  i = 0
+  while i < len(body):
+    s = body[i]
+    t = s["t"]
+    if t == "def":
+      body[i] = lift_def(s, outer)
+    elif t == "if":
+      lift_stmts(s["then"], outer)
+      for ec in s["elifs"]:
+        lift_stmts(ec[1], outer)
+      lift_stmts(s["els"], outer)
+    elif t == "while" or t == "for":
+      lift_stmts(s["body"], outer)
+    elif t == "try":
+      lift_stmts(s["body"], outer)
+      lift_stmts(s["ebody"], outer)
+    i = i + 1
+
+def lift_def(d, outer):
+  if has(d, "defaults"):
+    fail("default arguments on a nested def are not supported", d["line"])
+  sc = scope_of(d)
+  inner = {}
+  for k in keys(outer):
+    inner[k] = true
+  for k in keys(sc):
+    inner[k] = true
+  lift_stmts(d["body"], inner)
+  reads = {}
+  fv_body(d["body"], reads)
+  own = scope_of(d)
+  caps = []
+  for k in keys(reads):
+    if k in outer and not (k in own):
+      append(caps, k)
+  # a name bound in this def but also in an enclosing scope stays local
+  LIFT["n"] = LIFT["n"] + 1
+  lname = "L" + str(LIFT["n"]) + "_" + d["name"]
+  fd = {"t": "def", "name": lname, "params": d["params"], "body": d["body"], "line": d["line"], "caps": caps}
+  append(LIFT["out"], fd)
+  mk = {"t": "mkclo", "fn": lname, "np": len(d["params"]), "caps": caps, "self": d["name"], "line": d["line"]}
+  return {"t": "set", "name": d["name"], "val": mk, "line": d["line"]}
+
+def lift_prog(prog):
+  for s in prog:
+    if s["t"] == "def":
+      lift_stmts(s["body"], scope_of(s))
+    else:
+      one = [s]
+      lift_stmts(one, {})
+  return prog + LIFT["out"]
 
 # ---- statements ------------------------------------------------------
 def gen_cond_jz(c, target):
@@ -645,12 +857,19 @@ def gen_func(d):
     i = i + 1
   sets = {}
   collect_sets(d["body"], sets)
+  caps = []
+  if has(d, "caps"):
+    caps = d["caps"]
   nl = 0
+  for k in caps:
+    nl = nl + 1
+    ST["locals"][k] = 0 - 8 * nl
   for k in keys(sets):
     if not (k in ST["locals"]):
       nl = nl + 1
       ST["locals"][k] = 0 - 8 * nl
   asm.label("f_" + nm)
+  asm.mov_rr("r10", "rdx")
   if ST["trace"]:
     tl = new_label("T")
     append(STRS, [tl, nm + "\n", 0])
@@ -669,6 +888,11 @@ def gen_func(d):
     while j <= nl:
       asm.mov_mr("rbp", "rax", 0 - 8 * j)
       j = j + 1
+  j = 0
+  while j < len(caps):
+    asm.mov_rm("rax", "r10", 24 + 8 * j)
+    asm.mov_mr("rbp", "rax", ST["locals"][caps[j]])
+    j = j + 1
   gen_body(d["body"])
   asm.mov_ri32("rax", 6)
   asm.label("r_" + nm)
@@ -2273,6 +2497,7 @@ def flatten(prog, dirp):
 
 def compile(prog):
   asm.reset()
+  prog = lift_prog(prog)
   top = []
   for s in prog:
     if s["t"] == "def":
