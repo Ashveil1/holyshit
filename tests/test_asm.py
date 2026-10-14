@@ -62,6 +62,27 @@ for x in range(8):
             L(op, x, r)
         for op in ("cvttsd2si", "movq_rx"):
             L(op, r, x)
+for r in REGS:
+    for s in ("rax", "r9", "r13"):
+        L("bsr_rr", r, s)
+    L("not_rr", r)
+    for imm in (0, 1, 127, -1):
+        L("or_ri8", r, imm)
+for b in REGS:
+    for d in DISPS:
+        if b in ("rsp", "r12") and d != 0:
+            continue  # x64.py latent bug (no SIB for these bases)
+        for x in range(0, 16, 5):
+            L("movq_xm", x % 8, b, d)
+for b in ("rax", "r9", "r13"):
+    for ix in ("rcx", "r10"):
+        L("mov_mrx", b, ix, 8, 40, "rdx")
+        L("movzx_eax_mx", b, ix, 1, 300)
+L("call_r11")
+L("data_label", "dd")
+L("data_qword", -5)
+L("data_qword", 1 << 40)
+L("lea_rip", "rcx", "dd")
 for s8 in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15):
     for b in REGS:
         for d in DISPS:
@@ -102,6 +123,10 @@ def py_asm():
         elif op == "lea_mx":
             d, b, ix, sc, disp = conv
             a.lea_m(d, b, disp, ix, sc)
+        elif op == "data_qword":
+            a.data_qword(*conv)
+        elif op == "data_label":
+            a.data_label(*conv)
         elif op == "jcc":
             a.jcc(*conv)
         else:

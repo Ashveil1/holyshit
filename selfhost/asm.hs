@@ -47,7 +47,7 @@ def rex(w, r, x, b):
     b1(v)
 
 def modrm(mod, reg, rm):
-  b1((mod << 6) | ((reg & 7) << 3) | (rm & 7))
+  b1(mod << 6 | (reg & 7 << 3) | (rm & 7))
 
 def rm_mem(opcode, reg, base, disp, index, scale):
   r = regn(reg)
@@ -59,7 +59,7 @@ def rm_mem(opcode, reg, base, disp, index, scale):
   xb = 0
   if index != null:
     xi = regn(index)
-    xb = (xi >> 3) & 1
+    xb = xi >> 3 & 1
     sc = 0
     if scale == 2:
       sc = 1
@@ -67,19 +67,19 @@ def rm_mem(opcode, reg, base, disp, index, scale):
       sc = 2
     elif scale == 8:
       sc = 3
-    sib = (sc << 6) | ((xi & 7) << 3) | (bb & 7)
+    sib = sc << 6 | (xi & 7 << 3) | (bb & 7)
     has_sib = true
     rmf = 4
-  elif (bb & 7) == 4:
+  elif bb & 7 == 4:
     sib = 32 | (bb & 7)
     has_sib = true
     rmf = 4
   mod = 2
-  if disp == 0 and (bb & 7) != 5:
+  if disp == 0 and bb & 7 != 5:
     mod = 0
   elif disp >= 0 - 128 and disp <= 127:
     mod = 1
-  rex(1, (r >> 3) & 1, xb, (bb >> 3) & 1)
+  rex(1, r >> 3 & 1, xb, bb >> 3 & 1)
   b1(opcode)
   modrm(mod, r & 7, rmf)
   if has_sib:
@@ -91,7 +91,7 @@ def rm_mem(opcode, reg, base, disp, index, scale):
 
 def rm_rip(opcode, reg, lab):
   r = regn(reg)
-  rex(1, (r >> 3) & 1, 0, 0)
+  rex(1, r >> 3 & 1, 0, 0)
   b1(opcode)
   modrm(0, r & 7, 5)
   rel32(lab)
@@ -100,32 +100,32 @@ def push_r(r):
   n = regn(r)
   if n >= 8:
     b1(65)
-  b1(80 + (n & 7))
+  b1(80 + n & 7)
 
 def pop_r(r):
   n = regn(r)
   if n >= 8:
     b1(65)
-  b1(88 + (n & 7))
+  b1(88 + n & 7)
 
 def mov_rr(d, s):
   dn = regn(d)
   sn = regn(s)
-  rex(1, (dn >> 3) & 1, 0, (sn >> 3) & 1)
+  rex(1, dn >> 3 & 1, 0, sn >> 3 & 1)
   b1(139)
   modrm(3, dn & 7, sn & 7)
 
 def mov_ri32(d, imm):
   dn = regn(d)
-  rex(1, 0, 0, (dn >> 3) & 1)
+  rex(1, 0, 0, dn >> 3 & 1)
   b1(199)
   modrm(3, 0, dn & 7)
   le32(imm)
 
 def mov_ri64(d, imm):
   dn = regn(d)
-  rex(1, 0, 0, (dn >> 3) & 1)
-  b1(184 + (dn & 7))
+  rex(1, 0, 0, dn >> 3 & 1)
+  b1(184 + dn & 7)
   le64(imm)
 
 def mov_rm(d, base, disp):
@@ -154,9 +154,9 @@ def mov_mr_rip(lab, s):
 
 def mov_mr8(base, s8, disp):
   bnum = regn(base)
-  bb = (bnum >> 3) & 1
+  bb = bnum >> 3 & 1
   rn = s8 & 7
-  rb = (s8 >> 3) & 1
+  rb = s8 >> 3 & 1
   bl = bnum & 7
   if rb == 1 or bb == 1 or s8 == 4 or s8 == 5 or s8 == 6 or s8 == 7:
     b1(64 | (rb << 2) | bb)
@@ -179,7 +179,7 @@ def mov_mr8(base, s8, disp):
 def alu_rr(op, d, s):
   dn = regn(d)
   sn = regn(s)
-  rex(1, (sn >> 3) & 1, 0, (dn >> 3) & 1)
+  rex(1, sn >> 3 & 1, 0, dn >> 3 & 1)
   b1(op)
   modrm(3, sn & 7, dn & 7)
 
@@ -206,7 +206,7 @@ def test_rr(d, s):
 
 def alu_ri32(ext, d, imm):
   dn = regn(d)
-  rex(1, 0, 0, (dn >> 3) & 1)
+  rex(1, 0, 0, dn >> 3 & 1)
   b1(129)
   modrm(3, ext, dn & 7)
   le32(imm)
@@ -226,7 +226,7 @@ def and_ri32(d, imm):
 def imul_rr(d, s):
   dn = regn(d)
   sn = regn(s)
-  rex(1, (dn >> 3) & 1, 0, (sn >> 3) & 1)
+  rex(1, dn >> 3 & 1, 0, sn >> 3 & 1)
   bn([15, 175])
   modrm(3, dn & 7, sn & 7)
 
@@ -257,28 +257,28 @@ def ucomisd(xa, xb):
 def cvtsi2sd(xd, rs):
   rn = regn(rs)
   b1(242)
-  rex(1, 0, 0, (rn >> 3) & 1)
+  rex(1, 0, 0, rn >> 3 & 1)
   bn([15, 42])
   modrm(3, xd, rn & 7)
 
 def cvttsd2si(rd, xs):
   dn = regn(rd)
   b1(242)
-  rex(1, 0, 0, (dn >> 3) & 1)
+  rex(1, 0, 0, dn >> 3 & 1)
   bn([15, 44])
   modrm(3, xs, dn & 7)
 
 def movq_xr(xd, rs):
   rn = regn(rs)
   b1(102)
-  rex(1, 0, 0, (rn >> 3) & 1)
+  rex(1, 0, 0, rn >> 3 & 1)
   bn([15, 110])
   modrm(3, xd, rn & 7)
 
 def movq_rx(rd, xs):
   dn = regn(rd)
   b1(102)
-  rex(1, 0, 0, (dn >> 3) & 1)
+  rex(1, 0, 0, dn >> 3 & 1)
   bn([15, 126])
   modrm(3, xs, dn & 7)
 
@@ -290,7 +290,7 @@ def cqo():
 
 def f7(ext, r):
   n = regn(r)
-  rex(1, 0, 0, (n >> 3) & 1)
+  rex(1, 0, 0, n >> 3 & 1)
   b1(247)
   modrm(3, ext, n & 7)
 
@@ -308,7 +308,7 @@ def neg_r(r):
 
 def shift_ri8(ext, d, imm):
   n = regn(d)
-  rex(1, 0, 0, (n >> 3) & 1)
+  rex(1, 0, 0, n >> 3 & 1)
   b1(193)
   modrm(3, ext, n & 7)
   b1(imm)
@@ -324,7 +324,7 @@ def sar_ri8(d, imm):
 
 def shift_cl(ext, d):
   n = regn(d)
-  rex(1, 0, 0, (n >> 3) & 1)
+  rex(1, 0, 0, n >> 3 & 1)
   b1(211)
   modrm(3, ext, n & 7)
 
@@ -348,9 +348,9 @@ def movzx_rm8x(dst, base, index, scale, disp):
     sc = 2
   elif scale == 8:
     sc = 3
-  db = (dn >> 3) & 1
-  bb = (bnum >> 3) & 1
-  xb = (xn >> 3) & 1
+  db = dn >> 3 & 1
+  bb = bnum >> 3 & 1
+  xb = xn >> 3 & 1
   if bb == 1 or xb == 1 or db == 1:
     b1(64 | (db << 2) | (xb << 1) | bb)
   bn([15, 182])
@@ -359,7 +359,7 @@ def movzx_rm8x(dst, base, index, scale, disp):
     modrm(1, dn & 7, 4)
   else:
     modrm(2, dn & 7, 4)
-  b1((sc << 6) | ((xn & 7) << 3) | (bnum & 7))
+  b1(sc << 6 | (xn & 7 << 3) | (bnum & 7))
   if small:
     b1(disp)
   else:
@@ -406,7 +406,89 @@ def resolve():
       raise "undefined label " + f[1]
     rel = A["labels"][f[1]] - (f[0] + 4)
     out[f[0]] = rel & 255
-    out[f[0] + 1] = (rel >> 8) & 255
-    out[f[0] + 2] = (rel >> 16) & 255
-    out[f[0] + 3] = (rel >> 24) & 255
+    out[f[0] + 1] = rel >> 8 & 255
+    out[f[0] + 2] = rel >> 16 & 255
+    out[f[0] + 3] = rel >> 24 & 255
+  return out
+
+def bsr_rr(d, s):
+  dn = regn(d)
+  sn = regn(s)
+  rex(1, dn >> 3 & 1, 0, sn >> 3 & 1)
+  bn([15, 189])
+  modrm(3, dn & 7, sn & 7)
+
+def call_r11():
+  bn([65, 255, 211])
+
+def mov_mrx(base, index, scale, disp, s):
+  rm_mem(137, s, base, disp, index, scale)
+
+def not_rr(d):
+  dn = regn(d)
+  rex(1, 0, 0, dn >> 3 & 1)
+  b1(247)
+  modrm(3, 2, dn & 7)
+
+def or_ri8(d, imm):
+  dn = regn(d)
+  rex(1, 0, 0, dn >> 3 & 1)
+  b1(131)
+  modrm(3, 1, dn & 7)
+  b1(imm)
+
+def movq_xm(xd, base, disp):
+  bnum = regn(base)
+  b1(243)
+  rex(1, 0, 0, bnum >> 3 & 1)
+  bn([15, 126])
+  if disp == 0 and bnum & 7 != 5:
+    modrm(0, xd, bnum & 7)
+  elif disp >= 0 - 128 and disp <= 127:
+    modrm(1, xd, bnum & 7)
+    b1(disp)
+  else:
+    modrm(2, xd, bnum & 7)
+    le32(disp)
+
+def movzx_eax_mx(base, index, scale, disp):
+  movzx_rm8x("rax", base, index, scale, disp)
+
+# -- data section + final layout (hosted ELF image) --
+
+D = {"data": [], "labels": {}}
+
+def data_reset():
+  D["data"] = []
+  D["labels"] = {}
+
+def data_label(name):
+  if name in D["labels"]:
+    raise "dup data label " + name
+  D["labels"][name] = len(D["data"])
+
+def data_qword(v):
+  i = 0
+  while i < 8:
+    append(D["data"], v >> (8 * i) & 255)
+    i = i + 1
+
+def data_bytes(xs):
+  for x in xs:
+    append(D["data"], x & 255)
+
+def resolve_at(text_vaddr, data_vaddr):
+  out = A["code"][0:len(A["code"])]
+  for f in A["fix"]:
+    if f[1] in A["labels"]:
+      target = text_vaddr + A["labels"][f[1]]
+    elif f[1] in D["labels"]:
+      target = data_vaddr + D["labels"][f[1]]
+    else:
+      raise "undefined label " + f[1]
+    rel = target - (text_vaddr + f[0] + 4)
+    out[f[0]] = rel & 255
+    out[f[0] + 1] = rel >> 8 & 255
+    out[f[0] + 2] = rel >> 16 & 255
+    out[f[0] + 3] = rel >> 24 & 255
   return out
