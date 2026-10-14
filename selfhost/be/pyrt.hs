@@ -656,3 +656,41 @@ def py_rep(a, n):
       append(out, x)
     i = i + 1
   return out
+
+def py_f64bits(v):
+  if v == 0:
+    return 0
+  sign = 0
+  m = v
+  if m < 0:
+    sign = 1
+    m = 0.0 - m
+  e = 0
+  while m >= 2.0:
+    m = m / 2.0
+    e = e + 1
+  while m < 1.0:
+    m = m * 2.0
+    e = e - 1
+  mant = int((m - 1.0) * 4503599627370496.0)
+  return (sign << 63) | ((e + 1023) << 52) | mant
+
+def py_root():
+  r = env("HSROOT")
+  if r == null:
+    return "."
+  return r
+
+def py_hspath():
+  r = env("HSPATH")
+  if r == null:
+    return ""
+  return r
+
+def py_bi_name(key):
+  return py_split(key, SEP)[0][1:len(py_split(key, SEP)[0])]
+
+def py_has_key(k, d):
+  if k == null:
+    return false
+  return py_k(k) in d

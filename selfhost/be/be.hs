@@ -39,7 +39,7 @@ class Gen:
   def load_module(self, name, from_dir, line):
     if (not pyrt.py_match(__import__("re"), "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$", name)):
       raise pyrt.py_err(("bad module name '" + str(name) + "'"), line)
-    hspath = [d for d in pyrt.py_split(pyrt.py_get(_os.environ, "HSPATH", ""), ":") if d]
+    hspath = [d for d in pyrt.py_split(pyrt.py_hspath(), ":") if d]
     rel = (pyrt.py_replace(name, ".", "/") + ".hs")
     for d in (([from_dir] + hspath) + [pyrt.py_os_getcwd()]):
       if (not d):
@@ -378,7 +378,7 @@ class Gen:
       elif (v == null):
         asm.mov_ri64("rax", Gen_HS_NULL)
       elif pyrt.py_isinstance(v, ["float"]):
-        bits = _st.unpack("<Q", pyrt.py_pack("<d", v))[0]
+        bits = pyrt.py_f64bits(v)
         if (not self.freestanding):
           asm.lea_rip("rax", self.sfloat(bits))
           return null
@@ -3750,7 +3750,7 @@ class Gen:
         walk(m["prog"])
     return hit[0]
   def load_json_helper(self):
-    path = pyrt.py_os_path_join(pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(__file__)), "runtime", "json.hs")
+    path = (pyrt.py_root() + "/runtime/json.hs")
     try:
       f = pyrt.py_open(path)
       src = f.read_()
@@ -5787,7 +5787,7 @@ class Gen:
       _msg = _t5778[2]
       bid = self.bi_id(name)
       for n in range(lo, (hi + 1)):
-        self.bi_stubs[pyrt.py_key([name, n])] = ("hsBI_" + str(bid) + "_" + str(n))
+        self.bi_stubs[pyrt.py_key([name, n])] = [n, ("hsBI_" + str(bid) + "_" + str(n))]
     asm.label("bi_call")
     asm.push_r("rbp")
     asm.mov_rr("rbp", "rsp")
@@ -5829,16 +5829,17 @@ class Gen:
       asm.jmp("hs_raise_msg")
       for n, lab_n in labs:
         asm.label(lab_n)
-        asm.jmp(self.bi_stubs[pyrt.py_key([name, n])])
+        asm.jmp(self.bi_stubs[pyrt.py_key([name, n])][1])
       asm.label(lab_next)
     asm.label(lab_ret)
     asm.mov_ri64("rax", Gen_HS_NULL)
     asm.mov_rr("rsp", "rbp")
     asm.pop_r("rbp")
     asm.ret()
-    for _f5833_0, label in pyrt.py_sorted(pyrt.py_items(self.bi_stubs), (lambda kv: kv[1])):
-      name = _f5833_0[0]
-      n = _f5833_0[1]
+    for _f5833_0, label in pyrt.py_sorted(pyrt.py_items(self.bi_stubs), (lambda kv: kv[1][1])):
+      name = pyrt.py_bi_name(_f5833_0)
+      n = label[0]
+      label = label[1]
       sc = Gen_Scope(null, true)
       sc.params = [("_a" + str(i)) for i in range(n)]
       for i, pn in pyrt.py_enumerate(sc.params):
@@ -10504,7 +10505,7 @@ class GenIR(Gen):
   def _find_module(self, name, from_dir, ln):
     if (not pyrt.py_re_match("^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$", name)):
       raise pyrt.py_err(("bad module name '" + str(name) + "'"), ln)
-    hspath = [d for d in pyrt.py_split(pyrt.py_get(_os.environ, "HSPATH", ""), ":") if d]
+    hspath = [d for d in pyrt.py_split(pyrt.py_hspath(), ":") if d]
     rel = (pyrt.py_replace(name, ".", "/") + ".hs")
     for d in (([from_dir] + hspath) + [pyrt.py_os_getcwd()]):
       if (not d):
@@ -10533,14 +10534,14 @@ class GenIR(Gen):
             loads[ins["dest"]] = ins["name"]
       for b in fdef["blocks"]:
         for ins in b["instrs"]:
-          if ((ins["op"] == "call") and (pyrt.py_get(loads, ins["fn"], null) in GenIR_JSON_CALLS)):
+          if ((ins["op"] == "call") and pyrt.py_has_key(pyrt.py_get(loads, ins["fn"], null), GenIR_JSON_CALLS)):
             return true
     return false
   def _load_json_if_needed(self):
     if (not self._json_used()):
       self.js_entries = {}
       return null
-    path = pyrt.py_os_path_join(pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(__file__)), "runtime", "json.hs")
+    path = (pyrt.py_root() + "/runtime/json.hs")
     try:
       f = pyrt.py_open(path)
       src = f.read_()
@@ -10579,6 +10580,8 @@ class GenIR(Gen):
     for i, part in pyrt.py_enumerate(parts):
       dotted = pyrt.py_join(".", parts[0:(i + 1)])
       last = (i == (len(parts) - 1))
+      is_shell = false
+      path = null
       try:
         path = self._find_module(dotted, from_dir, ln)
         is_shell = false
@@ -10884,7 +10887,7 @@ class GenIR(Gen):
     elif (v == null):
       asm.mov_ri64("rax", Gen_HS_NULL)
     elif pyrt.py_isinstance(v, ["float"]):
-      asm.lea_rip("rax", self.sfloat(_st.unpack("<Q", pyrt.py_pack("<d", v))[0]))
+      asm.lea_rip("rax", self.sfloat(pyrt.py_f64bits(v)))
     elif pyrt.py_isinstance(v, ["int"]):
       asm.mov_ri64("rax", self.tag_int(v))
     elif pyrt.py_isinstance(v, ["str"]):
@@ -11206,7 +11209,7 @@ class GenIR(Gen):
         return true
       pyrt.py_add(seen, t)
       arms = [self._is_raw_temp(fr, _p11202_0[1], seen) for _p11202_0 in ins["arms"]]
-      return (bool(arms) and pyrt.py_all(arms))
+      return ((len(arms) > 0) and pyrt.py_all(arms))
     return false
   def _struct_of(self, fr, t, seen):
     if (not pyrt.py_startswith(t, "%")):
@@ -11904,7 +11907,7 @@ class GenIR(Gen):
   def _call(self, fr, dest, fn, args, ln):
     p = pyrt.py_get(fr["prov"], fn, null)
     pname = (p[1] if ((p != null) and (p[0] == "load")) else null)
-    if ((pname in GenIR_JSON_CALLS) and (pyrt.py_get(fr["res"], pname, null) == "novalue")):
+    if (pyrt.py_has_key(pname, GenIR_JSON_CALLS) and (pyrt.py_get(fr["res"], pname, null) == "novalue")):
       self._json_call(fr, dest, pname, args, ln)
       return null
     if ((pname == "type_name") and (pyrt.py_get(fr, "mod", null) == "<json>") and (pyrt.py_get(fr["res"], pname, null) in ["novalue", "auto"])):

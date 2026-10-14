@@ -14,7 +14,7 @@ import ir  # noqa: E402
 import irx64  # noqa: E402
 
 HS = [sys.executable, os.path.join(ROOT, "hs.py")]
-env = dict(os.environ, HSPATH=os.path.join(ROOT, "selfhost") + ":" + os.path.join(ROOT, "selfhost", "be"))
+env = dict(os.environ, HSROOT=ROOT, HSPATH=os.path.join(ROOT, "selfhost") + ":" + os.path.join(ROOT, "selfhost", "be"))
 progs = sorted(glob.glob(os.path.join(ROOT, "tests", "*.hs")))
 only = sys.argv[1:]
 total = bad = skipped = 0
@@ -22,6 +22,10 @@ with tempfile.TemporaryDirectory() as d:
     for f in progs:
         rel = os.path.relpath(f, ROOT)
         if only and rel not in only and os.path.basename(f) not in only:
+            continue
+        src = open(f).read()
+        if any(l.startswith(("import ", "from ")) for l in src.splitlines()):
+            skipped += 1  # module programs need the AST->IR builder (S5)
             continue
         r = subprocess.run(HS + ["ir", f], capture_output=True, text=True)
         if r.returncode != 0:

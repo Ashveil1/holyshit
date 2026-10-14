@@ -1928,7 +1928,7 @@ def ev_bin(e, env):
         return bool(eq) if op == "==" else (not bool(eq))
     if op in ("<", ">", "<=", ">="):
         if is_num(l) and is_num(r):
-            a, b = float(l), float(r)
+            a, b = (l, r) if (isinstance(l, int) and isinstance(r, int)) else (float(l), float(r))
         elif isinstance(l, str) and isinstance(r, str):
             a, b = l, r
         else:

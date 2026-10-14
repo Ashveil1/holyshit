@@ -459,6 +459,10 @@ Val v_eq(Val a, Val b) {
 Val v_ne(Val a, Val b) { return v_bool(!v_truthy(v_eq(a, b))); }
 
 static int cmp_ord(Val a, Val b, int line, int *out) {
+    if (a.tag == T_INT && b.tag == T_INT) {
+        *out = (a.u.i > b.u.i) - (a.u.i < b.u.i);
+        return 1;
+    }
     if (is_num(a) && is_num(b)) {
         double x = to_f(a), y = to_f(b);
         *out = (x > y) - (x < y);
