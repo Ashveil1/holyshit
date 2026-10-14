@@ -266,5 +266,251 @@
     "out": "2\nbad\n-3\n"
    }
   ]
+ },
+ {
+  "id": "count_vowels",
+  "prompt": "Read a word from the first argument and print how many of its letters are vowels (a, e, i, o, u; lowercase only).",
+  "cases": [
+   {
+    "args": [
+     "education"
+    ],
+    "out": "5\n"
+   },
+   {
+    "args": [
+     "rhythm"
+    ],
+    "out": "0\n"
+   }
+  ]
+ },
+ {
+  "id": "sort_args",
+  "prompt": "Print the integer arguments sorted ascending, one per line.",
+  "cases": [
+   {
+    "args": [
+     "3",
+     "1",
+     "2"
+    ],
+    "out": "1\n2\n3\n"
+   },
+   {
+    "args": [
+     "10",
+     "-2",
+     "7",
+     "7"
+    ],
+    "out": "-2\n7\n7\n10\n"
+   }
+  ]
+ },
+ {
+  "id": "binary",
+  "prompt": "Read a non-negative integer from the first argument and print it in binary (no prefix).",
+  "cases": [
+   {
+    "args": [
+     "0"
+    ],
+    "out": "0\n"
+   },
+   {
+    "args": [
+     "5"
+    ],
+    "out": "101\n"
+   },
+   {
+    "args": [
+     "255"
+    ],
+    "out": "11111111\n"
+   }
+  ]
+ },
+ {
+  "id": "caesar",
+  "prompt": "Shift each lowercase letter of the first argument forward by the integer in the second argument (wrapping z to a). Leave other characters unchanged. Print the result.",
+  "cases": [
+   {
+    "args": [
+     "abc",
+     "1"
+    ],
+    "out": "bcd\n"
+   },
+   {
+    "args": [
+     "xyz",
+     "3"
+    ],
+    "out": "abc\n"
+   },
+   {
+    "args": [
+     "hi there",
+     "13"
+    ],
+    "out": "uv gurer\n"
+   }
+  ]
+ },
+ {
+  "id": "anagram",
+  "prompt": "Print true if the two arguments are anagrams of each other (same letters, same counts), otherwise false.",
+  "cases": [
+   {
+    "args": [
+     "listen",
+     "silent"
+    ],
+    "out": "true\n"
+   },
+   {
+    "args": [
+     "abc",
+     "abd"
+    ],
+    "out": "false\n"
+   },
+   {
+    "args": [
+     "aab",
+     "abb"
+    ],
+    "out": "false\n"
+   }
+  ]
+ },
+ {
+  "id": "matrix_sum",
+  "prompt": "Arguments are the numbers of a 2x2 matrix in row-major order. Print the sum of the diagonal, then the sum of the anti-diagonal, each on its own line.",
+  "cases": [
+   {
+    "args": [
+     "1",
+     "2",
+     "3",
+     "4"
+    ],
+    "out": "5\n5\n"
+   },
+   {
+    "args": [
+     "10",
+     "0",
+     "0",
+     "10"
+    ],
+    "out": "20\n0\n"
+   }
+  ]
+ },
+ {
+  "id": "collatz",
+  "prompt": "Read N from the first argument and print how many steps the Collatz sequence takes to reach 1 (n/2 if even, 3n+1 if odd).",
+  "cases": [
+   {
+    "args": [
+     "1"
+    ],
+    "out": "0\n"
+   },
+   {
+    "args": [
+     "6"
+    ],
+    "out": "8\n"
+   },
+   {
+    "args": [
+     "27"
+    ],
+    "out": "111\n"
+   }
+  ]
+ },
+ {
+  "id": "dedupe",
+  "prompt": "Print the distinct arguments in order of first appearance, one per line.",
+  "cases": [
+   {
+    "args": [
+     "b",
+     "a",
+     "b",
+     "c",
+     "a"
+    ],
+    "out": "b\na\nc\n"
+   }
+  ]
+ },
+ {
+  "id": "string_repeat",
+  "prompt": "Read a word and a count from the arguments and print the word repeated count times on one line with no separator.",
+  "cases": [
+   {
+    "args": [
+     "ab",
+     "3"
+    ],
+    "out": "ababab\n"
+   },
+   {
+    "args": [
+     "x",
+     "0"
+    ],
+    "out": "\n"
+   }
+  ]
+ },
+ {
+  "id": "running_total",
+  "prompt": "Print the running totals of the integer arguments, one per line.",
+  "cases": [
+   {
+    "args": [
+     "1",
+     "2",
+     "3",
+     "4"
+    ],
+    "out": "1\n3\n6\n10\n"
+   }
+  ]
+ },
+ {
+  "id": "dict_invert",
+  "prompt": "Arguments come in key value pairs. Build a dict from them and print one line per entry as value=key, in the order the keys first appeared.",
+  "cases": [
+   {
+    "args": [
+     "a",
+     "1",
+     "b",
+     "2"
+    ],
+    "out": "1=a\n2=b\n"
+   }
+  ]
+ },
+ {
+  "id": "fstring_report",
+  "prompt": "Read a name and an integer age from the arguments and print: NAME is AGE years old (use an f-string).",
+  "cases": [
+   {
+    "args": [
+     "Ann",
+     "30"
+    ],
+    "out": "Ann is 30 years old\n"
+   }
+  ]
  }
 ]
