@@ -3200,6 +3200,11 @@ class GenIR(Gen):
         for c in b" \t\n\v\f\r\x1c\x1d\x1e\x1f":
             ws[c] = 1
         a.code += bytes(ws)
+        if getattr(self, "sections_only", False):
+            if self.ffi_syms:
+                raise HSErr("jit: extern symbols are not supported", 1)
+            return {"code": bytes(self.a.code), "data": bytes(self.a.data),
+                    "entry": self.a.labels["_start"]}
         from x64 import layout, pack, layout_dyn, pack_dyn
         if self.ffi_syms:
             # dynamically linked image: ld.so + libc fill the GOT slots
@@ -3215,6 +3220,10 @@ class GenIR(Gen):
         code = self.a.resolve(lo["text_vaddr"], lo["data_vaddr"])
         start_off = self.a.labels["_start"]
         return pack(code, bytes(self.a.data), start_off, lo)
+
+    def build_ir_sections(self):
+        self.sections_only = True
+        return self.build_ir_image()
 
 
 def build_irx64(prog_path, out_path):

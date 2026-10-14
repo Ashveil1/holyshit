@@ -598,7 +598,7 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-## irx64.py — IR ลง x86-64 (47)
+## irx64.py — IR ลง x86-64 (48)
 
 - `'{ins['name']}' already defined in this scope`
 - `'{name}' already defined in this scope`
@@ -630,6 +630,7 @@
 - `has wants has(dict, key)`
 - `in module '{dotted}': {e.msg}`
 - `int wants 1 arg`
+- `jit: extern symbols are not supported`
 - `kernel image requires freestanding generator`
 - `module '{fr['phantoms'][ref]}' is not a first-class value in x64 subset (use mod.attr)`
 - `module '{m['name']}' is not a first-class value in x64 subset (use mod.attr)`
@@ -648,4 +649,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 602 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 603 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

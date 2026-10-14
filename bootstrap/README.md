@@ -12,11 +12,11 @@ generation. That audit uses Python as the independent reference.
 For Python-free bootstrap, run `scripts/bootstrap-seed.sh [output-dir]`.
 It checks the pinned hash before executing the seed, builds stages two and
 three and requires both to match the seed byte for byte. The seed is Linux
-x86-64 only, 9,257,288 bytes. It uses the repository source and runtime data;
+x86-64 only, 9,265,616 bytes. It uses the repository source and runtime data;
 it is not a standalone distribution. To rebuild without trusting the seed,
 use `scripts/bootstrap-hosted.sh` (Python stage zero, native later stages).
 
-SHA256: `0d040b71e78c55a1f0ecf73167217f0d3e598cc9c9c76e1033e34661e2379574`.
+SHA256: `9aff87a170a7f9794a7b77e0ebbcf328ea8c892420463dd7206d548df9a1d1c9`.
 Changing compiler sources may change the fixed point. Regenerate and verify
 the seed rather than silently accepting an old binary or updating the hash.
 

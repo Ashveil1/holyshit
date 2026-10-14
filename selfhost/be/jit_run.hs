@@ -14,11 +14,7 @@ def prepare():
   m = irbuild.build_module(normalize.parse(read_text(srcpath)), "")
   verify.verify_module(m)
   g = be.GenIR(m, pyrt.py_os_path_dirname(srcpath), false)
-  # Build currently finalizes emission through the ELF path, but no ELF is
-  # written or executed: jitimage publishes the assembler's code/data directly.
-  unused = g.build_ir_image()
-  if len(g.ffi_syms) != 0:
-    raise "jit: extern symbols are not supported"
+  sections = g.build_ir_sections()
   # Forward arguments and the Linux process environment through an initial
   # stack frame. Addresses are formed at runtime, after RIP-relative relocation.
   args = argv()

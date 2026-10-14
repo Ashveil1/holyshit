@@ -59,6 +59,7 @@ SUITES = [
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
     ("test_call0.py", "unsafe zero-argument C ABI entry invocation"),
     ("test_native_jit_command.py", "Python-free eager JIT command"),
+    ("test_jitsections.py", "unpacked JIT sections relink to identical ELF"),
     ("test_jitrun.py", "experimental eager in-process hs JIT"),
     ("test_jitimage.py", "relocated RX code and RW data in hs"),
     ("test_jitmem.py", "executable-memory groundwork, W^X and generated code"),
