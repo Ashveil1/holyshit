@@ -8,43 +8,53 @@
 > หลักการ: ทุกเฟสต้องมี **เกณฑ์ผ่านที่รันได้** (คำสั่ง + ผลที่คาด), เทสเดิมต้องเขียวตลอด
 > (`python3 tests/run_all.py`), ทุกการเปลี่ยนมี benchmark ตามด้วย
 
-## สถานะล่าสุด (วัดจริง, เทสเขียวใน CI เต็ม)
+## Current status: 2026-10-14
 
-| เป้า | หลักฐาน | ประเมิน |
-|---|---|---|
-| เร็วกว่า Python | `bench/run.py` ด้านล่าง: loop/fib ~5-6x, alloc 2.6x, dict 1.3-1.5x, strings 1.3-1.5x (ช่วงจากหลายรอบ) | ~65% |
-| JIT / ไม่มีขั้นตอน compile | `hs run` ใช้ x64 เป็นค่าเริ่มต้น (build+รัน ~0.1 s ไม่ใช้ gcc; รันซ้ำซอร์สเดิม/คอมไพเลอร์เดิมใช้ binary จาก cache: โปรแกรม ~1900 บรรทัด 0.45s → 0.045s, ปิดด้วย HS_RUN_CACHE=off) fallback เองเมื่อนอก subset / Int เกิน 62-bit | ~55% |
-| ง่ายกว่า Python | f-string, lambda, class/inherit, `in`, ternary, keys/values/has, prelude (abs/min/max/sum/sorted/...; cc ก็มีแล้ว), stack overflow เป็น error สะอาด; assert + list comprehension มีแล้ว; enumerate + `for i, x in` มีแล้ว; default args (def f(a, b=expr)) มีแล้ว | ~60% |
-| พึ่งตัวเองได้ | x64 + kernel + FFI ไม่ใช้ gcc; lexer/parser/formatter เขียนด้วย hs ตรงกับ Python ทุกไบต์บนไฟล์ในรีโป (808 เช็ค) และ parse ตัวเองได้; `selfhost/cc.hs` = compiler เขียนด้วย hs (parse ด้วย parselib.hs → ELF x86-64 ตรงด้วย `write_bytes`, subset Int/def/recursion/while/print) ผลตรง interp 24 เคส; ยังเล็ก (ไม่มี list/str/dict/float) ต้องขยายจนคอมไพล์ตัวเองได้ ; **bootstrap fixed point**: cc.hs (ผ่าน interp) → cc2 (ELF) → cc3 โดย cc2 == cc3 ไบต์ต่อไบต์ (test_cc 79 เคส; cc รองรับ ternary + default args + closure/lambda/listcomp ที่จับค่าตอน def) และ `hs cc prog.hs` ใช้ compiler ที่เขียนด้วย hs นี้; subset ยังไม่มี Float/class/GC/FFI (cc corpus ผ่าน 15/44, class+inherit ใช้ได้ (bound method เป็นค่ายังไม่รองรับ) แล้ว) ไม่แทน x64gen/irx64 ทั้งหมด | ~60% |
-| FFI | native + x64 (I64/U64/Ptr/Str/F64); struct by pointer ผ่าน malloc+load/store (เทสกับ gmtime_r ตรงกัน interp/native/x64); ยังไม่มี struct by value/callback | ~57% |
-| เขียน OS ด้วยตัวเอง | kernel บูตบน QEMU, xkernel 291 เคส (VFS, shell ring3, paging, preempt, float, JSON) | ~70% |
-| AI-first | error แบบมีโครงสร้าง (`--json`), LSP, docs/api.json, `hs fmt` (เก็บคอมเมนต์แล้ว); `hs test` (test runner, `--json`) มีแล้ว; `hs repl` มีแล้ว; `hs explain "<error>"` หรือ `hs explain E004` (ความหมาย+วิธีแก้ จาก errors.md, `--json`); error ที่เจอบ่อย 12 ตัวมีรหัส E001-E012 และ `--json` (check/build/run, รวม runtime error) ใส่ `code`+`hint` ให้; evals/ มีชุดโจทย์ 39 ข้อ + checker อัตโนมัติ (ยังไม่ได้รันกับโมเดล จึงยังไม่มี pass@1) | ~45% |
+The seven-goal evidence table is maintained in [VISION.md](VISION.md).
+Overall progress is about **70%**, an engineering judgment, not a test-derived
+score. **80% has not been reached.** Old phase durations below are historical
+planning estimates, not current delivery commitments.
 
-ภาพรวม ~60% (ยังไม่ถึง 80%) ส่วนที่ใหญ่ที่สุดที่เหลือ: code generator ใน hs (self-host เต็ม), JIT จริง, GC ให้เร็วขึ้นเมื่อ live heap ใหญ่ (strings/alloc/dict)
+Completed native B-path checkpoints:
 
-```
-case          cpython  hs xbuild    ratio   MB py   MB hs  output
-alloc          0.967s     0.405s    2.39x       9      16  same
-dict           0.083s     0.065s    1.29x      39      27  same
-fib            0.325s     0.093s    3.50x       9       9  same
-loop           1.506s     0.246s    6.13x       9       9  same
-strings        0.778s     0.627s    1.24x     443     469  same
-```
+- Hosted hs compiler includes normalized parsing, optimized/verified IR,
+  module loading, x64 runtime, GC emission, static/dynamic ELF and C ABI.
+  `tests/test_native_compiler.py` requires complete image equality against
+  the Python reference and a two-generation native fixed point. Unsafe
+  literal transport covers decimal/hex words through 64 bits; safe tagged
+  integer semantics remain unchanged.
+- `bootstrap/hs-hosted-x86_64` is a pinned Linux x86-64 seed, 9,244,808 bytes,
+  SHA256 `12380a805c261724ab9a3d78ece27ca07f5bd9f6cc4892d83289b21f1cc79cca`.
+  The source audit rebuilds it independently; the Python-free bootstrap
+  requires seed == stage2 == stage3. It depends on this repository, not
+  Python execution. See [bootstrap instructions](../bootstrap/README.md).
+- `scripts/run-native.sh SOURCE [args...]` is one-command compile-and-run.
+  It is not JIT and does not silently fall back to Python.
+- Public xkernel selects IR. The unchanged QEMU corpus passes 291/291
+  through IR and retained AST lowerings. The native hs IR kernel compiler
+  matches complete reference ELF images, and
+  `scripts/build-kernel-native.sh SOURCE OUTPUT` packages this Python-free
+  path. This does not claim hardware validation or a standalone OS.
+- Immutable-string allocation was compacted. Nine alternating local runs
+  reduced string-benchmark median runtime 0.580149s -> 0.520208s and peak
+  RSS 469 MB -> 377 MB. See [benchmark scope](bench.md). A GC arena-cache
+  experiment was rejected after it did not improve alternating medians.
 
-## เส้นทางสู่ self-host เต็ม (compiler ใน hs คอมไพล์ตัวเองได้)
+Immediate unfinished work:
 
-สถานะ: `selfhost/cc.hs` ผ่าน M1-M5 ครบสำหรับ subset (bootstrap fixed point พิสูจน์ใน tests/test_cc.py). ที่เหลือคือขยาย subset จนแทน x64gen/irx64 (Float, class, GC, FFI, kernel) ซึ่งยัง **ใหญ่** — แบ่งเป็นขั้นด้านล่าง
+1. Real in-memory JIT, with execution/relocation/lifetime/error gates before
+   claiming it replaces compile-and-run. First-call compilation and tiering
+   remain separate steps.
+2. Broader FFI (callbacks, struct-by-value, variadics) and explicit ABI tests.
+3. GC/live-heap performance and more representative benchmarks.
+4. Actual model evaluations on the 39-task suite and usability comparisons.
 
-| ขั้น | เนื้อหา | เกณฑ์ผ่าน (รันได้) |
-|---|---|---|
-| M1 ✔ | Int, def/recursion, while/if, print Int/str literal → ELF | test_cc 24 เคส, ELF จาก interp = จาก native |
-| M1.5 ✔ | `selfhost/asm.hs`: assembler เขียนด้วย hs (subset จำนวนเต็มของ x64.py) | test_asm: ไบต์ตรง x64.py 17.8k คำสั่ง |
-| M2 ✔ | ค่าแบบ tagged (Int 63 บิต/Bool/Null/Str/List/Dict), heap bump (ไม่มี GC), str + len index == < print, list literal/append/get/set/for/==, dict literal/get/set/in/keys/values/== ที่ emit จาก hs | test_cc 56 เคส: stdout ตรง interp + error ออก exit≠0 เหมือนกัน |
-| M3 ✔ | import (flatten โมดูล), slice, str(), try/except/raise, argv/read_text/write_bytes/find/split/int, for บน Str/Dict | cc.hs คอมไพล์ parselib+lexlib+asm+cc ทั้งชุดได้ |
-| M4 ✔ | builtins ที่ cc.hs ใช้เอง | cc.hs (ผ่าน interp) คอมไพล์ cc.hs → ELF cc2 (275KB) ที่รันได้ คอมไพล์โปรแกรมทดสอบทั้งหมดได้ไบต์ตรง cc1 |
-| M5 ✔ | bootstrap: cc1 (cc.hs รันด้วย interp) → cc2 (ELF) → cc3; cc2 == cc3 ไบต์ต่อไบต์ | test_cc "bootstrap: fixed point" (cc2 คอมไพล์ cc.hs ใน 0.4 วิ เทียบ ~10 วิ ด้วย interp) |
-
-**ขอบเขตที่พิสูจน์แล้ว**: คอมไพเลอร์ subset (cc.hs) ทำ fixed-point ได้ แต่ subset นี้ยังไม่มี Float, class, closure/lambda ใน runtime (lambda desugar ที่ parse ได้), GC (bump heap 1GB), Int แค่ 63 บิต (literal >= 2^61 ต้องใช้ cc1), dict ค้นแบบเชิงเส้น, error จาก runtime จับด้วย try ไม่ได้ (raise string จับได้). `hs` ตัวเต็ม (x64gen/irx64 ใน Python, native ผ่าน gcc, FFI, kernel) ยังไม่ถูก port — จึงยังไม่ claim ว่า "พึ่งตัวเองเต็ม"
+`selfhost/cc.hs` and the M1-M5 subset bootstrap are historical groundwork,
+not the current full hosted compiler. The current entrypoint is
+`selfhost/be/compile.hs`. Python remains the semantic/reference and
+regeneration toolchain, not a required runtime for the native B-path.
+Each implementation stage still needs its own PR, differential regression
+and green full CI before normal merge.
 
 ## ที่วัดได้ก่อนเริ่ม (v0.6.30, ดู `bench.md`)
 
@@ -98,7 +108,7 @@ strings        0.778s     0.627s    1.24x     443     469  same
 - 3.4 แก้ divergence ที่จดไว้: Int 62-bit บน x64 vs 64-bit บน interp ตัดสินใจเลือกอย่างใดอย่างหนึ่ง (bigint/overflow semantic)
 - **เกณฑ์ผ่าน:** bench เฟส 1 ดีขึ้นตามเป้าและไม่มี regression ในเทสความตรงกับ interp; โปรแกรมที่วน allocate 10^8 ครั้งไม่หมดหน่วยความจำ
 
-## เฟส 4 — JIT (4–8 สัปดาห์)  [เป้า 2, 1]
+## เฟส 4 — JIT (historical duration estimate; implementation remains open)  [เป้า 2, 1]
 
 ฐานที่มีแล้ว [เอกสาร]: IR (`ir.py`) + backend x64 (`irx64.py`) + encoder (`x64.py`) ไม่ใช้ libc
 
@@ -115,7 +125,7 @@ strings        0.778s     0.627s    1.24x     443     469  same
 **เกณฑ์ผ่าน:** `hs prog.hs` เริ่มรันใน <50 ms สำหรับโปรแกรมเล็ก (วัดจริง), ผล stdout/stderr/rc ตรง interp ทุกไบต์
 บนคอร์ปัสเดียวกับเฟส 2, bench ≥ `xbuild` ± 10% และดีกว่า CPython ตามเป้าเฟส 1
 
-## เฟส 5 — Self-hosting (ยาว: 2–4 เดือน)  [เป้า 5]
+## เฟส 5 — Self-hosting (historical plan; native gates now implemented)  [เป้า 5]
 
 เหตุผล: ตอนนี้ parser/IR/backend/LSP เป็น Python; SPEC §15.35 เรียก IR ว่า "ก้าวแรกของแผน self-hosting"
 
@@ -358,3 +368,10 @@ driver with the audited seed and runs it. Integration gates compare complete
 ELFs with the Python IR oracle under a PATH without Python/gcc and verify
 that a compile failure leaves an existing output unchanged. This packages
 the native path; it is not a kernel boot command or a standalone OS image.
+
+### Reading the earlier implementation checkpoints
+Earlier checkpoints above describe the state when that stage was developed.
+Statements such as "seed not committed", "full CI pending", "native kernel
+driver has not migrated to IR" and "one unsafe constant deferred" are
+superseded by the current status at the top and the later S6-S9 gates. They
+are retained as development history, not current blockers.

@@ -1332,3 +1332,22 @@ the stored byte length. C-string conversion keeps its separate terminator.
 The canonical spelling of an embedded NUL byte is `\0`, the string escape
 accepted by the parser. Formatting a string must preserve its contents and
 must not rewrite NUL as an unsupported Unicode escape.
+### Executable memory groundwork (Linux x86-64)
+`selfhost/jitmem.hs` owns a page-rounded mapping for nonempty byte lists of
+at most 16 MiB. `publish` validates before mapping, copies into RW (not X)
+memory and changes the whole mapping to RX (not W). Failure releases the
+mapping. `release` unmaps it once and clears its handle; double release is
+an error. The caller must not use an address after release or while it is
+being released. This internal module does not call generated code, change
+`hs run`, provide first-call compilation, or constitute a JIT. It currently
+uses the system C ABI for mmap/mprotect/munmap, not a libc-free runtime.
+
+`jitmem.publish_sections(code, data, relocate)` additionally reserves adjacent
+page-aligned code/data sections. A relocation callback receives both bases
+before copying; its output must be a byte list of the original code length.
+Only code becomes RX; data remains RW and never executable. The entire
+reservation is released together, including on callback failure.
+`selfhost/jitimage.hs` adapts the current hs assembler state to these bases,
+checking undefined labels and signed rel32 reach before resolving. Multiple
+images have independent data and lifetime. This is relocation groundwork,
+not whole-program entry execution or ELF loading.
