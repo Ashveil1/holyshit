@@ -12,7 +12,7 @@ m = irbuild.build_module(prog, "")
 print "lowered"
 verify.verify_module(m)
 print "verified"
-g = be.GenIR(m, pyrt.py_os_path_dirname(srcpath))
+g = be.GenIR(m, pyrt.py_os_path_dirname(srcpath), false)
 print "planned"
 img = g.build_ir_image()
 print "image"

@@ -6,7 +6,7 @@ import irlib
 HEX = "0123456789abcdef"
 text = read_text(argv()[0])
 m = irlib.parse(text)
-g = be.GenIR(m, ".")
+g = be.GenIR(m, ".", false)
 img = g.build_ir_image()
 out = ""
 for b in img:
