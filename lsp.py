@@ -988,7 +988,7 @@ class Server:
         try:
             interp.reset_parse_state()
             ast = interp.parse_program(doc.text, raw=True)
-            out = _fmt.fmt_program(ast)
+            out = _fmt.fmt_program_c(ast, doc.text)
         except HSErr:
             return []
         if out == doc.text:

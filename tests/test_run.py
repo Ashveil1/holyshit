@@ -127,5 +127,47 @@ with tempfile.TemporaryDirectory() as d:
     check("hs cc rejects what the cc subset cannot do",
           r.returncode != 0 and "error:" in r.stdout + r.stderr and not os.path.exists(os.path.join(d, "q")),
           (r.returncode, r.stdout, r.stderr))
+
+# ---- fmt keeps comments (nothing is lost, structure unchanged, idempotent) ----
+sys.path.insert(0, ROOT)
+import fmt as _fmt  # noqa: E402
+import interp as _interp  # noqa: E402
+_CM = open(os.path.join(ROOT, "tests", "fmt_comments.hs.txt")).read()
+with tempfile.TemporaryDirectory() as d:
+    cp = os.path.join(d, "c.hs")
+    open(cp, "w").write(_CM)
+    r1 = subprocess.run([sys.executable, HS, "fmt", cp], capture_output=True, text=True)
+    open(cp, "w").write(r1.stdout)
+    r2 = subprocess.run([sys.executable, HS, "fmt", cp], capture_output=True, text=True)
+    r3 = subprocess.run([sys.executable, HS, "fmt", "--check", cp], capture_output=True, text=True)
+    nc = len(_fmt.extract_comments(_CM)[0]) + len(_fmt.extract_comments(_CM)[1])
+    no = len(_fmt.extract_comments(r1.stdout)[0]) + len(_fmt.extract_comments(r1.stdout)[1])
+    check("fmt keeps every comment", r1.returncode == 0 and nc == no and nc >= 8, (nc, no, r1.stderr))
+    check("fmt with comments is idempotent", r2.stdout == r1.stdout, (r1.stdout, r2.stdout))
+    check("fmt --check passes on formatted commented file", r3.returncode == 0, r3.stderr)
+bad = []
+nfiles = 0
+for sub in ("tests", "selfhost", "kernel", "bench", "examples"):
+    dd = os.path.join(ROOT, sub)
+    if not os.path.isdir(dd):
+        continue
+    for fn in sorted(os.listdir(dd)):
+        if not fn.endswith(".hs"):
+            continue
+        src = open(os.path.join(dd, fn), encoding="utf-8").read()
+        try:
+            _interp.reset_parse_state()
+            plain = _fmt.fmt_program(_interp.parse_program(src, raw=True))
+            _interp.reset_parse_state()
+            withc = _fmt.fmt_program_c(_interp.parse_program(src, raw=True), src)
+        except Exception:
+            continue
+        nfiles += 1
+        a = _fmt.extract_comments(src)
+        b = _fmt.extract_comments(withc)
+        if len(a[0]) + len(a[1]) != len(b[0]) + len(b[1]) or \
+                _fmt.squash(_fmt.strip_comments(withc)) != _fmt.squash(plain):
+            bad.append(fn)
+check("fmt with comments: all repo .hs keep comments and structure", not bad and nfiles > 50, (bad[:5], nfiles))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)

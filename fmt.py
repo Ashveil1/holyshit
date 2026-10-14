@@ -5,8 +5,8 @@
     python3 fmt.py -w prog.hs     # rewrite in place
 
 Canonical form: 2-space indent, `print x` (no parens), single spaces around
-operators, one statement per line, no blank-line preservation, no comments
-(the lexer drops comments, so fmt strips them -- documented limitation).
+operators, one statement per line, no blank-line preservation. `fmt_program_c`
+keeps comments (full-line ones go before the next statement, trailing ones stay on their line).
 Idempotent: fmt(fmt(x)) == fmt(x).
 """
 import sys
@@ -191,13 +191,30 @@ def _reg_lams(body):
             _LAM[s["name"]] = s
 
 
+_CMT = None  # comment state while formatting with comments (see fmt_program_c)
+
+
+def _flush_comments(out, upto, ind):
+    """Emit pending full-line comments that start before source line `upto`."""
+    while _CMT["full"] and (upto is None or _CMT["full"][0][0] < upto):
+        _, text = _CMT["full"].pop(0)
+        out.append(("  " * ind) + text)
+
+
 def fmt_block(body, ind):
     out = []
     _reg_lams(body)
     for s in body:
         if s["t"] == "def" and (s.get("lam") or s.get("clsmember")):
             continue  # lambda: printed where used; method: printed by its class
-        out.extend(fmt_stmt(s, ind))
+        if _CMT is not None and s.get("line"):
+            _flush_comments(out, s["line"], ind)
+        lines = fmt_stmt(s, ind)
+        if _CMT is not None and s.get("line") and lines:
+            tr = _CMT["trail"].pop(s["line"], None)
+            if tr:
+                lines[0] = lines[0] + "  " + tr
+        out.extend(lines)
     return out
 
 
@@ -345,6 +362,53 @@ def fmt_program(prog):
     return "\n".join(fmt_block(prog, 0)) + "\n"
 
 
+def extract_comments(src):
+    """Return (full, trail): full-line comments [(line, text)] in order and
+    trailing comments {line: text}. String-aware, 1-based lines."""
+    full, trail = [], {}
+    for ln, raw in enumerate(src.split("\n"), 1):
+        in_str = False
+        i = 0
+        n = len(raw)
+        while i < n:
+            c = raw[i]
+            if in_str:
+                if c == "\\" and i + 1 < n:
+                    i += 2
+                    continue
+                if c == '"':
+                    in_str = False
+            elif c == '"':
+                in_str = True
+            elif c == "#" or (c == "/" and i + 1 < n and raw[i + 1] == "/"):
+                text = raw[i:].rstrip()
+                if raw[:i].strip():
+                    trail[ln] = text
+                else:
+                    full.append((ln, text))
+                break
+            i += 1
+    return full, trail
+
+
+def fmt_program_c(prog, src):
+    """Like fmt_program but keeps comments: a full-line comment goes before the
+    next statement (at its indent), a trailing comment stays on its statement's
+    first line, leftovers go at the end. Blank lines are still dropped."""
+    global _CMT
+    full, trail = extract_comments(src)
+    _CMT = {"full": full, "trail": trail}
+    try:
+        lines = fmt_block(prog, 0)
+        _flush_comments(lines, None, 0)
+        # trailing comments whose line did not start a statement: keep them
+        for ln in sorted(_CMT["trail"]):
+            lines.append(_CMT["trail"][ln])
+    finally:
+        _CMT = None
+    return "\n".join(lines) + "\n"
+
+
 def strip_comments(src):
     """Blank out `#` and `//` comments (string-aware), keeping line structure.
 
@@ -403,7 +467,7 @@ def main(argv):
     try:
         interp.reset_parse_state()
         prog = interp.parse_program(src, raw=True)
-        out = fmt_program(prog)
+        out = fmt_program_c(prog, src)
     except HSErr as e:
         print(str(e), file=sys.stderr)
         return 1
