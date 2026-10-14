@@ -83,6 +83,7 @@ for k in {"a": 1}:       # วน key
 
 - `break` / `continue` ใน while/for
 - `range(n)` = 0..n-1, `range(a, b)` = a..b-1 (ของเก่า `0..5` ตัดออก ใช้ range แทน)
+- `for i in range(a, b, s)` (s ลบได้): parse-time desugar เป็น `range(0, N)` + `i = a + k*s`; a,b,s ประเมินครั้งเดียว; s == 0 = division by zero; ใช้ได้เฉพาะใน `for`
 
 ## 5. Builtins ชุดแรก (v1)
 
