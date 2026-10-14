@@ -16,4 +16,4 @@ open('selfhost/be/be.hs', 'w').write(s)
 PY
 python3 hs.py fmt selfhost/be/be.hs -w
 # Maintained port adaptations after the mechanical translation/format pass.
-patch --batch --fuzz=0 -p1 < selfhost/be/postport.patch
+patch --batch --no-backup-if-mismatch --fuzz=0 -p1 < selfhost/be/postport.patch
