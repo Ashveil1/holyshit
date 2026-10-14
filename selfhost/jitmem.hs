@@ -13,11 +13,32 @@ def publish(code):
   for b in code:
     if b & 255 != b:
       raise "jitmem: code must contain bytes"
-  size = (n + 4095) & -4096
+  return publish_sections(code, [], null)
+def checked_bytes(xs):
+  xs = xs + []
+  if len(xs) > 16777216:
+    raise "jitmem: section too large"
+  for b in xs:
+    if b & 255 != b:
+      raise "jitmem: section must contain bytes"
+  return xs
+def publish_sections(code, data, relocate):
+  code = checked_bytes(code)
+  data = checked_bytes(data)
+  n = len(code)
+  if n < 1:
+    raise "jitmem: empty code section"
+  code_size = (n + 4095) & -4096
+  data_size = (len(data) + 4095) & -4096
+  size = code_size + data_size
   ptr = mmap(0, size, 3, 34, -1, 0)
   if ptr == -1 or ptr == 0:
     raise "jitmem: mmap failed"
   try:
+    if relocate != null:
+      code = checked_bytes(relocate(ptr, ptr + code_size))
+      if len(code) != n:
+        raise "jitmem: relocation changed code size"
     unsafe:
       Ptr p = as_ptr(ptr)
     i = 0
@@ -26,12 +47,18 @@ def publish(code):
       unsafe:
         store8(p + i, b)
       i = i + 1
-    if mprotect(ptr, size, 5) != 0:
+    i = 0
+    while i < len(data):
+      b = data[i]
+      unsafe:
+        store8(p + code_size + i, b)
+      i = i + 1
+    if mprotect(ptr, code_size, 5) != 0:
       raise "jitmem: mprotect failed"
   except as e:
     munmap(ptr, size)
     raise e
-  return {"ptr": ptr, "size": size, "length": n, "live": true}
+  return {"ptr": ptr, "size": size, "length": n, "live": true, "data": ptr + code_size, "data_size": data_size}
 def release(image):
   if not image["live"]:
     raise "jitmem: image already released"
@@ -39,3 +66,4 @@ def release(image):
     raise "jitmem: munmap failed"
   image["live"] = false
   image["ptr"] = 0
+  image["data"] = 0
