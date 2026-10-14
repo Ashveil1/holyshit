@@ -1,0 +1,20 @@
+# Publish the current hs assembler state; no ELF and no fixed load address.
+import asm
+import jitmem
+def relocate(text, data):
+  state = asm.state()
+  for fixup in state["fixups"]:
+    name = fixup[1]
+    if name in state["labels"]:
+      target = text + state["labels"][name]
+    elif name in state["data_labels"]:
+      target = data + state["data_labels"][name]
+    else:
+      raise "jitimage: undefined label " + name
+    delta = target - (text + fixup[0] + 4)
+    if delta < -2147483648 or delta > 2147483647:
+      raise "jitimage: relative address out of range"
+  return asm.resolve_at(text, data)
+def publish():
+  state = asm.state()
+  return jitmem.publish_sections(state["code"], state["data"], relocate)
