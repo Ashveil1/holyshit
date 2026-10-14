@@ -49,6 +49,7 @@ SUITES = [
     ("test_normalize.py", "normalized parser AST in hs vs interp.py"),
     ("test_pipeline.py", "source-to-optimized-CFG pipeline in hs vs Python"),
     ("test_iropt_hs.py", "CFG optimizer in hs vs iropt.py (interp + x64)"),
+    ("test_verify_hs.py", "CFG verifier in hs vs ir.py (valid + malformed modules)"),
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
     ("test_be.py", "x64 backend written in hs vs irx64.py"),
     ("test_cc.py", "compiler written in hs (selfhost/cc.hs)"),
