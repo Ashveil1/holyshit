@@ -43,3 +43,23 @@ checks runtime output, stderr and exit status against interp for recursion,
 closures, lambda, floats, JSON, classes, exceptions, runtime errors and GC
 stress. Separate memory/relocation tests check page permissions and lifetime.
 These checks do not establish universal semantic or performance parity.
+
+## Compare with AOT
+
+```
+python3 bench/jit.py /tmp/hs-jit --runs 5
+```
+
+The benchmark alternates JIT and AOT runs and checks exact output/status on
+every run. Its untimed AOT setup uses the native hs compiler. JIT timing
+includes parsing/IR/emission/relocation/execution; AOT timing includes only
+execution. Building the driver is excluded. Numbers vary by machine.
+
+A local five-run median check on 2026-10-14 measured (JIT / AOT seconds):
+fib 0.1023 / 0.0734, loop 0.2617 / 0.2283, dict 0.0775 / 0.0593,
+alloc 0.3653 / 0.3508, strings 0.5039 / 0.5002. Outputs matched.
+The eager path does not meet the roadmap's within-10%-of-AOT criterion
+across those cases. A separate nine-run alternating hello-world check
+measured 10.77 ms median for the already-built eager driver and 43.11 ms
+for interp, including source compilation in the eager measurement. Neither
+result establishes whole-language performance or first-call JIT completion.
