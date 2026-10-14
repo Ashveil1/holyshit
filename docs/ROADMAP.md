@@ -257,6 +257,11 @@ compares source -> optimized CFG through interp and compiled x64. The
 13k-line backend emitter is explicitly deferred to a separate slow bootstrap
 gate, and out-of-width ASTs are interp-only. Modules are lowered individually
 here; linking their imports belongs to the compiler-driver stage.
+Compiler-depth regression gate: repeated returns from an except handler
+must pop the active exception value, not the already-consumed try frame.
+`tests/t_exceptreturn.hs` exercises 300 handled returns with and without
+finally. The Python IR builder and its hs translation share this cleanup
+rule; interp remains the output oracle.
 S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
 SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the
