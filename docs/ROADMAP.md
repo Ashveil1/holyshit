@@ -236,3 +236,8 @@ compares source -> optimized CFG through interp and compiled x64. The
 13k-line backend emitter is explicitly deferred to a separate slow bootstrap
 gate, and out-of-width ASTs are interp-only. Modules are lowered individually
 here; linking their imports belongs to the compiler-driver stage.
+S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
+SSA definitions, dominance, phi predecessors and instruction uses. Valid
+corpus modules and deliberately malformed modules are checked against the
+Python verifier, through interp and x64. Out-of-width IR constants remain
+interp-only. This is a compiler-stage check, not a full bootstrap claim.
