@@ -670,7 +670,72 @@ def parse_program(src, raw=False):
     p.expect("EOF")
     if not raw:
         _apply_defaults(body)
+        body = _desugar_range_step(body)
         body = _inject_prelude(body, src)
+    return body
+
+
+_RANGE_STEP_SRC = (
+    "_rdN = (_rbN - _raN) if _rsN > 0 else (_raN - _rbN)\n"
+    "_rtN = _rsN if _rsN > 0 else 0 - _rsN\n"
+    "_rnN = int((_rdN + _rtN - 1 - (_rdN + _rtN - 1) % _rtN) / _rtN)\n"
+    "for _rkN in range(0, _rnN):\n"
+    "  _rvN = _raN + _rkN * _rsN\n")
+
+
+def _desugar_range_step(body):
+    """`for i in range(a, b, s):` is a parse-time desugar (like lambda and
+    default args): a, b, s are evaluated once into temps, the trip count is
+    ceil((b - a) / s) for s > 0 and ceil((a - b) / -s) for s < 0, and the body
+    starts with `i = a + k * s`. Backends only ever see the 2-argument range.
+    s == 0 fails with division by zero (Python: ValueError)."""
+    counter = [0]
+
+    def stamp(x, ln):
+        if isinstance(x, dict):
+            if "line" in x:
+                x["line"] = ln
+            for v in x.values():
+                stamp(v, ln)
+        elif isinstance(x, list):
+            for v in x:
+                stamp(v, ln)
+
+    def is_step_for(x):
+        if not (isinstance(x, dict) and x.get("t") == "for"):
+            return False
+        it = x["iter"]
+        return (it.get("t") == "call" and it["fn"].get("t") == "var"
+                and it["fn"]["name"] == "range" and len(it["args"]) == 3
+                and "tup" not in x)
+
+    def walk(x):
+        if isinstance(x, dict):
+            for v in x.values():
+                walk(v)
+        elif isinstance(x, list):
+            i = 0
+            while i < len(x):
+                walk(x[i])
+                if is_step_for(x[i]):
+                    f = x[i]
+                    counter[0] += 1
+                    n = str(counter[0])
+                    ln = f["line"]
+                    a, b, s = f["iter"]["args"]
+                    pre = [N("set", ln, name=f"_ra{n}", val=a),
+                           N("set", ln, name=f"_rb{n}", val=b),
+                           N("set", ln, name=f"_rs{n}", val=s)]
+                    tmpl = parse_program(_RANGE_STEP_SRC.replace("N", n), raw=True)
+                    stamp(tmpl, ln)
+                    loop = tmpl[3]
+                    first = loop["body"][0]
+                    first["name"] = f["var"]
+                    loop["body"] = [first] + f["body"]
+                    x[i:i + 1] = pre + tmpl[:3] + [loop]
+                    i += len(pre) + 3
+                i += 1
+    walk(body)
     return body
 
 
