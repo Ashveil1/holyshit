@@ -1328,6 +1328,14 @@ allocates the 16-byte object header plus payload, rounded up to 16 bytes.
 No extra spare block is required: strings are immutable and all readers use
 the stored byte length. C-string conversion keeps its separate terminator.
 
+### Unsafe C ABI entry invocation (Linux x86-64)
+`unsafe: I64 result = call0(Ptr)` invokes a non-null address using the C ABI
+with no arguments and an I64 return. The caller owns executable memory, ABI
+correctness and lifetime. The interpreter permits only foreign pointers
+when extern has enabled foreign memory; simulated arena pointers are
+rejected. Null is a catchable error. Invalid non-null addresses can crash,
+as with other unsafe memory operations. This does not call hs functions
+with their internal ABI and is unavailable in freestanding kernel mode.
 ### Executable memory groundwork (Linux x86-64)
 `selfhost/jitmem.hs` owns a page-rounded mapping for nonempty byte lists of
 at most 16 MiB. `publish` validates before mapping, copies into RW (not X)
