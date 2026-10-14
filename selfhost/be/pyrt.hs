@@ -38,6 +38,8 @@ def py_estr(e):
     return "error: " + m + " at line " + str(l)
   return "error: " + m
 def py_chr(n):
+  if n >= 0 and n < 32:
+    return json_parse("\"\\u00" + "0123456789abcdef"[n >> 4] + "0123456789abcdef"[n & 15] + "\"")
   if n >= 32 and n < 127:
     return ASCII[n - 32]
   raise "py_chr: unsupported code " + str(n)
@@ -45,6 +47,10 @@ def py_ord(c):
   i = find(ASCII, c)
   if i >= 0:
     return i + 32
+  if c == json_parse("\"\\b\""):
+    return 8
+  if c == json_parse("\"\\f\""):
+    return 12
   if c == "\n":
     return 10
   if c == "\t":
@@ -414,19 +420,58 @@ def py_strip(s):
   while j > i and find(" \t\r\n", s[j - 1]) >= 0:
     j = j - 1
   return s[i:j]
+def hex4(s, i):
+  v = 0
+  for j in range(4):
+    v = v * 16 + find("0123456789abcdef", s[i + j])
+  return v
 def py_encode(s, enc):
+  # Iterate the ASCII JSON representation, not x64's byte-based string iterator.
+  text = json_str(s)
   out = []
-  for c in s:
-    o = py_ord(c)
+  i = 1
+  while i < len(text) - 1:
+    c = text[i]
+    o = 0
+    if c == "\\":
+      i = i + 1
+      esc = text[i]
+      if esc == "u":
+        o = hex4(text, i + 1)
+        i = i + 4
+        if o >= 55296 and o <= 56319 and text[i + 1:i + 3] == "\\u":
+          low = hex4(text, i + 3)
+          o = 65536 + (o - 55296) * 1024 + low - 56320
+          i = i + 6
+      elif esc == "n":
+        o = 10
+      elif esc == "r":
+        o = 13
+      elif esc == "t":
+        o = 9
+      elif esc == "b":
+        o = 8
+      elif esc == "f":
+        o = 12
+      else:
+        o = py_ord(esc)
+    else:
+      o = py_ord(c)
     if o < 128:
       append(out, o)
     elif o < 2048:
       append(out, 192 | (o >> 6))
       append(out, 128 | (o & 63))
-    else:
+    elif o < 65536:
       append(out, 224 | (o >> 12))
-      append(out, 128 | (o >> 6 & 63))
+      append(out, 128 | ((o >> 6) & 63))
       append(out, 128 | (o & 63))
+    else:
+      append(out, 240 | (o >> 18))
+      append(out, 128 | ((o >> 12) & 63))
+      append(out, 128 | ((o >> 6) & 63))
+      append(out, 128 | (o & 63))
+    i = i + 1
   return out
 def py_bytes(x):
   if x == null:
