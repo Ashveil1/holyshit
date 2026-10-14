@@ -350,6 +350,14 @@ class Asm:
         self.code += bytes([0x0F, 0xAF])
         self._modrm(3, dn, sn)
 
+    def bsr_rr(self, d, s):
+        """d = index of the highest set bit of s (s must be non-zero)."""
+        dn, db = _rn(d)
+        sn, sb = _rn(s)
+        self._rex(True, r=db, b=sb)
+        self.code += bytes([0x0F, 0xBD])
+        self._modrm(3, dn, sn)
+
     def cqo(self):
         self.code += bytes([0x48, 0x99])
 
