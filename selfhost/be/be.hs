@@ -375,7 +375,7 @@ class Gen:
   def new_tmp(self, pfx):
     self.tmpn = self.tmpn + 1
     return str(pfx) + str(self.tmpn)
-  def ev(self, e, sc, mod):
+  def _base_ev(self, e, sc, mod):
     t = e["t"]
     ln = e["line"]
     if t == "num":
@@ -524,6 +524,8 @@ class Gen:
       self.sev(e, sc, mod)
       return null
     raise pyrt.py_err(str(t) + " not in x64 subset", ln)
+  def ev(self, e, sc, mod):
+    return self._base_ev(e, sc, mod)
   def ev_slice(self, e, sc, mod):
     ln = e["line"]
     self.ev(e["obj"], sc, mod)
@@ -1162,7 +1164,7 @@ class Gen:
     self.raise_static("index out of range", ln)
     asm.label(lab_done)
     asm.label(lab_ix_done)
-  def ev_call(self, e, sc, mod):
+  def _base_ev_call(self, e, sc, mod):
     ln = e["line"]
     fn = e["fn"]
     if fn["t"] == "var" and not (fn["name"] in Gen_XBUILTINS):
@@ -1960,6 +1962,8 @@ class Gen:
       name = fn["name"]
       raise pyrt.py_err("builtin '" + str(name) + "' not in x64 subset", ln)
     self.ev_user_call(e, sc, mod, ln)
+  def ev_call(self, e, sc, mod):
+    return self._base_ev_call(e, sc, mod)
   def is_user_def(self, name, sc, mod):
     cur = sc
     while cur != null:
@@ -2117,7 +2121,7 @@ class Gen:
     asm.call_rax()
     asm.pop_r("r15")
     asm.add_ri32("rsp", 8 * (len(e["args"]) + 1))
-  def ev_kdev(self, name, args, sc, mod, ln):
+  def _base_ev_kdev(self, name, args, sc, mod, ln):
     if name == "ticks":
       if args:
         raise pyrt.py_err("ticks takes no args", ln)
@@ -2453,6 +2457,8 @@ class Gen:
       asm.mov_ri64("rax", Gen_HS_NULL)
       return null
     raise pyrt.py_err("bad kdev " + str(name), ln)
+  def ev_kdev(self, name, args, sc, mod, ln):
+    return self._base_ev_kdev(name, args, sc, mod, ln)
   def print_unsafe(self, args, sc, mod, ln):
     for i, ar in pyrt.py_enumerate(args):
       if i > 0:
@@ -2492,7 +2498,7 @@ class Gen:
     asm.lea_rip("rdi", "nl_")
     asm.mov_ri32("rsi", 1)
     self.rt_out(1)
-  def sev(self, e, sc, mod):
+  def _base_sev(self, e, sc, mod):
     t = e["t"]
     ln = e["line"]
     if t == "num":
@@ -2558,6 +2564,8 @@ class Gen:
         return null
       raise pyrt.py_err("only alloc/load/store/as_* calls allowed in unsafe (x64)", ln)
     raise pyrt.py_err(str(t) + " not in x64 subset", ln)
+  def sev(self, e, sc, mod):
+    return self._base_sev(e, sc, mod)
   def sev_field(self, e, sc, mod):
     ln = e["line"]
     self.sev(e["obj"], sc, mod)
@@ -2745,7 +2753,7 @@ class Gen:
     if t == "call" and e["fn"]["t"] == "var" and e["fn"]["name"] in ["alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int"]:
       return true
     return false
-  def sev_call(self, name, args, sc, mod, ln):
+  def _base_sev_call(self, name, args, sc, mod, ln):
     if name == "alloc":
       if len(args) != 1:
         raise pyrt.py_err("alloc wants alloc(n)", ln)
@@ -2816,6 +2824,8 @@ class Gen:
       asm.label(lab_done)
       return null
     raise pyrt.py_err(str(name) + " not in x64 subset", ln)
+  def sev_call(self, name, args, sc, mod, ln):
+    return self._base_sev_call(name, args, sc, mod, ln)
   def ex(self, s, sc, mod, depth, ux):
     t = s["t"]
     ln = s["line"]
@@ -3684,7 +3694,7 @@ class Gen:
     for name in pyrt.py_sorted(pyrt.py_union(pyrt.py_set(ms.loc), pyrt.py_set(ms.uloc)), null):
       asm.data_label(self.glabel(mod, name))
       asm.data_qword(Gen_HS_UNBOUND if name in ms.loc else 0)
-  def emit_main(self, mod):
+  def _base_emit_main(self, mod):
     ms = mod["scope"]
     if self.freestanding:
       self.emit_longmode_tail(mod)
@@ -3718,6 +3728,8 @@ class Gen:
     asm.mov_rr("rdi", "rax")
     asm.mov_ri32("rax", 60)
     asm.syscall()
+  def emit_main(self, mod):
+    return self._base_emit_main(mod)
   def emit_longmode_tail(self, mod):
     asm.label("long_mode")
     asm.mov_ax_imm16(16)
@@ -3803,7 +3815,7 @@ class Gen:
     if lab == null:
       raise pyrt.py_err("json internal error (no " + str(name) + " in runtime/json.hs)", ln)
     return lab
-  def build_image(self, mod):
+  def _base_build_image(self, mod):
     ms = mod["scope"]
     ms._mod = mod
     self.collect(mod["prog"], ms)
@@ -3920,6 +3932,8 @@ class Gen:
     code = asm.resolve_at(lo["text_vaddr"], lo["data_vaddr"])
     start_off = asm.state()["labels"]["_start"]
     return elf.pack(code, asm.state()["data"], start_off, lo)
+  def build_image(self, mod):
+    return self._base_build_image(mod)
   def _def_nodes(self, mod):
     out = []
     def walk(body, themod):
@@ -10431,7 +10445,7 @@ def build_x64(prog_path, out_path):
   except as e:
     pyrt.py_print([str(e)])
     return 1
-  g = GenIR(irm, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(prog_path)))
+  g = GenIR(irm, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(prog_path)), false)
   try:
     img = g.build_ir_image()
   except as e:
@@ -10478,14 +10492,16 @@ SEL_KDATA = 16
 SEL_UDATA = 24
 SEL_UCODE = 32
 SEL_TSS = 40
+RAW_KERNEL_BUILTINS = pyrt.py_set(["alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int"])
+KERNEL_BUILTINS = pyrt.py_set(["ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free", "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on", "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop", "enter_user", "exec_enter", "ioport_in", "ioport_out"])
 NOT_A_VALUE = pyrt.py_set(["float", "ticks", "readkey", "pmm_alloc", "meminfo", "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept", "http_get", "json_parse", "json_str", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "json_load", "json_save", "write_bytes", "alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int", "asm"])
 INLINE_ONLY = pyrt.py_set(["float", "write_bytes"])
 INLINE_DIRECT = pyrt.py_set(["write_bytes", "float", "len", "str", "int", "range", "append", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "read_mem", "has", "contains", "keys", "values"])
 class GenIR(Gen):
   def emit_malloc(self):
     gcrt.emit_gc_malloc(self)
-  def __init__(self, irmod, prog_dir):
-    Gen__init__(self, [], null, false)
+  def __init__(self, irmod, prog_dir, freestanding):
+    Gen__init__(self, [], null, freestanding)
     self.irmod = irmod
     self.prog_dir = prog_dir
     self.flabel = {}
@@ -10701,7 +10717,7 @@ class GenIR(Gen):
       return "global"
     if name in Gen_BI_VALUES:
       return "builtin"
-    if name in NOT_A_VALUE:
+    if name in NOT_A_VALUE or self.freestanding and name in KERNEL_BUILTINS:
       return "novalue"
     return "auto"
   def _plan_res(self, key):
@@ -10723,7 +10739,7 @@ class GenIR(Gen):
     fr["caps"] = pyrt.py_sorted(caps, null)
     for b in fdef["blocks"]:
       for ins in b["instrs"]:
-        if ins["op"] == "load" and (ins["name"] in pyrt.py_union(pyrt.py_union(INLINE_ONLY, INLINE_DIRECT), GenIR_JSON_CALLS) or ins["name"] == "type_name" and pyrt.py_get(fr, "mod", null) == "<json>") and pyrt.py_get(res, ins["name"], null) in ["novalue", "builtin", "auto"]:
+        if ins["op"] == "load" and (ins["name"] in pyrt.py_union(pyrt.py_union(INLINE_ONLY, INLINE_DIRECT), GenIR_JSON_CALLS) or self.freestanding and ins["name"] in pyrt.py_union(KERNEL_BUILTINS, RAW_KERNEL_BUILTINS) or ins["name"] == "type_name" and pyrt.py_get(fr, "mod", null) == "<json>") and (pyrt.py_get(res, ins["name"], null) in ["novalue", "builtin", "auto"] or self.freestanding and ins["name"] in KERNEL_BUILTINS and ins["name"] in pyrt.py_get(self.mod_globals, fr["mod"], pyrt.py_set(null))):
           ds = ins["dest"]
           if pyrt.py_get(fr["uses"], ds, []) and pyrt.py_all([u == ["call", "fn"] for u in fr["uses"][ds]]):
             pyrt.py_add(fr["floattemps"], ds)
@@ -10891,10 +10907,27 @@ class GenIR(Gen):
       asm.mov_ri64("rax", Gen_HS_FALSE)
     elif v == null:
       asm.mov_ri64("rax", Gen_HS_NULL)
+    elif pyrt.py_isinstance(v, ["float"]) and self.freestanding:
+      asm.mov_ri64_bytes("rdi", pyrt.py_f64bits(v))
+      asm.call("x_float_new")
     elif pyrt.py_isinstance(v, ["float"]):
       asm.lea_rip("rax", self.sfloat(pyrt.py_f64bits(v)))
+    elif pyrt.py_type(v) == "dict" and has(v, "wide"):
+      if not self.freestanding:
+        raise "wide safe literal only supported in kernel mode"
+      bs = []
+      carry = 1
+      for byte in v["wide"]:
+        n = byte * 4 + carry
+        append(bs, n & 255)
+        carry = n >> 8
+      asm.mov_ri64_bytes("rax", bs)
     elif pyrt.py_isinstance(v, ["int"]):
       asm.mov_tagged_int("rax", v)
+    elif pyrt.py_isinstance(v, ["str"]) and self.freestanding:
+      asm.lea_rip("rdi", self.rstr(v))
+      asm.mov_ri32("rsi", len(pyrt.py_encode(v, null)))
+      asm.call("x_str_at")
     elif pyrt.py_isinstance(v, ["str"]):
       asm.lea_rip("rax", self.sstr(v))
     else:
@@ -11918,6 +11951,33 @@ class GenIR(Gen):
   def _call(self, fr, dest, fn, args, ln):
     p = pyrt.py_get(fr["prov"], fn, null)
     pname = p[1] if p != null and p[0] == "load" else null
+    if self.freestanding and pyrt.py_has_key(pname, KERNEL_BUILTINS) and pyrt.py_get(fr["res"], pname, null) in ["novalue", "global"] and not (pname in GenIR_JSON_CALLS):
+      nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
+      self._kernel_frame = fr
+      self._kernel_raw_dynamic = true
+      try:
+        if pname in pyrt.py_set(["ioport_in", "ioport_out"]):
+          scope = Gen_Scope(null, false)
+          mod = {"scope": scope}
+          self._base_ev_call({"fn": {"t": "var", "name": pname}, "args": nodes, "line": ln}, scope, mod)
+        else:
+          self._base_ev_kdev(pname, nodes, null, null, ln)
+      finally:
+        self._kernel_raw_dynamic = false
+      asm.mov_mr("rbp", "rax", fr["slots"][dest])
+      return null
+    if self.freestanding and pyrt.py_has_key(pname, RAW_KERNEL_BUILTINS) and pyrt.py_get(fr["res"], pname, null) == "novalue":
+      nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
+      self._kernel_frame = fr
+      self._kernel_raw_dynamic = true
+      try:
+        self._base_sev_call(pname, nodes, null, null, ln)
+      finally:
+        self._kernel_raw_dynamic = false
+      if pname == "as_int":
+        self.tag_box()
+      asm.mov_mr("rbp", "rax", fr["slots"][dest])
+      return null
     if pyrt.py_has_key(pname, GenIR_JSON_CALLS) and pyrt.py_get(fr["res"], pname, null) == "novalue":
       self._json_call(fr, dest, pname, args, ln)
       return null
@@ -12809,6 +12869,8 @@ class GenIR(Gen):
           asm.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
           break
   def _gc_point(self):
+    if self.freestanding:
+      return null
     skip = self.new_tmp("gcp")
     asm.push_r("rax")
     asm.mov_rm_rip("rax", "gc_pend_")
@@ -13116,6 +13178,39 @@ class GenIR(Gen):
     by = pyrt.py_dict([[b["label"], b] for b in fdef["blocks"]])
     for blk in fdef["blocks"]:
       self._emit_block(fr, key, blk, by)
+  def sev(self, e, sc, mod):
+    if pyrt.py_get(e, "t", null) == "irtemp":
+      self._load(self._kernel_frame, e["ref"], e["line"])
+      if pyrt.py_getattr(self, "_kernel_raw_dynamic", false):
+        asm.sar_ri8("rax", 2)
+      return null
+    return self._base_sev(e, sc, mod)
+  def ev(self, e, sc, mod):
+    if pyrt.py_get(e, "t", null) == "irtemp":
+      self._load(self._kernel_frame, e["ref"], e["line"])
+      return null
+    return self._base_ev(e, sc, mod)
+  def emit_main(self, mod):
+    if not self.freestanding:
+      return self._base_emit_main(mod)
+    self.emit_longmode_tail(mod)
+    inits = pyrt.py_set([_p13164_0[1] for _p13164_0 in pyrt.py_items(self.mod_entries) if _p13164_0[0] != ""])
+    for key in self.allorder:
+      if not (key in inits):
+        self._emit_ifunc(key)
+    for rec in pyrt.py_values(self.modtab):
+      if not pyrt.py_get(rec, "shell", null):
+        self._emit_initfunc(rec)
+    asm.label("hs_kernel_main")
+    asm.jmp("hs_main")
+  def build_kernel_image(self):
+    if not self.freestanding:
+      raise pyrt.py_err("kernel image requires freestanding generator", 1)
+    self._plan()
+    for nm in pyrt.py_sorted(self.mglob, null):
+      self._glabel(nm, "")
+    mod = {"name": "<main>", "prog": [], "pfx": "ir", "scope": Gen_Scope(null, false), "dir": self.prog_dir}
+    return self._base_build_image(mod)
   def build_ir_image(self):
     asm.data_label("gc_data_lo")
     self._plan()
@@ -13267,7 +13362,7 @@ def build_irx64(prog_path, out_path):
   except as e:
     pyrt.py_print([str(e)])
     return 1
-  g = GenIR(irm, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(prog_path)))
+  g = GenIR(irm, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(prog_path)), false)
   try:
     img = g.build_ir_image()
   except as e:

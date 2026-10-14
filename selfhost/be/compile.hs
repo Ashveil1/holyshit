@@ -9,7 +9,7 @@ parselib.P["wide_literals"] = true
 srcpath = argv()[0]
 m = irbuild.build_module(normalize.parse(read_text(srcpath)), "")
 verify.verify_module(m)
-g = be.GenIR(m, pyrt.py_os_path_dirname(srcpath))
+g = be.GenIR(m, pyrt.py_os_path_dirname(srcpath), false)
 img = g.build_ir_image()
 outpath = argv()[1]
 write_bytes(outpath, img)

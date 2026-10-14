@@ -341,3 +341,13 @@ public `xkernel` selects IR by default. The AST lowering is retained as
 both in full CI. Native kernel compiler image gates still compare with
 AST explicitly: the native kernel driver has not migrated to IR yet.
 This default switch does not claim native IR kernel self-hosting.
+
+### S8 native IR kernel compiler
+`selfhost/be/kernel_ir_hex.hs` lowers source through the hs IR builder,
+verifier, IR machine-code backend and multiboot linker. Complete kernel
+ELF images must match the Python IR backend byte for byte. The gate covers
+heap, ring3, syscalls, preemption, JSON, shell, VFS/file I/O, ATA, floats
+and address spaces. AST image equality remains a separate reference gate.
+Kernel adapter methods preserve tagged versus raw words, builtin precedence
+and runtime allocation of literal strings/floats. Hosted compiler
+self-compilation and source-audited pinned seed gates still apply.
