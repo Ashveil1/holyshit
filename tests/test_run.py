@@ -200,5 +200,16 @@ with tempfile.TemporaryDirectory() as d:
     r = subprocess.run([sys.executable, EV, "--solutions", d, "--task", "fizzbuzz", "--json"], capture_output=True, text=True)
     j = _json.loads(r.stdout)
     check("evals: a missing solution fails", r.returncode == 1 and j["tasks"][0]["failed"] == ["missing solution"], r.stdout[:300])
+
+# ---- stable error codes ----
+r = explain("E001")
+check("explain accepts an error code", r.returncode == 0 and "cannot add Int and Str" in r.stdout and "[E001]" in r.stdout, r.stdout)
+with tempfile.TemporaryDirectory() as d:
+    bp = os.path.join(d, "bad.hs")
+    open(bp, "w").write("print 1 +\n")
+    r = subprocess.run([sys.executable, HS, "--json", "check", bp], capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    j = _json.loads(out.strip().split("\n")[-1])
+    check("check --json carries code and hint for a cataloged error", j.get("code") == "E006" and j.get("hint") and j["line"] == 1, out)
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
