@@ -400,7 +400,7 @@ RESERVED = {"module"}
 UTYPES = {"I64", "U64", "Ptr"}
 FFTYPE = {"U0", "I64", "U64", "F64", "Str", "Ptr"}
 UNSAFE_BUILTINS = {"alloc", "load8", "load32", "load64", "store8", "store32",
-                   "store64", "as_ptr", "as_int", "asm"}
+                   "store64", "as_ptr", "as_int", "asm", "call0"}
 UNSAFE_SIZES = {"load8": 1, "load32": 4, "load64": 8,
                 "store8": 1, "store32": 4, "store64": 8}
 
@@ -2191,6 +2191,16 @@ def sev_bin(e, env):
     return (tgt, wrap_i64(r) if tgt == "I64" else wrap_u64(r))
 
 
+def us_call0(pt, pv, ln):
+    if not is_ptr(pt):
+        raise HSErr("call0 needs Ptr", ln)
+    if pv == 0:
+        raise HSErr("call0 needs non-null Ptr", ln)
+    if not us_foreign(pv, 1):
+        raise HSErr("call0 needs foreign executable memory", ln)
+    return int(_ctypes.CFUNCTYPE(_ctypes.c_int64)(pv)())
+
+
 def sev_call(e, env):
     ln = e["line"]
     if e["fn"]["t"] != "var":
@@ -2200,6 +2210,11 @@ def sev_call(e, env):
         raise HSErr(
             f"cannot call '{name}' from unsafe (only: {', '.join(sorted(UNSAFE_BUILTINS))})", ln)
     args = e["args"]
+    if name == "call0":
+        if len(args) != 1:
+            raise HSErr("call0 wants call0(p)", ln)
+        pt, pv = sev(args[0], env)
+        return ("I64", us_call0(pt, pv, ln))
     if name == "alloc":
         if len(args) != 1:
             raise HSErr("alloc wants alloc(n)", ln)

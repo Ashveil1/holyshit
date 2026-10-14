@@ -3132,12 +3132,36 @@ class Gen:
             return True
         if t == "call" and e["fn"]["t"] == "var" and e["fn"]["name"] in (
                 "alloc", "load8", "load32", "load64", "store8", "store32",
-                "store64", "as_ptr", "as_int"):
+                "store64", "as_ptr", "as_int", "call0"):
             return True
         return False
 
+    def emit_call0(self, ln):
+        a = self.a
+        ok = self.new_tmp("call0")
+        a.test_rr("rax", "rax")
+        a.jcc("ne", ok)
+        self.raise_static("call0 needs non-null Ptr", ln)
+        a.label(ok)
+        a.mov_rr("r11", "rax")
+        a.mov_rr("r10", "rsp")
+        a.and_ri32("rsp", -16)
+        a.sub_ri32("rsp", 16)
+        a.mov_mr("rsp", "r10", 0)
+        a.mov_ri32("rax", 0)
+        a.call_r11()
+        a.mov_rm("rsp", "rsp", 0)
+
     def sev_call(self, name, args, sc, mod, ln):
         a = self.a
+        if name == "call0":
+            if self.freestanding:
+                raise HSErr("call0 not in kernel", ln)
+            if len(args) != 1:
+                raise HSErr("call0 wants call0(p)", ln)
+            self.sev(args[0], sc, mod)
+            self.emit_call0(ln)
+            return
         if name == "alloc":
             if len(args) != 1:
                 raise HSErr("alloc wants alloc(n)", ln)
