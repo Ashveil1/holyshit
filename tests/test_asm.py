@@ -53,6 +53,15 @@ for r in REGS:
                     L("mov_rmx", r, b, ix, sc, d)
                     L("lea_mx", r, b, ix, sc, d)
                     L("movzx_rm8x", r, b, ix, sc, d)
+for x in range(8):
+    for y in range(8):
+        for op in ("addsd", "subsd", "mulsd", "divsd", "xorpd", "ucomisd"):
+            L(op, x, y)
+    for r in REGS:
+        for op in ("cvtsi2sd", "movq_xr"):
+            L(op, x, r)
+        for op in ("cvttsd2si", "movq_rx"):
+            L(op, r, x)
 for s8 in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15):
     for b in REGS:
         for d in DISPS:

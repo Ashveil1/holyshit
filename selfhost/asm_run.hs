@@ -66,6 +66,26 @@ def run(op, a):
     asm.and_ri32(a[0], a[1])
   elif op == "imul_rr":
     asm.imul_rr(a[0], a[1])
+  elif op == "addsd":
+    asm.addsd(a[0], a[1])
+  elif op == "subsd":
+    asm.subsd(a[0], a[1])
+  elif op == "mulsd":
+    asm.mulsd(a[0], a[1])
+  elif op == "divsd":
+    asm.divsd(a[0], a[1])
+  elif op == "xorpd":
+    asm.xorpd(a[0], a[1])
+  elif op == "ucomisd":
+    asm.ucomisd(a[0], a[1])
+  elif op == "cvtsi2sd":
+    asm.cvtsi2sd(a[0], a[1])
+  elif op == "cvttsd2si":
+    asm.cvttsd2si(a[0], a[1])
+  elif op == "movq_xr":
+    asm.movq_xr(a[0], a[1])
+  elif op == "movq_rx":
+    asm.movq_rx(a[0], a[1])
   elif op == "cqo":
     asm.cqo()
   elif op == "idiv_r":
