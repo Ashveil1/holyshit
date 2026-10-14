@@ -1,0 +1,617 @@
+# pyrt.hs - the slice of Python the translated backend (be.hs) leans on.
+# Sets are dicts (key -> true); tuples are lists; tuple dict keys go through
+# py_key. Errors raised as py_err(msg, line) carry a marker so py_emsg /
+# py_eline recover the parts (hs appends " at line N" itself on raise).
+SEP = "\u001f"
+EMARK = "\u0001HSERR\u0002"
+ASCII = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+IDC = {"n": 0}
+
+def py_err(msg, line):
+  l = ""
+  if line != null:
+    l = str(line)
+  return EMARK + msg + "\u0002" + l
+
+def py_emsg(e):
+  i = find(e, EMARK)
+  if i < 0:
+    return e
+  rest = e[i + len(EMARK):len(e)]
+  j = find(rest, "\u0002")
+  return rest[0:j]
+
+def py_eline(e):
+  i = find(e, EMARK)
+  if i < 0:
+    return null
+  rest = e[i + len(EMARK):len(e)]
+  j = find(rest, "\u0002")
+  r = rest[j + 1:len(rest)]
+  k = 0
+  while k < len(r) and find("0123456789", r[k]) >= 0:
+    k = k + 1
+  if k == 0:
+    return null
+  return int(r[0:k])
+
+def py_estr(e):
+  m = py_emsg(e)
+  l = py_eline(e)
+  if l:
+    return "error: " + m + " at line " + str(l)
+  return "error: " + m
+
+def py_chr(n):
+  if n >= 32 and n < 127:
+    return ASCII[n - 32]
+  raise "py_chr: unsupported code " + str(n)
+
+def py_ord(c):
+  i = find(ASCII, c)
+  if i < 0:
+    raise "py_ord: unsupported char"
+  return i + 32
+
+def py_assert(c):
+  if not c:
+    raise "assertion failed"
+
+def py_k(k):
+  if py_islist(k):
+    return py_key(k)
+  return k
+
+def py_type(x):
+  if x == null:
+    return "null"
+  ok = false
+  try:
+    keys(x)
+    ok = true
+  except as e:
+    ok = false
+  if ok:
+    return "dict"
+  try:
+    split(x)
+    ok = true
+  except as e:
+    ok = false
+  if ok:
+    return "str"
+  try:
+    y = x[0:0]
+    ok = true
+  except as e:
+    ok = false
+  if ok:
+    return "list"
+  try:
+    y = x + 0
+    ok = true
+  except as e:
+    ok = false
+  if not ok:
+    # bool, func or other: truthiness differs from ints only for bool
+    try:
+      y = x == true
+      if y:
+        return "bool"
+      y = x == false
+      if y:
+        return "bool"
+    except as e:
+      ok = false
+    return "func"
+  s = str(x)
+  if find(s, ".") >= 0 or find(s, "e") >= 0 or find(s, "n") >= 0:
+    return "float"
+  return "int"
+
+def py_islist(x):
+  return py_type(x) == "list"
+
+def py_isinstance(x, names):
+  t = py_type(x)
+  for n in names:
+    if n == t:
+      return true
+    if n == "tuple" and t == "list":
+      return true
+    if n == "set" and t == "dict":
+      return true
+  return false
+
+def py_key(parts):
+  out = ""
+  for p in parts:
+    if p == null:
+      out = out + "n" + SEP
+    elif p == true:
+      out = out + "t" + SEP
+    elif p == false:
+      out = out + "f" + SEP
+    elif py_islist(p):
+      out = out + "(" + py_key(p) + ")" + SEP
+    elif py_type(p) == "int":
+      out = out + "i" + str(p) + SEP
+    else:
+      out = out + "s" + str(p) + SEP
+  return out
+
+def py_id(x):
+  if has(x, "_id"):
+    return x["_id"]
+  IDC["n"] = IDC["n"] + 1
+  x["_id"] = IDC["n"]
+  return x["_id"]
+
+def py_get(d, k, dflt):
+  kk = py_k(k)
+  if kk in d:
+    return d[kk]
+  return dflt
+
+def py_setdefault(d, k, dflt):
+  kk = py_k(k)
+  if not (kk in d):
+    d[kk] = dflt
+  return d[kk]
+
+def py_items(d):
+  out = []
+  for k in keys(d):
+    append(out, [k, d[k]])
+  return out
+
+def py_keys(d):
+  return keys(d)
+
+def py_values(d):
+  return values(d)
+
+def py_dict(pairs):
+  d = {}
+  if pairs != null:
+    for p in pairs:
+      d[py_k(p[0])] = p[1]
+  return d
+
+def py_set(xs):
+  d = {}
+  if xs != null:
+    for x in xs:
+      d[py_k(x)] = true
+  return d
+
+def py_add(s, k):
+  s[py_k(k)] = true
+
+def py_discard(s, k):
+  kk = py_k(k)
+  if kk in s:
+    py_del(s, kk)
+
+def py_del(d, k):
+  kk = py_k(k)
+  if py_type(d) == "dict":
+    nd = {}
+    for q in keys(d):
+      if q != kk:
+        nd[q] = d[q]
+    for q in keys(d):
+      py_dict_remove(d, q)
+    for q in keys(nd):
+      d[q] = nd[q]
+  else:
+    py_list_del(d, kk)
+
+def py_dict_remove(d, k):
+  d[k] = null
+  d["\u0003"] = null
+
+def py_list_del(xs, i):
+  n = len(xs)
+  j = i
+  while j + 1 < n:
+    xs[j] = xs[j + 1]
+    j = j + 1
+  py_pop_last(xs)
+
+def py_pop_last(xs):
+  raise "py_pop_last: needs a runtime list pop"
+
+def py_pop(x, k, dflt):
+  raise "py_pop: needs a runtime pop"
+
+def py_update(d, o):
+  if py_type(o) == "dict":
+    for k in keys(o):
+      d[k] = o[k]
+  else:
+    for p in o:
+      d[py_k(p[0])] = p[1]
+
+def py_extend(xs, ys):
+  for y in ys:
+    append(xs, y)
+
+def py_copy(x):
+  if py_type(x) == "dict":
+    d = {}
+    for k in keys(x):
+      d[k] = x[k]
+    return d
+  return x[0:len(x)]
+
+def py_list(x):
+  if x == null:
+    return []
+  if py_type(x) == "dict":
+    return keys(x)
+  if py_type(x) == "str":
+    out = []
+    for c in x:
+      append(out, c)
+    return out
+  return x[0:len(x)]
+
+def py_tail(xs, lo):
+  return xs[lo:len(xs)]
+
+def py_enumerate(xs):
+  out = []
+  i = 0
+  for x in xs:
+    append(out, [i, x])
+    i = i + 1
+  return out
+
+def py_reversed(xs):
+  out = []
+  i = len(xs) - 1
+  while i >= 0:
+    append(out, xs[i])
+    i = i - 1
+  return out
+
+def py_zip(a, b):
+  out = []
+  i = 0
+  while i < len(a) and i < len(b):
+    append(out, [a[i], b[i]])
+    i = i + 1
+  return out
+
+def py_all(xs):
+  for x in xs:
+    if not x:
+      return false
+  return true
+
+def py_any(xs):
+  for x in xs:
+    if x:
+      return true
+  return false
+
+def py_sum(xs):
+  t = 0
+  for x in xs:
+    t = t + x
+  return t
+
+def py_min(a, b):
+  if b == null:
+    r = a[0]
+    for x in a:
+      if py_lt(x, r):
+        r = x
+    return r
+  if py_lt(b, a):
+    return b
+  return a
+
+def py_max(a, b):
+  if b == null:
+    r = a[0]
+    for x in a:
+      if py_lt(r, x):
+        r = x
+    return r
+  if py_lt(a, b):
+    return b
+  return a
+
+def py_abs(x):
+  if x < 0:
+    return 0 - x
+  return x
+
+def py_lt(a, b):
+  if py_islist(a):
+    i = 0
+    while i < len(a) and i < len(b):
+      if py_lt(a[i], b[i]):
+        return true
+      if py_lt(b[i], a[i]):
+        return false
+      i = i + 1
+    return len(a) < len(b)
+  return a < b
+
+def py_sorted(xs, key):
+  out = py_list(xs)
+  n = len(out)
+  # stable insertion/merge via bottom-up merge sort
+  ks = []
+  for x in out:
+    if key == null:
+      append(ks, x)
+    else:
+      append(ks, key(x))
+  idx = []
+  i = 0
+  while i < n:
+    append(idx, i)
+    i = i + 1
+  w = 1
+  while w < n:
+    nxt = []
+    lo = 0
+    while lo < n:
+      mid = lo + w
+      if mid > n:
+        mid = n
+      hi = lo + 2 * w
+      if hi > n:
+        hi = n
+      a = lo
+      b = mid
+      while a < mid and b < hi:
+        if py_lt(ks[idx[b]], ks[idx[a]]):
+          append(nxt, idx[b])
+          b = b + 1
+        else:
+          append(nxt, idx[a])
+          a = a + 1
+      while a < mid:
+        append(nxt, idx[a])
+        a = a + 1
+      while b < hi:
+        append(nxt, idx[b])
+        b = b + 1
+      lo = lo + 2 * w
+    idx = nxt
+    w = w * 2
+  res = []
+  for j in idx:
+    append(res, out[j])
+  return res
+
+def py_sort(xs, key):
+  s = py_sorted(xs, key)
+  i = 0
+  while i < len(s):
+    xs[i] = s[i]
+    i = i + 1
+
+def py_getattr(o, name, dflt):
+  if has(o, name):
+    return o[name]
+  return dflt
+
+def py_hasattr(o, name):
+  return has(o, name)
+
+def py_callable(x):
+  return py_type(x) == "func"
+
+def py_startswith(s, p):
+  return len(s) >= len(p) and s[0:len(p)] == p
+
+def py_endswith(s, p):
+  return len(s) >= len(p) and s[len(s) - len(p):len(s)] == p
+
+def py_find(s, sub):
+  return find(s, sub)
+
+def py_index(x, v):
+  if py_type(x) == "str":
+    i = find(x, v)
+    if i < 0:
+      raise "substring not found"
+    return i
+  i = 0
+  for y in x:
+    if y == v:
+      return i
+    i = i + 1
+  raise "value not in list"
+
+def py_count(x, v):
+  n = 0
+  for y in x:
+    if y == v:
+      n = n + 1
+  return n
+
+def py_split(s, sep):
+  if sep == null:
+    return split(s)
+  return split(s, sep)
+
+def py_join(sep, xs):
+  return join(sep, xs)
+
+def py_replace(s, a, b):
+  return join(b, split(s, a))
+
+def py_strip(s):
+  i = 0
+  j = len(s)
+  while i < j and find(" \t\r\n", s[i]) >= 0:
+    i = i + 1
+  while j > i and find(" \t\r\n", s[j - 1]) >= 0:
+    j = j - 1
+  return s[i:j]
+
+def py_encode(s, enc):
+  out = []
+  for c in s:
+    append(out, py_ord(c))
+  return out
+
+def py_bytes(x):
+  if x == null:
+    return []
+  if py_type(x) == "int":
+    out = []
+    i = 0
+    while i < x:
+      append(out, 0)
+      i = i + 1
+    return out
+  return py_list(x)
+
+def py_repr(x):
+  if py_type(x) == "str":
+    return "'" + x + "'"
+  return str(x)
+
+def py_print(args):
+  s = ""
+  i = 0
+  for a in args:
+    if i > 0:
+      s = s + " "
+    s = s + str(a)
+    i = i + 1
+  print s
+
+def py_floordiv(a, b):
+  q = int(a / b)
+  if q * b > a and b > 0:
+    q = q - 1
+  return q
+
+def py_pow(a, b):
+  r = 1
+  i = 0
+  while i < b:
+    r = r * a
+    i = i + 1
+  return r
+
+def py_fmt(v, spec):
+  # supports: 0Nx, x, 0Nd, d, N (width) forms used in the emitters
+  w = 0
+  zero = false
+  kind = "d"
+  s = spec
+  if len(s) > 0 and find("xXdsb", s[len(s) - 1]) >= 0:
+    kind = s[len(s) - 1]
+    s = s[0:len(s) - 1]
+  if len(s) > 0 and s[0] == "0":
+    zero = true
+    s = s[1:len(s)]
+  if len(s) > 0:
+    w = int(s)
+  out = ""
+  if kind == "x":
+    out = py_hex_digits(v)
+  elif kind == "X":
+    out = py_hex_digits(v)
+  elif kind == "b":
+    out = py_bin_digits(v)
+  else:
+    out = str(v)
+  while len(out) < w:
+    if zero:
+      out = "0" + out
+    else:
+      out = " " + out
+  return out
+
+def py_hex_digits(v):
+  if v == 0:
+    return "0"
+  H = "0123456789abcdef"
+  out = ""
+  n = v
+  while n > 0:
+    out = H[n & 15] + out
+    n = n >> 4
+  return out
+
+def py_bin_digits(v):
+  if v == 0:
+    return "0"
+  out = ""
+  n = v
+  while n > 0:
+    out = str(n & 1) + out
+    n = n >> 1
+  return out
+
+def py_hex(v):
+  return "0x" + py_hex_digits(v)
+
+# ---- os / sys / re shims (the host paths the driver needs) ----
+def py_os_path_dirname(p):
+  i = len(p) - 1
+  while i >= 0 and p[i] != "/":
+    i = i - 1
+  if i < 0:
+    return ""
+  if i == 0:
+    return "/"
+  return p[0:i]
+
+def py_os_path_abspath(p):
+  return p
+
+def py_os_path_join(a, b):
+  if len(b) > 0 and b[0] == "/":
+    return b
+  if a == "" or a[len(a) - 1] == "/":
+    return a + b
+  return a + "/" + b
+
+def py_os_path_isfile(p):
+  return exists(p)
+
+def py_os_getcwd():
+  return "."
+
+def py_os_chmod(p, m):
+  system("chmod " + str(py_oct(m)) + " " + p)
+
+def py_oct(m):
+  return "755"
+
+def py_sys_exit(c):
+  raise "exit " + str(c)
+
+def py_re_match(pat, s):
+  if len(s) == 0:
+    return false
+  D = "0123456789"
+  I0 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+  parts = split(s, ".")
+  for p in parts:
+    if len(p) == 0 or find(I0, p[0]) < 0:
+      return false
+    for c in p:
+      if find(I0, c) < 0 and find(D, c) < 0:
+        return false
+  return true
+
+def py_union(a, b):
+  d = {}
+  for k in keys(a):
+    d[k] = a[k]
+  for k in keys(b):
+    d[k] = b[k]
+  return d

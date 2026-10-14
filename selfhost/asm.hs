@@ -3,22 +3,23 @@
 # import asm; asm.reset(); asm.mov_ri32("rax", 1); asm.syscall(); asm.resolve()
 REG = {"rax": 0, "rcx": 1, "rdx": 2, "rbx": 3, "rsp": 4, "rbp": 5, "rsi": 6, "rdi": 7, "r8": 8, "r9": 9, "r10": 10, "r11": 11, "r12": 12, "r13": 13, "r14": 14, "r15": 15}
 CC = {"o": 0, "no": 1, "b": 2, "ae": 3, "e": 4, "ne": 5, "be": 6, "a": 7, "s": 8, "ns": 9, "p": 10, "np": 11, "l": 12, "ge": 13, "le": 14, "g": 15}
-A = {"code": [], "labels": {}, "fix": []}
+
+S = {"code": [], "labels": {}, "fixups": [], "data": [], "data_labels": {}}
 
 def reset():
-  A["code"] = []
-  A["labels"] = {}
-  A["fix"] = []
+  S["code"] = []
+  S["labels"] = {}
+  S["fixups"] = []
 
 def pos():
-  return len(A["code"])
+  return len(S["code"])
 
 def b1(x):
-  append(A["code"], x & 255)
+  append(S["code"], x & 255)
 
 def bn(xs):
   for x in xs:
-    append(A["code"], x & 255)
+    append(S["code"], x & 255)
 
 def le32(v):
   bn([v, v >> 8, v >> 16, v >> 24])
@@ -30,15 +31,20 @@ def le64(v):
     i = i + 1
 
 def regn(r):
+  if find("0123456789", str(r)[0]) >= 0:
+    return r
   return REG[r]
 
+def state():
+  return S
+
 def label(name):
-  if name in A["labels"]:
+  if name in S["labels"]:
     raise "dup label " + name
-  A["labels"][name] = len(A["code"])
+  S["labels"][name] = len(S["code"])
 
 def rel32(name):
-  append(A["fix"], [len(A["code"]), name])
+  append(S["fixups"], [len(S["code"]), name])
   le32(0)
 
 def rex(w, r, x, b):
@@ -400,11 +406,11 @@ def movzx_eax_al():
   bn([15, 182, 192])
 
 def resolve():
-  out = A["code"][0:len(A["code"])]
-  for f in A["fix"]:
-    if not (f[1] in A["labels"]):
+  out = S["code"][0:len(S["code"])]
+  for f in S["fixups"]:
+    if not (f[1] in S["labels"]):
       raise "undefined label " + f[1]
-    rel = A["labels"][f[1]] - (f[0] + 4)
+    rel = S["labels"][f[1]] - (f[0] + 4)
     out[f[0]] = rel & 255
     out[f[0] + 1] = rel >> 8 & 255
     out[f[0] + 2] = rel >> 16 & 255
@@ -453,37 +459,34 @@ def movq_xm(xd, base, disp):
 
 def movzx_eax_mx(base, index, scale, disp):
   movzx_rm8x("rax", base, index, scale, disp)
-
 # -- data section + final layout (hosted ELF image) --
 
-D = {"data": [], "labels": {}}
-
 def data_reset():
-  D["data"] = []
-  D["labels"] = {}
+  S["data"] = []
+  S["data_labels"] = {}
 
 def data_label(name):
-  if name in D["labels"]:
+  if name in S["data_labels"]:
     raise "dup data label " + name
-  D["labels"][name] = len(D["data"])
+  S["data_labels"][name] = len(S["data"])
 
 def data_qword(v):
   i = 0
   while i < 8:
-    append(D["data"], v >> (8 * i) & 255)
+    append(S["data"], v >> (8 * i) & 255)
     i = i + 1
 
 def data_bytes(xs):
   for x in xs:
-    append(D["data"], x & 255)
+    append(S["data"], x & 255)
 
 def resolve_at(text_vaddr, data_vaddr):
-  out = A["code"][0:len(A["code"])]
-  for f in A["fix"]:
-    if f[1] in A["labels"]:
-      target = text_vaddr + A["labels"][f[1]]
-    elif f[1] in D["labels"]:
-      target = data_vaddr + D["labels"][f[1]]
+  out = S["code"][0:len(S["code"])]
+  for f in S["fixups"]:
+    if f[1] in S["labels"]:
+      target = text_vaddr + S["labels"][f[1]]
+    elif f[1] in S["data_labels"]:
+      target = data_vaddr + S["data_labels"][f[1]]
     else:
       raise "undefined label " + f[1]
     rel = target - (text_vaddr + f[0] + 4)
@@ -492,3 +495,171 @@ def resolve_at(text_vaddr, data_vaddr):
     out[f[0] + 2] = rel >> 16 & 255
     out[f[0] + 3] = rel >> 24 & 255
   return out
+
+def or_ri32(d, imm):
+  alu_ri32(1, d, imm)
+
+def xor_ri32(d, imm):
+  alu_ri32(6, d, imm)
+
+def adc_ri32(d, imm):
+  alu_ri32(2, d, imm)
+
+def cli():
+  b1(250)
+
+def hlt():
+  b1(244)
+
+def sti():
+  b1(251)
+
+def sahf():
+  b1(158)
+
+def iretq():
+  bn([72, 207])
+
+def sysret():
+  bn([72, 15, 7])
+
+def in_al_dx():
+  b1(236)
+
+def out_dx_al():
+  b1(238)
+
+def in_ax_dx():
+  bn([102, 237])
+
+def in_eax_dx():
+  b1(237)
+
+def out_dx_ax():
+  bn([102, 239])
+
+def out_dx_eax():
+  b1(239)
+
+def mov_ri16(d, imm):
+  dn = regn(d)
+  b1(102)
+  if dn >> 3 & 1:
+    b1(65)
+  b1(184 + dn & 7)
+  bn([imm, imm >> 8])
+
+def mov_ax_imm16(imm):
+  bn([102, 184, imm, imm >> 8])
+
+def mov_seg16(seg, r):
+  bn([102, 142])
+  modrm(3, seg, r)
+
+def add_ri8(d, imm):
+  dn = regn(d)
+  rex(1, 0, 0, dn >> 3 & 1)
+  b1(128)
+  modrm(3, 0, dn & 7)
+  b1(imm)
+
+def xchg_rip(d, lab):
+  rm_rip(135, d, lab)
+
+def mov_rcr64(rd, cr):
+  b1(72)
+  bn([15, 32])
+  modrm(3, cr & 7, regn(rd) & 7)
+
+def mov_cr64(cr, rs):
+  b1(72)
+  bn([15, 34])
+  modrm(3, cr & 7, regn(rs) & 7)
+
+def mul_r(r):
+  rn = regn(r)
+  rex(1, 0, 0, rn >> 3 & 1)
+  b1(247)
+  modrm(3, 4, rn & 7)
+
+def x87_mem(op, ext, base, disp):
+  bnum = regn(base)
+  if bnum >> 3 & 1:
+    raise "x87 needs a low register base"
+  b1(op)
+  if disp == 0 and bnum & 7 != 5:
+    modrm(0, ext, bnum & 7)
+  elif disp >= 0 - 128 and disp <= 127:
+    modrm(1, ext, bnum & 7)
+    b1(disp)
+  else:
+    modrm(2, ext, bnum & 7)
+    le32(disp)
+
+def fld_m64(base, disp):
+  x87_mem(221, 0, base, disp)
+
+def fstp_m64(base, disp):
+  x87_mem(221, 3, base, disp)
+
+def fprem():
+  bn([217, 248])
+
+def fnstsw_ax():
+  bn([223, 224])
+
+def fstp_st1():
+  bn([221, 217])
+
+def movzx_eax_m8(base, disp):
+  bnum = regn(base)
+  if bnum >> 3 & 1:
+    b1(65)
+  bn([15, 182])
+  if bnum & 7 == 4:
+    if disp == 0:
+      modrm(0, 0, 4)
+    elif disp >= 0 - 128 and disp <= 127:
+      modrm(1, 0, 4)
+      b1(disp)
+    else:
+      modrm(2, 0, 4)
+      le32(disp)
+    b1(32 | (bnum & 7))
+  else:
+    if disp == 0 and bnum & 7 != 5:
+      modrm(0, 0, bnum & 7)
+    elif disp >= 0 - 128 and disp <= 127:
+      modrm(1, 0, bnum & 7)
+      b1(disp)
+    else:
+      modrm(2, 0, bnum & 7)
+      le32(disp)
+
+def movzx_edx_mx(base, index, scale, disp):
+  movzx_rm8x("rdx", base, index, scale, disp)
+
+def test_al_imm8(imm):
+  bn([168, imm])
+
+def rip_mem(op, ext, lab):
+  bn([72, op])
+  modrm(0, ext, 5)
+  rel32(lab)
+
+def lidt_rip(lab):
+  bn([15, 1])
+  modrm(0, 3, 5)
+  rel32(lab)
+
+def inc_mrip(lab):
+  rip_mem(255, 0, lab)
+
+def dec_mrip(lab):
+  rip_mem(255, 1, lab)
+
+def jmp_m(base, disp):
+  rm_mem(255, 4, base, disp, null, 1)
+
+def push_m(base, disp):
+  rm_mem(255, 6, base, disp, null, 1)

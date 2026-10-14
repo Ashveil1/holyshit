@@ -3,13 +3,11 @@
 # label) with asm.hs and print the bytes as hex. tests/test_asm.py compares
 # the output with x64.py.
 import asm
-
 def arg(w):
   c = w[0]
   if c == "-" or find("0123456789", c) >= 0:
     return int(w)
   return w
-
 def run(op, a):
   n = len(a)
   if op == "label":
@@ -146,9 +144,80 @@ def run(op, a):
     asm.data_label(a[0])
   elif op == "data_qword":
     asm.data_qword(a[0])
+  elif op == "cli":
+    asm.cli()
+  elif op == "hlt":
+    asm.hlt()
+  elif op == "sti":
+    asm.sti()
+  elif op == "sahf":
+    asm.sahf()
+  elif op == "iretq":
+    asm.iretq()
+  elif op == "sysret":
+    asm.sysret()
+  elif op == "in_al_dx":
+    asm.in_al_dx()
+  elif op == "out_dx_al":
+    asm.out_dx_al()
+  elif op == "in_ax_dx":
+    asm.in_ax_dx()
+  elif op == "in_eax_dx":
+    asm.in_eax_dx()
+  elif op == "out_dx_ax":
+    asm.out_dx_ax()
+  elif op == "out_dx_eax":
+    asm.out_dx_eax()
+  elif op == "fprem":
+    asm.fprem()
+  elif op == "fnstsw_ax":
+    asm.fnstsw_ax()
+  elif op == "fstp_st1":
+    asm.fstp_st1()
+  elif op == "or_ri32":
+    asm.or_ri32(a[0], a[1])
+  elif op == "xor_ri32":
+    asm.xor_ri32(a[0], a[1])
+  elif op == "adc_ri32":
+    asm.adc_ri32(a[0], a[1])
+  elif op == "mul_r":
+    asm.mul_r(a[0])
+  elif op == "mov_ri16":
+    asm.mov_ri16(a[0], a[1])
+  elif op == "add_ri8":
+    asm.add_ri8(a[0], a[1])
+  elif op == "mov_rcr64":
+    asm.mov_rcr64(a[0], a[1])
+  elif op == "mov_cr64":
+    asm.mov_cr64(a[0], a[1])
+  elif op == "fld_m64":
+    asm.fld_m64(a[0], a[1])
+  elif op == "fstp_m64":
+    asm.fstp_m64(a[0], a[1])
+  elif op == "movzx_eax_m8":
+    asm.movzx_eax_m8(a[0], a[1])
+  elif op == "jmp_m":
+    asm.jmp_m(a[0], a[1])
+  elif op == "push_m":
+    asm.push_m(a[0], a[1])
+  elif op == "mov_ax_imm16":
+    asm.mov_ax_imm16(a[0])
+  elif op == "mov_seg16":
+    asm.mov_seg16(a[0], a[1])
+  elif op == "test_al_imm8":
+    asm.test_al_imm8(a[0])
+  elif op == "movzx_edx_mx":
+    asm.movzx_edx_mx(a[0], a[1], a[2], a[3])
+  elif op == "xchg_rip":
+    asm.xchg_rip(a[0], a[1])
+  elif op == "lidt_rip":
+    asm.lidt_rip(a[0])
+  elif op == "inc_mrip":
+    asm.inc_mrip(a[0])
+  elif op == "dec_mrip":
+    asm.dec_mrip(a[0])
   else:
     raise "unknown op " + op
-
 HEX = "0123456789abcdef"
 asm.reset()
 asm.data_reset()
