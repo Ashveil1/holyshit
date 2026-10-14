@@ -4640,8 +4640,12 @@ class Gen:
         lab_tskip = self.new_tmp("tm")
         a.jcc("ne", lab_tskip)  # nested tick: bail out
         a.mov_ri32("rax", 0x20)
+        # PIC EOI uses DX, but RDX belongs to the interrupted code. Restore
+        # it before either the no-task return or the full context save.
+        a.push_r("rdx")
         a.mov_ri16("dx", 0x20)
         a.out_dx_al()  # EOI
+        a.pop_r("rdx")
         a.mov_rm_rip("rax", "sched_cur_")
         a.test_rr("rax", "rax")
         lab_tskip2 = self.new_tmp("tm")

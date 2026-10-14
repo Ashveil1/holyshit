@@ -326,3 +326,11 @@ per-ASCII-character JSON allocation restores the hosted fixed-point gate
 (24/24 targeted gates, including two generations). Full CI is pending;
 kernel IR migration and Python-free seed packaging are still separate work.
 
+
+### Timer IRQ register preservation
+The no-scheduler timer path must preserve interrupted general-purpose
+registers. Its PIC acknowledgement now saves and restores RDX around
+port I/O before returning or capturing a scheduled context. A deterministic
+software interrupt exercises the real timer IDT vector without relying on
+PIT timing. Hosted behavior is unchanged; native kernel images and the
+hosted compiler seed remain source-equality gates.
