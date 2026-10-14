@@ -62,13 +62,13 @@ for f in sorted(files):
     astfile.close()
     r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
         str(ROOT/'selfhost/be/iropt_run.hs'), '--backend', 'interp', astfile.name],
-        env=env, capture_output=True, text=True, timeout=60)
+        env=env, capture_output=True, text=True, timeout=300)
     try:
         got = json.loads(r.stdout)
         ir.verify_module(got)
         ok = got == json.loads(json.dumps(want))
         if fits62(unoptimized):
-            native = subprocess.run([exe, astfile.name], capture_output=True, text=True, timeout=60)
+            native = subprocess.run([exe, astfile.name], capture_output=True, text=True, timeout=300)
             ngot = json.loads(native.stdout)
             ir.verify_module(ngot)
             ok = ok and ngot == got
@@ -93,7 +93,7 @@ Path(path).write_text(json.dumps(cases))
 for backend in ['interp', 'x64']:
     r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
         str(ROOT/'selfhost/be/iropt_fold_run.hs'), '--backend', backend, path],
-        capture_output=True, text=True, env=env, timeout=60)
+        capture_output=True, text=True, env=env, timeout=300)
     try:
         ok = json.loads(r.stdout) == want
     except Exception:

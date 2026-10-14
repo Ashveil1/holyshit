@@ -227,3 +227,12 @@ JSON helper compilation and static/dynamic ELF emission. Its interp-run
 image must equal the Python backend byte for byte, including module and
 FFI programs. This is not yet a Python-free bootstrap: compiling this
 compiler to x64 and reaching a fixed point remain separate gates.
+
+S5c parser normalization: `be/normalize.hs` applies default-argument filling,
+range-step lowering and prelude injection after `parselib.parse`. Prelude
+source is copied from the reference as data by `scripts/mkprelude.py`.
+`test_normalize.py` compares the full normalized AST; `test_pipeline.py`
+compares source -> optimized CFG through interp and compiled x64. The
+13k-line backend emitter is explicitly deferred to a separate slow bootstrap
+gate, and out-of-width ASTs are interp-only. Modules are lowered individually
+here; linking their imports belongs to the compiler-driver stage.
