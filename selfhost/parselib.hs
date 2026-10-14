@@ -926,7 +926,7 @@ def hexval(s):
 
 def num_node(x):
   s = x[1]
-  if P["unsafe"] > 0 and has(P, "wide_literals") and P["wide_literals"] and find(s, ".") < 0:
+  if (P["unsafe"] > 0 or (has(P, "kernel_wide") and P["kernel_wide"])) and has(P, "wide_literals") and P["wide_literals"] and find(s, ".") < 0:
     ishex = len(s) > 1 and (s[1] == "x" or s[1] == "X")
     if ishex or (find(s, "e") < 0 and find(s, "E") < 0):
       bs = wide_number(s, ishex)
@@ -1011,7 +1011,8 @@ def parse(src):
   P["nlam"] = 0
   P["classes"] = {}
   P["unsafe"] = 0
-  P["structs"] = {}
+  if not (has(P, "kernel_wide") and P["kernel_wide"]):
+    P["structs"] = {}
   body = parse_body(true)
   expect("EOF")
   return body
