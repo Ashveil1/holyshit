@@ -32,7 +32,8 @@ New backends consume IR, never AST. Gaps fail fast as `IR: unsupported '<t>'`.
 (`python3 tests/test_irx64.py`: IR-path ELF vs AST-path ELF).
 Hosted `xbuild` goes through the IR (parse -> IR -> verify -> GenIR); the
 legacy AST-direct backend stays reachable as `x64gen.build_x64_ast` and is
-what `xkernel` (freestanding) still uses. `unsafe:` is part of the IR
+an explicit `build_xkernel(..., ir_backend=False)` reference path. The public
+`xkernel` command uses IR after both QEMU corpora passed 291/291. `unsafe:` is part of the IR
 (`sconst/sload/sbin/sfield/scall/...` ops; `IR: unsupported 'udecl'` no
 longer fires) — the IR interpreter follows interp's strict static typing,
 the x64 lowering stays type-blind exactly like the AST path it replaced.

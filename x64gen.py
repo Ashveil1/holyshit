@@ -11449,7 +11449,7 @@ SEL_UCODE = 0x20
 SEL_TSS = 0x28
 
 
-def build_xkernel(prog_path, out_path, ir_backend=False):
+def build_xkernel(prog_path, out_path, ir_backend=True):
     import os as _os
     import struct as _st
     from x64 import Asm32, link_elf32

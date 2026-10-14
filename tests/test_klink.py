@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory() as d:
         Gen.build_image=wrapped
         try:
             with contextlib.redirect_stdout(io.StringIO()):
-                rc=build_xkernel(str(ROOT/name),str(d/'want'))
+                rc=build_xkernel(str(ROOT/name),str(d/'want'),ir_backend=False)
         finally:
             Gen.build_image=original
         if rc: raise SystemExit('FAIL reference build '+name)
