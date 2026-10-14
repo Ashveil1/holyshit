@@ -1755,6 +1755,10 @@ def _scallop(name, args, ln):
     if name not in _interp.UNSAFE_BUILTINS:
         raise HSErr(f"cannot call '{name}' from unsafe (only: "
                     f"{', '.join(sorted(_interp.UNSAFE_BUILTINS))})", ln)
+    if name == "call0":
+        if len(args) != 1:
+            raise HSErr("call0 wants call0(p)", ln)
+        return UnsafeVal("I64", _interp.us_call0(args[0].utype, args[0].val, ln))
     if name == "alloc":
         if len(args) != 1:
             raise HSErr("alloc wants alloc(n)", ln)

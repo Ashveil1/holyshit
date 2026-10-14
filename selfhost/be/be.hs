@@ -2750,10 +2750,32 @@ class Gen:
     t = e["t"]
     if t in ["num", "deref", "field", "sizeof", "bin", "neg", "not", "unot"]:
       return true
-    if t == "call" and e["fn"]["t"] == "var" and e["fn"]["name"] in ["alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int"]:
+    if t == "call" and e["fn"]["t"] == "var" and e["fn"]["name"] in ["alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int", "call0"]:
       return true
     return false
+  def emit_call0(self, ln):
+    ok = self.new_tmp("call0")
+    asm.test_rr("rax", "rax")
+    asm.jcc("ne", ok)
+    self.raise_static("call0 needs non-null Ptr", ln)
+    asm.label(ok)
+    asm.mov_rr("r11", "rax")
+    asm.mov_rr("r10", "rsp")
+    asm.and_ri32("rsp", 0 - 16)
+    asm.sub_ri32("rsp", 16)
+    asm.mov_mr("rsp", "r10", 0)
+    asm.mov_ri32("rax", 0)
+    asm.call_r11()
+    asm.mov_rm("rsp", "rsp", 0)
   def _base_sev_call(self, name, args, sc, mod, ln):
+    if name == "call0":
+      if self.freestanding:
+        raise pyrt.py_err("call0 not in kernel", ln)
+      if len(args) != 1:
+        raise pyrt.py_err("call0 wants call0(p)", ln)
+      self.sev(args[0], sc, mod)
+      self.emit_call0(ln)
+      return null
     if name == "alloc":
       if len(args) != 1:
         raise pyrt.py_err("alloc wants alloc(n)", ln)
@@ -2793,9 +2815,9 @@ class Gen:
         raise pyrt.py_err(str(name) + " wants 1 arg", ln)
       ar = args[0]
       if ar["t"] == "var":
-        _t2758 = self.resolve_var(ar["name"], sc, mod, ln)
-        kind = _t2758[0]
-        _ref = _t2758[1]
+        _t2780 = self.resolve_var(ar["name"], sc, mod, ln)
+        kind = _t2780[0]
+        _ref = _t2780[1]
         if kind == null:
           raise pyrt.py_err("unknown variable '" + ar["name"] + "'", ln)
         self.var_get(ar["name"], sc, mod, ln, true)
@@ -2805,10 +2827,10 @@ class Gen:
         self.sev(ar, sc, mod)
         if self.is_raw_expr(ar):
           return null
-      _t2770 = [self.new_tmp("az"), self.new_tmp("az"), self.new_tmp("az")]
-      lab_heap = _t2770[0]
-      lab_bad = _t2770[1]
-      lab_done = _t2770[2]
+      _t2792 = [self.new_tmp("az"), self.new_tmp("az"), self.new_tmp("az")]
+      lab_heap = _t2792[0]
+      lab_bad = _t2792[1]
+      lab_done = _t2792[2]
       asm.mov_rr("r11", "rax")
       asm.and_ri32("r11", 3)
       asm.cmp_ri32("r11", Gen_TAG_INT)
@@ -2914,18 +2936,18 @@ class Gen:
         asm.mov_mr("rax", "rcx", 8 * (i + 4))
       return null
     if t == "if":
-      _t2877 = [self.new_tmp("if"), self.new_tmp("if")]
-      lab_e = _t2877[0]
-      lab_x = _t2877[1]
+      _t2899 = [self.new_tmp("if"), self.new_tmp("if")]
+      lab_e = _t2899[0]
+      lab_x = _t2899[1]
       n = len(s["elifs"])
       labs = [self.new_tmp("if") for _ in range(n)]
       self.ev(s["cond"], sc, mod)
       self.truthy_br(labs[0] if n else lab_e)
       self.ex_body(s["then"], sc, mod, depth)
       asm.jmp(lab_x)
-      for i, _f2886_1 in pyrt.py_enumerate(s["elifs"]):
-        ec = _f2886_1[0]
-        eb = _f2886_1[1]
+      for i, _f2908_1 in pyrt.py_enumerate(s["elifs"]):
+        ec = _f2908_1[0]
+        eb = _f2908_1[1]
         asm.label(labs[i])
         self.ev(ec, sc, mod)
         self.truthy_br(labs[i + 1] if i + 1 < n else lab_e)
@@ -2937,10 +2959,10 @@ class Gen:
       asm.label(lab_x)
       return null
     if t == "while":
-      _t2900 = [self.new_tmp("w"), self.new_tmp("w"), self.new_tmp("w")]
-      lab_t = _t2900[0]
-      lab_c = _t2900[1]
-      lab_x = _t2900[2]
+      _t2922 = [self.new_tmp("w"), self.new_tmp("w"), self.new_tmp("w")]
+      lab_t = _t2922[0]
+      lab_c = _t2922[1]
+      lab_x = _t2922[2]
       asm.label(lab_t)
       self.ev(s["cond"], sc, mod)
       self.truthy_br(lab_x)
@@ -2968,9 +2990,9 @@ class Gen:
       if not (s["obj"]["t"] in ["var", "attr"]):
         raise pyrt.py_err("attribute assignment only supported on modules (x64)", ln)
       m = self.resolve_mod_base(s["obj"], sc, mod, ln)
-      _t2931 = self.mod_global(m, s["name"], ln)
-      target = _t2931[0]
-      lab = _t2931[1]
+      _t2953 = self.mod_global(m, s["name"], ln)
+      target = _t2953[0]
+      lab = _t2953[1]
       if lab == null:
         raise pyrt.py_err("module '" + str(target["name"]) + "' is not a first-class value in x64 subset (use mod.attr)", ln)
       self.ev(s["val"], sc, mod)
@@ -3032,9 +3054,9 @@ class Gen:
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
     lab_snotdict = self.new_tmp("sx")
-    _t2995 = [self.new_tmp("sx"), self.new_tmp("sx")]
-    lab_sdkey = _t2995[0]
-    lab_sdset = _t2995[1]
+    _t3017 = [self.new_tmp("sx"), self.new_tmp("sx")]
+    lab_sdkey = _t3017[0]
+    lab_sdset = _t3017[1]
     lab_sx_done = self.new_tmp("sx")
     asm.jcc("ne", lab_snotdict)
     asm.mov_rm("r11", "rax", 0)
@@ -3065,13 +3087,13 @@ class Gen:
     self.raise_static("index must be Int", ln)
     asm.label(lab_ok)
     asm.sar_ri8("rcx", 2)
-    _t3028 = [self.new_tmp("sx"), self.new_tmp("sx")]
-    lab_bad = _t3028[0]
-    lab_list = _t3028[1]
-    _t3031 = [self.new_tmp("sx"), self.new_tmp("sx"), self.new_tmp("sx")]
-    lab_pos = _t3031[0]
-    lab_oob = _t3031[1]
-    lab_done = _t3031[2]
+    _t3050 = [self.new_tmp("sx"), self.new_tmp("sx")]
+    lab_bad = _t3050[0]
+    lab_list = _t3050[1]
+    _t3053 = [self.new_tmp("sx"), self.new_tmp("sx"), self.new_tmp("sx")]
+    lab_pos = _t3053[0]
+    lab_oob = _t3053[1]
+    lab_done = _t3053[2]
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -3142,18 +3164,18 @@ class Gen:
     asm.mov_mr("rbp", "rax", s["_f0"])
     asm.mov_ri32("rax", 0)
     asm.mov_mr("rbp", "rax", s["_f1"])
-    _t3105 = [self.new_tmp("fs"), self.new_tmp("fs"), self.new_tmp("fs")]
-    lab_top = _t3105[0]
-    lab_step = _t3105[1]
-    lab_brk = _t3105[2]
-    _t3109 = [self.new_tmp("fs"), self.new_tmp("fs"), self.new_tmp("fs"), self.new_tmp("fs")]
-    lab_bad = _t3109[0]
-    lab_str = _t3109[1]
-    lab_list = _t3109[2]
-    lab_elem = _t3109[3]
-    _t3114 = [self.new_tmp("fs"), self.new_tmp("fs")]
-    lab_dict = _t3114[0]
-    lab_dstep = _t3114[1]
+    _t3127 = [self.new_tmp("fs"), self.new_tmp("fs"), self.new_tmp("fs")]
+    lab_top = _t3127[0]
+    lab_step = _t3127[1]
+    lab_brk = _t3127[2]
+    _t3131 = [self.new_tmp("fs"), self.new_tmp("fs"), self.new_tmp("fs"), self.new_tmp("fs")]
+    lab_bad = _t3131[0]
+    lab_str = _t3131[1]
+    lab_list = _t3131[2]
+    lab_elem = _t3131[3]
+    _t3136 = [self.new_tmp("fs"), self.new_tmp("fs")]
+    lab_dict = _t3136[0]
+    lab_dstep = _t3136[1]
     asm.label(lab_top)
     asm.mov_rm("rax", "rbp", s["_f0"])
     asm.mov_rr("r11", "rax")
@@ -3246,9 +3268,9 @@ class Gen:
     if has_finally:
       append(self._fin_stack, [len(self.loop_trys), s["fbody"]])
     try:
-      _t3209 = [self.new_tmp("tr"), self.new_tmp("tr")]
-      lab_handler = _t3209[0]
-      lab_done = _t3209[1]
+      _t3231 = [self.new_tmp("tr"), self.new_tmp("tr")]
+      lab_handler = _t3231[0]
+      lab_done = _t3231[1]
       asm.call("hs_try_push0")
       asm.test_rr("rax", "rax")
       asm.jcc("ne", lab_handler)
@@ -3266,9 +3288,9 @@ class Gen:
         lab_hok = null
         lab_hfail = lab_hok
         if has_finally:
-          _t3229 = [self.new_tmp("tr"), self.new_tmp("tr")]
-          lab_hfail = _t3229[0]
-          lab_hok = _t3229[1]
+          _t3251 = [self.new_tmp("tr"), self.new_tmp("tr")]
+          lab_hfail = _t3251[0]
+          lab_hok = _t3251[1]
           asm.call("hs_try_push0")
           asm.test_rr("rax", "rax")
           asm.jcc("ne", lab_hfail)
@@ -3317,9 +3339,9 @@ class Gen:
     finally:
       self._fin_active[pyrt.py_id(fbody)] = false
   def var_set(self, name, sc, mod, ln):
-    _t3280 = self.resolve_var(name, sc, mod, ln)
-    kind = _t3280[0]
-    ref = _t3280[1]
+    _t3302 = self.resolve_var(name, sc, mod, ln)
+    kind = _t3302[0]
+    ref = _t3302[1]
     if kind in ["param", "uloc", "loc"]:
       asm.mov_mr("rbp", "rax", ref)
       return null
@@ -3359,10 +3381,10 @@ class Gen:
         f = pyrt.py_get(L["fields"], x["name"], null)
         if f == null:
           raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(x["name"]) + "'", ln)
-        _t3322 = f
-        ft = _t3322[0]
-        off = _t3322[1]
-        count = _t3322[2]
+        _t3344 = f
+        ft = _t3344[0]
+        off = _t3344[1]
+        count = _t3344[2]
         self.sev(x["obj"], sc, mod)
         asm.push_r("rax")
         if not self.freestanding:
@@ -3421,9 +3443,9 @@ class Gen:
         self.rt_out(1)
       elif t in ["if", "while"]:
         if t == "if":
-          _t3384 = [self.new_tmp("if"), self.new_tmp("if")]
-          lab_e = _t3384[0]
-          lab_x = _t3384[1]
+          _t3406 = [self.new_tmp("if"), self.new_tmp("if")]
+          lab_e = _t3406[0]
+          lab_x = _t3406[1]
           n = len(x["elifs"])
           labs = [self.new_tmp("if") for _ in range(n)]
           self.sev(x["cond"], sc, mod)
@@ -3432,9 +3454,9 @@ class Gen:
           for st in x["then"]:
             self.ex_unsafe_one(st, sc, mod, depth)
           asm.jmp(lab_x)
-          for i, _f3395_1 in pyrt.py_enumerate(x["elifs"]):
-            ec = _f3395_1[0]
-            eb = _f3395_1[1]
+          for i, _f3417_1 in pyrt.py_enumerate(x["elifs"]):
+            ec = _f3417_1[0]
+            eb = _f3417_1[1]
             asm.label(labs[i])
             self.sev(ec, sc, mod)
             asm.test_rr("rax", "rax")
@@ -3447,9 +3469,9 @@ class Gen:
               self.ex_unsafe_one(st, sc, mod, depth)
           asm.label(lab_x)
         else:
-          _t3410 = [self.new_tmp("w"), self.new_tmp("w")]
-          lab_t = _t3410[0]
-          lab_x = _t3410[1]
+          _t3432 = [self.new_tmp("w"), self.new_tmp("w")]
+          lab_t = _t3432[0]
+          lab_x = _t3432[1]
           asm.label(lab_t)
           self.sev(x["cond"], sc, mod)
           asm.test_rr("rax", "rax")
@@ -3510,9 +3532,9 @@ class Gen:
     ms = mod["scope"]
     return not (name in ms.raw_names)
   def unbox_int_here(self, ln):
-    _t3473 = [self.new_tmp("ub"), self.new_tmp("ub")]
-    lab_bad = _t3473[0]
-    lab_end = _t3473[1]
+    _t3495 = [self.new_tmp("ub"), self.new_tmp("ub")]
+    lab_bad = _t3495[0]
+    lab_end = _t3495[1]
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
     asm.cmp_ri32("r11", Gen_TAG_INT)
@@ -3550,10 +3572,10 @@ class Gen:
     asm.call("x_truth")
     asm.test_rr("rax", "rax")
   def truthy_br(self, lab_false):
-    _t3513 = [self.new_tmp("tb"), self.new_tmp("tb"), self.new_tmp("tb")]
-    lab_int = _t3513[0]
-    lab_true = _t3513[1]
-    lab_slow = _t3513[2]
+    _t3535 = [self.new_tmp("tb"), self.new_tmp("tb"), self.new_tmp("tb")]
+    lab_int = _t3535[0]
+    lab_true = _t3535[1]
+    lab_slow = _t3535[2]
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
     asm.cmp_ri32("r11", Gen_TAG_INT)
@@ -3965,9 +3987,9 @@ class Gen:
     return out
   def k_write(self):
     asm.mov_rr("rcx", "rdx")
-    _t3924 = [self.new_tmp("kw"), self.new_tmp("kw")]
-    lab_l = _t3924[0]
-    lab_d = _t3924[1]
+    _t3946 = [self.new_tmp("kw"), self.new_tmp("kw")]
+    lab_l = _t3946[0]
+    lab_d = _t3946[1]
     asm.label(lab_l)
     asm.test_rr("rcx", "rcx")
     asm.jcc("e", lab_d)
@@ -11477,6 +11499,15 @@ class GenIR(Gen):
       raise pyrt.py_err("IR: '" + str(op) + "' not in irx64 subset yet", ln)
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _scall(self, fr, dest, name, args, ln):
+    if name == "call0":
+      if self.freestanding:
+        raise pyrt.py_err("call0 not in kernel", ln)
+      if len(args) != 1:
+        raise pyrt.py_err("call0 wants call0(p)", ln)
+      self._load(fr, args[0], ln)
+      self.emit_call0(ln)
+      asm.mov_mr("rbp", "rax", fr["slots"][dest])
+      return null
     if name == "alloc":
       if len(args) != 1:
         raise pyrt.py_err("alloc wants alloc(n)", ln)
@@ -13194,7 +13225,7 @@ class GenIR(Gen):
     if not self.freestanding:
       return self._base_emit_main(mod)
     self.emit_longmode_tail(mod)
-    inits = pyrt.py_set([_p13164_0[1] for _p13164_0 in pyrt.py_items(self.mod_entries) if _p13164_0[0] != ""])
+    inits = pyrt.py_set([_p13195_0[1] for _p13195_0 in pyrt.py_items(self.mod_entries) if _p13195_0[0] != ""])
     for key in self.allorder:
       if not (key in inits):
         self._emit_ifunc(key)

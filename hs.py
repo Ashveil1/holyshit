@@ -935,6 +935,18 @@ class Gen:
                 return ac
             return at, ac, av
 
+        if name == "call0":
+            if len(args) != 1:
+                raise HSErr("call0 wants call0(p)", ln)
+            pt, pc, _ = self.emit_sexpr(args[0], scope, out)
+            from interp import is_ptr
+            if not is_ptr(pt):
+                raise HSErr("call0 needs Ptr", ln)
+            tmp = f"hs_callptr_{self.tmp}"
+            self.tmp += 1
+            out.append(f"uint8_t *{tmp} = {pc};")
+            out.append(f'if (!{tmp}) hs_err({ln}, "call0 needs non-null Ptr");')
+            return ("I64", f"(((int64_t (*)(void))(uintptr_t){tmp})())", None)
         if name == "alloc":
             if len(args) != 1:
                 raise HSErr("alloc wants alloc(n)", ln)

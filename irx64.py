@@ -1195,6 +1195,15 @@ class GenIR(Gen):
     def _scall(self, fr, dest, name, args, ln):
         # transliterated x64gen sev_call (raw words, machine checks only).
         a = self.a
+        if name == "call0":
+            if self.freestanding:
+                raise HSErr("call0 not in kernel", ln)
+            if len(args) != 1:
+                raise HSErr("call0 wants call0(p)", ln)
+            self._load(fr, args[0], ln)
+            self.emit_call0(ln)
+            a.mov_mr("rbp", "rax", fr["slots"][dest])
+            return
         if name == "alloc":
             if len(args) != 1:
                 raise HSErr("alloc wants alloc(n)", ln)
