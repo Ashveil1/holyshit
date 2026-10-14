@@ -3,10 +3,22 @@
 The source of the hosted compiler is `selfhost/be/compile.hs` and its hs
 imports. The Python implementation stays as the semantic/test reference.
 
-A seed is accepted only after the current native compiler passes full CI
-and the stage1/stage2/stage3 byte-equality gate. This directory does not yet
-contain a binary seed. Until it does, use `scripts/bootstrap-hosted.sh` to
-build stage1 with Python and stage2/stage3 with the native compiler.
+The Linux x86-64 seed `hs-hosted-x86_64` is pinned by `SHA256SUMS`.
+It was accepted after the native compiler passed full CI and its source
+bootstrap/fixed-point gates. `scripts/verify-hosted-seed.py` compares it to
+a compiler built from this source before executing it, then checks another
+generation. That audit uses Python as the independent reference.
+
+For Python-free bootstrap, run `scripts/bootstrap-seed.sh [output-dir]`.
+It checks the pinned hash before executing the seed, builds stages two and
+three and requires both to match the seed byte for byte. The seed is Linux
+x86-64 only, 9,104,696 bytes. It uses the repository source and runtime data;
+it is not a standalone distribution. To rebuild without trusting the seed,
+use `scripts/bootstrap-hosted.sh` (Python stage zero, native later stages).
+
+SHA256: `4b9f0cebb85b95600a88d99607d0df42edaa135a78036896b9d5711c878dea51`.
+Changing compiler sources may change the fixed point. Regenerate and verify
+the seed rather than silently accepting an old binary or updating the hash.
 
 The hosted compiler is not the kernel compiler. Its full-width unsafe
 literal gate now covers decimal and hex words through 64 bits. Safe tagged

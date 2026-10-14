@@ -52,6 +52,7 @@ SUITES = [
     ("test_iropt_hs.py", "CFG optimizer in hs vs iropt.py (interp + x64)"),
     ("test_verify_hs.py", "CFG verifier in hs vs ir.py (valid + malformed modules)"),
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
+    ("test_hosted_seed.py", "verified seed + Python-free bootstrap"),
     ("test_native_compiler.py", "native hs compiler image equality + full hosted fixed point"),
     ("test_compile_hs.py", "source-to-ELF compiler in hs vs Python backend"),
     ("test_be.py", "x64 backend written in hs vs irx64.py"),
