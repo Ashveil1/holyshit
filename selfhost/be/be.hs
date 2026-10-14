@@ -12604,7 +12604,7 @@ class GenIR(Gen):
       asm.mov_ri32("rax", nfl)
       asm.call_r11()
       asm.mov_rm("rsp", "rsp", 0)
-    ccall(gi)
+    ccall(gi, nf)
     if rt == "F64":
       asm.movq_rx("rax", 0)
     asm.push_r("rax")
@@ -13114,10 +13114,10 @@ class GenIR(Gen):
     if self.ffi_syms:
       asm.data_label("ffi_got_")
       asm.data_bytes(pyrt.py_rep([0], 8 * len(self.ffi_syms)))
-      lo = layout_dyn(len(asm.state()["code"]), len(asm.state()["data"]))
+      lo = elf.layout_dyn(len(asm.state()["code"]), len(asm.state()["data"]))
       code = asm.resolve_at(lo["text_vaddr"], lo["data_vaddr"])
       libs = ["libc.so.6"] + [l for l in self.ffi_libs if l != "libc.so.6"]
-      return pack_dyn(code, pyrt.py_bytes(asm.state()["data"]), asm.state()["labels"]["_start"], lo, libs, self.ffi_syms, asm.state()["data_labels"]["ffi_got_"])
+      return elf.pack_dyn(code, pyrt.py_bytes(asm.state()["data"]), asm.state()["labels"]["_start"], lo, libs, self.ffi_syms, asm.state()["data_labels"]["ffi_got_"])
     lo = elf.layout(len(asm.state()["code"]))
     code = asm.resolve_at(lo["text_vaddr"], lo["data_vaddr"])
     start_off = asm.state()["labels"]["_start"]
