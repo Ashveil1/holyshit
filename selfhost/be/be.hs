@@ -11233,9 +11233,12 @@ class GenIR(Gen):
       ft = f[0]
       return pyrt.py_tail(ft, 4) if pyrt.py_startswith(ft, "Ptr:") else null
     if op == "phi":
-      xs = pyrt.py_set([self._struct_of(fr, _p11252_0[1], seen) for _p11252_0 in ins["arms"]])
-      xs[null] = false
-      return pyrt.py_pop(xs) if len(xs) == 1 else null
+      xs = []
+      for arm in ins["arms"]:
+        st = self._struct_of(fr, arm[1], seen)
+        if st != null and not (st in xs):
+          append(xs, st)
+      return xs[0] if len(xs) == 1 else null
     return null
   def _sconst(self, fr, dest, stype, val, ln):
     if pyrt.py_isinstance(val, ["bool"]):
