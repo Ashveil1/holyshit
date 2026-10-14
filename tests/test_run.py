@@ -186,5 +186,19 @@ j = _json.loads(r.stdout)
 check("explain --json lists catalog matches", r.returncode == 0 and j["matches"] and j["matches"][0]["pattern"].startswith("alloc of negative"), r.stdout)
 r = explain("zzz nonsense")
 check("explain unknown message exits 1", r.returncode == 1 and "no catalog entry" in r.stdout, (r.returncode, r.stdout))
+
+# ---- evals/: programming-task checker (no model calls) ----
+EV = os.path.join(ROOT, "evals", "run.py")
+r = subprocess.run([sys.executable, EV, "--reference", "--json"], capture_output=True, text=True)
+j = _json.loads(r.stdout) if r.stdout.startswith("{") else {}
+check("evals: every reference solution passes its task", r.returncode == 0 and j.get("passed") == j.get("total") and j.get("total", 0) >= 12, r.stdout[:300])
+with tempfile.TemporaryDirectory() as d:
+    open(os.path.join(d, "gcd.hs"), "w").write("print 1\n")
+    r = subprocess.run([sys.executable, EV, "--solutions", d, "--task", "gcd", "--json"], capture_output=True, text=True)
+    j = _json.loads(r.stdout)
+    check("evals: a wrong solution fails", r.returncode == 1 and j["passed"] == 0 and j["tasks"][0]["failed"], r.stdout[:300])
+    r = subprocess.run([sys.executable, EV, "--solutions", d, "--task", "fizzbuzz", "--json"], capture_output=True, text=True)
+    j = _json.loads(r.stdout)
+    check("evals: a missing solution fails", r.returncode == 1 and j["tasks"][0]["failed"] == ["missing solution"], r.stdout[:300])
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
