@@ -208,3 +208,10 @@ strings        0.778s     0.627s    1.24x     443     469  same
   interp-only. Parser normalization (defaults/range/prelude), the optimizer,
   the self-hosted verifier, module loading and bootstrap are separate gates.
   This checkpoint does not claim a Python-free compiler.
+
+S5b optimizer checkpoint: `be/iropt.hs` folds and removes unused constants
+with whole-module structural equality to `iropt.py`, through interp and x64.
+A separate seeded boundary matrix checks arithmetic folding near the 62-bit
+limits. Multiplication is bounded before it can wrap into a false constant.
+This stage still consumes canonical IR JSON; parser normalization and the
+full compiler driver are not part of this checkpoint.

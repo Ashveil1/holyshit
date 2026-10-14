@@ -85,16 +85,20 @@ def optimize_module(m):
     total = total + optimize_func(fn)
   return total
 def bounded_add(a, b):
-  r = a + b
-  if a > 0 and b > 0 and r <= 0 or a < 0 and b < 0 and r >= 0:
+  if b > 0 and a >= LIM - b:
     return null
+  if b < 0 and a <= 0 - LIM - b:
+    return null
+  r = a + b
   if r <= 0 - LIM or r >= LIM:
     return null
   return r
 def bounded_sub(a, b):
-  r = a - b
-  if a >= 0 and b < 0 and r < 0 or a < 0 and b > 0 and r >= 0:
+  if b > 0 and a <= 0 - LIM + b:
     return null
+  if b < 0 and a >= LIM + b:
+    return null
+  r = a - b
   if r <= 0 - LIM or r >= LIM:
     return null
   return r
@@ -103,7 +107,11 @@ def bounded_mul(a, b):
     return 0
   if a <= 0 - LIM or a >= LIM or b <= 0 - LIM or b >= LIM:
     return null
-  neg = a < 0 != (b < 0)
+  neg = false
+  if a < 0:
+    neg = not neg
+  if b < 0:
+    neg = not neg
   if a < 0:
     a = 0 - a
   if b < 0:

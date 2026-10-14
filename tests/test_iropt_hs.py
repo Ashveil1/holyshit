@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """hs CFG optimizer compared structurally to iropt.py."""
 import glob
+import random
 import json
 import os
 import subprocess
@@ -81,5 +82,25 @@ for f in sorted(files):
     else:
         failed += 1
         print('FAIL', Path(f).name, r.stdout[:150], r.stderr[:150], flush=True)
+# Boundary products must not wrap back into the foldable range.
+rng = random.Random(717)
+vals = [-(1 << 61), -(1 << 60), -1, 0, 1, (1 << 60)-1, (1 << 61)-1]
+vals += [rng.randrange(-(1 << 61), 1 << 61) for _ in range(20)]
+cases = [[op, a, b] for op in ['+', '-', '*', '<', '=='] for a in vals for b in vals]
+want = [iropt._fold(*c) for c in cases]
+path = str(Path(work.name)/'folds.json')
+Path(path).write_text(json.dumps(cases))
+for backend in ['interp', 'x64']:
+    r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
+        str(ROOT/'selfhost/be/iropt_fold_run.hs'), '--backend', backend, path],
+        capture_output=True, text=True, env=env, timeout=60)
+    try:
+        ok = json.loads(r.stdout) == want
+    except Exception:
+        ok = False
+    passed += int(ok)
+    failed += int(not ok)
+    if not ok:
+        print('FAIL bounded folding', backend, r.stderr[:150])
 print(f'{passed}/{passed+failed} passed (interp + x64 ({native_skipped} ASTs exceed x64 Int width); {skipped} rejected by Python builder)')
 sys.exit(bool(failed) or not passed)
