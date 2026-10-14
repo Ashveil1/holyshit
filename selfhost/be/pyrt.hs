@@ -51,7 +51,7 @@ def py_ord(c):
     return 9
   if c == "\r":
     return 13
-  if c == "\u0000":
+  if c == json_parse("\"\\u0000\""):
     return 0
   j = json_str(c)
   if len(j) == 8 and j[1] == "\\" and j[2] == "u":
@@ -627,3 +627,6 @@ def py_open(path, mode):
   return PyFile(path)
 def py_close(f):
   return null
+def py_extend_set(d, xs):
+  for x in xs:
+    d[py_k(x)] = true
