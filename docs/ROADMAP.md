@@ -275,15 +275,14 @@ catchable failures with interp, including invalid elements and non-list
 inputs. First-class write_bytes values remain outside the x64 subset.
 
 ### S8 experimental kernel IR lowering
-`build_xkernel(..., ir_backend=True)` is an internal opt-in prototype; the
-public xkernel command stays on the AST backend until the existing QEMU
-behavioral corpus passes on IR. IR emits different code, so whole-image
+The IR kernel lowering passed the existing QEMU behavioral corpus
+291/291 in full CI alongside the retained AST lowering. The default-switch
+checkpoint below moves the public xkernel command to IR. IR emits different code, so whole-image
 byte equality is not the right comparison between those two lowerings.
 The gate is the unchanged kernel corpus's serial output and machine-state
 checks, repeated through `tests/test_kernel_ir.py`. Hosted behavior must
 remain unchanged. Kernel runtime, IRQ/task/syscall helpers and ELF boot
-layout reuse the established implementation. No kernel IR completion is
-claimed until the full QEMU gate passes.
+layout reuse the established implementation. The full QEMU gate passed before the default-switch checkpoint.
 Measured binary-driver fixed point: scripts/bootstrap-hosted.sh produced
 three identical 9,080,008-byte ELF compilers locally. Stages two and three
 were built by the native compiler with no Python process in those steps.
@@ -334,3 +333,11 @@ port I/O before returning or capturing a scheduled context. A deterministic
 software interrupt exercises the real timer IDT vector without relying on
 PIT timing. Hosted behavior is unchanged; native kernel images and the
 hosted compiler seed remain source-equality gates.
+
+### S8 default kernel IR
+After the same QEMU corpus passed 291/291 on both lowerings in full CI,
+public `xkernel` selects IR by default. The AST lowering is retained as
+`build_xkernel(..., ir_backend=False)` and the behavioral corpus runs on
+both in full CI. Native kernel compiler image gates still compare with
+AST explicitly: the native kernel driver has not migrated to IR yet.
+This default switch does not claim native IR kernel self-hosting.

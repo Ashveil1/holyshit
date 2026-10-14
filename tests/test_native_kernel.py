@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory() as d:
     files=sys.argv[1:] or ['kernel/kx2.hs','kernel/kheaptest.hs','kernel/kring3.hs','kernel/ksyscall.hs','kernel/kpreempt.hs','kernel/kjsontest.hs','kernel/kushtest.hs']
     for name in files:
         with contextlib.redirect_stdout(io.StringIO()):
-            rc=build_xkernel(str(ROOT/name),str(d/'reference'))
+            rc=build_xkernel(str(ROOT/name),str(d/'reference'),ir_backend=False)
         if rc: raise SystemExit('FAIL reference kernel '+name)
         r=subprocess.run([str(d/'compiler'),str(ROOT/name)],env=env,capture_output=True,text=True,timeout=240)
         try: got=bytes.fromhex(''.join(r.stdout.split()))
