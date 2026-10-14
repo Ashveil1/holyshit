@@ -298,3 +298,13 @@ then requires byte-identical complete ELF images from the hs linker on
 interp and compiled x64. It covers heap, ring3, syscall, preemption, JSON
 and user-shell kernels. This proves linking only: source-to-kernel native
 compilation and the kernel IR migration remain separate gates.
+
+### S7c native kernel compiler prototype (not merge-ready)
+`selfhost/be/kernel_hex.hs` uses the maintained AST kernel backend and hs
+multiboot linker. Seven complete kernel ELF images match the reference:
+basic runtime, heap, ring3, syscall, preemption, JSON and user shell.
+Port fixes cover Scope identity, module parsing, global names, assembler
+defaults, wide kernel literals and UTF-8 data emission. Backend regeneration
+must remain exact. The hosted compiler fixed-point regression currently
+fails at stage two after the UTF-8 change. This must be fixed before merge;
+kernel IR migration and Python-free seed packaging are still separate work.
