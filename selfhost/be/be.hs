@@ -12720,8 +12720,8 @@ class GenIR(Gen):
     nf = pyrt.py_count(pt, "F64")
     if nf > 8:
       raise pyrt.py_err("ffi '" + str(name) + "': xbuild passes at most 8 F64 args", ln)
-    if len(pt) > 6:
-      raise pyrt.py_err("ffi '" + str(name) + "': xbuild passes at most 6 args", ln)
+    if len(pt) - nf > 6:
+      raise pyrt.py_err("ffi '" + str(name) + "': xbuild passes at most 6 integer/pointer args", ln)
     self._ffi_lib(ins["lib"], ln)
     gi = self._ffi_sym(name)
     fl = self._ffi_sym("fflush")

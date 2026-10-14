@@ -623,7 +623,7 @@
 - `circular import '{dotted}'`
 - `contains wants contains(container, x)`
 - `extern from '{lib}': a C source needs a C compiler; xbuild calls none (pass a prebuilt .so)`
-- `ffi '{name}': xbuild passes at most 6 args`
+- `ffi '{name}': xbuild passes at most 6 integer/pointer args`
 - `ffi '{name}': xbuild passes at most 8 F64 args`
 - `field '{name}' is not an array`
 - `float wants 1 arg`
