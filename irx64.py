@@ -21,6 +21,13 @@ from interp import HSErr
 import ir as IR
 from x64gen import Gen
 
+RAW_KERNEL_BUILTINS = {"alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int"}
+KERNEL_BUILTINS = {"ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
+    "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg",
+    "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on",
+    "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop",
+    "enter_user", "exec_enter", "ioport_in", "ioport_out"}
+
 NOT_A_VALUE = {
     # var_get's "is not a value (call it)" list minus BI_VALUES (which take
     # the builtin-value path first, exactly like x64gen-today)
@@ -56,8 +63,8 @@ class GenIR(Gen):
         import gcrt
         gcrt.emit_gc_malloc(self)
 
-    def __init__(self, irmod, prog_dir):
-        Gen.__init__(self, [], freestanding=False)
+    def __init__(self, irmod, prog_dir, freestanding=False):
+        Gen.__init__(self, [], freestanding=freestanding)
         self.irmod = irmod
         self.prog_dir = prog_dir
         self.flabel = {}  # ir func key -> code label
@@ -213,7 +220,8 @@ class GenIR(Gen):
                     with open(path, encoding="utf-8") as f:
                         src = f.read()
                     try:
-                        interp.reset_parse_state()
+                        if not self.freestanding:
+                            interp.reset_parse_state()
                         prog = interp.parse_program(src)
                     except HSErr as e:
                         raise HSErr(f"in module '{dotted}': {e.msg}",
@@ -324,7 +332,7 @@ class GenIR(Gen):
             return "global"
         if name in Gen.BI_VALUES:
             return "builtin"
-        if name in NOT_A_VALUE:
+        if name in NOT_A_VALUE or (self.freestanding and name in KERNEL_BUILTINS):
             return "novalue"
         return "auto"
 
@@ -355,10 +363,12 @@ class GenIR(Gen):
             for ins in b["instrs"]:
                 if ins["op"] == "load" and (ins["name"] in INLINE_ONLY | \
                         INLINE_DIRECT | GenIR.JSON_CALLS or
+                        (self.freestanding and ins["name"] in KERNEL_BUILTINS | RAW_KERNEL_BUILTINS) or
                         (ins["name"] == "type_name" and
                          fr.get("mod") == "<json>")) and \
-                        res.get(ins["name"]) in ("novalue", "builtin",
-                                                 "auto"):
+                        (res.get(ins["name"]) in ("novalue", "builtin", "auto") or
+                         (self.freestanding and ins["name"] in KERNEL_BUILTINS and
+                          ins["name"] in self.mod_globals.get(fr["mod"], set()))):
                     ds = ins["dest"]
                     if fr["uses"].get(ds, []) and \
                             all(u == ("call", "fn") for u in fr["uses"][ds]):
@@ -567,11 +577,18 @@ class GenIR(Gen):
             a.mov_ri64("rax", Gen.HS_FALSE)
         elif v is None:
             a.mov_ri64("rax", Gen.HS_NULL)
+        elif isinstance(v, float) and self.freestanding:
+            a.mov_ri64("rdi", _st.unpack("<Q", _st.pack("<d", v))[0])
+            a.call("x_float_new")
         elif isinstance(v, float):
             a.lea_rip("rax", self.sfloat(
                 _st.unpack("<Q", _st.pack("<d", v))[0]))
         elif isinstance(v, int):
             a.mov_ri64("rax", self.tag_int(v))
+        elif isinstance(v, str) and self.freestanding:
+            a.lea_rip("rdi", self.rstr(v))
+            a.mov_ri32("rsi", len(v.encode()))
+            a.call("x_str_at")
         elif isinstance(v, str):
             a.lea_rip("rax", self.sstr(v))
         else:
@@ -1688,6 +1705,33 @@ class GenIR(Gen):
         # x64gen-today). `float` has no value form at all.
         p = fr["prov"].get(fn)
         pname = p[1] if p is not None and p[0] == "load" else None
+        if self.freestanding and pname in KERNEL_BUILTINS and fr["res"].get(pname) in ("novalue", "global") and pname not in GenIR.JSON_CALLS:
+            nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
+            self._kernel_frame = fr
+            self._kernel_raw_dynamic = True
+            try:
+                if pname in {"ioport_in", "ioport_out"}:
+                    scope = Gen.Scope()
+                    mod = {"scope": scope}
+                    Gen.ev_call(self, {"fn": {"t": "var", "name": pname}, "args": nodes, "line": ln}, scope, mod)
+                else:
+                    Gen.ev_kdev(self, pname, nodes, None, None, ln)
+            finally:
+                self._kernel_raw_dynamic = False
+            self.a.mov_mr("rbp", "rax", fr["slots"][dest])
+            return
+        if self.freestanding and pname in RAW_KERNEL_BUILTINS and fr["res"].get(pname) == "novalue":
+            nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
+            self._kernel_frame = fr
+            self._kernel_raw_dynamic = True
+            try:
+                Gen.sev_call(self, pname, nodes, None, None, ln)
+            finally:
+                self._kernel_raw_dynamic = False
+            if pname == "as_int":
+                self.tag_box()
+            self.a.mov_mr("rbp", "rax", fr["slots"][dest])
+            return
         if pname in GenIR.JSON_CALLS and fr["res"].get(pname) == "novalue":
             self._json_call(fr, dest, pname, args, ln)
             return
@@ -2619,6 +2663,8 @@ class GenIR(Gen):
                     break
 
     def _gc_point(self):
+        if self.freestanding:
+            return
         # safe point: collect when the allocator asked for it. rax is
         # saved around the flag test (x_gc itself saves every register).
         a = self.a
@@ -2839,6 +2885,12 @@ class GenIR(Gen):
                 self._sbox(fr, ins["dest"], ins["src"], ln)
             elif op == "sraw":
                 self._sraw(fr, ins["dest"], ins["src"], ln)
+            elif op == "snz":
+                self._load(fr, ins["src"], ln)
+                a.test_rr("rax", "rax")
+                a.setcc_al("ne")
+                a.movzx_eax_al()
+                a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
             elif op == "sstr":
                 raise HSErr("strings not allowed in unsafe (use unsafe: "
                             "outside)", ln)
@@ -2958,6 +3010,44 @@ class GenIR(Gen):
         by = {b["label"]: b for b in fdef["blocks"]}
         for blk in fdef["blocks"]:
             self._emit_block(fr, key, blk, by)
+
+    def sev(self, e, sc, mod):
+        if e.get("t") == "irtemp":
+            self._load(self._kernel_frame, e["ref"], e["line"])
+            if getattr(self, "_kernel_raw_dynamic", False):
+                self.a.sar_ri8("rax", 2)
+            return
+        return Gen.sev(self, e, sc, mod)
+
+    def ev(self, e, sc, mod):
+        if e.get("t") == "irtemp":
+            self._load(self._kernel_frame, e["ref"], e["line"])
+            return
+        return Gen.ev(self, e, sc, mod)
+
+    def emit_main(self, mod):
+        if not self.freestanding:
+            return Gen.emit_main(self, mod)
+        self.emit_longmode_tail(mod)
+        inits = {ek for mp, ek in self.mod_entries.items() if mp != ""}
+        for key in self.allorder:
+            if key not in inits:
+                self._emit_ifunc(key)
+        for rec in self.modtab.values():
+            if not rec.get("shell"):
+                self._emit_initfunc(rec)
+        self.a.label("hs_kernel_main")
+        self.a.jmp("hs_main")
+
+    def build_kernel_image(self):
+        if not self.freestanding:
+            raise HSErr("kernel image requires freestanding generator", 1)
+        self._plan()
+        for nm in sorted(self.mglob):
+            self._glabel(nm, "")
+        mod = {"name": "<main>", "prog": [], "pfx": "ir",
+               "scope": Gen.Scope(), "dir": self.prog_dir}
+        return Gen.build_image(self, mod)
 
     # ----- image -----
 

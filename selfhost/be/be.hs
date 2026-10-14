@@ -13003,6 +13003,12 @@ class GenIR(Gen):
         self._sbox(fr, ins["dest"], ins["src"], ln)
       elif op == "sraw":
         self._sraw(fr, ins["dest"], ins["src"], ln)
+      elif op == "snz":
+        self._load(fr, ins["src"], ln)
+        asm.test_rr("rax", "rax")
+        asm.setcc_al("ne")
+        asm.movzx_eax_al()
+        asm.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
       elif op == "sstr":
         raise pyrt.py_err("strings not allowed in unsafe (use unsafe: outside)", ln)
       elif op == "serr":
