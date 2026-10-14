@@ -11243,7 +11243,10 @@ class GenIR(Gen):
   def _sconst(self, fr, dest, stype, val, ln):
     if pyrt.py_isinstance(val, ["bool"]):
       val = int(val)
-    asm.mov_ri64("rax", val if val >= 0 else val)
+    if pyrt.py_type(val) == "dict" and has(val, "wide"):
+      asm.mov_ri64_bytes("rax", val["wide"])
+    else:
+      asm.mov_ri64("rax", val if val >= 0 else val)
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _sload(self, fr, dest, name, ln):
     if name in pyrt.py_get(fr, "rawnames", []):

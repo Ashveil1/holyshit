@@ -144,6 +144,7 @@ def inject_prelude(body, src):
       append(pre, st)
   return pre + body
 def parse(src):
+  parselib.P["wide_literals"] = true
   body = parselib.parse(src)
   table = {}
   defaults_find(body, table)

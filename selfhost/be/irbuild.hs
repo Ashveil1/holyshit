@@ -438,6 +438,8 @@ class Builder:
         fb.emit(_n("sconst", ln, {"dest": d, "stype": "I64", "val": int(v)}))
       elif pyrt.py_isinstance(v, ["int"]):
         fb.emit(_n("sconst", ln, {"dest": d, "stype": "LIT", "val": v}))
+      elif pyrt.py_type(v) == "dict" and has(v, "wide"):
+        fb.emit(_n("sconst", ln, {"dest": d, "stype": "LIT", "val": v}))
       else:
         d = fb.temp()
         fb.emit(_n("serr", ln, {"dest": d, "imsg": "float not allowed in unsafe", "xmsg": "float not in x64 subset"}))

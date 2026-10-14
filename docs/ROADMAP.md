@@ -267,3 +267,13 @@ Measured binary-driver fixed point: scripts/bootstrap-hosted.sh produced
 three identical 9,080,008-byte ELF compilers locally. Stages two and three
 were built by the native compiler with no Python process in those steps.
 The seed is not committed and full CI remains the merge gate.
+
+### S6 native unsafe words
+The native compiler parses unsafe integer literals through 64 bits as eight
+little-endian bytes when they exceed its tagged integer range. This is a
+compiler-internal AST/IR transport only, not a change to language integers.
+Decimal and hex words, including unary minus, must produce the same ELF as
+the reference compiler. Larger unsafe literals fail rather than truncate.
+The t_load64 exclusion is removed; boundary cases and the two-generation
+compiler fixed point remain required tests. This does not claim kernel
+self-hosting or change safe integer overflow behavior.
