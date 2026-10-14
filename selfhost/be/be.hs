@@ -2,11 +2,6 @@ import pyrt
 import asm
 import gcrt
 import elf
-import parselib
-import normalize
-import irbuild
-import iropt
-import verify
 SUBSET_ERR = "x64 backend subset"
 class Gen:
   def __init__(self, prog, main_path, freestanding):
@@ -40,7 +35,7 @@ class Gen:
     self.js_mod = null
     self.js_fns = {}
   def load_module(self, name, from_dir, line):
-    if not pyrt.py_module_name(name):
+    if not pyrt.py_match(__import__("re"), "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$", name):
       raise pyrt.py_err("bad module name '" + str(name) + "'", line)
     hspath = [d for d in pyrt.py_split(pyrt.py_hspath(), ":") if d]
     rel = pyrt.py_replace(name, ".", "/") + ".hs"
@@ -56,7 +51,7 @@ class Gen:
     src = f.read_()
     pyrt.py_close(f)
     try:
-      prog = normalize.parse(src)
+      prog = interp.parse_program(src)
     except as e:
       raise pyrt.py_err("in module '" + str(name) + "': " + str(e.msg), e.line)
     mod = {"name": name, "prog": prog, "dir": pyrt.py_os_path_dirname(p), "pfx": "m" + str(len(self.modules)) + "_"}
@@ -272,7 +267,7 @@ class Gen:
       return null
     if t == "sizeof":
       st = e["stype"]
-      if not (st in ["I64", "U64", "Ptr"]) and not (st in parselib.P["structs"]):
+      if not (st in ["I64", "U64", "Ptr"]) and not (st in HS_STRUCTS):
         raise pyrt.py_err("unknown struct '" + str(st) + "'", e["line"])
       return null
     if t == "field":
@@ -298,9 +293,9 @@ class Gen:
       raise pyrt.py_err("unknown variable '" + str(obj["name"]) + "'", ln)
     if obj["t"] == "field":
       xs = pyrt.py_get(obj, "_st", null)
-      if xs == null or not (xs in parselib.P["structs"]):
+      if xs == null or not (xs in HS_STRUCTS):
         raise pyrt.py_err("struct type unknown (x64)", ln)
-      f = pyrt.py_get(parselib.P["structs"][xs]["fields"], obj["name"], null)
+      f = pyrt.py_get(HS_STRUCTS[xs]["fields"], obj["name"], null)
       if f == null:
         raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(obj["name"]) + "'", ln)
       xs2 = ptr_struct(f[0])
@@ -354,13 +349,13 @@ class Gen:
       asm.data_bytes(b + pyrt.py_rep([0], 8 - len(b) % 8))
     return self.sstrs[s]
   def sfloat(self, bits):
-    key = "f" + json_str(bits)
+    key = pyrt.py_key(["f", bits])
     if not (key in self.sstrs):
       lab = "sflt_" + str(len(self.sstrs))
       self.sstrs[key] = lab
       asm.data_label(lab)
       asm.data_qword(Gen_K_FLOAT)
-      asm.data_bytes(bits)
+      asm.data_qword(bits)
     return self.sstrs[key]
   def emit_str_table(self):
     for s, lab in pyrt.py_items(self.strs):
@@ -389,7 +384,7 @@ class Gen:
         asm.call("x_float_new")
         return null
       else:
-        asm.mov_tagged_int("rax", v)
+        asm.mov_ri64("rax", self.tag_int(v))
       return null
     if t == "str":
       if self.freestanding:
@@ -450,7 +445,7 @@ class Gen:
       asm.jcc("ne", lab_nno)
       asm.label(lab_nfl)
       asm.mov_rm("rdi", "rax", 8)
-      asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 128])
+      asm.mov_ri64("r11", 0 - 9223372036854775808)
       asm.xor_rr("rdi", "r11")
       asm.call("x_float_new")
       asm.jmp(lab_ndone)
@@ -697,7 +692,7 @@ class Gen:
       return null
     raise pyrt.py_err("bad var kind " + str(kind) + " for '" + str(name) + "'", ln)
   def ensure_prefixes(self, fullname, from_dir, line):
-    if not pyrt.py_module_name(fullname):
+    if not pyrt.py_match(__import__("re"), "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$", fullname):
       raise pyrt.py_err("bad module name '" + str(fullname) + "'", line)
     parts = pyrt.py_split(fullname, ".")
     chain = []
@@ -1206,9 +1201,9 @@ class Gen:
       asm.movq_xm(0, "rax", 8)
       asm.cvttsd2si("rax", 0)
       asm.mov_rr("rcx", "rax")
-      asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 32])
+      asm.mov_ri64("r11", 2305843009213693952)
       asm.add_rr("rcx", "r11")
-      asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 64])
+      asm.mov_ri64("r11", 4611686018427387904)
       asm.cmp_rr("rcx", "r11")
       asm.jcc("ae", lab_inum)
       self.tag_box()
@@ -1223,9 +1218,9 @@ class Gen:
       asm.test_rr("rdx", "rdx")
       asm.jcc("e", lab_iquote)
       asm.mov_rr("rcx", "rax")
-      asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 32])
+      asm.mov_ri64("r11", 2305843009213693952)
       asm.add_rr("rcx", "r11")
-      asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 64])
+      asm.mov_ri64("r11", 4611686018427387904)
       asm.cmp_rr("rcx", "r11")
       asm.jcc("ae", lab_iquote)
       self.tag_box()
@@ -2520,9 +2515,9 @@ class Gen:
       if st in ["I64", "U64", "Ptr"]:
         asm.mov_ri32("rax", 8)
       else:
-        if not (st in parselib.P["structs"]):
+        if not (st in HS_STRUCTS):
           raise pyrt.py_err("unknown struct '" + str(st) + "'", ln)
-        asm.mov_ri32("rax", parselib.P["structs"][st]["size"])
+        asm.mov_ri32("rax", HS_STRUCTS[st]["size"])
       return null
     if t == "field":
       self.sev_field(e, sc, mod)
@@ -2542,9 +2537,9 @@ class Gen:
     self.sev(e["obj"], sc, mod)
     asm.push_r("rax")
     xs = pyrt.py_get(e, "_st", null)
-    if xs == null or not (xs in parselib.P["structs"]):
+    if xs == null or not (xs in HS_STRUCTS):
       raise pyrt.py_err("struct type unknown (x64)", ln)
-    L = parselib.P["structs"][xs]
+    L = HS_STRUCTS[xs]
     f = pyrt.py_get(L["fields"], e["name"], null)
     if f == null:
       raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(e["name"]) + "'", ln)
@@ -3324,7 +3319,7 @@ class Gen:
         asm.mov_mr("rax", "rcx", 0)
       elif t == "fstore":
         xs = self.field_base(x["obj"], sc, ln)
-        L = parselib.P["structs"][xs]
+        L = HS_STRUCTS[xs]
         f = pyrt.py_get(L["fields"], x["name"], null)
         if f == null:
           raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(x["name"]) + "'", ln)
@@ -3450,7 +3445,7 @@ class Gen:
       return null
     raise pyrt.py_err(str(t) + " not allowed in unsafe (x64)", s["line"])
   def tag_int(self, v):
-    if false:
+    if self.checked_int() and not (0 - 1 << 61 <= v and v < 1 << 61):
       raise pyrt.py_err("Int literal " + str(v) + " is outside the 62-bit range of the x64 backend", 0)
     return v * 4 + 1
   def tag_box(self):
@@ -3760,7 +3755,7 @@ class Gen:
       pyrt.py_close(f)
     except as e:
       raise pyrt.py_err("cannot read " + str(path) + ": " + str(e.strerror or e), 1)
-    prog = normalize.parse(src)
+    prog = interp.parse_program(src)
     mod = {"name": "<json>", "prog": prog, "pfx": "js_", "scope": Gen_Scope(null, false), "dir": pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(path))}
     mod["scope"]._mod = mod
     base = len(self.all_fs)
@@ -6001,7 +5996,7 @@ class Gen:
     asm.mov_rm("rcx", "rbp", 0 - 16)
     asm.mov_rr("r11", "rax")
     asm.mov_rr("r10", "rcx")
-    asm.mov_ri64_bytes("rcx", [0, 0, 0, 0, 0, 0, 0, 128])
+    asm.mov_ri64("rcx", 0 - 9223372036854775808)
     asm.and_rr("r11", "rcx")
     asm.and_rr("r10", "rcx")
     asm.cmp_rr("r11", "r10")
@@ -6419,7 +6414,7 @@ class Gen:
     asm.sub_ri32("rsp", BW * 8)
     asm.mov_ri32("rax", 0)
     asm.mov_mr("rbp", "rax", 0 - 40)
-    asm.mov_ri64_bytes("rax", [0, 0, 0, 0, 0, 0, 240, 127])
+    asm.mov_ri64("rax", 9218868437227405312)
     asm.mov_mr("rbp", "rax", 0 - 48)
     asm.mov_ri32("rax", 63)
     asm.mov_mr("rbp", "rax", 0 - 56)
@@ -6478,7 +6473,7 @@ class Gen:
     asm.jmp("nd_sign")
     asm.label("nd_round")
     asm.mov_rm("rax", "rbp", 0 - 40)
-    asm.mov_ri64_bytes("rcx", [0, 0, 0, 0, 0, 0, 240, 127])
+    asm.mov_ri64("rcx", 9218868437227405312)
     asm.cmp_rr("rax", "rcx")
     asm.jcc("e", "nd_infedge")
     asm.mov_rr("rdi", "rax")
@@ -6545,10 +6540,10 @@ class Gen:
     asm.call("dec_cmp")
     asm.test_rr("rax", "rax")
     asm.jcc("l", "nd_maxdbl")
-    asm.mov_ri64_bytes("rax", [0, 0, 0, 0, 0, 0, 240, 127])
+    asm.mov_ri64("rax", 9218868437227405312)
     asm.jmp("nd_sign")
     asm.label("nd_maxdbl")
-    asm.mov_ri64_bytes("rax", [255, 255, 255, 255, 255, 255, 239, 127])
+    asm.mov_ri64("rax", 9218868437227405311)
     asm.jmp("nd_sign")
     asm.label("nd_sign")
     asm.mov_rm("rcx", "rbp", 0 - 32)
@@ -6628,7 +6623,7 @@ class Gen:
     asm.or_ri32("rax", 32)
     asm.cmp_ri32("rax", 110)
     asm.jcc("ne", "pf_bad")
-    asm.mov_ri64_bytes("rax", [0, 0, 0, 0, 0, 0, 248, 127])
+    asm.mov_ri64("rax", 9221120237041090560)
     asm.mov_ri32("rdx", 1)
     asm.mov_rr("rsp", "rbp")
     asm.pop_r("rbp")
@@ -6672,7 +6667,7 @@ class Gen:
     asm.cmp_ri32("rax", 121)
     asm.jcc("ne", "pf_bad")
     asm.label("pf_inf3")
-    asm.mov_ri64_bytes("rax", [0, 0, 0, 0, 0, 0, 240, 127])
+    asm.mov_ri64("rax", 9218868437227405312)
     asm.mov_rm("rcx", "rbp", 0 - 32)
     asm.shl_ri8("rcx", 63)
     asm.or_rr("rax", "rcx")
@@ -6931,7 +6926,7 @@ class Gen:
     asm.pop_r("rbp")
     asm.ret()
     asm.label("pf_infret")
-    asm.mov_ri64_bytes("rax", [0, 0, 0, 0, 0, 0, 240, 127])
+    asm.mov_ri64("rax", 9218868437227405312)
     asm.mov_rm("rcx", "rbp", 0 - 32)
     asm.shl_ri8("rcx", 63)
     asm.or_rr("rax", "rcx")
@@ -7165,7 +7160,7 @@ class Gen:
     asm.mov_ri32("rax", 1)
     asm.mov_mr("rbp", "rax", 0 - 104)
     asm.mov_rm("rax", "rbp", 0 - 16)
-    asm.mov_ri64_bytes("r11", [255, 255, 255, 255, 255, 255, 255, 127])
+    asm.mov_ri64("r11", 9223372036854775807)
     asm.and_rr("rax", "r11")
     asm.mov_mr("rbp", "rax", 0 - 152)
     asm.mov_rr("r11", "rax")
@@ -7221,7 +7216,7 @@ class Gen:
     asm.label("fb_up")
     asm.mov_rm("rax", "rbp", 0 - 152)
     asm.add_ri32("rax", 1)
-    asm.mov_ri64_bytes("rcx", [0, 0, 0, 0, 0, 0, 240, 127])
+    asm.mov_ri64("rcx", 9218868437227405312)
     asm.cmp_rr("rax", "rcx")
     asm.jcc("e", "fb_infedge")
     asm.mov_rr("rdi", "rax")
@@ -7930,7 +7925,7 @@ class Gen:
     asm.test_rr("rax", "rax")
     asm.jcc("ns", "iparse_pos")
     asm.mov_rr("rax", "rdx")
-    asm.mov_ri64_bytes("rcx", [0, 0, 0, 0, 0, 0, 0, 128])
+    asm.mov_ri64("rcx", 0 - 9223372036854775808)
     asm.cmp_rr("rax", "rcx")
     asm.jcc("a", "iparse_bad")
     asm.jcc("e", "iparse_min")
@@ -7941,14 +7936,14 @@ class Gen:
     asm.pop_r("rbp")
     asm.ret()
     asm.label("iparse_min")
-    asm.mov_ri64_bytes("rax", [0, 0, 0, 0, 0, 0, 0, 128])
+    asm.mov_ri64("rax", 0 - 9223372036854775808)
     asm.mov_ri32("rdx", 1)
     asm.mov_rr("rsp", "rbp")
     asm.pop_r("rbp")
     asm.ret()
     asm.label("iparse_pos")
     asm.mov_rr("rax", "rdx")
-    asm.mov_ri64_bytes("rcx", [255, 255, 255, 255, 255, 255, 255, 127])
+    asm.mov_ri64("rcx", 9223372036854775807)
     asm.cmp_rr("rax", "rcx")
     asm.jcc("a", "iparse_bad")
     asm.mov_ri32("rdx", 1)
@@ -8105,7 +8100,7 @@ class Gen:
     asm.test_rr("rax", "rax")
     asm.jcc("e", lab_hstr)
     asm.mov_rr("rax", "rdi")
-    asm.mov_ri64_bytes("r8", [21, 124, 74, 127, 185, 121, 55, 158])
+    asm.mov_ri64("r8", 0 - 7046029254386353131)
     asm.imul_rr("rax", "r8")
     asm.mov_rr("rdx", "rax")
     asm.shr_ri8("rdx", 32)
@@ -8114,7 +8109,7 @@ class Gen:
     asm.label(lab_hstr)
     asm.mov_rr("r10", "rdi")
     asm.mov_rm("rcx", "r10", 8)
-    asm.mov_ri64_bytes("rax", [37, 35, 34, 132, 228, 156, 242, 203])
+    asm.mov_ri64("rax", 0 - 3750763034362895579)
     asm.mov_ri64("r8", 1099511628211)
     asm.mov_ri32("rdx", 0)
     _t8110 = [self.new_tmp("dc"), self.new_tmp("dc")]
@@ -8817,7 +8812,7 @@ class Gen:
     asm.mov_ri32("rcx", 1)
     asm.label(lab_lp)
     asm.mov_rr("r9", "rax")
-    asm.mov_ri64_bytes("r8", [205, 204, 204, 204, 204, 204, 204, 204])
+    asm.mov_ri64("r8", 0 - 3689348814741910323)
     asm.mul_r("r8")
     asm.shr_ri8("rdx", 3)
     asm.mov_ri32("r8", 10)
@@ -10382,7 +10377,7 @@ class Gen_Scope:
     self.bi_ids = {}
     self.bi_stubs = {}
 def build_x64(prog_path, out_path):
-  pyrt.py_noop()
+  interp.reset_parse_state()
   try:
     f = pyrt.py_open(prog_path, null)
     src = f.read_()
@@ -10391,13 +10386,13 @@ def build_x64(prog_path, out_path):
     pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
     return 1
   try:
-    prog = normalize.parse(src)
+    prog = interp.parse_program(src)
   except as e:
     pyrt.py_print([str(e)])
     return 1
   try:
-    irm = irbuild.build_module(prog, "")
-    verify.verify_module(irm)
+    irm = _IR.build_module(prog)
+    _IR.verify_module(irm)
   except as e:
     pyrt.py_print([str(e)])
     return 1
@@ -10414,7 +10409,7 @@ def build_x64(prog_path, out_path):
   pyrt.py_print(["ok: x64 -> " + str(out_path) + " (" + str(len(img)) + " bytes, no gcc)"])
   return 0
 def build_x64_ast(prog_path, out_path):
-  pyrt.py_noop()
+  interp.reset_parse_state()
   try:
     f = pyrt.py_open(prog_path, null)
     src = f.read_()
@@ -10423,7 +10418,7 @@ def build_x64_ast(prog_path, out_path):
     pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
     return 1
   try:
-    prog = normalize.parse(src)
+    prog = interp.parse_program(src)
   except as e:
     pyrt.py_print([str(e)])
     return 1
@@ -10523,9 +10518,9 @@ class GenIR(Gen):
       pyrt.py_close(f)
     except as e:
       raise pyrt.py_err("cannot read " + str(path) + ": " + str(e.strerror or e), 1)
-    pyrt.py_noop()
-    sub = irbuild.build_module(normalize.parse(src), "<json>.")
-    verify.verify_module(sub)
+    interp.reset_parse_state()
+    sub = _IR.build_module(interp.parse_program(src), "<json>.")
+    _IR.verify_module(sub)
     pyrt.py_update(self.allfuncs, sub["funcs"])
     pyrt.py_extend(self.allorder, sub["order"])
     for k in sub["order"]:
@@ -10548,13 +10543,6 @@ class GenIR(Gen):
           _top = _t10565[0]
           chain = _t10565[1]
           ins["_chain"] = chain
-  def _resolve_path(self, dotted, from_dir, ln, last):
-    try:
-      return [self._find_module(dotted, from_dir, ln), false]
-    except as e:
-      if last or not ("cannot find module '" + str(dotted) + "'" in str(e)):
-        raise
-      return [null, true]
   def _resolve_import(self, name, from_dir, ln, active, mpref, funckey):
     parts = pyrt.py_split(name, ".")
     chain = []
@@ -10562,9 +10550,16 @@ class GenIR(Gen):
     for i, part in pyrt.py_enumerate(parts):
       dotted = pyrt.py_join(".", parts[0:i + 1])
       last = i == len(parts) - 1
-      resolved = self._resolve_path(dotted, from_dir, ln, last)
-      path = resolved[0]
-      is_shell = resolved[1]
+      is_shell = false
+      path = null
+      try:
+        path = self._find_module(dotted, from_dir, ln)
+        is_shell = false
+      except as e:
+        if last or not ("cannot find module '" + str(dotted) + "'" in str(e)):
+          raise
+        path = null
+        is_shell = true
       if dotted in active:
         raise pyrt.py_err("circular import '" + str(dotted) + "'", ln)
       if not (dotted in self.modtab):
@@ -10582,12 +10577,12 @@ class GenIR(Gen):
           src = f.read_()
           pyrt.py_close(f)
           try:
-            pyrt.py_noop()
-            prog = normalize.parse(src)
+            interp.reset_parse_state()
+            prog = interp.parse_program(src)
           except as e:
             raise pyrt.py_err("in module '" + str(dotted) + "': " + str(e.msg), e.line)
-          sub = irbuild.build_module(prog, dotted + ".")
-          verify.verify_module(sub)
+          sub = _IR.build_module(prog, dotted + ".")
+          _IR.verify_module(sub)
           rec["irmod"] = sub
           rec["dir"] = pyrt.py_os_path_dirname(path)
           rec["pfx"] = dotted + "."
@@ -10701,7 +10696,7 @@ class GenIR(Gen):
     dead = pyrt.py_set(null)
     for b in fdef["blocks"]:
       for ins in b["instrs"]:
-        if ins["op"] == "load" and self._alias_visible(fr, ins["name"]) != null and pyrt.py_get(fr["uses"], ins["dest"], []) and pyrt.py_all([pyrt.py_key(u) in chain_roles for u in fr["uses"][ins["dest"]]]):
+        if ins["op"] == "load" and self._alias_visible(fr, ins["name"]) != null and pyrt.py_get(fr["uses"], ins["dest"], []) and pyrt.py_all([u in chain_roles for u in fr["uses"][ins["dest"]]]):
           pyrt.py_add(dead, ins["dest"])
     fr["deadloads"] = dead
   def _plan_func(self, key, fdef, modpfx, is_entry):
@@ -10864,7 +10859,7 @@ class GenIR(Gen):
     elif pyrt.py_isinstance(v, ["float"]):
       asm.lea_rip("rax", self.sfloat(pyrt.py_f64bits(v)))
     elif pyrt.py_isinstance(v, ["int"]):
-      asm.mov_tagged_int("rax", v)
+      asm.mov_ri64("rax", self.tag_int(v))
     elif pyrt.py_isinstance(v, ["str"]):
       asm.lea_rip("rax", self.sstr(v))
     else:
@@ -11092,7 +11087,7 @@ class GenIR(Gen):
       asm.jcc("ne", lab_nno)
       asm.label(lab_nfl)
       asm.mov_rm("rdi", "rax", 8)
-      asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 128])
+      asm.mov_ri64("r11", 0 - 9223372036854775808)
       asm.xor_rr("rdi", "r11")
       asm.call("x_float_new")
       asm.jmp(lab_ndone)
@@ -11217,7 +11212,7 @@ class GenIR(Gen):
       xs = self._struct_of(fr, ins["obj"], seen)
       if xs == null:
         return null
-      L = pyrt.py_get(parselib.P["structs"], xs, null)
+      L = pyrt.py_get(HS_STRUCTS, xs, null)
       if L == null:
         return null
       f = pyrt.py_get(L["fields"], ins["name"], null)
@@ -11292,9 +11287,9 @@ class GenIR(Gen):
     asm.mov_mr("rax", "rcx", 0)
   def _sfstore(self, fr, obj, name, idx, val, ln):
     xs = self._struct_of(fr, obj, null)
-    if xs == null or not (xs in parselib.P["structs"]):
+    if xs == null or not (xs in HS_STRUCTS):
       raise pyrt.py_err("struct type unknown (x64)", ln)
-    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
+    f = pyrt.py_get(HS_STRUCTS[xs]["fields"], name, null)
     if f == null:
       raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
     _t11316 = f
@@ -11489,9 +11484,9 @@ class GenIR(Gen):
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _sfield(self, fr, dest, obj, name, idx, ln):
     xs = self._struct_of(fr, obj, null)
-    if xs == null or not (xs in parselib.P["structs"]):
+    if xs == null or not (xs in HS_STRUCTS):
       raise pyrt.py_err("struct type unknown (x64)", ln)
-    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
+    f = pyrt.py_get(HS_STRUCTS[xs]["fields"], name, null)
     if f == null:
       raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
     _t11513 = f
@@ -12166,9 +12161,9 @@ class GenIR(Gen):
     asm.movq_xm(0, "rax", 8)
     asm.cvttsd2si("rax", 0)
     asm.mov_rr("rcx", "rax")
-    asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 32])
+    asm.mov_ri64("r11", 2305843009213693952)
     asm.add_rr("rcx", "r11")
-    asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 64])
+    asm.mov_ri64("r11", 4611686018427387904)
     asm.cmp_rr("rcx", "r11")
     asm.jcc("ae", lab_inum)
     self.tag_box()
@@ -12183,9 +12178,9 @@ class GenIR(Gen):
     asm.test_rr("rdx", "rdx")
     asm.jcc("e", lab_iquote)
     asm.mov_rr("rcx", "rax")
-    asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 32])
+    asm.mov_ri64("r11", 2305843009213693952)
     asm.add_rr("rcx", "r11")
-    asm.mov_ri64_bytes("r11", [0, 0, 0, 0, 0, 0, 0, 64])
+    asm.mov_ri64("r11", 4611686018427387904)
     asm.cmp_rr("rcx", "r11")
     asm.jcc("ae", lab_iquote)
     self.tag_box()
@@ -12645,7 +12640,7 @@ class GenIR(Gen):
         asm.push_r("rax")
         self.copy_bytes()
       else:
-        self.check_int(lambda: asm.jmp(lab_bad), "rax")
+        self.check_int(lambda lb: asm.jmp(lb), "rax")
         asm.sar_ri8("rax", 2)
         asm.push_r("rax")
       asm.jmp(lab_after)
@@ -12686,7 +12681,7 @@ class GenIR(Gen):
       asm.mov_ri32("rax", nfl)
       asm.call_r11()
       asm.mov_rm("rsp", "rsp", 0)
-    ccall(gi, nf)
+    ccall(gi)
     if rt == "F64":
       asm.movq_rx("rax", 0)
     asm.push_r("rax")
@@ -12970,9 +12965,9 @@ class GenIR(Gen):
         raise pyrt.py_err(ins["xmsg"], ln)
       elif op == "ssizeof":
         st = ins["stype"]
-        if not (st in ["I64", "U64", "Ptr"]) and not (st in parselib.P["structs"]):
+        if not (st in ["I64", "U64", "Ptr"]) and not (st in HS_STRUCTS):
           raise pyrt.py_err("unknown struct '" + str(st) + "'", ln)
-        asm.mov_ri32("rax", 8 if st in ["I64", "U64", "Ptr"] else parselib.P["structs"][st]["size"])
+        asm.mov_ri32("rax", 8 if st in ["I64", "U64", "Ptr"] else HS_STRUCTS[st]["size"])
         asm.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
       else:
         raise pyrt.py_err("IR: '" + str(op) + "' not in irx64 subset yet", ln)
@@ -13196,10 +13191,10 @@ class GenIR(Gen):
     if self.ffi_syms:
       asm.data_label("ffi_got_")
       asm.data_bytes(pyrt.py_rep([0], 8 * len(self.ffi_syms)))
-      lo = elf.layout_dyn(len(asm.state()["code"]), len(asm.state()["data"]))
+      lo = layout_dyn(len(asm.state()["code"]), len(asm.state()["data"]))
       code = asm.resolve_at(lo["text_vaddr"], lo["data_vaddr"])
       libs = ["libc.so.6"] + [l for l in self.ffi_libs if l != "libc.so.6"]
-      return elf.pack_dyn(code, pyrt.py_bytes(asm.state()["data"]), asm.state()["labels"]["_start"], lo, libs, self.ffi_syms, asm.state()["data_labels"]["ffi_got_"])
+      return pack_dyn(code, pyrt.py_bytes(asm.state()["data"]), asm.state()["labels"]["_start"], lo, libs, self.ffi_syms, asm.state()["data_labels"]["ffi_got_"])
     lo = elf.layout(len(asm.state()["code"]))
     code = asm.resolve_at(lo["text_vaddr"], lo["data_vaddr"])
     start_off = asm.state()["labels"]["_start"]
@@ -13207,7 +13202,7 @@ class GenIR(Gen):
 GenIR_JSON_CALLS = pyrt.py_set(["json_parse", "json_str", "json_load", "json_save"])
 GenIR_SRAW_OPS = pyrt.py_set(["sconst", "sbin", "sun", "scall", "sderef", "sfield", "sload", "sraw"])
 def build_irx64(prog_path, out_path):
-  pyrt.py_noop()
+  interp.reset_parse_state()
   try:
     f = pyrt.py_open(prog_path, null)
     src = f.read_()
@@ -13216,7 +13211,7 @@ def build_irx64(prog_path, out_path):
     pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
     return 1
   try:
-    prog = normalize.parse(src)
+    prog = interp.parse_program(src)
     irm = IR.build_module(prog)
     IR.verify_module(irm)
   except as e:
