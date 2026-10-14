@@ -1641,6 +1641,33 @@ _SIDE_EFFECT_WORDS = ("input", "open", "read", "write", "append_text",
                       "readkey", "file", "close", "read_text", "read_mem")
 
 
+def _run_cache_path(src):
+    """Cache file for the x64 binary of a single-file program, or None when
+    caching is unsafe (imports and extern sources read other files). The key
+    covers the program text and every compiler source file, so a changed
+    compiler never reuses an old binary. HS_RUN_CACHE=off disables it."""
+    import re
+    import hashlib
+    if os.environ.get("HS_RUN_CACHE") == "off":
+        return None
+    if re.search(r"^\s*(import|extern)\b", src, re.M):
+        return None
+    here = os.path.dirname(os.path.abspath(__file__))
+    h = hashlib.sha256()
+    for fn in ("hs.py", "interp.py", "ir.py", "iropt.py", "irx64.py", "x64gen.py",
+               "x64.py", "gcrt.py"):
+        try:
+            with open(os.path.join(here, fn), "rb") as f:
+                h.update(fn.encode() + b"\0" + f.read())
+        except OSError:
+            return None
+    h.update(src.encode("utf-8"))
+    root = os.environ.get("HS_RUN_CACHE_DIR") or os.path.join(
+        os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache"),
+        "hs", "run")
+    return os.path.join(root, h.hexdigest()[:32])
+
+
 def _run_auto(prog, rest):
     """Default `hs run`: build with the x64 backend (no C compiler, ~0.1s).
     Returns the exit code, or None when the caller should use the slower
@@ -1655,16 +1682,29 @@ def _run_auto(prog, rest):
             src = f.read()
     except OSError:
         return None
+    cpath = _run_cache_path(src)
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, "hsxbin")
-        with _cl.redirect_stdout(_io.StringIO()), \
-                _cl.redirect_stderr(_io.StringIO()):
-            try:
-                rc = _x64.build_x64(prog, out)
-            except Exception:
-                rc = 1
-        if rc != 0:
-            return None
+        if cpath and os.path.isfile(cpath):
+            out = cpath  # same source + same compiler: reuse the built binary
+        else:
+            with _cl.redirect_stdout(_io.StringIO()), \
+                    _cl.redirect_stderr(_io.StringIO()):
+                try:
+                    rc = _x64.build_x64(prog, out)
+                except Exception:
+                    rc = 1
+            if rc != 0:
+                return None
+            if cpath:
+                try:
+                    os.makedirs(os.path.dirname(cpath), exist_ok=True)
+                    tmp = cpath + ".%d.tmp" % os.getpid()
+                    shutil.copyfile(out, tmp)
+                    os.chmod(tmp, 0o755)
+                    os.replace(tmp, cpath)
+                except OSError:
+                    pass
         sys.stdout.flush()
         errf = os.path.join(d, "stderr")
         with open(errf, "w+b") as ef:

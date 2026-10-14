@@ -223,5 +223,29 @@ with tempfile.TemporaryDirectory() as d:
           (r.returncode, r.stdout, r.stderr))
     r = subprocess.run([sys.executable, HS, "--json", "run", rp, "no"], capture_output=True, text=True)
     check("run --json: success passes output through untouched", r.returncode == 0 and r.stdout == "5\n1\n" and r.stderr == "", (r.returncode, r.stdout, r.stderr))
+
+# ---- run cache: same source + same compiler reuses the x64 binary ----
+with tempfile.TemporaryDirectory() as d:
+    cd = os.path.join(d, "cache")
+    pp = os.path.join(d, "p.hs")
+    open(pp, "w").write("print 6 * 7\n")
+    env = dict(os.environ, HS_RUN_CACHE_DIR=cd)
+    env.pop("HS_BACKEND", None)
+    r1 = subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env)
+    n1 = len(os.listdir(cd)) if os.path.isdir(cd) else 0
+    r2 = subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env)
+    n2 = len(os.listdir(cd))
+    check("run cache: first run stores one binary, second reuses it",
+          r1.stdout == r2.stdout == "42\n" and n1 == 1 and n2 == 1, (r1.stdout, r2.stdout, n1, n2))
+    open(pp, "w").write("print 6 * 8\n")
+    r3 = subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env)
+    check("run cache: a changed source is rebuilt, not served stale",
+          r3.stdout == "48\n" and len(os.listdir(cd)) == 2, (r3.stdout, os.listdir(cd)))
+    env2 = dict(env, HS_RUN_CACHE="off", HS_RUN_CACHE_DIR=os.path.join(d, "c2"))
+    subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env2)
+    check("run cache: HS_RUN_CACHE=off writes nothing", not os.path.exists(os.path.join(d, "c2")))
+    open(pp, "w").write("import math\nprint 1\n")
+    subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env)
+    check("run cache: programs with import/extern are never cached", len(os.listdir(cd)) == 2, os.listdir(cd))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
