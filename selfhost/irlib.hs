@@ -1,0 +1,437 @@
+# irlib.hs - IR text loader in holyshit: ir.parse_module without regexes.
+# parse(text) -> {"funcs": {...}, "order": [...], "entry": "<main>"}
+# (tests/test_irlib.py compares the JSON with ir.parse_module).
+DIG = "0123456789"
+IDC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789$"
+IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+
+def fail(msg, ln):
+  raise "IR: " + msg + " at line " + str(ln)
+
+def N(op, ln, kv):
+  d = {"op": op, "line": ln}
+  for k in keys(kv):
+    d[k] = kv[k]
+  return d
+
+def T(term, ln, kv):
+  d = {"term": term, "line": ln}
+  for k in keys(kv):
+    d[k] = kv[k]
+  return d
+
+def isdigits(s):
+  if len(s) == 0:
+    return false
+  for c in s:
+    if find(DIG, c) < 0:
+      return false
+  return true
+
+def startswith(s, p):
+  return len(s) >= len(p) and s[0:len(p)] == p
+
+def endswith(s, p):
+  return len(s) >= len(p) and s[len(s) - len(p):len(s)] == p
+
+def isident(s, first_only):
+  if len(s) == 0 or find(IDS, s[0]) < 0:
+    return false
+  for c in s:
+    if find(IDC, c) < 0:
+      return false
+  return true
+
+def label(s, ln):
+  if not isident(s, false):
+    fail("bad label", ln)
+  return s
+
+def temp(s, ln):
+  if len(s) < 2 or s[0] != "%" or not isdigits(s[1:len(s)]):
+    fail("bad temp", ln)
+  return s
+
+def strip_ws(s):
+  i = 0
+  j = len(s)
+  while i < j and find(" \t\r\n", s[i]) >= 0:
+    i = i + 1
+  while j > i and find(" \t\r\n", s[j - 1]) >= 0:
+    j = j - 1
+  return s[i:j]
+
+def unq(lit, ln):
+  if len(lit) < 2 or lit[0] != "\"" or lit[len(lit) - 1] != "\"":
+    fail("bad string literal", ln)
+  return json_parse(lit)
+
+def const_val(text, ln):
+  if text == "true":
+    return true
+  if text == "false":
+    return false
+  if text == "null":
+    return null
+  if text[0] == "\"":
+    return unq(text, ln)
+  t = text
+  while len(t) > 0 and (t[0] == "+" or t[0] == "-"):
+    t = t[1:len(t)]
+  if isdigits(t):
+    return int(text)
+  return float(text)
+
+def split_top(s):
+  parts = []
+  depth = 0
+  cur = ""
+  instr = false
+  i = 0
+  while i < len(s):
+    c = s[i]
+    if instr:
+      cur = cur + c
+      if c == "\\" and i + 1 < len(s):
+        cur = cur + s[i + 1]
+        i = i + 1
+      elif c == "\"":
+        instr = false
+    elif c == "\"":
+      instr = true
+      cur = cur + c
+    elif c == "[" or c == "(":
+      depth = depth + 1
+      cur = cur + c
+    elif c == "]" or c == ")":
+      depth = depth - 1
+      cur = cur + c
+    elif c == "," and depth == 0 and s[i:i + 2] == ", ":
+      append(parts, cur)
+      cur = ""
+      i = i + 1
+    else:
+      cur = cur + c
+    i = i + 1
+  if cur != "" or len(parts) > 0:
+    append(parts, cur)
+  return parts
+
+def temps(s, ln):
+  out = []
+  if s == "":
+    return out
+  for a in split_top(s):
+    append(out, temp(strip_ws(a), ln))
+  return out
+
+def optt(s, ln):
+  if s == "-":
+    return null
+  return temp(s, ln)
+
+def stype_ok(st):
+  if st == "I64" or st == "U64" or st == "Ptr" or st == "LIT":
+    return true
+  return startswith(st, "Ptr:") and isident(st[4:len(st)], false)
+
+def check_stype(st, ln):
+  if not stype_ok(st):
+    fail("bad static type", ln)
+
+def check_stype_dict(st, ln):
+  if st == "I64" or st == "U64" or st == "Ptr":
+    return 0
+  if not isident(st[0:len(st)], false) or find(st, "$") >= 0:
+    fail("bad static type", ln)
+
+def hexint(s):
+  neg = false
+  t = s
+  if t[0] == "-":
+    neg = true
+    t = t[1:len(t)]
+  elif t[0] == "+":
+    t = t[1:len(t)]
+  v = 0
+  if startswith(t, "0x") or startswith(t, "0X"):
+    for c in t[2:len(t)]:
+      v = v * 16 + find("0123456789abcdef", c) if find("0123456789abcdef", c) >= 0 else v * 16 + 10 + find("ABCDEF", c)
+  else:
+    v = int(t)
+  if neg:
+    return 0 - v
+  return v
+
+def parse_code(code, ln):
+  w = split(code)
+  if startswith(code, "jmp "):
+    return T("jmp", ln, {"to": label(code[4:len(code)], ln)})
+  if startswith(code, "br "):
+    return T("br", ln, {"cond": temp(w[1], ln), "then": label(w[2], ln), "els": label(w[3], ln)})
+  if code == "ret" or startswith(code, "ret "):
+    rest = strip_ws(code[3:len(code)])
+    v = null
+    if rest != "":
+      v = temp(rest, ln)
+    return T("ret", ln, {"val": v})
+  if code == "raise" or startswith(code, "raise "):
+    rest = strip_ws(code[5:len(code)])
+    v = null
+    if rest != "":
+      v = temp(rest, ln)
+    return T("raise", ln, {"src": v})
+  if startswith(code, "try_push "):
+    return N("try_push", ln, {"handler": label(code[9:len(code)], ln)})
+  if code == "try_pop":
+    return N("try_pop", ln, {})
+  if code == "exc_pop":
+    return N("exc_pop", ln, {})
+  if code == "reraise":
+    return N("reraise", ln, {})
+  if startswith(code, "unbind "):
+    return N("unbind", ln, {"name": code[7:len(code)]})
+  if startswith(code, "print"):
+    return N("print", ln, {"args": temps(strip_ws(code[5:len(code)]), ln)})
+  if startswith(code, "import "):
+    return N("import", ln, {"name": code[7:len(code)]})
+  if startswith(code, "setattr "):
+    return N("setattr", ln, {"obj": temp(w[1], ln), "name": w[2], "val": temp(w[3], ln)})
+  if startswith(code, "sdecl "):
+    check_stype(w[2], ln)
+    return N("sdecl", ln, {"name": w[1], "utype": w[2], "src": temp(w[3], ln)})
+  if startswith(code, "sstore "):
+    return N("sstore", ln, {"ptr": temp(w[1], ln), "val": temp(w[2], ln)})
+  if startswith(code, "sfstore "):
+    return N("sfstore", ln, {"obj": temp(w[1], ln), "name": w[2], "idx": optt(w[3], ln), "val": temp(w[4], ln)})
+  if startswith(code, "sset "):
+    return N("sset", ln, {"name": w[1], "src": temp(w[2], ln)})
+  if startswith(code, "dset "):
+    return N("dset", ln, {"name": w[1], "src": temp(w[2], ln)})
+  if startswith(code, "stvar "):
+    return N("stvar", ln, {"name": w[1], "src": temp(w[2], ln)})
+  if startswith(code, "stglobal "):
+    return N("stglobal", ln, {"name": w[1], "src": temp(w[2], ln)})
+  if startswith(code, "setindex "):
+    return N("setindex", ln, {"obj": temp(w[1], ln), "idx": temp(w[2], ln), "val": temp(w[3], ln)})
+  # "%N = rhs"
+  p = find(code, " = ")
+  if p < 2 or code[0] != "%" or not isdigits(code[1:p]):
+    fail("bad instruction", ln)
+  dest = code[0:p]
+  rhs = code[p + 3:len(code)]
+  r = split(rhs)
+  if startswith(rhs, "const "):
+    return N("const", ln, {"dest": dest, "val": const_val(rhs[6:len(rhs)], ln)})
+  if startswith(rhs, "load "):
+    return N("load", ln, {"dest": dest, "name": rhs[5:len(rhs)]})
+  if startswith(rhs, "mkfunc "):
+    return N("mkfunc", ln, {"dest": dest, "func": rhs[7:len(rhs)]})
+  if startswith(rhs, "bin "):
+    return N("bin", ln, {"dest": dest, "binop": r[1], "l": temp(r[2], ln), "r": temp(r[3], ln)})
+  if startswith(rhs, "un "):
+    return N("un", ln, {"dest": dest, "unop": r[1], "v": temp(r[2], ln)})
+  if rhs == "exc_str":
+    return N("exc_str", ln, {"dest": dest})
+  if startswith(rhs, "call "):
+    body = rhs[5:len(rhs)]
+    q = find(body, "(")
+    if q < 0 or body[len(body) - 1] != ")":
+      fail("bad call", ln)
+    return N("call", ln, {"dest": dest, "fn": temp(body[0:q], ln), "args": temps(body[q + 1:len(body) - 1], ln)})
+  if startswith(rhs, "build_list "):
+    inner = rhs[11:len(rhs)]
+    if not (startswith(inner, "[") and endswith(inner, "]")):
+      fail("bad build_list", ln)
+    return N("build_list", ln, {"dest": dest, "items": temps(inner[1:len(inner) - 1], ln)})
+  if rhs == "build_dict" or startswith(rhs, "build_dict "):
+    rest = strip_ws(rhs[10:len(rhs)])
+    pairs = []
+    if rest != "":
+      i = 0
+      while i < len(rest):
+        if rest[i] != "(":
+          fail("bad build_dict", ln)
+        j = find(rest[i:len(rest)], ")") + i
+        inner = rest[i + 1:j]
+        k = find(inner, ": ")
+        if j < i or k < 0:
+          fail("bad build_dict", ln)
+        append(pairs, [temp(inner[0:k], ln), temp(inner[k + 2:len(inner)], ln)])
+        i = j + 1
+        if i < len(rest):
+          if rest[i] != " ":
+            fail("bad build_dict", ln)
+          i = i + 1
+    return N("build_dict", ln, {"dest": dest, "pairs": pairs})
+  if startswith(rhs, "index "):
+    return N("index", ln, {"dest": dest, "obj": temp(r[1], ln), "idx": temp(r[2], ln)})
+  if startswith(rhs, "attr "):
+    return N("attr", ln, {"dest": dest, "obj": temp(r[1], ln), "name": r[2]})
+  if startswith(rhs, "slice "):
+    return N("slice", ln, {"dest": dest, "obj": temp(r[1], ln), "start": optt(r[2], ln), "stop": optt(r[3], ln)})
+  if startswith(rhs, "iterseq "):
+    return N("iterseq", ln, {"dest": dest, "src": temp(rhs[8:len(rhs)], ln)})
+  if startswith(rhs, "sconst "):
+    check_stype(r[1], ln)
+    return N("sconst", ln, {"dest": dest, "stype": r[1], "val": hexint(r[2])})
+  if startswith(rhs, "sload "):
+    return N("sload", ln, {"dest": dest, "name": rhs[6:len(rhs)]})
+  if startswith(rhs, "sbin "):
+    return N("sbin", ln, {"dest": dest, "binop": r[1], "l": temp(r[2], ln), "r": temp(r[3], ln)})
+  if startswith(rhs, "sun "):
+    return N("sun", ln, {"dest": dest, "unop": r[1], "v": temp(r[2], ln)})
+  if startswith(rhs, "scall "):
+    body = rhs[6:len(rhs)]
+    q = find(body, "(")
+    if q < 1 or body[len(body) - 1] != ")":
+      fail("bad scall", ln)
+    return N("scall", ln, {"dest": dest, "name": body[0:q], "args": temps(body[q + 1:len(body) - 1], ln)})
+  if startswith(rhs, "sderef "):
+    return N("sderef", ln, {"dest": dest, "v": temp(rhs[7:len(rhs)], ln)})
+  if startswith(rhs, "sfield "):
+    return N("sfield", ln, {"dest": dest, "obj": temp(r[1], ln), "name": r[2], "idx": optt(r[3], ln)})
+  if startswith(rhs, "box "):
+    return N("box", ln, {"dest": dest, "src": temp(rhs[4:len(rhs)], ln)})
+  if startswith(rhs, "sraw "):
+    return N("sraw", ln, {"dest": dest, "src": temp(rhs[5:len(rhs)], ln)})
+  if startswith(rhs, "snz "):
+    return N("snz", ln, {"dest": dest, "src": temp(rhs[4:len(rhs)], ln)})
+  if startswith(rhs, "svarptr "):
+    if r[1] != "as_ptr" and r[1] != "as_int":
+      fail("bad svarptr", ln)
+    return N("svarptr", ln, {"dest": dest, "conv": r[1], "var": r[2]})
+  if startswith(rhs, "sstr "):
+    return N("sstr", ln, {"dest": dest, "val": unq(rhs[5:len(rhs)], ln)})
+  if startswith(rhs, "ssizeof "):
+    st = rhs[8:len(rhs)]
+    check_stype_dict(st, ln)
+    return N("ssizeof", ln, {"dest": dest, "stype": st})
+  if startswith(rhs, "phi "):
+    rest = rhs[4:len(rhs)]
+    arms = []
+    i = 0
+    while i < len(rest):
+      if rest[i] != "[":
+        fail("bad phi", ln)
+      j = find(rest[i:len(rest)], "]") + i
+      inner = rest[i + 1:j]
+      k = find(inner, ": ")
+      if j < i or k < 0:
+        fail("bad phi", ln)
+      append(arms, [label(inner[0:k], ln), temp(inner[k + 2:len(inner)], ln)])
+      i = j + 1
+      if i < len(rest):
+        if rest[i] != " ":
+          fail("bad phi", ln)
+        i = i + 1
+    if len(arms) == 0:
+      fail("bad phi", ln)
+    return N("phi", ln, {"dest": dest, "arms": arms})
+  fail("bad instruction", ln)
+
+def disp_of(key):
+  p = -1
+  i = len(key) - 1
+  while i >= 1:
+    if key[i - 1:i + 1] == "$L":
+      p = i - 1
+      i = 0
+    i = i - 1
+  if p > 0 and isdigits(key[p + 2:len(key)]):
+    head = key[0:p]
+    j = len(head) - 1
+    while j >= 0:
+      if head[j] == ".":
+        return head[j + 1:len(head)]
+      j = j - 1
+    return head
+  return key
+
+def parse(text):
+  funcs = {}
+  order = []
+  fn = null
+  blk = null
+  rawno = 0
+  for raw in split(text, "\n"):
+    rawno = rawno + 1
+    line = raw
+    while len(line) > 0 and find(" \t\r", line[len(line) - 1]) >= 0:
+      line = line[0:len(line) - 1]
+    if line == "" or line[0] == "#":
+      continue
+    if startswith(line, "func "):
+      p = find(line, "(")
+      if p < 6 or not endswith(line, "):"):
+        fail("bad func header", 0)
+      key = line[5:p]
+      params = line[p + 1:len(line) - 2]
+      if key in funcs:
+        fail("duplicate function '" + key + "'", 0)
+      ps = []
+      if params != "":
+        ps = split(params, ", ")
+      for q in ps:
+        if not isident(q, false):
+          fail("bad param", 0)
+      fn = {"name": key, "dispname": disp_of(key), "params": ps, "blocks": [], "entry": null, "globals": []}
+      funcs[key] = fn
+      append(order, key)
+      blk = null
+      continue
+    if fn == null:
+      fail("code outside function", 0)
+    if line[0] != " " and line[0] != "\t" and line[len(line) - 1] == ":":
+      lab = line[0:len(line) - 1]
+      if not isident(lab, false):
+        fail("bad block label", 0)
+      blk = {"label": lab, "instrs": [], "term": null}
+      append(fn["blocks"], blk)
+      if fn["entry"] == null:
+        fn["entry"] = lab
+      continue
+    if blk == null:
+      fail("code outside block", 0)
+    s = strip_ws(line)
+    k = len(s) - 1
+    while k >= 0 and find(DIG, s[k]) >= 0:
+      k = k - 1
+    if k < 1 or k == len(s) - 1 or s[k] != "@" or s[k - 1] != " ":
+      fail("bad line (want `<code> @N`)", 0)
+    code = s[0:k - 1]
+    lns = int(s[k + 1:len(s)])
+    if blk["term"] != null:
+      fail("code after terminator", lns)
+    ins = parse_code(code, lns)
+    if has(ins, "term"):
+      blk["term"] = ins
+    else:
+      append(blk["instrs"], ins)
+  if not has(funcs, "<main>"):
+    fail("missing entry", 0)
+  for key in order:
+    f = funcs[key]
+    gl = []
+    for b in f["blocks"]:
+      for ins in b["instrs"]:
+        if ins["op"] == "stglobal" and not (ins["name"] in gl):
+          append(gl, ins["name"])
+    f["globals"] = sorted_strs(gl)
+  return {"funcs": funcs, "order": order, "entry": "<main>"}
+
+def sorted_strs(xs):
+  out = []
+  for x in xs:
+    i = len(out)
+    out2 = out[0:len(out)]
+    placed = false
+    out = []
+    for y in out2:
+      if not placed and x < y:
+        append(out, x)
+        placed = true
+      append(out, y)
+    if not placed:
+      append(out, x)
+  return out
