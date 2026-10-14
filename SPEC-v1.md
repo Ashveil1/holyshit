@@ -1327,3 +1327,8 @@ String length and contents are unchanged. x64 string copy/concatenation
 allocates the 16-byte object header plus payload, rounded up to 16 bytes.
 No extra spare block is required: strings are immutable and all readers use
 the stored byte length. C-string conversion keeps its separate terminator.
+
+### Formatter preservation of NUL
+The canonical spelling of an embedded NUL byte is `\0`, the string escape
+accepted by the parser. Formatting a string must preserve its contents and
+must not rewrite NUL as an unsupported Unicode escape.
