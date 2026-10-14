@@ -246,3 +246,9 @@ SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the
 Python verifier, through interp and x64. Out-of-width IR constants remain
 interp-only. This is a compiler-stage check, not a full bootstrap claim.
+
+The x64 IR path now supports direct `write_bytes(path, [Int 0..255])`.
+Validation runs before opening the file; empty data and embedded zero bytes
+are preserved. `test_write_bytes_x64.py` compares exact file bytes and
+catchable failures with interp, including invalid elements and non-list
+inputs. First-class write_bytes values remain outside the x64 subset.
