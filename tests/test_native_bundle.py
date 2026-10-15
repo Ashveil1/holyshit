@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     if r.returncode:sys.exit(1)
     original.rename(moved)
     launcher=moved/'bin/hs';compiler=moved/'bootstrap/hs-hosted-x86_64'
-    source=d/'main file.hs';module=d/'support.hs';module.write_text('value = 19\n')
+    source=d/'main file.holy';module=d/'support.holy';module.write_text('value = 19\n')
     source.write_text('import support\nprint support.value\nprint json_str([1, "ok"])\nprint argv()\nextern:\n  I64 printf(Str format, ..., I64 n)\nprintf("value=%lld\\n", 27)\n')
     expected='19\n[1, "ok"]\n[hello world, $5]\nvalue=27\n'
     # Keep PATH isolated and all sources outside both bundle and checkout.
@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     local=dict(env,HSROOT=str(moved),HSPATH=str(moved/'selfhost')+':'+str(moved/'selfhost/be'))
     stage=d/'stage2'
     if '--skip-selfcompile' not in sys.argv:
-        r=subprocess.run([str(compiler),str(moved/'selfhost/be/compile.hs'),str(stage)],env=local,capture_output=True,text=True,timeout=180)
+        r=subprocess.run([str(compiler),str(moved/'selfhost/be/compile.holy'),str(stage)],env=local,capture_output=True,text=True,timeout=180)
         check(r.returncode==0 and stage.read_bytes()==compiler.read_bytes(),'relocated compiler self-compilation')
     source.write_text('print 1 / 0\n')
     r=subprocess.run(['/bin/sh',str(launcher),'run',str(source)],env=env,capture_output=True,text=True,timeout=30)

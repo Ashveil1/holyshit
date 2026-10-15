@@ -10,12 +10,12 @@ if not qemu or not grub or not shutil.which('xorriso'):
 env=dict(os.environ,HSPATH=str(ROOT)+':'+str(ROOT/'kernel'),HSROOT=str(ROOT))
 with tempfile.TemporaryDirectory() as temp:
     d=Path(temp);tree=d/'iso';(tree/'boot/grub').mkdir(parents=True)
-    source=ROOT/'kernel/kconsole_demo.hs';image=tree/'boot/kernel.elf'
+    source=ROOT/'kernel/kconsole_demo.holy';image=tree/'boot/kernel.elf'
     subprocess.run([sys.executable,str(ROOT/'hs.py'),'xkernel',str(source),'-o',str(image)],env=env,check=True,capture_output=True,timeout=90)
     # Native hs kernel linker must produce the complete same image.
     driver=d/'compiler';native=d/'native.elf'
     local=dict(env,HSPATH=env['HSPATH']+':'+str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'))
-    subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(ROOT/'selfhost/be/kernel_ir.hs'),str(driver)],env=local,check=True,capture_output=True,timeout=240)
+    subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(ROOT/'selfhost/be/kernel_ir.holy'),str(driver)],env=local,check=True,capture_output=True,timeout=240)
     subprocess.run([str(driver),str(source),str(native)],env=local,check=True,capture_output=True,timeout=90)
     assert native.read_bytes()==image.read_bytes(),'native kernel complete image differs'
     (tree/'boot/grub/grub.cfg').write_text('set timeout=0\nset default=0\ninsmod all_video\nset gfxmode=640x480x32\nset gfxpayload=keep\nterminal_output gfxterm\nmenuentry hs {\n  multiboot2 /boot/kernel.elf\n  boot\n}\n')

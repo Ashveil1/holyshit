@@ -19,7 +19,7 @@
 
 ```sh
 python3 --version          # 3.8+ ไม่ต้อง pip install อะไรเลย
-python3 hs.py check prog.hs
+python3 hs.py check prog.holy
 python3 tests/run_all.py   # --quick ข้ายส่วนที่ต้องใช้ qemu
 ```
 
@@ -27,13 +27,13 @@ python3 tests/run_all.py   # --quick ข้ายส่วนที่ต้อ�
 
 ## กติกาเทส (สำคัญ)
 
-1. ทุก `.hs` ต้องมี `.expected` (stdout) หรือ `.fail` (บรรทัด error ที่คาด)
+1. ทุก `.holy` ต้องมี `.expected` (stdout) หรือ `.fail` (บรรทัด error ที่คาด)
 2. `interp.py` คือความจริง — ถ้า native/x64 ต่างจาก interp **ตัวที่ต่างผิด**
 3. เพิ่มเทสแล้วรัน `tests/test.py` + `tests/test_native.py` (+ `test_x64.py`
    ถ้าเป็นโค้ดที่อยู่ใน subset) — ห้ามลดจำนวนเทสเดิม
 4. แตะ builtin/error/doc -> รัน `scripts/gen_api.py` / `scripts/gen_errors.py`
    แล้ว `tests/test_docs.py` (มันจะจับ drift ให้เอง)
-5. แก้ `.hs` ภายนอก -> `python3 hs.py fmt <file> -w` ก่อน commit
+5. แก้ `.holy` ภายนอก -> `python3 hs.py fmt <file> -w` ก่อน commit
    (`--check` ไม่นับคอมเมนต์/บรรทัดว่าง เทสตรวจว่าทั้ง repo canonical แล้ว)
 6. โค้ดใน `docs/*.md` ที่อยู่ในบล็อก ```hs **ถูกรันจริง** โดยเทส ห้ามเขียนตัวอย่างที่รันไม่ผ่าน
 
@@ -52,7 +52,7 @@ fix: x64/kernel ข้าม finally เมื่อ except handler raise
 แก้ใน x64gen.ex_try: คุม handler ด้วย hs_try_push0 อีกชั้น — error ใน handler
 จะกระโดดมาที่ finally ก่อน แล้ว hs_reraise ต่อไปข้างนอก
 
-เทส: tests/x64/try.hs, kernel/ktry.hs
+เทส: tests/x64/try.holy, kernel/ktry.holy
 ```
 
 ## เพิ่ม builtin ใหม่

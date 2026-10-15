@@ -12,7 +12,7 @@ sys.path.insert(0,str(ROOT))
 from x64gen import build_xkernel
 os.environ['HSPATH']=str(ROOT)+os.pathsep+os.environ.get('HSPATH','')
 with tempfile.TemporaryDirectory() as d:
-    d=Path(d);src=str(ROOT/'kernel/kx2.hs')
+    d=Path(d);src=str(ROOT/'kernel/kx2.holy')
     with contextlib.redirect_stdout(io.StringIO()):
         assert build_xkernel(src,str(d/'default'))==0
         assert build_xkernel(src,str(d/'ir'),ir_backend=True)==0

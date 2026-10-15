@@ -11,17 +11,17 @@ Suites:
   test_ir.py     141  IR: build/verify/exec byte-identical to interp
   test_irx64.py   44  IR->x64 ELF agrees with AST-path ELF
   test_xkernel.py 291 freestanding kernel booting on QEMU
-  test_examples.py 17  every examples/*.hs still runs (interp + native)
+  test_examples.py 17  every examples/*.holy still runs (interp + native)
   test_lsp.py     25  language server over stdio
   test_docs.py    41  doc examples really run, links + api.json stay in sync
-  test_selfhost.py 808 self-hosted lexer/parser/formatter (hs) match the Python ones on every repo .hs
+  test_selfhost.py 808 self-hosted lexer/parser/formatter (hs) match the Python ones on every repo .holy
   test_run.py     45  `hs run` backend choice, fallback, overrides
-  test_asm.py      1  selfhost/asm.hs (assembler in hs) == x64.py byte for byte (17.8k instrs)
-  test_elf.py      1  selfhost/elf.hs (ELF writer in hs) == x64.py pack() byte for byte
-  test_irlib.py    1  selfhost/irlib.hs (IR loader in hs) == ir.parse_module on every lowerable repo program
-  test_gcrt.py     1  selfhost/gcrt.hs (allocator/GC emitter in hs) == gcrt.py byte for byte
+  test_asm.py      1  selfhost/asm.holy (assembler in hs) == x64.py byte for byte (17.8k instrs)
+  test_elf.py      1  selfhost/elf.holy (ELF writer in hs) == x64.py pack() byte for byte
+  test_irlib.py    1  selfhost/irlib.holy (IR loader in hs) == ir.parse_module on every lowerable repo program
+  test_gcrt.py     1  selfhost/gcrt.holy (allocator/GC emitter in hs) == gcrt.py byte for byte
   test_be.py      58  selfhost/be (irx64 + x64gen runtime translated to hs) == irx64.py images
-  test_cc.py      79  selfhost/cc.hs (compiler written in hs) emits ELFs equal to interp
+  test_cc.py      79  selfhost/cc.holy (compiler written in hs) emits ELFs equal to interp
 """
 import os
 import subprocess
@@ -92,7 +92,7 @@ SUITES = [
     ("test_compile_hs.py", "source-to-ELF compiler in hs vs Python backend"),
     ("test_be.py", "x64 backend written in hs vs irx64.py"),
     ("test_cc_holy.py", "small cc .holy bridge and self-repeat"),
-    ("test_cc.py", "compiler written in hs (selfhost/cc.hs)"),
+    ("test_cc.py", "compiler written in hs (selfhost/cc.holy)"),
 ]
 
 

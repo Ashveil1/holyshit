@@ -7,7 +7,7 @@ ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT))
 import interp,ir,irx64,x64
 passed=failed=0
-for name in ['fib.hs','t_class.hs','t_closure.hs','t_json.hs','t_exceptreturn.hs']:
+for name in ['fib.holy','t_class.holy','t_closure.holy','t_json.holy','t_exceptreturn.holy']:
     source=ROOT/'tests'/name
     interp.reset_parse_state();m=ir.build_module(interp.parse_program(source.read_text()))
     expected=irx64.GenIR(m,str(source.parent)).build_ir_image()

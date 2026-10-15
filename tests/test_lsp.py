@@ -101,7 +101,7 @@ class Client:
 with tempfile.TemporaryDirectory() as d:
     # 1. diagnostics: broken file reports the parse error line
     c = Client()
-    bad = os.path.join(d, "bad.hs")
+    bad = os.path.join(d, "bad.holy")
     with open(bad, "w") as f:
         f.write('print 1 +\n')
     uri = c.open(bad, 'print 1 +\n')
@@ -117,7 +117,7 @@ with tempfile.TemporaryDirectory() as d:
 
     # 2. clean file: no diagnostics
     c = Client()
-    good = os.path.join(d, "good.hs")
+    good = os.path.join(d, "good.holy")
     src = 'def add(a, b):\n  return a + b\n\nprint add(1, 2)\n'
     with open(good, "w") as f:
         f.write(src)
@@ -134,14 +134,14 @@ with tempfile.TemporaryDirectory() as d:
     check("hover user func", h and "def add(a, b)" in
           h["contents"]["value"], h)
     c2uri = uri
-    with open(os.path.join(d, "b2.hs"), "w") as f:
+    with open(os.path.join(d, "b2.holy"), "w") as f:
         f.write('print len("hi")\n')
     c.notify("textDocument/didOpen",
-             {"textDocument": {"uri": "file://" + os.path.join(d, "b2.hs"),
+             {"textDocument": {"uri": "file://" + os.path.join(d, "b2.holy"),
                                "languageId": "holyshit",
                                "text": 'print len("hi")\n', "version": 1}})
     h = c.request("textDocument/hover",
-                  {"textDocument": {"uri": "file://" + os.path.join(d, "b2.hs")},
+                  {"textDocument": {"uri": "file://" + os.path.join(d, "b2.holy")},
                    "position": {"line": 0, "character": 7}})
     check("hover builtin", h and "len(x)" in h["contents"]["value"], h)
 
@@ -171,9 +171,9 @@ with tempfile.TemporaryDirectory() as d:
     # 7. cross-file: mod.attr jumps into the module file
     mdir = os.path.join(d, "pkg")
     os.mkdir(mdir)
-    with open(os.path.join(mdir, "mymod.hs"), "w") as f:
+    with open(os.path.join(mdir, "mymod.holy"), "w") as f:
         f.write("def double(x):\n  return x * 2\n\nPI = 3\n")
-    main = os.path.join(mdir, "main.hs")
+    main = os.path.join(mdir, "main.holy")
     msrc = "import mymod\n\nprint mymod.double(2)\nprint mymod.PI\n"
     with open(main, "w") as f:
         f.write(msrc)
@@ -183,13 +183,13 @@ with tempfile.TemporaryDirectory() as d:
                     {"textDocument": {"uri": uri},
                      "position": {"line": 2, "character": 14}})
     check("definition cross-file",
-          loc and loc["uri"].endswith("mymod.hs")
+          loc and loc["uri"].endswith("mymod.holy")
           and loc["range"]["start"]["line"] == 0, loc)
     loc = c.request("textDocument/definition",
                     {"textDocument": {"uri": uri},
                      "position": {"line": 0, "character": 8}})
     check("definition import->file",
-          loc and loc["uri"].endswith("mymod.hs"), loc)
+          loc and loc["uri"].endswith("mymod.holy"), loc)
     c.close()
 
     # 8. module members: hover + completion after "mymod."
@@ -200,7 +200,7 @@ with tempfile.TemporaryDirectory() as d:
                    "position": {"line": 2, "character": 8}})
     check("hover mod.attr function",
           h and "def double(x)" in h["contents"]["value"]
-          and "mymod.hs" in h["contents"]["value"], h)
+          and "mymod.holy" in h["contents"]["value"], h)
     h = c.request("textDocument/hover",
                   {"textDocument": {"uri": uri},
                    "position": {"line": 3, "character": 8}})
@@ -218,7 +218,7 @@ with tempfile.TemporaryDirectory() as d:
     c = Client()
     rsrc = ("def add(a, b):\n  return a + b\n\n"
             "def twice(x):\n  return add(x, x)\n\nprint add(1, 2)\n")
-    rpath = os.path.join(mdir, "refs.hs")
+    rpath = os.path.join(mdir, "refs.holy")
     with open(rpath, "w") as f:
         f.write(rsrc)
     uri = c.open(rpath, rsrc)
@@ -228,13 +228,13 @@ with tempfile.TemporaryDirectory() as d:
                       "context": {"includeDeclaration": True}})
     lines = sorted(r["range"]["start"]["line"] for r in refs)
     check("references same file", lines == [0, 4, 6], lines)
-    # references on mymod.double: declared in mymod.hs, used in main.hs
+    # references on mymod.double: declared in mymod.holy, used in main.holy
     refs = c.request("textDocument/references",
                      {"textDocument": {"uri": uri},
                       "position": {"line": 0, "character": 5},
                       "context": {"includeDeclaration": True}})
     check("references own declaration",
-          any(r["uri"].endswith("refs.hs") and
+          any(r["uri"].endswith("refs.holy") and
               r["range"]["start"]["line"] == 0 for r in refs), refs)
     c.close()
 
@@ -245,8 +245,8 @@ with tempfile.TemporaryDirectory() as d:
                       "position": {"line": 2, "character": 8},
                       "context": {"includeDeclaration": True}})
     check("references cross file",
-          any(r["uri"].endswith("main.hs") for r in refs)
-          and any(r["uri"].endswith("mymod.hs") for r in refs), refs)
+          any(r["uri"].endswith("main.holy") for r in refs)
+          and any(r["uri"].endswith("mymod.holy") for r in refs), refs)
     c.close()
 
     # 10. document highlight: definition line + current line
@@ -280,7 +280,7 @@ with tempfile.TemporaryDirectory() as d:
     # 11b. signature help for a builtin
     c = Client()
     bsrc = "print range(10)\n"
-    bpath = os.path.join(d, "bi.hs")
+    bpath = os.path.join(d, "bi.holy")
     with open(bpath, "w") as f:
         f.write(bsrc)
     uri = c.open(bpath, bsrc)
@@ -296,12 +296,12 @@ with tempfile.TemporaryDirectory() as d:
     uri = c.open(main, msrc)
     syms = c.request("workspace/symbol", {"query": "double"})
     files = {s["location"]["uri"].split("/")[-1] for s in syms}
-    check("workspace symbol", files == {"mymod.hs"}, files)
+    check("workspace symbol", files == {"mymod.holy"}, files)
     c.close()
 
     # 13. formatting canonicalizes
     c = Client()
-    ugly = os.path.join(d, "ugly.hs")
+    ugly = os.path.join(d, "ugly.holy")
     with open(ugly, "w") as f:
         f.write("def  add( a,b ):\n    return a+b\n")
     uri = c.open(ugly, "def  add( a,b ):\n    return a+b\n")

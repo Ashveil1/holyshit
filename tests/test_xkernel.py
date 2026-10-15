@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """holyshit freestanding-x64 kernel tests: python3 tests/test_xkernel.py
-Builds kernel/*.hs with zero gcc/as/ld, boots on QEMU, checks serial.
+Builds kernel/*.holy with zero gcc/as/ld, boots on QEMU, checks serial.
 """
 import os
 import re
@@ -98,7 +98,7 @@ def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None, disk=None,
 
 with tempfile.TemporaryDirectory() as d:
     kx = os.path.join(d, "kx.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "xdemo.hs"), kx)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "xdemo.holy"), kx)
     check("xkernel build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kx, timeout=8)
@@ -106,7 +106,7 @@ with tempfile.TemporaryDirectory() as d:
             check(f"boot serial has {line!r}", line in out, out[-800:])
     # timer + keyboard + PMM
     k2 = os.path.join(d, "k2.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kx2.hs"), k2)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kx2.holy"), k2)
     check("kx2 build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(k2, timeout=6, sendkeys=[(4, "a")])
@@ -126,7 +126,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kdone", "kdone" in out, out[-800:])
     # Str / Bool / Null values on bare metal
     ks = os.path.join(d, "ks.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kxstr.hs"), ks)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kxstr.holy"), ks)
     check("kxstr build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(ks, timeout=8)
@@ -136,7 +136,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kxstr len", "4" in out and "2" in out, out[-800:])
     # List values on bare metal
     kl = os.path.join(d, "kl.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kxlist.hs"), kl)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kxlist.holy"), kl)
     check("kxlist build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kl, timeout=8)
@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory() as d:
             check(f"kxlist serial has {line!r}", line in out, out[-800:])
     # import on bare metal (module init + attr, no OS)
     ki = os.path.join(d, "ki.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kimp.hs"), ki)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kimp.holy"), ki)
     check("kimp build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(ki, timeout=8)
@@ -153,7 +153,7 @@ with tempfile.TemporaryDirectory() as d:
             check(f"kimp serial has {line!r}", line in out, out[-800:])
     # slicing + split/find/join on bare metal
     kc = os.path.join(d, "kc.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kxslice.hs"), kc)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kxslice.holy"), kc)
     check("kxslice build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kc, timeout=8)
@@ -162,7 +162,7 @@ with tempfile.TemporaryDirectory() as d:
             check(f"kxslice serial has {line!r}", line in out, out[-800:])
     # try/except/finally/raise on bare metal
     kt = os.path.join(d, "kt.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "ktry.hs"), kt)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "ktry.holy"), kt)
     check("ktry build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kt, timeout=8)
@@ -178,7 +178,7 @@ with tempfile.TemporaryDirectory() as d:
               all(i >= 0 for i in order) and order[0] < order[1], order)
     # memory introspection primitives (CR3/CR2/mb_info/mb_magic/image_end/invlpg)
     kp = os.path.join(d, "kp.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kprim.hs"), kp)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kprim.holy"), kp)
     check("kprim build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kp, timeout=8)
@@ -187,7 +187,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kprim did not fault", "EXC " not in out, out[-800:])
     # Float with no libc: SSE2 + x87 + exact decimal<->double on bigints
     kf = os.path.join(d, "kf.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kfloattest.hs"), kf)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kfloattest.holy"), kf)
     check("kfloattest build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kf, timeout=10, until=("kfloattest ok", "kfloattest fails"))
@@ -197,9 +197,9 @@ with tempfile.TemporaryDirectory() as d:
               len(re.findall(r"(?m)^ok ", out)) >= 29, out[-800:])
         check("kfloattest all assertions pass",
               "kfloattest fails" not in out, out[-800:])
-    # JSON in the freestanding build: runtime/json.hs compiled into the image
+    # JSON in the freestanding build: runtime/json.holy compiled into the image
     kj = os.path.join(d, "kj.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kjsontest.hs"), kj)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kjsontest.holy"), kj)
     check("kjsontest build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kj, timeout=12)
@@ -214,20 +214,20 @@ with tempfile.TemporaryDirectory() as d:
             check(f"kjsontest serial has {line!r}", line in out, out[-800:])
     # dynamic paging: map/unmap frames, split huge pages, use the mappings
     kpg = os.path.join(d, "kpg.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpaging.hs"), kpg)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpaging.holy"), kpg)
     check("kpaging build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kpg, timeout=8)
         check("kpaging finished", "kpaging-done" in out, out[-800:])
         check("kpaging did not fault", "EXC " not in out, out[-800:])
-        # kpaging.hs counts its own failures and prints "fails N"
+        # kpaging.holy counts its own failures and prints "fails N"
         m = re.search(r"fails (\d+)", out)
         check("kpaging all assertions pass", m and m.group(1) == "0",
               out[-800:])
         check("kpaging ran its checks", out.count("\nok ") >= 30, out[-800:])
     # real frame allocator on the bootloader's memory map
     km = os.path.join(d, "km.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpmmtest.hs"), km)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpmmtest.holy"), km)
     check("kpmmtest build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(km, timeout=10)
@@ -239,7 +239,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kpmm ran its checks", out.count("\nok ") >= 25, out[-800:])
     # kmalloc: std.heap over real frames
     kh = os.path.join(d, "kh.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kheaptest.hs"), kh)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kheaptest.holy"), kh)
     check("kheaptest build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kh, timeout=10)
@@ -250,7 +250,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kheap ran its checks", out.count("\nok ") >= 25, out[-800:])
     # address spaces: a new PML4 shares the kernel, isolates user pages
     ka = os.path.join(d, "ka.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kaddrtest.hs"), ka)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kaddrtest.holy"), ka)
     check("kaddrtest build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(ka, timeout=10)
@@ -261,7 +261,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kaddr ran its checks", out.count("\nok ") >= 20, out[-800:])
     # cooperative tasks: spawn/yield/exit/switch on bare metal
     kt = os.path.join(d, "kt.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "ktasktest.hs"), kt)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "ktasktest.holy"), kt)
     check("ktasktest build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kt, timeout=10)
@@ -278,7 +278,7 @@ with tempfile.TemporaryDirectory() as d:
               all(i >= 0 for i in exits) and exits[2] == max(exits), exits)
     # preemption: hogs that never yield are still force-switched
     kp = os.path.join(d, "kpre.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpreempt.hs"), kp)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpreempt.holy"), kp)
     check("kpreempt build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kp, timeout=15)
@@ -296,7 +296,7 @@ with tempfile.TemporaryDirectory() as d:
                        capture_output=True, text=True)
     check("mkramdisk packs", r.returncode == 0, r.stderr[-300:])
     kf = os.path.join(d, "kf.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kfstest.hs"), kf)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kfstest.holy"), kf)
     check("kfstest build clean", rc == 0)
     if rc == 0 and r.returncode == 0 and QEMU is not None:
         out = boot(kf, timeout=10, initrd=rd)
@@ -307,7 +307,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kfs ran its checks", out.count("\nok ") >= 25, out[-800:])
     # user mode: hand-built ring-3 stub exits through the syscall stub
     kr = os.path.join(d, "kr3.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kring3.hs"), kr)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kring3.holy"), kr)
     check("kring3 build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kr, timeout=10)
@@ -318,7 +318,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kring3 ran its checks", out.count("\nok ") >= 20, out[-800:])
     # user mode: sysret back to ring 3, then hlt faults with the USER rip
     kret = os.path.join(d, "kret.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kring3ret.hs"), kret)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kring3ret.holy"), kret)
     check("kring3ret build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(kret, timeout=10)
@@ -328,7 +328,7 @@ with tempfile.TemporaryDirectory() as d:
               out[-800:])
     # user mode: write() returns to ring 3, then exit() stops back in kernel
     krw = os.path.join(d, "krw.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kring3wr.hs"), krw)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kring3wr.holy"), krw)
     check("kring3wr build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(krw, timeout=10)
@@ -337,12 +337,12 @@ with tempfile.TemporaryDirectory() as d:
         check("kring3wr user output", "hello" in out, out[-800:])
         m = re.search(r"fails (\d+)", out)
         check("kring3wr all assertions pass", m and m.group(1) == "0", out[-800:])
-    # user mode: real user ELF in ring 3, syscalls served from .hs
+    # user mode: real user ELF in ring 3, syscalls served from .holy
     uu = os.path.join(d, "uuser.elf")
-    rc = build_x64(os.path.join(ROOT, "kernel", "uuser.hs"), uu)
+    rc = build_x64(os.path.join(ROOT, "kernel", "uuser.holy"), uu)
     check("uuser build clean", rc == 0)
     ku = os.path.join(d, "ku.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kusermode.hs"), ku)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kusermode.holy"), ku)
     check("kusermode build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         # 25s: binaries grew (arity checks, file runtime, names) and TCG
@@ -359,7 +359,7 @@ with tempfile.TemporaryDirectory() as d:
     # file syscalls without ring 3: sys_open/read/write/close + copy_out,
     # deterministic (no keyboard timing involved)
     kio = os.path.join(d, "kio.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kiotest.hs"), kio)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kiotest.holy"), kio)
     check("kiotest build clean", rc == 0)
     if rc == 0 and r.returncode == 0 and QEMU is not None:
         out = boot(kio, timeout=10, initrd=rd)
@@ -368,7 +368,7 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("kio all assertions pass", m and m.group(1) == "0", out[-800:])
         check("kio ran its checks", out.count("\nok ") >= 10, out[-800:])
-    # ATA driver (kernel/kata.hs) on a real IDE disk: identify + PIO
+    # ATA driver (kernel/kata.holy) on a real IDE disk: identify + PIO
     # read/write round-trip. The image is built here so the pattern
     # sector 4 (AB CD 5A repeating) and the intact neighbour byte
     # (sector 10 offset 0 = 0x5A) are exactly what katatest expects.
@@ -381,7 +381,7 @@ with tempfile.TemporaryDirectory() as d:
         img[10 * 512] = 0x5A
         f.write(img)
     ka = os.path.join(d, "kata.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "katatest.hs"), ka)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "katatest.holy"), ka)
     check("katatest build clean", rc == 0)
     if rc == 0 and QEMU is not None:
         out = boot(ka, timeout=20, disk=kdisk)
@@ -397,14 +397,14 @@ with tempfile.TemporaryDirectory() as d:
     shutil.copytree(os.path.join(ROOT, "kernel", "ramdisk"), shd)
     os.makedirs(os.path.join(shd, "bin"))
     uu = os.path.join(d, "uush.elf")
-    rc = build_x64(os.path.join(ROOT, "kernel", "uush.hs"), uu)
+    rc = build_x64(os.path.join(ROOT, "kernel", "uush.holy"), uu)
     check("uush build clean", rc == 0)
     uh = os.path.join(d, "hi.elf")
     import io as _io
     from contextlib import redirect_stderr as _rs
     _eb = _io.StringIO()
     with _rs(_eb):
-        rc = build_x64(os.path.join(ROOT, "kernel", "uuhi.hs"), uh)
+        rc = build_x64(os.path.join(ROOT, "kernel", "uuhi.holy"), uh)
     check("uuhi build clean", rc == 0, _eb.getvalue()[-600:])
     shutil.copy(uu, os.path.join(shd, "bin", "uush"))
     shutil.copy(uh, os.path.join(shd, "bin", "hi"))
@@ -413,7 +413,7 @@ with tempfile.TemporaryDirectory() as d:
                         shd, srd], capture_output=True, text=True)
     check("shell ramdisk packs", r.returncode == 0, r.stderr[-300:])
     ku = os.path.join(d, "kush.elf")
-    rc = build_xkernel(os.path.join(ROOT, "kernel", "kushtest.hs"), ku)
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kushtest.holy"), ku)
     check("kushtest build clean", rc == 0)
 
     def shkeys(lines):
@@ -540,7 +540,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kushexec all assertions pass", m and m.group(1) == "0",
               out[-800:])
     # exceptions
-    for prog, vec in (("kxexc_pf.hs", "EXC 14"), ("kxexc_de.hs", "EXC 0")):
+    for prog, vec in (("kxexc_pf.holy", "EXC 14"), ("kxexc_de.holy", "EXC 0")):
         kx = os.path.join(d, "kx.elf")
         rc = build_xkernel(os.path.join(ROOT, "kernel", prog), kx)
         check(f"{prog} build clean", rc == 0)

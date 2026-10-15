@@ -16,9 +16,9 @@ passed=failed=0
 with tempfile.TemporaryDirectory() as d:
     d=Path(d)
     with contextlib.redirect_stdout(io.StringIO()):
-        rc=build_x64(str(ROOT/'selfhost/be/kernel_hex.hs'),str(d/'compiler'))
+        rc=build_x64(str(ROOT/'selfhost/be/kernel_hex.holy'),str(d/'compiler'))
     if rc: raise SystemExit('FAIL native kernel compiler build')
-    files=sys.argv[1:] or ['kernel/kx2.hs','kernel/kheaptest.hs','kernel/kring3.hs','kernel/ksyscall.hs','kernel/kpreempt.hs','kernel/kjsontest.hs','kernel/kushtest.hs']
+    files=sys.argv[1:] or ['kernel/kx2.holy','kernel/kheaptest.holy','kernel/kring3.holy','kernel/ksyscall.holy','kernel/kpreempt.holy','kernel/kjsontest.holy','kernel/kushtest.holy']
     for name in files:
         with contextlib.redirect_stdout(io.StringIO()):
             rc=build_xkernel(str(ROOT/name),str(d/'reference'),ir_backend=False)

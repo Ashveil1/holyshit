@@ -1,31 +1,24 @@
 # Source extension transition
 
-The chosen extension is `.holy`. `.hs` remains legacy-compatible. This change
-is about source filenames, not new syntax, a new AST or renaming `hs.py`.
-GitHub naming/highlighting is a separate upstream language-recognition issue.
+Canonical tracked source filenames use `.holy`. The `.hs` suffix remains
+legacy-compatible. Parser syntax, AST, module names and `hs.py` are unchanged.
 
-## Stage one
+Reference interpreter/IR, GCC, Python x64 and hosted native import lookup try
+`.holy` then `.hs` within each directory while preserving directory priority.
+The small cc compiler has the same suffix preference within its narrower
+source-directory-only import subset. Import syntax does not include a suffix.
+A directory containing both resolves one file, never a merged module.
 
-Reference interpreter/IR, GCC compilation and LSP import lookup try `.holy`
-then `.hs` within each directory, while preserving directory priority.
-`hs test` finds both extensions. Explicit filenames already work, including
-formatter input. No tracked source is renamed yet. Native hs and x64 import
-lookup is NOT bridged in this stage; do not distribute all-.holy source to
-the existing pinned seed or claim all backends have migrated.
+Examples, benchmarks, eval reference solutions, bootstrap/runtime paths and
+editor file associations use `.holy`. Editor setups retain `.hs` as an alias.
+Test discovery checks both, and compatibility tests deliberately create legacy
+files. Example/benchmark discovery refuses to pass vacuously with no sources.
 
-## Next gates
+The source move requires a freshly source-built and audited compiler seed:
+independent Python stage zero equals the proposed seed; native generations
+repeat; moved native bundles self-compile without the checkout. Changing only
+the filename or checksum is not an audit. Full CI must pass before acceptance.
 
-- Change Python x64 + generated native resolver together. Keep regeneration
-  exact and the maintained patch forward-only without fuzz. Audit the newly
-  built native seed against Python stage zero and another native generation.
-- Prove mixed old/new imports, same-directory preference, earlier-directory
-  legacy priority, dotted modules, missing modules and native bundle movement.
-- Move sources with `git mv`, and update docs, scripts, tests and editor file
-  associations. Retain temporary old-seed source access until the new compiler
-  can build and run independently. Do not replace a seed hash without audit.
-- Run full CI and bootstrap/kernel/JIT/bundle gates for each focused PR.
-- Deprecate legacy suffix later, as a separate explicit compatibility change.
-
-Never silently load both suffixes for one module. In a directory containing
-both, `.holy` intentionally shadows `.hs`; they are not merged. A new suffix
-does not promise a GitHub language bar named after this language.
+No legacy deprecation/removal date is set. Removing `.hs` support is a later
+explicit compatibility decision. A new suffix does not itself create a
+GitHub-recognized language name, language statistics or syntax highlighting.

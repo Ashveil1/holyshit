@@ -1,4 +1,4 @@
-# for agents — เขียน `.hs` ให้เร็วและไม่พัง
+# for agents — เขียน `.holy` ให้เร็วและไม่พัง
 
 กฎฉบับเต็มอยู่ที่ `../AGENTS.md` (อ่านก่อนเขียนโค้ด) หน้านี้คือ
 ทางลัด + เครื่องมือที่ agent เรียกใช้ได้ทันที
@@ -6,9 +6,9 @@
 ## ขั้นตอนเขียนโปรแกรม (ไม่เดา)
 
 ```sh
-python3 hs.py check prog.hs    # 1. syntax + scope เร็ว (ไม่รัน)
-python3 hs.py run prog.hs      # 2. build ด้วย gcc แล้วรัน
-python3 interp.py prog.hs     # 3. พฤติกรรมอ้างอิง (ช้ากว่า แต่คือความจริง)
+python3 hs.py check prog.holy    # 1. syntax + scope เร็ว (ไม่รัน)
+python3 hs.py run prog.holy      # 2. build ด้วย gcc แล้วรัน
+python3 interp.py prog.holy     # 3. พฤติกรรมอ้างอิง (ช้ากว่า แต่คือความจริง)
 python3 tests/test.py          # 4. เทสทั้งชุด
 ```
 
@@ -16,12 +16,12 @@ python3 tests/test.py          # 4. เทสทั้งชุด
 `{"file":...,"line":...,"message":...}` บน stderr ให้แก้ตรงบรรทัด:
 
 ```sh
-python3 hs.py --json check prog.hs
+python3 hs.py --json check prog.holy
 ```
 
 ## เพิ่มเคสใหม่ในเทส
 
-เขียน `tests/<name>.hs` + `tests/<name>.expected` (stdout ที่ถูกต้อง)
+เขียน `tests/<name>.holy` + `tests/<name>.expected` (stdout ที่ถูกต้อง)
 หรือ `tests/<name>.fail` (บรรทัด error ที่คาด) ถ้าเคสนั้นควรพัง
 เพิ่ม `tests/<name>.args` / `.stdin` / `.env` ถ้าต้องการ แล้วรัน:
 
@@ -33,20 +33,20 @@ python3 tests/test_xkernel.py  # QEMU boot จริง (58)
 python3 tests/test_lsp.py      # LSP protocol (11)
 ```
 
-`.hs` ที่มี `import` ถูกข้ามใน x64 ถ้าโมดูลอยู่นอก subset — เทสจะบอก
+`.holy` ที่มี `import` ถูกข้ามใน x64 ถ้าโมดูลอยู่นอก subset — เทสจะบอก
 
 ## เครื่องมือช่วยตัวเอง (LSP แบบคำสั่งเดียว)
 
 ```sh
-python3 scripts/lsp_client.py --diag prog.hs          # error + line
-python3 scripts/lsp_client.py --symbols prog.hs       # def/ตัวแปรทั้งไฟล์
-python3 scripts/lsp_client.py --hover prog.hs 3 5     # builtin/keyword/ตัวแปร
-python3 scripts/lsp_client.py --def prog.hs 2 10      # ไปที่จุดที่นิยาม
-python3 scripts/lsp_client.py --complete prog.hs 1 4  # keyword+builtin+ชื่อในไฟล์
-python3 scripts/lsp_client.py --refs prog.hs 2 10     # ทุกจุดที่เรียก (ข้ามไฟล์)
-python3 scripts/lsp_client.py --sig prog.hs 4 9       # signature ของที่กำลังเรียก
-python3 scripts/lsp_client.py --wsym prog.hs name    # ค้นชื่อทั้งโปรเจกต์
-python3 scripts/lsp_client.py --format prog.hs --write  # เขียนกลับ canonical
+python3 scripts/lsp_client.py --diag prog.holy          # error + line
+python3 scripts/lsp_client.py --symbols prog.holy       # def/ตัวแปรทั้งไฟล์
+python3 scripts/lsp_client.py --hover prog.holy 3 5     # builtin/keyword/ตัวแปร
+python3 scripts/lsp_client.py --def prog.holy 2 10      # ไปที่จุดที่นิยาม
+python3 scripts/lsp_client.py --complete prog.holy 1 4  # keyword+builtin+ชื่อในไฟล์
+python3 scripts/lsp_client.py --refs prog.holy 2 10     # ทุกจุดที่เรียก (ข้ามไฟล์)
+python3 scripts/lsp_client.py --sig prog.holy 4 9       # signature ของที่กำลังเรียก
+python3 scripts/lsp_client.py --wsym prog.holy name    # ค้นชื่อทั้งโปรเจกต์
+python3 scripts/lsp_client.py --format prog.holy --write  # เขียนกลับ canonical
 ```
 
 (line/col เริ่มที่ 1 — human-friendly)
@@ -78,7 +78,7 @@ python3 scripts/gen_errors.py  # เขียน docs/errors.md ใหม่ (�
 
 | งาน | ทำได้ที่ |
 |---|---|
-| สคริปต์ทั่วไป / stdlib ใหม่ (`std/*.hs`) | interp + native (ทุกฟีเจอร์) |
+| สคริปต์ทั่วไป / stdlib ใหม่ (`std/*.holy`) | interp + native (ทุกฟีเจอร์) |
 | ต้องรันโดยไม่มี gcc | x64 subset (`hs.py xbuild`) |
 | kernel / OS | x64 subset + `unsafe:` + `xkernel` |
 | ต่อ C / ภาษาอื่น | `extern:` (hosted เท่านั้น) |

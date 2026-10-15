@@ -1,4 +1,4 @@
-# kernel paging — 4-level page tables in plain .hs.
+# kernel paging — 4-level page tables in plain .holy.
 #
 #   CR3 -> PML4 -> PDPT -> PD -> PT -> physical frame
 #

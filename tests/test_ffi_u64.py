@@ -10,7 +10,7 @@ with tempfile.TemporaryDirectory() as d:
     d=Path(d);c=d/'counter.c';so=d/'counter.so';exe=str(d/'program')
     c.write_text('static long long count; void take(unsigned long long n){count++;} long long seen(void){return count;}')
     subprocess.run(['gcc','-shared','-fPIC',str(c),'-o',str(so)],check=True,capture_output=True)
-    source=d/'bad.hs';source.write_text('extern from "'+str(so)+'":\n  U0 take(U64 n)\n  I64 seen()\nfor v in [-1, true, "x"]:\n  try:\n    take(v)\n  except:\n    print "rejected"\nprint seen()\ntake(0)\nprint seen()\n')
+    source=d/'bad.holy';source.write_text('extern from "'+str(so)+'":\n  U0 take(U64 n)\n  I64 seen()\nfor v in [-1, true, "x"]:\n  try:\n    take(v)\n  except:\n    print "rejected"\nprint seen()\ntake(0)\nprint seen()\n')
     env=dict(os.environ,HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'),HSROOT=str(ROOT))
     passed=0
     for backend in ['interp','native','x64','native-hs']:

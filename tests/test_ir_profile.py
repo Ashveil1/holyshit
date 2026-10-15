@@ -22,7 +22,7 @@ def execute(m,profile=None):
 src='def f(x):\n  return x\ni = 0\nwhile i < 5:\n  print f(i)\n  i = i + 1\nprint f("secret text")\nprint f(true)\n'
 m=module(src);p=ExecutionProfile();assert execute(m)==execute(m,p);passed+=1
 with tempfile.TemporaryDirectory() as d:
-    path=Path(d)/'profile.hs';path.write_text(src)
+    path=Path(d)/'profile.holy';path.write_text(src)
     reference=subprocess.run([sys.executable,str(ROOT/'interp.py'),str(path)],capture_output=True)
     assert reference.returncode==0 and reference.stderr==b'' and reference.stdout.decode()==execute(m)[0]
     passed+=1

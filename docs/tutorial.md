@@ -141,7 +141,7 @@ print std.str.trim("  hi  ")
 `std/` อยู่ในโฟลเดอร์ repo จึงต้องชี้ `HSPATH` ที่ตัว repo:
 
 ```sh
-HSPATH=/path/to/holyshit python3 interp.py prog.hs
+HSPATH=/path/to/holyshit python3 interp.py prog.holy
 ```
 
 โค้ดบล็อกนี้ถูกรันจริงในเทส (`HSPATH` ชี้ที่ repo)

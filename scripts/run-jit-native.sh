@@ -3,7 +3,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 if [ "$#" -lt 1 ]; then
-  printf '%s\n' 'usage: scripts/run-jit-native.sh program.hs [args...]' >&2
+  printf '%s\n' 'usage: scripts/run-jit-native.sh program.holy [args...]' >&2
   exit 2
 fi
 SOURCE=$1
@@ -21,7 +21,7 @@ export HSROOT="$ROOT"
 export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be${HSPATH:+:$HSPATH}"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/holyshit-jit.XXXXXXXX")
 trap 'rm -rf -- "$WORK"' EXIT HUP INT TERM
-"$ROOT/bootstrap/hs-hosted-x86_64" "$ROOT/selfhost/be/jit_run.hs" "$WORK/jit"
+"$ROOT/bootstrap/hs-hosted-x86_64" "$ROOT/selfhost/be/jit_run.holy" "$WORK/jit"
 set +e
 "$WORK/jit" "$SOURCE" "$@"
 RESULT=$?

@@ -1,4 +1,4 @@
-"""Manual fixes applied to the raw translation (be.hs) by scripts/mkbe.sh.
+"""Manual fixes applied to the raw translation (be.holy) by scripts/mkbe.sh.
 Each entry: (old, new). A missing `old` is an error so drift is noticed."""
 PATCHES = [
     ("""    lo = layout(len(asm.state()["code"]), len(asm.state()["data"]))
@@ -19,7 +19,7 @@ PATCHES = [
       order = pyrt.py_dict([[_p"""),
     ("_st.unpack(\"<Q\", pyrt.py_pack(\"<d\", v))[0]", "pyrt.py_f64bits(v)"),
     ("pyrt.py_get(_os.environ, \"HSPATH\", \"\")", "pyrt.py_hspath()"),
-    ("pyrt.py_os_path_join(pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(__file__)), \"runtime\", \"json.hs\")", "(pyrt.py_root() + \"/runtime/json.hs\")"),
+    ("pyrt.py_os_path_join(pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(__file__)), \"runtime\", \"json.holy\")", "(pyrt.py_root() + \"/runtime/json.holy\")"),
     ("(bool(arms) and pyrt.py_all(arms))", "((len(arms) > 0) and pyrt.py_all(arms))"),
     ("        self.bi_stubs[pyrt.py_key([name, n])] = (\"hsBI_\" + str(bid) + \"_\" + str(n))", "        self.bi_stubs[pyrt.py_key([name, n])] = [n, (\"hsBI_\" + str(bid) + \"_\" + str(n))]"),
     ("asm.jmp(self.bi_stubs[pyrt.py_key([name, n])])", "asm.jmp(self.bi_stubs[pyrt.py_key([name, n])][1])"),

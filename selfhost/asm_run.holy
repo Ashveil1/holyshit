@@ -1,6 +1,6 @@
-# asm_run.hs: assemble a script (one instruction per line: op arg arg ...,
+# asm_run.holy: assemble a script (one instruction per line: op arg arg ...,
 # registers and labels as words, numbers as Ints, `label NAME` defines a
-# label) with asm.hs and print the bytes as hex. tests/test_asm.py compares
+# label) with asm.holy and print the bytes as hex. tests/test_asm.py compares
 # the output with x64.py.
 import asm
 def arg(w):

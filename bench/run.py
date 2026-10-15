@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmarks: hs xbuild vs CPython on twin programs (bench/<name>.hs / .py).
+"""Benchmarks: hs xbuild vs CPython on twin programs (bench/<name>.holy / .py).
 
     python3 bench/run.py [name ...] [--timeout SEC]
 
@@ -39,14 +39,16 @@ def main(argv):
         i = argv.index("--timeout")
         timeout = int(argv[i + 1])
         del argv[i:i + 2]
-    names = argv[1:] or sorted(f[:-3] for f in os.listdir(HERE) if f.endswith(".hs"))
+    names = argv[1:] or sorted(f[:-5] for f in os.listdir(HERE) if f.endswith(".holy"))
+    if not names:
+        raise SystemExit("no canonical .holy benchmark sources found")
     print(f"CPython {sys.version.split()[0]}; timeout {timeout}s")
     print(f"{'case':10} {'cpython':>10} {'hs xbuild':>10} {'ratio':>8} {'MB py':>7} {'MB hs':>7}  output")
     bad = 0
     for n in names:
         exe = os.path.join(tempfile.mkdtemp(), n)
         b = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"), "xbuild",
-                            os.path.join(HERE, n + ".hs"), "-o", exe],
+                            os.path.join(HERE, n + ".holy"), "-o", exe],
                            capture_output=True, text=True)
         if b.returncode != 0:
             print(f"{n:10} xbuild FAILED: {b.stderr.strip()[:80]}")

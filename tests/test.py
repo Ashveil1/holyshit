@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """holyshit test runner: python3 tests/test.py
-Each test = tests/<name>.hs + tests/<name>.expected (stdout).
+Each test = tests/<name>.holy + tests/<name>.expected (stdout).
 Optional: tests/<name>.stdin (fed to stdin), tests/<name>.fail (expects
 nonzero exit; compares stderr instead of stdout).
 """
@@ -57,7 +57,7 @@ def _test_env(name):
 
 fails = 0
 total = 0
-for prog in sorted(glob.glob(os.path.join(HERE, "*.hs"))):
+for prog in sorted(glob.glob(os.path.join(HERE, "*.holy"))):
     name = os.path.splitext(os.path.basename(prog))[0]
     if name.startswith("mod_"):
         continue  # helper module, imported by other tests, never run directly

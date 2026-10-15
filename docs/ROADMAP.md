@@ -49,9 +49,9 @@ Immediate unfinished work:
 3. GC/live-heap performance and more representative benchmarks.
 4. Actual model evaluations on the 39-task suite and usability comparisons.
 
-`selfhost/cc.hs` and the M1-M5 subset bootstrap are historical groundwork,
+`selfhost/cc.holy` and the M1-M5 subset bootstrap are historical groundwork,
 not the current full hosted compiler. The current entrypoint is
-`selfhost/be/compile.hs`. Python remains the semantic/reference and
+`selfhost/be/compile.holy`. Python remains the semantic/reference and
 regeneration toolchain, not a required runtime for the native B-path.
 Each implementation stage still needs its own PR, differential regression
 and green full CI before normal merge.
@@ -68,7 +68,7 @@ and green full CI before normal merge.
 | งาน | สถานะ |
 |---|---|
 | CI (`.github/workflows/ci.yml`): quick ทุก push/PR; ทุกคืน = ชุดเต็ม + QEMU + bench | ทำแล้ว (ต้องดูผลรันแรกบน GitHub) |
-| `bench/` คู่ .hs/.py + `bench/run.py` + `docs/bench.md` baseline | ทำแล้ว |
+| `bench/` คู่ .holy/.py + `bench/run.py` + `docs/bench.md` baseline | ทำแล้ว |
 | sync เลขเวอร์ชัน/จำนวนเทสใน README/AGENTS/run_all | ทำแล้ว |
 | tag `v0.6.30` | ทำที่ commit baseline |
 | LICENSE | **ยังไม่ทำ** รอเจ้าของเลือก |
@@ -76,7 +76,7 @@ and green full CI before normal merge.
 ## เฟส 1 — จุดตายด้านความเร็ว/หน่วยความจำ (กำลังทำ)  [เป้า 1, 5]
 
 1. **hash dict บน x64 (ทำแล้ว):** dict ที่มี ≥ 8 key สร้างตาราง hash (FNV-1a, open addressing, load ≤ 0.5) ข้างอาร์เรย์คู่ key/value เดิม
-   (ลำดับ insertion คงเดิม; dict เล็กยังเป็น linear scan) — 200k insert: 117 s → 0.05 s (CPython 0.08 s); เทส `tests/dict_hash.hs` เทียบ interp
+   (ลำดับ insertion คงเดิม; dict เล็กยังเป็น linear scan) — 200k insert: 117 s → 0.05 s (CPython 0.08 s); เทส `tests/dict_hash.holy` เทียบ interp
 2. **ตัวคืนหน่วยความจำ:** free list อย่างเดียวช่วยไม่ได้เพราะไม่มีใครรู้ว่าอะไรตาย จึงต้องมี GC —
    แผน: mark-sweep แบบ conservative, รันเฉพาะ "จุดปลอดภัย" ที่ IR backend emit (หัวฟังก์ชัน/loop back-edge) เพื่อไม่ให้ helper ของ runtime
    ค้างกลางทาง, header 16 ไบต์ต่อ block + bitmap จุดเริ่ม block ต่อ arena, block ของ `unsafe` ที่ `x_alloc` ถูก pin ไม่เก็บ
@@ -88,7 +88,7 @@ and green full CI before normal merge.
 เหตุผล [เอกสาร]: SPEC §15.35/15.38: `xkernel` ยังใช้ `x64gen.build_x64_ast`; `xbuild` ใช้ IR แล้ว (v0.6.28)
 
 1. เพิ่ม lowering ของ freestanding (serial, heap, IDT, PIT, port I/O, `unsafe`) ใน `irx64.py`
-2. รัน kernel corpus (`kernel/*.hs`, 291 เคส) ผ่าน IR path เทียบกับ AST path แบบ ELF-ต่อ-ELF + QEMU
+2. รัน kernel corpus (`kernel/*.holy`, 291 เคส) ผ่าน IR path เทียบกับ AST path แบบ ELF-ต่อ-ELF + QEMU
 3. สลับ `hs.py xkernel` ไป IR; เก็บ AST path ไว้หลัง flag 1 รุ่น แล้วลบ
 4. ให้ IR path ผ่านการเดินคอร์ปัสทั้งหมดอย่างที่ v0.6.30 ทำกับ `xbuild` (หาบั๊กแบบที่เจอ 5 ข้อ)
 
@@ -113,16 +113,16 @@ and green full CI before normal merge.
 ฐานที่มีแล้ว [เอกสาร]: IR (`ir.py`) + backend x64 (`irx64.py`) + encoder (`x64.py`) ไม่ใช้ libc
 
 ออกแบบ (ข้อเสนอ **[อนุมาน]**):
-1. **JIT แบบ "compile-on-first-call" ก่อน** (method JIT ไม่มี tiering): เมื่อรัน `hs prog.hs` → parse → IR → โค้ดเครื่องลง mmap(RWX→RX) → กระโดดเข้า
+1. **JIT แบบ "compile-on-first-call" ก่อน** (method JIT ไม่มี tiering): เมื่อรัน `hs prog.holy` → parse → IR → โค้ดเครื่องลง mmap(RWX→RX) → กระโดดเข้า
    - ถ้าเขียนด้วย Python: ใช้ `ctypes`/`mmap` เรียกโค้ดที่สร้าง (พิสูจน์แนวคิดเร็ว แต่ยังต้องมี Python)
    - ถ้า self-host แล้ว: runtime เป็น native, JIT ในตัวเอง (เฟส 5)
 2. เก็บ interpreter เป็น tier ล่าง (ตรวจพฤติกรรมอ้างอิงและ fallback เมื่อเจอ feature นอก subset)
 3. **เฟสย่อย 4b:** type feedback + specialization (Int/Float/Str fast path, guard + deopt กลับ interp)
    เพราะภาษา dynamic ทั้งหมด; เริ่มจาก inline caching ของ `+ - < ==` และ index
 4. cache โค้ดที่คอมไพล์แล้ว (ไฟล์ .hsc ข้างต้นฉบับ) ลดเวลาเริ่ม — ยังเป็น "ไม่ต้องคอมไพล์เองจากมุมผู้ใช้"
-5. `hs prog.hs` เป็นคำสั่งเดียว ไม่มี `build` ให้ผู้ใช้เห็น; `build`/`xbuild` คงไว้สำหรับ AOT/ส่งมอบ binary
+5. `hs prog.holy` เป็นคำสั่งเดียว ไม่มี `build` ให้ผู้ใช้เห็น; `build`/`xbuild` คงไว้สำหรับ AOT/ส่งมอบ binary
 
-**เกณฑ์ผ่าน:** `hs prog.hs` เริ่มรันใน <50 ms สำหรับโปรแกรมเล็ก (วัดจริง), ผล stdout/stderr/rc ตรง interp ทุกไบต์
+**เกณฑ์ผ่าน:** `hs prog.holy` เริ่มรันใน <50 ms สำหรับโปรแกรมเล็ก (วัดจริง), ผล stdout/stderr/rc ตรง interp ทุกไบต์
 บนคอร์ปัสเดียวกับเฟส 2, bench ≥ `xbuild` ± 10% และดีกว่า CPython ตามเป้าเฟส 1
 
 ## เฟส 5 — Self-hosting (historical plan; native gates now implemented)  [เป้า 5]
@@ -203,12 +203,12 @@ and green full CI before normal merge.
 
 ## B-path compiler port checkpoints (2026-10-14)
 
-- S1: `asm.hs` + `elf.hs` emit the same static ELF bytes as Python.
-- S2: `irlib.hs` reads the existing textual IR interchange.
-- S3: `gcrt.hs` and `be/be.hs` emit byte-identical hosted images on the
+- S1: `asm.holy` + `elf.holy` emit the same static ELF bytes as Python.
+- S2: `irlib.holy` reads the existing textual IR interchange.
+- S3: `gcrt.holy` and `be/be.holy` emit byte-identical hosted images on the
   single-file differential corpus. Module source lowering, dynamic ELF/FFI,
   and a full compiler fixed point are not yet proved.
-- S5a: `be/irbuild.hs` lowers the canonical parser AST to the unoptimized
+- S5a: `be/irbuild.holy` lowers the canonical parser AST to the unoptimized
   flat CFG used by `ir.py`. `_n`/`_t` records, block/temp numbering, functions,
   unsafe operations, closures and finally inlining must match structurally.
   `test_irbuild.py` feeds the same canonical AST JSON to Python and hs,
@@ -219,24 +219,24 @@ and green full CI before normal merge.
   the self-hosted verifier, module loading and bootstrap are separate gates.
   This checkpoint does not claim a Python-free compiler.
 
-S5b optimizer checkpoint: `be/iropt.hs` folds and removes unused constants
+S5b optimizer checkpoint: `be/iropt.holy` folds and removes unused constants
 with whole-module structural equality to `iropt.py`, through interp and x64.
 A separate seeded boundary matrix checks arithmetic folding near the 62-bit
 limits. Multiplication is bounded before it can wrap into a false constant.
 This stage still consumes canonical IR JSON; parser normalization and the
 full compiler driver are not part of this checkpoint.
-S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
+S5 verifier checkpoint: `be/verify.holy` checks CFG labels, terminators,
 SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the
 Python verifier, through interp and x64. Out-of-width IR constants remain
 interp-only. This is a compiler-stage check, not a full bootstrap claim.
 Compiler-depth regression gate: repeated returns from an except handler
 must pop the active exception value, not the already-consumed try frame.
-`tests/t_exceptreturn.hs` exercises 300 handled returns with and without
+`tests/t_exceptreturn.holy` exercises 300 handled returns with and without
 finally. The Python IR builder and its hs translation share this cleanup
 rule; interp remains the output oracle.
 
-Native hosted-compiler checkpoint: `selfhost/be/compile_hex.hs` builds through
+Native hosted-compiler checkpoint: `selfhost/be/compile_hex.holy` builds through
 Python stage0, then the resulting native compiler builds itself. The test
 requires stage1 == stage2 == stage3 byte for byte. Output is chunked hex to
 bound memory; this driver is not a polished CLI. `test_native_compiler.py`
@@ -252,14 +252,14 @@ are preserved. `test_write_bytes_x64.py` compares exact file bytes and
 catchable failures with interp, including invalid elements and non-list
 inputs. First-class write_bytes values remain outside the x64 subset.
 
-Source-to-ELF driver checkpoint: `selfhost/be/compile.hs SOURCE OUTPUT`
+Source-to-ELF driver checkpoint: `selfhost/be/compile.holy SOURCE OUTPUT`
 connects normalized parsing, optimized IR, verification, module loading,
 JSON helper compilation and static/dynamic ELF emission. Its interp-run
 image must equal the Python backend byte for byte, including module and
 FFI programs. This is not yet a Python-free bootstrap: compiling this
 compiler to x64 and reaching a fixed point remain separate gates.
 
-S5c parser normalization: `be/normalize.hs` applies default-argument filling,
+S5c parser normalization: `be/normalize.holy` applies default-argument filling,
 range-step lowering and prelude injection after `parselib.parse`. Prelude
 source is copied from the reference as data by `scripts/mkprelude.py`.
 `test_normalize.py` compares the full normalized AST; `test_pipeline.py`
@@ -269,10 +269,10 @@ gate, and out-of-width ASTs are interp-only. Modules are lowered individually
 here; linking their imports belongs to the compiler-driver stage.
 Compiler-depth regression gate: repeated returns from an except handler
 must pop the active exception value, not the already-consumed try frame.
-`tests/t_exceptreturn.hs` exercises 300 handled returns with and without
+`tests/t_exceptreturn.holy` exercises 300 handled returns with and without
 finally. The Python IR builder and its hs translation share this cleanup
 rule; interp remains the output oracle.
-S5 verifier checkpoint: `be/verify.hs` checks CFG labels, terminators,
+S5 verifier checkpoint: `be/verify.holy` checks CFG labels, terminators,
 SSA definitions, dominance, phi predecessors and instruction uses. Valid
 corpus modules and deliberately malformed modules are checked against the
 Python verifier, through interp and x64. Out-of-width IR constants remain
@@ -308,14 +308,14 @@ The t_load64 exclusion is removed; boundary cases and the two-generation
 compiler fixed point remain required tests. This does not claim kernel
 self-hosting or change safe integer overflow behavior.
 ### S7a boot assembler
-`selfhost/asm32.hs` supplies the 32-bit instruction/fixup layer used by the
+`selfhost/asm32.holy` supplies the 32-bit instruction/fixup layer used by the
 multiboot-to-long-mode stub. `tests/test_asm32.py` checks all instruction
 forms, register pairs, immediate boundaries and symbolic fixes byte for
 byte against `x64.Asm32`, through both interp and compiled x64. This is a
 kernel-bootstrap component only, not a native kernel compiler claim.
 
 ### S7b multiboot linker
-`selfhost/klink.hs` lays out ELF32 headers, multiboot headers, boot32 code,
+`selfhost/klink.holy` lays out ELF32 headers, multiboot headers, boot32 code,
 GDT/TSS, long-mode payload, IRQ gates, page tables and stack patches. Its
 inputs are the payload assembler state and stack-patch offset. The test
 captures real AST-backend payloads before the Python linker mutates them,
@@ -325,7 +325,7 @@ and user-shell kernels. This proves linking only: source-to-kernel native
 compilation and the kernel IR migration remain separate gates.
 
 ### S7c native kernel compiler prototype
-`selfhost/be/kernel_hex.hs` uses the maintained AST kernel backend and hs
+`selfhost/be/kernel_hex.holy` uses the maintained AST kernel backend and hs
 multiboot linker. Seven complete kernel ELF images match the reference:
 basic runtime, heap, ring3, syscall, preemption, JSON and user shell.
 Port fixes cover Scope identity, module parsing, global names, assembler
@@ -353,7 +353,7 @@ AST explicitly: the native kernel driver has not migrated to IR yet.
 This default switch does not claim native IR kernel self-hosting.
 
 ### S8 native IR kernel compiler
-`selfhost/be/kernel_ir_hex.hs` lowers source through the hs IR builder,
+`selfhost/be/kernel_ir_hex.holy` lowers source through the hs IR builder,
 verifier, IR machine-code backend and multiboot linker. Complete kernel
 ELF images must match the Python IR backend byte for byte. The gate covers
 heap, ring3, syscalls, preemption, JSON, shell, VFS/file I/O, ATA, floats
@@ -363,7 +363,7 @@ and runtime allocation of literal strings/floats. Hosted compiler
 self-compilation and source-audited pinned seed gates still apply.
 
 ### S9 Python-free kernel command
-`scripts/build-kernel-native.sh source.hs kernel.elf` builds the hs IR kernel
+`scripts/build-kernel-native.sh source.holy kernel.elf` builds the hs IR kernel
 driver with the audited seed and runs it. Integration gates compare complete
 ELFs with the Python IR oracle under a PATH without Python/gcc and verify
 that a compile failure leaves an existing output unchanged. This packages

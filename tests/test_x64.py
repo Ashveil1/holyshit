@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """holyshit x86-64 backend tests: python3 tests/test_x64.py
-Builds each tests/x64/<name>.hs to a static ELF (no gcc) and checks output.
+Builds each tests/x64/<name>.holy to a static ELF (no gcc) and checks output.
 Same .expected/.fail convention as test.py.
 """
 import glob
@@ -38,14 +38,14 @@ from contextlib import redirect_stderr, redirect_stdout
 
 fails = 0
 total = 0
-# file.hs uses a fixed scratch file: start clean for determinism.
+# file.holy uses a fixed scratch file: start clean for determinism.
 try:
     import os as _os
     _os.remove("/tmp/opencode/hs_x64file_a.txt")
 except OSError:
     pass
 with tempfile.TemporaryDirectory() as d:
-    for prog in sorted(glob.glob(os.path.join(HERE, "x64", "*.hs"))):
+    for prog in sorted(glob.glob(os.path.join(HERE, "x64", "*.holy"))):
         name = os.path.splitext(os.path.basename(prog))[0]
         if name.startswith("mod_"):
             continue  # import helpers, built via their importers
@@ -158,7 +158,7 @@ else:
     print("ok   hs.py dispatch: every subcommand has a branch")
 
 with tempfile.TemporaryDirectory() as _d:
-    _src2 = os.path.join(_d, "cli.hs")
+    _src2 = os.path.join(_d, "cli.holy")
     with open(_src2, "w", encoding="utf-8") as _f:
         _f.write("unsafe:\n  I64 x = 6\n  print x * 7\n")
     _elf = os.path.join(_d, "cli.elf")
@@ -174,7 +174,7 @@ with tempfile.TemporaryDirectory() as _d:
     else:
         print("ok   hs.py xkernel CLI builds a freestanding ELF")
 
-# ---------- the whole tests/*.hs corpus through the IR path ----------
+# ---------- the whole tests/*.holy corpus through the IR path ----------
 # tests/x64/ only covers the x64-specific features; this pass builds every
 # program the interpreter suite runs and diffs its real output against
 # interp.py, so a regression anywhere in the language shows up here and not
@@ -224,7 +224,7 @@ nskip = 0
 nknown = 0
 with tempfile.TemporaryDirectory() as _d:
     _out = os.path.join(_d, "corpus")
-    for prog in sorted(glob.glob(os.path.join(HERE, "*.hs"))):
+    for prog in sorted(glob.glob(os.path.join(HERE, "*.holy"))):
         name = os.path.splitext(os.path.basename(prog))[0]
         if name.startswith("mod_"):
             continue
@@ -311,7 +311,7 @@ print(f"corpus known x64 divergences: {nknown}")
 total += 1
 import subprocess as _sp
 with tempfile.TemporaryDirectory() as _d:
-    _src = os.path.join(_d, "p.hs")
+    _src = os.path.join(_d, "p.holy")
     with open(_src, "w") as _f:
         _f.write('print "hi", len(argv())\n')
     _bin = os.path.join(_d, "bin")
@@ -332,7 +332,7 @@ with tempfile.TemporaryDirectory() as _d:
 total += 1
 with tempfile.TemporaryDirectory() as _d:
     _exe = os.path.join(_d, "alloc_bench")
-    _rc = build_x64(os.path.join(ROOT, "bench", "alloc.hs"), _exe)
+    _rc = build_x64(os.path.join(ROOT, "bench", "alloc.holy"), _exe)
     if _rc != 0:
         print("FAIL gc bound: build failed")
         fails += 1

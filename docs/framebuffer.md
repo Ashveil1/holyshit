@@ -18,7 +18,7 @@ and xorriso are external packaging dependencies. Do not write the ISO over a
 real disk. Real-machine boot, UEFI and hardware compatibility are untested.
 The demo stays in a busy loop after drawing; it has no power-management path.
 
-`kernel/kframebuffer.hs` offers `descriptor()`, `map(frame)`, `pixel(...)` and
+`kernel/kframebuffer.holy` offers `descriptor()`, `map(frame)`, `pixel(...)` and
 `rect(...)`. Descriptors come only from validated boot data; do not mutate
 or fabricate them. Current supported modes have24/32bpp, distinct byte-aligned
 8-bit RGB channels, dimensions at most4096, buffer size at most64MiB, and a

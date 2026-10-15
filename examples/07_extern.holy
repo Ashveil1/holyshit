@@ -1,5 +1,5 @@
 # tour 07: ต่อ C / ไลบรารีภาษาอื่นผ่าน C ABI
-# รัน: python3 interp.py examples/07_extern.hs   (หรือ hs.py build)
+# รัน: python3 interp.py examples/07_extern.holy   (หรือ hs.py build)
 #
 # extern เรียกอะไรก็ได้ที่พูด C ABI: libc, .so ของภาษาอื่น, หรือไฟล์ .c
 # ที่คอมไพล์เข้ามาด้วย ไม่มี implicit conversion — แปลงเองทุกครั้ง

@@ -23,6 +23,7 @@
           "hs"
         ],
         "extensions": [
+          ".holy",
           ".hs"
         ],
         "configuration": "./language-configuration.json"

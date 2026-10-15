@@ -22,7 +22,7 @@ for arg in ['""','"ab"','true','1','[]']:
     lines+=['try:',f'  std.lineedit.feed(s, {arg})','except:','  print "rejected"','print json_str(s)'];want+='rejected\n'+json.dumps([text,submitted,7],separators=(', ', ': '))+'\n'
 env=dict(os.environ,HSPATH=str(ROOT),HSROOT=str(ROOT));passed=failed=0
 with tempfile.TemporaryDirectory() as temp:
-    d=Path(temp);source=d/'line.hs';source.write_text('\n'.join(lines)+'\n')
+    d=Path(temp);source=d/'line.holy';source.write_text('\n'.join(lines)+'\n')
     for backend in ['interp','native','x64','native-hs']:
         if backend=='native-hs':
             exe=d/'program';r=subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(source),str(exe)],env=env,capture_output=True,text=True,timeout=90)

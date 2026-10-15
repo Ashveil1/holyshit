@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """holyshit native backend (เฟส 3a) — AST (from interp.py) -> C -> gcc binary.
 usage:
-  python3 hs.py build prog.hs [-o prog]   # compile to native binary
-  python3 hs.py run prog.hs               # build to temp + execute (JIT-like)
+  python3 hs.py build prog.holy [-o prog]   # compile to native binary
+  python3 hs.py run prog.holy               # build to temp + execute (JIT-like)
 notes:
   - nested functions are lifted; capturing enclosing locals is a compile error
     (use `global`). Shadowing a builtin at module level is a compile error too.
@@ -1748,7 +1748,7 @@ def build(prog_path, out_path, as_json=False):
         code = gen.build()
     except HSErr as e:
         return fail(e.msg, e.line)
-    c_path = out_path + ".hs.c"
+    c_path = out_path + ".holy.c"
     with open(c_path, "w", encoding="utf-8") as f:
         f.write(code)
     # collect ffi link inputs from all extern decls
@@ -1807,7 +1807,7 @@ def _test_files(paths):
 
 def cmd_test(paths, as_json):
     """hs test FILE|DIR...: run every top-level `def test_*()` of each file
-    (a directory means its test_*.hs / t_*.hs files). A test passes when it
+    (a directory means its test_*.holy / t_*.holy files). A test passes when it
     returns; it fails when it raises (assert, raise, runtime error). Files
     run on the interpreter; their top-level code runs too. Exit 1 on any
     failure. --json prints one machine-readable object."""
@@ -1836,7 +1836,7 @@ def cmd_test(paths, as_json):
                     "  _hs_fail = _hs_fail + 1",
                     f'  print "@@hs-test FAIL {nm} " + _hs_e']
         tmp = os.path.join(os.path.dirname(os.path.abspath(path)),
-                           f"_hs_test_tmp_{os.getpid()}.hs")
+                           f"_hs_test_tmp_{os.getpid()}.holy")
         try:
             with open(tmp, "w", encoding="utf-8") as f:
                 f.write("\n".join(drv) + "\n")
@@ -1881,13 +1881,13 @@ def cmd_test(paths, as_json):
 
 
 def _cc_selfhost_elf():
-    """Path of the self-hosted compiler ELF (selfhost/cc.hs compiled by itself
+    """Path of the self-hosted compiler ELF (selfhost/cc.holy compiled by itself
     through the interpreter once, then cached by source hash)."""
     import hashlib
     here = os.path.dirname(os.path.abspath(__file__))
     sh = os.path.join(here, "selfhost")
     h = hashlib.sha1()
-    for nm in ("cc.hs", "asm.hs", "parselib.hs", "lexlib.hs"):
+    for nm in ("cc.holy", "asm.holy", "parselib.holy", "lexlib.holy"):
         with open(os.path.join(sh, nm), "rb") as f:
             h.update(f.read())
     root = os.environ.get("HS_CC_CACHE") or os.path.join(
@@ -1897,8 +1897,8 @@ def _cc_selfhost_elf():
     if not os.path.exists(elf):
         tmp = elf + f".tmp{os.getpid()}"
         r = subprocess.run([sys.executable, os.path.join(here, "hs.py"), "run",
-                            os.path.join(sh, "cc.hs"), "--backend", "interp",
-                            os.path.join(sh, "cc.hs"), tmp],
+                            os.path.join(sh, "cc.holy"), "--backend", "interp",
+                            os.path.join(sh, "cc.holy"), tmp],
                            capture_output=True, text=True)
         if r.returncode != 0 or not os.path.exists(tmp):
             print("error: cannot build the self-hosted compiler:\n"
@@ -1983,8 +1983,8 @@ def cmd_explain(msg, as_json):
 
 
 def cmd_cc(path, out):
-    """hs cc prog.hs [-o out]: compile with the compiler written in hs
-    (selfhost/cc.hs, its own ELF). Only the cc subset: Int/Bool/Str/List/Dict,
+    """hs cc prog.holy [-o out]: compile with the compiler written in hs
+    (selfhost/cc.holy, its own ELF). Only the cc subset: Int/Bool/Str/List/Dict,
     functions, modules, try/except; no Float/class/FFI (those error out)."""
     elf = _cc_selfhost_elf()
     if elf is None:
@@ -2015,12 +2015,12 @@ def main(argv):
         return cmd_explain(" ".join(a for a in argv[2:] if a != "--json"), as_json)
     if len(argv) < 3 or argv[1] not in ("build", "run", "check", "fmt",
                                      "xbuild", "xrun", "xkernel", "ir", "test", "cc"):
-        print("usage: hs.py [--json] build prog.hs [-o prog] | hs.py run prog.hs [args...] "
-              "| hs.py check prog.hs | hs.py fmt prog.hs [-w|--check] "
+        print("usage: hs.py [--json] build prog.holy [-o prog] | hs.py run prog.holy [args...] "
+              "| hs.py check prog.holy | hs.py fmt prog.holy [-w|--check] "
               "| hs.py test file|dir... | hs.py repl "
-              "| hs.py xbuild prog.hs [-o prog] | hs.py xrun prog.hs "
-              "| hs.py xkernel prog.hs -o kernel.elf | hs.py ir prog.hs | hs.py explain \"<error message>\" | hs.py lsp "
-              "| hs.py cc prog.hs [-o prog]",
+              "| hs.py xbuild prog.holy [-o prog] | hs.py xrun prog.holy "
+              "| hs.py xkernel prog.holy -o kernel.elf | hs.py ir prog.holy | hs.py explain \"<error message>\" | hs.py lsp "
+              "| hs.py cc prog.holy [-o prog]",
               file=sys.stderr)
         return 2
     if argv[1] == "cc":
@@ -2036,7 +2036,7 @@ def main(argv):
         check = "--check" in argv
         files = [a for a in argv[2:] if not a.startswith("-")]
         if not files:
-            print("usage: hs.py fmt prog.hs [-w|--check]", file=sys.stderr)
+            print("usage: hs.py fmt prog.holy [-w|--check]", file=sys.stderr)
             return 2
         rc = 0
         for path in files:

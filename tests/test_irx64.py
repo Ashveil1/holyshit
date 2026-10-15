@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """holyshit IR->x64 differential tests: python3 tests/test_irx64.py
 
-Builds each tests/<name>.hs twice — once through the legacy AST-direct
+Builds each tests/<name>.holy twice — once through the legacy AST-direct
 backend (build_x64_ast, reference) and once through irx64 (IR path) —
 and requires the two static ELFs to agree byte-for-byte on stdout,
 stderr and exit code. (Since the Task 4 switchover, build_x64 itself
@@ -91,7 +91,7 @@ fails = 0
 total = 0
 nskipped = []
 with tempfile.TemporaryDirectory() as d:
-    for prog in sorted(glob.glob(os.path.join(HERE, "*.hs"))):
+    for prog in sorted(glob.glob(os.path.join(HERE, "*.holy"))):
         name = os.path.splitext(os.path.basename(prog))[0]
         if name.startswith("mod_"):
             continue
@@ -194,7 +194,7 @@ with tempfile.TemporaryDirectory() as d:
             work = os.path.join(d, f"{name}_{tag}")
             os.mkdir(work)
             src = template.replace("P", '"' + work + '"')
-            prog = os.path.join(d, f"{name}_{tag}.hs")
+            prog = os.path.join(d, f"{name}_{tag}.holy")
             with open(prog, "w") as f:
                 f.write(src)
             old_env = dict(os.environ)

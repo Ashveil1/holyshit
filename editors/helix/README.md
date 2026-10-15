@@ -11,7 +11,7 @@ args = ["/path/to/holyshit/lsp.py"]
 [[language]]
 name = "holyshit"
 scope = "source.holyshit"
-file-types = ["hs"]
+file-types = ["holy", "hs"]
 comment-token = "#"
 indent = { increment = "  " }
 language-servers = ["holyshit"]
@@ -27,5 +27,5 @@ goto (`gd`), format (`=` ถ้าเซิร์ฟเวอร์รองร�
 [[grammar]]
 name = "holyshit"
 source = { path = "/path/to/holyshit/editors/tree-sitter-holyshit" }
-file-types = ["hs"]
+file-types = ["holy", "hs"]
 ```

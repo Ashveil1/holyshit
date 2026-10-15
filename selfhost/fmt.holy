@@ -1,5 +1,5 @@
-# Self-hosted formatter: prints the canonical form of a .hs file, exactly like
-# `python3 hs.py fmt FILE` (fmt.py). Uses selfhost/parselib.hs for the AST.
+# Self-hosted formatter: prints the canonical form of a .holy file, exactly like
+# `python3 hs.py fmt FILE` (fmt.py). Uses selfhost/parselib.holy for the AST.
 import parselib
 
 BIN_PREC = {"or": 1, "and": 2, "==": 3, "!=": 3, "<": 3, ">": 3, "<=": 3, ">=": 3, "+": 4, "-": 4, "*": 5, "/": 5, "%": 5, "<<": 6, ">>": 6, "&": 6, "|": 6, "^": 6}

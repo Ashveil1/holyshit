@@ -44,7 +44,7 @@ def probe(g,mod):
     a.mov_ri32('rax',10);a.call('x_putc');a.call('k_halt')
 
 with tempfile.TemporaryDirectory() as d:
-    d=Path(d);source=d/'probe.hs';source.write_text('print "unused"\n')
+    d=Path(d);source=d/'probe.holy';source.write_text('print "unused"\n')
     Gen.emit_longmode_tail=probe
     try:
         with contextlib.redirect_stdout(io.StringIO()):

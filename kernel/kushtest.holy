@@ -1,5 +1,5 @@
 # shell session end to end: ramdisk mounted, shell ELF loaded from VFS,
-# commands typed over QEMU's sendkeys, file syscalls served from .hs.
+# commands typed over QEMU's sendkeys, file syscalls served from .holy.
 # Ends with the shell's own `exit` (no run: that path gets its own boot).
 import kmb
 import kpmm

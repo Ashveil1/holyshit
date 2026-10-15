@@ -25,7 +25,7 @@ if not driver.is_file():p.error('driver does not exist')
 env=dict(os.environ,HSROOT=str(ROOT),HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'))
 with tempfile.TemporaryDirectory() as d:
     for name in ['fib','loop','dict','alloc','strings']:
-        source=ROOT/'bench'/f'{name}.hs';exe=str(Path(d)/name)
+        source=ROOT/'bench'/f'{name}.holy';exe=str(Path(d)/name)
         # Untimed setup uses the audited native hs compiler, not Python.
         subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(source),exe],env=env,check=True,timeout=a.timeout,capture_output=True)
         samples={'aot':[],'jit':[]};expected=None

@@ -24,12 +24,12 @@ with tempfile.TemporaryDirectory() as d:
     os.environ['HSPATH']=env['HSPATH']
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            rc=build_x64(str(ROOT/'selfhost/be/compile_hex.hs'),exe)
+            rc=build_x64(str(ROOT/'selfhost/be/compile_hex.holy'),exe)
     finally:
         if old is None:os.environ.pop('HSPATH',None)
         else:os.environ['HSPATH']=old
     if rc:raise SystemExit('FAIL native compiler build')
-    for f in sorted(glob.glob(str(ROOT/'tests/*.hs'))):
+    for f in sorted(glob.glob(str(ROOT/'tests/*.holy'))):
         if sys.argv[1:] and Path(f).name not in sys.argv[1:]:continue
         try:
             interp.reset_parse_state()
@@ -47,7 +47,7 @@ with tempfile.TemporaryDirectory() as d:
     for word in words:
         for literal in [str(word), hex(word), "0X"+format(word,"X"), "-"+hex(word)]:
             source_text = "unsafe:\n  U64 v = "+literal+"\n  print v\n"
-            f = str(Path(d)/"word.hs")
+            f = str(Path(d)/"word.holy")
             Path(f).write_text(source_text)
             interp.reset_parse_state()
             want = irx64.GenIR(ir.build_module(interp.parse_program(source_text)),d).build_ir_image().hex()
@@ -56,7 +56,7 @@ with tempfile.TemporaryDirectory() as d:
             passed += int(ok); failed += int(not ok)
             if not ok: print("FAIL unsafe literal",literal,r.stderr[-180:])
     # Native compiler builds itself, then the resulting compiler repeats it.
-    source = str(ROOT/'selfhost/be/compile_hex.hs')
+    source = str(ROOT/'selfhost/be/compile_hex.holy')
     previous = Path(exe).read_bytes()
     for generation in [2, 3]:
         outpath = Path(d)/f'stage{generation}.hex'
@@ -83,17 +83,17 @@ with tempfile.TemporaryDirectory() as d:
     os.environ['HSPATH'] = env['HSPATH']
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            rc = build_x64(str(ROOT/'selfhost/be/compile.hs'), binary_exe)
+            rc = build_x64(str(ROOT/'selfhost/be/compile.holy'), binary_exe)
     finally:
         if old is None:os.environ.pop('HSPATH',None)
         else:os.environ['HSPATH']=old
     target = str(Path(d)/'fib')
-    result = subprocess.run([binary_exe,str(ROOT/'tests/fib.hs'),target],env=env,
+    result = subprocess.run([binary_exe,str(ROOT/'tests/fib.holy'),target],env=env,
         capture_output=True,text=True,timeout=120) if not rc else None
     ok = result is not None and result.returncode == 0 and Path(target).exists()
     if ok:
         interp.reset_parse_state()
-        expected = irx64.GenIR(ir.build_module(interp.parse_program((ROOT/'tests/fib.hs').read_text())),str(ROOT/'tests')).build_ir_image()
+        expected = irx64.GenIR(ir.build_module(interp.parse_program((ROOT/'tests/fib.holy').read_text())),str(ROOT/'tests')).build_ir_image()
         ok = Path(target).read_bytes() == expected
     passed += int(ok)
     failed += int(not ok)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Self-hosted lexer (selfhost/lex.hs) must match interp's lexer on every
-.hs file in the repo, run both by interp and by the x64 build (no gcc)."""
+"""Self-hosted lexer (selfhost/lex.holy) must match interp's lexer on every
+.holy file in the repo, run both by interp and by the x64 build (no gcc)."""
 import glob
 import os
 import subprocess
@@ -13,7 +13,7 @@ from x64gen import build_x64  # noqa: E402
 
 files = []
 for d in ("tests", "tests/x64", "examples", "std", "kernel", "selfhost", "bench"):
-    files += sorted(glob.glob(os.path.join(ROOT, d, "*.hs")))
+    files += sorted(glob.glob(os.path.join(ROOT, d, "*.holy")))
 total = fails = 0
 
 
@@ -27,15 +27,15 @@ with tempfile.TemporaryDirectory() as d:
     import io
     import contextlib
     with contextlib.redirect_stdout(io.StringIO()):
-        rc = build_x64(os.path.join(ROOT, "selfhost", "lex.hs"), exe)
+        rc = build_x64(os.path.join(ROOT, "selfhost", "lex.holy"), exe)
     if rc != 0:
-        print("FAIL build selfhost/lex.hs with xbuild")
+        print("FAIL build selfhost/lex.holy with xbuild")
         sys.exit(1)
     for f in files:
         want, wrc = run([sys.executable, os.path.join(ROOT, "selfhost", "dump_lex.py"), f])
         rel = os.path.relpath(f, ROOT)
         for how, cmd in (("interp", [sys.executable, os.path.join(ROOT, "interp.py"),
-                                     os.path.join(ROOT, "selfhost", "lex.hs"), f]),
+                                     os.path.join(ROOT, "selfhost", "lex.holy"), f]),
                          ("x64", [exe, f])):
             total += 1
             got, grc = run(cmd)
@@ -52,14 +52,14 @@ with tempfile.TemporaryDirectory() as d:
                 else:
                     print(f"  length differs: got {len(gl)} want {len(wl)}")
 
-# ---- parser: selfhost/parse.hs vs interp.parse_program (JSON), x64 build ----
+# ---- parser: selfhost/parse.holy vs interp.parse_program (JSON), x64 build ----
 nskip = 0
 with tempfile.TemporaryDirectory() as d:
     exe = os.path.join(d, "parsehs")
     with contextlib.redirect_stdout(io.StringIO()):
-        rc = build_x64(os.path.join(ROOT, "selfhost", "parse.hs"), exe)
+        rc = build_x64(os.path.join(ROOT, "selfhost", "parse.holy"), exe)
     if rc != 0:
-        print("FAIL build selfhost/parse.hs with xbuild")
+        print("FAIL build selfhost/parse.holy with xbuild")
         sys.exit(1)
     for f in files:
         rel = os.path.relpath(f, ROOT)
@@ -78,7 +78,7 @@ with tempfile.TemporaryDirectory() as d:
             # x64 Int is 62-bit: literals above 2^61 cannot be represented.
             # Those files are checked against the 64-bit interp run instead.
             r = subprocess.run([sys.executable, os.path.join(ROOT, "interp.py"),
-                                os.path.join(ROOT, "selfhost", "parse.hs"), f],
+                                os.path.join(ROOT, "selfhost", "parse.holy"), f],
                                capture_output=True, text=True, errors="replace")
             how = "interp (x64 Int is 62-bit)"
         if r.stdout.rstrip("\n") == want.rstrip("\n") and \
@@ -94,13 +94,13 @@ with tempfile.TemporaryDirectory() as d:
             print(f"                      want {w[max(0, k - 60):k + 60]!r}")
 print(f"parser: {nskip} files skipped (unsupported construct)")
 
-# ---- formatter: selfhost/fmt.hs vs fmt.py, x64 build ----
+# ---- formatter: selfhost/fmt.holy vs fmt.py, x64 build ----
 with tempfile.TemporaryDirectory() as d:
     exe = os.path.join(d, "fmths")
     with contextlib.redirect_stdout(io.StringIO()):
-        rc = build_x64(os.path.join(ROOT, "selfhost", "fmt.hs"), exe)
+        rc = build_x64(os.path.join(ROOT, "selfhost", "fmt.holy"), exe)
     if rc != 0:
-        print("FAIL build selfhost/fmt.hs with xbuild")
+        print("FAIL build selfhost/fmt.holy with xbuild")
         sys.exit(1)
     for f in files:
         rel = os.path.relpath(f, ROOT)
@@ -112,7 +112,7 @@ with tempfile.TemporaryDirectory() as d:
         if r.stdout.rstrip("\n") != want.rstrip("\n") and "0x" in open(
                 f, encoding="utf-8", errors="replace").read():
             r = subprocess.run([sys.executable, os.path.join(ROOT, "interp.py"),
-                                os.path.join(ROOT, "selfhost", "fmt.hs"), f],
+                                os.path.join(ROOT, "selfhost", "fmt.holy"), f],
                                capture_output=True, text=True, errors="replace")
             how = "interp (x64 Int is 62-bit)"
         total += 1

@@ -39,18 +39,18 @@ Helix/Zed: ชี้ language server มาที่คำสั่งเดี�
 `scripts/lsp_client.py` เปิด server ชั่วคราวต่อหนึ่งคำสั่ง:
 
 ```sh
-python3 scripts/lsp_client.py --diag prog.hs
-python3 scripts/lsp_client.py --hover prog.hs 3 5     # line/col เริ่มที่ 1
-python3 scripts/lsp_client.py --complete prog.hs 1 4
-python3 scripts/lsp_client.py --def prog.hs 2 10
-python3 scripts/lsp_client.py --refs prog.hs 2 10     # references ทั้งโปรเจกต์
-python3 scripts/lsp_client.py --highlight prog.hs 2 10
-python3 scripts/lsp_client.py --sig prog.hs 4 9       # signature help
-python3 scripts/lsp_client.py --wsym prog.hs double   # workspace symbols
-python3 scripts/lsp_client.py --symbols prog.hs
-python3 scripts/lsp_client.py --format prog.hs [--write]
+python3 scripts/lsp_client.py --diag prog.holy
+python3 scripts/lsp_client.py --hover prog.holy 3 5     # line/col เริ่มที่ 1
+python3 scripts/lsp_client.py --complete prog.holy 1 4
+python3 scripts/lsp_client.py --def prog.holy 2 10
+python3 scripts/lsp_client.py --refs prog.holy 2 10     # references ทั้งโปรเจกต์
+python3 scripts/lsp_client.py --highlight prog.holy 2 10
+python3 scripts/lsp_client.py --sig prog.holy 4 9       # signature help
+python3 scripts/lsp_client.py --wsym prog.holy double   # workspace symbols
+python3 scripts/lsp_client.py --symbols prog.holy
+python3 scripts/lsp_client.py --format prog.holy [--write]
 ```
 
-ข้อจำกัดที่รู้แล้ว: references/workspace symbols แวนกวางไฟล์ `.hs` ในโฟลเดอร์
+ข้อจำกัดที่รู้แล้ว: references/workspace symbols แวนกวางไฟล์ `.holy` ในโฟลเดอร์
 ของไฟล์ที่เปิด (ข้าม `.git`, `legacy`, `__pycache__`) บวก `HSPATH` — จึงยังไม่ใช่
-index ทั้ง workspace แบบเต็ม แต่พอสำหรับโปรเจกต์ที่ `.hs` อยู่รวมกัน
+index ทั้ง workspace แบบเต็ม แต่พอสำหรับโปรเจกต์ที่ `.holy` อยู่รวมกัน

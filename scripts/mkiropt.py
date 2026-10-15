@@ -27,9 +27,9 @@ mod = ReplaceClear().visit(mod)
 ast.fix_missing_locations(mod)
 src = pathlib.Path('/tmp/iropt-source.py')
 src.write_text(ast.unparse(mod))
-errs = translate([str(src)], '/tmp/iropt-raw.hs', str(root/'x64.py'))
+errs = translate([str(src)], '/tmp/iropt-raw.holy', str(root/'x64.py'))
 if errs: raise SystemExit(str(errs))
-s = pathlib.Path('/tmp/iropt-raw.hs').read_text()
+s = pathlib.Path('/tmp/iropt-raw.holy').read_text()
 s = re.sub(r'\bpy_(\w+)\(', r'pyrt.py_\1(', s)
 s = s.replace('(type(v) == int_)', '(pyrt.py_type(v) == "int")')
 s = s.replace('pyrt.py_get(os.environ, "HS_NOOPT", null)', 'env("HS_NOOPT")')
@@ -87,6 +87,6 @@ def bounded_mul(a, b):
       a = a + a
   return (0 - r) if neg else r
 '''
-(root/'selfhost/be/iropt.hs').write_text('import pyrt\n\n'+s)
+(root/'selfhost/be/iropt.holy').write_text('import pyrt\n\n'+s)
 import subprocess
-subprocess.run([sys.executable, str(root/'hs.py'), 'fmt', str(root/'selfhost/be/iropt.hs'), '-w'], check=True)
+subprocess.run([sys.executable, str(root/'hs.py'), 'fmt', str(root/'selfhost/be/iropt.holy'), '-w'], check=True)

@@ -12,7 +12,7 @@ def check(ok,label):
 env=dict(os.environ,HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'),HSROOT=str(ROOT))
 with tempfile.TemporaryDirectory() as temp:
     d=Path(temp);exe=d/'jit'
-    built=subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(ROOT/'selfhost/be/jit_run.hs'),str(exe)],env=env,capture_output=True,text=True,timeout=240)
+    built=subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(ROOT/'selfhost/be/jit_run.holy'),str(exe)],env=env,capture_output=True,text=True,timeout=240)
     check(built.returncode==0,'driver build '+built.stderr[-200:])
     if built.returncode:sys.exit(1)
     c=d/'fixture.c';so=d/'fixture.so'
@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory() as temp:
         path=d/(label+'.hs');path.write_text(source)
         want=subprocess.run([sys.executable,str(ROOT/'interp.py'),str(path)],env=env,capture_output=True,text=True,timeout=30)
         if label=='libm':
-            reference=d/'reference-libm.hs';reference.write_text(source.replace(libm,'m'))
+            reference=d/'reference-libm.holy';reference.write_text(source.replace(libm,'m'))
             want=subprocess.run([sys.executable,str(ROOT/'interp.py'),str(reference)],env=env,capture_output=True,text=True,timeout=30)
         got=subprocess.run([str(exe),str(path)],env=env,capture_output=True,text=True,timeout=30)
         check(want.returncode==0 and want.stdout==expected and (got.returncode,got.stdout,got.stderr)==(want.returncode,want.stdout,want.stderr),label+' '+repr((got.returncode,got.stdout,got.stderr[-200:])))

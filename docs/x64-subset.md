@@ -33,7 +33,7 @@ hosted (`xbuild`) มีเพิ่ม: `argv()` (List ของ argv[1:]), `in
 error เป็น `errno N` (interp โชว์ strerror),
 `json_load`/`json_save` (อ่าน/เขียนไฟล์ผ่าน File runtime),
 `scall(nr, a1..a6)` — `syscall` ดิบ (ใช้เขียน
-user program ที่คุยกับ kernel ของเรา เช่น `kernel/uush.hs`) แต่
+user program ที่คุยกับ kernel ของเรา เช่น `kernel/uush.holy`) แต่
 `xkernel` ไม่มี เพราะ ring 0 เรียก `syscall` แล้ว `sysret` จะตกไป
 ring 3 ผิดทาง
 
@@ -45,9 +45,9 @@ ring 3 ผิดทาง
 - หารด้วยศูนย์บน kernel เป็น HW `#DE` (halt) ไม่ใช่ error จับได้
 - อ่านตัวแปรที่ยังไม่เคย assign = error `unknown variable` (ไม่ใช่ขยะ)
 - `and`/`or` **ไม่ short-circuit** — ทั้งสองข้างรันเสมอ ต้องเขียน bound check
-  เป็นเรียกแยก (`js_at(s, i, n)` ใน `runtime/json.hs`) ไม่งั้น `s[i]`
+  เป็นเรียกแยก (`js_at(s, i, n)` ใน `runtime/json.holy`) ไม่งั้น `s[i]`
   นอกช่วงจะ raise
-- `json_*` ถูกคอมไพล์มาจาก `runtime/json.hs` (โมดูลส่วนตัว `<json>` ที่
+- `json_*` ถูกคอมไพล์มาจาก `runtime/json.holy` (โมดูลส่วนตัว `<json>` ที่
   x64gen ใส่เข้า image เมื่อโปรแกรมเรียกมัน) — ไม่ใช่ API: `import`
   เอาไปเองได้ถ้า repo อยู่บน HSPATH แต่ตัวที่ต้องใช้ `type_name` (hook
   ส่วนตัว) จะคอมไพล์ไม่ผ่าน

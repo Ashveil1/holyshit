@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""selfhost/be (the x64 hosted backend translated to hs: irlib + be.hs +
+"""selfhost/be (the x64 hosted backend translated to hs: irlib + be.holy +
 asm/gcrt/elf) must emit exactly the ELF image irx64.py builds from the same
 IR text, for every program in the corpus below."""
 import glob
@@ -15,7 +15,7 @@ import irx64  # noqa: E402
 
 HS = [sys.executable, os.path.join(ROOT, "hs.py")]
 env = dict(os.environ, HSROOT=ROOT, HSPATH=os.path.join(ROOT, "selfhost") + ":" + os.path.join(ROOT, "selfhost", "be"))
-progs = sorted(glob.glob(os.path.join(ROOT, "tests", "*.hs")))
+progs = sorted(glob.glob(os.path.join(ROOT, "tests", "*.holy")))
 only = sys.argv[1:]
 total = bad = skipped = deferred = 0
 with tempfile.TemporaryDirectory() as d:
@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory() as d:
             continue
         p = os.path.join(d, "m.ir")
         open(p, "w").write(r.stdout)
-        g = subprocess.run(HS + ["run", os.path.join(ROOT, "selfhost", "be", "irx64_run.hs"),
+        g = subprocess.run(HS + ["run", os.path.join(ROOT, "selfhost", "be", "irx64_run.holy"),
                                  "--backend", "interp", p], capture_output=True, text=True, env=env)
         if "unknown variable 'interp'" in g.stdout + g.stderr:
             deferred += 1  # json/fs helper modules are built from source: needs S5 (AST->IR)

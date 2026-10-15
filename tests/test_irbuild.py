@@ -22,7 +22,7 @@ oldpath = os.environ.get('HSPATH')
 os.environ['HSPATH'] = env['HSPATH']
 try:
     with contextlib.redirect_stdout(io.StringIO()):
-        rc = build_x64(str(ROOT/'selfhost/be/irbuild_run.hs'), exe)
+        rc = build_x64(str(ROOT/'selfhost/be/irbuild_run.holy'), exe)
 finally:
     if oldpath is None:
         os.environ.pop('HSPATH', None)
@@ -40,7 +40,7 @@ def fits62(v):
         return all(fits62(x) for x in v.values())
     return True
 
-files = sum((glob.glob(str(ROOT/p)) for p in ['tests/*.hs', 'examples/*.hs', 'selfhost/*.hs', 'selfhost/be/*.hs']), [])
+files = sum((glob.glob(str(ROOT/p)) for p in ['tests/*.holy', 'examples/*.holy', 'selfhost/*.holy', 'selfhost/be/*.holy']), [])
 for f in sorted(files):
     if sys.argv[1:] and Path(f).name not in sys.argv[1:]:
         continue
@@ -56,7 +56,7 @@ for f in sorted(files):
     json.dump(prog, astfile)
     astfile.close()
     r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
-        str(ROOT/'selfhost/be/irbuild_run.hs'), '--backend', 'interp', astfile.name],
+        str(ROOT/'selfhost/be/irbuild_run.holy'), '--backend', 'interp', astfile.name],
         env=env, capture_output=True, text=True, timeout=60)
     try:
         got = json.loads(r.stdout)

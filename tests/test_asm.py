@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""selfhost/asm.hs (assembler written in hs) must emit exactly the bytes of
+"""selfhost/asm.holy (assembler written in hs) must emit exactly the bytes of
 x64.py's Asm for the integer instruction subset: every register pair, every
 memory form (rsp/r12/rbp/r13 bases, disp8/disp32, SIB), shifts, labels."""
 import os
@@ -172,16 +172,16 @@ with tempfile.TemporaryDirectory() as d:
     p = os.path.join(d, "s.txt")
     open(p, "w").write("\n".join(lines) + "\n")
     r = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"), "run",
-                        os.path.join(ROOT, "selfhost", "asm_run.hs"),
+                        os.path.join(ROOT, "selfhost", "asm_run.holy"),
                         "--backend", "interp", p], capture_output=True, text=True)
 want = py_asm().hex()
 got = r.stdout.strip()
 ok = r.returncode == 0 and got == want
 if not ok:
-    print("FAIL asm.hs vs x64.py", r.returncode, r.stderr[-300:])
+    print("FAIL asm.holy vs x64.py", r.returncode, r.stderr[-300:])
     n = next((i for i in range(min(len(got), len(want))) if got[i] != want[i]), None)
     print("first diff at hex offset", n, len(got), len(want))
 else:
-    print(f"ok   asm.hs == x64.py on {len(lines)} instructions ({len(want) // 2} bytes)")
+    print(f"ok   asm.holy == x64.py on {len(lines)} instructions ({len(want) // 2} bytes)")
 print("1/1 passed" if ok else "0/1 passed")
 sys.exit(0 if ok else 1)

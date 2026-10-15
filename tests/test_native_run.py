@@ -14,7 +14,7 @@ with tempfile.TemporaryDirectory(prefix='hs source space ') as d:
     import shutil
     for name in ['dirname','sha256sum','mktemp','rm']:
         (bindir/name).symlink_to(shutil.which(name))
-    source=d/'main file.hs'
+    source=d/'main file.holy'
     source.write_text('print "native runner"\nprint argv()\n')
     env=dict(os.environ,PATH=str(bindir))
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/run-native.sh'),str(source),'hello world','$5'],env=env,capture_output=True,text=True,timeout=120)

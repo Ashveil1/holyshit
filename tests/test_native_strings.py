@@ -26,7 +26,7 @@ want=(b'a\0b\na\0b\n[a\0b, [a\0b], {a\0b: a\0b}]\n'
       'ภาษาไทย สวัสดี café 😀\nÿ7 é123 🙂0\n[ไทย, {é: 😀}]\n{ไทย: [é, a\0b]}\nprefixa\0bsuffix\nx\0y\n2 1 2 false\n[a\0b, a\0c]\n{"a\\u0000b": 1, "a\\u0000c": 2}\n'.encode())
 passed=failed=0
 with tempfile.TemporaryDirectory() as temp:
-    d=Path(temp);source=d/'strings.hs';source.write_text(src)
+    d=Path(temp);source=d/'strings.holy';source.write_text(src)
     for backend in ['interp','native','x64','native-hs']:
         if backend=='native-hs':
             exe=d/'program';r=subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(source),str(exe)],env=env,capture_output=True,timeout=90)

@@ -1,4 +1,4 @@
-# asm.hs - x86-64 assembler in holyshit: the integer subset of x64.py, with
+# asm.holy - x86-64 assembler in holyshit: the integer subset of x64.py, with
 # the same encodings (tests/test_asm.py compares them byte for byte).
 # import asm; asm.reset(); asm.mov_ri32("rax", 1); asm.syscall(); asm.resolve()
 REG = {"rax": 0, "rcx": 1, "rdx": 2, "rbx": 3, "rsp": 4, "rbp": 5, "rsi": 6, "rdi": 7, "r8": 8, "r9": 9, "r10": 10, "r11": 11, "r12": 12, "r13": 13, "r14": 14, "r15": 15, "ax": 0, "cx": 1, "dx": 2, "bx": 3, "sp": 4, "bp": 5, "si": 6, "di": 7}

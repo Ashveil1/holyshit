@@ -1,4 +1,4 @@
-# gcrt_run.hs: emit the allocator/GC with gcrt.hs + asm.hs and print
+# gcrt_run.holy: emit the allocator/GC with gcrt.holy + asm.holy and print
 # "<code hex> <data hex>" (tests/test_gcrt.py compares with gcrt.py).
 import asm
 import gcrt

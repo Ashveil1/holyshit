@@ -3,7 +3,7 @@
 Linux x86-64 only. One-command route:
 
 ```
-scripts/run-jit-native.sh tests/fib.hs
+scripts/run-jit-native.sh tests/fib.holy
 ```
 
 This verifies the pinned seed, builds an isolated native hs JIT driver,
@@ -17,8 +17,8 @@ For repeated experiments, build the driver once from the repository root:
 ```
 export HSPATH="$PWD/selfhost:$PWD/selfhost/be"
 export HSROOT="$PWD"
-bootstrap/hs-hosted-x86_64 selfhost/be/jit_run.hs /tmp/hs-jit
-/tmp/hs-jit tests/fib.hs
+bootstrap/hs-hosted-x86_64 selfhost/be/jit_run.holy /tmp/hs-jit
+/tmp/hs-jit tests/fib.holy
 ```
 
 The native hs driver compiles source to machine code, relocates it into

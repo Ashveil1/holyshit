@@ -716,7 +716,7 @@ class Server:
     # ----- references / highlights / signature help / workspace symbols -----
 
     def _index_docs(self, doc):
-        """Open documents plus every .hs file next to this one (bounded)."""
+        """Open documents plus every .holy file next to this one (bounded)."""
         out = list(self.docs.values())
         if not doc.path:
             return out

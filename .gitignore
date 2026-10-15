@@ -1,4 +1,4 @@
-*.hs.c
+*.holy.c
 *.o
 *.elf
 *.k64

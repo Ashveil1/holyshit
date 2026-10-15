@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every example in examples/ must actually run: python3 tests/test_examples.py
 
-Each `examples/<name>.hs` has an `examples/<name>.expected` (stdout). This
+Each `examples/<name>.holy` has an `examples/<name>.expected` (stdout). This
 suite runs the interpreter (and the gcc backend for examples that do not need
 extern/unsafe), so a broken example fails CI instead of rotting silently.
 """
@@ -32,12 +32,13 @@ def run(cmd, **kw):
     return subprocess.run(cmd, capture_output=True, text=True, timeout=180, **kw)
 
 
-names = sorted(f[:-3] for f in os.listdir(EX) if f.endswith(".hs"))
+names = sorted(f[:-5] for f in os.listdir(EX) if f.endswith(".holy"))
+assert names, "no canonical .holy examples found"
 env = dict(os.environ)
 env["HSPATH"] = ROOT + (":" + env["HSPATH"] if env.get("HSPATH") else "")
 
 for name in names:
-    src = os.path.join(EX, name + ".hs")
+    src = os.path.join(EX, name + ".holy")
     exp_path = os.path.join(EX, name + ".expected")
     if not os.path.exists(exp_path):
         check(f"{name}: has .expected", False, "missing expected output")
@@ -45,7 +46,7 @@ for name in names:
     with open(exp_path, encoding="utf-8") as f:
         want = f.read()
     r = run([sys.executable, os.path.join(ROOT, "interp.py"),
-             name + ".hs"], cwd=EX, env=env)
+             name + ".holy"], cwd=EX, env=env)
     check(f"{name}: interp", r.returncode == 0 and r.stdout == want,
           f"rc={r.returncode} err={r.stderr.strip()[:200]}")
 
@@ -54,7 +55,7 @@ print()
 for name in names:
     if not name[:2].isdigit():
         continue
-    src = os.path.join(EX, name + ".hs")
+    src = os.path.join(EX, name + ".holy")
     with open(src, encoding="utf-8") as f:
         text = f.read()
     if "extern" in text or "unsafe:" in text or "std." in text:
@@ -64,7 +65,7 @@ for name in names:
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, name)
         b = run([sys.executable, os.path.join(ROOT, "hs.py"), "build",
-                 name + ".hs", "-o", out], cwd=EX, env=env)
+                 name + ".holy", "-o", out], cwd=EX, env=env)
         if b.returncode != 0:
             check(f"{name}: native build", False, b.stderr.strip()[:200])
             continue

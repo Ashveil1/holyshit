@@ -1,6 +1,6 @@
 # Hosted compiler seed
 
-The source of the hosted compiler is `selfhost/be/compile.hs` and its hs
+The source of the hosted compiler is `selfhost/be/compile.holy` and its hs
 imports. The Python implementation stays as the semantic/test reference.
 
 The Linux x86-64 seed `hs-hosted-x86_64` is pinned by `SHA256SUMS`.
@@ -16,7 +16,7 @@ x86-64 only, 9,298,720 bytes. It uses the repository source and runtime data;
 it is not a standalone distribution. To rebuild without trusting the seed,
 use `scripts/bootstrap-hosted.sh` (Python stage zero, native later stages).
 
-SHA256: `4eeb70b289b7b124942fef06716b146f38ddfe15179d30f367263a2fd7371014`.
+SHA256: `cd54736eb09fed0c37092e471f71fe17df73032afdf3466f6a56e564bfdc5261`.
 Changing compiler sources may change the fixed point. Regenerate and verify
 the seed rather than silently accepting an old binary or updating the hash.
 
@@ -26,7 +26,7 @@ integer behavior is unchanged. Kernel compilation is a separate artifact.
 
 ## Run source without Python
 
-`scripts/run-native.sh path/to/program.hs [args...]` verifies the pinned
+`scripts/run-native.sh path/to/program.holy [args...]` verifies the pinned
 seed, compiles to an isolated temporary executable, runs it, returns the
 program's exit code and removes the temporary directory. No explicit build
 step, Python or gcc is needed. This is native compile-and-run, not a
@@ -37,7 +37,7 @@ programs rather than falling back to Python. No persistent cache is used.
 
 ## Build a kernel without Python
 
-`scripts/build-kernel-native.sh source.hs kernel.elf` verifies the pinned
+`scripts/build-kernel-native.sh source.holy kernel.elf` verifies the pinned
 hosted seed, uses it to build the native hs IR kernel driver, then writes
 the kernel ELF through the hs IR backend and linker. It needs only shell
 utilities at runtime, not Python, gcc, as or ld. It does not boot the kernel
@@ -48,8 +48,8 @@ existing output is preserved when parsing or compilation fails.
 
 ```
 scripts/build-native-bundle.sh /tmp/hs-native
-/tmp/hs-native/bin/hs run path/to/program.hs [args...]
-/tmp/hs-native/bin/hs build path/to/program.hs output
+/tmp/hs-native/bin/hs run path/to/program.holy [args...]
+/tmp/hs-native/bin/hs build path/to/program.holy output
 ```
 
 The output directory must not already exist. The builder verifies the seed

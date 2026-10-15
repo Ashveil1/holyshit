@@ -11,7 +11,7 @@ Zed ต้องมี extension แยก แต่ตัวโปรโตค�
 {
   "languages": {
     "Holyshit": {
-      "extensions": ["hs"],
+      "extensions": ["holy", "hs"],
       "language_servers": ["holyshit-lsp"]
     }
   },
@@ -34,7 +34,7 @@ Zed ต้องมี extension แยก แต่ตัวโปรโตค�
 # extension.toml
 id = "holyshit"
 name = "Holyshit"
-description = "holyshit (.hs) support"
+description = "holyshit (.holy) support"
 schema_version = 1
 languages = ["Holyshit"]
 language-servers = ["holyshit-lsp"]
@@ -42,7 +42,7 @@ language-servers = ["holyshit-lsp"]
 [[grammar]]
 name = "holyshit"
 source = { path = "./grammar" }
-file-types = ["hs"]
+file-types = ["holy", "hs"]
 ```
 
 ```rust

@@ -2,8 +2,8 @@
 """Dev-time translator: Python emitter modules (gcrt.py, x64gen.py, irx64.py
 style) -> hs. Covers the subset those files use. The output is trusted only
 through the byte-identical differential tests; after the first translation
-the .hs file is the maintained source.
-usage: py2hs.py in.py out.hs [--module NAME] [--asm-methods FILE]"""
+the .holy file is the maintained source.
+usage: py2hs.py in.py out.holy [--module NAME] [--asm-methods FILE]"""
 import ast
 import os
 import sys

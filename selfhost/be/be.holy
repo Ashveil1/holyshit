@@ -3808,7 +3808,7 @@ class Gen:
         walk(m["prog"])
     return hit[0]
   def load_json_helper(self):
-    path = pyrt.py_root() + "/runtime/json.hs"
+    path = pyrt.py_root() + "/runtime/json.holy"
     try:
       f = pyrt.py_open(path, null)
       src = f.read_()
@@ -3835,7 +3835,7 @@ class Gen:
       raise pyrt.py_err("json internal error (helper not compiled)", ln)
     lab = pyrt.py_get(self.js_fns, name, null)
     if lab == null:
-      raise pyrt.py_err("json internal error (no " + str(name) + " in runtime/json.hs)", ln)
+      raise pyrt.py_err("json internal error (no " + str(name) + " in runtime/json.holy)", ln)
     return lab
   def _base_build_image(self, mod):
     ms = mod["scope"]
@@ -10585,7 +10585,7 @@ class GenIR(Gen):
     if not self._json_used():
       self.js_entries = {}
       return null
-    path = pyrt.py_root() + "/runtime/json.hs"
+    path = pyrt.py_root() + "/runtime/json.holy"
     try:
       f = pyrt.py_open(path, null)
       src = f.read_()

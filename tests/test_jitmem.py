@@ -20,10 +20,10 @@ with tempfile.TemporaryDirectory() as d:
     for backend in ['interp','x64','native-hs','native-gcc']:
         print('checking',backend,flush=True)
         if backend=='interp':
-            command=[sys.executable,str(ROOT/'interp.py'),str(ROOT/'tests/jit/memory.hs')]
+            command=[sys.executable,str(ROOT/'interp.py'),str(ROOT/'tests/jit/memory.holy')]
         else:
             exe=str(Path(d)/'memory')
-            build=([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(ROOT/'tests/jit/memory.hs'),exe] if backend=='native-hs' else [sys.executable,str(ROOT/'hs.py'),'build' if backend=='native-gcc' else 'xbuild',str(ROOT/'tests/jit/memory.hs'),'-o',exe])
+            build=([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(ROOT/'tests/jit/memory.holy'),exe] if backend=='native-hs' else [sys.executable,str(ROOT/'hs.py'),'build' if backend=='native-gcc' else 'xbuild',str(ROOT/'tests/jit/memory.holy'),'-o',exe])
             result=subprocess.run(build,env=env,capture_output=True,text=True,timeout=120)
             check(result.returncode==0,'build memory fixture '+result.stderr[-200:])
             if result.returncode: continue
@@ -46,7 +46,7 @@ with tempfile.TemporaryDirectory() as d:
             signal.alarm(0)
             if p.poll() is None: p.kill();p.communicate()
     # Validation has identical observable behavior and does not allocate code.
-    source=Path(d)/'invalid.hs'
+    source=Path(d)/'invalid.holy'
     source.write_text('import jitmem\nfor value in [[], [256], [-1], [true], [false], [1.0], ["a"], "abc", null]:\n  try:\n    jitmem.publish(value)\n    print "BAD"\n  except:\n    print "rejected"\n')
     for backend in ['interp','x64']:
         r=subprocess.run([sys.executable,str(ROOT/'hs.py'),'run',str(source),'--backend',backend],env=env,capture_output=True,text=True,timeout=60)

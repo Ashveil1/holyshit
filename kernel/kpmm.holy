@@ -1,5 +1,5 @@
 # kernel physical memory manager — a real frame allocator built from the
-# bootloader's memory map (see kmb for the supported layouts), in plain .hs.
+# bootloader's memory map (see kmb for the supported layouts), in plain .holy.
 #
 # Layout:
 #   - a bitmap with one bit per 4K frame (bit i set = frame i is in use)

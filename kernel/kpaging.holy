@@ -27,7 +27,7 @@ expect("cr3 aligned", root % 4096, 0)
 expect("identity map", kpage.translate(root, 0x100000), 0x100000)
 expect("identity mapped", kpage.is_mapped(root, 0x100000), true)
 
-# a frame from the legacy bump pmm (the real bitmap pmm lives in kpmm.hs)
+# a frame from the legacy bump pmm (the real bitmap pmm lives in kpmm.holy)
 frame = pmm_alloc(1)
 expect("frame aligned", frame % 4096, 0)
 expect("frame nonzero", frame != 0, true)

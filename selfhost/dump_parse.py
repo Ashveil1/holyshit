@@ -1,4 +1,4 @@
-"""Reference AST dump for selfhost/parse.hs (interp.parse_program as JSON)."""
+"""Reference AST dump for selfhost/parse.holy (interp.parse_program as JSON)."""
 import json
 import os
 import sys

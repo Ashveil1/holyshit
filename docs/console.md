@@ -1,6 +1,6 @@
 # Experimental keyboard screen
 
-`kernel/kconsole_demo.hs` combines the RGB framebuffer, software bitmap labels
+`kernel/kconsole_demo.holy` combines the RGB framebuffer, software bitmap labels
 and bounded keyboard line state. It accepts one line, redraws it after each
 key and stops after submission. It executes no commands. Lowercase keyboard
 input displays uppercase because the original boot font has uppercase shapes.

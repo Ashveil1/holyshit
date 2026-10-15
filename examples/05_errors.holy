@@ -1,5 +1,5 @@
 # tour 05: error + try/except/finally/raise
-# รัน: python3 interp.py examples/05_errors.hs
+# รัน: python3 interp.py examples/05_errors.holy
 #
 # error ทุกอันเป็น Str พร้อมเลขบรรทัด: "message at line N"
 # raise รับได้แค่ Str และ function boundary ตัด bare raise ทิ้ง

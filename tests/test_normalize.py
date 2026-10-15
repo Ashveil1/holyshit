@@ -22,7 +22,7 @@ oldpath = os.environ.get('HSPATH')
 os.environ['HSPATH'] = env['HSPATH']
 try:
     with contextlib.redirect_stdout(io.StringIO()):
-        rc = build_x64(str(ROOT/'selfhost/be/normalize_run.hs'), exe)
+        rc = build_x64(str(ROOT/'selfhost/be/normalize_run.holy'), exe)
 finally:
     if oldpath is None:
         os.environ.pop('HSPATH', None)
@@ -40,11 +40,11 @@ def fits62(v):
         return all(fits62(x) for x in v.values())
     return True
 
-files = sum((glob.glob(str(ROOT/p)) for p in ['tests/*.hs', 'examples/*.hs', 'selfhost/*.hs', 'selfhost/be/*.hs']), [])
+files = sum((glob.glob(str(ROOT/p)) for p in ['tests/*.holy', 'examples/*.holy', 'selfhost/*.holy', 'selfhost/be/*.holy']), [])
 for f in sorted(files):
     if sys.argv[1:] and Path(f).name not in sys.argv[1:]:
         continue
-    if Path(f).name == 'be.hs':
+    if Path(f).name == 'be.holy':
         large_skipped += 1  # 13k-line emitter: dedicated slow bootstrap gate
         continue
     try:
@@ -56,7 +56,7 @@ for f in sorted(files):
         continue
     astfile = type('Source', (), {'name': f})()
     r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
-        str(ROOT/'selfhost/be/normalize_run.hs'), '--backend', 'interp', astfile.name],
+        str(ROOT/'selfhost/be/normalize_run.holy'), '--backend', 'interp', astfile.name],
         env=env, capture_output=True, text=True, timeout=600)
     try:
         got = json.loads(r.stdout)

@@ -1,4 +1,4 @@
-# irlib.hs - IR text loader in holyshit: ir.parse_module without regexes.
+# irlib.holy - IR text loader in holyshit: ir.parse_module without regexes.
 # parse(text) -> {"funcs": {...}, "order": [...], "entry": "<main>"}
 # (tests/test_irlib.py compares the JSON with ir.parse_module).
 DIG = "0123456789"

@@ -22,10 +22,10 @@
 รันเร็วสุด:
 
 ```sh
-python3 interp.py prog.hs     # tree-walk, พฤติกรรมอ้างอิง
-python3 hs.py check prog.hs   # ตรวจ syntax/scope
-python3 hs.py build prog.hs   # native binary ผ่าน gcc
-python3 hs.py xbuild prog.hs  # machine code ตรง ไม่ใช้ gcc
-python3 hs.py xkernel prog.hs -o k.elf  # kernel บูต QEMU ได้
+python3 interp.py prog.holy     # tree-walk, พฤติกรรมอ้างอิง
+python3 hs.py check prog.holy   # ตรวจ syntax/scope
+python3 hs.py build prog.holy   # native binary ผ่าน gcc
+python3 hs.py xbuild prog.holy  # machine code ตรง ไม่ใช้ gcc
+python3 hs.py xkernel prog.holy -o k.elf  # kernel บูต QEMU ได้
 python3 hs.py lsp             # language server (stdio)
 ```

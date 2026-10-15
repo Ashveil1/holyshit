@@ -8,8 +8,8 @@
 จับได้ด้วย `try/except as e`, ไม่จับ = พิมพ์ `error: <msg> at line N`
 ที่ stderr แล้ว exit 1. `{...}` ในตารางคือค่าที่แทนที่ตอนรัน
 
-หา error ของตัวเอง: `python3 scripts/lsp_client.py --diag prog.hs`
-(0-based line) หรือ `python3 hs.py --json check prog.hs`
+หา error ของตัวเอง: `python3 scripts/lsp_client.py --diag prog.holy`
+(0-based line) หรือ `python3 hs.py --json check prog.holy`
 
 ## error ที่เจอบ่อยที่สุด
 
@@ -420,7 +420,7 @@
 - `irq_on takes no args`
 - `join wants join(sep, list)`
 - `json internal error (helper not compiled)`
-- `json internal error (no {name} in runtime/json.hs)`
+- `json internal error (no {name} in runtime/json.holy)`
 - `module '{m['name']}' has no attribute '{e['name']}'`
 - `module '{m['name']}' has no attribute '{name}'`
 - `module '{name}' is not a first-class value in x64 subset (use mod.attr)`

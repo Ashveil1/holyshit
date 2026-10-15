@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory() as d:
     os.environ['HSPATH'] = env['HSPATH']
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            rc = build_x64(str(ROOT/'selfhost/be/compile.hs'), str(stage1))
+            rc = build_x64(str(ROOT/'selfhost/be/compile.holy'), str(stage1))
     finally:
         if old is None:
             os.environ.pop('HSPATH', None)
@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory() as d:
     if rc or stage1.read_bytes() != seed.read_bytes():
         raise SystemExit('Seed does not equal the source-built compiler; not executing it.')
     output = Path(d)/'stage2'
-    subprocess.run([str(seed), str(ROOT/'selfhost/be/compile.hs'), str(output)], env=env, check=True, timeout=600)
+    subprocess.run([str(seed), str(ROOT/'selfhost/be/compile.holy'), str(output)], env=env, check=True, timeout=600)
     if output.read_bytes() != seed.read_bytes():
         raise SystemExit('Seed self-compilation differs.')
     print('verified', len(seed.read_bytes()), hashlib.sha256(seed.read_bytes()).hexdigest())
