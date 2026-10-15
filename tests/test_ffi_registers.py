@@ -33,7 +33,7 @@ with tempfile.TemporaryDirectory() as d:
         got=(r.returncode,r.stdout)
         if expected is None:expected=got
         check(got==expected and got[0]==0,backend+' mixed banks '+repr((got,r.stderr[-150:])))
-    for kind,count in [('I64',7),('F64',9)]:
+    for kind,count in [('I64',33),('F64',33)]:
         decl=', '.join(kind+f' p{i}' for i in range(count))
         source.write_text('extern:\n  I64 over('+decl+')\nprint over('+', '.join('1' for _ in range(count))+')\n')
         for backend in ['x64','native-hs']:

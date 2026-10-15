@@ -12713,15 +12713,13 @@ class GenIR(Gen):
     if not (so in self.ffi_libs):
       append(self.ffi_libs, so)
   def _ffi(self, fr, ins, ln):
-    _t12612 = [ins["sym"], ins["ptypes"], ins["rtype"]]
-    name = _t12612[0]
-    pt = _t12612[1]
-    rt = _t12612[2]
+    _t12684 = [ins["sym"], ins["ptypes"], ins["rtype"]]
+    name = _t12684[0]
+    pt = _t12684[1]
+    rt = _t12684[2]
     nf = pyrt.py_count(pt, "F64")
-    if nf > 8:
-      raise pyrt.py_err("ffi '" + str(name) + "': xbuild passes at most 8 F64 args", ln)
-    if len(pt) - nf > 6:
-      raise pyrt.py_err("ffi '" + str(name) + "': xbuild passes at most 6 integer/pointer args", ln)
+    if len(pt) > 32:
+      raise pyrt.py_err("ffi '" + str(name) + "': xbuild passes at most 32 args", ln)
     self._ffi_lib(ins["lib"], ln)
     gi = self._ffi_sym(name)
     fl = self._ffi_sym("fflush")
@@ -12794,34 +12792,48 @@ class GenIR(Gen):
       asm.jmp("hs_raise_msg")
       asm.label(lab_after)
     iregs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"]
-    ni = len(pt) - nf
-    _t12694 = [nf, ni]
-    fi = _t12694[0]
-    ii = _t12694[1]
-    for ft in pyrt.py_reversed(pt):
+    _t12763 = [0, 0]
+    fi = _t12763[0]
+    ii = _t12763[1]
+    stack_args = []
+    for i, ft in pyrt.py_enumerate(pt):
+      offset = 8 * (len(pt) - 1 - i)
       if ft == "F64":
-        fi = fi - 1
-        asm.pop_r("rax")
-        asm.movq_xr(fi, "rax")
+        if fi < 8:
+          asm.mov_rm("rax", "rsp", offset)
+          asm.movq_xr(fi, "rax")
+        else:
+          append(stack_args, offset)
+        fi = fi + 1
       else:
-        ii = ii - 1
-        asm.pop_r(iregs[ii])
-    def ccall(idx, nfl=nf):
+        if ii < 6:
+          asm.mov_rm(iregs[ii], "rsp", offset)
+        else:
+          append(stack_args, offset)
+        ii = ii + 1
+    def ccall(idx, nfl=0, offsets=null):
+      if offsets == null:
+        offsets = []
+      save_offset = (8 * len(offsets) + 15) & ~15
       asm.mov_rr("r10", "rsp")
       asm.and_ri32("rsp", 0 - 16)
-      asm.sub_ri32("rsp", 16)
-      asm.mov_mr("rsp", "r10", 0)
+      asm.sub_ri32("rsp", save_offset + 16)
+      asm.mov_mr("rsp", "r10", save_offset)
+      for i, offset in pyrt.py_enumerate(offsets):
+        asm.mov_rm("rax", "r10", offset)
+        asm.mov_mr("rsp", "rax", 8 * i)
       asm.lea_rip("r11", "ffi_got_")
       asm.mov_rm("r11", "r11", 8 * idx)
       asm.mov_ri32("rax", nfl)
       asm.call_r11()
-      asm.mov_rm("rsp", "rsp", 0)
-    ccall(gi, nf)
+      asm.mov_rm("rsp", "rsp", save_offset)
+    ccall(gi, pyrt.py_min(nf, 8), stack_args)
+    asm.add_ri32("rsp", 8 * len(pt))
     if rt == "F64":
       asm.movq_rx("rax", 0)
     asm.push_r("rax")
     asm.mov_ri32("rdi", 0)
-    ccall(fl, 0)
+    ccall(fl, 0, [])
     asm.pop_r("rax")
     if rt == "F64":
       asm.mov_rr("rdi", "rax")
@@ -13225,7 +13237,7 @@ class GenIR(Gen):
     if not self.freestanding:
       return self._base_emit_main(mod)
     self.emit_longmode_tail(mod)
-    inits = pyrt.py_set([_p13195_0[1] for _p13195_0 in pyrt.py_items(self.mod_entries) if _p13195_0[0] != ""])
+    inits = pyrt.py_set([_p13207_0[1] for _p13207_0 in pyrt.py_items(self.mod_entries) if _p13207_0[0] != ""])
     for key in self.allorder:
       if not (key in inits):
         self._emit_ifunc(key)
