@@ -1526,3 +1526,11 @@ are never stored. Collector scope is restored even when execution raises.
 The snapshot is a diagnostic, not persisted feedback or a compilation trigger.
 No native tier, hot-code compilation, on-stack replacement or deoptimization
 is added. The existing IR reference restrictions continue to apply.
+
+### Experimental framebuffer keyboard console
+`kernel/kconsole_demo.hs` combines the validated framebuffer, ASCII bitmap
+labels and bounded keyboard state into a single-line input demonstration.
+Submitted text is displayed, never executed. Input display folds ASCII case
+according to the boot font. Synchronous redraw and the existing single-slot
+keyboard backend can lose input during redraw. No agent runtime, terminal
+emulation, command evaluation, Unicode input or desktop is added.
