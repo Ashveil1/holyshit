@@ -20,7 +20,7 @@ def link(p, stack_patch):
   data = p["data"][0:len(p["data"])]
   labels = p["labels"]
   dl = p["data_labels"]
-  mb2 = elf.u32(3897708758) + elf.u32(0) + elf.u32(24) + elf.u32(0 - 3897708758 - 24) + elf.u16(0) + elf.u16(0) + elf.u32(8)
+  mb2 = elf.u32(3897708758) + elf.u32(0) + elf.u32(48) + elf.u32(0 - 3897708758 - 48) + elf.u16(5) + elf.u16(1) + elf.u32(20) + elf.u32(640) + elf.u32(480) + elf.u32(32) + zero(4) + elf.u16(0) + elf.u16(0) + elf.u32(8)
   mb1 = elf.u32(464367618) + elf.u32(0) + elf.u32(0 - 464367618)
   mb_off = align(116, 8)
   boot_off = mb_off + len(mb2) + len(mb1)
