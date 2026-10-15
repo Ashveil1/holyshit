@@ -28,7 +28,11 @@ is written or executed. The sections-only emitter does not pack an intermediate 
 
 The generated process entry exits the driver. There is no return to the
 compiler, code unloading, first-call compilation, type feedback, tiering or
-deoptimization. Extern symbols are rejected, not silently left unbound.
+deoptimization. The driver loads explicit prebuilt shared-library paths/sonames with the host
+libc loader and binds every extern GOT slot before publishing code. Missing
+libraries/symbols fail before target execution. Handles stay live until process
+exit. Bare short names such as "m" remain outside the native driver subset;
+use "libm.so.6" or an explicit path. This is not a self-written loader.
 Safe Ints retain the x64 62-bit limit. Out-of-range results can fail with
 exit 97 instead of the reference interpreter's 64-bit behavior. There is no
 interpreter fallback.

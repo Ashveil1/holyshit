@@ -3217,7 +3217,10 @@ class GenIR(Gen):
         a.code += bytes(ws)
         if getattr(self, "sections_only", False):
             if self.ffi_syms:
-                raise HSErr("jit: extern symbols are not supported", 1)
+                if not getattr(self, "allow_extern_sections", False):
+                    raise HSErr("jit: extern symbols are not supported", 1)
+                a.data_label("ffi_got_")
+                a.data_bytes(b"\0" * (8 * len(self.ffi_syms)))
             return {"code": bytes(self.a.code), "data": bytes(self.a.data),
                     "entry": self.a.labels["_start"]}
         from x64 import layout, pack, layout_dyn, pack_dyn
@@ -3239,6 +3242,10 @@ class GenIR(Gen):
     def build_ir_sections(self):
         self.sections_only = True
         return self.build_ir_image()
+
+    def build_ir_extern_sections(self):
+        self.allow_extern_sections = True
+        return self.build_ir_sections()
 
 
 def build_irx64(prog_path, out_path):

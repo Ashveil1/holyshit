@@ -23,8 +23,8 @@ Completed native B-path checkpoints:
   the Python reference and a two-generation native fixed point. Unsafe
   literal transport covers decimal/hex words through 64 bits; safe tagged
   integer semantics remain unchanged.
-- `bootstrap/hs-hosted-x86_64` is a pinned Linux x86-64 seed, 9,277,856 bytes,
-  SHA256 `2bbf6a99ce63d515d7c8a5f2e38f38e2c200650daabbd7853e06a93a61e6e7b4`.
+- `bootstrap/hs-hosted-x86_64` is a pinned Linux x86-64 seed, 9,277,952 bytes,
+  SHA256 `dff8821c1b4c52b8e47d63e04789702f26d1395818d803e5df003cfd256beef5`.
   The source audit rebuilds it independently; the Python-free bootstrap
   requires seed == stage2 == stage3. It depends on this repository, not
   Python execution. See [bootstrap instructions](../bootstrap/README.md).

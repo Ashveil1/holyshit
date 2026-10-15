@@ -13381,7 +13381,10 @@ class GenIR(Gen):
     pyrt.py_extend(asm.state()["code"], pyrt.py_bytes(ws))
     if pyrt.py_getattr(self, "sections_only", false):
       if self.ffi_syms:
-        raise pyrt.py_err("jit: extern symbols are not supported", 1)
+        if not pyrt.py_getattr(self, "allow_extern_sections", false):
+          raise pyrt.py_err("jit: extern symbols are not supported", 1)
+        asm.data_label("ffi_got_")
+        asm.data_bytes(pyrt.py_rep([0], 8 * len(self.ffi_syms)))
       return {"code": pyrt.py_bytes(asm.state()["code"]), "data": pyrt.py_bytes(asm.state()["data"]), "entry": asm.state()["labels"]["_start"]}
     if self.ffi_syms:
       asm.data_label("ffi_got_")
@@ -13397,6 +13400,9 @@ class GenIR(Gen):
   def build_ir_sections(self):
     self.sections_only = true
     return self.build_ir_image()
+  def build_ir_extern_sections(self):
+    self.allow_extern_sections = true
+    return self.build_ir_sections()
 GenIR_JSON_CALLS = pyrt.py_set(["json_parse", "json_str", "json_load", "json_save"])
 GenIR_SRAW_OPS = pyrt.py_set(["sconst", "sbin", "sun", "scall", "sderef", "sfield", "sload", "sraw"])
 def build_irx64(prog_path, out_path):

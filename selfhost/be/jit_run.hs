@@ -8,13 +8,15 @@ import be
 import pyrt
 import asm
 import jitimage
+import jitbind
 def prepare():
   parselib.P["wide_literals"] = true
   srcpath = argv()[0]
   m = irbuild.build_module(normalize.parse(read_text(srcpath)), "")
   verify.verify_module(m)
   g = be.GenIR(m, pyrt.py_os_path_dirname(srcpath), false)
-  sections = g.build_ir_sections()
+  sections = g.build_ir_extern_sections()
+  handles = jitbind.bind(g.ffi_libs, g.ffi_syms)
   # Forward arguments and the Linux process environment through an initial
   # stack frame. Addresses are formed at runtime, after RIP-relative relocation.
   args = argv()
