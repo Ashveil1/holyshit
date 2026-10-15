@@ -1,0 +1,73 @@
+# Experimental one-shot module-return boundary, not a mixed-tier runtime.
+# No language objects cross the call boundary. Uncaught errors still exit.
+import parselib
+import normalize
+import irbuild
+import verify
+import be
+import pyrt
+import asm
+import jitimage
+import jitmem
+def prepare(source):
+  parselib.P["wide_literals"] = true
+  irmod = irbuild.build_module(normalize.parse(read_text(source)), "")
+  verify.verify_module(irmod)
+  generator = be.GenIR(irmod, pyrt.py_os_path_dirname(source), false)
+  generator.build_ir_sections()
+  # Standard C ABI callee-saved registers; no process-entry signal changes.
+  entry = len(asm.state()["code"])
+  for reg in ["rbx", "rbp", "r12", "r13", "r14", "r15"]:
+    asm.push_r(reg)
+  asm.mov_rr("rbp", "rsp")
+  # argc=1, argv[0], argv terminator, environment strings, env terminator.
+  # argc is not on the stack: cmd_argc_/cmd_argv_ are initialized directly.
+  entries = ["hs-return-probe"]
+  for value in split(read_text("/proc/self/environ"), "\0"):
+    if len(value) > 0:
+      append(entries, value)
+  slots = len(entries) + 2
+  if slots % 2 == 0:
+    slots = slots + 1
+  asm.sub_ri32("rsp", slots * 8)
+  asm.mov_ri32("rax", 1)
+  asm.mov_mr_rip("cmd_argc_", "rax")
+  asm.mov_mr_rip("cmd_argv_", "rsp")
+  position = 0
+  for i in range(len(entries)):
+    if i == 1:
+      asm.mov_ri32("rax", 0)
+      asm.mov_mr("rsp", "rax", position * 8)
+      position = position + 1
+    label = "return_probe_arg_" + str(i)
+    asm.data_label(label)
+    asm.data_bytes(pyrt.py_encode(entries[i], "utf-8"))
+    asm.data_bytes([0])
+    asm.lea_rip("rax", label)
+    asm.mov_mr("rsp", "rax", position * 8)
+    position = position + 1
+  asm.mov_ri32("rax", 0)
+  asm.mov_mr("rsp", "rax", position * 8)
+  if len(entries) == 1:
+    asm.mov_mr("rsp", "rax", (position + 1) * 8)
+  asm.mov_mr_rip("gc_stk_", "rsp")
+  asm.call("hs_main")
+  asm.mov_rr("rsp", "rbp")
+  for reg in ["r15", "r14", "r13", "r12", "rbp", "rbx"]:
+    asm.pop_r(reg)
+  asm.ret()
+  image = jitimage.publish()
+  return [image, image["ptr"] + entry]
+args = argv()
+if len(args) != 1:
+  raise "return probe wants one source path"
+state = prepare(args[0])
+pointer = state[1]
+unsafe:
+  I64 result = call0(as_ptr(pointer))
+  print result
+print "JIT RETURNED"
+# Only image mappings are released. Generated heap arenas are process-owned
+# for this experiment and deliberately not advertised as reclaimable.
+jitmem.release(state[0])
+print "JIT IMAGE RELEASED", state[0]["live"]

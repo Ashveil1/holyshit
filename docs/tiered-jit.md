@@ -55,3 +55,10 @@ an exact loop-backedge counter. Snapshots own their lists, so later edits do
 not mutate collection. Collector scope clears/restores on every exit. The
 reference IR executor already has global state and is not thread-safe; this
 API adds no concurrency promise. No automatic CLI output or profile files.
+
+## Return-boundary experiment
+
+The [one-shot return probe](jit-return-probe.md) now exercises a normally
+returning native module entry without replacing `_start`. It is deliberately
+not a shared-runtime ABI: errors can exit, heaps are process-owned and no
+objects cross runtimes. Stage2 is still incomplete.

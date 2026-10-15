@@ -1550,3 +1550,18 @@ Submitted text is displayed, never executed. Input display folds ASCII case
 according to the boot font. Synchronous redraw and the existing single-slot
 keyboard backend can lose input during redraw. No agent runtime, terminal
 emulation, command evaluation, Unicode input or desktop is added.
+
+### Experimental module-return probe
+`selfhost/be/jit_return_probe.holy SOURCE` compiles one supported hosted module
+into separate RX-code/RW-data mappings and calls `hs_main` through a no-argument
+native shim instead of `_start`. On normal completion the shim restores C ABI
+callee-saved registers and stack, returns to the driver and releases only the
+image mappings. It initializes the target's private GC stack bound and an
+empty language argument list; environment strings come from Linux procfs.
+It does not install the process-entry alternate stack or signal handler.
+No language values, closures, exceptions or GC roots cross between runtimes.
+Uncaught target errors retain process-exit behavior; externs are rejected.
+Generated heap arenas remain process-owned until exit, so repeated long-lived
+module loading/unloading is NOT supported. This is a one-shot return-boundary
+experiment, not a production runner, a cold/hot tier or a resumable exception
+ABI. Existing eager and AOT routes and their error behavior are unchanged.
