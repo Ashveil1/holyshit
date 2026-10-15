@@ -98,11 +98,11 @@ class GenIR(Gen):
                          r"[A-Za-z0-9_]*)*$", name):
             raise HSErr(f"bad module name '{name}'", ln)
         hspath = [d for d in _os.environ.get("HSPATH", "").split(":") if d]
-        rel = name.replace(".", "/") + ".hs"
+        rel = name.replace(".", "/")
         for d in [from_dir] + hspath + [_os.getcwd()]:
             if not d:
                 continue
-            p = _os.path.abspath(_os.path.join(d, rel))
+            p = _os.path.abspath(_os.path.join(d, rel + ".holy")) if _os.path.isfile(_os.path.join(d, rel + ".holy")) else _os.path.abspath(_os.path.join(d, rel + ".hs"))
             if _os.path.isfile(p):
                 return p
         raise HSErr(f"cannot find module '{name}'", ln)
