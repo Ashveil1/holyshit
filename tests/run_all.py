@@ -41,6 +41,8 @@ SUITES = [
     ("test_timer_irq.py", "deterministic timer IRQ GPR preservation"),
     ("test_kernel_ir.py", "retained AST kernel reference on QEMU"),
     ("test_kernel_default.py", "public kernel IR selection"),
+    ("test_gfx.py", "software RGB surface pixel oracle and QEMU execution"),
+
     ("test_fbinfo.py", "strict direct RGB framebuffer tag decoding"),
     ("test_framebuffer_kernel.py", "GRUB framebuffer native image and guest pixels"),
     ("test_examples.py", "examples"),

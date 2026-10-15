@@ -1431,6 +1431,19 @@ This is not a static cross-platform distribution: Linux, shell utilities and
 host libc/shared libraries for eager FFI remain dependencies. It adds neither
 first-call compilation nor tiering. Existing output directories are refused.
 
+### Software RGB drawing foundation
+`std.gfx` is a pure-hs drawing module. A surface is `[width, height, pixels]`,
+with row-major packed RGB24 Int pixels. `surface(w,h,color)` allocates at most
+1,048,576 pixels; dimensions are positive and at most 4096. `pixel` clips writes
+outside the surface; `sample` rejects out-of-range reads. `rect` fills a clipped
+half-open rectangle `[x,x+w) x [y,y+h)`; nonpositive extents draw nothing.
+`blit(dst,src,x,y)` copies an entire source with clipping and snapshots the
+source when pixels alias, so overlapping self-blits are deterministic.
+Coordinates/extents are bounded Ints in [-1048576,1048576], excluding Bool;
+colors are Ints in [0,0xffffff]. Validation precedes mutation. Callers must not
+modify the surface's dimensions or pixel-list structure. This is software
+raster storage only: no hardware framebuffer, font, input or window system.
+
 ### Experimental Multiboot2 framebuffer kernel
 The kernel's optional Multiboot2 header requests640x480x32. Legacy Multiboot1
 boot remains unchanged. `kernel/kframebuffer.hs` discovers and validates a
