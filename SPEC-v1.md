@@ -1503,6 +1503,15 @@ characters. Invalid inputs fail before modifying pixels. Bounds/color checks
 match `std.gfx`. Surface storage must remain unmodified by the caller.
 
 
+### Native `.holy` import bridge
+The x64 AST/IR backends and hosted native compiler resolve module stems as
+`.holy` first, `.hs` second within each search directory, without changing
+search-directory priority. Source syntax and explicit input filenames remain
+unchanged. Existing `.hs` source stays in place until the later migration.
+The small legacy `selfhost/cc.hs` compiler is not the hosted seed and retains
+its older resolver in this stage. The new seed must pass independent source
+comparison and native fixed-point audits before merge.
+
 ### `.holy` extension transition, reference tools stage
 `.holy` is the chosen source extension; `.hs` remains a supported legacy
 extension. In the reference interpreter, reference IR, GCC path and LSP,

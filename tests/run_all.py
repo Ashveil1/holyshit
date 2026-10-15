@@ -30,7 +30,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 SUITES = [
-    ("test_ir_profile.py", "bounded opt-in IR execution profiling, not JIT"),
+    ("test_holy_native.py", "x64/native hosted .holy import bridge"),
     ("test.py", "interpreter"),
     ("test_native_strings.py", "UTF-8 literals and embedded-NUL display/key bytes"),
     ("test_native.py", "native (gcc)"),
@@ -38,6 +38,7 @@ SUITES = [
     ("test_fmt.py", "formatter"),
     ("test_x64.py", "x64 backend"),
     ("test_holy_bridge.py", "reference/GCC/LSP .holy compatibility stage"),
+    ("test_ir_profile.py", "bounded opt-in IR execution profiling, not JIT"),
     ("test_ir.py", "IR (build/verify/exec)"),
     ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
     ("test_irx64.py", "IR->x64 differential"),
