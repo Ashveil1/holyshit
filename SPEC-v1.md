@@ -1471,6 +1471,14 @@ be null or exactly one character, and malformed key inputs fail without edits.
 This is not a keyboard driver, input queue, terminal emulator or Unicode editor.
 Use only states from `create`, without modifying their fields directly.
 
+### Native string byte preservation
+The gcc backend emits literal source strings as UTF-8 bytes with explicit
+byte length. `print` and `str` preserve embedded NUL bytes, including inside
+lists and dictionaries, rather than using C string terminators as length.
+String dictionary keys keep their complete bytes for identity/copy/JSON.
+This does not change the existing native byte-index/length model into Unicode
+character indexing, and does not make C extern Str arguments binary-safe.
+
 ### Formatter control-byte preservation
 Canonical formatting preserves the decoded contents of string literals.
 Only the language's supported escapes (`\n`, `\t`, `\r`, `\0`, `\"`, `\\`)
