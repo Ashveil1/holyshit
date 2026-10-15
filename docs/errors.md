@@ -598,7 +598,7 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-## irx64.py — IR ลง x86-64 (47)
+## irx64.py — IR ลง x86-64 (49)
 
 - `'{ins['name']}' already defined in this scope`
 - `'{name}' already defined in this scope`
@@ -623,7 +623,9 @@
 - `circular import '{dotted}'`
 - `contains wants contains(container, x)`
 - `extern from '{lib}': a C source needs a C compiler; xbuild calls none (pass a prebuilt .so)`
+- `ffi '{name}': conflicting library owners`
 - `ffi '{name}': xbuild passes at most 32 args`
+- `ffi: fflush is reserved for libc output ordering`
 - `field '{name}' is not an array`
 - `float wants 1 arg`
 - `has wants has(dict, key)`
@@ -648,4 +650,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 602 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 604 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

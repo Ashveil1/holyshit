@@ -77,6 +77,7 @@ class GenIR(Gen):
         self.allorder = []
         self.ffi_syms = []   # extern C symbols (GOT slot order)
         self.ffi_libs = []   # DT_NEEDED sonames beyond libc
+        self.ffi_owners = {}  # declared symbol -> loader library
 
     # ----- planning (no code): slots, caps, globals -----
 
@@ -2475,6 +2476,7 @@ class GenIR(Gen):
                 raise HSErr(f"cannot find ffi library '{lib}'", ln)
         if so not in self.ffi_libs:
             self.ffi_libs.append(so)
+        return so
 
     def _ffi(self, fr, ins, ln):
         """extern call: tagged hs values -> C ABI (rdi rsi rdx rcx r8 r9),
@@ -2485,7 +2487,12 @@ class GenIR(Gen):
         nf = pt.count("F64")
         if len(pt) > 32:
             raise HSErr(f"ffi '{name}': xbuild passes at most 32 args", ln)
-        self._ffi_lib(ins["lib"], ln)
+        owner = self._ffi_lib(ins["lib"], ln)
+        if name == "fflush" and owner != "libc.so.6":
+            raise HSErr("ffi: fflush is reserved for libc output ordering", ln)
+        if name in self.ffi_owners and self.ffi_owners[name] != owner:
+            raise HSErr(f"ffi '{name}': conflicting library owners", ln)
+        self.ffi_owners[name] = owner
         gi = self._ffi_sym(name)
         fl = self._ffi_sym("fflush")
         for i, (pn, ft) in enumerate(zip(ins["pnames"], pt)):
@@ -3217,7 +3224,10 @@ class GenIR(Gen):
         a.code += bytes(ws)
         if getattr(self, "sections_only", False):
             if self.ffi_syms:
-                raise HSErr("jit: extern symbols are not supported", 1)
+                if not getattr(self, "allow_extern_sections", False):
+                    raise HSErr("jit: extern symbols are not supported", 1)
+                a.data_label("ffi_got_")
+                a.data_bytes(b"\0" * (8 * len(self.ffi_syms)))
             return {"code": bytes(self.a.code), "data": bytes(self.a.data),
                     "entry": self.a.labels["_start"]}
         from x64 import layout, pack, layout_dyn, pack_dyn
@@ -3239,6 +3249,10 @@ class GenIR(Gen):
     def build_ir_sections(self):
         self.sections_only = True
         return self.build_ir_image()
+
+    def build_ir_extern_sections(self):
+        self.allow_extern_sections = True
+        return self.build_ir_sections()
 
 
 def build_irx64(prog_path, out_path):

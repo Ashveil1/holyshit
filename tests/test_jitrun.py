@@ -32,6 +32,6 @@ with tempfile.TemporaryDirectory() as d:
     check(r.returncode==97 and '62-bit' in r.stderr,'documented tagged-Int limit, no silent wrap/fallback')
     source.write_text('extern:\n  I64 getpid()\nprint getpid()\n')
     r=subprocess.run([exe,str(source)],env=env,capture_output=True,text=True,timeout=60)
-    check(r.returncode!=0 and 'extern symbols are not supported' in r.stdout+r.stderr,'reject unbound external symbols')
+    check(r.returncode==0 and r.stdout.strip().isdigit(),'bind libc extern before execution')
 print(f'{passed}/{passed+failed} eager in-process JIT gates (no tiering)')
 sys.exit(bool(failed))
