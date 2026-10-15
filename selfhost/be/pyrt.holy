@@ -1,4 +1,4 @@
-# pyrt.hs - the slice of Python the translated backend (be.hs) leans on.
+# pyrt.holy - the slice of Python the translated backend (be.holy) leans on.
 # Sets are dicts (key -> true); tuples are lists; tuple dict keys go through
 # py_key. Errors raised as py_err(msg, line) carry a marker so py_emsg /
 # py_eline recover the parts (hs appends " at line N" itself on raise).

@@ -27,10 +27,10 @@ ast.fix_missing_locations(items)
 path = pathlib.Path('/tmp/irbuild-source.py')
 src = ast.unparse(items).replace('id(fbody)', 'id(entry)')
 path.write_text(src)
-errs = translate([str(path)], '/tmp/irbuild-raw.hs', str(root / 'x64.py'))
+errs = translate([str(path)], '/tmp/irbuild-raw.holy', str(root / 'x64.py'))
 if errs:
     raise SystemExit('\n'.join(errs))
-s = pathlib.Path('/tmp/irbuild-raw.hs').read_text()
+s = pathlib.Path('/tmp/irbuild-raw.holy').read_text()
 s = re.sub(r'\bpy_(\w+)\(', r'pyrt.py_\1(', s)
 s = s.replace('interp.BUILTINS', 'parselib.BUILTINS')
 s = s.replace('pyrt.py_update(fb.gnames, s["names"])', 'pyrt.py_extend_set(fb.gnames, s["names"])')
@@ -59,6 +59,6 @@ def build_module(prog, pfx):
   iropt.optimize_module(m)
   return m
 '''
-(root / 'selfhost/be/irbuild.hs').write_text(header+s+footer)
+(root / 'selfhost/be/irbuild.holy').write_text(header+s+footer)
 import subprocess
-subprocess.run([sys.executable, str(root/'hs.py'), 'fmt', str(root/'selfhost/be/irbuild.hs'), '-w'], check=True)
+subprocess.run([sys.executable, str(root/'hs.py'), 'fmt', str(root/'selfhost/be/irbuild.holy'), '-w'], check=True)

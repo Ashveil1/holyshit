@@ -12,7 +12,7 @@ total = fails = 0
 
 def run(src, env=None, args=()):
     with tempfile.TemporaryDirectory() as d:
-        p = os.path.join(d, "p.hs")
+        p = os.path.join(d, "p.holy")
         open(p, "w").write(src)
         e = dict(os.environ)
         e.pop("HS_BACKEND", None)
@@ -74,7 +74,7 @@ TESTSRC = ("def test_ok():\n  assert 1 + 1 == 2\n"
            "def test_boom():\n  x = [1][3]\n"
            "def helper():\n  return 1\n")
 with tempfile.TemporaryDirectory() as d:
-    tp = os.path.join(d, "test_x.hs")
+    tp = os.path.join(d, "test_x.holy")
     open(tp, "w").write(TESTSRC)
     r = subprocess.run([sys.executable, HS, "test", d],
                        capture_output=True, text=True)
@@ -95,7 +95,7 @@ with tempfile.TemporaryDirectory() as d:
                        capture_output=True, text=True)
     check("hs test all green exits 0", r.returncode == 0
           and "1 passed, 0 failed" in r.stdout, (r.returncode, r.stdout))
-    check("hs test leaves no temp file", os.listdir(d) == ["test_x.hs"],
+    check("hs test leaves no temp file", os.listdir(d) == ["test_x.holy"],
           os.listdir(d))
 r = subprocess.run([sys.executable, HS, "repl"], capture_output=True, text=True,
                    input="x = 5\nx * 2\ndef f(a):\n  return a + x\n\nf(1)\n"
@@ -112,7 +112,7 @@ for be in ("interp", "native", "auto"):
           rc == 0 and out == WB_OUT, (rc, out, err))
 with tempfile.TemporaryDirectory() as d:
     env = dict(os.environ, HS_CC_CACHE=os.path.join(d, "cache"))
-    src = os.path.join(d, "p.hs")
+    src = os.path.join(d, "p.holy")
     open(src, "w").write('def f(n):\n  if n < 2:\n    return n\n  return f(n - 1) + f(n - 2)\nprint f(20), "ok" + "!", [1, 2][1]\n')
     r = subprocess.run([sys.executable, HS, "cc", src, "-o", os.path.join(d, "p")],
                        capture_output=True, text=True, env=env)
@@ -132,9 +132,9 @@ with tempfile.TemporaryDirectory() as d:
 sys.path.insert(0, ROOT)
 import fmt as _fmt  # noqa: E402
 import interp as _interp  # noqa: E402
-_CM = open(os.path.join(ROOT, "tests", "fmt_comments.hs.txt")).read()
+_CM = open(os.path.join(ROOT, "tests", "fmt_comments.holy.txt")).read()
 with tempfile.TemporaryDirectory() as d:
-    cp = os.path.join(d, "c.hs")
+    cp = os.path.join(d, "c.holy")
     open(cp, "w").write(_CM)
     r1 = subprocess.run([sys.executable, HS, "fmt", cp], capture_output=True, text=True)
     open(cp, "w").write(r1.stdout)
@@ -152,7 +152,7 @@ for sub in ("tests", "selfhost", "kernel", "bench", "examples"):
     if not os.path.isdir(dd):
         continue
     for fn in sorted(os.listdir(dd)):
-        if not fn.endswith(".hs"):
+        if not fn.endswith((".holy", ".hs")):
             continue
         src = open(os.path.join(dd, fn), encoding="utf-8").read()
         try:
@@ -168,7 +168,7 @@ for sub in ("tests", "selfhost", "kernel", "bench", "examples"):
         if len(a[0]) + len(a[1]) != len(b[0]) + len(b[1]) or \
                 _fmt.squash(_fmt.strip_comments(withc)) != _fmt.squash(plain):
             bad.append(fn)
-check("fmt with comments: all repo .hs keep comments and structure", not bad and nfiles > 50, (bad[:5], nfiles))
+check("fmt with comments: all repo .holy keep comments and structure", not bad and nfiles > 50, (bad[:5], nfiles))
 
 # ---- hs explain: error message -> meaning + fix from docs/errors.md ----
 def explain(msg, js=False):
@@ -193,7 +193,7 @@ r = subprocess.run([sys.executable, EV, "--reference", "--json"], capture_output
 j = _json.loads(r.stdout) if r.stdout.startswith("{") else {}
 check("evals: every reference solution passes its task", r.returncode == 0 and j.get("passed") == j.get("total") and j.get("total", 0) >= 39, r.stdout[:300])
 with tempfile.TemporaryDirectory() as d:
-    open(os.path.join(d, "gcd.hs"), "w").write("print 1\n")
+    open(os.path.join(d, "gcd.holy"), "w").write("print 1\n")
     r = subprocess.run([sys.executable, EV, "--solutions", d, "--task", "gcd", "--json"], capture_output=True, text=True)
     j = _json.loads(r.stdout)
     check("evals: a wrong solution fails", r.returncode == 1 and j["passed"] == 0 and j["tasks"][0]["failed"], r.stdout[:300])
@@ -205,7 +205,7 @@ with tempfile.TemporaryDirectory() as d:
 r = explain("E001")
 check("explain accepts an error code", r.returncode == 0 and "cannot add Int and Str" in r.stdout and "[E001]" in r.stdout, r.stdout)
 with tempfile.TemporaryDirectory() as d:
-    bp = os.path.join(d, "bad.hs")
+    bp = os.path.join(d, "bad.holy")
     open(bp, "w").write("print 1 +\n")
     r = subprocess.run([sys.executable, HS, "--json", "check", bp], capture_output=True, text=True)
     out = r.stdout + r.stderr
@@ -214,7 +214,7 @@ with tempfile.TemporaryDirectory() as d:
 
 # ---- run --json: runtime errors as one JSON object ----
 with tempfile.TemporaryDirectory() as d:
-    rp = os.path.join(d, "r.hs")
+    rp = os.path.join(d, "r.holy")
     open(rp, "w").write("print 5\nxs = [1]\nprint xs[argv()[0] == \"go\" and 5 or 0]\n")
     r = subprocess.run([sys.executable, HS, "--json", "run", rp, "go"], capture_output=True, text=True)
     j = _json.loads(r.stderr.strip().split("\n")[-1]) if r.stderr.strip() else {}
@@ -227,7 +227,7 @@ with tempfile.TemporaryDirectory() as d:
 # ---- run cache: same source + same compiler reuses the x64 binary ----
 with tempfile.TemporaryDirectory() as d:
     cd = os.path.join(d, "cache")
-    pp = os.path.join(d, "p.hs")
+    pp = os.path.join(d, "p.holy")
     open(pp, "w").write("print 6 * 7\n")
     env = dict(os.environ, HS_RUN_CACHE_DIR=cd)
     env.pop("HS_BACKEND", None)

@@ -37,7 +37,7 @@ lines+=['print s[2]'];want+=str(pixels)+'\n'
 lines+=['for ch in std.font.characters:', '  bits = std.font.glyph(ch)','  if len(bits) != 7:', '    raise "bad glyph height"','  for row in bits:','    if row < 0 or row > 31:', '      raise "bad glyph width"','for i in range(26):','  upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i]','  lower = "abcdefghijklmnopqrstuvwxyz"[i]','  if std.font.glyph(upper) != std.font.glyph(lower):','    raise "case mapping"','print "atlas ok"'];want+='atlas ok\n'
 env=dict(os.environ,HSPATH=str(ROOT),HSROOT=str(ROOT));passed=failed=0
 with tempfile.TemporaryDirectory() as temp:
-    d=Path(temp);source=d/'font.hs';source.write_text('\n'.join(lines)+'\n')
+    d=Path(temp);source=d/'font.holy';source.write_text('\n'.join(lines)+'\n')
     for backend in ['interp','native','x64','native-hs']:
         if backend=='native-hs':
             exe=d/'program';r=subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(source),str(exe)],env=env,capture_output=True,text=True,timeout=90)

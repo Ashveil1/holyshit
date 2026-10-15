@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""selfhost/cc.hs: the compiler written in hs emits a static x86-64 ELF.
+"""selfhost/cc.holy: the compiler written in hs emits a static x86-64 ELF.
 Each program is run through the reference interpreter and through the
 compiled ELF; stdout must match. Programs outside the subset must be a
 compile error (never silently different output)."""
@@ -10,7 +10,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HS = os.path.join(ROOT, "hs.py")
-CC = os.path.join(ROOT, "selfhost", "cc.hs")
+CC = os.path.join(ROOT, "selfhost", "cc.holy")
 total = fails = 0
 
 PROGS = {
@@ -129,7 +129,7 @@ def check(name, cond, detail=""):
 
 with tempfile.TemporaryDirectory() as d:
     for name, src in PROGS.items():
-        p = os.path.join(d, name + ".hs")
+        p = os.path.join(d, name + ".holy")
         out = os.path.join(d, name + ".bin")
         open(p, "w").write(src)
         rc, want = interp(p)
@@ -144,8 +144,8 @@ with tempfile.TemporaryDirectory() as d:
         md = os.path.join(d, "mod_" + name)
         os.makedirs(md)
         for fn, src in files.items():
-            open(os.path.join(md, fn + ".hs"), "w").write(src)
-        p = os.path.join(md, "main.hs")
+            open(os.path.join(md, fn + ".holy"), "w").write(src)
+        p = os.path.join(md, "main.holy")
         out = os.path.join(md, "main.bin")
         rc, want = interp(p)
         c = compile_prog(p, out)
@@ -156,7 +156,7 @@ with tempfile.TemporaryDirectory() as d:
         check(f"cc mod {name}", rc == 0 and r.returncode == 0 and r.stdout == want,
               (rc, want, r.returncode, r.stdout, r.stderr))
     for name, src in ERRS.items():
-        p = os.path.join(d, "err_" + name + ".hs")
+        p = os.path.join(d, "err_" + name + ".holy")
         out = os.path.join(d, "err_" + name + ".bin")
         open(p, "w").write(src)
         rc, want = interp(p)
@@ -168,20 +168,20 @@ with tempfile.TemporaryDirectory() as d:
         check(f"cc err {name}", rc != 0 and r.returncode != 0 and r.stdout == want,
               (rc, want, r.returncode, r.stdout, r.stderr))
     for name, src in BAD.items():
-        p = os.path.join(d, "bad_" + name + ".hs")
+        p = os.path.join(d, "bad_" + name + ".holy")
         out = os.path.join(d, "bad_" + name + ".bin")
         open(p, "w").write(src)
         c = compile_prog(p, out)
         check(f"cc rejects {name}", c.returncode != 0 and "error:" in c.stdout
               and not os.path.exists(out), (c.returncode, c.stdout, c.stderr))
-    # M5: bootstrap. cc1 = cc.hs run by interp; cc2 = ELF cc1 makes from cc.hs;
-    # cc3 = ELF cc2 makes from cc.hs. cc2 == cc3 byte for byte (fixed point),
+    # M5: bootstrap. cc1 = cc.holy run by interp; cc2 = ELF cc1 makes from cc.holy;
+    # cc3 = ELF cc2 makes from cc.holy. cc2 == cc3 byte for byte (fixed point),
     # and cc2 compiles every program above to the same bytes as cc1 did.
     cc2 = os.path.join(d, "cc2")
     cc3 = os.path.join(d, "cc3")
     c = compile_prog(CC, cc2)
     ok2 = c.returncode == 0 and os.path.exists(cc2)
-    check("bootstrap: cc1 compiles cc.hs", ok2, c.stderr + c.stdout)
+    check("bootstrap: cc1 compiles cc.holy", ok2, c.stderr + c.stdout)
     if ok2:
         os.chmod(cc2, 0o755)
         r = subprocess.run([cc2, CC, cc3], capture_output=True, text=True)
@@ -194,7 +194,7 @@ with tempfile.TemporaryDirectory() as d:
         for name, src in PROGS.items():
             if name in biglit:
                 continue
-            p = os.path.join(d, name + ".hs")
+            p = os.path.join(d, name + ".holy")
             o1 = os.path.join(d, name + ".bin")
             o2 = os.path.join(d, name + ".cc2")
             r = subprocess.run([cc2, p, o2], capture_output=True, text=True)
@@ -203,18 +203,18 @@ with tempfile.TemporaryDirectory() as d:
         check("bootstrap: cc2 emits the same ELF as cc1 for every program", not bad, bad)
         rej = []
         for name, src in BAD.items():
-            p = os.path.join(d, "bad_" + name + ".hs")
+            p = os.path.join(d, "bad_" + name + ".holy")
             o2 = os.path.join(d, "bad_" + name + ".cc2")
             r = subprocess.run([cc2, p, o2], capture_output=True, text=True)
             if r.returncode == 0 or os.path.exists(o2):
                 rej.append(name)
         check("bootstrap: cc2 rejects what cc1 rejects", not rej, rej)
     # the same compiler run natively (gcc) emits identical bytes
-    p = os.path.join(d, "fib.hs")
+    p = os.path.join(d, "fib.holy")
     o1, o2 = os.path.join(d, "fib.i"), os.path.join(d, "fib.n")
     compile_prog(p, o1, "interp")
     c = compile_prog(p, o2, "native")
     same = c.returncode == 0 and open(o1, "rb").read() == open(o2, "rb").read()
-    check("cc.hs: interp and native emit identical ELF", same, c.stderr[-300:])
+    check("cc.holy: interp and native emit identical ELF", same, c.stderr[-300:])
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)

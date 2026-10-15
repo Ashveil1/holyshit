@@ -24,7 +24,7 @@ oldpath = os.environ.get('HSPATH')
 os.environ['HSPATH'] = env['HSPATH']
 try:
     with contextlib.redirect_stdout(io.StringIO()):
-        rc = build_x64(str(ROOT/'selfhost/be/iropt_run.hs'), exe)
+        rc = build_x64(str(ROOT/'selfhost/be/iropt_run.holy'), exe)
 finally:
     if oldpath is None:
         os.environ.pop('HSPATH', None)
@@ -42,7 +42,7 @@ def fits62(v):
         return all(fits62(x) for x in v.values())
     return True
 
-files = sum((glob.glob(str(ROOT/p)) for p in ['tests/*.hs', 'examples/*.hs', 'selfhost/*.hs', 'selfhost/be/*.hs']), [])
+files = sum((glob.glob(str(ROOT/p)) for p in ['tests/*.holy', 'examples/*.holy', 'selfhost/*.holy', 'selfhost/be/*.holy']), [])
 for f in sorted(files):
     if sys.argv[1:] and Path(f).name not in sys.argv[1:]:
         continue
@@ -61,7 +61,7 @@ for f in sorted(files):
     json.dump(unoptimized, astfile)
     astfile.close()
     r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
-        str(ROOT/'selfhost/be/iropt_run.hs'), '--backend', 'interp', astfile.name],
+        str(ROOT/'selfhost/be/iropt_run.holy'), '--backend', 'interp', astfile.name],
         env=env, capture_output=True, text=True, timeout=300)
     try:
         got = json.loads(r.stdout)
@@ -92,7 +92,7 @@ path = str(Path(work.name)/'folds.json')
 Path(path).write_text(json.dumps(cases))
 for backend in ['interp', 'x64']:
     r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
-        str(ROOT/'selfhost/be/iropt_fold_run.hs'), '--backend', backend, path],
+        str(ROOT/'selfhost/be/iropt_fold_run.holy'), '--backend', backend, path],
         capture_output=True, text=True, env=env, timeout=300)
     try:
         ok = json.loads(r.stdout) == want

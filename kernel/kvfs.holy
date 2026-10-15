@@ -1,6 +1,6 @@
-# kernel vfs — a tiny hierarchical filesystem in plain .hs.
+# kernel vfs — a tiny hierarchical filesystem in plain .holy.
 #
-# Inodes live in parallel lists; file bytes live in .hs Str values.
+# Inodes live in parallel lists; file bytes live in .holy Str values.
 # kinds: 0 = file, 1 = dir, 2 = dead (unlinked but maybe still open).
 # Root is inode 0 ("/", parent of itself). No cwd: every path is resolved
 # from the root (a leading "/" is optional). Sizes are len(data); dirs hold "".

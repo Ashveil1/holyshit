@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Programming-task eval for hs. No model calls: this is the checker.
 
-  python3 evals/run.py --reference            # validate the suite with ref/*.hs
-  python3 evals/run.py --solutions DIR        # score DIR/<task id>.hs (pass@1)
+  python3 evals/run.py --reference            # validate the suite with ref/*.holy
+  python3 evals/run.py --solutions DIR        # score DIR/<task id>.holy (pass@1)
   add --json for machine output, --task ID to run one task
 
 A task passes when every case (command-line args -> exact stdout, exit 0)
@@ -28,7 +28,7 @@ def run_case(path, args):
 def score(tasks, dirpath):
     res = []
     for t in tasks:
-        path = os.path.join(dirpath, t["id"] + ".hs")
+        path = os.path.join(dirpath, t["id"] + ".holy")
         item = {"id": t["id"], "passed": False, "cases": 0, "failed": []}
         if not os.path.exists(path):
             item["failed"].append("missing solution")

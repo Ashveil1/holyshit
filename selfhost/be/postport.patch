@@ -1,5 +1,5 @@
---- a/selfhost/be/be.hs
-+++ b/selfhost/be/be.hs
+--- a/selfhost/be/be.holy
++++ b/selfhost/be/be.holy
 @@ -2,6 +2,11 @@
  import asm
  import gcrt
@@ -475,7 +475,7 @@
      base = len(self.all_fs)
 @@ -3799,7 +3837,7 @@
      if lab == null:
-       raise pyrt.py_err("json internal error (no " + str(name) + " in runtime/json.hs)", ln)
+       raise pyrt.py_err("json internal error (no " + str(name) + " in runtime/json.holy)", ln)
      return lab
 -  def build_image(self, mod):
 +  def _base_build_image(self, mod):

@@ -1,4 +1,4 @@
-# elf.hs - ELF64 image writer in holyshit: x64.py layout()/pack() for the
+# elf.holy - ELF64 image writer in holyshit: x64.py layout()/pack() for the
 # static ET_EXEC image (tests/test_elf.py compares byte for byte).
 BASE = 4194304
 def u16(v):

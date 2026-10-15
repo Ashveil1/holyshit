@@ -28,7 +28,7 @@ for row in range(2):
 lines+=['try:', '  std.gfx.rect(s, 0, 0, 2, 2, true)','except:', '  print "bad color"','try:', '  std.gfx.surface(4096, 4096, 0)','except:', '  print "too large"','try:', '  std.gfx.sample(s, -1, 0)','except:', '  print "bad read"','print s[2]']
 want=str(expected)+'\n66051\nbad color\ntoo large\nbad read\n'+str(expected)+'\n'
 with tempfile.TemporaryDirectory() as temp:
-    d=Path(temp);source=d/'gfx.hs';source.write_text('\n'.join(lines)+'\n')
+    d=Path(temp);source=d/'gfx.holy';source.write_text('\n'.join(lines)+'\n')
     for backend in ['interp','native','x64','native-hs']:
         if backend=='native-hs':
             exe=d/'program';cmd=[str(ROOT/'bootstrap/hs-hosted-x86_64'),str(source),str(exe)]
@@ -37,7 +37,7 @@ with tempfile.TemporaryDirectory() as temp:
         else:r=subprocess.run([sys.executable,str(ROOT/'hs.py'),'run',str(source),'--backend',backend],env=env,capture_output=True,text=True,timeout=90)
         check(r.returncode==0 and r.stdout==want,backend+' pixels/clipping/alias/validation '+r.stderr[-150:])
     # Kernel fixture shares the drawing implementation; boot is required in full CI.
-    kernel=d/'kernel.hs';kernel.write_text('import std.gfx\ns = std.gfx.surface(8, 6, 0)\nstd.gfx.rect(s, -1, 1, 4, 3, 7)\nstd.gfx.blit(s, s, 2, 1)\nprint "GFX", sum(s[2]), std.gfx.sample(s, 2, 2)\n')
+    kernel=d/'kernel.holy';kernel.write_text('import std.gfx\ns = std.gfx.surface(8, 6, 0)\nstd.gfx.rect(s, -1, 1, 4, 3, 7)\nstd.gfx.blit(s, s, 2, 1)\nprint "GFX", sum(s[2]), std.gfx.sample(s, 2, 2)\n')
     image=d/'kernel.elf'
     r=subprocess.run([sys.executable,str(ROOT/'hs.py'),'xkernel',str(kernel),'-o',str(image)],env=env,capture_output=True,text=True,timeout=60)
     check(r.returncode==0,'freestanding compile '+r.stderr[-200:])

@@ -1,5 +1,5 @@
 # tour 06: module + stdlib
-# รัน: HSPATH=$PWD python3 interp.py examples/06_modules.hs
+# รัน: HSPATH=$PWD python3 interp.py examples/06_modules.holy
 #
 # import หาไฟล์จาก: โฟลเดอร์โปรแกรม -> HSPATH -> cwd
 # std/ อยู่ในโฟลเดอร์ repo จึงต้องชี้ HSPATH ที่ตัว repo

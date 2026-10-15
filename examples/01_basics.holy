@@ -1,5 +1,5 @@
 # tour 01: ค่า ตัวแปร และฟังก์ชัน
-# รัน: python3 interp.py examples/01_basics.hs
+# รัน: python3 interp.py examples/01_basics.holy
 
 print "holyshit"
 print 1 + 2, 7 / 2, 7 % 3

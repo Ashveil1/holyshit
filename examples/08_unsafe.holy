@@ -1,5 +1,5 @@
 # tour 08: unsafe — ชนิดคงที่, struct, pointer ตรง
-# รัน: python3 interp.py examples/08_unsafe.hs
+# รัน: python3 interp.py examples/08_unsafe.holy
 #
 # ใน unsafe: ชนิดคงที่ (I64/U64/Ptr + struct pointer) ทุกช่อง 8 bytes
 # ไม่มี padding, ไม่มี def/for/try/Str/List, และ / ตัดทศนิยมแบบ C

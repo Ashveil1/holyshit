@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""selfhost/gcrt.hs (allocator + GC emitter written in hs) must emit exactly
+"""selfhost/gcrt.holy (allocator + GC emitter written in hs) must emit exactly
 the machine code and data of gcrt.py."""
 import os
 import subprocess
@@ -32,14 +32,14 @@ gcrt.gc_data(g.a)
 gcrt.emit_gc_malloc(g)
 want = g.a.resolve(0x400000, 0x500000).hex() + " " + bytes(g.a.data).hex()
 r = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"), "run",
-                    os.path.join(ROOT, "selfhost", "gcrt_run.hs"),
+                    os.path.join(ROOT, "selfhost", "gcrt_run.holy"),
                     "--backend", "interp"], capture_output=True, text=True)
 got = r.stdout.strip()
 ok = r.returncode == 0 and got == want
 if ok:
-    print(f"ok   gcrt.hs == gcrt.py ({len(want.split()[0]) // 2} code bytes)")
+    print(f"ok   gcrt.holy == gcrt.py ({len(want.split()[0]) // 2} code bytes)")
 else:
-    print("FAIL gcrt.hs vs gcrt.py", r.returncode, r.stderr[-400:])
+    print("FAIL gcrt.holy vs gcrt.py", r.returncode, r.stderr[-400:])
     c, w = got.split(" ")[0], want.split(" ")[0]
     n = next((i for i in range(min(len(c), len(w))) if c[i] != w[i]), None)
     print("first code diff at hex offset", n, len(c), len(w))

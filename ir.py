@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """holyshit IR: architecture-neutral flat CFG built from the interp AST.
 
-    python3 ir.py prog.hs [args...]   # execute via the IR (reference check)
+    python3 ir.py prog.holy [args...]   # execute via the IR (reference check)
 
 Every backend (x86-64 now, ARM64 later, JIT later) will consume this IR
 instead of reading AST. `interp.py` stays the parser + reference
@@ -2567,7 +2567,7 @@ def run_module(m, basedir="", profile=None):
 
 def main(argv):
     if len(argv) < 2:
-        print("usage: ir.py prog.hs [args...]", file=sys.stderr)
+        print("usage: ir.py prog.holy [args...]", file=sys.stderr)
         return 2
     try:
         with open(argv[1], encoding="utf-8") as f:

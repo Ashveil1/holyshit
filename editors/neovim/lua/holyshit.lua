@@ -1,4 +1,4 @@
--- Neovim setup for holyshit (.hs)
+-- Neovim setup for holyshit (.holy)
 --   :lua require('holyshit').setup()  after copying this repo to ~/.config/nvim/
 -- Or just drop the two lines below into init.lua.
 
@@ -10,7 +10,7 @@ function M.setup(opts)
   local python = opts.python or "python3"
   local server = root .. "/lsp.py"
 
-  vim.filetype.add({ extension = { hs = "holyshit" } })
+  vim.filetype.add({ extension = { holy = "holyshit", hs = "holyshit" } })
   vim.api.nvim_create_user_command("HolyshitCheck", function()
     local f = vim.api.nvim_buf_get_name(0)
     vim.fn.jobstart({ python, root .. "/hs.py", "check", f }, {

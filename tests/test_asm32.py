@@ -51,7 +51,7 @@ want = list(asm.resolve(1048576))
 env = dict(os.environ,HSPATH=str(ROOT/'selfhost'))
 passed = 0
 with tempfile.TemporaryDirectory() as d:
-    source = Path(d)/'boot.hs'; source.write_text('\n'.join(lines)+'\n')
+    source = Path(d)/'boot.holy'; source.write_text('\n'.join(lines)+'\n')
     old = os.environ.get('HSPATH'); os.environ['HSPATH'] = env['HSPATH']
     try:
         with contextlib.redirect_stdout(io.StringIO()):

@@ -1,7 +1,7 @@
 # bench — hs เทียบ CPython
 
 รัน: `python3 bench/run.py [ชื่อ ...] [--timeout วินาที]`
-แต่ละเคสมีคู่ `bench/<name>.hs` + `bench/<name>.py` ที่พิมพ์ผลเหมือนกัน (สคริปต์เช็คให้)
+แต่ละเคสมีคู่ `bench/<name>.holy` + `bench/<name>.py` ที่พิมพ์ผลเหมือนกัน (สคริปต์เช็คให้)
 เทียบ `hs.py xbuild` (ELF ตรง ไม่ใช้ gcc) กับ CPython; CI รันทุกคืนแล้วเก็บผลเป็น artifact
 
 ## Baseline ที่ v0.6.30 (วัดเมื่อ 2026-10-12)
@@ -35,7 +35,7 @@ roots = stack + data segment + บล็อก `unsafe alloc` (pinned). `x64`/ke
 | fib / loop / dict | - | ไม่ต่างจากเดิมอย่างมีนัย |
 | strings (3M live strs) | 0.32 s | 0.66 s (header 16B + bitmap + GC scan) |
 
-ทดสอบ: `tests/x64/gc_stress.hs` (diff กับ interp), `gc bound` ใน test_x64 (alloc bench < 50 MB),
+ทดสอบ: `tests/x64/gc_stress.holy` (diff กับ interp), `gc bound` ใน test_x64 (alloc bench < 50 MB),
 และรัน suites ทั้งหมดด้วย GC ทุก 4 KB ผ่าน (ใช้ตอนพัฒนา).
 
 ## Compact immutable strings (2026-10-14)

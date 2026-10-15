@@ -3,7 +3,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 if [ "$#" -lt 1 ]; then
-  printf '%s\n' 'usage: scripts/run-native.sh program.hs [args...]' >&2
+  printf '%s\n' 'usage: scripts/run-native.sh program.holy [args...]' >&2
   exit 2
 fi
 SOURCE=$1

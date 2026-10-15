@@ -1,4 +1,4 @@
-"""Reference formatter output for selfhost/fmt.hs (fmt.py on interp's AST)."""
+"""Reference formatter output for selfhost/fmt.holy (fmt.py on interp's AST)."""
 import os
 import sys
 

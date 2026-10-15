@@ -17,7 +17,7 @@ command -v xorriso >/dev/null
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/hs-framebuffer.XXXXXXXX")
 trap 'rm -rf -- "$WORK"' EXIT HUP INT TERM
 mkdir -p "$WORK/tree/boot/grub"
-"$ROOT/scripts/build-kernel-native.sh" "$ROOT/kernel/kframebuffer_demo.hs" "$WORK/tree/boot/kernel.elf"
+"$ROOT/scripts/build-kernel-native.sh" "$ROOT/kernel/kframebuffer_demo.holy" "$WORK/tree/boot/kernel.elf"
 cat > "$WORK/tree/boot/grub/grub.cfg" <<'GRUB'
 set timeout=0
 set default=0

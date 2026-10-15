@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """holyshit IR -> x86-64 machine code (no gcc). Task 4, part 1.
 
-    python3 irx64.py prog.hs -o prog   # build through the IR (hosted only)
+    python3 irx64.py prog.holy -o prog   # build through the IR (hosted only)
 
 GenIR subclasses x64gen.Gen and reuses its entire runtime (value model,
 heap, builtins, error machinery) plus its leaf emitters. Only the
@@ -142,7 +142,7 @@ class GenIR(Gen):
         return False
 
     def _load_json_if_needed(self):
-        # compile runtime/json.hs through the IR like an implicit import
+        # compile runtime/json.holy through the IR like an implicit import
         # (x64gen does the same from AST). Entries become normal merged
         # funcs; calls route through the wrapper below.
         import os as _os
@@ -150,7 +150,7 @@ class GenIR(Gen):
             self.js_entries = {}
             return
         path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
-                             "runtime", "json.hs")
+                             "runtime", "json.holy")
         try:
             with open(path, encoding="utf-8") as f:
                 src = f.read()
@@ -1747,7 +1747,7 @@ class GenIR(Gen):
             return
         if pname == "type_name" and fr.get("mod") == "<json>" and \
                 fr["res"].get(pname) in ("novalue", "auto"):
-            # private hook for runtime/json.hs only: x_tname. User
+            # private hook for runtime/json.holy only: x_tname. User
             # code never sees it (resolves unknown at runtime).
             if len(args) != 1:
                 raise HSErr("type_name wants type_name(x)", ln)
@@ -3288,7 +3288,7 @@ def build_irx64(prog_path, out_path):
 if __name__ == "__main__":
     import sys as _sys
     if len(_sys.argv) < 2:
-        print("usage: irx64.py prog.hs [-o out]", file=_sys.stderr)
+        print("usage: irx64.py prog.holy [-o out]", file=_sys.stderr)
         _sys.exit(2)
     prog = _sys.argv[1]
     out = prog.rsplit(".", 1)[0] + ".irx64"

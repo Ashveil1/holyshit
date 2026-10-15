@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""selfhost/irlib.hs (IR text loader written in hs) must produce exactly the
+"""selfhost/irlib.holy (IR text loader written in hs) must produce exactly the
 module ir.parse_module builds, for the IR of every repo program that lowers."""
 import glob
 import json
@@ -13,9 +13,9 @@ sys.path.insert(0, ROOT)
 import ir  # noqa: E402
 
 HS = [sys.executable, os.path.join(ROOT, "hs.py")]
-files = sorted(glob.glob(os.path.join(ROOT, "tests", "*.hs")) +
-               glob.glob(os.path.join(ROOT, "examples", "*.hs")) +
-               glob.glob(os.path.join(ROOT, "selfhost", "*.hs")))
+files = sorted(glob.glob(os.path.join(ROOT, "tests", "*.holy")) +
+               glob.glob(os.path.join(ROOT, "examples", "*.holy")) +
+               glob.glob(os.path.join(ROOT, "selfhost", "*.holy")))
 total = bad = skipped = 0
 with tempfile.TemporaryDirectory() as d:
     for f in files:
@@ -30,12 +30,12 @@ with tempfile.TemporaryDirectory() as d:
         except Exception:
             skipped += 1  # IR text that ir.py itself cannot read back
             continue
-        g = subprocess.run(HS + ["run", os.path.join(ROOT, "selfhost", "ir_dump.hs"),
+        g = subprocess.run(HS + ["run", os.path.join(ROOT, "selfhost", "ir_dump.holy"),
                                  "--backend", "interp", p], capture_output=True, text=True)
         total += 1
         if g.stdout.strip() != want:
             bad += 1
             print("FAIL irlib", os.path.relpath(f, ROOT), g.stderr[-200:])
-print(f"{'ok  ' if not bad else 'FAIL'} irlib.hs == ir.parse_module on {total} programs ({skipped} not lowerable)")
+print(f"{'ok  ' if not bad else 'FAIL'} irlib.holy == ir.parse_module on {total} programs ({skipped} not lowerable)")
 print(f"{total - bad}/{total} passed")
 sys.exit(1 if bad or total == 0 else 0)

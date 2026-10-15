@@ -333,7 +333,7 @@ for name, src, *_ in CASES + _RT_EXTRA:
 
 total += 1
 r = subprocess.run([sys.executable, f"{ROOT}/hs.py", "ir",
-                    os.path.join(HERE, "floatlit.hs")],
+                    os.path.join(HERE, "floatlit.holy")],
                    capture_output=True, text=True, timeout=60)
 ok = r.returncode == 0 and "func <main>():" in r.stdout
 print(("ok  " if ok else "FAIL") + " hs-ir dump")
@@ -358,7 +358,7 @@ try:
 finally:
     os.unlink(bad)
 
-# ---------- differential over the whole tests/*.hs corpus ----------
+# ---------- differential over the whole tests/*.holy corpus ----------
 # Files outside the IR subset report SKIP (honest, counted separately).
 
 import glob
@@ -379,7 +379,7 @@ def _suite_env(name):
 
 
 nskipped = []
-for prog in sorted(glob.glob(os.path.join(HERE, "*.hs"))):
+for prog in sorted(glob.glob(os.path.join(HERE, "*.holy"))):
     name = os.path.splitext(os.path.basename(prog))[0]
     if name.startswith("mod_"):
         continue

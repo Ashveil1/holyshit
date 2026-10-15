@@ -18,7 +18,7 @@ env=dict(os.environ,HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'),HSRO
 with tempfile.TemporaryDirectory() as d:
     for backend in ['interp','x64','native-hs','native-gcc']:
         print('checking',backend,flush=True)
-        source=str(ROOT/'tests/jit/relocation.hs')
+        source=str(ROOT/'tests/jit/relocation.holy')
         if backend=='interp':command=[sys.executable,str(ROOT/'interp.py'),source]
         else:
             exe=str(Path(d)/'relocation')
@@ -46,7 +46,7 @@ with tempfile.TemporaryDirectory() as d:
             if p.poll() is None:p.kill();p.communicate()
 # A throwing/invalid callback must not leak its reserved mapping.
 for backend in ['interp','x64']:
-    p=subprocess.Popen([sys.executable,str(ROOT/'interp.py'),str(ROOT/'tests/jit/invalid_relocation.hs')] if backend=='interp' else [sys.executable,str(ROOT/'hs.py'),'run',str(ROOT/'tests/jit/invalid_relocation.hs'),'--backend','x64'],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+    p=subprocess.Popen([sys.executable,str(ROOT/'interp.py'),str(ROOT/'tests/jit/invalid_relocation.holy')] if backend=='interp' else [sys.executable,str(ROOT/'hs.py'),'run',str(ROOT/'tests/jit/invalid_relocation.holy'),'--backend','x64'],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
     try:
         signal.alarm(30)
         first=p.stdout.readline();addr=int(p.stdout.readline())

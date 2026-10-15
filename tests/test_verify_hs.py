@@ -17,7 +17,7 @@ import ir
 from x64gen import build_x64
 env=dict(os.environ,HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'))
 cases=[]
-for f in sorted(glob.glob(str(ROOT/'tests/*.hs'))+glob.glob(str(ROOT/'examples/*.hs'))):
+for f in sorted(glob.glob(str(ROOT/'tests/*.holy'))+glob.glob(str(ROOT/'examples/*.holy'))):
     try:
         interp.reset_parse_state()
         m=ir.build_module(interp.parse_program(Path(f).read_text()))
@@ -55,7 +55,7 @@ with tempfile.TemporaryDirectory() as d:
     os.environ['HSPATH']=env['HSPATH']
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            rc=build_x64(str(ROOT/'selfhost/be/verify_run.hs'),exe)
+            rc=build_x64(str(ROOT/'selfhost/be/verify_run.holy'),exe)
     finally:
         if old is None:os.environ.pop('HSPATH',None)
         else:os.environ['HSPATH']=old
@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory() as d:
         except interp.HSErr as e:
             want=e.msg
         Path(p).write_text(json.dumps(m))
-        for backend,cmd in [('interp',[sys.executable,str(ROOT/'hs.py'),'run',str(ROOT/'selfhost/be/verify_run.hs'),'--backend','interp',p]),('x64',[exe,p])]:
+        for backend,cmd in [('interp',[sys.executable,str(ROOT/'hs.py'),'run',str(ROOT/'selfhost/be/verify_run.holy'),'--backend','interp',p]),('x64',[exe,p])]:
             if backend=='x64' and not fits62(m):
                 native_skipped+=1
                 continue

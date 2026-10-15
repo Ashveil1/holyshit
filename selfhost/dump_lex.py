@@ -1,4 +1,4 @@
-"""Reference token dump for selfhost/lex.hs (interp's own lexer)."""
+"""Reference token dump for selfhost/lex.holy (interp's own lexer)."""
 import os
 import sys
 

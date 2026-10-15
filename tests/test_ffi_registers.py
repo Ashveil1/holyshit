@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory() as d:
     subprocess.run(['gcc','-shared','-fPIC',str(c),'-o',str(so)],check=True,capture_output=True)
     decl=', '.join(k+f' p{i}' for i,k in enumerate(kinds))
     args=', '.join(str(i+1)+('.5' if k=='F64' else '') for i,k in enumerate(kinds))
-    source=d/'mixed.hs';source.write_text('extern from "'+str(so)+'":\n  F64 mixed('+decl+')\nprint mixed('+args+')\n')
+    source=d/'mixed.holy';source.write_text('extern from "'+str(so)+'":\n  F64 mixed('+decl+')\nprint mixed('+args+')\n')
     expected=None
     for backend in ['interp','native','x64','native-hs']:
         if backend=='native-hs':

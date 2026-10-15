@@ -11,6 +11,6 @@ out = '# Prelude source data, generated from interp.py by scripts/mkprelude.py.\
 out += 'PRELUDE = ' + json.dumps(interp.PRELUDE) + '\n'
 out += 'USER = ' + json.dumps(interp._PRELUDE_USER) + '\n'
 out += 'RANGE_STEP_SRC = ' + json.dumps(interp._RANGE_STEP_SRC) + '\n'
-p = root/'selfhost/be/prelude_data.hs'
+p = root/'selfhost/be/prelude_data.holy'
 p.write_text(out)
 subprocess.run([sys.executable, str(root/'hs.py'), 'fmt', str(p), '-w'], check=True)

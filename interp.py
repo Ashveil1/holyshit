@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """holyshit v1 interpreter (เฟส 2) — tree-walk, dynamic, indent syntax.
-usage: python3 interp.py prog.hs
+usage: python3 interp.py prog.holy
 notes: values are plain Python objects (int/float/str/bool/None/list/dict).
   Native backend (เฟส 3) will wrap ints to 64-bit; here Python ints are unbounded.
 """
@@ -3309,7 +3309,7 @@ def main():
         as_json = True
         raw = [a for a in raw if a != "--json"]
     if not raw:
-        print(f"usage: {sys.argv[0]} [--json] prog.hs [args...]", file=sys.stderr)
+        print(f"usage: {sys.argv[0]} [--json] prog.holy [args...]", file=sys.stderr)
         sys.exit(2)
     sys.argv = [sys.argv[0]] + raw
     import json as _json

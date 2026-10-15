@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory() as temp:
     decl=', '.join(k+f' p{i}' for i,k in enumerate(kinds))
     args=', '.join('"A"' if k=='Str' else '0' if k=='Ptr' else str(i+1)+('.5' if k=='F64' else '') for i,k in enumerate(kinds))
     text='extern from "'+str(so)+'":\n  F64 weighted(I64 marker, ..., '+decl+')\nprint weighted(7, '+args+')\n'
-    source=d/'var.hs';source.write_text(text)
+    source=d/'var.holy';source.write_text(text)
     interp.reset_parse_state();prog=interp.parse_program(text)
     output=io.StringIO()
     with contextlib.redirect_stdout(output):ir.run_module(ir.build_module(prog),str(d))
@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory() as temp:
     r=subprocess.run([sys.executable,str(ROOT/'hs.py'),'fmt',str(source)],capture_output=True,text=True)
     check(r.returncode==0 and '..., F64' not in r.stdout and '..., I64 p0' in r.stdout,'formatter preserves typed boundary')
     # A type failure must occur before any printf side effect.
-    bad=d/"bad.hs"
+    bad=d/"bad.holy"
     bad.write_text('extern:\n  I64 printf(Str format, ..., I64 value)\ntry:\n  printf("TARGET RAN %lld\\n", true)\nexcept:\n  print "caught"\n')
     for backend in ["interp","native","x64"]:
         r=subprocess.run([sys.executable,str(ROOT/"hs.py"),"run",str(bad),"--backend",backend],env=env,capture_output=True,text=True,timeout=90)

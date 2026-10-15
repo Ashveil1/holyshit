@@ -1,5 +1,5 @@
 # ring 3 end to end: load a real user ELF from a multiboot module, drop to
-# ring 3 through the TSS, serve its syscalls from .hs, and come back when it
+# ring 3 through the TSS, serve its syscalls from .holy, and come back when it
 # exits.
 import kmb
 import kpmm

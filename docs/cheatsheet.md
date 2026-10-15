@@ -6,10 +6,10 @@
 ## รัน
 
 ```sh
-python3 interp.py prog.hs        # ตีความ (อ้างอิงความจริง)
-python3 hs.py check prog.hs      # syntax + scope
-python3 hs.py run prog.hs        # native ผ่าน gcc
-python3 hs.py fmt prog.hs -w     # จัดรูป canonical
+python3 interp.py prog.holy        # ตีความ (อ้างอิงความจริง)
+python3 hs.py check prog.holy      # syntax + scope
+python3 hs.py run prog.holy        # native ผ่าน gcc
+python3 hs.py fmt prog.holy -w     # จัดรูป canonical
 ```
 
 ## ไวยากรณ์

@@ -1,5 +1,5 @@
 # tour 03: List + Dict
-# รัน: python3 interp.py examples/03_collections.hs
+# รัน: python3 interp.py examples/03_collections.holy
 
 xs = [1, 2, 3]
 print xs, len(xs)

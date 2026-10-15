@@ -1,6 +1,6 @@
-# cc.hs - a tiny holyshit compiler written in holyshit.
-#   hs run selfhost/cc.hs prog.hs out     (then ./out)
-# It parses with selfhost/parselib.hs and assembles with selfhost/asm.hs (both
+# cc.holy - a tiny holyshit compiler written in holyshit.
+#   hs run selfhost/cc.holy prog.holy out     (then ./out)
+# It parses with selfhost/parselib.holy and assembles with selfhost/asm.holy (both
 # written in hs) and writes a static x86-64 Linux ELF with write_bytes. No
 # gcc, no Python in the compile step. Subset: Int variables, + - * % & | ^ << >>,
 # comparisons and/or/not (conditions only), if/elif/else, while, break,
@@ -2533,7 +2533,7 @@ def elf(code):
   return h + code
 a = argv()
 if len(a) != 2 and len(a) != 3:
-  print "usage: hs run selfhost/cc.hs prog.hs out [trace]"
+  print "usage: hs run selfhost/cc.holy prog.holy out [trace]"
   raise "usage"
 if len(a) == 3:
   ST["trace"] = true

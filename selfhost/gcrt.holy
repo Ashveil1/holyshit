@@ -1,4 +1,4 @@
-# gcrt.hs - the hosted allocator/GC emitter in hs. Generated from gcrt.py by
+# gcrt.holy - the hosted allocator/GC emitter in hs. Generated from gcrt.py by
 # scripts/py2hs.py, then maintained here. tests/test_gcrt.py checks the emitted
 # machine code byte for byte against gcrt.py.
 import asm

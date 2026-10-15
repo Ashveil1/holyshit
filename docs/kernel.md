@@ -1,11 +1,11 @@
 # kernel freestanding (`hs.py xkernel`)
 
-kernel เขียนด้วย `.hs` ล้วน ไม่มี C/asm ในสาย kernel —
+kernel เขียนด้วย `.holy` ล้วน ไม่มี C/asm ในสาย kernel —
 assembler/linker x86-64 อยู่ใน `x64.py`, runtime อยู่ใน `x64gen.py`
 (serial COM1, bump heap, IDT/PIC/PIT, `ticks`/`readkey`, ค่าแบบ tagged)
 
 ```sh
-python3 hs.py xkernel kernel/xdemo.hs -o k.elf
+python3 hs.py xkernel kernel/xdemo.holy -o k.elf
 qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 ```
 
@@ -37,29 +37,29 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 - ATA: `kata` (primary/master/LBA28, PIO) — `present()`, `read_identify()`,
   `sectors()`, `model()`, `read`/`write(lba, count, buf)` (count 1..256);
   เทส `katatest` บูตพร้อม `-drive if=ide`
-- `import` ได้ (โมดูล `.hs` ธรรมดา), `try` ได้ (halt ถ้าไม่มี handler รับ)
+- `import` ได้ (โมดูล `.holy` ธรรมดา), `try` ได้ (halt ถ้าไม่มี handler รับ)
 
-## memory management (`.hs` ล้วน)
+## memory management (`.holy` ล้วน)
 
-- `kernel/kmb.hs` — อ่าน memory map ของ bootloader รองรับ 2 แบบ (ตรวจโดย
+- `kernel/kmb.holy` — อ่าน memory map ของ bootloader รองรับ 2 แบบ (ตรวจโดย
   validate ไม่ใช่เชื่อค่า EBX): spec multiboot1 กับ struct 88-byte ของ QEMU
   เอง (layout ไม่ตรง spec — ดู source `hw/i386/multiboot.c` ของ QEMU)
-- `kernel/kpage.hs` — page table 4 ระดับ: `map`/`unmap`/`translate`,
+- `kernel/kpage.holy` — page table 4 ระดับ: `map`/`unmap`/`translate`,
   `is_mapped`, `map_phys`/`map_user`, `protect` (เปลี่ยน permission ทีหลัง
   ใช้ทำ user text read-only); สร้างตารางที่ขาดอัตโนมัติ, แยก huge
   page (2MB/1GB) เป็นลูก 512 ตัวเมื่อต้อง map 4K ข้างใน, flush TLB ทุกครั้ง;
   map แบบ user พา U/S bit ลงไปทั้ง path (ตารางชั้นกลางของ kernel เป็น
   supervisor — ไม่ทำ ring 3 จะ fault ตั้งแต่ iret แรก)
-- `kernel/kpmm.hs` — frame allocator จริงบน bitmap (`std.bitmap`):
+- `kernel/kpmm.holy` — frame allocator จริงบน bitmap (`std.bitmap`):
   เอาเฟรมจาก region usable ที่ใหญ่สุด, reserve image/หน้าต่างบูต/heap/
   bitmap ตัวเอง, `alloc(n)` คืน address 4K-aligned, `free`/`free_run` คืน
   pool, `busy(paddr)` ถามว่าเฟรมนั้นถูกจองอยู่
-- `kernel/kheap.hs` — kmalloc (`std.heap` K&R malloc/free) บนเฟรมจริงที่ map
+- `kernel/kheap.holy` — kmalloc (`std.heap` K&R malloc/free) บนเฟรมจริงที่ map
   ไว้ที่ `0x60000000`: `init(npages)`, `malloc`/`free`, `free_bytes`
-- `kernel/kaddr.hs` — address space ละหนึ่ง PML4 แชร์ mapping ฝั่ง kernel
+- `kernel/kaddr.holy` — address space ละหนึ่ง PML4 แชร์ mapping ฝั่ง kernel
   (PML4[0]); `new`/`switch`/`current`; user page ต้องอยู่ `>= 0x8000000000`
   (PML4 slot 1+) จึงจะ isolated จริง
-- `kernel/ktask.hs` — cooperative task ใน ring 0 (policy `.hs`, กลไก encoder):
+- `kernel/ktask.holy` — cooperative task ใน ring 0 (policy `.holy`, กลไก encoder):
   `spawn(func)` เตรียม stack+context ให้ entry `f()`, `run()` วน round-robin
   จนหมด, `yield()` สลับตรง task→task, `exit()` จบ task; entry ต้องจบด้วย
   `exit()` (return เฉยๆ จะถูก schedule ซ้ำ)
@@ -75,19 +75,19 @@ qemu-system-x86_64 -kernel k.elf -serial stdio -display none
 - `std.bitmap` — bit set บน byte (`bit_get/set/clear`, `reserve/release`,
   `bit_alloc_run`, `bit_take`, `bitmap_bytes`) รันได้ทุก backend
 
-## filesystem (`.hs` ล้วน)
+## filesystem (`.holy` ล้วน)
 
-ramdisk จาก multiboot module + VFS ที่แก้ไฟล์ได้จริง ทั้งหมดเป็นโมดูล `.hs`
+ramdisk จาก multiboot module + VFS ที่แก้ไฟล์ได้จริง ทั้งหมดเป็นโมดูล `.holy`
 ธรรมดา — ไม่มี block driver จริง, ข้อมูลอยู่ใน RAM
 
-- `kernel/kvfs.hs` — inode เก็บเป็นลิสต์ขนาน (`v_names`/`v_parent`/`v_kind`/
+- `kernel/kvfs.holy` — inode เก็บเป็นลิสต์ขนาน (`v_names`/`v_parent`/`v_kind`/
   `v_data`), root = inode 0 และเป็น parent ของตัวเอง, ไม่มี cwd (ทุก path
   resolve จาก root, `/` นำหน้าไม่บังคับ, `.`/`..` ได้): `mkdir`/`mkdirs`,
   `create`/`write`/`read`, `ls`, `stat` (`[kind, size]` หรือ null),
   `is_file`/`is_dir`, `unlink` (dir ต้องว่าง; inode ที่ยังเปิดอยู่ถูกทำ
   เป็น dead แล้ว fd จะ stale) และ fd layer `fopen`/`fclose`/`fread`/`fwrite`/
   `fseek`/`ftell` — ชื่อ `f*` กันชนกับ builtin `open`/`read`/`write`
-- `kernel/kramdisk.hs` — แกะ KRFS image ที่ bootloader ส่งมา
+- `kernel/kramdisk.holy` — แกะ KRFS image ที่ bootloader ส่งมา
   (`load_module(i)`, `load()` = module 0) เข้า `kvfs`; อ่านด้วย `read_mem`
   กับ `kmb.rd32` เท่านั้น จึงไม่ต้องพึ่ง alignment
 - `scripts/mkramdisk.py` — จาก directory สู่ image:
@@ -100,22 +100,22 @@ ramdisk จาก multiboot module + VFS ที่แก้ไฟล์ได้
   count | ต่อ entry: `u32` type (0 ไฟล์, 1 ไดเรกทอรี) | `u32` path_len |
   path | pad | `u32` size | data | pad — เรียงตามความลึกของ path
   (parent มาก่อนลูก) แก้ทีเดียวเป็น pass เดียว
-- `kmb.hs` เพิ่ม `mods_count()`/`mod_start(i)`/`mod_end(i)`/`mod_len(i)`
+- `kmb.holy` เพิ่ม `mods_count()`/`mod_start(i)`/`mod_end(i)`/`mod_len(i)`
   (multiboot module ทั้งสอง ABI) และ `RUNTIME_BUMP_BASE`/`_SIZE`
-- เทส: `tests/t_vfs.hs` + `tests/x64/vfs.hs` (VFS ทั้งชุดบน interp/native/x64),
-  `kernel/kfstest.hs` (บูตจริง: โหลด ramdisk แล้วอ่าน/แก้/ลบบน QEMU)
+- เทส: `tests/t_vfs.holy` + `tests/x64/vfs.holy` (VFS ทั้งชุดบน interp/native/x64),
+  `kernel/kfstest.holy` (บูตจริง: โหลด ramdisk แล้วอ่าน/แก้/ลบบน QEMU)
 
-## user mode + syscall (`.hs` ล้วน, กลไก encoder)
+## user mode + syscall (`.holy` ล้วน, กลไก encoder)
 
-โปรแกรม user คือ static ELF64 จาก `python3 hs.py xbuild prog.hs` ส่งเข้า
+โปรแกรม user คือ static ELF64 จาก `python3 hs.py xbuild prog.holy` ส่งเข้า
 kernel เป็น multiboot module (`-initrd`) — ไม่ต้องมี runtime พิเศษเพราะ
 backend ส่ง syscall แบบ Linux อยู่แล้ว (`write=1`, `mmap=9`, `exit=60`)
 
-- `kernel/kuser.hs` — โหลด ELF: อ่าน program header, map ทุก `PT_LOAD` ที่
+- `kernel/kuser.holy` — โหลด ELF: อ่าน program header, map ทุก `PT_LOAD` ที่
   address ของตัวเอง + `USER_BIAS` (user page อยู่ PML4 slot 1+ ฝั่ง kernel
   PML4[0] เป็น supervisor-only แตะไม่ถึง), W^X (text ให้ `protect` เป็น
   read-only หลัง copy), stack 8 เพจ; `run()` กระโดดเข้า ring 3
-- `kernel/ksyscall.hs` — `dispatch(nr, a1..a6)`: `sys_write` (fd 1/2 ออก
+- `kernel/ksyscall.holy` — `dispatch(nr, a1..a6)`: `sys_write` (fd 1/2 ออก
   serial ผ่าน `read_mem`), `sys_mmap` (anonymous ที่ kernel เลือกให้),
   `sys_exit` (จำ code แล้ว `user_stop()`); exit code เป็น opaque (tagged
   อยู่แล้วใช้เลย, Null กลายเป็น 0)
@@ -164,7 +164,7 @@ user ต่อกับ VFS ผ่าน syscall ตัวเลขเดีย�
 - `exec` เรียก `exec_enter` (iretq แบบไม่บันทึก continuation) ไม่ใช่
   `run()` — ถ้าใช้ `run()` มันจะทับ continuation/stack ของ session เดิม
   แล้วพอโปรแกรมใหม่ exit ก็กลับไปไม่ได้
-- `kernel/uush.hs` = shell จริงใน ring 3 (`help echo cat ls mkdir rm write
+- `kernel/uush.holy` = shell จริงใน ring 3 (`help echo cat ls mkdir rm write
   run exit`), คุยกับ kernel ผ่าน `scall()` ที่เพิ่มใหม่ใน x64 backend
   (hosted only — ring 0 เรียก `syscall` แล้วขากลับตกลงไป ring 3 ผิด)
 - โปรแกรมที่ kernel โหลดเห็น `argv()` ว่างเสมอ: `build_frame` วาง argc=0

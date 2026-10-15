@@ -1,5 +1,5 @@
 # tour 02: Str — ตัด ต่อ หา แยก ชิ้น
-# รัน: python3 interp.py examples/02_strings.hs
+# รัน: python3 interp.py examples/02_strings.holy
 
 s = "  hello, holyshit  "
 print "[" + s + "]"

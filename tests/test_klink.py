@@ -16,14 +16,14 @@ os.environ['HSPATH']=env['HSPATH']
 passed=failed=0
 with tempfile.TemporaryDirectory() as d:
     d=Path(d)
-    driver=d/'link.hs'
+    driver=d/'link.holy'
     driver.write_text('import klink\nx = json_load(argv()[0])\ny = klink.link(x["payload"], x["stack_patch"])\nwrite_bytes(argv()[1], y)\n')
     # write_bytes lands in a separate PR, so use hex output until it is merged.
     driver.write_text('import klink\nx = json_load(argv()[0])\ny = klink.link(x["payload"], x["stack_patch"])\nH = "0123456789abcdef"\nout = []\nfor b in y:\n  append(out, H[b >> 4] + H[b & 15])\nprint join("", out)\n')
     with contextlib.redirect_stdout(io.StringIO()):
         rc=build_x64(str(driver),str(d/'link'))
     if rc: raise SystemExit('FAIL kernel linker build')
-    files=sys.argv[1:] or ['kernel/kheaptest.hs','kernel/kring3.hs','kernel/ksyscall.hs','kernel/kpreempt.hs','kernel/kjsontest.hs','kernel/kushtest.hs']
+    files=sys.argv[1:] or ['kernel/kheaptest.holy','kernel/kring3.holy','kernel/ksyscall.holy','kernel/kpreempt.holy','kernel/kjsontest.holy','kernel/kushtest.holy']
     for name in files:
         capture={}
         original=Gen.build_image

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""holyshit formatter: parse .hs and re-emit canonical source.
+"""holyshit formatter: parse .holy and re-emit canonical source.
 
-    python3 fmt.py prog.hs        # canonical text to stdout
-    python3 fmt.py -w prog.hs     # rewrite in place
+    python3 fmt.py prog.holy        # canonical text to stdout
+    python3 fmt.py -w prog.holy     # rewrite in place
 
 Canonical form: 2-space indent, `print x` (no parens), single spaces around
 operators, one statement per line, no blank-line preservation. `fmt_program_c`
@@ -460,7 +460,7 @@ def is_canonical(src, out):
 
 def main(argv):
     if len(argv) < 2 or argv[1] in ("-h", "--help"):
-        print("usage: fmt.py prog.hs [-w]", file=sys.stderr)
+        print("usage: fmt.py prog.holy [-w]", file=sys.stderr)
         return 2
     write = "-w" in argv
     path = argv[1] if argv[1] != "-w" else argv[2]

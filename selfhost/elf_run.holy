@@ -1,4 +1,4 @@
-# elf_run.hs: read "<entry_off> <code hex> <data hex>" and print the packed
+# elf_run.holy: read "<entry_off> <code hex> <data hex>" and print the packed
 # static ELF as hex (tests/test_elf.py).
 import elf
 

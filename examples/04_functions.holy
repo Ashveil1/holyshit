@@ -1,5 +1,5 @@
 # tour 04: ฟังก์ชัน — closure, ค่า default ไม่มี, global
-# รัน: python3 interp.py examples/04_functions.hs
+# รัน: python3 interp.py examples/04_functions.holy
 
 def fib(n):
   if n < 2:

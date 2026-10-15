@@ -4,17 +4,17 @@
 มี language server ให้ editor และ AI agent
 
 ```sh
-python3 interp.py prog.hs [args...]   # รันทันที (tree-walk)
-python3 hs.py check prog.hs           # ตรวจ syntax/scope อย่างเดียว
-python3 hs.py build prog.hs [-o prog] # เป็น native binary (gcc + Boehm GC)
-python3 hs.py run prog.hs [args...]   # build ลง temp แล้วรันทันที (ค่าเริ่มต้น: x64 ไม่ใช้ gcc, fallback เอง)
-HS_BACKEND=auto|x64|native|interp     # เลือก backend ของ run (หรือ run prog.hs --backend X)
-python3 hs.py fmt prog.hs [-w|--check] # จัดรูป canonical (2-space, ตัดคอมเมนต์)
+python3 interp.py prog.holy [args...]   # รันทันที (tree-walk)
+python3 hs.py check prog.holy           # ตรวจ syntax/scope อย่างเดียว
+python3 hs.py build prog.holy [-o prog] # เป็น native binary (gcc + Boehm GC)
+python3 hs.py run prog.holy [args...]   # build ลง temp แล้วรันทันที (ค่าเริ่มต้น: x64 ไม่ใช้ gcc, fallback เอง)
+HS_BACKEND=auto|x64|native|interp     # เลือก backend ของ run (หรือ run prog.holy --backend X)
+python3 hs.py fmt prog.holy [-w|--check] # จัดรูป canonical (2-space, ตัดคอมเมนต์)
 python3 hs.py test file_or_dir...      # รันทุก `def test_*()` (assert = เทส); --json สำหรับเอเจนต์, exit 1 ถ้ามีที่ fail
 python3 hs.py repl                       # REPL: state ค้างข้ามบรรทัด, นิพจน์เปล่าพิมพ์ค่า, error ไม่ทำให้หลุด
-python3 hs.py run selfhost/cc.hs prog.hs out   # คอมไพเลอร์ที่เขียนด้วย hs เอง: Int/def/while/print → ELF x86-64 (ดู tests/test_cc.py)
-python3 hs.py xbuild prog.hs [-o prog] # machine code ตรง ไม่ใช้ gcc (subset)
-python3 hs.py xkernel prog.hs -o k.elf # kernel freestanding ไม่ใช้ gcc/as/ld
+python3 hs.py run selfhost/cc.holy prog.holy out   # คอมไพเลอร์ที่เขียนด้วย hs เอง: Int/def/while/print → ELF x86-64 (ดู tests/test_cc.py)
+python3 hs.py xbuild prog.holy [-o prog] # machine code ตรง ไม่ใช้ gcc (subset)
+python3 hs.py xkernel prog.holy -o k.elf # kernel freestanding ไม่ใช้ gcc/as/ld
 python3 hs.py lsp                     # language server (stdio, ไม่มี dependency)
 python3 hs.py --version
 ```
@@ -60,7 +60,7 @@ print sin(0.0)
 ## หัวข้อหลักในภาษา
 
 ดู `SPEC-v1.md` ฉบับเต็ม — ไล่จากง่ายไปยาก:
-`examples/hello.hs` → `fib.hs` → `closure.hs` → `ffi.hs`
+`examples/hello.holy` → `fib.holy` → `closure.holy` → `ffi.holy`
 
 - dynamic types: Int Float Str Bool Null List Dict Func (+ first-class)
 - `def if/while/for try/except import` — syntax indent แบบ Python
@@ -71,7 +71,7 @@ print sin(0.0)
 - มี x64 subset ที่รันได้โดยไม่ต้องมี gcc เลย (รวมถึง kernel) — มีครบ
   Int/Float/Str/List/Dict/Bool/Null, `- * / %` เทียบ float และ
   `print`/`float()` แบบ shortest round-trip ตรงกับ Python โดยไม่ใช้ libc,
-  `json_parse`/`json_str` (คอมไพล์จาก `runtime/json.hs` เข้าไปใน image)
+  `json_parse`/`json_str` (คอมไพล์จาก `runtime/json.holy` เข้าไปใน image)
 
 ## เทส
 
@@ -89,7 +89,7 @@ python3 tests/test_lsp.py      # language server ผ่าน stdio (25 เค�
 python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (41)
 ```
 
-กติกาเทส: `tests/<name>.hs` + `.expected` (stdout), `.stdin` (input),
+กติกาเทส: `tests/<name>.holy` + `.expected` (stdout), `.stdin` (input),
 `.args` (argv ทีละบรรทัด), `.env` (KEY=VAL ต่อบรรทัด), `.fail` (error ที่คาด,
 เทียบ stderr), `mod_*` = helper (ไม่รันตรง), `.nativeonly` = ข้ามฝั่ง interp
 
@@ -101,12 +101,12 @@ language server เป็น stdio ล้วน ไม่ต้องลงอ�
 
 ```sh
 python3 hs.py lsp                                  # server
-python3 scripts/lsp_client.py --diag prog.hs       # คำสั่งเดียวจบ (สำหรับ agent)
+python3 scripts/lsp_client.py --diag prog.holy       # คำสั่งเดียวจบ (สำหรับ agent)
 ```
 
 ## สำหรับ AI agent
 
-อ่าน `AGENTS.md` ก่อนเขียน `.hs` เสมอ — reference กระชับครบกฎทั้งหมด
+อ่าน `AGENTS.md` ก่อนเขียน `.holy` เสมอ — reference กระชับครบกฎทั้งหมด
 รวม gotchas และ fix loop (`check` → `interp` → `build`, error มี `--json`)
 สั้นกว่านั้นดู `docs/for-agents.md`
 

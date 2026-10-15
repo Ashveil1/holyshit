@@ -12,7 +12,7 @@ with tempfile.TemporaryDirectory() as d:
         expected=None
         for backend in ['interp','x64']:
             target=str(Path(d)/f'bytes-{backend}.bin')
-            source=Path(d)/'test.hs'
+            source=Path(d)/'test.holy'
             source.write_text('try:\n  write_bytes('+repr(target).replace("'",'"')+', '+expr+')\n  print "ok"\nexcept as e:\n  print "caught"\n')
             r=subprocess.run([sys.executable,str(ROOT/'hs.py'),'run',str(source),'--backend',backend],capture_output=True,text=True)
             got=(r.stdout,r.returncode,Path(target).read_bytes() if Path(target).exists() else None)

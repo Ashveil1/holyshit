@@ -1319,7 +1319,7 @@ IR path ตรงกว่า เช่น segfault ของ `tests/ufunc.hs` �
   ด้วยสำเนาของ expression default **ทุกครั้งที่เรียก** (ต่างจาก Python ที่คำนวณตอน def;
   `[]` ได้ list ใหม่ทุกครั้ง) backend ทุกตัวจึงเห็นแต่การเรียกเต็ม arity
 - ยังไม่รองรับ: method ใน class (error ตอน parse), เรียกผ่านตัวแปรอื่น/lambda
-  (จะได้ error arity ตามปกติ), `selfhost/cc.hs` (reject)
+  (จะได้ error arity ตามปกติ), `selfhost/cc.holy` (reject)
 - ทดสอบ: `tests/t_defaults.hs` (ทุก backend), `tests/err_defaults.hs`
 
 ### Runtime allocation: strings
@@ -1504,7 +1504,7 @@ match `std.gfx`. Surface storage must remain unmodified by the caller.
 
 
 ### Small cc extension compatibility
-The legacy small `selfhost/cc.hs` compiler tries `<module>.holy` before
+The legacy small `selfhost/cc.holy` compiler tries `<module>.holy` before
 `<module>.hs` in its existing source-directory-only import lookup. Its import
 subset does not gain HSPATH or dotted packages. To retain self-compilation,
 its native runtime supports direct `exists(path)` calls on valid strings
@@ -1516,21 +1516,19 @@ filesystem/type parity beyond this prerequisite is not claimed.
 The x64 AST/IR backends and hosted native compiler resolve module stems as
 `.holy` first, `.hs` second within each search directory, without changing
 search-directory priority. Source syntax and explicit input filenames remain
-unchanged. Existing `.hs` source stays in place until the later migration.
-The small legacy `selfhost/cc.hs` compiler is not the hosted seed and retains
-its older resolver in this stage. The new seed must pass independent source
+unchanged. Tracked source filenames now use `.holy`, with legacy `.hs` import support retained.
+The small legacy compiler has a separate source-directory-only bridge. The new seed must pass independent source
 comparison and native fixed-point audits before merge.
 
-### `.holy` extension transition, reference tools stage
+### `.holy` extension transition
 `.holy` is the chosen source extension; `.hs` remains a supported legacy
 extension. In the reference interpreter, reference IR, GCC path and LSP,
 module resolution keeps search-directory order (source directory, `HSPATH`,
 working directory). Within each directory, `name.holy` wins over `name.hs`.
 Dotted module names still map to directory paths; import syntax is unchanged.
 `hs test` directory discovery includes `test_*.holy`, `t_*.holy` and legacy
-`.hs` names. Explicit input filenames work as before. No files are renamed in
-this stage. Native hs and x64 import lookup still require the later bridge
-and audited seed update; this is not a universal backend migration claim.
+`.hs` names. Explicit input filenames work as before. Tracked sources use `.holy`. Native x64/hosted and small-cc bridges are also
+implemented; audited bootstrap is required before accepting the migration.
 
 
 ### Opt-in reference IR profiling
@@ -1546,7 +1544,7 @@ No native tier, hot-code compilation, on-stack replacement or deoptimization
 is added. The existing IR reference restrictions continue to apply.
 
 ### Experimental framebuffer keyboard console
-`kernel/kconsole_demo.hs` combines the validated framebuffer, ASCII bitmap
+`kernel/kconsole_demo.holy` combines the validated framebuffer, ASCII bitmap
 labels and bounded keyboard state into a single-line input demonstration.
 Submitted text is displayed, never executed. Input display folds ASCII case
 according to the boot font. Synchronous redraw and the existing single-slot

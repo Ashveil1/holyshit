@@ -1,23 +1,23 @@
 # AGENTS.md — holyshit (hs) v0.6.30 language reference for AI coding agents
 
-Read this file before writing or fixing `.hs` code. It is the complete
+Read this file before writing or fixing `.holy` code. It is the complete
 working reference. Longer prose lives in `docs/` (`docs/index.md` is the
 map); `SPEC-v1.md` has design rationale; this file has rules.
 
 ## Run
 
 ```sh
-python3 interp.py prog.hs [args...]        # run now (reference behavior)
-python3 hs.py check prog.hs                # syntax+scope only, no output binary
-python3 hs.py build prog.hs [-o prog]      # native binary
-python3 hs.py run prog.hs [args...]        # build to temp and run (fall-through default)
-python3 hs.py fmt prog.hs [-w|--check]     # canonical 2-space (keeps comments; --check ignores them)
+python3 interp.py prog.holy [args...]        # run now (reference behavior)
+python3 hs.py check prog.holy                # syntax+scope only, no output binary
+python3 hs.py build prog.holy [-o prog]      # native binary
+python3 hs.py run prog.holy [args...]        # build to temp and run (fall-through default)
+python3 hs.py fmt prog.holy [-w|--check]     # canonical 2-space (keeps comments; --check ignores them)
 python3 hs.py explain "<error message>"           # or: hs.py explain E004 -- meaning + fix (add --json); --json errors (check, build, run) carry code+hint
-python3 evals/run.py --solutions DIR [--json]     # score DIR/<task>.hs against evals/tasks.json (pass@1); --reference validates the suite
-python3 hs.py xbuild prog.hs [-o prog]     # x86-64 machine code, no gcc (via IR)
-python3 hs.py xkernel prog.hs -o k.elf     # freestanding kernel, no gcc/as/ld
+python3 evals/run.py --solutions DIR [--json]     # score DIR/<task>.holy against evals/tasks.json (pass@1); --reference validates the suite
+python3 hs.py xbuild prog.holy [-o prog]     # x86-64 machine code, no gcc (via IR)
+python3 hs.py xkernel prog.holy -o k.elf     # freestanding kernel, no gcc/as/ld
 python3 hs.py lsp                          # language server (stdio, no deps)
-python3 interp.py --json prog.hs           # errors as {"file","line","message"} on stderr
+python3 interp.py --json prog.holy           # errors as {"file","line","message"} on stderr
 python3 hs.py --json check|build ...       # same JSON error contract
 ```
 
@@ -41,15 +41,15 @@ the x64 lowering stays type-blind exactly like the AST path it replaced.
 ## Tooling you can call instead of guessing
 
 ```sh
-python3 scripts/lsp_client.py --diag prog.hs          # errors + lines (no server hang)
-python3 scripts/lsp_client.py --symbols prog.hs       # every def/var/import in a file
-python3 scripts/lsp_client.py --hover prog.hs 3 5     # builtin sig, keyword, or variable
-python3 scripts/lsp_client.py --def prog.hs 2 10      # jump to definition (cross-file)
-python3 scripts/lsp_client.py --refs prog.hs 2 10     # every use of that name
-python3 scripts/lsp_client.py --sig prog.hs 4 9       # signature of the call in progress
-python3 scripts/lsp_client.py --wsym prog.hs name    # search symbols project-wide
-python3 scripts/lsp_client.py --complete prog.hs 1 4  # keyword + builtin + local names
-python3 scripts/lsp_client.py --format prog.hs --write
+python3 scripts/lsp_client.py --diag prog.holy          # errors + lines (no server hang)
+python3 scripts/lsp_client.py --symbols prog.holy       # every def/var/import in a file
+python3 scripts/lsp_client.py --hover prog.holy 3 5     # builtin sig, keyword, or variable
+python3 scripts/lsp_client.py --def prog.holy 2 10      # jump to definition (cross-file)
+python3 scripts/lsp_client.py --refs prog.holy 2 10     # every use of that name
+python3 scripts/lsp_client.py --sig prog.holy 4 9       # signature of the call in progress
+python3 scripts/lsp_client.py --wsym prog.holy name    # search symbols project-wide
+python3 scripts/lsp_client.py --complete prog.holy 1 4  # keyword + builtin + local names
+python3 scripts/lsp_client.py --format prog.holy --write
 python3 scripts/gen_api.py                            # regenerate docs/api.json
 python3 scripts/gen_errors.py                         # regenerate docs/errors.md
 ```
@@ -248,7 +248,7 @@ even last digit) is emitted; `float(str)` parses the other way with
 over IEEE patterns with round-half-to-even at the midpoint. Verified
 bit-exact against CPython over ~2500 random doubles.
 
-JSON in x64 lives in `runtime/json.hs`: the parser/encoder are plain hs
+JSON in x64 lives in `runtime/json.holy`: the parser/encoder are plain hs
 written against the subset, and x64gen compiles that file into the image as
 a private module (`<json>`) whenever the program mentions one of the four
 builtins, then routes the calls through it. One hook exists for that module
@@ -332,14 +332,14 @@ Crossing the boundary (x64):
 ## Fix loop for agents
 
 1. `hs.py check` (fast) → `interp.py` (behavior) → `hs.py build` (native parity).
-2. With `--json`, parse stderr: fix `line`, re-run. Line numbers track the `.hs` source.
+2. With `--json`, parse stderr: fix `line`, re-run. Line numbers track the `.holy` source.
 3. Run `hs fmt` before editing foreign code; keep diffs canonical.
-4. New failing case? Add `tests/<name>.hs` + `.expected`/`.fail` (+`.args`/`.stdin`/`.env`
+4. New failing case? Add `tests/<name>.holy` + `.expected`/`.fail` (+`.args`/`.stdin`/`.env`
    as needed) and run `tests/test.py` + `tests/test_native.py` (+`test_fmt.py`).
 5. Touching a builtin list, an error message, or a doc example? Run
    `scripts/gen_api.py` / `scripts/gen_errors.py` then `tests/test_docs.py`
    — it fails loudly on drift.
-6. Lost? `python3 scripts/lsp_client.py --diag prog.hs` gives the same error
+6. Lost? `python3 scripts/lsp_client.py --diag prog.holy` gives the same error
    with a 0-based line, no rebuild needed.
 
 Typed C variadic externs use a boundary marker and a complete call signature:

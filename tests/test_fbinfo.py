@@ -15,7 +15,7 @@ for data,valid in cases:
 want='[3758096384, 2560, 640, 480, 4, 2, 1, 0]\n'+'rejected\n'*(len(cases)-1)
 env=dict(os.environ,HSPATH=str(ROOT),HSROOT=str(ROOT))
 with tempfile.TemporaryDirectory() as temp:
-    d=Path(temp);path=d/'tags.hs';path.write_text(source)
+    d=Path(temp);path=d/'tags.holy';path.write_text(source)
     for backend in ['interp','native','x64','native-hs']:
         if backend=='native-hs':
             exe=d/'program';r=subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(path),str(exe)],env=env,capture_output=True,text=True,timeout=90)

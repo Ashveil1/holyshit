@@ -446,7 +446,7 @@ class Gen:
                 while p is not None:
                     # the owning module scope ends the search: names there
                     # are globals, not captures (works for every module,
-                    # including the private runtime/json.hs one)
+                    # including the private runtime/json.holy one)
                     if p is ms or (isinstance(getattr(p, "_mod", None), dict)
                                    and p is p._mod.get("scope")):
                         break
@@ -1384,7 +1384,7 @@ class Gen:
                 return
         # builtin print / int() / unsafe builtins
         if fn["t"] == "var" and fn["name"] == "type_name" and self.in_json(sc):
-            # private hook: runtime/json.hs only. Users cannot call it.
+            # private hook: runtime/json.holy only. Users cannot call it.
             if len(e["args"]) != 1:
                 raise HSErr("type_name wants type_name(x)", ln)
             self.ev(e["args"][0], sc, mod)
@@ -2215,7 +2215,7 @@ class Gen:
         return False
 
     def call_js_entry(self, lab, argreg="rax"):
-        """Call a runtime/json.hs entry point with one argument.
+        """Call a runtime/json.holy entry point with one argument.
 
         Layout matches ev_user_call: a Func pointer slot, then the argument
         at [rbp+24], then r15. The helper has no captures, so the Func and
@@ -2231,7 +2231,7 @@ class Gen:
     def ev_json(self, e, sc, mod, ln):
         """json_parse / json_str / json_load / json_save.
 
-        The parser and encoder live in runtime/json.hs, compiled into the
+        The parser and encoder live in runtime/json.holy, compiled into the
         image as the private module `<json>` (see load_json_helper). They
         return [null, value] or ["<message>", null]; this wrapper turns the
         failure case into a raise at the *caller's* line, exactly like
@@ -4215,7 +4215,7 @@ class Gen:
             a.sub_ri32("rsp", 8 * ms.nloc)
         self.frame_init_unbound(ms.nloc)
         if self.js_mod is not None:
-            # runtime/json.hs is never imported by user code: run its body
+            # runtime/json.holy is never imported by user code: run its body
             # once up front so the Func objects and HEX exist
             a.call(f"hsM_init_{self.js_mod['pfx']}")
         self.ex_body(mod["prog"], ms, mod, 0)
@@ -4287,7 +4287,7 @@ class Gen:
     JSON_CALLS = ("json_parse", "json_str", "json_load", "json_save")
 
     def in_json(self, sc):
-        """True while emitting code that belongs to the runtime/json.hs module."""
+        """True while emitting code that belongs to the runtime/json.holy module."""
         while sc is not None:
             m = getattr(sc, "_mod", None)
             if isinstance(m, dict) and m.get("name") == "<json>":
@@ -4322,7 +4322,7 @@ class Gen:
         return hit[0]
 
     def load_json_helper(self):
-        """Compile runtime/json.hs as a private module `<json>`.
+        """Compile runtime/json.holy as a private module `<json>`.
 
         The file is plain hs restricted to the x64 subset, so the JSON
         parser/encoder is written once and compiled by the very same
@@ -4331,7 +4331,7 @@ class Gen:
         """
         import os as _os
         path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
-                             "runtime", "json.hs")
+                             "runtime", "json.holy")
         try:
             with open(path, encoding="utf-8") as f:
                 src = f.read()
@@ -4356,12 +4356,12 @@ class Gen:
         return mod
 
     def js_label(self, name, ln):
-        """Code label of a runtime/json.hs entry point."""
+        """Code label of a runtime/json.holy entry point."""
         if self.js_mod is None:
             raise HSErr("json internal error (helper not compiled)", ln)
         lab = self.js_fns.get(name)
         if lab is None:
-            raise HSErr(f"json internal error (no {name} in runtime/json.hs)",
+            raise HSErr(f"json internal error (no {name} in runtime/json.holy)",
                         ln)
         return lab
 
@@ -4638,7 +4638,7 @@ class Gen:
             a.mov_ri32("rdi", vec)
             a.call("k_exc")
             # unreachable (k_exc halts)
-        # timer IRQ0 -> vec 32: ticks_++, then drive the .hs scheduler when
+        # timer IRQ0 -> vec 32: ticks_++, then drive the .holy scheduler when
         # one is registered. The stub fully saves the interrupted task into
         # sched_cur_ (maintained by every ctx_swap_inner), runs the tick
         # handler on a dedicated stack, and either restores+irets (handler
@@ -4648,12 +4648,12 @@ class Gen:
         # no state to corrupt). The skip path uses the stack only, which is
         # always valid here. Full state (all 15 regs + rsp + rip) is saved,
         # so the interrupted point is resumable no matter what it was doing.
-        # No cli anywhere: .hs critical sections mask IRQs themselves, and
+        # No cli anywhere: .holy critical sections mask IRQs themselves, and
         # every shared slot below is reached by exactly one live stub frame.
         a.label("irq_stub_32")
         # Timer tick. Nesting is linearized by sched_depth_: only depth 1
         # proceeds; deeper ticks EOI and bail on the current stack (no slots
-        # touched, nothing to corrupt). .hs critical sections mask IRQs
+        # touched, nothing to corrupt). .holy critical sections mask IRQs
         # themselves around queue mutations; everything the handler touches
         # is read-only otherwise.
         a.push_r("rax")  # stash live rax (stack always valid on entry)
@@ -4828,7 +4828,7 @@ class Gen:
 
     def emit_task_runtime(self):
         # Cooperative + preemptive task switching. Context block (136 bytes,
-        # .hs-managed, opaque): callee-saved + rsp + rip first (the cooperative
+        # .holy-managed, opaque): callee-saved + rsp + rip first (the cooperative
         # path only touches these), then the caller-saved regs the timer stub
         # needs for full preemption:
         # +0 rbx +8 rbp +16 r12 +24 r13 +32 r14 +40 r15 +48 rsp +56 rip
@@ -4928,7 +4928,7 @@ class Gen:
         a.test_rr("rax", "rax")
         lab_noh = self.new_tmp("sc")
         a.jcc("e", lab_noh)  # nobody registered: ENOSYS, straight back
-        # handler(nr, a1..a6) — like a .hs call site: push the Func value,
+        # handler(nr, a1..a6) — like a .holy call site: push the Func value,
         # then the seven arguments right to left. The stub passes raw
         # register words but hs slots must hold tagged values (every read of
         # a dynamic slot validates the tag), so each word is tagged here:
@@ -4993,7 +4993,7 @@ class Gen:
         a.label(lab_stop)
         a.add_ri32("rsp", 128)
         # Resume the kernel exactly as enter_user left it: the code the
-        # continuation lands in is the tail of the same .hs function, so
+        # continuation lands in is the tail of the same .holy function, so
         # its epilogue (`mov rsp,rbp; pop rbp; ret`) needs the rbp from
         # that frame. Nothing else survives here -- the stub runs on the
         # syscall stack, and every register it left behind belongs to the

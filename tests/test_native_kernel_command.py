@@ -21,12 +21,12 @@ with tempfile.TemporaryDirectory(prefix='hs kernel space ') as d:
         out=d/'kernel image.elf';want=d/'reference'
         os.environ['HSPATH']=str(ROOT)+':'+str(ROOT/'kernel')
         with contextlib.redirect_stdout(io.StringIO()):
-            rc=build_xkernel(str(ROOT/'kernel'/f'{name}.hs'),str(want))
-        r=subprocess.run(['/bin/sh',str(ROOT/'scripts/build-kernel-native.sh'),str(ROOT/'kernel'/f'{name}.hs'),str(out)],cwd=d,env=env,capture_output=True,text=True,timeout=180)
+            rc=build_xkernel(str(ROOT/'kernel'/f'{name}.holy'),str(want))
+        r=subprocess.run(['/bin/sh',str(ROOT/'scripts/build-kernel-native.sh'),str(ROOT/'kernel'/f'{name}.holy'),str(out)],cwd=d,env=env,capture_output=True,text=True,timeout=180)
         ok=rc==0 and r.returncode==0 and out.read_bytes()==want.read_bytes()
         passed+=int(ok);failed+=int(not ok)
         if not ok:print('FAIL native kernel command',name,r.returncode,r.stderr[-400:])
-    source=d/'bad source.hs';source.write_text('if\n');out=d/'keep.elf';out.write_bytes(b'preserve')
+    source=d/'bad source.holy';source.write_text('if\n');out=d/'keep.elf';out.write_bytes(b'preserve')
     if sys.argv[1:] and 'invalid' not in sys.argv[1:]:
         print(f'{passed}/{passed+failed} native kernel command gates (PATH without Python/gcc)');sys.exit(bool(failed))
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/build-kernel-native.sh'),str(source),str(out)],env=env,capture_output=True,text=True,timeout=180)

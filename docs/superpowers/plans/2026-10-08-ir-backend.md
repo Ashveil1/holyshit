@@ -14,7 +14,7 @@
 
 - Every milestone keeps all suites green (`python3 tests/run_all.py`), then its own commit on `main`.
 - Error strings that must appear in `docs/errors.md` stay literal / string-concat, never f-strings; then run `scripts/gen_errors.py` / `scripts/gen_api.py`.
-- `hs fmt -w` strips comments — never run `-w` on a commented `.hs` file.
+- `hs fmt -w` strips comments — never run `-w` on a commented `.holy` file.
 - x64 `and`/`or` do not short-circuit (documented divergence in `docs/x64-subset.md`); IR lowers `and`/`or` to branch+phi (short-circuit), so the x64 backend must grow real branches when it moves to IR.
 - 62-bit Int on x64 vs 64-bit on interp is an accepted divergence; IR is bit-width-agnostic (backends own `wrap_i64`).
 
@@ -45,10 +45,10 @@ CASES = [
 ]
 fails = 0
 for name, src, want_out, want_err, want_rc in CASES:
-    with open(f"/tmp/ir_{name}.hs", "w") as f:
+    with open(f"/tmp/ir_{name}.holy", "w") as f:
         f.write(src)
-    a = subprocess.run([sys.executable, f"{ROOT}/interp.py", f"/tmp/ir_{name}.hs"], capture_output=True, text=True)
-    b = subprocess.run([sys.executable, f"{ROOT}/ir.py", f"/tmp/ir_{name}.hs"], capture_output=True, text=True)
+    a = subprocess.run([sys.executable, f"{ROOT}/interp.py", f"/tmp/ir_{name}.holy"], capture_output=True, text=True)
+    b = subprocess.run([sys.executable, f"{ROOT}/ir.py", f"/tmp/ir_{name}.holy"], capture_output=True, text=True)
     ok = (a.stdout == b.stdout == want_out and a.stderr == b.stderr == want_err and a.returncode == b.returncode == want_rc)
     print(("ok  " if ok else "FAIL") + f" {name}")
     fails += 0 if ok else 1
@@ -87,11 +87,11 @@ Then append `SPEC-v1.md` §15.35, update `AGENTS.md`/`README.md`/`VERSION` (0.6.
 
 ### Task 2: Containers + `for` in IR (DONE v0.6.22)
 
-Lower `list/dict/index/slice/setindex/for` (desugar `for` to len/index/while over a private temp). Differential-test against `tests/*.hs` container programs. `setattr/attr` (module attrs) stay AST-side until Task 4.
+Lower `list/dict/index/slice/setindex/for` (desugar `for` to len/index/while over a private temp). Differential-test against `tests/*.holy` container programs. `setattr/attr` (module attrs) stay AST-side until Task 4.
 
 ### Task 3: Dominance verifier + IR text format (DONE v0.6.23)
 
-Proper def-dominates-use check; `hs.py ir prog.hs` dumps canonical IR text; round-trip parse test. Needed before backends consume IR.
+Proper def-dominates-use check; `hs.py ir prog.holy` dumps canonical IR text; round-trip parse test. Needed before backends consume IR.
 
 ### Task 4: x64 backend consumes IR (parts 1-3 DONE v0.6.24-26)
 

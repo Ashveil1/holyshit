@@ -1,4 +1,4 @@
-# cooperative tasks in ring 0 — policy in .hs, mechanism in the encoder.
+# cooperative tasks in ring 0 — policy in .holy, mechanism in the encoder.
 #
 # A task is a Func value f() plus a fresh stack. spawn() prepares both and
 # queues the task; run() executes ready tasks round-robin until none remain.

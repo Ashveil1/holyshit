@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """holyshit native test runner: python3 tests/test_native.py
-Builds each tests/<name>.hs to a native binary and checks output.
+Builds each tests/<name>.holy to a native binary and checks output.
 Same .expected/.stdin/.fail convention as test.py.
 """
 import glob
@@ -59,7 +59,7 @@ def _test_env(name):
 fails = 0
 total = 0
 with tempfile.TemporaryDirectory() as d:
-    for prog in sorted(glob.glob(os.path.join(HERE, "*.hs"))):
+    for prog in sorted(glob.glob(os.path.join(HERE, "*.holy"))):
         name = os.path.splitext(os.path.basename(prog))[0]
         if name.startswith("mod_"):
             continue  # helper module, imported by other tests, never built directly

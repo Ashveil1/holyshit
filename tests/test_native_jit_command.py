@@ -11,7 +11,7 @@ with tempfile.TemporaryDirectory(prefix='hs jit source space ') as d:
     d=Path(d);bindir=d/'bin';bindir.mkdir()
     for name in ['dirname','sha256sum','mktemp','rm']:
         (bindir/name).symlink_to(shutil.which(name))
-    source=d/'source file.hs'
+    source=d/'source file.holy'
     source.write_text('print argv()\nprint env("HS_JIT_COMMAND")\nprint 1 / 0\n')
     env=dict(os.environ,PATH=str(bindir),HS_JIT_COMMAND='works',TMPDIR=str(d))
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/run-jit-native.sh'),str(source),'hello world','$5'],env=env,capture_output=True,text=True,timeout=240)

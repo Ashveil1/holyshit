@@ -15,20 +15,20 @@ assert once==twice,'Python formatter not idempotent'
 assert once==src,'Python formatter changed canonical control byte spelling'
 env=dict(os.environ,HSPATH=str(ROOT/'selfhost'),HSROOT=str(ROOT));passed=2;failed=0
 with tempfile.TemporaryDirectory() as temp:
-    d=Path(temp);source=d/'controls.hs';source.write_text(src)
+    d=Path(temp);source=d/'controls.holy';source.write_text(src)
     before=subprocess.run([sys.executable,str(ROOT/'interp.py'),str(source)],capture_output=True,check=True).stdout
     for backend in ['interp','x64','native-hs']:
-        if backend=='interp':cmd=[sys.executable,str(ROOT/'interp.py'),str(ROOT/'selfhost/fmt.hs'),str(source)]
+        if backend=='interp':cmd=[sys.executable,str(ROOT/'interp.py'),str(ROOT/'selfhost/fmt.holy'),str(source)]
         else:
             exe=d/('formatter-'+backend)
-            if backend=='x64':cmd=[sys.executable,str(ROOT/'hs.py'),'xbuild',str(ROOT/'selfhost/fmt.hs'),'-o',str(exe)]
-            else:cmd=[str(ROOT/'bootstrap/hs-hosted-x86_64'),str(ROOT/'selfhost/fmt.hs'),str(exe)]
+            if backend=='x64':cmd=[sys.executable,str(ROOT/'hs.py'),'xbuild',str(ROOT/'selfhost/fmt.holy'),'-o',str(exe)]
+            else:cmd=[str(ROOT/'bootstrap/hs-hosted-x86_64'),str(ROOT/'selfhost/fmt.holy'),str(exe)]
             r=subprocess.run(cmd,env=env,capture_output=True,timeout=90);assert not r.returncode,r.stderr
             cmd=[str(exe),str(source)]
         r=subprocess.run(cmd,env=env,capture_output=True,timeout=60)
         ok=not r.returncode and r.stdout==once.encode();passed+=ok;failed+=not ok
         if not ok:print('FAIL selfhost formatting',backend,repr(r.stdout),repr(r.stderr))
-    output=d/'formatted.hs';output.write_text(once)
+    output=d/'formatted.holy';output.write_text(once)
     for backend in ['interp','native','x64','native-hs']:
         if backend=='native-hs':
             exe=d/'program';r=subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(output),str(exe)],env=env,capture_output=True,timeout=90)

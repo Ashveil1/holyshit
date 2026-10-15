@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """holyshit formatter tests: python3 tests/test_fmt.py
-Each tests/fmt/<name>.hs must format to tests/fmt/<name>.expected,
+Each tests/fmt/<name>.holy must format to tests/fmt/<name>.expected,
 be idempotent, and execute identically (interp) before/after.
 """
 import glob
@@ -16,7 +16,7 @@ import interp
 
 fails = 0
 total = 0
-for prog in sorted(glob.glob(os.path.join(HERE, "fmt", "*.hs"))):
+for prog in sorted(glob.glob(os.path.join(HERE, "fmt", "*.holy"))):
     name = os.path.splitext(os.path.basename(prog))[0]
     total += 1
     with open(prog, encoding="utf-8") as f:
@@ -47,29 +47,29 @@ for prog in sorted(glob.glob(os.path.join(HERE, "fmt", "*.hs"))):
         continue
     r1 = subprocess.run([sys.executable, os.path.join(ROOT, "interp.py"), prog],
                         capture_output=True, timeout=60)
-    with open(os.path.join(HERE, "fmt", name + ".formatted.hs"), "w", encoding="utf-8") as f:
+    with open(os.path.join(HERE, "fmt", name + ".formatted.holy"), "w", encoding="utf-8") as f:
         f.write(once)
     r2 = subprocess.run([sys.executable, os.path.join(ROOT, "interp.py"),
-                         os.path.join(HERE, "fmt", name + ".formatted.hs")],
+                         os.path.join(HERE, "fmt", name + ".formatted.holy")],
                         capture_output=True, timeout=60)
-    os.remove(os.path.join(HERE, "fmt", name + ".formatted.hs"))
+    os.remove(os.path.join(HERE, "fmt", name + ".formatted.holy"))
     if (r1.returncode, r1.stdout, r1.stderr) != (r2.returncode, r2.stdout, r2.stderr):
         print(f"FAIL {name}: exec differs after fmt")
         fails += 1
         continue
     print(f"ok   {name}")
 
-# every .hs in the repo must already be canonical (comments and blank lines
+# every .holy in the repo must already be canonical (comments and blank lines
 # do not count — the printer cannot reproduce them)
 total += 1
 bad = []
-# tests/fmt/*.hs are deliberately unformatted fixtures
+# tests/fmt/*.holy are deliberately unformatted fixtures
 for sub in ("examples", "std", "tests", "tests/x64", "kernel"):
     d = os.path.join(ROOT, sub)
     if not os.path.isdir(d):
         continue
-    for path in sorted(glob.glob(os.path.join(d, "*.hs"))):
-        if path.endswith(".formatted.hs"):
+    for path in sorted(glob.glob(os.path.join(d, "*.holy"))):
+        if path.endswith(".formatted.holy"):
             continue
         with open(path, encoding="utf-8") as f:
             src = f.read()
@@ -90,7 +90,7 @@ else:
 total += 1
 import tempfile
 with tempfile.TemporaryDirectory() as d:
-    good = os.path.join(d, "good.hs")
+    good = os.path.join(d, "good.holy")
     with open(good, "w", encoding="utf-8") as f:
         f.write('# comment kept\n\ndef f(a, b):\n  return a + b\n')
     r = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"), "fmt",
