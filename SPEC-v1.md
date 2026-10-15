@@ -1486,3 +1486,18 @@ are emitted. Other literal ASCII control bytes remain literal bytes inside
 strings; the formatter must not invent Unicode escapes that the parser does
 not decode. Unknown source escapes retain the existing literal-next-character
 behavior. This adds no escape syntax or Unicode semantics.
+
+### Tiny bitmap labels
+`std.font` is an original fixed5x7 bitmap label font, not a Unicode font engine.
+`glyph(character)` returns seven fresh5-bit rows (bit4 is the left pixel).
+It contains A-Z, digits, spaces and the listed punctuation; ASCII lowercase
+folds to uppercase. Other characters use the question-mark glyph. Exactly
+one character is required. UTF-8 byte-vs-character behavior remains the
+existing backend limit: portable label input is ASCII only.
+`measure(text, scale)` returns `[width,height]` in6x8 cells, including trailing
+cell spacing. Newline starts another row. Empty text measures `[0,0]`.
+`draw(surface,x,y,text,color,scale)` uses the existing RGB surface contract,
+transparent background and clipped foreground pixels. No wrapping, tab stops,
+kerning or antialiasing. Scale is an integer1..16; labels are at most1024
+characters. Invalid inputs fail before modifying pixels. Bounds/color checks
+match `std.gfx`. Surface storage must remain unmodified by the caller.
