@@ -57,6 +57,7 @@ SUITES = [
     ("test_iropt_hs.py", "CFG optimizer in hs vs iropt.py (interp + x64)"),
     ("test_verify_hs.py", "CFG verifier in hs vs ir.py (valid + malformed modules)"),
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
+    ("test_ffi_variadic.py", "typed C variadic declaration and promoted ABI arguments"),
     ("test_ffi_u64.py", "negative U64 extern conversion before C side effect"),
     ("test_ffi_stack.py", "SysV stack arguments beyond integer and float registers"),
     ("test_ffi_registers.py", "independent SysV mixed FFI register banks"),

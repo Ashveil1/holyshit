@@ -341,3 +341,9 @@ Crossing the boundary (x64):
    — it fails loudly on drift.
 6. Lost? `python3 scripts/lsp_client.py --diag prog.hs` gives the same error
    with a 0-based line, no rebuild needed.
+
+Typed C variadic externs use a boundary marker and a complete call signature:
+`I64 printf(Str format, ..., I64 value, F64 fraction)`. Every argument remains
+explicitly typed and required; this is not hs varargs. The marker needs fixed
+parameters before it and typed parameters after it. I64/U64/F64/Str/Ptr are
+promoted ABI types. Keep the C format string consistent with the declaration.

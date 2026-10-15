@@ -316,7 +316,10 @@ def fmt_stmt(s, ind):
             head = f'extern from "{esc(s["lib"])}":'
         out = [p + head]
         for d in s["decls"]:
-            params = ", ".join(f"{ft} {pn}" for pn, ft in d["params"])
+            ps = [f"{ft} {pn}" for pn, ft in d["params"]]
+            if "fixed" in d:
+                ps.insert(d["fixed"], "...")
+            params = ", ".join(ps)
             out.append("  " * (ind + 1) + f"{d['rtype']} {d['name']}({params})")
         return out
     if t == "unsafe":

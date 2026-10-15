@@ -248,6 +248,8 @@ class Builder:
       child.start(entry)
       r = child.temp()
       child.emit(_n("ffi", ln, {"dest": r, "sym": d["name"], "lib": s["lib"], "rtype": d["rtype"], "ptypes": [_p238_0[1] for _p238_0 in d["params"]], "pnames": pn}))
+      if "fixed" in d:
+        child.cur["instrs"][0 - 1]["fixed"] = d["fixed"]
       child.end(_t("ret", ln, {"val": r}))
       self.funcs[qname] = {"name": qname, "dispname": d["name"], "params": pn, "blocks": child.blocks, "entry": entry["label"], "globals": [], "xname": "ffi '" + str(d["name"]) + "'"}
       append(self.order, qname)
@@ -382,7 +384,7 @@ class Builder:
       fb.emit(_n("build_list", ln, {"dest": d, "items": items}))
       return d
     if t == "dict":
-      pairs = [[self._expr(fb, _p373_0[0]), self._expr(fb, _p373_0[1])] for _p373_0 in e["pairs"]]
+      pairs = [[self._expr(fb, _p375_0[0]), self._expr(fb, _p375_0[1])] for _p375_0 in e["pairs"]]
       d = fb.temp()
       fb.emit(_n("build_dict", ln, {"dest": d, "pairs": pairs}))
       return d
