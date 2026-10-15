@@ -272,7 +272,7 @@
 - `{want} arg count mismatch`
 - `{what} wants an open socket`
 
-## hs.py — native backend ผ่าน gcc (84)
+## hs.py — native backend ผ่าน gcc (83)
 
 - `'{n}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -317,7 +317,6 @@
 - `cannot dereference {pt} (need Ptr)`
 - `cannot find ffi library '{lib}'`
 - `cannot find ffi source '{lib}'`
-- `cannot find module '{name}'`
 - `cannot mix I64 and U64 with '{op}' (convert explicitly)`
 - `cannot negate Ptr`
 - `cannot order pointers (use == / !=)`
@@ -651,4 +650,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 605 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 604 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
