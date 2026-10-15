@@ -2483,10 +2483,8 @@ class GenIR(Gen):
         a = self.a
         name, pt, rt = ins["sym"], ins["ptypes"], ins["rtype"]
         nf = pt.count("F64")
-        if nf > 8:
-            raise HSErr(f"ffi '{name}': xbuild passes at most 8 F64 args", ln)
-        if len(pt) - nf > 6:
-            raise HSErr(f"ffi '{name}': xbuild passes at most 6 integer/pointer args", ln)
+        if len(pt) > 32:
+            raise HSErr(f"ffi '{name}': xbuild passes at most 32 args", ln)
         self._ffi_lib(ins["lib"], ln)
         gi = self._ffi_sym(name)
         fl = self._ffi_sym("fflush")
@@ -2556,33 +2554,47 @@ class GenIR(Gen):
             a.jmp("hs_raise_msg")
             a.label(lab_after)
         iregs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"]
-        ni = len(pt) - nf
-        fi, ii = nf, ni
-        for ft in reversed(pt):
+        fi, ii = 0, 0
+        stack_args = []
+        for i, ft in enumerate(pt):
+            offset = 8 * (len(pt) - 1 - i)
             if ft == "F64":
-                fi -= 1
-                a.pop_r("rax")
-                a.movq_xr(fi, "rax")
+                if fi < 8:
+                    a.mov_rm("rax", "rsp", offset)
+                    a.movq_xr(fi, "rax")
+                else:
+                    stack_args.append(offset)
+                fi += 1
             else:
-                ii -= 1
-                a.pop_r(iregs[ii])
+                if ii < 6:
+                    a.mov_rm(iregs[ii], "rsp", offset)
+                else:
+                    stack_args.append(offset)
+                ii += 1
 
-        def ccall(idx, nfl=nf):
+        def ccall(idx, nfl=0, offsets=None):
+            if offsets is None:
+                offsets = []
+            save_offset = (8 * len(offsets) + 15) & ~15
             a.mov_rr("r10", "rsp")
             a.and_ri32("rsp", -16)
-            a.sub_ri32("rsp", 16)
-            a.mov_mr("rsp", "r10", 0)
+            a.sub_ri32("rsp", save_offset + 16)
+            a.mov_mr("rsp", "r10", save_offset)
+            for i, offset in enumerate(offsets):
+                a.mov_rm("rax", "r10", offset)
+                a.mov_mr("rsp", "rax", 8 * i)
             a.lea_rip("r11", "ffi_got_")
             a.mov_rm("r11", "r11", 8 * idx)
-            a.mov_ri32("rax", nfl)       # varargs: number of vector regs
+            a.mov_ri32("rax", nfl)
             a.call_r11()
-            a.mov_rm("rsp", "rsp", 0)
-        ccall(gi)
+            a.mov_rm("rsp", "rsp", save_offset)
+        ccall(gi, min(nf, 8), stack_args)
+        a.add_ri32("rsp", 8 * len(pt))
         if rt == "F64":
             a.movq_rx("rax", 0)
         a.push_r("rax")
         a.mov_ri32("rdi", 0)
-        ccall(fl, 0)
+        ccall(fl, 0, [])
         a.pop_r("rax")
         if rt == "F64":
             a.mov_rr("rdi", "rax")

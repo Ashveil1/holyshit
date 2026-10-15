@@ -1387,6 +1387,6 @@ backend emits literal byte lengths explicitly, preserving embedded NUL.
 Hosted x64 extern calls independently use up to six integer/pointer/string
 registers and eight F64 registers under the SysV x86-64 ABI. A mixed
 signature can therefore have up to fourteen register arguments. Declaration
-order is preserved across the independent register banks. Exceeding either
-bank is a compile error; stack argument passing is not implemented. This
+order is preserved across the independent register banks. Arguments beyond either bank are passed in declaration order on the
+16-byte-aligned caller stack. At most 32 fixed arguments are supported. This
 does not add variadic calls, callbacks or struct-by-value.
