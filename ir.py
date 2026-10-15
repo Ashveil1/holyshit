@@ -1908,15 +1908,16 @@ _BUILTIN_ROOT = None
 
 
 def _ir_find(name, basedir, ln):
-    rel = name.replace(".", "/") + ".hs"
+    rel = name.replace(".", "/")
     dirs = [basedir] + [d for d in os.environ.get("HSPATH", "").split(":")
                         if d] + [os.getcwd()]
     for d in dirs:
         if not d:
             continue
-        p = os.path.join(d, rel)
-        if os.path.isfile(p):
-            return os.path.abspath(p)
+        for suffix in (".holy", ".hs"):
+            p = os.path.join(d, rel + suffix)
+            if os.path.isfile(p):
+                return os.path.abspath(p)
     raise HSErr(f"cannot find module '{name}'", ln)
 
 
