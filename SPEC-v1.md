@@ -1501,3 +1501,14 @@ transparent background and clipped foreground pixels. No wrapping, tab stops,
 kerning or antialiasing. Scale is an integer1..16; labels are at most1024
 characters. Invalid inputs fail before modifying pixels. Bounds/color checks
 match `std.gfx`. Surface storage must remain unmodified by the caller.
+
+### `.holy` extension transition, reference tools stage
+`.holy` is the chosen source extension; `.hs` remains a supported legacy
+extension. In the reference interpreter, reference IR, GCC path and LSP,
+module resolution keeps search-directory order (source directory, `HSPATH`,
+working directory). Within each directory, `name.holy` wins over `name.hs`.
+Dotted module names still map to directory paths; import syntax is unchanged.
+`hs test` directory discovery includes `test_*.holy`, `t_*.holy` and legacy
+`.hs` names. Explicit input filenames work as before. No files are renamed in
+this stage. Native hs and x64 import lookup still require the later bridge
+and audited seed update; this is not a universal backend migration claim.
