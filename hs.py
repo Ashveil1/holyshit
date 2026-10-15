@@ -177,31 +177,13 @@ class Gen:
                 if f"cannot find module '{parent}'" not in str(e):
                     raise
                 pmod = self.shell_module(parent)
-            rel = name.replace(".", "/") + ".hs"
-            p = None
-            for d in [from_dir] + hspath + [_os.getcwd()]:
-                if not d:
-                    continue
-                q = _os.path.abspath(_os.path.join(d, rel))
-                if _os.path.isfile(q):
-                    p = q
-                    break
-            if p is None:
-                raise HSErr(f"cannot find module '{name}'", line)
+            p = interp.find_module_file(name, from_dir, line)
             leafmod = self._load_mod_path(name, p, line)
             pmod.scope.submods[leaf] = leafmod
             return leafmod
         if name in self.shell_by_name:
             return self.shell_by_name[name]
-        rel = name + ".hs"
-        for d in [from_dir] + hspath + [_os.getcwd()]:
-            if not d:
-                continue
-            p = _os.path.abspath(_os.path.join(d, rel))
-            if _os.path.isfile(p):
-                break
-        else:
-            raise HSErr(f"cannot find module '{name}'", line)
+        p = interp.find_module_file(name, from_dir, line)
         return self._load_mod_path(name, p, line)
 
     def _find_loaded(self, dname):
@@ -1816,7 +1798,7 @@ def _test_files(paths):
         if os.path.isdir(p):
             for root, _d, fs in sorted(os.walk(p)):
                 for f in sorted(fs):
-                    if f.endswith(".hs") and f.startswith(("test_", "t_")):
+                    if f.endswith((".holy", ".hs")) and f.startswith(("test_", "t_")):
                         out.append(os.path.join(root, f))
         else:
             out.append(p)
