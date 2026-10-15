@@ -338,6 +338,8 @@ class Builder:
             child.emit(_n("ffi", ln, dest=r, sym=d["name"], lib=s["lib"],
                           rtype=d["rtype"], ptypes=[t for _, t in d["params"]],
                           pnames=pn))
+            if "fixed" in d:
+                child.cur["instrs"][-1]["fixed"] = d["fixed"]
             child.end(_t("ret", ln, val=r))
             self.funcs[qname] = {"name": qname, "dispname": d["name"],
                                  "params": pn, "blocks": child.blocks,
@@ -2303,7 +2305,7 @@ def _step(ins, temps, frame, prev):
             cdll = interp.ffi_load(ins["lib"], frame.basedir, ln)
             ex = ins["_ex"] = interp.HSExtern(
                 ins["sym"], ins["rtype"],
-                list(zip(ins["pnames"], ins["ptypes"])), cdll, ln)
+                list(zip(ins["pnames"], ins["ptypes"])), cdll, ln, ins.get("fixed"))
         temps[ins["dest"]] = ex.call(
             [frame.get(n, ln) for n in ins["pnames"]],
             getattr(frame, "call_ln", ln))

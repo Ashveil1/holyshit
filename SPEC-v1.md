@@ -1410,3 +1410,13 @@ undifferentiated process-global search. Relative library paths are based on
 the source directory. Duplicate C symbol names with different library owners
 are rejected by the x64 backend because its GOT is keyed by symbol name. The
 name fflush is reserved to libc for runtime output ordering.
+
+### Explicitly typed C variadic calls
+An extern parameter list may contain one `...` marker after at least one
+fixed parameter and before at least one typed variadic parameter. Example:
+`I64 printf(Str format, ..., I64 value, F64 fraction)`. The complete hs call
+still has exactly the declared number of arguments. The marker changes the
+C prototype and ABI classification, not hs arity or argument conversion.
+I64/U64/F64/Str/Ptr are already promoted C ABI types; no automatic type
+inference, narrow integers, float32 or untyped hs varargs are added. Format
+strings remain the caller's responsibility, as with any unsafe C contract.

@@ -300,7 +300,7 @@ class Gen:
                     raise HSErr(f"'{n}' already defined in this scope", d["line"])
                 lib = self.ffi_lib_kind(s["lib"], s["line"])
                 sig = {"cname": n, "rtype": d["rtype"], "ptypes": list(d["params"]),
-                       "lib": lib, "line": d["line"],
+                       "lib": lib, "line": d["line"], "fixed": d.get("fixed"),
                        "x": f"hsX_{len(self.ffi_all)}_{n}"}
                 scope.externs[n] = sig
                 self.ffi_all.append((n, sig))
@@ -998,7 +998,9 @@ class Gen:
         raise HSErr(f"bad unsafe call {name}", ln)
 
     def ffi_sigdecl(self, sig):
-        params = ", ".join(FCTYPE[ft] for _, ft in sig["ptypes"]) or "void"
+        params = ", ".join(FCTYPE[ft] for _, ft in sig["ptypes"][:sig.get("fixed")]) or "void"
+        if sig.get("fixed") is not None:
+            params += ", ..."
         return f"{FCTYPE[sig['rtype']]} (*{sig['x']})({params})"
 
     def ffi_unbox(self, ft, code, ln):
@@ -1615,7 +1617,9 @@ class Gen:
                 out.append(f"hsXlib_{i} = hs_ffi_lib(\"{c_esc(val)}\", 0);")
         for _, sig in self.ffi_all:
             li = ffi_libs.index(sig["lib"])
-            params = ", ".join(FCTYPE[ft] for _, ft in sig["ptypes"]) or "void"
+            params = ", ".join(FCTYPE[ft] for _, ft in sig["ptypes"][:sig.get("fixed")]) or "void"
+            if sig.get("fixed") is not None:
+                params += ", ..."
             out.append(f"{sig['x']} = ({FCTYPE[sig['rtype']]}(*)({params}))"
                        f"hs_ffi_sym(hsXlib_{li}, \"{sig['cname']}\", 0);")
         self.emit_body(self.prog, self.mod, out, 0)

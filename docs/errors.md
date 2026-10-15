@@ -28,7 +28,7 @@
 | `E011` | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |
 | `E012` | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |
 
-## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (240)
+## interp.py — ตัวตีความ + parse (ทุก error ของภาษา) (241)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -143,6 +143,7 @@
 - `ffi '{self.name}' failed: {e}`
 - `ffi '{self.name}' wants {len(self.params)} args, got {len(args)}`
 - `ffi compile failed for '{lib}': {r.stderr.strip()}`
+- `ffi variadic marker needs fixed parameters and appears once`
 - `field '{e['name']}' is not an array`
 - `field '{s['name']}' is not an array`
 - `file is closed`
@@ -650,4 +651,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 604 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 605 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

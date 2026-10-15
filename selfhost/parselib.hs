@@ -806,8 +806,17 @@ def parse_extern():
       raise "bad extern name '" + nm[1] + "' at line " + str(nm[2])
     expectv("OP", "(")
     params = []
+    fixed = null
     if not atv("OP", ")"):
       while true:
+        if atv("OP", "."):
+          expectv("OP", ".")
+          expectv("OP", ".")
+          expectv("OP", ".")
+          if fixed != null or len(params) == 0:
+            raise "ffi variadic marker needs fixed parameters and appears once at line " + str(nm[2])
+          fixed = len(params)
+          expectv("OP", ",")
         ft = expect("ID")
         if not ft[1] in FFTYPE or ft[1] == "U0":
           raise "bad ffi param type '" + ft[1] + "' at line " + str(ft[2])
@@ -820,7 +829,10 @@ def parse_extern():
           continue
         break
     expectv("OP", ")")
-    append(decls, {"name": nm[1], "rtype": rt[1], "params": params, "line": nm[2]})
+    decl = {"name": nm[1], "rtype": rt[1], "params": params, "line": nm[2]}
+    if fixed != null:
+      decl["fixed"] = fixed
+    append(decls, decl)
     skip_nl()
   if at("DEDENT"):
     nxt()

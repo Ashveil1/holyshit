@@ -97,12 +97,13 @@ def ffi_load(lib, basedir, line):
 class HSExtern:
     """A C function imported via extern. Calls go through ctypes."""
 
-    def __init__(self, name, rtype, params, cdll, line):
+    def __init__(self, name, rtype, params, cdll, line, fixed=None):
         global FFI_USED
         FFI_USED = True
         self.name = name
         self.rtype = rtype
         self.params = params  # [(pname, ftype)]
+        self.fixed = fixed
         try:
             fn = getattr(cdll, name)
         except (AttributeError, ValueError):
@@ -111,7 +112,7 @@ class HSExtern:
             _ctypes.c_char_p if rtype == "Str" else (
                 _ctypes.c_void_p if rtype == "Ptr" else _FFI_CT[rtype]))
         fn.argtypes = [(_ctypes.c_char_p if ft == "Str" else (
-            _ctypes.c_void_p if ft == "Ptr" else _FFI_CT[ft])) for _, ft in params]
+            _ctypes.c_void_p if ft == "Ptr" else _FFI_CT[ft])) for _, ft in params[:fixed]]
         self.func = fn
 
     def call(self, args, ln):
@@ -119,7 +120,11 @@ class HSExtern:
             raise HSErr(f"ffi '{self.name}' wants {len(self.params)} args, got {len(args)}", ln)
         cargs = []
         for i, ((pn, ft), a) in enumerate(zip(self.params, args)):
-            cargs.append(self._conv(a, ft, i, ln))
+            value = self._conv(a, ft, i, ln)
+            if self.fixed is not None and i >= self.fixed:
+                ctype = _ctypes.c_char_p if ft == "Str" else (_ctypes.c_void_p if ft == "Ptr" else _FFI_CT[ft])
+                value = ctype(value)
+            cargs.append(value)
         import sys as _sys
         _sys.stdout.flush()  # keep Python print and C stdio in program order
         try:
@@ -996,8 +1001,17 @@ def parse_extern(p):
             raise HSErr(f"bad extern name '{nm.v}'", nm.line)
         p.expect("OP", "(")
         params = []
+        fixed = None
         if not p.at("OP", ")"):
             while True:
+                if p.at("OP", "."):
+                    p.expect("OP", ".")
+                    p.expect("OP", ".")
+                    p.expect("OP", ".")
+                    if fixed is not None or not params:
+                        raise HSErr("ffi variadic marker needs fixed parameters and appears once", nm.line)
+                    fixed = len(params)
+                    p.expect("OP", ",")
                 ft = p.expect("ID")
                 if ft.v not in FFTYPE or ft.v == "U0":
                     raise HSErr(f"bad ffi param type '{ft.v}'", ft.line)
@@ -1010,7 +1024,10 @@ def parse_extern(p):
                     continue
                 break
         p.expect("OP", ")")
-        decls.append({"name": nm.v, "rtype": rt.v, "params": params, "line": nm.line})
+        decl = {"name": nm.v, "rtype": rt.v, "params": params, "line": nm.line}
+        if fixed is not None:
+            decl["fixed"] = fixed
+        decls.append(decl)
         p.skip_nl()
     if p.at("DEDENT"):
         p.next()
@@ -2491,7 +2508,7 @@ def ex(s, env, ux=False):
                 raise HSErr(f"cannot shadow builtin '{d['name']}'", d["line"])
             if d["name"] in env.vars:
                 raise HSErr(f"'{d['name']}' already defined in this scope", d["line"])
-            env.vars[d["name"]] = HSExtern(d["name"], d["rtype"], d["params"], cdll, d["line"])
+            env.vars[d["name"]] = HSExtern(d["name"], d["rtype"], d["params"], cdll, d["line"], d.get("fixed"))
         return
     if t == "try":
         held = None

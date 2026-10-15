@@ -284,7 +284,10 @@ def fmt_stmt(s, ind, out):
     append(out, p + head)
     for d in s["decls"]:
       ps = []
-      for pr in d["params"]:
+      for i in range(len(d["params"])):
+        if has(d, "fixed") and i == d["fixed"]:
+          append(ps, "...")
+        pr = d["params"][i]
         append(ps, pr[1] + " " + pr[0])
       append(out, pad(ind + 1) + d["rtype"] + " " + d["name"] + "(" + join(", ", ps) + ")")
   elif t == "unsafe":
