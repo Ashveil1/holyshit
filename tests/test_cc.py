@@ -129,7 +129,7 @@ def check(name, cond, detail=""):
 
 with tempfile.TemporaryDirectory() as d:
     for name, src in PROGS.items():
-        p = os.path.join(d, name + ".hs")
+        p = os.path.join(d, name + ".holy")
         out = os.path.join(d, name + ".bin")
         open(p, "w").write(src)
         rc, want = interp(p)
@@ -144,7 +144,7 @@ with tempfile.TemporaryDirectory() as d:
         md = os.path.join(d, "mod_" + name)
         os.makedirs(md)
         for fn, src in files.items():
-            open(os.path.join(md, fn + ".hs"), "w").write(src)
+            open(os.path.join(md, fn + ".holy"), "w").write(src)
         p = os.path.join(md, "main.holy")
         out = os.path.join(md, "main.bin")
         rc, want = interp(p)
@@ -156,7 +156,7 @@ with tempfile.TemporaryDirectory() as d:
         check(f"cc mod {name}", rc == 0 and r.returncode == 0 and r.stdout == want,
               (rc, want, r.returncode, r.stdout, r.stderr))
     for name, src in ERRS.items():
-        p = os.path.join(d, "err_" + name + ".hs")
+        p = os.path.join(d, "err_" + name + ".holy")
         out = os.path.join(d, "err_" + name + ".bin")
         open(p, "w").write(src)
         rc, want = interp(p)
@@ -168,7 +168,7 @@ with tempfile.TemporaryDirectory() as d:
         check(f"cc err {name}", rc != 0 and r.returncode != 0 and r.stdout == want,
               (rc, want, r.returncode, r.stdout, r.stderr))
     for name, src in BAD.items():
-        p = os.path.join(d, "bad_" + name + ".hs")
+        p = os.path.join(d, "bad_" + name + ".holy")
         out = os.path.join(d, "bad_" + name + ".bin")
         open(p, "w").write(src)
         c = compile_prog(p, out)
@@ -194,7 +194,7 @@ with tempfile.TemporaryDirectory() as d:
         for name, src in PROGS.items():
             if name in biglit:
                 continue
-            p = os.path.join(d, name + ".hs")
+            p = os.path.join(d, name + ".holy")
             o1 = os.path.join(d, name + ".bin")
             o2 = os.path.join(d, name + ".cc2")
             r = subprocess.run([cc2, p, o2], capture_output=True, text=True)
@@ -203,7 +203,7 @@ with tempfile.TemporaryDirectory() as d:
         check("bootstrap: cc2 emits the same ELF as cc1 for every program", not bad, bad)
         rej = []
         for name, src in BAD.items():
-            p = os.path.join(d, "bad_" + name + ".hs")
+            p = os.path.join(d, "bad_" + name + ".holy")
             o2 = os.path.join(d, "bad_" + name + ".cc2")
             r = subprocess.run([cc2, p, o2], capture_output=True, text=True)
             if r.returncode == 0 or os.path.exists(o2):
