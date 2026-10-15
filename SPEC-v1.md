@@ -1513,3 +1513,13 @@ Dotted module names still map to directory paths; import syntax is unchanged.
 `.hs` names. Explicit input filenames work as before. No files are renamed in
 this stage. Native hs and x64 import lookup still require the later bridge
 and audited seed update; this is not a universal backend migration claim.
+
+
+### Small cc extension compatibility
+The legacy small `selfhost/cc.hs` compiler tries `<module>.holy` before
+`<module>.hs` in its existing source-directory-only import lookup. Its import
+subset does not gain HSPATH or dotted packages. To retain self-compilation,
+its native runtime supports direct `exists(path)` calls on valid strings
+using Linux access(F_OK). A missing/inaccessible path returns false; invalid
+types retain the small compiler's existing type-error behavior. General
+filesystem/type parity beyond this prerequisite is not claimed.
