@@ -43,3 +43,26 @@ the kernel ELF through the hs IR backend and linker. It needs only shell
 utilities at runtime, not Python, gcc, as or ld. It does not boot the kernel
 or package a ramdisk. Source and output paths may contain spaces. An
 existing output is preserved when parsing or compilation fails.
+
+## Build a relocatable native directory
+
+```
+scripts/build-native-bundle.sh /tmp/hs-native
+/tmp/hs-native/bin/hs run path/to/program.hs [args...]
+/tmp/hs-native/bin/hs build path/to/program.hs output
+```
+
+The output directory must not already exist. The builder verifies the seed
+and builds the eager driver once, then includes the compiler, hs sources,
+standard modules and runtime JSON code. Move the whole directory together.
+The launcher resolves data relative to itself; the original checkout is not
+needed at runtime. Source imports still resolve from the source directory.
+No Python or gcc is needed to build or run the bundle. Linux x86-64, `/bin/sh`
+and standard shell/checksum utilities are required. Eager FFI uses host libc
+and shared libraries. This is not a static binary or a cross-platform bundle.
+
+`run` compiles eagerly in memory, not on first function call. It has no tiering,
+cache or interpreter fallback. Unlike scripts/run-jit-native.sh, it does not
+rebuild the driver on every launch. Checksums catch accidental binary changes,
+not a maliciously replaced binary and checksum file together. `build` retains
+the compiler's current failure and output behavior.

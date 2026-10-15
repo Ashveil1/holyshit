@@ -1420,3 +1420,13 @@ C prototype and ABI classification, not hs arity or argument conversion.
 I64/U64/F64/Str/Ptr are already promoted C ABI types; no automatic type
 inference, narrow integers, float32 or untyped hs varargs are added. Format
 strings remain the caller's responsibility, as with any unsafe C contract.
+
+### Relocatable native directory bundle
+`scripts/build-native-bundle.sh OUTPUT` creates a new Linux x86-64 directory
+with the pinned compiler, an ahead-built eager driver, hs compiler sources,
+runtime data and standard modules. `OUTPUT/bin/hs run SOURCE [args...]` uses
+eager in-process execution; `build SOURCE OUTPUT` uses the native AOT compiler.
+The directory can move and runs without the original checkout, Python or gcc.
+This is not a static cross-platform distribution: Linux, shell utilities and
+host libc/shared libraries for eager FFI remain dependencies. It adds neither
+first-call compilation nor tiering. Existing output directories are refused.

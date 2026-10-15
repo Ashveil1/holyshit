@@ -69,3 +69,9 @@ across those cases. A separate nine-run alternating hello-world check
 measured 10.77 ms median for the already-built eager driver and 43.11 ms
 for interp, including source compilation in the eager measurement. Neither
 result establishes whole-language performance or first-call JIT completion.
+
+For repeated use outside the checkout, `scripts/build-native-bundle.sh OUTPUT`
+creates a relocatable native directory with an already-built eager driver.
+`OUTPUT/bin/hs run SOURCE [args...]` does not build the driver again. It still
+includes target compilation and checksum verification; it is not first-call
+JIT or a startup/performance guarantee. See bootstrap/README.md.
