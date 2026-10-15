@@ -1503,6 +1503,15 @@ characters. Invalid inputs fail before modifying pixels. Bounds/color checks
 match `std.gfx`. Surface storage must remain unmodified by the caller.
 
 
+### Native `.holy` import bridge
+The x64 AST/IR backends and hosted native compiler resolve module stems as
+`.holy` first, `.hs` second within each search directory, without changing
+search-directory priority. Source syntax and explicit input filenames remain
+unchanged. Existing `.hs` source stays in place until the later migration.
+The small legacy `selfhost/cc.hs` compiler is not the hosted seed and retains
+its older resolver in this stage. The new seed must pass independent source
+comparison and native fixed-point audits before merge.
+
 ### `.holy` extension transition, reference tools stage
 `.holy` is the chosen source extension; `.hs` remains a supported legacy
 extension. In the reference interpreter, reference IR, GCC path and LSP,
@@ -1515,11 +1524,10 @@ this stage. Native hs and x64 import lookup still require the later bridge
 and audited seed update; this is not a universal backend migration claim.
 
 
-### Native `.holy` import bridge
-The x64 AST/IR backends and hosted native compiler resolve module stems as
-`.holy` first, `.hs` second within each search directory, without changing
-search-directory priority. Source syntax and explicit input filenames remain
-unchanged. Existing `.hs` source stays in place until the later migration.
-The small legacy `selfhost/cc.hs` compiler is not the hosted seed and retains
-its older resolver in this stage. The new seed must pass independent source
-comparison and native fixed-point audits before merge.
+### Experimental framebuffer keyboard console
+`kernel/kconsole_demo.hs` combines the validated framebuffer, ASCII bitmap
+labels and bounded keyboard state into a single-line input demonstration.
+Submitted text is displayed, never executed. Input display folds ASCII case
+according to the boot font. Synchronous redraw and the existing single-slot
+keyboard backend can lose input during redraw. No agent runtime, terminal
+emulation, command evaluation, Unicode input or desktop is added.
