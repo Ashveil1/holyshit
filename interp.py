@@ -2299,14 +2299,15 @@ def _hspath():
 
 
 def find_module_file(name, basedir, line):
-    rel = name.replace(".", "/") + ".hs"
+    rel = name.replace(".", "/")
     dirs = [basedir] + _hspath() + [_os.getcwd()]
     for d in dirs:
         if not d:
             continue
-        p = _os.path.join(d, rel)
-        if _os.path.isfile(p):
-            return _os.path.abspath(p)
+        for suffix in (".holy", ".hs"):
+            p = _os.path.join(d, rel + suffix)
+            if _os.path.isfile(p):
+                return _os.path.abspath(p)
     raise HSErr(f"cannot find module '{name}'", line)
 
 
