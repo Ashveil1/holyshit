@@ -45,7 +45,6 @@ def _prec(e):
 def esc(s):
     out = []
     for ch in s:
-        o = ord(ch)
         if ch == "\\":
             out.append("\\\\")
         elif ch == '"':
@@ -58,8 +57,6 @@ def esc(s):
             out.append("\\0")
         elif ch == "\r":
             out.append("\\r")
-        elif o < 0x20:
-            out.append(f"\\u{o:04x}")
         else:
             out.append(ch)
     return "".join(out)

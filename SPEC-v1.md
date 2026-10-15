@@ -1446,3 +1446,11 @@ Multiboot1 route does not supply the tested graphics mode. The demo is a static
 software-drawn panel, not a window manager, desktop, font renderer or hardware
 GPU driver. Firmware/real-machine compatibility is unverified. Protocol layout:
 https://raw.githubusercontent.com/rhboot/grub2/master/include/multiboot2.h
+
+### Formatter control-byte preservation
+Canonical formatting preserves the decoded contents of string literals.
+Only the language's supported escapes (`\n`, `\t`, `\r`, `\0`, `\"`, `\\`)
+are emitted. Other literal ASCII control bytes remain literal bytes inside
+strings; the formatter must not invent Unicode escapes that the parser does
+not decode. Unknown source escapes retain the existing literal-next-character
+behavior. This adds no escape syntax or Unicode semantics.
