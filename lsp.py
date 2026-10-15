@@ -313,7 +313,7 @@ def resolve_use(use):
 # ---------- module resolution (for cross-file definition) ----------
 
 def find_module_file(dotted, basedir):
-    rel = dotted.replace(".", "/") + ".hs"
+    rel = dotted.replace(".", "/")
     dirs = []
     if basedir:
         dirs.append(basedir)
@@ -322,9 +322,10 @@ def find_module_file(dotted, basedir):
     for d in dirs:
         if not d:
             continue
-        p = os.path.abspath(os.path.join(d, rel))
-        if os.path.isfile(p):
-            return p
+        for suffix in (".holy", ".hs"):
+            p = os.path.abspath(os.path.join(d, rel + suffix))
+            if os.path.isfile(p):
+                return p
     return None
 
 
@@ -729,7 +730,7 @@ class Server:
                                if not d.startswith(".") and d != "legacy"
                                and d != "__pycache__"]
                 for fn in sorted(filenames):
-                    if not fn.endswith(".hs"):
+                    if not fn.endswith((".holy", ".hs")):
                         continue
                     full = os.path.join(dirpath, fn)
                     if any(d.path == full for d in out):
@@ -930,13 +931,11 @@ class Server:
     def submodule_path(self, mod_path, attr):
         base = os.path.dirname(mod_path)
         stem = os.path.splitext(os.path.basename(mod_path))[0]
-        cand = os.path.join(base, stem, attr + ".hs")
-        if os.path.isfile(cand):
-            return cand
-        # sibling file like pkg/mod.hs when mod_path is pkg.hs
-        cand2 = os.path.join(base, stem + "_" + attr + ".hs")
-        if os.path.isfile(cand2):
-            return cand2
+        for relative in (os.path.join(stem, attr), stem + "_" + attr):
+            for suffix in (".holy", ".hs"):
+                candidate = os.path.join(base, relative + suffix)
+                if os.path.isfile(candidate):
+                    return candidate
         return None
 
     def reexport_path(self, mdoc, attr):
