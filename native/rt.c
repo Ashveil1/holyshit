@@ -129,7 +129,8 @@ static int key_eq(Val a, Val b) {
         return 0;
     if (a.tag == T_INT)
         return a.u.i == b.u.i;
-    return strcmp(AS_STR(a)->data, AS_STR(b)->data) == 0;
+    Str *x = AS_STR(a), *y = AS_STR(b);
+    return x->len == y->len && memcmp(x->data, y->data, (size_t)x->len) == 0;
 }
 
 static int key_ok(Val k) { return k.tag == T_STR || k.tag == T_INT; }
@@ -566,7 +567,7 @@ void v_setindex(Val obj, Val idx, Val v, int line) {
             d->vals = GC_REALLOC(d->vals, sizeof(Val) * (size_t)d->cap);
         }
         if (idx.tag == T_STR)
-            idx = v_str(AS_STR(idx)->data);  // own copy of the key
+            idx = v_strn(AS_STR(idx)->data, AS_STR(idx)->len);  // own complete key
         d->keys[d->len] = idx;
         d->vals[d->len] = v;
         d->len++;
@@ -930,13 +931,54 @@ const char *v_disp(Val v) {
     return o;
 }
 
+// Length-aware display for public print/str. v_disp remains a C-string
+// adapter for diagnostics, not the byte-preserving value transport.
+static void display_append(char **buf, size_t *n, size_t *cap,
+                           const char *data, size_t len) {
+    while (*n + len + 1 > *cap) {
+        *cap *= 2;
+        *buf = GC_REALLOC(*buf, *cap);
+    }
+    memcpy(*buf + *n, data, len);
+    *n += len;
+}
+
+static Val display_value(Val v) {
+    if (v.tag == T_STR)
+        return v;
+    if (v.tag != T_LIST && v.tag != T_DICT)
+        return v_str(v_disp(v));
+    size_t cap = 64, n = 0;
+    char *buf = GC_MALLOC(cap);
+    int is_list = v.tag == T_LIST;
+    int64_t len = is_list ? AS_LIST(v)->len : AS_DICT(v)->len;
+    display_append(&buf, &n, &cap, is_list ? "[" : "{", 1);
+    for (int64_t i = 0; i < len; i++) {
+        if (i)
+            display_append(&buf, &n, &cap, ", ", 2);
+        if (!is_list) {
+            Val key = display_value(AS_DICT(v)->keys[i]);
+            display_append(&buf, &n, &cap, AS_STR(key)->data,
+                           (size_t)AS_STR(key)->len);
+            display_append(&buf, &n, &cap, ": ", 2);
+        }
+        Val value = display_value(is_list ? AS_LIST(v)->items[i]
+                                         : AS_DICT(v)->vals[i]);
+        display_append(&buf, &n, &cap, AS_STR(value)->data,
+                       (size_t)AS_STR(value)->len);
+    }
+    display_append(&buf, &n, &cap, is_list ? "]" : "}", 1);
+    return v_strn(buf, (int64_t)n);
+}
+
 // ---------- builtins ----------
 Val b_print(Val *args, int nargs, int line) {
     (void)line;
     for (int i = 0; i < nargs; i++) {
         if (i > 0)
             putchar(' ');
-        fputs(v_disp(args[i]), stdout);
+        Val text = display_value(args[i]);
+        fwrite(AS_STR(text)->data, 1, (size_t)AS_STR(text)->len, stdout);
     }
     putchar('\n');
     return v_null();
@@ -983,7 +1025,7 @@ Val b_range(Val *args, int nargs, int line) {
 Val b_str(Val *args, int nargs, int line) {
     if (nargs != 1)
         hs_err(line, "str wants 1 arg, got %d", nargs);
-    return v_str(v_disp(args[0]));
+    return display_value(args[0]);
 }
 
 Val b_int(Val *args, int nargs, int line) {
@@ -1975,7 +2017,7 @@ static void js_val(Val v, char **o, size_t *n, size_t *cap, int line, int depth)
                 js_buf(o, n, cap, ", ", 2);
             if (d->keys[i].tag != T_STR)
                 hs_err(line, "json_str needs Str keys");
-            js_str(o, n, cap, AS_STR(d->keys[i])->data, (int64_t)strlen(AS_STR(d->keys[i])->data), line);
+            js_str(o, n, cap, AS_STR(d->keys[i])->data, AS_STR(d->keys[i])->len, line);
             js_buf(o, n, cap, ": ", 2);
             js_val(d->vals[i], o, n, cap, line, depth + 1);
         }

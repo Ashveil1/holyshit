@@ -1446,3 +1446,11 @@ Multiboot1 route does not supply the tested graphics mode. The demo is a static
 software-drawn panel, not a window manager, desktop, font renderer or hardware
 GPU driver. Firmware/real-machine compatibility is unverified. Protocol layout:
 https://raw.githubusercontent.com/rhboot/grub2/master/include/multiboot2.h
+
+### Native string byte preservation
+The gcc backend emits literal source strings as UTF-8 bytes with explicit
+byte length. `print` and `str` preserve embedded NUL bytes, including inside
+lists and dictionaries, rather than using C string terminators as length.
+String dictionary keys keep their complete bytes for identity/copy/JSON.
+This does not change the existing native byte-index/length model into Unicode
+character indexing, and does not make C extern Str arguments binary-safe.
