@@ -1470,3 +1470,11 @@ After submission further events are ignored until `reset(state)`. A key must
 be null or exactly one character, and malformed key inputs fail without edits.
 This is not a keyboard driver, input queue, terminal emulator or Unicode editor.
 Use only states from `create`, without modifying their fields directly.
+
+### Formatter control-byte preservation
+Canonical formatting preserves the decoded contents of string literals.
+Only the language's supported escapes (`\n`, `\t`, `\r`, `\0`, `\"`, `\\`)
+are emitted. Other literal ASCII control bytes remain literal bytes inside
+strings; the formatter must not invent Unicode escapes that the parser does
+not decode. Unknown source escapes retain the existing literal-next-character
+behavior. This adds no escape syntax or Unicode semantics.
