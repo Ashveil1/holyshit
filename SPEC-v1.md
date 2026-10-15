@@ -1503,6 +1503,15 @@ characters. Invalid inputs fail before modifying pixels. Bounds/color checks
 match `std.gfx`. Surface storage must remain unmodified by the caller.
 
 
+### Small cc extension compatibility
+The legacy small `selfhost/cc.hs` compiler tries `<module>.holy` before
+`<module>.hs` in its existing source-directory-only import lookup. Its import
+subset does not gain HSPATH or dotted packages. To retain self-compilation,
+its native runtime supports direct `exists(path)` calls on valid strings
+using Linux access(F_OK). A missing/inaccessible path returns false; invalid
+types retain the small compiler's existing type-error behavior. General
+filesystem/type parity beyond this prerequisite is not claimed.
+
 ### `.holy` extension transition, reference tools stage
 `.holy` is the chosen source extension; `.hs` remains a supported legacy
 extension. In the reference interpreter, reference IR, GCC path and LSP,
@@ -1515,11 +1524,10 @@ this stage. Native hs and x64 import lookup still require the later bridge
 and audited seed update; this is not a universal backend migration claim.
 
 
-### Small cc extension compatibility
-The legacy small `selfhost/cc.hs` compiler tries `<module>.holy` before
-`<module>.hs` in its existing source-directory-only import lookup. Its import
-subset does not gain HSPATH or dotted packages. To retain self-compilation,
-its native runtime supports direct `exists(path)` calls on valid strings
-using Linux access(F_OK). A missing/inaccessible path returns false; invalid
-types retain the small compiler's existing type-error behavior. General
-filesystem/type parity beyond this prerequisite is not claimed.
+### Experimental framebuffer keyboard console
+`kernel/kconsole_demo.hs` combines the validated framebuffer, ASCII bitmap
+labels and bounded keyboard state into a single-line input demonstration.
+Submitted text is displayed, never executed. Input display folds ASCII case
+according to the boot font. Synchronous redraw and the existing single-slot
+keyboard backend can lose input during redraw. No agent runtime, terminal
+emulation, command evaluation, Unicode input or desktop is added.
