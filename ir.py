@@ -2222,13 +2222,20 @@ def _call(fn, args, ln):
     raise HSErr(f"not callable: {tname(fn)}", ln)
 
 
+_PROFILE = None
+
+
 def _exec(fdef, frame):
+    if _PROFILE is not None:
+        _PROFILE.enter(fdef, frame)
     by = {b["label"]: b for b in fdef["blocks"]}
     temps = {}
     lab = fdef["entry"]
     prev = None
     while True:
         b = by[lab]
+        if _PROFILE is not None:
+            _PROFILE.block(fdef, lab)
         try:
             for ins in b["instrs"]:
                 _step(ins, temps, frame, prev)
@@ -2518,7 +2525,7 @@ def build_module(prog, pfx=""):
     return m
 
 
-def run_module(m, basedir=""):
+def _run_module(m, basedir=""):
     global _FUNCS, _BUILTIN_ROOT, _US_TOP
     _FUNCS = m["funcs"]
     _IR_MODS.clear()
@@ -2545,6 +2552,17 @@ def run_module(m, basedir=""):
         # IR defines it as a clean exit — see plan Task 1)
     except RecursionError:
         raise HSErr("recursion too deep", None)
+
+
+def run_module(m, basedir="", profile=None):
+    # Collection is opt-in and is always cleared, including on runtime errors.
+    global _PROFILE
+    previous = _PROFILE
+    _PROFILE = profile
+    try:
+        return _run_module(m, basedir)
+    finally:
+        _PROFILE = previous
 
 
 def main(argv):

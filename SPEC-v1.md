@@ -1524,6 +1524,18 @@ this stage. Native hs and x64 import lookup still require the later bridge
 and audited seed update; this is not a universal backend migration claim.
 
 
+### Opt-in reference IR profiling
+`ir.run_module(module,basedir,profile=ExecutionProfile(...))` may collect
+function-entry and basic-block counts for tiered-JIT preparation. Ordinary
+execution leaves collection disabled. Counts saturate at2147483647 and storage
+is bounded by1..65536 sites (default1024). Excess site events increment a
+saturating dropped-event count. At most eight distinct argument-type vectors
+are stored per function; further kinds mark it megamorphic. Argument values
+are never stored. Collector scope is restored even when execution raises.
+The snapshot is a diagnostic, not persisted feedback or a compilation trigger.
+No native tier, hot-code compilation, on-stack replacement or deoptimization
+is added. The existing IR reference restrictions continue to apply.
+
 ### Experimental framebuffer keyboard console
 `kernel/kconsole_demo.hs` combines the validated framebuffer, ASCII bitmap
 labels and bounded keyboard state into a single-line input demonstration.
