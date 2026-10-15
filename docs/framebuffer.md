@@ -33,8 +33,10 @@ uses its own direct clipped rectangles, with no dependency on an unmerged PR.
 Validation: `tests/test_fbinfo.py` rejects malformed tags on four hosted
 backends. `tests/test_framebuffer_kernel.py` requires native/Python kernel ELF
 identity, boots the ISO in QEMU, waits for the serial ready marker and checks
-actual screendump RGB pixels. Full CI installs QEMU, GRUB and xorriso. This
-proves the emulated BIOS/GRUB route only.
+actual screendump RGB pixels. The current full CI installs QEMU but not GRUB/xorriso, so this specific
+boot-pixel test skips there until those optional dependencies are configured.
+It has been run locally with all three tools. Existing full kernel/QEMU gates
+still apply. This proves the emulated BIOS/GRUB route only.
 
 Protocol layout source:
 https://raw.githubusercontent.com/rhboot/grub2/master/include/multiboot2.h
