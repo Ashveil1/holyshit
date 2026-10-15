@@ -1460,6 +1460,17 @@ software-drawn panel, not a window manager, desktop, font renderer or hardware
 GPU driver. Firmware/real-machine compatibility is unverified. Protocol layout:
 https://raw.githubusercontent.com/rhboot/grub2/master/include/multiboot2.h
 
+### Bounded keyboard line editing
+`std.lineedit` is a pure line-state helper for early keyboard consoles.
+`create(capacity)` returns `[text,submitted,capacity]`, initially empty/not
+submitted; capacity is an integer1..256. `feed(state,key)` mutates that state:
+null means no event; printable ASCII appends unless full; backspace removes
+one character; newline marks submitted. Other single characters are ignored.
+After submission further events are ignored until `reset(state)`. A key must
+be null or exactly one character, and malformed key inputs fail without edits.
+This is not a keyboard driver, input queue, terminal emulator or Unicode editor.
+Use only states from `create`, without modifying their fields directly.
+
 ### Native string byte preservation
 The gcc backend emits literal source strings as UTF-8 bytes with explicit
 byte length. `print` and `str` preserve embedded NUL bytes, including inside
