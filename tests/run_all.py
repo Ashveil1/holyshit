@@ -30,6 +30,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 SUITES = [
+    ("test_holy_native.py", "x64/native hosted .holy import bridge"),
     ("test.py", "interpreter"),
     ("test_native_strings.py", "UTF-8 literals and embedded-NUL display/key bytes"),
     ("test_native.py", "native (gcc)"),

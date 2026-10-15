@@ -43,12 +43,12 @@ class Gen:
     if not pyrt.py_module_name(name):
       raise pyrt.py_err("bad module name '" + str(name) + "'", line)
     hspath = [d for d in pyrt.py_split(pyrt.py_hspath(), ":") if d]
-    rel = pyrt.py_replace(name, ".", "/") + ".hs"
+    rel = pyrt.py_replace(name, ".", "/")
     found = false
     for d in [from_dir] + hspath + [pyrt.py_os_getcwd()]:
       if not d:
         continue
-      p = pyrt.py_os_path_abspath(pyrt.py_os_path_join(d, rel))
+      p = pyrt.py_os_path_abspath(pyrt.py_os_path_join(d, rel + ".holy")) if pyrt.py_os_path_isfile(pyrt.py_os_path_join(d, rel + ".holy")) else pyrt.py_os_path_abspath(pyrt.py_os_path_join(d, rel + ".hs"))
       if pyrt.py_os_path_isfile(p):
         found = true
         break
@@ -10550,11 +10550,11 @@ class GenIR(Gen):
     if not pyrt.py_re_match("^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$", name):
       raise pyrt.py_err("bad module name '" + str(name) + "'", ln)
     hspath = [d for d in pyrt.py_split(pyrt.py_hspath(), ":") if d]
-    rel = pyrt.py_replace(name, ".", "/") + ".hs"
+    rel = pyrt.py_replace(name, ".", "/")
     for d in [from_dir] + hspath + [pyrt.py_os_getcwd()]:
       if not d:
         continue
-      p = pyrt.py_os_path_abspath(pyrt.py_os_path_join(d, rel))
+      p = pyrt.py_os_path_abspath(pyrt.py_os_path_join(d, rel + ".holy")) if pyrt.py_os_path_isfile(pyrt.py_os_path_join(d, rel + ".holy")) else pyrt.py_os_path_abspath(pyrt.py_os_path_join(d, rel + ".hs"))
       if pyrt.py_os_path_isfile(p):
         return p
     raise pyrt.py_err("cannot find module '" + str(name) + "'", ln)
