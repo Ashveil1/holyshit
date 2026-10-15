@@ -32,6 +32,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SUITES = [
     ("test.py", "interpreter"),
     ("test_native.py", "native (gcc)"),
+    ("test_fmt_controls.py", "formatter preserves every ASCII control byte"),
     ("test_fmt.py", "formatter"),
     ("test_x64.py", "x64 backend"),
     ("test_ir.py", "IR (build/verify/exec)"),
