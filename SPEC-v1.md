@@ -1430,3 +1430,19 @@ The directory can move and runs without the original checkout, Python or gcc.
 This is not a static cross-platform distribution: Linux, shell utilities and
 host libc/shared libraries for eager FFI remain dependencies. It adds neither
 first-call compilation nor tiering. Existing output directories are refused.
+
+### Experimental Multiboot2 framebuffer kernel
+The kernel's optional Multiboot2 header requests640x480x32. Legacy Multiboot1
+boot remains unchanged. `kernel/kframebuffer.hs` discovers and validates a
+direct RGB framebuffer, maps device pages supervisor-writable/cache-disabled,
+and draws clipped pixels/rectangles. `std.fbinfo.decode` validates byte tags
+before mapping: byte-aligned8-bit RGB channels,24/32bpp, bounded dimensions,
+pitch and memory extent. The initial implementation supports physical buffers
+in [1GiB,4GiB) only, to avoid silently remapping the initial RAM identity map.
+Boot without a supported tag raises; it never guesses a hardware address.
+
+GRUB video setup and an ISO are needed for this path; QEMU's direct `-kernel`
+Multiboot1 route does not supply the tested graphics mode. The demo is a static
+software-drawn panel, not a window manager, desktop, font renderer or hardware
+GPU driver. Firmware/real-machine compatibility is unverified. Protocol layout:
+https://raw.githubusercontent.com/rhboot/grub2/master/include/multiboot2.h
