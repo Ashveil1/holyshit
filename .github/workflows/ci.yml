@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-system-x86
+      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-system-x86 grub-pc-bin xorriso
       - run: mkdir -p /tmp/opencode
       - name: every suite including xkernel on QEMU
         run: python3 tests/run_all.py

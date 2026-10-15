@@ -11505,7 +11505,9 @@ def build_xkernel(prog_path, out_path, ir_backend=True):
         return 1
     # ---- layout (file offset == vaddr offset from KBASE) ----
     HDR = 52 + 2 * 32
-    mb2 = _st.pack("<IIII", 0xE85250D6, 0, 24, (-(0xE85250D6 + 24)) & 0xFFFFFFFF)
+    mb2 = _st.pack("<IIII", 0xE85250D6, 0, 48, (-(0xE85250D6 + 48)) & 0xFFFFFFFF)
+    # Optional direct framebuffer request; legacy MB1/QEMU boot is unchanged.
+    mb2 += _st.pack("<HHIIII", 5, 1, 20, 640, 480, 32) + b"\0" * 4
     mb2 += _st.pack("<HHI", 0, 0, 8)
     mb1 = _st.pack("<III", 0x1BADB002, 0, (-0x1BADB002) & 0xFFFFFFFF)
     off = HDR
