@@ -32,7 +32,10 @@ deoptimization. The driver loads explicit prebuilt shared-library paths/sonames 
 libc loader and binds every extern GOT slot before publishing code. Missing
 libraries/symbols fail before target execution. Handles stay live until process
 exit. Bare short names such as "m" remain outside the native driver subset;
-use "libm.so.6" or an explicit path. This is not a self-written loader.
+use "libm.so.6" or an explicit path. Relative paths use the source directory.
+Symbols bind through their declared library handle. Conflicting owners of the
+same C symbol are rejected; fflush is reserved to libc for output ordering.
+This is not a self-written loader.
 Safe Ints retain the x64 62-bit limit. Out-of-range results can fail with
 exit 97 instead of the reference interpreter's 64-bit behavior. There is no
 interpreter fallback.

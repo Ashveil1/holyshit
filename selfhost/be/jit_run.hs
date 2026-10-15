@@ -16,7 +16,7 @@ def prepare():
   verify.verify_module(m)
   g = be.GenIR(m, pyrt.py_os_path_dirname(srcpath), false)
   sections = g.build_ir_extern_sections()
-  handles = jitbind.bind(g.ffi_libs, g.ffi_syms)
+  handles = jitbind.bind(g.ffi_libs, g.ffi_syms, g.ffi_owners, pyrt.py_os_path_dirname(srcpath))
   # Forward arguments and the Linux process environment through an initial
   # stack frame. Addresses are formed at runtime, after RIP-relative relocation.
   args = argv()

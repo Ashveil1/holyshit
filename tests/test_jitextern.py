@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory() as temp:
     kinds=['I64','F64']*16
     params=', '.join(('double' if k=='F64' else 'long long')+f' p{i}' for i,k in enumerate(kinds))
     expr=' + '.join(f'p{i} * {i+1}' for i in range(len(kinds)))
-    c.write_text('double weighted('+params+') { return '+expr+'; }\n')
+    c.write_text('long labs(long x) {return 9182;}\n'+'double weighted('+params+') { return '+expr+'; }\n')
     subprocess.run(['gcc','-shared','-fPIC',str(c),'-o',str(so)],check=True,capture_output=True)
     decl=', '.join(k+f' p{i}' for i,k in enumerate(kinds))
     args=', '.join(str(i+1)+('.5' if k=='F64' else '') for i,k in enumerate(kinds))
@@ -28,6 +28,8 @@ with tempfile.TemporaryDirectory() as temp:
     # Reference resolves short name; native driver accepts the loader soname.
     cases=[('libc','extern:\n  I64 labs(I64 x)\nprint labs(-17)\n','17\n'),
       ('libm','extern from "'+libm+'":\n  F64 sqrt(F64 x)\nprint sqrt(81.0)\n','9.0\n'),
+      ('collision','extern from "'+str(so)+'":\n  I64 labs(I64 x)\nprint labs(-17)\n','9182\n'),
+      ('relative','extern from "./fixture.so":\n  I64 labs(I64 x)\nprint labs(-17)\n','9182\n'),
       ('stack','extern from "'+str(so)+'":\n  F64 weighted('+decl+')\nprint weighted('+args+')\n',str(float(sum((i+1+(.5 if k=='F64' else 0))*(i+1) for i,k in enumerate(kinds))))+'\n')]
     for label,source,expected in cases:
         path=d/(label+'.hs');path.write_text(source)
@@ -38,6 +40,8 @@ with tempfile.TemporaryDirectory() as temp:
         got=subprocess.run([str(exe),str(path)],env=env,capture_output=True,text=True,timeout=30)
         check(want.returncode==0 and want.stdout==expected and (got.returncode,got.stdout,got.stderr)==(want.returncode,want.stdout,want.stderr),label+' '+repr((got.returncode,got.stdout,got.stderr[-200:])))
     for label,source,error in [
+      ('conflicting-owner','extern:\n  I64 labs(I64 x)\nprint labs(-17)\nextern from "'+str(so)+'":\n  I64 labs(I64 x)\nprint "TARGET RAN"\nprint labs(-17)\n','conflicting library owners'),
+      ('reserved-symbol','extern from "'+str(so)+'":\n  I64 fflush(Ptr x)\nprint "TARGET RAN"\nprint fflush(0)\n','reserved for libc'),
       ('missing-symbol','extern:\n  I64 hs_missing_symbol_1938()\nprint "TARGET RAN"\nprint hs_missing_symbol_1938()\n','unknown extern symbol'),
       ('missing-library','extern from "/no/such/hs_library_1938.so":\n  I64 missing()\nprint "TARGET RAN"\nprint missing()\n','cannot load library')]:
         path=d/(label+'.hs');path.write_text(source)

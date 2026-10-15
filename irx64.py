@@ -77,6 +77,7 @@ class GenIR(Gen):
         self.allorder = []
         self.ffi_syms = []   # extern C symbols (GOT slot order)
         self.ffi_libs = []   # DT_NEEDED sonames beyond libc
+        self.ffi_owners = {}  # declared symbol -> loader library
 
     # ----- planning (no code): slots, caps, globals -----
 
@@ -2475,6 +2476,7 @@ class GenIR(Gen):
                 raise HSErr(f"cannot find ffi library '{lib}'", ln)
         if so not in self.ffi_libs:
             self.ffi_libs.append(so)
+        return so
 
     def _ffi(self, fr, ins, ln):
         """extern call: tagged hs values -> C ABI (rdi rsi rdx rcx r8 r9),
@@ -2485,7 +2487,12 @@ class GenIR(Gen):
         nf = pt.count("F64")
         if len(pt) > 32:
             raise HSErr(f"ffi '{name}': xbuild passes at most 32 args", ln)
-        self._ffi_lib(ins["lib"], ln)
+        owner = self._ffi_lib(ins["lib"], ln)
+        if name == "fflush" and owner != "libc.so.6":
+            raise HSErr("ffi: fflush is reserved for libc output ordering", ln)
+        if name in self.ffi_owners and self.ffi_owners[name] != owner:
+            raise HSErr(f"ffi '{name}': conflicting library owners", ln)
+        self.ffi_owners[name] = owner
         gi = self._ffi_sym(name)
         fl = self._ffi_sym("fflush")
         for i, (pn, ft) in enumerate(zip(ins["pnames"], pt)):

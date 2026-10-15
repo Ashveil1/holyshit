@@ -10536,6 +10536,7 @@ class GenIR(Gen):
     self.allorder = []
     self.ffi_syms = []
     self.ffi_libs = []
+    self.ffi_owners = {}
   def _glabel(self, name, modpfx):
     key = pyrt.py_key([modpfx, name])
     lab = pyrt.py_get(self.glabels, key, null)
@@ -12712,6 +12713,7 @@ class GenIR(Gen):
         raise pyrt.py_err("cannot find ffi library '" + str(lib) + "'", ln)
     if not (so in self.ffi_libs):
       append(self.ffi_libs, so)
+    return so
   def _ffi(self, fr, ins, ln):
     _t12684 = [ins["sym"], ins["ptypes"], ins["rtype"]]
     name = _t12684[0]
@@ -12720,7 +12722,12 @@ class GenIR(Gen):
     nf = pyrt.py_count(pt, "F64")
     if len(pt) > 32:
       raise pyrt.py_err("ffi '" + str(name) + "': xbuild passes at most 32 args", ln)
-    self._ffi_lib(ins["lib"], ln)
+    owner = self._ffi_lib(ins["lib"], ln)
+    if name == "fflush" and owner != "libc.so.6":
+      raise pyrt.py_err("ffi: fflush is reserved for libc output ordering", ln)
+    if name in self.ffi_owners and self.ffi_owners[name] != owner:
+      raise pyrt.py_err("ffi '" + str(name) + "': conflicting library owners", ln)
+    self.ffi_owners[name] = owner
     gi = self._ffi_sym(name)
     fl = self._ffi_sym("fflush")
     for i, _f12624_1 in pyrt.py_enumerate(pyrt.py_zip(ins["pnames"], pt)):

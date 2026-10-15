@@ -1404,3 +1404,9 @@ failure: target code must not run. Handles remain live for the target process
 lifetime. The ordinary sections API still rejects externs unless explicitly
 requested. This uses the host libc dynamic loader, not a self-written loader,
 and adds no callbacks, variadics, tiering or compile-on-first-call.
+
+Each eager extern symbol binds against its declared library handle, not an
+undifferentiated process-global search. Relative library paths are based on
+the source directory. Duplicate C symbol names with different library owners
+are rejected by the x64 backend because its GOT is keyed by symbol name. The
+name fflush is reserved to libc for runtime output ordering.
