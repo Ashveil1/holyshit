@@ -36,6 +36,7 @@ SUITES = [
     ("test_fmt_controls.py", "formatter preserves every ASCII control byte"),
     ("test_fmt.py", "formatter"),
     ("test_x64.py", "x64 backend"),
+    ("test_cc_holy.py", "small cc .holy bridge and self-repeat"),
     ("test_ir.py", "IR (build/verify/exec)"),
     ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
     ("test_irx64.py", "IR->x64 differential"),

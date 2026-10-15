@@ -8,20 +8,16 @@
 # Anything else is a compile error, never silently different output.
 import parselib
 import asm
-
 STRS = []
 SOBJ = []
 ST = {"lbl": 0, "fn": null, "locals": {}, "funcs": {}, "defs": {}, "globals": {}, "loops": [], "tryd": 0, "trace": false}
 BASE = 4194304 + 120
 HEAP_END = 4194304 + 1073741824
-
 def fail(msg, ln):
   raise "cc: " + msg + " (line " + str(ln) + ")"
-
 def new_label(p):
   ST["lbl"] = ST["lbl"] + 1
   return p + str(ST["lbl"])
-
 # ---- variables -------------------------------------------------------
 def load_var(name, ln):
   if name in ST["locals"]:
@@ -30,7 +26,6 @@ def load_var(name, ln):
     asm.mov_rm_rip("rax", "g_" + name)
   else:
     fail("unknown variable '" + name + "'", ln)
-
 def store_var(name, ln):
   if name in ST["locals"]:
     asm.mov_mr("rbp", "rax", ST["locals"][name])
@@ -38,7 +33,6 @@ def store_var(name, ln):
     asm.mov_mr_rip("g_" + name, "rax")
   else:
     fail("unknown variable '" + name + "'", ln)
-
 def collect_sets(body, out):
   for s in body:
     t = s["t"]
@@ -60,37 +54,31 @@ def collect_sets(body, out):
       out["%i" + str(s["line"])] = true
       out["%n" + str(s["line"])] = true
       collect_sets(s["body"], out)
-
 # ---- expressions -----------------------------------------------------
 # Values are tagged words: Int = 2n+1 (63-bit, overflow traps with exit 97),
 # false = 2, true = 10, null = 6; heap pointers (later) have low bits 000.
 CMP = {"<": "l", "<=": "le", ">": "g", ">=": "ge"}
-
 def chk_int2():
   # rax, rcx must both be Ints (low bit set) or it is a type error
   asm.mov_rr("rdx", "rax")
   asm.and_rr("rdx", "rcx")
   asm.and_ri32("rdx", 1)
   asm.jcc("e", "rt_err_type")
-
 def gen_pair(e):
   gen(e["l"])
   asm.push_r("rax")
   gen(e["r"])
   asm.mov_rr("rcx", "rax")
   asm.pop_r("rax")
-
 def to_bool():
   # al = 0/1 from setcc -> tagged Bool
   asm.movzx_eax_al()
   asm.shl_ri8("rax", 3)
   asm.add_ri32("rax", 2)
-
 def retag():
   asm.add_rr("rax", "rax")
   asm.jcc("o", "rt_err_ovf")
   asm.add_ri32("rax", 1)
-
 def gen(e):
   t = e["t"]
   ln = e["line"]
@@ -110,7 +98,7 @@ def gen(e):
       mag = sv
       if mag[0] == "-":
         mag = mag[1:]
-      if len(mag) > 19 or (len(mag) == 19 and mag > "4611686018427387903"):
+      if len(mag) > 19 or len(mag) == 19 and mag > "4611686018427387903":
         fail("Int literal outside the 63-bit range of cc", ln)
       asm.mov_ri64("rax", v * 2 + 1)
   elif t == "var":
@@ -372,6 +360,12 @@ def gen(e):
     if nm == "argv" and not (nm in ST["funcs"]):
       asm.call("rt_argv")
       return 0
+    if nm == "exists" and not (nm in ST["funcs"]):
+      if len(e["args"]) != 1:
+        fail("exists wants 1 arg", ln)
+      gen(e["args"][0])
+      asm.call("rt_exists")
+      return 0
     if (nm == "read_text" or nm == "find") and not (nm in ST["funcs"]):
       if nm == "read_text":
         if len(e["args"]) != 1:
@@ -431,7 +425,6 @@ def gen(e):
       asm.add_ri32("rsp", 8 * len(cargs))
   else:
     fail("expression '" + t + "' not supported", ln)
-
 # ---- closures: function values, calls through a value ---------------
 # Func object: [4, code, nparams, cap0, cap1, ...] (captures by value at def).
 # The callee prologue copies the captures from [r10 + 24 + 8k], r10 = the
@@ -452,7 +445,6 @@ def gen_funcval(code, np, caps, ln):
     asm.mov_mr("r8", "rax", 24 + 8 * k)
     k = k + 1
   asm.mov_rr("rax", "r8")
-
 def gen_callv(e):
   gen(e["fn"])
   asm.push_r("rax")
@@ -473,18 +465,15 @@ def gen_callv(e):
   asm.mov_rm("rax", "rdx", 8)
   asm.call_rax()
   asm.add_ri32("rsp", 8 * (n + 1))
-
 # ---- closures: lift nested defs to top level -------------------------
 # A nested def becomes a top-level function taking its captured outer
 # locals from the closure object; the def statement becomes
 # name = mkclo(...). Captured names are the names the body reads that are
 # locals of an enclosing function and not bound in the nested def itself.
 LIFT = {"out": [], "n": 0}
-
 def fv_list(xs, reads):
   for x in xs:
     fv_expr(x, reads)
-
 def fv_expr(e, reads):
   t = e["t"]
   if t == "var":
@@ -520,7 +509,6 @@ def fv_expr(e, reads):
   elif t == "call":
     fv_expr(e["fn"], reads)
     fv_list(e["args"], reads)
-
 def fv_body(body, reads):
   for s in body:
     t = s["t"]
@@ -553,7 +541,6 @@ def fv_body(body, reads):
     elif t == "for":
       fv_expr(s["iter"], reads)
       fv_body(s["body"], reads)
-
 def def_names(body, out):
   for s in body:
     t = s["t"]
@@ -569,7 +556,6 @@ def def_names(body, out):
     elif t == "try":
       def_names(s["body"], out)
       def_names(s["ebody"], out)
-
 def scope_of(d):
   sc = {}
   for p in d["params"]:
@@ -577,7 +563,6 @@ def scope_of(d):
   collect_sets(d["body"], sc)
   def_names(d["body"], sc)
   return sc
-
 def lift_stmts(body, outer):
   i = 0
   while i < len(body):
@@ -596,7 +581,6 @@ def lift_stmts(body, outer):
       lift_stmts(s["body"], outer)
       lift_stmts(s["ebody"], outer)
     i = i + 1
-
 def lift_def(d, outer):
   if has(d, "defaults"):
     fail("default arguments on a nested def are not supported", d["line"])
@@ -621,7 +605,6 @@ def lift_def(d, outer):
   append(LIFT["out"], fd)
   mk = {"t": "mkclo", "fn": lname, "np": len(d["params"]), "caps": caps, "self": d["name"], "line": d["line"]}
   return {"t": "set", "name": d["name"], "val": mk, "line": d["line"]}
-
 def lift_prog(prog):
   for s in prog:
     if s["t"] == "def":
@@ -630,14 +613,12 @@ def lift_prog(prog):
       one = [s]
       lift_stmts(one, {})
   return prog + LIFT["out"]
-
 # ---- statements ------------------------------------------------------
 def gen_cond_jz(c, target):
   gen(c)
   asm.call("rt_truthy")
   asm.test_rr("rdx", "rdx")
   asm.jcc("e", target)
-
 def ascii_byte(ch, ln):
   if ch == "\n":
     return 10
@@ -651,7 +632,6 @@ def ascii_byte(ch, ln):
   if k < 0:
     fail("non-ASCII character in string literal", ln)
   return k + 32
-
 def put_str(s, ln):
   if len(s) == 0:
     return 0
@@ -662,11 +642,9 @@ def put_str(s, ln):
   asm.mov_ri32("rdi", 1)
   asm.mov_ri32("rax", 1)
   asm.syscall()
-
 def put_char(c):
   asm.mov_ri32("rax", c)
   asm.call("rt_putc")
-
 def gen_stmt(s):
   t = s["t"]
   ln = s["line"]
@@ -774,7 +752,6 @@ def gen_stmt(s):
     asm.jmp("r_" + ST["fn"])
   else:
     fail("statement '" + t + "' not supported", ln)
-
 def gen_for(s):
   ln = s["line"]
   it = s["iter"]
@@ -836,11 +813,9 @@ def gen_for(s):
   store_var(vi, ln)
   asm.jmp(top)
   asm.label(out)
-
 def gen_body(body):
   for s in body:
     gen_stmt(s)
-
 # ---- functions and runtime ------------------------------------------
 def gen_func(d):
   nm = d["name"]
@@ -897,7 +872,6 @@ def gen_func(d):
   asm.ret()
   ST["fn"] = null
   ST["locals"] = {}
-
 def gen_runtime():
   # rt_putc: write the byte in al
   asm.label("rt_putc")
@@ -949,7 +923,6 @@ def gen_runtime():
   asm.mov_rr("rsp", "rbp")
   asm.pop_r("rbp")
   asm.ret()
-
 def write_lit(lab, n):
   asm.lea_rip("rsi", lab)
   asm.mov_ri32("rdx", n)
@@ -957,7 +930,6 @@ def write_lit(lab, n):
   asm.mov_ri32("rax", 1)
   asm.syscall()
   asm.ret()
-
 def err_routine(name, lab, n, code):
   asm.label(name)
   asm.lea_rip("rsi", lab)
@@ -968,14 +940,11 @@ def err_routine(name, lab, n, code):
   asm.mov_ri32("rdi", code)
   asm.mov_ri32("rax", 60)
   asm.syscall()
-
 def data_text(lab, text):
   asm.label(lab)
   for ch in text:
     asm.b1(ascii_byte(ch, 0))
-
 MSG = [["m_true", "true"], ["m_false", "false"], ["m_null", "null"], ["m_ovf", "error: Int outside the 63-bit range of the cc backend\n"], ["m_type", "error: type error (cc backend)\n"], ["m_div", "error: division by zero\n"], ["m_shift", "error: shift count out of range\n"], ["m_oom", "error: out of memory\n"], ["m_idx", "error: index out of range\n"], ["m_key", "error: key not found\n"], ["m_io", "error: cannot open file\n"], ["m_raise", "error: "], ["m_nl", "\n"]]
-
 def gen_runtime2():
   # rt_truthy: rdx = 1 if rax is truthy else 0 (rax kept). falsy: 0, false, null
   asm.label("rt_truthy")
@@ -1163,7 +1132,6 @@ def gen_runtime2():
   err_routine("rt_err_type", "m_type", len(MSG[4][1]), 1)
   err_routine("rt_err_div", "m_div", len(MSG[5][1]), 1)
   err_routine("rt_err_shift", "m_shift", len(MSG[6][1]), 1)
-
 def chk_str2():
   # rax, rcx must both be heap Strs (low 3 bits 0, kind 1)
   asm.mov_rr("rdx", "rax")
@@ -1176,7 +1144,6 @@ def chk_str2():
   asm.mov_rm("rdx", "rcx", 0)
   asm.cmp_ri32("rdx", 1)
   asm.jcc("ne", "rt_err_type")
-
 def gen_runtime3():
   # rt_alloc: rdi = bytes (multiple of 8) -> rax = zeroed bump block
   asm.label("rt_alloc")
@@ -1387,7 +1354,6 @@ def gen_runtime3():
   asm.mov_mr("rax", "rdx", 8)
   asm.mov_mr8("rax", 10, 16)
   asm.ret()
-
 def gen_runtime4():
   # rt_chklist: rax must be a List; kept
   asm.label("rt_chklist")
@@ -1556,7 +1522,6 @@ def gen_runtime4():
   asm.label("lq_n")
   asm.add_ri32("rsp", 32)
   asm.jmp("eq_no")
-
 def gen_clamp(src, dst, at_end):
   # dst = slice bound from tagged src (null = default), clamped to 0..r8
   l1 = new_label("K")
@@ -1586,7 +1551,6 @@ def gen_clamp(src, dst, at_end):
   asm.jcc("le", l4)
   asm.mov_rr(dst, "r8")
   asm.label(l4)
-
 def gen_runtime5():
   # rt_slice: rax[rcx:rdx] (Str or List; bounds tagged Int or null)
   asm.label("rt_slice")
@@ -1736,7 +1700,6 @@ def gen_runtime5():
   asm.mov_rr("rsp", "rbp")
   asm.pop_r("rbp")
   asm.ret()
-
 def gen_runtime5b():
   asm.label("rt_newdict")
   asm.mov_ri32("rdi", 32)
@@ -2023,7 +1986,6 @@ def gen_runtime5b():
   asm.label("dq_n")
   asm.add_ri32("rsp", 32)
   asm.jmp("eq_no")
-
 def gen_runtime6():
   # rt_cstr: Str in rax -> NUL-terminated copy (pointer in rax)
   asm.label("rt_cstr")
@@ -2112,6 +2074,17 @@ def gen_runtime6():
   asm.label("ag_d")
   asm.add_ri32("rsp", 16)
   asm.pop_r("rax")
+  asm.ret()
+  # exists(path): Linux access(F_OK), matching the reference for valid Str.
+  asm.label("rt_exists")
+  asm.call("rt_cstr")
+  asm.mov_rr("rdi", "rax")
+  asm.mov_ri32("rsi", 0)
+  asm.mov_ri32("rax", 21)
+  asm.syscall()
+  asm.test_rr("rax", "rax")
+  asm.setcc_al("e")
+  to_bool()
   asm.ret()
   # rt_read_text: path Str -> Str with the file contents
   asm.label("rt_read_text")
@@ -2295,24 +2268,20 @@ def gen_runtime6():
   asm.mov_ri32("rdi", 1)
   asm.mov_ri32("rax", 60)
   asm.syscall()
-
 def pad8():
   while asm.pos() % 8 != 0:
     asm.b1(0)
-
 # ---- imports: flatten every module into one program ------------------
 # Module M's top-level names become "M.name"; "M.name" in another module is
 # the same variable. Init order: imported modules first, in import order.
 RN = {"pre": "", "names": {}, "locs": {}, "mods": {}}
 FLAT = {"defs": [], "top": [], "loaded": {}, "dir": "", "used": {}, "udef": {}}
-
 def rn_name(n):
   if n in RN["locs"]:
     return n
   if n in RN["names"]:
     return RN["pre"] + n
   return n
-
 def rw(e):
   t = e["t"]
   if t == "var":
@@ -2323,7 +2292,7 @@ def rw(e):
       FLAT["used"][VW[vn]] = true
   elif t == "attr":
     o = e["obj"]
-    if o["t"] == "var" and (o["name"] in RN["mods"]) and not (o["name"] in RN["locs"]):
+    if o["t"] == "var" and o["name"] in RN["mods"] and not (o["name"] in RN["locs"]):
       return {"t": "var", "name": o["name"] + "." + e["name"], "line": e["line"]}
     fail("attribute access on a non-module", e["line"])
   elif t == "call":
@@ -2363,17 +2332,14 @@ def rw(e):
       pr[0] = rw(pr[0])
       pr[1] = rw(pr[1])
   return e
-
 def rw_list(xs):
   i = 0
   while i < len(xs):
     xs[i] = rw(xs[i])
     i = i + 1
-
 def rw_body(body):
   for s in body:
     rw_stmt(s)
-
 def rw_stmt(s):
   t = s["t"]
   if t == "set":
@@ -2408,7 +2374,6 @@ def rw_stmt(s):
     s["var"] = rn_name(s["var"])
     s["iter"] = rw(s["iter"])
     rw_body(s["body"])
-
 def dir_of(path):
   i = len(path) - 1
   while i >= 0:
@@ -2416,7 +2381,6 @@ def dir_of(path):
       return path[0:i + 1]
     i = i - 1
   return ""
-
 def load_module(prog, pre):
   imps = {}
   for s in prog:
@@ -2427,7 +2391,10 @@ def load_module(prog, pre):
       imps[s["name"]] = true
       if not (s["name"] in FLAT["loaded"]):
         FLAT["loaded"][s["name"]] = true
-        sub = parselib.parse(read_text(FLAT["dir"] + s["name"] + ".hs"))
+        path = FLAT["dir"] + s["name"] + ".holy"
+        if not exists(path):
+          path = FLAT["dir"] + s["name"] + ".hs"
+        sub = parselib.parse(read_text(path))
         load_module(sub, s["name"] + ".")
   names = {}
   tops = []
@@ -2461,25 +2428,18 @@ def load_module(prog, pre):
       RN["locs"] = {}
       rw_stmt(s)
       append(FLAT["top"], s)
-
 def rn_name_def(pre, n):
   return pre + n
-
 PL = ["def __split(s, sep):", "  out = []", "  n = len(s)", "  m = len(sep)", "  st = 0", "  i = 0", "  while i + m <= n:", "    if s[i:i + m] == sep:", "      append(out, s[st:i])", "      i = i + m", "      st = i", "    else:", "      i = i + 1", "  append(out, s[st:n])", "  return out", "def __int(s):", "  i = 0", "  neg = false", "  if len(s) > 0 and s[0] == \"-\":", "    neg = true", "    i = 1", "  if i >= len(s):", "    raise \"invalid Int literal\"", "  v = 0", "  while i < len(s):", "    d = find(\"0123456789\", s[i])", "    if d < 0:", "      raise \"invalid Int literal\"", "    v = v * 10 + d", "    i = i + 1", "  if neg:", "    return 0 - v", "  return v"]
-
 PL1 = "def __split1(s):\n  out = []\n  n = len(s)\n  i = 0\n  while i < n:\n    while i < n and (s[i] == \" \" or s[i] == \"\\t\" or s[i] == \"\\n\" or s[i] == \"\\r\"):\n      i = i + 1\n    st = i\n    while i < n and not (s[i] == \" \" or s[i] == \"\\t\" or s[i] == \"\\n\" or s[i] == \"\\r\"):\n      i = i + 1\n    if i > st:\n      append(out, s[st:i])\n  return out\n"
-
 def prelude():
   text = PL1
   for l in PL:
     text = text + l + "\n"
   return parselib.parse(text)
-
 # builtins used as values (f = has) become calls to a small wrapper def
 VW = {"has": "__v_has", "contains": "__v_contains", "keys": "__v_keys", "values": "__v_values", "len": "__v_len"}
-
 PLX = {"__v_has": "def __v_has(d, k):\n  return has(d, k)\n", "__v_contains": "def __v_contains(d, k):\n  return contains(d, k)\n", "__v_keys": "def __v_keys(d):\n  return keys(d)\n", "__v_values": "def __v_values(d):\n  return values(d)\n", "__v_len": "def __v_len(x):\n  return len(x)\n", "join": "def join(sep, xs):\n  out = \"\"\n  i = 0\n  for x in xs:\n    if i > 0:\n      out = out + sep\n    out = out + x\n    i = i + 1\n  return out\n", "enumerate": "def enumerate(xs):\n  out = []\n  i = 0\n  for x in xs:\n    append(out, [i, x])\n    i = i + 1\n  return out\n", "abs": "def abs(x):\n  if x < 0:\n    return 0 - x\n  return x\n", "_min2": "def _min2(a, b):\n  if b < a:\n    return b\n  return a\n", "_max2": "def _max2(a, b):\n  if b > a:\n    return b\n  return a\n", "min": "def min(xs):\n  if len(xs) == 0:\n    raise \"min of empty list\"\n  best = xs[0]\n  for x in xs:\n    if x < best:\n      best = x\n  return best\n", "max": "def max(xs):\n  if len(xs) == 0:\n    raise \"max of empty list\"\n  best = xs[0]\n  for x in xs:\n    if x > best:\n      best = x\n  return best\n", "sum": "def sum(xs):\n  t = 0\n  for x in xs:\n    t = t + x\n  return t\n", "reversed": "def reversed(xs):\n  out = []\n  i = len(xs) - 1\n  while i >= 0:\n    append(out, xs[i])\n    i = i - 1\n  return out\n", "_msort": "def _msort(a):\n  n = len(a)\n  if n <= 1:\n    return a\n  mid = n >> 1\n  l = _msort(a[:mid])\n  r = _msort(a[mid:])\n  out = []\n  i = 0\n  j = 0\n  while i < len(l) and j < len(r):\n    if r[j] < l[i]:\n      append(out, r[j])\n      j = j + 1\n    else:\n      append(out, l[i])\n      i = i + 1\n  while i < len(l):\n    append(out, l[i])\n    i = i + 1\n  while j < len(r):\n    append(out, r[j])\n    j = j + 1\n  return out\n", "sorted": "def sorted(xs):\n  return _msort(xs)\n", "upper": "def upper(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n    ch = s[i]\n    k = find(\"abcdefghijklmnopqrstuvwxyz\", ch)\n    if k >= 0:\n      out = out + \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"[k:k + 1]\n    else:\n      out = out + ch\n    i = i + 1\n  return out\n", "lower": "def lower(s):\n  out = \"\"\n  i = 0\n  while i < len(s):\n    ch = s[i]\n    k = find(\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\", ch)\n    if k >= 0:\n      out = out + \"abcdefghijklmnopqrstuvwxyz\"[k:k + 1]\n    else:\n      out = out + ch\n    i = i + 1\n  return out\n"}
-
 def prelude_user(defs):
   have = {}
   for d in defs:
@@ -2494,12 +2454,10 @@ def prelude_user(defs):
   for nm in need:
     text = text + PLX[nm]
   return parselib.parse(text)
-
 def flatten(prog, dirp):
   FLAT["dir"] = dirp
   load_module(prog, "")
   return prelude() + prelude_user(FLAT["defs"]) + FLAT["defs"] + FLAT["top"]
-
 def compile(prog):
   asm.reset()
   prog = lift_prog(prog)
@@ -2557,15 +2515,13 @@ def compile(prog):
     asm.bn([0, 0, 0, 0, 0, 0, 0, 0])
   pad8()
   asm.label("heap_base")
-
 def le64(v):
   out = []
   i = 0
   while i < 8:
-    append(out, (v >> (8 * i)) & 255)
+    append(out, v >> (8 * i) & 255)
     i = i + 1
   return out
-
 def elf(code):
   n = 120 + len(code)
   h = [127, 69, 76, 70, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -2575,7 +2531,6 @@ def elf(code):
   h = h + [1, 0, 0, 0, 7, 0, 0, 0] + le64(0) + le64(4194304) + le64(4194304)
   h = h + le64(n) + le64(1073741824) + le64(4096)
   return h + code
-
 a = argv()
 if len(a) != 2 and len(a) != 3:
   print "usage: hs run selfhost/cc.hs prog.hs out [trace]"
