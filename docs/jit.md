@@ -75,3 +75,9 @@ creates a relocatable native directory with an already-built eager driver.
 `OUTPUT/bin/hs run SOURCE [args...]` does not build the driver again. It still
 includes target compilation and checksum verification; it is not first-call
 JIT or a startup/performance guarantee. See bootstrap/README.md.
+
+## Future tiered execution
+
+The separate [tiered-JIT workstream](tiered-jit.md) starts with opt-in bounded
+reference IR counters. Those counters are diagnostics, not a native cold tier
+or a hot-code compiler. The eager path above is unchanged.

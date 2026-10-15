@@ -36,6 +36,7 @@ SUITES = [
     ("test_fmt_controls.py", "formatter preserves every ASCII control byte"),
     ("test_fmt.py", "formatter"),
     ("test_x64.py", "x64 backend"),
+    ("test_ir_profile.py", "bounded opt-in IR execution profiling, not JIT"),
     ("test_ir.py", "IR (build/verify/exec)"),
     ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
     ("test_irx64.py", "IR->x64 differential"),
