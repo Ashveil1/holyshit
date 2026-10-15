@@ -91,5 +91,5 @@ snapshot their source. Dimensions/pixel-list storage must remain intact.
 Surface storage is `[width,height,pixels]`, limited to1,048,576 pixels and
 4096 per dimension. Coordinates/extents are Ints within ±1,048,576. This module
 has no framebuffer mapping, fonts, input events or windows. The software
-preview in `examples/gfx_surface.hs` prints row-major pixels; it is not a
+preview in `examples/gfx_surface.hs` prints dimensions and a deterministic pixel checksum; it is not a
 running desktop. Kernel execution is checked with serial output in full CI.
