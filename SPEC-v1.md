@@ -1503,6 +1503,15 @@ characters. Invalid inputs fail before modifying pixels. Bounds/color checks
 match `std.gfx`. Surface storage must remain unmodified by the caller.
 
 
+### Small cc extension compatibility
+The legacy small `selfhost/cc.hs` compiler tries `<module>.holy` before
+`<module>.hs` in its existing source-directory-only import lookup. Its import
+subset does not gain HSPATH or dotted packages. To retain self-compilation,
+its native runtime supports direct `exists(path)` calls on valid strings
+using Linux access(F_OK). A missing/inaccessible path returns false; invalid
+types retain the small compiler's existing type-error behavior. General
+filesystem/type parity beyond this prerequisite is not claimed.
+
 ### Native `.holy` import bridge
 The x64 AST/IR backends and hosted native compiler resolve module stems as
 `.holy` first, `.hs` second within each search directory, without changing

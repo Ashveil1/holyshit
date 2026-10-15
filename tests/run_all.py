@@ -91,6 +91,7 @@ SUITES = [
     ("test_native_compiler.py", "native hs compiler image equality + full hosted fixed point"),
     ("test_compile_hs.py", "source-to-ELF compiler in hs vs Python backend"),
     ("test_be.py", "x64 backend written in hs vs irx64.py"),
+    ("test_cc_holy.py", "small cc .holy bridge and self-repeat"),
     ("test_cc.py", "compiler written in hs (selfhost/cc.hs)"),
 ]
 
