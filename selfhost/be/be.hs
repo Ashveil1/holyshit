@@ -12774,6 +12774,9 @@ class GenIR(Gen):
         self.copy_bytes()
       else:
         self.check_int(lambda: asm.jmp(lab_bad), "rax")
+        if ft == "U64":
+          asm.test_rr("rax", "rax")
+          asm.jcc("s", lab_bad)
         asm.sar_ri8("rax", 2)
         asm.push_r("rax")
       asm.jmp(lab_after)
@@ -12792,9 +12795,9 @@ class GenIR(Gen):
       asm.jmp("hs_raise_msg")
       asm.label(lab_after)
     iregs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"]
-    _t12763 = [0, 0]
-    fi = _t12763[0]
-    ii = _t12763[1]
+    _t12766 = [0, 0]
+    fi = _t12766[0]
+    ii = _t12766[1]
     stack_args = []
     for i, ft in pyrt.py_enumerate(pt):
       offset = 8 * (len(pt) - 1 - i)
@@ -13237,7 +13240,7 @@ class GenIR(Gen):
     if not self.freestanding:
       return self._base_emit_main(mod)
     self.emit_longmode_tail(mod)
-    inits = pyrt.py_set([_p13207_0[1] for _p13207_0 in pyrt.py_items(self.mod_entries) if _p13207_0[0] != ""])
+    inits = pyrt.py_set([_p13210_0[1] for _p13210_0 in pyrt.py_items(self.mod_entries) if _p13210_0[0] != ""])
     for key in self.allorder:
       if not (key in inits):
         self._emit_ifunc(key)
