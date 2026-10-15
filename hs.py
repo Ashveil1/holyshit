@@ -41,8 +41,8 @@ def cname(prefix, name):
 
 def c_esc(s):
     out = []
-    for ch in s:
-        o = ord(ch)
+    for o in s.encode("utf-8"):
+        ch = chr(o)
         if ch == "\\":
             out.append("\\\\")
         elif ch == '"':
