@@ -1382,3 +1382,11 @@ The canonical spelling of an embedded NUL byte is `\0`, the string escape
 accepted by the parser. Formatting a string must preserve its contents and
 must not rewrite NUL as an unsupported Unicode escape. The gcc-native
 backend emits literal byte lengths explicitly, preserving embedded NUL.
+
+### Mixed C ABI register arguments
+Hosted x64 extern calls independently use up to six integer/pointer/string
+registers and eight F64 registers under the SysV x86-64 ABI. A mixed
+signature can therefore have up to fourteen register arguments. Declaration
+order is preserved across the independent register banks. Exceeding either
+bank is a compile error; stack argument passing is not implemented. This
+does not add variadic calls, callbacks or struct-by-value.
