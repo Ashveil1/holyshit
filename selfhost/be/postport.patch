@@ -2022,19 +2022,19 @@
        else:
 -        self.check_int(lambda lb: asm.jmp(lb), "rax")
 +        self.check_int(lambda: asm.jmp(lab_bad), "rax")
-         asm.sar_ri8("rax", 2)
-         asm.push_r("rax")
-       asm.jmp(lab_after)
+         if ft == "U64":
+           asm.test_rr("rax", "rax")
+           asm.jcc("s", lab_bad)
 @@ -12743,12 +12798,12 @@
      elif rt == "U0":
        asm.mov_ri64("rax", Gen_HS_NULL)
      elif rt == "Str":
--      _t12812 = [self.new_tmp("ff"), self.new_tmp("ff")]
--      lab_nn = _t12812[0]
--      lab_done = _t12812[1]
 -      _t12815 = [self.new_tmp("ff"), self.new_tmp("ff")]
--      lab_lt = _t12815[0]
--      lab_le = _t12815[1]
+-      lab_nn = _t12815[0]
+-      lab_done = _t12815[1]
+-      _t12818 = [self.new_tmp("ff"), self.new_tmp("ff")]
+-      lab_lt = _t12818[0]
+-      lab_le = _t12818[1]
 +      _t12728 = [self.new_tmp("ff"), self.new_tmp("ff")]
 +      lab_nn = _t12728[0]
 +      lab_done = _t12728[1]
@@ -2048,7 +2048,7 @@
      c = {}
      k = 0
      if not (k in c):
--      order = pyrt.py_dict([[_p12900_0[1], _p12900_0[0]] for _p12900_0 in pyrt.py_enumerate(by)])
+-      order = pyrt.py_dict([[_p12903_0[1], _p12903_0[0]] for _p12903_0 in pyrt.py_enumerate(by)])
 +      order = pyrt.py_dict([[_p12814_0[1], _p12814_0[0]] for _p12814_0 in pyrt.py_enumerate(by)])
        heads = pyrt.py_set(null)
        for lab, b in pyrt.py_items(by):
@@ -2082,7 +2082,7 @@
 -      return Gen.emit_main(self, mod)
 +      return self._base_emit_main(mod)
      self.emit_longmode_tail(mod)
-     inits = pyrt.py_set([_p13207_0[1] for _p13207_0 in pyrt.py_items(self.mod_entries) if _p13207_0[0] != ""])
+     inits = pyrt.py_set([_p13210_0[1] for _p13210_0 in pyrt.py_items(self.mod_entries) if _p13210_0[0] != ""])
      for key in self.allorder:
 @@ -13155,13 +13210,13 @@
      for nm in pyrt.py_sorted(self.mglob, null):
@@ -2095,7 +2095,7 @@
      self._plan()
      for nm in pyrt.py_sorted(self.mglob, null):
        self._glabel(nm, "")
--    inits = pyrt.py_set([_p13229_0[1] for _p13229_0 in pyrt.py_items(self.mod_entries) if _p13229_0[0] != ""])
+-    inits = pyrt.py_set([_p13232_0[1] for _p13232_0 in pyrt.py_items(self.mod_entries) if _p13232_0[0] != ""])
 +    inits = pyrt.py_set([_p13104_0[1] for _p13104_0 in pyrt.py_items(self.mod_entries) if _p13104_0[0] != ""])
      for key in self.allorder:
        if key in inits:

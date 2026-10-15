@@ -1390,3 +1390,7 @@ signature can therefore have up to fourteen register arguments. Declaration
 order is preserved across the independent register banks. Arguments beyond either bank are passed in declaration order on the
 16-byte-aligned caller stack. At most 32 fixed arguments are supported. This
 does not add variadic calls, callbacks or struct-by-value.
+
+An extern U64 argument rejects a negative safe Int before entering C on all
+hosted backends. This is a catchable type-conversion error, not a cast to
+a large unsigned value. Bool and non-Int arguments remain rejected.

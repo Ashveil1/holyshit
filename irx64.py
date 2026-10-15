@@ -2535,6 +2535,9 @@ class GenIR(Gen):
                 self.copy_bytes()
             else:
                 self.check_int(lambda lb=lab_bad: a.jmp(lb))
+                if ft == "U64":
+                    a.test_rr("rax", "rax")
+                    a.jcc("s", lab_bad)
                 a.sar_ri8("rax", 2)
                 a.push_r("rax")
             a.jmp(lab_after)
