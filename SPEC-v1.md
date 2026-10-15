@@ -1502,6 +1502,7 @@ kerning or antialiasing. Scale is an integer1..16; labels are at most1024
 characters. Invalid inputs fail before modifying pixels. Bounds/color checks
 match `std.gfx`. Surface storage must remain unmodified by the caller.
 
+
 ### `.holy` extension transition, reference tools stage
 `.holy` is the chosen source extension; `.hs` remains a supported legacy
 extension. In the reference interpreter, reference IR, GCC path and LSP,
@@ -1512,3 +1513,12 @@ Dotted module names still map to directory paths; import syntax is unchanged.
 `.hs` names. Explicit input filenames work as before. No files are renamed in
 this stage. Native hs and x64 import lookup still require the later bridge
 and audited seed update; this is not a universal backend migration claim.
+
+
+### Experimental framebuffer keyboard console
+`kernel/kconsole_demo.hs` combines the validated framebuffer, ASCII bitmap
+labels and bounded keyboard state into a single-line input demonstration.
+Submitted text is displayed, never executed. Input display folds ASCII case
+according to the boot font. Synchronous redraw and the existing single-slot
+keyboard backend can lose input during redraw. No agent runtime, terminal
+emulation, command evaluation, Unicode input or desktop is added.
