@@ -23,15 +23,7 @@ def esc(s):
     elif ch == "\r":
       out = out + "\\r"
     else:
-      j = json_str(ch)
-      if len(j) > 3 and j[1:2] == "\\" and j[2:3] == "u" and j[3:5] == "00" and j[5:6] < "2":
-        out = out + j[1:7]
-      elif j == "\"\\b\"":
-        out = out + "\\u0008"
-      elif j == "\"\\f\"":
-        out = out + "\\u000c"
-      else:
-        out = out + ch
+      out = out + ch
     i = i + 1
   return out
 
