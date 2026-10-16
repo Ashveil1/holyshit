@@ -11,7 +11,9 @@ screendump against independent A/C bitmap foreground and background pixels.
 QEMU, GRUB tools and xorriso are optional dependencies; without them this
 specific test skips. It does not prove real hardware, UEFI or Unicode input.
 
-The prototype has no scrollback, multi-line history, event queue, model runtime,
+The prototype has no scrollback, multi-line history, general event queue, model runtime,
 agent subsystem, filesystem commands or applications. Redraw is synchronous;
-the existing one-slot keyboard backend can drop input typed during redraw.
+the keyboard FIFO retains up to 63 translated ASCII bytes during redraw,
+then drops newest bytes on overflow. This is not lossless input or a
+terminal event system. See [kernel.md](kernel.md) for the queue boundary.
 This is a proof of screen-plus-keyboard, not a usable daily terminal.
