@@ -1761,3 +1761,13 @@ and nonreentrant. Dead images reject. No code mutation, object/exception/root
 sharing or cold/hot tier. Existing fixed-set APIs retained. Diagnostic CLI
 1..32 calls validates later sets at invocation time, not before init/earlier
 effects. See docs/jit-dynamic-arguments.md for fatal and lifecycle restrictions.
+
+### Fixed byte console demo integration
+`kernel/kconsole_fixed.holy` connects fixed42-byte/four-line history storage
+and raw-byte framebuffer font rendering. Display only, no command evaluation.
+Old string demos remain. readkey still allocates32bytes/consumed byte and the
+16MiB bump heap has no reclamation. Static string labels and logging are outside
+finite allocation proof. Actual QEMU1000 storage+redraw cycles must show16byte
+marker gap (only marker allocation) plus independent guarded RGB32 pixels;
+optional actual GRUB six-submission CDEF/currentG visual gate required locally.
+No infinite-terminal, total session zero-allocation, GC, hardware or speed claim.

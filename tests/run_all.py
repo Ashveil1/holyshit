@@ -58,6 +58,8 @@ SUITES = [
     ("test_kfont.py", "direct framebuffer font guarded RGB24/32 QEMU oracle"),
     ("test_console_buffer.py", "fixed OS console storage and repeated edits"),
     ("test_console_state.py", "bounded display-only multi-line transcript model"),
+    ("test_console_fixed.py", "fixed byte console actual GRUB keyboard/display"),
+    ("test_console_render.py", "integrated fixed console redraw allocations and pixels"),
     ("test_console_session.py", "GRUB multi-submission transcript and text pixels"),
     ("test_console_kernel.py", "GRUB keyboard console actual text pixels"),
     ("test_framebuffer_kernel.py", "GRUB framebuffer native image and guest pixels"),
