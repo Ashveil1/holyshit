@@ -1651,3 +1651,14 @@ and a long session can OOM/halt. Six submissions plus seventh editable line
 are tested, not indefinite terminal use. No history recall/navigation, shared
 agent runtime, command evaluation or Unicode is added. See
 `docs/console-session.md` for tests and optional GRUB gate.
+
+### Direct kernel bitmap text
+`kernel/kfont.holy` provides draw/fill on a validated mapped RGB24/32
+framebuffer descriptor. Draw retains std.font glyph/case/fallback/newline,
+scale/text/coordinate/color validation and clipping. Fill validates all
+arguments before writes and clips; nonpositive extent writes nothing. It
+uses while loops, no materialized rectangle range lists or software RGB
+surface. The session console uses this path with unchanged layout. Descriptor
+trust/safety is unchanged from kframebuffer. Glyph/string/edit allocations
+remain and the16MiB bump heap still cannot reclaim; no zero-allocation,
+unbounded-session or performance claim. See `docs/kernel-font.md`.

@@ -1,0 +1,43 @@
+# Direct bitmap text on a validated/mapped framebuffer, no RGB surface copy.
+import kframebuffer
+import std.font
+def fill(frame, x, y, width, height, color):
+  # All public arguments validate before any framebuffer write.
+  x = std.gfx.coordinate(x)
+  y = std.gfx.coordinate(y)
+  width = std.gfx.coordinate(width)
+  height = std.gfx.coordinate(height)
+  color = std.gfx.color24(color)
+  left = 0 if x < 0 else x
+  top = 0 if y < 0 else y
+  right = frame[2] if x + width > frame[2] else x + width
+  bottom = frame[3] if y + height > frame[3] else y + height
+  row = top
+  while row < bottom:
+    col = left
+    while col < right:
+      kframebuffer.pixel(frame, col, row, color)
+      col = col + 1
+    row = row + 1
+def draw(frame, x, y, text, color, scale):
+  # Match std.font validation, layout, clipping and fallback glyph behavior.
+  bounds = std.font.measure(text, scale)
+  x = std.gfx.coordinate(x)
+  y = std.gfx.coordinate(y)
+  color = std.gfx.color24(color)
+  left = x
+  for character in text:
+    if character == "\n":
+      x = left
+      y = y + 8 * scale
+    else:
+      bits = std.font.glyph(character)
+      row = 0
+      while row < 7:
+        col = 0
+        while col < 5:
+          if bits[row] & (1 << (4 - col)):
+            fill(frame, x + col * scale, y + row * scale, scale, scale, color)
+          col = col + 1
+        row = row + 1
+      x = x + 6 * scale
