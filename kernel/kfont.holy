@@ -8,10 +8,18 @@ def fill(frame, x, y, width, height, color):
   width = std.gfx.coordinate(width)
   height = std.gfx.coordinate(height)
   color = std.gfx.color24(color)
-  left = 0 if x < 0 else x
-  top = 0 if y < 0 else y
-  right = frame[2] if x + width > frame[2] else x + width
-  bottom = frame[3] if y + height > frame[3] else y + height
+  left = x
+  if left < 0:
+    left = 0
+  top = y
+  if top < 0:
+    top = 0
+  right = x + width
+  if right > frame[2]:
+    right = frame[2]
+  bottom = y + height
+  if bottom > frame[3]:
+    bottom = frame[3]
   row = top
   while row < bottom:
     col = left
@@ -41,3 +49,55 @@ def draw(frame, x, y, text, color, scale):
           col = col + 1
         row = row + 1
       x = x + 6 * scale
+
+# Kernel-only trusted byte spans. Owner keeps memory valid for the whole call.
+def byte_at(address, index):
+  unsafe:
+    return load8(as_ptr(address + index))
+def glyph_byte(byte):
+  if byte >= 97 and byte <= 122:
+    byte = byte - 32
+  characters = std.font.characters
+  unsafe:
+    Ptr data = as_ptr(characters)
+    address = as_int(data) + 16
+  index = 0
+  while index < len(std.font.characters):
+    if byte_at(address, index) == byte:
+      return index
+    index = index + 1
+  return 41
+# Valid spans/rendering use no source allocation after module initialization.
+# Like other raw framebuffer helpers this is not a hostile-pointer boundary.
+def draw_bytes(frame, x, y, address, length, color, scale):
+  address = address | 0
+  length = length | 0
+  scale = scale | 0
+  if length < 0 or length > 1024:
+    raise "font byte length must be 0..1024"
+  if address <= 0 or address > 536870911 - length:
+    raise "font byte address outside low memory"
+  if scale < 1 or scale > 16:
+    raise "font scale must be 1..16"
+  x = std.gfx.coordinate(x)
+  y = std.gfx.coordinate(y)
+  color = std.gfx.color24(color)
+  left = x
+  index = 0
+  while index < length:
+    byte = byte_at(address, index)
+    if byte == 10:
+      x = left
+      y = y + 8 * scale
+    else:
+      bits = std.font.rows[glyph_byte(byte)]
+      row = 0
+      while row < 7:
+        col = 0
+        while col < 5:
+          if bits[row] & (1 << (4 - col)):
+            fill(frame, x + col * scale, y + row * scale, scale, scale, color)
+          col = col + 1
+        row = row + 1
+      x = x + 6 * scale
+    index = index + 1
