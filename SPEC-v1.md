@@ -1748,3 +1748,13 @@ uses scalar while loops and statement branches, avoiding ternary singleton
 List lowering. Finite QEMU allocation-marker and RGB24/32 guarded pixel oracles
 are required. Existing string draw remains; no console integration, GC,
 hostile-pointer safety, indefinite lifetime or performance claim.
+
+### Fixed byte console demo integration
+`kernel/kconsole_fixed.holy` connects fixed42-byte/four-line history storage
+and raw-byte framebuffer font rendering. Display only, no command evaluation.
+Old string demos remain. readkey still allocates32bytes/consumed byte and the
+16MiB bump heap has no reclamation. Static string labels and logging are outside
+finite allocation proof. Actual QEMU1000 storage+redraw cycles must show16byte
+marker gap (only marker allocation) plus independent guarded RGB32 pixels;
+optional actual GRUB six-submission CDEF/currentG visual gate required locally.
+No infinite-terminal, total session zero-allocation, GC, hardware or speed claim.
