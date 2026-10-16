@@ -18,6 +18,7 @@ with tempfile.TemporaryDirectory()as temp:
       'a = [true, false, null, 7]\nprint a[0]\nprint a[1]\nprint a[2]\nprint a[3]\n',
       'a = []\nadd = append\nsize = len\nadd(a, 19)\nprint size(a)\nprint a[0]\n',
       'print not []\nprint not [1]\na = []\nif a:\n  print 999\nelse:\n  print 23\n',
+      'def side():\n  print 999\n  return 2\nprint 19 if true else side()\nprint side() if false else 23\na = [1, 2]\na[-1] = 7\nprint a[1]\nprint append(a, null)\nprint a[-1]\n',
       'def len(x):\n  return 99\nprint len([1])\n',
     ]
     for body in cases:
@@ -31,7 +32,8 @@ with tempfile.TemporaryDirectory()as temp:
         assert got.returncode and reason.encode()in got.stderr,(body,got.stderr);passed+=1
     # Validation of an element/index must precede mutation of interpreter state.
     harness=d/'atomic.holy';harness.write_text('import normalize\nimport irbuild\nimport coldscalar\nm = irbuild.build_module(normalize.parse("a = [19]\\na[0] = []\\n"), "")\ns = coldscalar.create(m, 100)\ntry:\n  coldscalar.run(s)\nexcept:\n  print s[2]["a"]["items"][0]\nprint s[5]\nfor i in range(15):\n  coldscalar.charge(s, 4096, false)\ncoldscalar.charge(s, 4095, false)\ntry:\n  coldscalar.charge(s, 1, false)\nexcept:\n  print s[9]\n')
-    exe=d/'atomic';r=subprocess.run([sys.executable,str(ROOT/'hs.py'),'xbuild',str(harness),'-o',str(exe)],env=env,capture_output=True,timeout=60);assert not r.returncode,r.stderr
+    exe=d/'atomic';build=([sys.executable,str(ROOT/'hs.py'),'xbuild',str(harness),'-o',str(exe)]if '--python-bootstrap'in sys.argv else [str(ROOT/'bootstrap/hs-hosted-x86_64'),str(harness),str(exe)])
+    r=subprocess.run(build,env=env,capture_output=True,timeout=240);assert not r.returncode,r.stderr
     r=subprocess.run([str(exe)],env=env,capture_output=True,timeout=30);assert not r.returncode and r.stdout==b'19\n0\n65536\n',(r.stdout,r.stderr);passed+=1
 mode='Python-built native executor'if '--python-bootstrap'in sys.argv else 'seed-built native executor'
 print(f'{passed}/{passed} cold flat-list ownership/alias gates ({mode}; no shared native objects)')
