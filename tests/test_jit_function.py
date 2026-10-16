@@ -40,6 +40,9 @@ with tempfile.TemporaryDirectory()as temp:
     for key,sets in [('missing',[[1]]),('<main>',[[1]]),('f$L1',[[]]),('f$L1',[[True]]),('f$L1',[[536870912]]),('f$L1',[]),('f$L1',[[1]]*33)]:
         r=subprocess.run([str(driver),str(source),key,json.dumps(sets)],env=env,capture_output=True,text=True,timeout=60)
         assert r.returncode and 'JIT FUNCTION RESULTS'not in r.stdout,(key,sets,r.stdout,r.stderr);passed+=1
+    source.write_text('def f():\n  return 19\nraise "init failed"\n')
+    r=subprocess.run([str(driver),str(source),'f$L1','[[]]'],env=env,capture_output=True,text=True,timeout=60)
+    assert not r.returncode and not r.stderr and 'JIT FUNCTION INITIAL [1, ["init failed", 3]]\nJIT FUNCTION RESULTS []\n'in r.stdout and r.stdout.endswith(' false\n'),(r.stdout,r.stderr);passed+=1
     source.write_text('def f():\n  return "no heap export"\n')
     r=subprocess.run([str(driver),str(source),'f$L1','[[]]'],env=env,capture_output=True,text=True,timeout=60)
     assert r.returncode and 'non-integer return'in r.stderr,r.stderr;passed+=1
