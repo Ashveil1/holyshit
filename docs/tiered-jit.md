@@ -76,3 +76,9 @@ The [sequence experiment](jit-sequence-probe.md) now repeats fresh isolated
 module creation/teardown in one driver, including error then success. It does
 not reuse one module's functions or share its values/roots. This verifies a
 finite lifecycle boundary only; stage2 remains incomplete.
+
+The [exact-key scalar function probe](jit-function-probe.md) keeps one target
+runtime alive across repeated native calls and captured errors. It transports
+only immediate integers, bypasses dynamic name lookup, and has no shared
+language values/roots or cold-tier caller. This is a bounded stage2 experiment,
+not a stable public function ABI or hot-function tier.

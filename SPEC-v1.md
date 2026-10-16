@@ -1651,3 +1651,19 @@ and a long session can OOM/halt. Six submissions plus seventh editable line
 are tested, not indefinite terminal use. No history recall/navigation, shared
 agent runtime, command evaluation or Unicode is added. See
 `docs/console-session.md` for tests and optional GRUB gate.
+
+### Repeated exact-key scalar native calls
+`jit_function_probe.holy SOURCE EXACT_IR_KEY JSON_ARGUMENT_SETS` initializes
+one isolated native module once and invokes the exact local non-entry code
+key for1..32 exact-arity sets of signed30-bit integer arguments. Captures
+reject, only tagged integer returns are copied across; non-integer returns
+stop without dereferencing/exporting them. The direct key bypasses dynamic
+name lookup/rebinding and is not a stable public export or source dispatch.
+Per-call shims save C ABI state, update target GC stack boundary, capture
+language errors to copied bytes/line and let later calls continue. Target
+global/import/heap state persists, including mutations before errors, until
+final target heap/image teardown. Init error skips calls. Driver/fatal failures
+and unsupported returns do not claim normal teardown. Existing two-argument
+prepare/probes retain behavior. No shared objects/GC roots/closure/error
+identity, callback ABI, tiers or performance claim. See
+`docs/jit-function-probe.md` for transport and fatal/resource restrictions.
