@@ -1,0 +1,27 @@
+# Isolated returning module outcome, not shared exceptions/values or tiers.
+import jitboundary
+import jitmem
+args = argv()
+if len(args) < 1 or len(args) > 2 or len(args) == 2 and args[1] != "--heap-checkpoints":
+  raise "status probe wants SOURCE [--heap-checkpoints]"
+state = jitboundary.prepare(args[0], true)
+pointer = state[1]
+unsafe:
+  I64 result = call0(as_ptr(pointer))
+if result not in [0, 1]:
+  raise "status probe: invalid native outcome"
+# Copy bytes into the driver's independent heap while target mappings live.
+# No target object or raw pointer may escape the teardown below.
+error = null
+if result == 1:
+  record = state[0]["data"] + state[4]
+  address = jitboundary.readword(record)
+  length = jitboundary.readword(record + 8)
+  line = jitboundary.readword(record + 16)
+  if address <= 0 or length < 0:
+    raise "status probe: invalid error metadata"
+  error = [read_mem(address, length), line]
+arenas = jitboundary.release_heap(state, len(args) == 2)
+jitmem.release(state[0])
+print "JIT OUTCOME", json_str([result, error])
+print "JIT STATUS RESUMED", arenas, state[0]["live"]

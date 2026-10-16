@@ -62,3 +62,12 @@ The [one-shot return probe](jit-return-probe.md) now exercises a normally
 returning native module entry without replacing `_start`. It is deliberately
 not a shared-runtime ABI: errors can exit, heaps are process-owned and no
 objects cross runtimes. Stage2 is still incomplete.
+
+## Isolated error-outcome experiment
+
+The [status probe](jit-status-probe.md) adds a root native handler and returns
+language-error metadata instead of exiting for errors that reach it. It copies
+error bytes before destroying the target heap/image and can print them after
+teardown. This is still one independent runtime, no shared object or exception
+identity, and no resumable function ABI. Fatal exits/signals remain outside
+capture. Stage2 remains incomplete; this does not add any execution tier.

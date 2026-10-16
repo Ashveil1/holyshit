@@ -1580,3 +1580,19 @@ inspect real process mappings before and after destruction. Default one-shot
 behavior is unchanged. Neither mode closes target-opened files, reclaims
 arbitrary external resources, recovers uncaught errors, supports repeated
 module invocation, or shares objects/roots/exceptions with the driver.
+
+### Isolated native error-outcome probe
+`selfhost/be/jit_status_probe.holy SOURCE [--heap-checkpoints]` adds a root
+handler around a returning native module, yielding status0 or captured
+language-error status1. It preserves target source lines and inner unwind;
+a private uncalled IR try helper ensures the existing exception runtime is
+emitted without altering compiler or seed semantics. The root consumes one
+handler slot. Fatal exits, overflow, OOM, signals and unsafe faults remain
+outside capture. On status1 raw error bytes/line are copied into driver-owned
+memory before target heap/image teardown; no target object escapes. Copied
+JSON outcome is printed after teardown, and captured status1 does not become
+the diagnostic process exit code. Externs remain rejected. This is one-shot
+isolated module execution, not shared values/exceptions/GC roots, repeated
+calls, resource cleanup, individual-function ABI or tiering. The original
+return probe retains its output and uncaught-error behavior. See
+`docs/jit-status-probe.md` for markers and diagnostic checkpoint semantics.
