@@ -6,6 +6,7 @@
 
 | อยาก... | อ่าน |
 |---|---|
+| ติดตั้งและรัน/build แบบ native (Linux x86-64) | [native-install.md](native-install.md) |
 | **cheatsheet หน้าเดียวจบ** | `cheatsheet.md` |
 | เขียนโปรแกรมแรกใน 10 นาที | `tutorial.md` |
 | ดูตัวอย่างที่รันได้จริง | `../examples/` |
@@ -19,7 +20,22 @@
 | กฎฉบับกระชับที่สุด | `../AGENTS.md` |
 | อยากช่วยเพิ่ม/แก้ภาษา | `../CONTRIBUTING.md` |
 
-รันเร็วสุด:
+## Normal install/run/build (Linux x86-64)
+
+```sh
+sh scripts/install-native.sh "$HOME/holyshit-native"
+"$HOME/holyshit-native/bin/hs" run examples/hello.holy
+"$HOME/holyshit-native/bin/hs" build examples/hello.holy /tmp/hello-hs
+```
+
+Use a new directory with an existing parent. No Python/gcc is needed for
+this route; shell/checksum utilities and host libc/shared libraries are
+required. The installed launcher supports run/build of the hosted subset,
+not all development commands or the entire language. See
+[native install](native-install.md) for relocation, updates and limits.
+
+## Development/reference tools (Python)
+
 
 ```sh
 python3 interp.py prog.holy     # tree-walk, พฤติกรรมอ้างอิง
