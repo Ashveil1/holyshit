@@ -1,0 +1,65 @@
+# Fixed storage for ASCII console edits/history. Trusted opaque state only.
+# No string/list construction in feed/reset/history addressing after create.
+def create(capacity, retained):
+  capacity = capacity | 0
+  retained = retained | 0
+  if capacity < 1 or capacity > 256:
+    raise "console byte capacity must be 1..256"
+  if retained < 1 or retained > 16:
+    raise "console byte retained lines must be 1..16"
+  unsafe:
+    Ptr data = alloc((retained + 1) * capacity)
+    address = as_int(data)
+  lengths = []
+  i = 0
+  while i < retained:
+    append(lengths, 0)
+    i = i + 1
+  return [address, capacity, retained, 0, lengths, 0, 0, 0]
+def reset(state):
+  state[3] = 0
+def feed(state, byte):
+  if byte == null:
+    return false
+  byte = byte | 0
+  if byte < 0 or byte > 255:
+    raise "console byte must be 0..255"
+  if byte == 10:
+    count = state[3]
+    target = state[0] + (state[5] + 1) * state[1]
+    i = 0
+    source = state[0]
+    while i < count:
+      unsafe:
+        store8(as_ptr(target + i), load8(as_ptr(source + i)))
+      i = i + 1
+    state[4][state[5]] = count
+    state[5] = state[5] + 1
+    if state[5] == state[2]:
+      state[5] = 0
+    if state[6] < state[2]:
+      state[6] = state[6] + 1
+    state[7] = state[7] + 1
+    state[3] = 0
+    return true
+  if byte == 8:
+    if state[3] > 0:
+      state[3] = state[3] - 1
+  elif byte >= 32 and byte <= 126 and state[3] < state[1]:
+    target = state[0] + state[3]
+    unsafe:
+      store8(as_ptr(target), byte)
+    state[3] = state[3] + 1
+  return false
+def slot(state, index):
+  index = index | 0
+  if index < 0 or index >= state[6]:
+    raise "console history index out of range"
+  physical = index
+  if state[6] == state[2]:
+    physical = (state[5] + index) % state[2]
+  return physical
+def history_address(state, index):
+  return state[0] + (slot(state, index) + 1) * state[1]
+def history_length(state, index):
+  return state[4][slot(state, index)]

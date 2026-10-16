@@ -1710,3 +1710,15 @@ are bounded and optionally printed with steps. Executor diagnostics do not yet
 match source exception/line semantics. No target hot tier, native transition,
 shared GC/value ABI, sandbox, speed or completed-stage claim. See
 `docs/cold-scalar.md` for exact restrictions and tests.
+
+### Fixed OS console byte storage
+`kernel/kconsole_buffer.holy` is trusted opaque state, separate from graphical
+and std.console demos. Capacity1..256, retained1..16; one raw data allocation
+and fixed lengths. Feed Int0..255/null: newline submits including empty,
+backspace edits, ASCII32..126 appends up to cap, other bytes ignore. Circular
+history preserves oldest-first checked address/length access. Reset clears
+active length only. Invalid arguments fail before effects. No source container,
+string, slice/range or raw allocation in valid feed/reset/access paths after
+create. Stale bytes past length remain private/unread. No hostile-state safety,
+reclamation, counter-overflow handling, renderer integration or infinite session
+claim. See docs/console-buffer.md.
