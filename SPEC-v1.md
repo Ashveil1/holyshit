@@ -1547,8 +1547,8 @@ is added. The existing IR reference restrictions continue to apply.
 `kernel/kconsole_demo.holy` combines the validated framebuffer, ASCII bitmap
 labels and bounded keyboard state into a single-line input demonstration.
 Submitted text is displayed, never executed. Input display folds ASCII case
-according to the boot font. Synchronous redraw and the existing single-slot
-keyboard backend can lose input during redraw. No agent runtime, terminal
+according to the boot font. Synchronous redraw is now backed by the bounded
+keyboard FIFO described below; input beyond capacity is still dropped. No agent runtime, terminal
 emulation, command evaluation, Unicode input or desktop is added.
 
 ### Experimental module-return probe
