@@ -392,7 +392,7 @@ with tempfile.TemporaryDirectory() as d:
         check("kata ran its checks", out.count("\nok ") >= 8, out[-800:])
     # shell: stage ramdisk + user ELFs, pack, then type over sendkeys.
     # Keys start late and slow: TCG boot takes seconds and the keyboard
-    # flag is one deep, so anything typed during boot collapses.
+    # FIFO is bounded; slow pacing still avoids assumptions about host PS/2 timing.
     shd = os.path.join(d, "stage")
     shutil.copytree(os.path.join(ROOT, "kernel", "ramdisk"), shd)
     os.makedirs(os.path.join(shd, "bin"))

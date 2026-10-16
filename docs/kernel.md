@@ -184,3 +184,22 @@ user ต่อกับ VFS ผ่าน syscall ตัวเลขเดีย�
 - `ticks` เริ่มนับหลังบูต; keyboard คือ scancode ชุด 1 (ไม่มี shift)
 
 เทส: `python3 tests/test_xkernel.py` — บูตจริงบน QEMU (274 เคส)
+
+
+## Bounded keyboard FIFO
+
+`readkey()` returns the oldest translated one-character Str, or null when
+empty. IRQ1 queues up to 63 nonzero ASCII bytes in a 64-slot ring; beyond
+that it drops newest bytes without replacing older input. Internal
+`keydrops_` counts those software overflow drops modulo 2^64; it is not a
+public builtin. Scancode translation remains set1 without shift/Unicode.
+The consumer preserves the caller's IF flag, masks interrupts only for the
+head update and restores flags before allocating the returned Str. This is
+a single-CPU queue, not SMP synchronization or a general event subsystem.
+Hardware overruns and input beyond capacity can still lose characters.
+
+`tests/test_keyboard_queue.py` runs the actual generated helper code in QEMU
+with deterministic bursts, wraparound, full/empty transitions, drop-newest
+and IF=0/1 checks, followed by public `readkey()` String/null checks. It
+injects translated bytes at the queue helper, not at the PS/2 hardware.
+Existing keyboard/console QEMU tests separately cover actual IRQ input.

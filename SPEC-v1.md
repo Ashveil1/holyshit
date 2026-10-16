@@ -1547,8 +1547,8 @@ is added. The existing IR reference restrictions continue to apply.
 `kernel/kconsole_demo.holy` combines the validated framebuffer, ASCII bitmap
 labels and bounded keyboard state into a single-line input demonstration.
 Submitted text is displayed, never executed. Input display folds ASCII case
-according to the boot font. Synchronous redraw and the existing single-slot
-keyboard backend can lose input during redraw. No agent runtime, terminal
+according to the boot font. Synchronous redraw is now backed by the bounded
+keyboard FIFO described below; input beyond capacity is still dropped. No agent runtime, terminal
 emulation, command evaluation, Unicode input or desktop is added.
 
 ### Experimental module-return probe
@@ -1591,3 +1591,19 @@ subset/error behavior and no interpreter fallback. Development/reference
 Python tools remain separate; installation does not remove them or claim
 full CLI command parity. Seed source/fixed-point audits remain CI acceptance
 gates, while install/run perform their existing checksum checks.
+
+### Kernel keyboard FIFO
+The single-CPU x86 kernel buffers up to 63 translated nonzero ASCII bytes in
+a 64-slot ring. IRQ1 translates PS/2 set1 input using the unchanged map and
+appends in order; unknown/break scancodes are still ignored. When full, drop
+the newest byte, preserve queued bytes, and increment internal `keydrops_`
+(unsigned qword, wraps modulo 2^64). No public overflow builtin is added.
+`readkey()` returns the oldest one-character Str or null when empty. It
+atomically removes a byte before allocating a Str, preserving the caller's
+interrupt-enable state (IF), including empty reads. The producer runs under
+the IRQ gate with interrupts masked; dequeue saves flags, masks interrupts,
+updates head, then restores flags. No unconditional sti is allowed.
+This is single-CPU only, not an SMP queue, Unicode/event system, key-repeat
+policy or lossless hardware input promise. The queue can overflow while
+redraw or other synchronous work delays reads. Device/hardware overruns
+before IRQ1 receives a byte remain outside this software FIFO's control.
