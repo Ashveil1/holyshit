@@ -54,6 +54,8 @@ SUITES = [
     ("test_gfx.py", "software RGB surface pixel oracle and QEMU execution"),
 
     ("test_fbinfo.py", "strict direct RGB framebuffer tag decoding"),
+    ("test_console_state.py", "bounded display-only multi-line transcript model"),
+    ("test_console_session.py", "GRUB multi-submission transcript and text pixels"),
     ("test_console_kernel.py", "GRUB keyboard console actual text pixels"),
     ("test_framebuffer_kernel.py", "GRUB framebuffer native image and guest pixels"),
     ("test_examples.py", "examples"),
