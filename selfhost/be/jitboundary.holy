@@ -12,6 +12,8 @@ import jitmem
 extern:
   I64 munmap(Ptr addr, U64 length)
 def prepare(source, capture_error):
+  return prepare_function(source, capture_error, null, null)
+def prepare_function(source, capture_error, function_key, argument_sets):
   parselib.P["wide_literals"] = true
   irmod = irbuild.build_module(normalize.parse(read_text(source)), "")
   if capture_error:
@@ -27,6 +29,22 @@ def prepare(source, capture_error):
   verify.verify_module(irmod)
   generator = be.GenIR(irmod, pyrt.py_os_path_dirname(source), false)
   generator.build_ir_sections()
+  function_entries = []
+  if function_key != null:
+    if not capture_error or function_key == irmod["entry"] or function_key not in irmod["funcs"]:
+      raise "function probe: requires exact local non-entry IR function key"
+    frame = generator.frames[function_key]
+    if len(frame["caps"]) != 0:
+      raise "function probe: closure captures not supported"
+    if len(argument_sets) < 1 or len(argument_sets) > 32:
+      raise "function probe: wants 1..32 argument sets"
+    for arguments in argument_sets:
+      if len(arguments) != len(frame["params"]):
+        raise "function probe: exact arity required"
+      for value in arguments:
+        value = value | 0
+        if value < -536870912 or value > 536870911:
+          raise "function probe: argument outside signed30-bit range"
   # Standard C ABI callee-saved registers; no process-entry signal changes.
   entry = len(asm.state()["code"])
   for reg in ["rbx", "rbp", "r12", "r13", "r14", "r15"]:
@@ -90,8 +108,53 @@ def prepare(source, capture_error):
   for reg in ["r15", "r14", "r13", "r12", "rbp", "rbx"]:
     asm.pop_r(reg)
   asm.ret()
+  if function_key != null:
+    asm.data_label("function_probe_value")
+    asm.data_qword(0)
+    for index in range(len(argument_sets)):
+      append(function_entries, len(asm.state()["code"]))
+      for reg in ["rbx", "rbp", "r12", "r13", "r14", "r15"]:
+        asm.push_r(reg)
+      asm.mov_rr("rbp", "rsp")
+      # Root scan reaches this invocation's live stack, never the old main frame.
+      asm.mov_mr_rip("gc_stk_", "rsp")
+      asm.call("hs_try_push0")
+      asm.test_rr("rax", "rax")
+      caught = "function_probe_caught_" + str(index)
+      done = "function_probe_done_" + str(index)
+      asm.jcc("ne", caught)
+      arguments = argument_sets[index]
+      for i in range(len(arguments)):
+        value = arguments[len(arguments) - i - 1]
+        asm.mov_ri64("rax", (value << 2) | 1)
+        asm.push_r("rax")
+      asm.mov_ri32("rax", 0)
+      asm.push_r("rax")
+      asm.mov_ri32("rsi", 0)
+      asm.call(generator.flabel[function_key])
+      asm.add_ri32("rsp", (len(arguments) + 1) * 8)
+      asm.mov_mr_rip("function_probe_value", "rax")
+      asm.call("hs_try_pop")
+      asm.mov_ri32("rax", 0)
+      asm.jmp(done)
+      asm.label(caught)
+      asm.lea_rip("rcx", "exc_vals")
+      asm.lea_rip("rdx", "return_boundary_error")
+      for offset in [0, 8, 16]:
+        asm.mov_rm("rax", "rcx", offset)
+        asm.mov_mr("rdx", "rax", offset)
+      asm.call("hs_exc_pop")
+      asm.mov_ri32("rax", 1)
+      asm.label(done)
+      asm.mov_rr("rsp", "rbp")
+      for reg in ["r15", "r14", "r13", "r12", "rbp", "rbx"]:
+        asm.pop_r(reg)
+      asm.ret()
   image = jitimage.publish()
-  return [image, image["ptr"] + entry, asm.state()["data_labels"]["gc_tab_"], asm.state()["data_labels"]["gc_n_"], asm.state()["data_labels"]["return_boundary_error"] if capture_error else -1]
+  entries = []
+  for offset in function_entries:
+    append(entries, image["ptr"] + offset)
+  return [image, image["ptr"] + entry, asm.state()["data_labels"]["gc_tab_"], asm.state()["data_labels"]["gc_n_"], asm.state()["data_labels"]["return_boundary_error"] if capture_error else -1, entries, asm.state()["data_labels"]["function_probe_value"] if function_key != null else -1]
 def readword(address):
   unsafe:
     return load64(as_ptr(address))

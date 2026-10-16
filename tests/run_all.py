@@ -83,6 +83,7 @@ SUITES = [
     ("test_native_jit_command.py", "Python-free eager JIT command"),
     ("test_jitsections.py", "unpacked JIT sections relink to identical ELF"),
     ("test_jitextern.py", "eager in-process dynamic symbol binding"),
+    ("test_jit_function.py", "repeated exact-key scalar native calls with retained target state"),
     ("test_jit_sequence.py", "sequential independent native runtime/error teardown"),
     ("test_jit_status.py", "isolated native exception outcome and post-error heap teardown"),
     ("test_jit_owned.py", "normal-return target heap mapping destruction"),

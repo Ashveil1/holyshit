@@ -1,0 +1,35 @@
+# Exact IR-key direct calls with immediate arguments, not a public function ABI.
+import jitboundary
+import jitmem
+args = argv()
+if len(args) != 3:
+  raise "function probe wants SOURCE EXACT_IR_KEY JSON_ARGUMENT_SETS"
+sets = json_parse(args[2])
+state = jitboundary.prepare_function(args[0], true, args[1], sets)
+def outcome(state, pointer, has_value):
+  status = jitboundary.invoke(pointer)
+  if status == 1:
+    record = state[0]["data"] + state[4]
+    message = jitboundary.readword(record)
+    length = jitboundary.readword(record + 8)
+    line = jitboundary.readword(record + 16)
+    return [1, [read_mem(message, length), line]]
+  if status != 0:
+    raise "function probe: invalid native status"
+  if not has_value:
+    return [0, null]
+  value = jitboundary.readword(state[0]["data"] + state[6])
+  # Scalar-only boundary. Never read, box or export a target heap object.
+  if value & 3 != 1:
+    raise "function probe: non-integer return not supported"
+  return [0, value >> 2]
+initial = outcome(state, state[1], false)
+results = []
+if initial[0] == 0:
+  for pointer in state[5]:
+    append(results, outcome(state, pointer, true))
+arenas = jitboundary.release_heap(state, false)
+jitmem.release(state[0])
+print "JIT FUNCTION INITIAL", json_str(initial)
+print "JIT FUNCTION RESULTS", json_str(results)
+print "JIT FUNCTION RELEASED", arenas, state[0]["live"]
