@@ -1623,3 +1623,17 @@ isolated module execution, not shared values/exceptions/GC roots, repeated
 calls, resource cleanup, individual-function ABI or tiering. The original
 return probe retains its output and uncaught-error behavior. See
 `docs/jit-status-probe.md` for markers and diagnostic checkpoint semantics.
+
+### Bounded multi-submission console experiment
+`std.console` wraps lineedit with1..16 retained submitted lines and a counter;
+Enter (even empty) appends, evicts oldest beyond the limit and resets active
+line. `feed` returns whether submission occurred. Existing line capacity,
+ASCII/control validation and editing rules remain; state is opaque to callers.
+`kernel/kconsole_session.holy` renders four42-character recent lines and a
+new input line, updating text rows per key, never executing text. Original
+single-line demo remains. The freestanding16MiB bump heap still has no
+reclamation: bounded transcript length does not bound lifetime allocations,
+and a long session can OOM/halt. Six submissions plus seventh editable line
+are tested, not indefinite terminal use. No history recall/navigation, shared
+agent runtime, command evaluation or Unicode is added. See
+`docs/console-session.md` for tests and optional GRUB gate.

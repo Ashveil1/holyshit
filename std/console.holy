@@ -1,0 +1,17 @@
+# Bounded display-only transcript. No command dispatch or hardware access.
+import std.lineedit
+def create(capacity, retained):
+  retained = retained | 0
+  if retained < 1 or retained > 16:
+    raise "console retained lines must be 1..16"
+  return [std.lineedit.create(capacity), [], retained, 0]
+def feed(state, key):
+  std.lineedit.feed(state[0], key)
+  if state[0][1]:
+    append(state[1], state[0][0])
+    if len(state[1]) > state[2]:
+      state[1] = state[1][1:len(state[1])]
+    state[3] = state[3] + 1
+    std.lineedit.reset(state[0])
+    return true
+  return false

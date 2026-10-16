@@ -17,3 +17,8 @@ the keyboard FIFO retains up to 63 translated ASCII bytes during redraw,
 then drops newest bytes on overflow. This is not lossless input or a
 terminal event system. See [kernel.md](kernel.md) for the queue boundary.
 This is a proof of screen-plus-keyboard, not a usable daily terminal.
+
+A separate [multi-submission experiment](console-session.md) now keeps four
+recent input lines and returns to editing after Enter. It still executes
+nothing and has an explicit finite bump-heap lifetime limit. The original
+single-line demo and its test remain unchanged.
