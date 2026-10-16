@@ -1,0 +1,20 @@
+# Fresh independent image/runtime per source, same live driver process.
+# Not repeated calls into one module or a shared GC/function ABI.
+import jitboundary
+args = argv()
+checkpoints = false
+if len(args) > 0 and args[0] == "--checkpoints":
+  checkpoints = true
+  args = args[1:len(args)]
+if len(args) < 1 or len(args) > 32:
+  raise "sequence probe wants [--checkpoints] SOURCE... (1..32)"
+for index in range(len(args)):
+  state = jitboundary.prepare(args[index], true)
+  if checkpoints:
+    print "JIT SEQUENCE IMAGE", index, json_str([state[0]["ptr"], state[0]["size"]])
+  outcome = jitboundary.finish(state, checkpoints)
+  print "JIT SEQUENCE OUTCOME", index, json_str([outcome[0], outcome[1]])
+  print "JIT SEQUENCE RELEASED", index, outcome[2], outcome[3]
+  if checkpoints:
+    input()
+print "JIT SEQUENCE DONE", len(args)

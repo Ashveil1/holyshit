@@ -71,3 +71,8 @@ error bytes before destroying the target heap/image and can print them after
 teardown. This is still one independent runtime, no shared object or exception
 identity, and no resumable function ABI. Fatal exits/signals remain outside
 capture. Stage2 remains incomplete; this does not add any execution tier.
+
+The [sequence experiment](jit-sequence-probe.md) now repeats fresh isolated
+module creation/teardown in one driver, including error then success. It does
+not reuse one module's functions or share its values/roots. This verifies a
+finite lifecycle boundary only; stage2 remains incomplete.

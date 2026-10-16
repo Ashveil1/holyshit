@@ -1,5 +1,5 @@
-# Experimental one-shot module-return boundary, not a mixed-tier runtime.
-# No language objects cross the call boundary. Uncaught errors still exit.
+# Experimental isolated module boundary, not a mixed-tier runtime.
+# No language objects cross. Error capture is opt-in; fatal exits remain.
 import parselib
 import normalize
 import irbuild
@@ -96,7 +96,7 @@ def readword(address):
   unsafe:
     return load64(as_ptr(address))
 def release_heap(state, checkpoints):
-  # Only called after normal target return, with its image still live.
+  # Only called after controlled target return, with its image still live.
   image = state[0]
   tabaddr = image["data"] + state[2]
   countaddr = image["data"] + state[3]
@@ -129,3 +129,26 @@ def release_heap(state, checkpoints):
     print "JIT HEAP UNMAPPED"
     input()
   return count
+
+# Copy error bytes before teardown. No target pointer escapes this helper.
+def invoke(pointer):
+  unsafe:
+    return call0(as_ptr(pointer))
+def finish(state, checkpoints):
+  result = invoke(state[1])
+  if result not in [0, 1]:
+    raise "status probe: invalid native outcome"
+  # Copy bytes into the driver's independent heap while target mappings live.
+  # No target object or raw pointer may escape the teardown below.
+  error = null
+  if result == 1:
+    record = state[0]["data"] + state[4]
+    address = readword(record)
+    length = readword(record + 8)
+    line = readword(record + 16)
+    if address <= 0 or length < 0:
+      raise "status probe: invalid error metadata"
+    error = [read_mem(address, length), line]
+  arenas = release_heap(state, checkpoints)
+  jitmem.release(state[0])
+  return [result, error, arenas, state[0]["live"]]
