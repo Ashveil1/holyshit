@@ -1,113 +1,17 @@
-# Experimental one-shot module-return boundary, not a mixed-tier runtime.
-# No language objects cross the call boundary. Uncaught errors still exit.
-import parselib
-import normalize
-import irbuild
-import verify
-import be
-import pyrt
-import asm
-import jitimage
+# Original one-shot probe. Boundary implementation lives in jitboundary.
+import jitboundary
 import jitmem
-extern:
-  I64 munmap(Ptr addr, U64 length)
-def prepare(source):
-  parselib.P["wide_literals"] = true
-  irmod = irbuild.build_module(normalize.parse(read_text(source)), "")
-  verify.verify_module(irmod)
-  generator = be.GenIR(irmod, pyrt.py_os_path_dirname(source), false)
-  generator.build_ir_sections()
-  # Standard C ABI callee-saved registers; no process-entry signal changes.
-  entry = len(asm.state()["code"])
-  for reg in ["rbx", "rbp", "r12", "r13", "r14", "r15"]:
-    asm.push_r(reg)
-  asm.mov_rr("rbp", "rsp")
-  # argc=1, argv[0], argv terminator, environment strings, env terminator.
-  # argc is not on the stack: cmd_argc_/cmd_argv_ are initialized directly.
-  entries = ["hs-return-probe"]
-  for value in split(read_text("/proc/self/environ"), "\0"):
-    if len(value) > 0:
-      append(entries, value)
-  slots = len(entries) + 2
-  if slots % 2 == 0:
-    slots = slots + 1
-  asm.sub_ri32("rsp", slots * 8)
-  asm.mov_ri32("rax", 1)
-  asm.mov_mr_rip("cmd_argc_", "rax")
-  asm.mov_mr_rip("cmd_argv_", "rsp")
-  position = 0
-  for i in range(len(entries)):
-    if i == 1:
-      asm.mov_ri32("rax", 0)
-      asm.mov_mr("rsp", "rax", position * 8)
-      position = position + 1
-    label = "return_probe_arg_" + str(i)
-    asm.data_label(label)
-    asm.data_bytes(pyrt.py_encode(entries[i], "utf-8"))
-    asm.data_bytes([0])
-    asm.lea_rip("rax", label)
-    asm.mov_mr("rsp", "rax", position * 8)
-    position = position + 1
-  asm.mov_ri32("rax", 0)
-  asm.mov_mr("rsp", "rax", position * 8)
-  if len(entries) == 1:
-    asm.mov_mr("rsp", "rax", (position + 1) * 8)
-  asm.mov_mr_rip("gc_stk_", "rsp")
-  asm.call("hs_main")
-  asm.mov_rr("rsp", "rbp")
-  for reg in ["r15", "r14", "r13", "r12", "rbp", "rbx"]:
-    asm.pop_r(reg)
-  asm.ret()
-  image = jitimage.publish()
-  return [image, image["ptr"] + entry, asm.state()["data_labels"]["gc_tab_"], asm.state()["data_labels"]["gc_n_"]]
-def readword(address):
-  unsafe:
-    return load64(as_ptr(address))
-def release_heap(state, checkpoints):
-  # Only called after normal target return, with its image still live.
-  image = state[0]
-  tabaddr = image["data"] + state[2]
-  countaddr = image["data"] + state[3]
-  table = readword(tabaddr)
-  count = readword(countaddr)
-  if count < 0 or count > 1024 or count > 0 and table == 0:
-    raise "return probe: invalid heap ownership table"
-  # Snapshot all owned ranges before the first unmap. Valid only for the
-  # current audited gcrt layout, never for untrusted foreign metadata.
-  ranges = []
-  for index in range(count):
-    row = table + index * 32
-    base = readword(row)
-    end = readword(row + 8)
-    bitmap = readword(row + 16)
-    size = end - base
-    if base <= 0 or bitmap <= 0 or size < 16777216 or size % 4096 != 0 or base % 4096 != 0 or bitmap % 4096 != 0:
-      raise "return probe: invalid owned arena"
-    append(ranges, [base, size])
-    append(ranges, [bitmap, (size >> 7 + 4095) & -4096])
-  if table != 0:
-    append(ranges, [table, 32768])
-  if checkpoints:
-    print "JIT OWNED RANGES", json_str(ranges)
-    input()
-  for region in ranges:
-    if munmap(region[0], region[1]) != 0:
-      raise "return probe: heap unmap failed; do not retry"
-  if checkpoints:
-    print "JIT HEAP UNMAPPED"
-    input()
-  return count
 args = argv()
 if len(args) < 1 or len(args) > 2 or len(args) == 2 and args[1] not in ["--release-heap", "--release-heap-checkpoints"]:
   raise "return probe wants SOURCE [--release-heap|--release-heap-checkpoints]"
-state = prepare(args[0])
+state = jitboundary.prepare(args[0], false)
 pointer = state[1]
 unsafe:
   I64 result = call0(as_ptr(pointer))
   print result
 print "JIT RETURNED"
 if len(args) == 2:
-  arenas = release_heap(state, args[1] == "--release-heap-checkpoints")
+  arenas = jitboundary.release_heap(state, args[1] == "--release-heap-checkpoints")
   print "JIT HEAP RELEASED", arenas
 # The default remains the original process-owned-heap probe. No language
 # object may escape the target when opting into heap destruction.
