@@ -1692,3 +1692,21 @@ errors permit continuation, target mutations persist, init error skips calls.
 Prior scalar/return/sequence protocols remain. This is not a shared runtime,
 GC/root/value ABI, public plugin/export API, cold/hot tier or performance
 claim. See `docs/jit-dispatch-probe.md` for fatal/resource/transport limits.
+
+### Self-hosted cold scalar IR execution
+`selfhost/be/coldscalar.holy` interprets verified IR in .holy without target
+machine-code generation. It supports signed30-bit Int, Bool/null, bounded
+integer arithmetic/comparison, scalar equality/not, branch/jump/phi, variables/
+globals, module-level functions with interpreted dynamic rebinding/recursion,
+exact arity, one-scalar print and return. Nested functions, captures, imports,
+classes, source objects/strings/floats, division, exceptions/FFI/unsafe/builtins
+remain unsupported. Whole-module preflight rejects unknown instructions,
+operators, terminators and unsupported constants before effects. Operand/limit
+errors can occur after effects and do not roll them back. Locals do not fall
+back to globals when unbound. Phi inputs snapshot the predecessor then commit
+simultaneously. CLI step limit1M, library1..10M, max64 live frames/256functions,
+single-start state, cleanup of call depth on failures; per-function entry counts
+are bounded and optionally printed with steps. Executor diagnostics do not yet
+match source exception/line semantics. No target hot tier, native transition,
+shared GC/value ABI, sandbox, speed or completed-stage claim. See
+`docs/cold-scalar.md` for exact restrictions and tests.
