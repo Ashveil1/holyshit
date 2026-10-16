@@ -1748,3 +1748,16 @@ uses scalar while loops and statement branches, avoiding ternary singleton
 List lowering. Finite QEMU allocation-marker and RGB24/32 guarded pixel oracles
 are required. Existing string draw remains; no console integration, GC,
 hostile-pointer safety, indefinite lifetime or performance claim.
+
+### Runtime scalar native argument experiment
+`jitboundary.prepare_dynamic` creates one native ordinary-global-dispatch shim
+with0..6 args. `dynamic_outcome` validates an exact List of Int30 (not Bool)
+before copying tagged immediate words to target writable argument slots; one
+unchanged entry reloads them on every call. Runtime-computed later arguments
+work. Invalid transports leave slots/native state untouched; root-native error
+outcomes permit later calls without rollback. Existing init-before-call and
+heap-then-image release protocol remains trusted/caller-owned, nonconcurrent
+and nonreentrant. Dead images reject. No code mutation, object/exception/root
+sharing or cold/hot tier. Existing fixed-set APIs retained. Diagnostic CLI
+1..32 calls validates later sets at invocation time, not before init/earlier
+effects. See docs/jit-dynamic-arguments.md for fatal and lifecycle restrictions.

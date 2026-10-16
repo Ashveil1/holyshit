@@ -1,0 +1,20 @@
+# Runtime scalar arguments to one live native dynamic-global shim.
+import jitboundary
+import jitmem
+args = argv()
+if len(args) != 3:
+  raise "dynamic probe wants SOURCE GLOBAL_IDENTIFIER JSON_ARGUMENT_SETS"
+sets = json_parse(args[2])
+if len(sets) < 1 or len(sets) > 32:
+  raise "dynamic probe wants1..32 argument sets"
+state = jitboundary.prepare_dynamic(args[0], args[1], len(sets[0]))
+initial = jitboundary.scalar_outcome(state, state[1], false)
+results = []
+if initial[0] == 0:
+  for arguments in sets:
+    append(results, jitboundary.dynamic_outcome(state, arguments))
+arenas = jitboundary.release_heap(state, false)
+jitmem.release(state[0])
+print "JIT DYNAMIC INITIAL", json_str(initial)
+print "JIT DYNAMIC RESULTS", json_str(results)
+print "JIT DYNAMIC RELEASED", arenas, state[0]["live"]

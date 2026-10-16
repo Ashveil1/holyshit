@@ -102,3 +102,9 @@ Cold [flat List ownership](cold-lists.md) now preserves mutable aliases through
 interpreted calls using private hosted-executor records and finite source-slot
 budgets. These are not shared native GC objects; no cold/native transition or
 hot tier is introduced.
+
+The [runtime scalar argument experiment](jit-dynamic-arguments.md) reuses one
+native global-dispatch shim while driver-computed argument sets change through
+private writable scalar slots. This removes fixed-at-codegen values from the
+probe, not isolated target ownership. No interpreted/native crossing, shared
+objects/roots, hot tier or performance result is claimed.
