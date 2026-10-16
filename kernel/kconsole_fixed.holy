@@ -1,0 +1,44 @@
+# Fixed edit/history + raw rendering. Input remains display-only, never executed.
+import kframebuffer
+import kfont
+import kconsole_buffer
+frame = kframebuffer.descriptor()
+kframebuffer.map(frame)
+kfont.fill(frame, 0, 0, frame[2], frame[3], 0x16324f)
+kfont.fill(frame, 24, 24, 576, 64, 0x386fa4)
+kfont.draw(frame, 40, 40, "HS SYSTEM CONSOLE", 0xffffff, 3)
+kfont.fill(frame, 24, 104, 576, 224, 0xe8edf2)
+session = kconsole_buffer.create(42, 4)
+def textrow(address, length, y):
+  kfont.fill(frame, 32, y, 512, 16, 0xe8edf2)
+  kfont.draw_bytes(frame, 32, y, address, length, 0x16324f, 2)
+def history():
+  index = 0
+  while index < 4:
+    address = session[0]
+    length = 0
+    if index < session[6]:
+      address = kconsole_buffer.history_address(session, index)
+      length = kconsole_buffer.history_length(session, index)
+    textrow(address, length, 136 + index * 24)
+    index = index + 1
+def byte(key):
+  unsafe:
+    Ptr data = as_ptr(key)
+    return load8(data + 16)
+kfont.draw(frame, 32, 112, "RECENT INPUT - NOT EXECUTED", 0x16324f, 2)
+kfont.draw(frame, 32, 248, "INPUT:", 0x16324f, 2)
+textrow(session[0], 0, 280)
+print "FIXED SESSION READY"
+while true:
+  key = readkey()
+  if key != null:
+    submitted = kconsole_buffer.feed(session, byte(key))
+    if submitted:
+      history()
+    textrow(session[0], session[3], 280)
+    # Fixed literal/scalar serial diagnostics, never string snapshots/JSON.
+    if submitted:
+      print "FIXED SUBMITTED", session[7]
+    else:
+      print "FIXED EDIT", session[3]
