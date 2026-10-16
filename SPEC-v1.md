@@ -1547,8 +1547,8 @@ is added. The existing IR reference restrictions continue to apply.
 `kernel/kconsole_demo.holy` combines the validated framebuffer, ASCII bitmap
 labels and bounded keyboard state into a single-line input demonstration.
 Submitted text is displayed, never executed. Input display folds ASCII case
-according to the boot font. Synchronous redraw is now backed by the bounded
-keyboard FIFO described below; input beyond capacity is still dropped. No agent runtime, terminal
+according to the boot font. Synchronous redraw and the existing single-slot
+keyboard backend can lose input during redraw. No agent runtime, terminal
 emulation, command evaluation, Unicode input or desktop is added.
 
 ### Experimental module-return probe
@@ -1581,6 +1581,16 @@ behavior is unchanged. Neither mode closes target-opened files, reclaims
 arbitrary external resources, recovers uncaught errors, supports repeated
 module invocation, or shares objects/roots/exceptions with the driver.
 
+### Native installation route
+`scripts/install-native.sh NEW_INSTALL_DIRECTORY` is the normal Linux x86-64
+run/build installation route. It delegates to the pinned native bundle build
+without Python/gcc, requires a new destination and existing parent, and never
+edits PATH, shell profiles or system links. Updates use separate directories.
+The installed launcher provides only `run` and `build`, with existing hosted
+subset/error behavior and no interpreter fallback. Development/reference
+Python tools remain separate; installation does not remove them or claim
+full CLI command parity. Seed source/fixed-point audits remain CI acceptance
+gates, while install/run perform their existing checksum checks.
 
 ### Kernel keyboard FIFO
 The single-CPU x86 kernel buffers up to 63 translated nonzero ASCII bytes in

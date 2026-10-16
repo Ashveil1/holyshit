@@ -3,12 +3,23 @@
 กระชับที่สุดสำหรับคน/AI ที่รู้ Python อยู่แล้ว กฎฉบับเต็มอยู่ที่
 [`../AGENTS.md`](../AGENTS.md)
 
-## รัน
+## Native install/run/build (Linux x86-64)
+
+```sh
+sh scripts/install-native.sh "$HOME/holyshit-native"
+"$HOME/holyshit-native/bin/hs" run prog.holy
+"$HOME/holyshit-native/bin/hs" build prog.holy /tmp/prog-hs
+```
+
+New destination, existing parent; no Python/gcc needed. Hosted subset,
+run/build only, no interpreter fallback. See [native-install.md](native-install.md).
+
+## Development/reference tools (Python)
 
 ```sh
 python3 interp.py prog.holy        # ตีความ (อ้างอิงความจริง)
 python3 hs.py check prog.holy      # syntax + scope
-python3 hs.py run prog.holy        # native ผ่าน gcc
+python3 hs.py run prog.holy        # development CLI, backend selection/fallback
 python3 hs.py fmt prog.holy -w     # จัดรูป canonical
 ```
 
