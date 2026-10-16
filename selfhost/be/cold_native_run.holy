@@ -1,0 +1,23 @@
+# Explicit external native helper, not selective/hot compilation of cold code.
+import normalize
+import irbuild
+import coldscalar
+import coldnative
+import jitboundary
+import jitmem
+args = argv()
+if len(args) != 5:
+  raise "cold native wants COLD_SOURCE BRIDGE_NAME NATIVE_SOURCE GLOBAL_NAME ARITY"
+cold = coldscalar.create(irbuild.build_module(normalize.parse(read_text(args[0])), ""), 1000000)
+native = jitboundary.prepare_dynamic(args[2], args[3], int(args[4]))
+initial = jitboundary.scalar_outcome(native, native[1], false)
+if initial[0] != 0:
+  jitboundary.release_heap(native, false)
+  jitmem.release(native[0])
+  raise "cold native: native initialization failed: " + initial[1][0]
+try:
+  coldnative.bind(cold, args[1], native)
+  coldscalar.run(cold)
+finally:
+  jitboundary.release_heap(native, false)
+  jitmem.release(native[0])

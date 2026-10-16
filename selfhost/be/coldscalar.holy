@@ -59,6 +59,20 @@ def create(irmod, limit):
   for key in irmod["order"]:
     counts[key] = 0
   return [irmod, plans, {}, 0, limit, 0, counts, false, 0, 0]
+# Explicit trusted host bridge, not hot compilation or native object sharing.
+# Install only before run. Normal source global assignment still shadows it.
+def bind_scalar_bridge(state, name, handler, context):
+  if state[7]:
+    raise "cold scalar: cannot bind after start"
+  if len(name) < 1 or len(name) > 128:
+    raise "cold scalar: invalid bridge identifier"
+  for index in range(len(name)):
+    allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+    if index != 0:
+      allowed = allowed + "0123456789"
+    if find(allowed, name[index]) < 0:
+      raise "cold scalar: invalid bridge identifier"
+  state[2][name] = {"cold_kind": "scalar_bridge", "handler": handler, "context": context, "calls": 0}
 def tick(state):
   if state[3] >= state[4]:
     raise "cold scalar: instruction budget exhausted"
@@ -200,6 +214,14 @@ def execute(state, key, arguments):
           value = invoke(state, callee["key"], args)
         elif callee["cold_kind"] == "builtin":
           value = builtin(state, callee["name"], args)
+        elif callee["cold_kind"] == "scalar_bridge":
+          for argument in args:
+            integer(argument)
+          if callee["calls"] >= 4096:
+            raise "cold scalar: bridge call budget exhausted"
+          callee["calls"] = callee["calls"] + 1
+          handler = callee["handler"]
+          value = integer(handler(callee["context"], args))
         else:
           raise "cold scalar: not callable"
       elif op == "build_list":

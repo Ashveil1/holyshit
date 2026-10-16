@@ -1,0 +1,12 @@
+# Explicit cold-to-isolated-native Int30 bridge. No target objects/root sharing.
+import coldscalar
+import jitboundary
+def call(context, arguments):
+  outcome = jitboundary.dynamic_outcome(context, arguments)
+  if outcome[0] == 1:
+    raise "cold native: " + outcome[1][0] + " (native line " + str(outcome[1][1]) + ")"
+  return coldscalar.integer(outcome[1])
+def bind(cold, name, native):
+  if not native[0]["live"] or native[7] < 0:
+    raise "cold native: requires live dynamic native state"
+  coldscalar.bind_scalar_bridge(cold, name, call, native)
