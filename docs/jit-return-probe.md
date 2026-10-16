@@ -31,3 +31,25 @@ Next work: define shared value ownership and GC roots, a non-exiting exception
 status, and a stable function ABI. A real cold tier and hot-function dispatch
 must wait for those transition guarantees. Existing eager, AOT and native
 bundle behavior is unchanged. No speedup or completed tier is claimed.
+
+## Owned target-heap experiment
+
+An explicit `/tmp/hs-return SOURCE --release-heap` additionally destroys the
+normally returned target's GC arenas, start bitmaps and arena table, then
+releases its code/data image. The default stays process-owned. No target
+object may escape: this is destruction of an isolated runtime, not a shared
+GC or a production module loader. It relies on the current audited gcrt
+metadata layout and is not safe against arbitrary unsafe corruption.
+
+`--release-heap-checkpoints` is a diagnostic route: it prints owned ranges,
+waits on stdin, destroys them, prints a checkpoint and waits again. The test
+reads `/proc/PID/maps` at both stops, including multi-arena GC stress, to
+prove the mappings are actually gone before process exit. Ordinary release
+mode does not emit address lists or wait for input. Unmap failures stop and
+must not be retried as a whole destruction operation.
+
+Only this runtime's GC memory and code/data image are owned by this route.
+Target-opened file descriptors and other resources are outside it. Uncaught
+errors still terminate the process. Repeated invocation, shared objects and
+exception recovery remain future work. This does not complete stage2 or add
+hot-code compilation, and it carries no performance claim.
