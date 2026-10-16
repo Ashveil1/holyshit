@@ -1565,3 +1565,18 @@ Generated heap arenas remain process-owned until exit, so repeated long-lived
 module loading/unloading is NOT supported. This is a one-shot return-boundary
 experiment, not a production runner, a cold/hot tier or a resumable exception
 ABI. Existing eager and AOT routes and their error behavior are unchanged.
+
+### Explicit normal-return heap destruction experiment
+The module-return probe's optional `--release-heap` destroys its target GC
+arenas, per-arena start bitmaps and arena table after normal return, before
+releasing the target code/data image. It snapshots the current audited gcrt
+layout (32-byte table rows, maximum1024arenas, 16MBminimum arena, bitmap
+mapping size rounded from arena_size/128) while the image is still live.
+No target values can escape. This is trusted-runtime metadata, not a security
+boundary against unsafe target code. Basic count/alignment/size checks happen
+before any unmap; an unmap error stops the probe without retrying destruction.
+`--release-heap-checkpoints` adds explicit stdin checkpoints for tests to
+inspect real process mappings before and after destruction. Default one-shot
+behavior is unchanged. Neither mode closes target-opened files, reclaims
+arbitrary external resources, recovers uncaught errors, supports repeated
+module invocation, or shares objects/roots/exceptions with the driver.
