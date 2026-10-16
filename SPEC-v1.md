@@ -1623,3 +1623,17 @@ isolated module execution, not shared values/exceptions/GC roots, repeated
 calls, resource cleanup, individual-function ABI or tiering. The original
 return probe retains its output and uncaught-error behavior. See
 `docs/jit-status-probe.md` for markers and diagnostic checkpoint semantics.
+
+### Sequential fresh native runtimes
+`selfhost/be/jit_sequence_probe.holy [--checkpoints] SOURCE...` accepts1..32
+sources, compiling and invoking each in a fresh independent runtime within
+one live driver. Each controlled return copies any captured error then
+releases target-owned heap/image before the next compile. Captured status1
+continues; parse/compile/driver errors or fatal target exits stop the process.
+Repeated paths have fresh globals/imports/allocator/handler state, not reused
+exports. `jitboundary.finish` is shared with the status probe, whose output
+and checkpoint protocol remain unchanged. Diagnostic checkpoints prove each
+heap/image range disappears before the next cycle, allowing address reuse.
+This is not repeated calls into one module, shared objects/GC/function ABI,
+resource cleanup, an unbounded memory guarantee or a tier. Existing status
+capture restrictions remain. See `docs/jit-sequence-probe.md`.
