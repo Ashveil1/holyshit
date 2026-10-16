@@ -83,6 +83,7 @@ SUITES = [
     ("test_native_jit_command.py", "Python-free eager JIT command"),
     ("test_jitsections.py", "unpacked JIT sections relink to identical ELF"),
     ("test_jitextern.py", "eager in-process dynamic symbol binding"),
+    ("test_cold_list.py", "cold interpreter-owned flat-list aliases and budgets"),
     ("test_cold_scalar.py", "self-hosted cold scalar IR execution, no target code generation"),
     ("test_jit_dispatch.py", "dynamic target global/closure scalar invocation"),
     ("test_jit_function.py", "repeated exact-key scalar native calls with retained target state"),

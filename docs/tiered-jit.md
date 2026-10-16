@@ -97,3 +97,8 @@ entry counters work for that subset; unsupported value/exception/object/FFI
 features reject. This is independent preparatory cold-execution work while
 the shared native value/root contract is unfinished, not stage3 completion
 or an operational two-tier JIT. No cold/native transitions or hot compilation.
+
+Cold [flat List ownership](cold-lists.md) now preserves mutable aliases through
+interpreted calls using private hosted-executor records and finite source-slot
+budgets. These are not shared native GC objects; no cold/native transition or
+hot tier is introduced.

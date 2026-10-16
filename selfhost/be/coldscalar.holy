@@ -44,7 +44,7 @@ def preflight(irmod):
         elif op == "print":
           if len(ins["args"]) != 1:
             raise "cold scalar: print wants one scalar"
-        elif op not in ["load", "stglobal", "call", "phi", "copy"]:
+        elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "index", "setindex"]:
           raise "cold scalar: unsupported instruction " + op
       if block["term"]["term"] not in ["ret", "jmp", "br"]:
         raise "cold scalar: unsupported terminator"
@@ -58,7 +58,7 @@ def create(irmod, limit):
   counts = {}
   for key in irmod["order"]:
     counts[key] = 0
-  return [irmod, plans, {}, 0, limit, 0, counts, false]
+  return [irmod, plans, {}, 0, limit, 0, counts, false, 0, 0]
 def tick(state):
   if state[3] >= state[4]:
     raise "cold scalar: instruction budget exhausted"
@@ -85,6 +85,46 @@ def binary(op, left, right):
   if op == ">":
     return left > right
   return left >= right
+# Source lists are explicit interpreter-owned records, never raw Func records.
+# Flat scalar elements keep cycles/nested identity outside this first boundary.
+def list_items(value):
+  if pyrt.py_type(value) != "dict" or "cold_kind" not in value or value["cold_kind"] != "list":
+    raise "cold scalar: wants flat scalar List"
+  return value["items"]
+def truth(value):
+  if pyrt.py_type(value) == "dict" and "cold_kind" in value and value["cold_kind"] == "list":
+    return len(value["items"]) != 0
+  scalar(value)
+  return not not value
+def list_index(items, index):
+  index = integer(index)
+  if index < 0:
+    index = index + len(items)
+  if index < 0 or index >= len(items):
+    raise "cold scalar: list index out of range"
+  return index
+def charge(state, slots, created):
+  if slots > 4096:
+    raise "cold scalar: list exceeds4096 elements"
+  if created and state[8] >= 1024 or state[9] + slots > 65536:
+    raise "cold scalar: list allocation budget exhausted"
+  if created:
+    state[8] = state[8] + 1
+  state[9] = state[9] + slots
+def builtin(state, name, args):
+  if name == "len":
+    if len(args) != 1:
+      raise "cold scalar: len wants one argument"
+    return len(list_items(args[0]))
+  if len(args) != 2:
+    raise "cold scalar: append wants two arguments"
+  items = list_items(args[0])
+  item = scalar(args[1])
+  if len(items) >= 4096:
+    raise "cold scalar: list exceeds4096 elements"
+  charge(state, 1, false)
+  append(items, item)
+  return null
 def invoke(state, key, arguments):
   fn = state[0]["funcs"][key]
   if len(arguments) != len(fn["params"]):
@@ -134,9 +174,12 @@ def execute(state, key, arguments):
             raise "cold scalar: unbound local " + name
           value = variables[name]
         else:
-          if name not in state[2]:
+          if name in state[2]:
+            value = state[2][name]
+          elif name in ["len", "append"]:
+            value = {"cold_kind": "builtin", "name": name}
+          else:
             raise "cold scalar: unbound global " + name
-          value = state[2][name]
       elif op == "stvar" or op == "stglobal":
         name = ins["name"]
         value = values[ins["src"]]
@@ -145,22 +188,40 @@ def execute(state, key, arguments):
         else:
           variables[name] = value
       elif op == "mkfunc":
-        value = ["cold scalar function", ins["func"]]
+        value = {"cold_kind": "function", "key": ins["func"]}
       elif op == "call":
         callee = values[ins["fn"]]
-        if pyrt.py_type(callee) != "list" or len(callee) != 2 or callee[0] != "cold scalar function":
+        if pyrt.py_type(callee) != "dict" or "cold_kind" not in callee:
           raise "cold scalar: not callable"
         args = []
         for arg in ins["args"]:
           append(args, values[arg])
-        value = invoke(state, callee[1], args)
+        if callee["cold_kind"] == "function":
+          value = invoke(state, callee["key"], args)
+        elif callee["cold_kind"] == "builtin":
+          value = builtin(state, callee["name"], args)
+        else:
+          raise "cold scalar: not callable"
+      elif op == "build_list":
+        items = []
+        for item in ins["items"]:
+          append(items, scalar(values[item]))
+        charge(state, len(items), true)
+        value = {"cold_kind": "list", "items": items}
+      elif op == "index":
+        items = list_items(values[ins["obj"]])
+        value = items[list_index(items, values[ins["idx"]])]
+      elif op == "setindex":
+        items = list_items(values[ins["obj"]])
+        index = list_index(items, values[ins["idx"]])
+        item = scalar(values[ins["val"]])
+        items[index] = item
       elif op == "bin":
         value = binary(ins["binop"], values[ins["l"]], values[ins["r"]])
       elif op == "un":
         arg = values[ins["v"]]
         if ins["unop"] == "not":
-          scalar(arg)
-          value = not arg
+          value = not truth(arg)
         elif ins["unop"] == "neg":
           value = integer(0 - integer(arg))
         else:
@@ -180,7 +241,7 @@ def execute(state, key, arguments):
     if term["term"] == "jmp":
       label = term["to"]
     else:
-      condition = scalar(values[term["cond"]])
+      condition = truth(values[term["cond"]])
       label = term["then"] if condition else term["els"]
 def run(state):
   if state[7]:
