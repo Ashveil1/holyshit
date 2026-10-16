@@ -1,0 +1,12 @@
+# Experimental self-hosted scalar IR executor, never compiles target code.
+import normalize
+import irbuild
+import coldscalar
+args = argv()
+if len(args) < 1 or len(args) > 2 or len(args) == 2 and args[1] != "--stats":
+  raise "cold scalar wants SOURCE [--stats]"
+irmod = irbuild.build_module(normalize.parse(read_text(args[0])), "")
+state = coldscalar.create(irmod, 1000000)
+coldscalar.run(state)
+if len(args) == 2:
+  print "COLD SCALAR STATS", json_str([state[3], state[6]])

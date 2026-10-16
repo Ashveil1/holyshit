@@ -87,3 +87,13 @@ The [global/closure dispatch experiment](jit-dispatch-probe.md) now uses the
 existing native dynamic call path, honoring target rebinding and captures,
 with scalar-only transport. It is still all-native isolated execution, not
 cold/hot dispatch-cell replacement or a shared language-value/GC ABI.
+
+## Self-hosted cold scalar scaffold
+
+The [cold scalar executor](cold-scalar.md) now actually interprets a bounded
+scalar/function IR subset in .holy, built with the audited native seed. It
+does not generate target machine code. Functions/branches/loops/recursion and
+entry counters work for that subset; unsupported value/exception/object/FFI
+features reject. This is independent preparatory cold-execution work while
+the shared native value/root contract is unfinished, not stage3 completion
+or an operational two-tier JIT. No cold/native transitions or hot compilation.

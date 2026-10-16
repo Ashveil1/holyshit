@@ -1,0 +1,189 @@
+# Executable bounded cold IR subset. No target machine-code generation.
+import pyrt
+import verify
+def integer(value):
+  if pyrt.py_type(value) != "int" or value < -536870912 or value > 536870911:
+    raise "cold scalar: wants signed30-bit integer"
+  return value
+def scalar(value):
+  kind = pyrt.py_type(value)
+  if kind == "int":
+    integer(value)
+  elif kind != "bool" and value != null:
+    raise "cold scalar: unsupported value"
+  return value
+def preflight(irmod):
+  verify.verify_module(irmod)
+  if len(irmod["order"]) > 256:
+    raise "cold scalar: more than256 functions"
+  plans = {}
+  for key in irmod["order"]:
+    fn = irmod["funcs"][key]
+    locals = {}
+    blocks = {}
+    for name in fn["params"]:
+      locals[name] = true
+    for block in fn["blocks"]:
+      blocks[block["label"]] = block
+      for ins in block["instrs"]:
+        op = ins["op"]
+        if op == "const":
+          scalar(ins["val"])
+        elif op == "bin":
+          if ins["binop"] not in ["+", "-", "*", "==", "!=", "<", "<=", ">", ">="]:
+            raise "cold scalar: unsupported binary operator"
+        elif op == "un":
+          if ins["unop"] not in ["neg", "not", "pos"]:
+            raise "cold scalar: unsupported unary operator"
+        elif op == "mkfunc":
+          if key != irmod["entry"]:
+            raise "cold scalar: nested functions unsupported"
+        elif op == "stvar":
+          if ins["name"] not in fn["globals"]:
+            locals[ins["name"]] = true
+        elif op == "print":
+          if len(ins["args"]) != 1:
+            raise "cold scalar: print wants one scalar"
+        elif op not in ["load", "stglobal", "call", "phi", "copy"]:
+          raise "cold scalar: unsupported instruction " + op
+      if block["term"]["term"] not in ["ret", "jmp", "br"]:
+        raise "cold scalar: unsupported terminator"
+    plans[key] = [locals, blocks]
+  return plans
+def create(irmod, limit):
+  limit = integer(limit)
+  if limit < 1 or limit > 10000000:
+    raise "cold scalar: step limit must be1..10000000"
+  plans = preflight(irmod)
+  counts = {}
+  for key in irmod["order"]:
+    counts[key] = 0
+  return [irmod, plans, {}, 0, limit, 0, counts, false]
+def tick(state):
+  if state[3] >= state[4]:
+    raise "cold scalar: instruction budget exhausted"
+  state[3] = state[3] + 1
+def binary(op, left, right):
+  scalar(left)
+  scalar(right)
+  if op == "==":
+    return left == right
+  if op == "!=":
+    return left != right
+  left = integer(left)
+  right = integer(right)
+  if op == "+":
+    return integer(left + right)
+  if op == "-":
+    return integer(left - right)
+  if op == "*":
+    return integer(left * right)
+  if op == "<":
+    return left < right
+  if op == "<=":
+    return left <= right
+  if op == ">":
+    return left > right
+  return left >= right
+def invoke(state, key, arguments):
+  fn = state[0]["funcs"][key]
+  if len(arguments) != len(fn["params"]):
+    raise "cold scalar: exact arity required"
+  if state[5] >= 64:
+    raise "cold scalar: call depth exceeded"
+  state[5] = state[5] + 1
+  state[6][key] = state[6][key] + 1
+  try:
+    return execute(state, key, arguments)
+  finally:
+    state[5] = state[5] - 1
+def execute(state, key, arguments):
+  fn = state[0]["funcs"][key]
+  plan = state[1][key]
+  values = {}
+  variables = {}
+  for i in range(len(arguments)):
+    variables[fn["params"][i]] = arguments[i]
+  label = fn["entry"]
+  previous = null
+  while true:
+    block = plan[1][label]
+    # Phi values read the predecessor snapshot, then publish simultaneously.
+    phis = {}
+    for ins in block["instrs"]:
+      if ins["op"] == "phi":
+        found = false
+        for arm in ins["arms"]:
+          if arm[0] == previous:
+            phis[ins["dest"]] = values[arm[1]]
+            found = true
+        if not found:
+          raise "cold scalar: missing phi predecessor"
+    for name in keys(phis):
+      values[name] = phis[name]
+    for ins in block["instrs"]:
+      tick(state)
+      op = ins["op"]
+      value = null
+      if op == "const":
+        value = ins["val"]
+      elif op == "load":
+        name = ins["name"]
+        if key != state[0]["entry"] and name in plan[0]:
+          if name not in variables:
+            raise "cold scalar: unbound local " + name
+          value = variables[name]
+        else:
+          if name not in state[2]:
+            raise "cold scalar: unbound global " + name
+          value = state[2][name]
+      elif op == "stvar" or op == "stglobal":
+        name = ins["name"]
+        value = values[ins["src"]]
+        if key == state[0]["entry"] or op == "stglobal" or name in fn["globals"]:
+          state[2][name] = value
+        else:
+          variables[name] = value
+      elif op == "mkfunc":
+        value = ["cold scalar function", ins["func"]]
+      elif op == "call":
+        callee = values[ins["fn"]]
+        if pyrt.py_type(callee) != "list" or len(callee) != 2 or callee[0] != "cold scalar function":
+          raise "cold scalar: not callable"
+        args = []
+        for arg in ins["args"]:
+          append(args, values[arg])
+        value = invoke(state, callee[1], args)
+      elif op == "bin":
+        value = binary(ins["binop"], values[ins["l"]], values[ins["r"]])
+      elif op == "un":
+        arg = values[ins["v"]]
+        if ins["unop"] == "not":
+          scalar(arg)
+          value = not arg
+        elif ins["unop"] == "neg":
+          value = integer(0 - integer(arg))
+        else:
+          value = integer(arg)
+      elif op == "copy":
+        value = values[ins["src"]]
+      elif op == "print":
+        value = scalar(values[ins["args"][0]])
+        print value
+      if op != "phi" and "dest" in ins:
+        values[ins["dest"]] = value
+    tick(state)
+    term = block["term"]
+    if term["term"] == "ret":
+      return values[term["val"]] if term["val"] != null else null
+    previous = label
+    if term["term"] == "jmp":
+      label = term["to"]
+    else:
+      condition = scalar(values[term["cond"]])
+      label = term["then"] if condition else term["els"]
+def run(state):
+  if state[7]:
+    raise "cold scalar: state already started"
+  state[7] = true
+  return invoke(state, state[0]["entry"], [])
