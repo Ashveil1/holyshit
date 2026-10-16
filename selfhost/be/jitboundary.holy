@@ -17,7 +17,17 @@ def prepare_function(source, capture_error, function_key, argument_sets):
   return prepare_config(source, capture_error, function_key, argument_sets, null)
 def prepare_global(source, name, argument_sets):
   return prepare_config(source, true, null, argument_sets, name)
+def prepare_dynamic(source, name, arity):
+  arity = arity | 0
+  if arity < 0 or arity > 6:
+    raise "dynamic probe: arity must be0..6"
+  arguments = []
+  for i in range(arity):
+    append(arguments, 0)
+  return prepare_config_mode(source, true, null, [arguments], name, true)
 def prepare_config(source, capture_error, function_key, argument_sets, global_name):
+  return prepare_config_mode(source, capture_error, function_key, argument_sets, global_name, false)
+def prepare_config_mode(source, capture_error, function_key, argument_sets, global_name, dynamic_arguments):
   parselib.P["wide_literals"] = true
   irmod = irbuild.build_module(normalize.parse(read_text(source)), "")
   if global_name != null:
@@ -138,6 +148,10 @@ def prepare_config(source, capture_error, function_key, argument_sets, global_na
   if function_key != null:
     asm.data_label("function_probe_value")
     asm.data_qword(0)
+    if dynamic_arguments:
+      asm.data_label("dynamic_probe_arguments")
+      for value in argument_sets[0]:
+        asm.data_qword(1)
     for index in range(len(argument_sets)):
       append(function_entries, len(asm.state()["code"]))
       for reg in ["rbx", "rbp", "r12", "r13", "r14", "r15"]:
@@ -153,7 +167,11 @@ def prepare_config(source, capture_error, function_key, argument_sets, global_na
       arguments = argument_sets[index]
       for i in range(len(arguments)):
         value = arguments[len(arguments) - i - 1]
-        asm.mov_ri64("rax", (value << 2) | 1)
+        if dynamic_arguments:
+          asm.lea_rip("rax", "dynamic_probe_arguments")
+          asm.mov_rm("rax", "rax", (len(arguments) - i - 1) * 8)
+        else:
+          asm.mov_ri64("rax", (value << 2) | 1)
         asm.push_r("rax")
       asm.mov_ri32("rax", 0)
       asm.push_r("rax")
@@ -181,7 +199,7 @@ def prepare_config(source, capture_error, function_key, argument_sets, global_na
   entries = []
   for offset in function_entries:
     append(entries, image["ptr"] + offset)
-  return [image, image["ptr"] + entry, asm.state()["data_labels"]["gc_tab_"], asm.state()["data_labels"]["gc_n_"], asm.state()["data_labels"]["return_boundary_error"] if capture_error else -1, entries, asm.state()["data_labels"]["function_probe_value"] if function_key != null else -1]
+  return [image, image["ptr"] + entry, asm.state()["data_labels"]["gc_tab_"], asm.state()["data_labels"]["gc_n_"], asm.state()["data_labels"]["return_boundary_error"] if capture_error else -1, entries, asm.state()["data_labels"]["function_probe_value"] if function_key != null else -1, asm.state()["data_labels"]["dynamic_probe_arguments"] if dynamic_arguments else -1, len(argument_sets[0]) if dynamic_arguments else -1]
 def readword(address):
   unsafe:
     return load64(as_ptr(address))
@@ -260,3 +278,22 @@ def scalar_outcome(state, pointer, has_value):
   if value & 3 != 1:
     raise "function probe: non-integer return not supported"
   return [0, value >> 2]
+
+# Explicit driver-owned arguments copied into private target writable data.
+# No executable code mutation, object transport or concurrent/reentrant calls.
+def dynamic_outcome(state, arguments):
+  if not state[0]["live"] or state[7] < 0:
+    raise "dynamic probe: requires live dynamic state"
+  if pyrt.py_type(arguments) != "list" or len(arguments) != state[8]:
+    raise "dynamic probe: exact argument List required"
+  for value in arguments:
+    value = value | 0
+    if value < -536870912 or value > 536870911:
+      raise "dynamic probe: argument outside signed30-bit range"
+  address = state[0]["data"] + state[7]
+  for index in range(len(arguments)):
+    value = (arguments[index] << 2) | 1
+    pointer = address + index * 8
+    unsafe:
+      store64(as_ptr(pointer), value)
+  return scalar_outcome(state, state[5][0], true)

@@ -89,6 +89,7 @@ SUITES = [
     ("test_jitextern.py", "eager in-process dynamic symbol binding"),
     ("test_cold_list.py", "cold interpreter-owned flat-list aliases and budgets"),
     ("test_cold_scalar.py", "self-hosted cold scalar IR execution, no target code generation"),
+    ("test_jit_dynamic.py", "runtime scalar arguments through one native global shim"),
     ("test_jit_dispatch.py", "dynamic target global/closure scalar invocation"),
     ("test_jit_function.py", "repeated exact-key scalar native calls with retained target state"),
     ("test_jit_sequence.py", "sequential independent native runtime/error teardown"),
