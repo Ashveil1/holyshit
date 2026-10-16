@@ -61,3 +61,11 @@ This is the first executable cold-subset scaffold, not stage3 completion.
 Full value ownership/root and exception contracts, classes/closures/aliasing,
 FFI, hot-function dispatch, guards/deoptimization and measured performance
 remain. The existing eager/AOT routes and Python reference stay unchanged.
+
+## Flat List extension
+
+The [interpreter-owned flat List subset](cold-lists.md) now supports scalar
+List storage, mutable aliases through functions, len/append/index/setindex and
+truth. This supersedes the original List/collection refusal above only for
+that documented subset. Nested/cyclic objects and native/cold shared roots
+remain absent. Source functions/builtins now use distinct private records.

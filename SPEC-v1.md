@@ -1710,3 +1710,17 @@ are bounded and optionally printed with steps. Executor diagnostics do not yet
 match source exception/line semantics. No target hot tier, native transition,
 shared GC/value ABI, sandbox, speed or completed-stage claim. See
 `docs/cold-scalar.md` for exact restrictions and tests.
+
+### Cold interpreter-owned flat scalar Lists
+The cold executor supports build_list/index/setindex and unshadowed len/append,
+with private List/function/builtin records so source Lists cannot masquerade
+as callable records. Elements are Int30/Bool/null only. Assignment/pass/return
+preserves List identity inside interpreted frames/globals; negative indexing,
+truth/not and indexed updates work. No nested/cyclic/source-object elements,
+List comparison/printing/slicing or native object sharing is added. Validate
+index/element/cap before writes. Limits4096 elements/List,1024 cumulative List
+creations,65536 cumulative inserted slots/state, never replenished; stores
+replace without new slot. Existing execution limits remain. Hosted executor
+GC owns these records; cross-tier roots/values remain unresolved. Ternary
+scalar arms work through existing singleton-list lowering. Runtime errors may
+follow effects and still lack source exception parity. See `docs/cold-lists.md`.
