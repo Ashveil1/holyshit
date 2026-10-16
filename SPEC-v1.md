@@ -1581,6 +1581,17 @@ behavior is unchanged. Neither mode closes target-opened files, reclaims
 arbitrary external resources, recovers uncaught errors, supports repeated
 module invocation, or shares objects/roots/exceptions with the driver.
 
+### Native installation route
+`scripts/install-native.sh NEW_INSTALL_DIRECTORY` is the normal Linux x86-64
+run/build installation route. It delegates to the pinned native bundle build
+without Python/gcc, requires a new destination and existing parent, and never
+edits PATH, shell profiles or system links. Updates use separate directories.
+The installed launcher provides only `run` and `build`, with existing hosted
+subset/error behavior and no interpreter fallback. Development/reference
+Python tools remain separate; installation does not remove them or claim
+full CLI command parity. Seed source/fixed-point audits remain CI acceptance
+gates, while install/run perform their existing checksum checks.
+
 ### Isolated native error-outcome probe
 `selfhost/be/jit_status_probe.holy SOURCE [--heap-checkpoints]` adds a root
 handler around a returning native module, yielding status0 or captured
