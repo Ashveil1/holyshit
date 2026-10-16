@@ -1,0 +1,17 @@
+# Ordinary target-native global lookup and closure call, scalar transport only.
+import jitboundary
+import jitmem
+args = argv()
+if len(args) != 3:
+  raise "dispatch probe wants SOURCE GLOBAL_IDENTIFIER JSON_ARGUMENT_SETS"
+state = jitboundary.prepare_global(args[0], args[1], json_parse(args[2]))
+initial = jitboundary.scalar_outcome(state, state[1], false)
+results = []
+if initial[0] == 0:
+  for pointer in state[5]:
+    append(results, jitboundary.scalar_outcome(state, pointer, true))
+arenas = jitboundary.release_heap(state, false)
+jitmem.release(state[0])
+print "JIT DISPATCH INITIAL", json_str(initial)
+print "JIT DISPATCH RESULTS", json_str(results)
+print "JIT DISPATCH RELEASED", arenas, state[0]["live"]

@@ -1678,3 +1678,17 @@ and unsupported returns do not claim normal teardown. Existing two-argument
 prepare/probes retain behavior. No shared objects/GC roots/closure/error
 identity, callback ABI, tiers or performance claim. See
 `docs/jit-function-probe.md` for transport and fatal/resource restrictions.
+
+### Target-native dynamic global invocation experiment
+`jit_dispatch_probe.holy SOURCE GLOBAL_IDENTIFIER JSON_ARGUMENT_SETS` uses a
+private native IR wrapper with the compiler's ordinary global-value call
+lowering. Unlike exact-code-key calls it reloads the main-module global each
+time, honoring rebinding, aliases and target closure captures. No closure or
+heap value crosses to the driver. Names are one1..128 ASCII identifier;1..32
+same-arity signed30-bit integer sets, integer results only, defaults not added.
+Call-site errors use synthetic wrapper line2; target/builtin source-line
+semantics otherwise stay unchanged (some builtin errors use0). Root captured
+errors permit continuation, target mutations persist, init error skips calls.
+Prior scalar/return/sequence protocols remain. This is not a shared runtime,
+GC/root/value ABI, public plugin/export API, cold/hot tier or performance
+claim. See `docs/jit-dispatch-probe.md` for fatal/resource/transport limits.

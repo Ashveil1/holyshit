@@ -82,3 +82,8 @@ runtime alive across repeated native calls and captured errors. It transports
 only immediate integers, bypasses dynamic name lookup, and has no shared
 language values/roots or cold-tier caller. This is a bounded stage2 experiment,
 not a stable public function ABI or hot-function tier.
+
+The [global/closure dispatch experiment](jit-dispatch-probe.md) now uses the
+existing native dynamic call path, honoring target rebinding and captures,
+with scalar-only transport. It is still all-native isolated execution, not
+cold/hot dispatch-cell replacement or a shared language-value/GC ABI.

@@ -14,8 +14,35 @@ extern:
 def prepare(source, capture_error):
   return prepare_function(source, capture_error, null, null)
 def prepare_function(source, capture_error, function_key, argument_sets):
+  return prepare_config(source, capture_error, function_key, argument_sets, null)
+def prepare_global(source, name, argument_sets):
+  return prepare_config(source, true, null, argument_sets, name)
+def prepare_config(source, capture_error, function_key, argument_sets, global_name):
   parselib.P["wide_literals"] = true
   irmod = irbuild.build_module(normalize.parse(read_text(source)), "")
+  if global_name != null:
+    if len(global_name) < 1 or len(global_name) > 128:
+      raise "dispatch probe: invalid global identifier"
+    for i in range(len(global_name)):
+      allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_" if i == 0 else "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789"
+      if find(allowed, global_name[i]) < 0:
+        raise "dispatch probe: invalid global identifier"
+    if len(argument_sets) < 1 or len(argument_sets) > 32:
+      raise "dispatch probe: wants 1..32 argument sets"
+    params = []
+    for i in range(len(argument_sets[0])):
+      append(params, "_arg" + str(i))
+    # This native wrapper uses the compiler's ordinary dynamic call lowering.
+    # It loads the global on every invocation, not an exported code address.
+    call = global_name + "(" + join(", ", params) + ")"
+    helper = irbuild.build_module(normalize.parse("def boundary_global_call(" + join(", ", params) + "):\n  return " + call + "\n"), "__global_boundary__")
+    for key in helper["order"]:
+      if key != helper["entry"]:
+        if key in irmod["funcs"]:
+          raise "dispatch probe: private function collision"
+        irmod["funcs"][key] = helper["funcs"][key]
+        append(irmod["order"], key)
+        function_key = key
   if capture_error:
     # Ensure the existing exception runtime is emitted even for a target
     # without try/raise. This private, unreachable IR function has no effects.
@@ -215,3 +242,21 @@ def finish(state, checkpoints):
   arenas = release_heap(state, checkpoints)
   jitmem.release(state[0])
   return [result, error, arenas, state[0]["live"]]
+
+def scalar_outcome(state, pointer, has_value):
+  status = invoke(pointer)
+  if status == 1:
+    record = state[0]["data"] + state[4]
+    message = readword(record)
+    length = readword(record + 8)
+    line = readword(record + 16)
+    return [1, [read_mem(message, length), line]]
+  if status != 0:
+    raise "function probe: invalid native status"
+  if not has_value:
+    return [0, null]
+  value = readword(state[0]["data"] + state[6])
+  # Scalar-only boundary. Never read, box or export a target heap object.
+  if value & 3 != 1:
+    raise "function probe: non-integer return not supported"
+  return [0, value >> 2]
