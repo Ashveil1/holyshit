@@ -1722,3 +1722,17 @@ string, slice/range or raw allocation in valid feed/reset/access paths after
 create. Stale bytes past length remain private/unread. No hostile-state safety,
 reclamation, counter-overflow handling, renderer integration or infinite session
 claim. See docs/console-buffer.md.
+
+### Cold interpreter-owned flat scalar Lists
+The cold executor supports build_list/index/setindex and unshadowed len/append,
+with private List/function/builtin records so source Lists cannot masquerade
+as callable records. Elements are Int30/Bool/null only. Assignment/pass/return
+preserves List identity inside interpreted frames/globals; negative indexing,
+truth/not and indexed updates work. No nested/cyclic/source-object elements,
+List comparison/printing/slicing or native object sharing is added. Validate
+index/element/cap before writes. Limits4096 elements/List,1024 cumulative List
+creations,65536 cumulative inserted slots/state, never replenished; stores
+replace without new slot. Existing execution limits remain. Hosted executor
+GC owns these records; cross-tier roots/values remain unresolved. Ternary
+scalar arms work through existing singleton-list lowering. Runtime errors may
+follow effects and still lack source exception parity. See `docs/cold-lists.md`.
