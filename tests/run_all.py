@@ -43,6 +43,7 @@ SUITES = [
     ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
     ("test_irx64.py", "IR->x64 differential"),
     ("test_xkernel.py", "kernel on QEMU"),
+    ("test_keyboard_queue.py", "deterministic keyboard FIFO/overflow/IF/readkey on QEMU"),
     ("test_timer_irq.py", "deterministic timer IRQ GPR preservation"),
     ("test_kernel_ir.py", "retained AST kernel reference on QEMU"),
     ("test_kernel_default.py", "public kernel IR selection"),
@@ -103,7 +104,7 @@ def main(argv):
     quick = "--quick" in argv
     failed = []
     for script, label in SUITES:
-        if quick and script in ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py"):
+        if quick and script in ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py"):
             print(f"skip {script:18s} ({label}) -- quick mode")
             continue
         p = subprocess.run([sys.executable, os.path.join(HERE, script)],

@@ -2423,24 +2423,20 @@ class Gen:
             if args:
                 raise HSErr("readkey takes no args", ln)
             lab_no, lab_done = self.new_tmp("rk"), self.new_tmp("rk")
-            a.lea_rip("rax", "keyflag_")
-            a.mov_rm("rax", "rax", 0)
+            a.call("kbd_dequeue")
             a.test_rr("rax", "rax")
             a.jcc("e", lab_no)
-            # Str object: [kind=0][len=1][byte]
+            # Dequeue atomically before allocation; preserve the byte across malloc.
+            a.push_r("rax")
             a.mov_ri32("rdi", 32)
             a.call("x_malloc")
             a.mov_rr("r10", "rax")
             a.mov_ri32("rcx", 0)
-            a.mov_mr("r10", "rcx", 0)          # kind = K_STR
+            a.mov_mr("r10", "rcx", 0)
             a.mov_ri32("rcx", 1)
-            a.mov_mr("r10", "rcx", 8)          # len = 1
-            a.lea_rip("rcx", "keycode_")
-            a.movzx_eax_m8("rcx", 0)           # al = ascii
-            a.mov_mr8("r10", 0, 16)            # byte[0] = al
-            a.mov_ri32("rcx", 0)
-            a.lea_rip("rdx", "keyflag_")
-            a.mov_mr("rdx", "rcx", 0)          # clear flag
+            a.mov_mr("r10", "rcx", 8)
+            a.pop_r("rax")
+            a.mov_mr8("r10", 0, 16)
             a.mov_rr("rax", "r10")
             a.jmp(lab_done)
             a.label(lab_no)
@@ -4458,10 +4454,12 @@ class Gen:
             self.a.data_qword(Gen.KHEAP_BASE)
             self.a.data_label("bump_end_")
             self.a.data_qword(Gen.KHEAP_BASE + Gen.KHEAP_SIZE)
-            # kernel device state: timer ticks, keyboard slot+flag, pmm
-            for nm in ("ticks_", "keycode_", "keyflag_", "pmm_next_"):
+            # kernel device state: timer ticks, bounded keyboard FIFO, pmm
+            for nm in ("ticks_", "keyhead_", "keytail_", "keydrops_", "pmm_next_"):
                 self.a.data_label(nm)
                 self.a.data_qword(0)
+            self.a.data_label("keyqueue_")
+            self.a.data_bytes(bytes(64))
             self.a.data_label("pmm_free_")
             self.a.data_qword(32768)
             # physical address of the multiboot info struct, written by the
@@ -4813,11 +4811,7 @@ class Gen:
         a.test_rr("rax", "rax")
         lab_ign = self.new_tmp("kb")
         a.jcc("e", lab_ign)
-        a.lea_rip("rcx", "keycode_")
-        a.mov_mr8("rcx", 0, 0)  # keycode_ = al
-        a.mov_ri32("rax", 1)
-        a.lea_rip("rcx", "keyflag_")
-        a.mov_mr("rcx", "rax", 0)  # flag = 1
+        a.call("kbd_enqueue")  # IRQ gate already has IF clear
         a.label(lab_ign)
         a.mov_ri32("rax", 0x20)
         a.mov_ri16("dx", 0x20)
@@ -4825,6 +4819,53 @@ class Gen:
         for r in reversed(Gen.GPREGS):
             a.pop_r(r)
         a.iretq()
+
+        # Single CPU producer/consumer FIFO: 64 slots, one reserved, drop newest.
+        # Enqueue runs only in IRQ1 (or diagnostic callers with IF clear).
+        a.label("kbd_enqueue")
+        a.lea_rip("rcx", "keytail_")
+        a.mov_rm("rdx", "rcx", 0)
+        a.mov_rr("r10", "rdx")
+        a.add_ri32("r10", 1)
+        a.and_ri32("r10", 63)
+        a.lea_rip("r11", "keyhead_")
+        a.mov_rm("r11", "r11", 0)
+        a.cmp_rr("r10", "r11")
+        lab_full = self.new_tmp("kbfull")
+        a.jcc("e", lab_full)
+        a.lea_rip("r11", "keyqueue_")
+        a.add_rr("r11", "rdx")
+        a.mov_mr8("r11", 0, 0)
+        a.mov_mr("rcx", "r10", 0)
+        a.ret()
+        a.label(lab_full)
+        a.lea_rip("rcx", "keydrops_")
+        a.mov_rm("rax", "rcx", 0)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rcx", "rax", 0)
+        a.ret()
+        a.label("kbd_dequeue")
+        a.code += bytes([0x9c])  # pushfq: preserve caller IF, not unconditional sti
+        a.cli()
+        a.lea_rip("rcx", "keyhead_")
+        a.mov_rm("rdx", "rcx", 0)
+        a.lea_rip("r10", "keytail_")
+        a.mov_rm("r10", "r10", 0)
+        a.cmp_rr("rdx", "r10")
+        lab_empty = self.new_tmp("kbempty")
+        a.jcc("e", lab_empty)
+        a.lea_rip("r11", "keyqueue_")
+        a.add_rr("r11", "rdx")
+        a.movzx_eax_m8("r11", 0)
+        a.add_ri32("rdx", 1)
+        a.and_ri32("rdx", 63)
+        a.mov_mr("rcx", "rdx", 0)
+        a.code += bytes([0x9d])  # popfq
+        a.ret()
+        a.label(lab_empty)
+        a.mov_ri32("rax", 0)
+        a.code += bytes([0x9d])
+        a.ret()
 
     def emit_task_runtime(self):
         # Cooperative + preemptive task switching. Context block (136 bytes,
