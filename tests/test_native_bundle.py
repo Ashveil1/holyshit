@@ -10,15 +10,21 @@ def check(ok,label):
     if not ok:print('FAIL',label,flush=True)
 with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     d=Path(temp);bindir=d/'utilities';bindir.mkdir()
-    for name in ['dirname','sha256sum','mktemp','rm','mkdir','cp','chmod','mv','cmp']:
+    for name in ['uname','dirname','sha256sum','mktemp','rm','mkdir','cp','chmod','mv','cmp']:
         (bindir/name).symlink_to(shutil.which(name))
     env=dict(os.environ,PATH=str(bindir));env.pop('HSPATH',None);env.pop('HSROOT',None)
+    r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh')],env=env,capture_output=True,text=True,timeout=10)
+    check(r.returncode==2 and 'usage:' in r.stderr,'installer requires explicit destination')
+    r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(d/'absent'/'install')],env=env,capture_output=True,text=True,timeout=10)
+    check(r.returncode!=0 and not (d/'absent').exists(),'missing parent does not create or change directories')
     original=d/'original';moved=d/'moved bundle'
-    r=subprocess.run(['/bin/sh',str(ROOT/'scripts/build-native-bundle.sh'),str(original)],env=env,capture_output=True,text=True,timeout=240)
+    r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(original)],env=env,capture_output=True,text=True,timeout=240)
     check(r.returncode==0,'build '+r.stderr[-150:])
     if r.returncode:sys.exit(1)
     original.rename(moved)
     launcher=moved/'bin/hs';compiler=moved/'bootstrap/hs-hosted-x86_64'
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt','input.holy'],env=env,capture_output=True,text=True,timeout=10)
+    check(r.returncode==2 and 'unknown command' in r.stderr,'unsupported development command is explicit, no fallback')
     source=d/'main file.holy';module=d/'support.holy';module.write_text('value = 19\n')
     source.write_text('import support\nprint support.value\nprint json_str([1, "ok"])\nprint argv()\nextern:\n  I64 printf(Str format, ..., I64 n)\nprintf("value=%lld\\n", 27)\n')
     expected='19\n[1, "ok"]\n[hello world, $5]\nvalue=27\n'
@@ -46,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     check(r.returncode!=0 and 'TARGET RAN' not in r.stdout,'corrupt eager binary refused before execution')
     eager.write_bytes(data)
     before=(moved/'EAGER_SHA256SUMS').read_bytes()
-    r=subprocess.run(['/bin/sh',str(ROOT/'scripts/build-native-bundle.sh'),str(moved)],env=env,capture_output=True,text=True,timeout=30)
+    r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(moved)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode!=0 and (moved/'EAGER_SHA256SUMS').read_bytes()==before,'existing directory refused')
 print(f'{passed}/{passed+failed} relocated native bundle gates (PATH without Python/gcc)')
 sys.exit(bool(failed))

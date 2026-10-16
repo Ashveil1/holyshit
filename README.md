@@ -3,6 +3,40 @@
 ภาษา dynamic เขียนง่ายแบบ Python, รันได้ 4 โหมด, ต่อ C ได้, ลง bare metal ได้,
 มี language server ให้ editor และ AI agent
 
+## Install and run (Linux x86-64)
+
+The normal run/build route is the audited native bundle. From this checkout,
+install into a **new directory** whose parent already exists:
+
+```sh
+sh scripts/install-native.sh "$HOME/holyshit-native"
+"$HOME/holyshit-native/bin/hs" run examples/hello.holy
+"$HOME/holyshit-native/bin/hs" build examples/hello.holy /tmp/hello-hs
+/tmp/hello-hs
+```
+
+No Python or gcc is needed to install or use this route. It needs Linux
+x86-64, `/bin/sh`, standard shell/checksum utilities and host libc/shared
+libraries for FFI. Installation builds the eager driver once and can take
+time. Move the whole installed directory together; no checkout is needed
+after installation. The installer does not edit PATH/shell profiles, use sudo
+or overwrite an existing directory. Use a new directory for each update;
+keep the old one until the new version is checked. Removing an install means
+removing only its chosen directory, not any source checkout.
+
+The native launcher currently provides only `run SOURCE [args...]` and
+`build SOURCE OUTPUT`. It reports unsupported hosted-subset programs rather
+than silently falling back. It does not provide the Python CLI's check, fmt,
+test, REPL, LSP or kernel commands. `run` compiles eagerly in memory, not on
+first call or in tiers. The installed prebuilt driver is not rebuilt per run.
+See [native install details](docs/native-install.md).
+
+## Development and reference tools (Python)
+
+These remain available for independent semantic checks, diagnostics, editor
+support and development. They are not required by the installed run/build
+route. Their backend behavior differs from the native launcher:
+
 ```sh
 python3 interp.py prog.holy [args...]   # รันทันที (tree-walk)
 python3 hs.py check prog.holy           # ตรวจ syntax/scope อย่างเดียว
