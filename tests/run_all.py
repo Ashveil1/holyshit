@@ -54,6 +54,7 @@ SUITES = [
     ("test_gfx.py", "software RGB surface pixel oracle and QEMU execution"),
 
     ("test_fbinfo.py", "strict direct RGB framebuffer tag decoding"),
+    ("test_kfont_bytes.py", "raw-byte framebuffer font spans and finite allocation proof"),
     ("test_kfont.py", "direct framebuffer font guarded RGB24/32 QEMU oracle"),
     ("test_console_buffer.py", "fixed OS console storage and repeated edits"),
     ("test_console_state.py", "bounded display-only multi-line transcript model"),

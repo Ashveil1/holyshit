@@ -1736,3 +1736,15 @@ replace without new slot. Existing execution limits remain. Hosted executor
 GC owns these records; cross-tier roots/values remain unresolved. Ternary
 scalar arms work through existing singleton-list lowering. Runtime errors may
 follow effects and still lack source exception parity. See `docs/cold-lists.md`.
+
+### Trusted raw-byte kernel font spans
+`kfont.draw_bytes` accepts a valid low-memory byte span with length0..1024,
+positive address and end<=536870911. Caller supplies live readable memory and
+validated framebuffer; this is not pointer validation. Strict integer numeric
+arguments/scale1..16/coordinate-color bounds validate before pixel writes.
+ASCII newline/case/fallback layout matches existing font, unknown bytes incl
+zero render '?', no span copying or glyph-list copying. Valid drawing/fill
+uses scalar while loops and statement branches, avoiding ternary singleton
+List lowering. Finite QEMU allocation-marker and RGB24/32 guarded pixel oracles
+are required. Existing string draw remains; no console integration, GC,
+hostile-pointer safety, indefinite lifetime or performance claim.
