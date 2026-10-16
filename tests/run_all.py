@@ -54,6 +54,7 @@ SUITES = [
     ("test_gfx.py", "software RGB surface pixel oracle and QEMU execution"),
 
     ("test_fbinfo.py", "strict direct RGB framebuffer tag decoding"),
+    ("test_kfont.py", "direct framebuffer font guarded RGB24/32 QEMU oracle"),
     ("test_console_state.py", "bounded display-only multi-line transcript model"),
     ("test_console_session.py", "GRUB multi-submission transcript and text pixels"),
     ("test_console_kernel.py", "GRUB keyboard console actual text pixels"),
@@ -108,7 +109,7 @@ def main(argv):
     quick = "--quick" in argv
     failed = []
     for script, label in SUITES:
-        if quick and script in ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py"):
+        if quick and script in ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py"):
             print(f"skip {script:18s} ({label}) -- quick mode")
             continue
         p = subprocess.run([sys.executable, os.path.join(HERE, script)],

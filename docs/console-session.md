@@ -34,3 +34,8 @@ identity, boots GRUB/QEMU, enters six lines (including backspace), verifies
 four retained lines and checks actual C/D/E/F/G text pixels. GRUB/xorriso are
 optional dependencies; this visual boot gate skips without them. The pure
 state gate still runs. No real-hardware/UEFI claim is made.
+
+The demo now uses [direct framebuffer text](kernel-font.md) rather than
+software surfaces/full pixel-list copies. The six-submission visual layout
+is unchanged. This reduces a source of rendering allocations, but does not
+remove the bump-heap lifetime limit described above.

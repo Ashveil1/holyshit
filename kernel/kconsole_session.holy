@@ -1,25 +1,17 @@
 # Experimental bounded transcript, keeps accepting input. Never executes it.
 import kframebuffer
-import std.font
+import kfont
 import std.console
-def present(frame, surface, x, y):
-  for row in range(surface[1]):
-    for col in range(surface[0]):
-      kframebuffer.pixel(frame, x + col, y + row, surface[2][row * surface[0] + col])
 frame = kframebuffer.descriptor()
 kframebuffer.map(frame)
-kframebuffer.rect(frame, 0, 0, frame[2], frame[3], 0x16324f)
-header = std.gfx.surface(576, 64, 0x386fa4)
-std.font.draw(header, 16, 16, "HS SYSTEM CONSOLE", 0xffffff, 3)
-present(frame, header, 24, 24)
-# Redraw only text rows, not the entire transcript panel per key.
-kframebuffer.rect(frame, 24, 104, 576, 224, 0xe8edf2)
-entry = std.gfx.surface(512, 16, 0xe8edf2)
+kfont.fill(frame, 0, 0, frame[2], frame[3], 0x16324f)
+kfont.fill(frame, 24, 24, 576, 64, 0x386fa4)
+kfont.draw(frame, 40, 40, "HS SYSTEM CONSOLE", 0xffffff, 3)
+kfont.fill(frame, 24, 104, 576, 224, 0xe8edf2)
 session = std.console.create(42, 4)
 def textrow(text, y):
-  std.gfx.rect(entry, 0, 0, 512, 16, 0xe8edf2)
-  std.font.draw(entry, 0, 0, text, 0x16324f, 2)
-  present(frame, entry, 32, y)
+  kfont.fill(frame, 32, y, 512, 16, 0xe8edf2)
+  kfont.draw(frame, 32, y, text, 0x16324f, 2)
 def history():
   for index in range(4):
     text = session[1][index] if index < len(session[1]) else ""
