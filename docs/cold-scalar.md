@@ -18,7 +18,7 @@ whole-program compilation. There is no hot tier or cold/native transition yet.
 Supported: signed30-bit Int, Bool and null constants; integer +,-,*, comparisons;
 scalar equality; negation/not; scalar branch conditions, jumps, simultaneous
 phi assignment; variable/global stores; module-level functions, dynamic aliases/
-rebinding, recursion and exact-arity calls; one scalar per print; return. While,
+rebinding, recursion and exact-arity calls; return. While,
 break/continue, if/elif and short-circuit expressions lower to these operations.
 No nested functions/captures, classes, imports, source collections/strings,
 floats/division, builtins, unsafe/FFI, exceptions/finally or shared native objects.
