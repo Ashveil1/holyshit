@@ -165,6 +165,25 @@ def charge(state, slots, created):
     state[8] = state[8] + 1
   state[9] = state[9] + slots
 def builtin(state, name, args):
+  if name == "range":
+    if len(args) < 1 or len(args) > 2:
+      raise "cold scalar: range wants range(n) or range(a, b)"
+    start = 0
+    if len(args) == 2:
+      start = integer(args[0])
+    stop = integer(args[len(args) - 1])
+    count = stop - start
+    if count < 0:
+      count = 0
+    if count > 4096:
+      raise "cold scalar: list exceeds4096 elements"
+    charge(state, count, true)
+    items = []
+    i = start
+    while i < stop:
+      append(items, i)
+      i = i + 1
+    return {"cold_kind": "list", "items": items}
   if name == "str":
     if len(args) != 1:
       raise "cold scalar: str wants 1 arg"
@@ -301,7 +320,7 @@ def execute(state, key, arguments):
         else:
           if name in state[2]:
             value = state[2][name]
-          elif name in ["len", "append", "find", "contains", "split", "join", "str", "int"]:
+          elif name in ["len", "append", "find", "contains", "split", "join", "str", "int", "range"]:
             value = {"cold_kind": "builtin", "name": name}
           else:
             raise "cold scalar: unbound global " + name
