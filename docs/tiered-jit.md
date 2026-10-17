@@ -108,3 +108,10 @@ native global-dispatch shim while driver-computed argument sets change through
 private writable scalar slots. This removes fixed-at-codegen values from the
 probe, not isolated target ownership. No interpreted/native crossing, shared
 objects/roots, hot tier or performance result is claimed.
+
+The [explicit cold/native scalar bridge](cold-native.md) now permits interpreted
+instructions to call an explicitly chosen, separate eager-native helper and
+resume with an immediate integer. Only Int30 arguments/results copy; source
+Lists/globals and target GC remain separate. Native errors become copied cold
+diagnostics, not shared exception state. This is a narrow return-boundary proof,
+not automatic hot selection, native-to-cold callback, shared runtime or tiering.

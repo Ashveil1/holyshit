@@ -1771,3 +1771,17 @@ finite allocation proof. Actual QEMU1000 storage+redraw cycles must show16byte
 marker gap (only marker allocation) plus independent guarded RGB32 pixels;
 optional actual GRUB six-submission CDEF/currentG visual gate required locally.
 No infinite-terminal, total session zero-allocation, GC, hardware or speed claim.
+
+### Explicit cold/native immediate scalar bridge
+A trusted pre-start host binding may supply a callback/context record to the
+cold executor. Normal source globals can shadow it. Calls validate all args
+Int30 (no Bool/object), count at most4096 attempts per binding, invoke handler
+and require Int30 result. `coldnative` adapts one initialized isolated native
+runtime/global shim: only immediate words copy, native state/GC remain separate.
+Interpreted computation resumes after native return. Native language errors
+become copied diagnostics, not shared exception identity; cold depth unwinds,
+prior effects persist. CLI preflights cold before native init, releases native
+heap/image on controlled exit. Trusted library owns lifecycle; fatal/unsafe/
+nonreturning code outside recovery. No native->cold callback, concurrency,
+shared object/root ABI, hotness/dispatch replacement, tiering or speed claim.
+See docs/cold-native.md.
