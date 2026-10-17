@@ -8,9 +8,10 @@ reference `slice index must be Int` refusal. This covers slicing only;
 repetition, iteration, methods/conversions/formatting and Unicode stay
 unsupported.
 
-Slices work on text values only. List slices remain unsupported rather than
-claiming bounded List copies, and slicing an Int/Bool/null scalar rejects.
-Existing List ownership, creation/slot budgets and aliases stay unchanged.
+Slices work on text values only here. List slices are covered in
+[Bounded cold flat List slices](cold-list-slice.md), and slicing an
+Int/Bool/null scalar rejects. Existing List ownership, creation/slot budgets
+and aliases stay unchanged.
 
 Every non-empty slice charges its complete result length to the same
 cumulative byte budget as constants and concatenation (maximum1024 per value,

@@ -161,6 +161,22 @@ def dict_charge(state, pairs, created):
 def cold_list_of(state, items):
   charge(state, len(items), true)
   return {"cold_kind": "list", "items": items}
+def slice_bounds(size, low, high):
+  if high == null:
+    high = size
+  if low < 0:
+    low = low + size
+  if high < 0:
+    high = high + size
+  if low < 0:
+    low = 0
+  if low > size:
+    low = size
+  if high < 0:
+    high = 0
+  if high > size:
+    high = size
+  return [low, high]
 def truth(value):
   if pyrt.py_type(value) == "str":
     return len(value) != 0
@@ -445,28 +461,23 @@ def execute(state, key, arguments):
           high = integer(values[ins["stop"]])
         if pyrt.py_type(obj) != "str":
           if pyrt.py_type(obj) == "dict" and "cold_kind" in obj and obj["cold_kind"] == "list":
-            raise "cold scalar: List slices unsupported"
-          raise "cold scalar: cannot slice scalar"
-        size = len(obj)
-        if high == null:
-          high = size
-        if low < 0:
-          low = low + size
-        if high < 0:
-          high = high + size
-        if low < 0:
-          low = 0
-        if low > size:
-          low = size
-        if high < 0:
-          high = 0
-        if high > size:
-          high = size
-        if low >= high:
-          value = ""
-        else:
-          text_charge(state, high - low)
-          value = obj[low:high]
+            items = obj["items"]
+            bounds = slice_bounds(len(items), low, high)
+            if bounds[0] >= bounds[1]:
+              charge(state, 0, true)
+              value = {"cold_kind": "list", "items": []}
+            else:
+              charge(state, bounds[1] - bounds[0], true)
+              value = {"cold_kind": "list", "items": items[bounds[0]:bounds[1]]}
+          else:
+            raise "cold scalar: cannot slice scalar"
+        if pyrt.py_type(obj) == "str":
+          bounds = slice_bounds(len(obj), low, high)
+          if bounds[0] >= bounds[1]:
+            value = ""
+          else:
+            text_charge(state, bounds[1] - bounds[0])
+            value = obj[bounds[0]:bounds[1]]
       elif op == "iterseq":
         obj = values[ins["src"]]
         if pyrt.py_type(obj) == "str":

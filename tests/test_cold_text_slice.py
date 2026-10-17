@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded cold ASCII text slices: clamped bounds and cumulative byte accounting."""
+"""Bounded cold ASCII text slices: clamped bounds and cumulative byte accounting. List slices are covered in test_cold_list_slice.py."""
 from pathlib import Path
 import json,os,subprocess,sys,tempfile
 ROOT=Path(__file__).resolve().parent.parent
@@ -23,7 +23,6 @@ with tempfile.TemporaryDirectory()as temp:
         source.write_text(body);ref=subprocess.run([sys.executable,str(ROOT/'interp.py'),str(source)],env=env,capture_output=True,timeout=30);got=subprocess.run([str(driver),str(source)],env=env,capture_output=True,timeout=30)
         assert not ref.returncode and not got.returncode and got.stdout==ref.stdout and not got.stderr,(body,got.stdout,got.stderr,ref.stdout,ref.stderr);passed+=1
     for body,reason,before in [
-      ('xs = [1, 2, 3]\nprint xs[0:1]\n','List slices unsupported',b''),
       ('print 1[0:1]\n','cannot slice scalar',b''),
       ('print true[0:1]\n','cannot slice scalar',b''),
       ('print "abc"[true:]\n','signed30-bit',b''),
@@ -35,4 +34,4 @@ with tempfile.TemporaryDirectory()as temp:
     body='s = '+json.dumps('x'*1024)+'\ni = 0\nwhile i < 64:\n  t = s[0:0]\n  i = i + 1\nprint s[0:1024]\n'
     source.write_text(body);r=subprocess.run([str(driver),str(source)],env=env,capture_output=True,timeout=30)
     assert not r.returncode and r.stdout==b'x'*1024+b'\n' and not r.stderr,(r.stdout[-80:],r.stderr);passed+=1
-print(f'{passed}/{passed} bounded cold text slice gates (no List slices or shared native values)')
+print(f'{passed}/{passed} bounded cold text slice gates (text-only slices, no shared native values)')
