@@ -100,6 +100,7 @@ SUITES = [
     ("test_cold_range.py", "bounded cold range Lists with creation/slot budgets"),
     ("test_cold_print.py", "bounded cold multi-value print with scalar display forms"),
     ("test_cold_dict.py", "bounded cold flat Dicts with creation/slot budgets"),
+    ("test_cold_list_slice.py", "bounded cold flat List slices with copy semantics and slot accounting"),
     ("test_cold_scalar.py", "self-hosted cold scalar IR execution, no target code generation"),
     ("test_jit_dynamic.py", "runtime scalar arguments through one native global shim"),
     ("test_jit_dispatch.py", "dynamic target global/closure scalar invocation"),
