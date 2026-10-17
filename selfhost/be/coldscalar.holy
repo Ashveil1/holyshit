@@ -165,6 +165,32 @@ def charge(state, slots, created):
     state[8] = state[8] + 1
   state[9] = state[9] + slots
 def builtin(state, name, args):
+  if name == "split":
+    if len(args) < 1 or len(args) > 2 or pyrt.py_type(args[0]) != "str":
+      raise "cold scalar: split wants split(s) or split(s, sep)"
+    if len(args) == 2:
+      if pyrt.py_type(args[1]) != "str":
+        raise "cold scalar: split wants split(s) or split(s, sep)"
+      parts = split(args[0], args[1])
+    else:
+      parts = split(args[0])
+    total = 0
+    for part in parts:
+      total = total + len(part)
+    if total > 0:
+      text_charge(state, total)
+    charge(state, len(parts), true)
+    return {"cold_kind": "list", "items": parts}
+  if name == "join":
+    if len(args) != 2 or pyrt.py_type(args[0]) != "str":
+      raise "cold scalar: join wants join(sep, list)"
+    items = list_items(args[1])
+    for item in items:
+      if pyrt.py_type(item) != "str":
+        raise "cold scalar: join needs a list of Str"
+    result = join(args[0], items)
+    text_charge(state, len(result))
+    return result
   if name == "find":
     if len(args) != 2 or pyrt.py_type(args[0]) != "str" or pyrt.py_type(args[1]) != "str":
       raise "cold scalar: find wants find(s, sub)"
@@ -257,7 +283,7 @@ def execute(state, key, arguments):
         else:
           if name in state[2]:
             value = state[2][name]
-          elif name in ["len", "append", "find", "contains"]:
+          elif name in ["len", "append", "find", "contains", "split", "join"]:
             value = {"cold_kind": "builtin", "name": name}
           else:
             raise "cold scalar: unbound global " + name

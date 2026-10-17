@@ -14,9 +14,10 @@ keep the old value when another variable is rebound. No raw target pointers
 or shared native objects are created. The native bridge remains Int30-only.
 
 Mixed text/nontext binary operands reject even for equality, rather than
-claiming full language cross-type comparison. Repetition,
+claiming full language cross-type comparison. Repetition, other
 methods/conversions/formatting and Unicode remain unsupported. Iteration is
-covered in [Bounded cold iteration](cold-iteration.md). Slices are
+covered in [Bounded cold iteration](cold-iteration.md) and split/join in
+[Bounded cold split and join](cold-split-join.md). Slices are
 covered in [Bounded cold text slices](cold-text-slice.md); source string
 elements in Lists remain unsupported. In particular string-valued ternary arms currently lower
 through singleton Lists and therefore reject at runtime. Existing flat Lists
