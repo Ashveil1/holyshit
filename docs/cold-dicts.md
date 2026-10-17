@@ -10,7 +10,9 @@ or replaces after key/value validation, leaving the target unchanged on
 failure. `len`, `has`, `keys`, `values`, `in` membership and `for k in d`
 (insertion order, like the reference) all work; keys/values and iteration
 yield ordinary charged cold Lists. Nested containers, record values,
-slicing, printing, comparison and arithmetic on Dicts remain unsupported.
+slicing, printing, ordering and arithmetic on Dicts remain unsupported;
+Dict equality is covered in
+[Bounded cold container equality](cold-equality.md).
 
 Each literal charges one creation plus one slot per written pair, and each
 new key inserted by assignment charges one slot; replacement charges
