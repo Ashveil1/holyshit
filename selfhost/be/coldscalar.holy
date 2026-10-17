@@ -59,7 +59,7 @@ def preflight(irmod):
         elif op == "print":
           if len(ins["args"]) != 1:
             raise "cold scalar: print wants one scalar"
-        elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "index", "setindex", "slice"]:
+        elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "index", "setindex", "slice", "iterseq"]:
           raise "cold scalar: unsupported instruction " + op
       if block["term"]["term"] not in ["ret", "jmp", "br"]:
         raise "cold scalar: unsupported terminator"
@@ -319,6 +319,14 @@ def execute(state, key, arguments):
         else:
           text_charge(state, high - low)
           value = obj[low:high]
+      elif op == "iterseq":
+        obj = values[ins["src"]]
+        if pyrt.py_type(obj) == "str":
+          value = obj
+        elif pyrt.py_type(obj) == "dict" and "cold_kind" in obj and obj["cold_kind"] == "list":
+          value = obj
+        else:
+          raise "cold scalar: not iterable"
       elif op == "bin":
         value = binary(state, ins["binop"], values[ins["l"]], values[ins["r"]])
       elif op == "un":
