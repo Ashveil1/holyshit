@@ -56,10 +56,7 @@ def preflight(irmod):
         elif op == "stvar":
           if ins["name"] not in fn["globals"]:
             locals[ins["name"]] = true
-        elif op == "print":
-          if len(ins["args"]) != 1:
-            raise "cold scalar: print wants one scalar"
-        elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "index", "setindex", "slice", "iterseq"]:
+        elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "index", "setindex", "slice", "iterseq", "print"]:
           raise "cold scalar: unsupported instruction " + op
       if block["term"]["term"] not in ["ret", "jmp", "br"]:
         raise "cold scalar: unsupported terminator"
@@ -427,8 +424,22 @@ def execute(state, key, arguments):
       elif op == "copy":
         value = values[ins["src"]]
       elif op == "print":
-        value = constant(values[ins["args"][0]])
-        print value
+        pieces = []
+        for arg in ins["args"]:
+          item = constant(values[arg])
+          if pyrt.py_type(item) == "str":
+            append(pieces, item)
+          else:
+            append(pieces, str(item))
+        line = ""
+        i = 0
+        while i < len(pieces):
+          if i > 0:
+            line = line + " "
+          line = line + pieces[i]
+          i = i + 1
+        print line
+        value = line
       if op != "phi" and "dest" in ins:
         values[ins["dest"]] = value
     tick(state)
