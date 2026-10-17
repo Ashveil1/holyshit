@@ -36,7 +36,7 @@ with tempfile.TemporaryDirectory()as temp:
         native.write_text(body);cold.write_text(program)
         r=subprocess.run([str(driver),str(cold),'native',str(native),'f','1'],env=env,capture_output=True,timeout=90)
         assert r.returncode and reason.encode()in r.stderr,(r.stdout,r.stderr);passed+=1
-    native.write_text('print 999\ndef f(n):\n  return n\n');cold.write_text('print "unsupported"\n')
+    native.write_text('print 999\ndef f(n):\n  return n\n');cold.write_text('print 1.5\n')
     r=subprocess.run([str(driver),str(cold),'native',str(native),'f','1'],env=env,capture_output=True,timeout=90)
     assert r.returncode and not r.stdout,(r.stdout,r.stderr);passed+=1
     native.write_text('count = 0\ndef f(n):\n  global count\n  count = count + 1\n  if n == 0:\n    raise "zero"\n  return count + n\n')

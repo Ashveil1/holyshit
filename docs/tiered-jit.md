@@ -115,3 +115,8 @@ resume with an immediate integer. Only Int30 arguments/results copy; source
 Lists/globals and target GC remain separate. Native errors become copied cold
 diagnostics, not shared exception state. This is a narrow return-boundary proof,
 not automatic hot selection, native-to-cold callback, shared runtime or tiering.
+
+[Bounded ASCII text](cold-text.md) extends cold-only value semantics with
+immutable strings and finite logical byte accounting. These host-executor
+values do not cross to the isolated native helper. Shared-runtime stages and
+hot selection remain unfinished.
