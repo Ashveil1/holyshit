@@ -7,8 +7,7 @@ iterating a flat List yields its elements with preserved aliases. Empty
 sequences run zero iterations. Break/continue, nested loops, sliced or
 concatenated text, and iteration inside functions behave as in the reference
 interpreter. Scalars and other values reject as not iterable, matching the
-reference refusal. Dict key iteration stays unsupported because cold Dicts
-do not exist.
+reference refusal. Dict key iteration is covered in [Bounded cold flat Dicts](cold-dicts.md).
 
 Iteration adds no new charge rule: each text element extraction is the
 existing one-byte index charge, so a full pass over a string charges its
