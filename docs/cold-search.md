@@ -6,8 +6,8 @@ The self-hosted cold IR executor now interprets `find(s, sub)` (and the
 matching the reference. `in` over text is a substring check requiring a Str
 needle; `in` over a cold flat List is element membership with reference
 equality, including mixed Int/Bool/null/Str elements where cross-type
-comparisons simply miss instead of rejecting. Searches over scalars reject,
-and Dict lookup stays unsupported because cold Dicts do not exist.
+comparisons simply miss instead of rejecting. Searches over scalars reject. Dict key
+membership is covered in [Bounded cold flat Dicts](cold-dicts.md).
 
 Both searches produce only scalar Int/Bool results, so they add no new
 budget rule: no text is produced and nothing charges beyond evaluating the

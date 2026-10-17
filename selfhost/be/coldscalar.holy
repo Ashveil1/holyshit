@@ -56,7 +56,7 @@ def preflight(irmod):
         elif op == "stvar":
           if ins["name"] not in fn["globals"]:
             locals[ins["name"]] = true
-        elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "index", "setindex", "slice", "iterseq", "print"]:
+        elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "build_dict", "index", "setindex", "slice", "iterseq", "print"]:
           raise "cold scalar: unsupported instruction " + op
       if block["term"]["term"] not in ["ret", "jmp", "br"]:
         raise "cold scalar: unsupported terminator"
@@ -70,7 +70,7 @@ def create(irmod, limit):
   counts = {}
   for key in irmod["order"]:
     counts[key] = 0
-  return [irmod, plans, {}, 0, limit, 0, counts, false, 0, 0, 0]
+  return [irmod, plans, {}, 0, limit, 0, counts, false, 0, 0, 0, 0, 0]
 # Explicit trusted host bridge, not hot compilation or native object sharing.
 # Install only before run. Normal source global assignment still shadows it.
 def bind_scalar_bridge(state, name, handler, context):
@@ -139,10 +139,34 @@ def list_items(value):
   if pyrt.py_type(value) != "dict" or "cold_kind" not in value or value["cold_kind"] != "list":
     raise "cold scalar: wants flat scalar List"
   return value["items"]
+def dict_items(value):
+  if pyrt.py_type(value) != "dict" or "cold_kind" not in value or value["cold_kind"] != "dict":
+    raise "cold scalar: wants flat scalar Dict"
+  return value["items"]
+def dict_key(value):
+  kind = pyrt.py_type(value)
+  if kind == "str":
+    return text(value)
+  if kind == "int":
+    return integer(value)
+  raise "cold scalar: dict key must be Str or Int"
+def dict_charge(state, pairs, created):
+  if pairs > 4096:
+    raise "cold scalar: dict exceeds4096 pairs"
+  if created and state[11] >= 1024 or state[12] + pairs > 65536:
+    raise "cold scalar: dict allocation budget exhausted"
+  if created:
+    state[11] = state[11] + 1
+  state[12] = state[12] + pairs
+def cold_list_of(state, items):
+  charge(state, len(items), true)
+  return {"cold_kind": "list", "items": items}
 def truth(value):
   if pyrt.py_type(value) == "str":
     return len(value) != 0
   if pyrt.py_type(value) == "dict" and "cold_kind" in value and value["cold_kind"] == "list":
+    return len(value["items"]) != 0
+  if pyrt.py_type(value) == "dict" and "cold_kind" in value and value["cold_kind"] == "dict":
     return len(value["items"]) != 0
   scalar(value)
   return not not value
@@ -162,6 +186,18 @@ def charge(state, slots, created):
     state[8] = state[8] + 1
   state[9] = state[9] + slots
 def builtin(state, name, args):
+  if name == "has":
+    if len(args) != 2:
+      raise "cold scalar: has wants has(dict, key)"
+    return has(dict_items(args[0]), dict_key(args[1]))
+  if name == "keys":
+    if len(args) != 1:
+      raise "cold scalar: keys wants keys(dict)"
+    return cold_list_of(state, keys(dict_items(args[0])))
+  if name == "values":
+    if len(args) != 1:
+      raise "cold scalar: values wants values(dict)"
+    return cold_list_of(state, values(dict_items(args[0])))
   if name == "range":
     if len(args) < 1 or len(args) > 2:
       raise "cold scalar: range wants range(n) or range(a, b)"
@@ -238,6 +274,9 @@ def builtin(state, name, args):
       if pyrt.py_type(needle) != "str":
         raise "cold scalar: in Str wants a Str"
       return find(container, needle) >= 0
+    if pyrt.py_type(container) == "dict" and "cold_kind" in container and container["cold_kind"] == "dict":
+      dkey = dict_key(needle)
+      return has(container["items"], dkey)
     if pyrt.py_type(container) != "dict" or "cold_kind" not in container or container["cold_kind"] != "list":
       raise "cold scalar: not a search container"
     for item in container["items"]:
@@ -254,6 +293,8 @@ def builtin(state, name, args):
       raise "cold scalar: len wants one argument"
     if pyrt.py_type(args[0]) == "str":
       return len(args[0])
+    if pyrt.py_type(args[0]) == "dict" and "cold_kind" in args[0] and args[0]["cold_kind"] == "dict":
+      return len(args[0]["items"])
     return len(list_items(args[0]))
   if len(args) != 2:
     raise "cold scalar: append wants two arguments"
@@ -317,7 +358,7 @@ def execute(state, key, arguments):
         else:
           if name in state[2]:
             value = state[2][name]
-          elif name in ["len", "append", "find", "contains", "split", "join", "str", "int", "range"]:
+          elif name in ["len", "append", "find", "contains", "split", "join", "str", "int", "range", "has", "keys", "values"]:
             value = {"cold_kind": "builtin", "name": name}
           else:
             raise "cold scalar: unbound global " + name
@@ -357,20 +398,43 @@ def execute(state, key, arguments):
           append(items, constant(values[item]))
         charge(state, len(items), true)
         value = {"cold_kind": "list", "items": items}
+      elif op == "build_dict":
+        items = {}
+        for pair in ins["pairs"]:
+          items[dict_key(values[pair[0]])] = constant(values[pair[1]])
+        dict_charge(state, len(ins["pairs"]), true)
+        value = {"cold_kind": "dict", "items": items}
       elif op == "index":
         obj = values[ins["obj"]]
         if pyrt.py_type(obj) == "str":
           index = list_index(obj, values[ins["idx"]])
           text_charge(state, 1)
           value = obj[index]
+        elif pyrt.py_type(obj) == "dict" and "cold_kind" in obj and obj["cold_kind"] == "dict":
+          items = obj["items"]
+          dkey = dict_key(values[ins["idx"]])
+          if not has(items, dkey):
+            raise "cold scalar: key not found"
+          value = items[dkey]
         else:
           items = list_items(obj)
           value = items[list_index(items, values[ins["idx"]])]
       elif op == "setindex":
-        items = list_items(values[ins["obj"]])
-        index = list_index(items, values[ins["idx"]])
-        item = constant(values[ins["val"]])
-        items[index] = item
+        obj = values[ins["obj"]]
+        if pyrt.py_type(obj) == "dict" and "cold_kind" in obj and obj["cold_kind"] == "dict":
+          items = obj["items"]
+          dkey = dict_key(values[ins["idx"]])
+          item = constant(values[ins["val"]])
+          if not has(items, dkey):
+            if len(items) >= 4096:
+              raise "cold scalar: dict exceeds4096 pairs"
+            dict_charge(state, 1, false)
+          items[dkey] = item
+        else:
+          items = list_items(obj)
+          index = list_index(items, values[ins["idx"]])
+          item = constant(values[ins["val"]])
+          items[index] = item
       elif op == "slice":
         obj = values[ins["obj"]]
         low = 0
@@ -409,6 +473,8 @@ def execute(state, key, arguments):
           value = obj
         elif pyrt.py_type(obj) == "dict" and "cold_kind" in obj and obj["cold_kind"] == "list":
           value = obj
+        elif pyrt.py_type(obj) == "dict" and "cold_kind" in obj and obj["cold_kind"] == "dict":
+          value = cold_list_of(state, keys(obj["items"]))
         else:
           raise "cold scalar: not iterable"
       elif op == "bin":
