@@ -59,7 +59,7 @@ def preflight(irmod):
         elif op == "print":
           if len(ins["args"]) != 1:
             raise "cold scalar: print wants one scalar"
-        elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "index", "setindex"]:
+        elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "index", "setindex", "slice"]:
           raise "cold scalar: unsupported instruction " + op
       if block["term"]["term"] not in ["ret", "jmp", "br"]:
         raise "cold scalar: unsupported terminator"
@@ -287,6 +287,38 @@ def execute(state, key, arguments):
         index = list_index(items, values[ins["idx"]])
         item = constant(values[ins["val"]])
         items[index] = item
+      elif op == "slice":
+        obj = values[ins["obj"]]
+        low = 0
+        if ins["start"] != null:
+          low = integer(values[ins["start"]])
+        high = null
+        if ins["stop"] != null:
+          high = integer(values[ins["stop"]])
+        if pyrt.py_type(obj) != "str":
+          if pyrt.py_type(obj) == "dict" and "cold_kind" in obj and obj["cold_kind"] == "list":
+            raise "cold scalar: List slices unsupported"
+          raise "cold scalar: cannot slice scalar"
+        size = len(obj)
+        if high == null:
+          high = size
+        if low < 0:
+          low = low + size
+        if high < 0:
+          high = high + size
+        if low < 0:
+          low = 0
+        if low > size:
+          low = size
+        if high < 0:
+          high = 0
+        if high > size:
+          high = size
+        if low >= high:
+          value = ""
+        else:
+          text_charge(state, high - low)
+          value = obj[low:high]
       elif op == "bin":
         value = binary(state, ins["binop"], values[ins["l"]], values[ins["r"]])
       elif op == "un":
