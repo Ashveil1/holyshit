@@ -44,3 +44,10 @@ Default CI compiles runner and library harness with the audited seed;
 --python-bootstrap is a local diagnostic. Existing scalar20/List21/native15
 gates remain, replacing only their old unsupported-string preflight example
 with an unsupported float now that text is accepted.
+
+## Flat List element extension
+
+[Text elements in flat Lists](cold-text-list.md) now supersede the earlier
+string-element/string-ternary refusal. Nested Lists and List-valued ternaries
+remain unsupported. Text production budgets and native Int30-only transport
+stay unchanged.

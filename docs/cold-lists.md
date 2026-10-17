@@ -49,3 +49,8 @@ nested functions still reject before effects.
 
 This is a cold-only value-ownership step, not full collection semantics, shared
 GC/value ABI, native transition, hot compilation or a performance claim.
+
+[The text-element extension](cold-text-list.md) now admits existing bounded
+immutable ASCII Str in flat Lists, without copying/recharging text bytes on
+alias insertion. This supersedes the Int/Bool/null-only element restriction,
+not the nested/cyclic/function/native-object restrictions above.

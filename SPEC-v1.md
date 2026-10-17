@@ -1808,3 +1808,13 @@ index one. No refunds; aliases/pass/print/len/compare no added charge. Validate
 before allocation/accounting; not exact heap/parser/temporary storage bound.
 FlatList/nativeInt-only boundaries unchanged. No sharednativeGC/hot/perfclaim.
 See docs/cold-text.md for runtime/preflight limits.
+
+### Cold text elements in flat Lists
+Cold flatList literal/append/store accepts existing bounded ASCII Str alongside
+Int30/Bool/null. Mutable List aliases preserve identity; retrieved text aliases
+remain immutable after replacement. Existing text production and List creation/
+slot budgets stay separate: referencing text in slots adds no byte charge,
+replacement no slot charge. Validate before mutation. String ternary arms now
+work with lazy singletonList lowering; List-valued arms still reject nested
+Lists. Nested/cyclic/function objects, List comparison/print, native transport
+of objects remain unsupported. See docs/cold-text-list.md.

@@ -174,7 +174,7 @@ def builtin(state, name, args):
   if len(args) != 2:
     raise "cold scalar: append wants two arguments"
   items = list_items(args[0])
-  item = scalar(args[1])
+  item = constant(args[1])
   if len(items) >= 4096:
     raise "cold scalar: list exceeds4096 elements"
   charge(state, 1, false)
@@ -270,7 +270,7 @@ def execute(state, key, arguments):
       elif op == "build_list":
         items = []
         for item in ins["items"]:
-          append(items, scalar(values[item]))
+          append(items, constant(values[item]))
         charge(state, len(items), true)
         value = {"cold_kind": "list", "items": items}
       elif op == "index":
@@ -285,7 +285,7 @@ def execute(state, key, arguments):
       elif op == "setindex":
         items = list_items(values[ins["obj"]])
         index = list_index(items, values[ins["idx"]])
-        item = scalar(values[ins["val"]])
+        item = constant(values[ins["val"]])
         items[index] = item
       elif op == "bin":
         value = binary(state, ins["binop"], values[ins["l"]], values[ins["r"]])
