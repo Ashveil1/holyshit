@@ -39,3 +39,9 @@ gate only requires QEMU. `--python-bootstrap` builds the kernel driver with
 Python for local diagnostics, not a seed claim. The displayed screenshot was
 visually checked at640x480 with the original console layout, four retained
 lines and current G. Neither gate is a real-hardware/UEFI proof.
+
+The [kernel integer input extension](keyboard-code.md) now switches this demo
+to `readkey_code()`, eliminating the32-byte input Str and unsafe payload read.
+This supersedes the readkey-per-byte limitation above only for this new demo.
+Logging/static string initialization and general bump-heap limits remain; no
+total interactive allocation or indefinite lifetime guarantee is inferred.

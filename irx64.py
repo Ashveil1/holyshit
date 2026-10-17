@@ -22,7 +22,7 @@ import ir as IR
 from x64gen import Gen
 
 RAW_KERNEL_BUILTINS = {"alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int"}
-KERNEL_BUILTINS = {"ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
+KERNEL_BUILTINS = {"ticks", "readkey", "readkey_code", "pmm_alloc", "pmm_total", "pmm_free",
     "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg",
     "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on",
     "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop",
@@ -31,7 +31,7 @@ KERNEL_BUILTINS = {"ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
 NOT_A_VALUE = {
     # var_get's "is not a value (call it)" list minus BI_VALUES (which take
     # the builtin-value path first, exactly like x64gen-today)
-    "float", "ticks", "readkey", "pmm_alloc", "meminfo",
+    "float", "ticks", "readkey", "readkey_code", "pmm_alloc", "meminfo",
     "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen",
     "tcp_accept", "http_get", "json_parse", "json_str", "read_text",
     "write_text", "append_text", "exists", "ls", "mkdir", "json_load",

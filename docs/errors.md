@@ -358,7 +358,7 @@
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (109)
+## x64gen.py — backend x86-64 ตรง (xbuild/xkernel) (110)
 
 - `'{n}' already defined in this scope`
 - `Int literal {v} is outside the 62-bit range of the x64 backend`
@@ -434,6 +434,7 @@
 - `read wants read(f)`
 - `read_mem wants read_mem(ptr, nbytes)`
 - `readkey takes no args`
+- `readkey_code takes no args`
 - `return outside function`
 - `scall not in x64 subset`
 - `scall wants scall(nr, a1, a2, a3, a4, a5, a6)`
@@ -650,4 +651,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 604 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 605 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
