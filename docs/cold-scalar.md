@@ -26,8 +26,10 @@ Unknown instructions/operators/terminators or unsupported constants anywhere
 in the module reject during whole-module preflight before target side effects,
 even in unreachable code. Runtime operand violations can occur after effects.
 
-All arithmetic operands/results must remain signed30-bit integers. Other
-comparisons/arithmetic are outside this executor's subset even where the full
+All arithmetic operands/results must remain signed30-bit integers. Modulo,
+bitwise and shift operators are covered in
+[Bounded cold Int30 modulo, bitwise and shift operators](cold-intops.md).
+Other comparisons/arithmetic are outside this executor's subset even where the full
 language permits them. This restriction bounds transport and avoids claiming
 full integer/float semantics. Source-function values are private executor
 records, never native target Func objects. Function values cannot be printed,
