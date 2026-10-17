@@ -116,6 +116,7 @@ BUILTINS = {
     "ticks": ("ticks()", "ms ticks hosted, 100Hz timer on kernel", NO_XBUILD),
     "readkey": ("readkey()", "stdin char hosted, last key or Null on kernel",
                 NO_XBUILD),
+    "readkey_code": ("readkey_code()", "queued keyboard byte as Int or Null, no Str allocation (xkernel only)", {"xkernel"}),
     "pmm_alloc": ("pmm_alloc(npages)", "allocate physical pages", NO_XBUILD),
     "pmm_total": ("pmm_total()", "total pages (xkernel only)", {"xkernel"}),
     "pmm_free": ("pmm_free()", "free pages", NO_XBUILD),

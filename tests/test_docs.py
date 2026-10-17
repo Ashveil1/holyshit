@@ -115,7 +115,7 @@ with tempfile.TemporaryDirectory() as state:
 interp_keys = set(interp.BUILTINS)
 table_keys = set(lang_data.BUILTINS)
 # pmm_total/pmm_free exist only in the freestanding kernel runtime
-extra_ok = {"pmm_total", "pmm_free"}
+extra_ok = {"pmm_total", "pmm_free", "readkey_code"}
 check("lang_data covers interp.BUILTINS",
       not (interp_keys - table_keys),
       sorted(interp_keys - table_keys))

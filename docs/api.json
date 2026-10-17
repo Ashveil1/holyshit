@@ -519,6 +519,13 @@
     "xkernel"
    ]
   },
+  "readkey_code": {
+   "sig": "readkey_code()",
+   "desc": "queued keyboard byte as Int or Null, no Str allocation (xkernel only)",
+   "backends": [
+    "xkernel"
+   ]
+  },
   "pmm_alloc": {
    "sig": "pmm_alloc(npages)",
    "desc": "allocate physical pages",

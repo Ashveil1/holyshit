@@ -22,18 +22,14 @@ def history():
       length = kconsole_buffer.history_length(session, index)
     textrow(address, length, 136 + index * 24)
     index = index + 1
-def byte(key):
-  unsafe:
-    Ptr data = as_ptr(key)
-    return load8(data + 16)
 kfont.draw(frame, 32, 112, "RECENT INPUT - NOT EXECUTED", 0x16324f, 2)
 kfont.draw(frame, 32, 248, "INPUT:", 0x16324f, 2)
 textrow(session[0], 0, 280)
 print "FIXED SESSION READY"
 while true:
-  key = readkey()
+  key = readkey_code()
   if key != null:
-    submitted = kconsole_buffer.feed(session, byte(key))
+    submitted = kconsole_buffer.feed(session, key)
     if submitted:
       history()
     textrow(session[0], session[3], 280)

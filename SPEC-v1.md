@@ -1785,3 +1785,13 @@ heap/image on controlled exit. Trusted library owns lifecycle; fatal/unsafe/
 nonreturning code outside recovery. No native->cold callback, concurrency,
 shared object/root ABI, hotness/dispatch replacement, tiering or speed claim.
 See docs/cold-native.md.
+
+### Kernel queued keyboard Int input
+`readkey_code()` is xkernel-only/direct-call/no args: consume the same queued
+translated byte as readkey, return Int1..255 or null when empty, preserve caller
+IF and allocate no Str. Queue63/drop-newest/singleCPU and PS/2 translation limits
+unchanged, zero sentinel not delivered. readkey stays compatible. Fixed-byte
+console demo now uses code input directly. Deterministic IR/AST FIFO+allocation
+markers, seed-native full image/100000empty polls and actual local GRUB visual
+keyboard gate required. Not hosted/first-class, no generalGC/indefiniteterminal/
+totalinteractivezeroalloc/perf/hardware claim. See docs/keyboard-code.md.

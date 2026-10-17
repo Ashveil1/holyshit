@@ -38,13 +38,18 @@ def probe(g,mod):
         a.call('kbd_dequeue')
         a.code+=bytes([0x9c]);a.pop_r('rax');a.and_ri32('rax',512)
         a.cli();number();expected.append(('512' if enabled else '0')+'\n')
-    put(97);put(98)
+    if code_mode:
+        for n in range(1,64):put(n)
+    else:
+        put(97);put(98)
     a.jmp('hs_kernel_main')
-for ir_backend in [True,False]:
+for ir_backend,code_mode in [(True,False),(False,False),(True,True),(False,True)]:
     expected=[]
     with tempfile.TemporaryDirectory() as temp:
         d=Path(temp);source=d/'queue.holy'
-        source.write_text('print readkey()\nprint readkey()\nprint readkey()\nprint "queue-done"\n')
+        source.write_text('def mark():\n  unsafe:\n    return as_int(alloc(1))\nbefore = mark()\ni = 1\nvalid = true\nwhile i < 64:\n  if readkey_code() != i:\n    valid = false\n  i = i + 1\nempty = readkey_code()\nafter = mark()\nprint after - before\nprint valid, empty\nprint "queue-done"\n')
+        if not code_mode:
+            source.write_text('print readkey()\nprint readkey()\nprint readkey()\nprint "queue-done"\n')
         Gen.emit_longmode_tail=probe
         try:
             with contextlib.redirect_stdout(io.StringIO()):rc=build_xkernel(str(source),str(d/'kernel'),ir_backend=ir_backend)
@@ -58,6 +63,6 @@ for ir_backend in [True,False]:
                 if 'queue-done\n'in out:break
                 time.sleep(.1)
         finally:p.terminate();p.wait(timeout=10)
-        want=''.join(expected)+'a\nb\nnull\nqueue-done\n'
+        want=''.join(expected)+('16\ntrue null\nqueue-done\n'if code_mode else'a\nb\nnull\nqueue-done\n')
         assert out==want,(out,want)
-print('2/2 deterministic keyboard FIFO burst/wrap/drop-newest/IF/readkey gates (IR and AST)')
+print('4/4 deterministic FIFO burst/wrap/drop-newest/IF/readkey+code allocation gates (IR and AST)')

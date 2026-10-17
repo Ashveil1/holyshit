@@ -851,7 +851,7 @@ class Gen:
             # become unbound globals (runtime error).
             if name in ("print", "len", "range", "str", "int", "float", "input",
                         "open", "read", "write", "close", "argv", "env", "system",
-                        "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey",
+                        "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey", "readkey_code",
                         "pmm_alloc", "meminfo", "tcp_connect", "tcp_send",
                         "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
                         "http_get", "json_parse", "json_str", "read_text",
@@ -2172,7 +2172,7 @@ class Gen:
         if fn["t"] == "var" and fn["name"] in (
                 "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
-                "readkey", "pmm_alloc", "pmm_total",
+                "readkey", "readkey_code", "pmm_alloc", "pmm_total",
                 "pmm_free", "meminfo", "mb_info", "mb_magic",
                 "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush",
                 "ctx_swap", "task_run", "task_init",
@@ -2183,7 +2183,7 @@ class Gen:
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "json_load", "json_save", "write_bytes", "asm"):
             if self.freestanding and fn["name"] in (
-                    "ticks", "readkey", "pmm_alloc", "pmm_total", "pmm_free",
+                    "ticks", "readkey", "readkey_code", "pmm_alloc", "pmm_total", "pmm_free",
                     "mb_info", "mb_magic", "image_end", "cr2", "cr3",
                     "set_cr3", "invlpg", "tlb_flush",
                     "ctx_swap", "task_run", "task_init",
@@ -2418,6 +2418,19 @@ class Gen:
             a.lea_rip("rax", "ticks_")
             a.mov_rm("rax", "rax", 0)
             self.tag_box()
+            return
+        if name == "readkey_code":
+            if args:
+                raise HSErr("readkey_code takes no args", ln)
+            a.call("kbd_dequeue")
+            lab_none, lab_done = self.new_tmp("rkc"), self.new_tmp("rkc")
+            a.test_rr("rax", "rax")
+            a.jcc("e", lab_none)
+            self.tag_box()
+            a.jmp(lab_done)
+            a.label(lab_none)
+            a.mov_ri64("rax", Gen.HS_NULL)
+            a.label(lab_done)
             return
         if name == "readkey":
             if args:

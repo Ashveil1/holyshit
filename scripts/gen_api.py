@@ -21,7 +21,7 @@ import lang_data
 def main():
     missing = set(interp.BUILTINS) - set(lang_data.BUILTINS)
     extra = set(lang_data.BUILTINS) - set(interp.BUILTINS) - {"pmm_total",
-                                                              "pmm_free"}
+                                                              "pmm_free", "readkey_code"}
     if missing or extra:
         print(f"lang_data drift: missing={sorted(missing)} "
               f"extra={sorted(extra)}", file=sys.stderr)

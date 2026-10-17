@@ -43,6 +43,7 @@ SUITES = [
     ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
     ("test_irx64.py", "IR->x64 differential"),
     ("test_xkernel.py", "kernel on QEMU"),
+    ("test_keycode_native.py", "native keyboard integer code image and finite polling allocations"),
     ("test_keyboard_queue.py", "deterministic keyboard FIFO/overflow/IF/readkey on QEMU"),
     ("test_timer_irq.py", "deterministic timer IRQ GPR preservation"),
     ("test_kernel_ir.py", "retained AST kernel reference on QEMU"),

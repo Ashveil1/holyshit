@@ -83,6 +83,8 @@
 | | whole file as Str (hosted only) |||||
 | `readkey` | `readkey()` | ✓ | ✓ |   | ✓ |
 | | stdin char hosted, last key or Null on kernel |||||
+| `readkey_code` | `readkey_code()` |   |   |   | ✓ |
+| | queued keyboard byte as Int or Null, no Str allocation (xkernel only) |||||
 | `split` | `split(s) | split(s, sep)` | ✓ | ✓ | ✓ | ✓ |
 | | split Str to List |||||
 | `store32` | `store32(p, v)` | ✓ | ✓ | ✓ | ✓ |
