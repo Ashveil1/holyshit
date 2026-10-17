@@ -45,10 +45,10 @@ def preflight(irmod):
         if op == "const":
           constant(ins["val"])
         elif op == "bin":
-          if ins["binop"] not in ["+", "-", "*", "==", "!=", "<", "<=", ">", ">="]:
+          if ins["binop"] not in ["+", "-", "*", "%", "&", "|", "^", "<<", ">>", "==", "!=", "<", "<=", ">", ">="]:
             raise "cold scalar: unsupported binary operator"
         elif op == "un":
-          if ins["unop"] not in ["neg", "not", "pos"]:
+          if ins["unop"] not in ["neg", "not", "pos", "unot"]:
             raise "cold scalar: unsupported unary operator"
         elif op == "mkfunc":
           if key != irmod["entry"]:
@@ -132,6 +132,25 @@ def binary(state, op, left, right):
     return integer(left - right)
   if op == "*":
     return integer(left * right)
+  if op == "%":
+    if right == 0:
+      raise "cold scalar: division by zero"
+    result = left % right
+    if result != 0 and (result < 0) != (right < 0):
+      result = result + right
+    return integer(result)
+  if op == "&":
+    return integer(left & right)
+  if op == "|":
+    return integer(left | right)
+  if op == "^":
+    return integer(left ^ right)
+  if op == "<<" or op == ">>":
+    if right < 0 or right > 63:
+      raise "cold scalar: shift count out of range (0..63)"
+    if op == "<<":
+      return integer(left << right)
+    return integer(left >> right)
   if op == "<":
     return left < right
   if op == "<=":
@@ -534,6 +553,8 @@ def execute(state, key, arguments):
           value = not truth(arg)
         elif ins["unop"] == "neg":
           value = integer(0 - integer(arg))
+        elif ins["unop"] == "unot":
+          value = integer(0 - integer(arg) - 1)
         else:
           value = integer(arg)
       elif op == "copy":

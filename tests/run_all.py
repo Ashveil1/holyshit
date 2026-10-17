@@ -102,6 +102,7 @@ SUITES = [
     ("test_cold_dict.py", "bounded cold flat Dicts with creation/slot budgets"),
     ("test_cold_list_slice.py", "bounded cold flat List slices with copy semantics and slot accounting"),
     ("test_cold_equality.py", "bounded cold List/Dict equality with value semantics"),
+    ("test_cold_intops.py", "bounded cold Int30 modulo/bitwise/shift operators"),
     ("test_cold_scalar.py", "self-hosted cold scalar IR execution, no target code generation"),
     ("test_jit_dynamic.py", "runtime scalar arguments through one native global shim"),
     ("test_jit_dispatch.py", "dynamic target global/closure scalar invocation"),
