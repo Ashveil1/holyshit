@@ -5,7 +5,7 @@ Int30/Bool/null elements, len, append, negative indexing, indexed mutation,
 truth/not, aliasing and passing/returning the same List through interpreted
 functions. `len`/`append` load as ordinary builtin values when unshadowed;
 module globals and function locals take precedence. Scalar-only printing and
-comparison remain; nested/cyclic Lists, object elements, slices, iteration
+comparison remain; nested/cyclic Lists, object elements and slices
 builtins and arbitrary source objects remain outside the subset.
 
 Source Lists are explicit private records with an items array, distinct from
