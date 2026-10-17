@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory()as temp:
         out,marker,tail=got.stdout.partition(b'COLD SCALAR STATS ');assert marker and out==ref.stdout,(out,ref.stdout)
         steps,counts=json.loads(tail);assert 0<steps<=1000000 and counts['<main>']==1 and all(x>=0 for x in counts.values());passed+=1
         if text==cases[0]:assert counts['fib$L1']==2150,counts;passed+=1
-    for body in ['print 9\nprint "unsupported"\n','print 9\nprint 1 / 2\n','print 9\ntry:\n  pass\nexcept:\n  pass\n','print 9\ndef outer():\n  def inner():\n    return 1\n  return inner\n','print 9\nimport std.math\n']:
+    for body in ['print 9\nprint 1.5\n','print 9\nprint 1 / 2\n','print 9\ntry:\n  pass\nexcept:\n  pass\n','print 9\ndef outer():\n  def inner():\n    return 1\n  return inner\n','print 9\nimport std.math\n']:
         source.write_text(body);got=subprocess.run([str(driver),str(source)],env=env,capture_output=True,timeout=30)
         assert got.returncode and not got.stdout,(body,got.stdout,got.stderr);passed+=1
     for body,reason in [('print 536870911 + 1\n','signed30-bit'),('def f():\n  return f()\nf()\n','call depth'),('x = 7\ndef f():\n  print x\n  x = 1\nf()\n','unbound local'),('f = 1\nf()\n','not callable')]:

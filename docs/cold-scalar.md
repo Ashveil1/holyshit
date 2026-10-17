@@ -69,3 +69,10 @@ List storage, mutable aliases through functions, len/append/index/setindex and
 truth. This supersedes the original List/collection refusal above only for
 that documented subset. Nested/cyclic objects and native/cold shared roots
 remain absent. Source functions/builtins now use distinct private records.
+
+## ASCII text extension
+
+[Bounded cold ASCII text](cold-text.md) supersedes the earlier string refusal
+only for its declared constants/operations/budgets. Flat List elements and
+native transport remain scalar-only. No Unicode/full collection/shared value
+ABI or hot tier is implied.

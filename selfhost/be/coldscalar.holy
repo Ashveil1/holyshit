@@ -12,6 +12,21 @@ def scalar(value):
   elif kind != "bool" and value != null:
     raise "cold scalar: unsupported value"
   return value
+def text(value):
+  if len(value) > 1024:
+    raise "cold scalar: text exceeds1024 bytes"
+  for character in value:
+    if (character < " " or character > "~") and character not in ["\n", "\t", "\r"]:
+      raise "cold scalar: text supports printable ASCII/newline/tab/return only"
+  return value
+def constant(value):
+  if pyrt.py_type(value) == "str":
+    return text(value)
+  return scalar(value)
+def text_charge(state, length):
+  if length > 1024 or state[10] + length > 65536:
+    raise "cold scalar: text byte budget exhausted"
+  state[10] = state[10] + length
 def preflight(irmod):
   verify.verify_module(irmod)
   if len(irmod["order"]) > 256:
@@ -28,7 +43,7 @@ def preflight(irmod):
       for ins in block["instrs"]:
         op = ins["op"]
         if op == "const":
-          scalar(ins["val"])
+          constant(ins["val"])
         elif op == "bin":
           if ins["binop"] not in ["+", "-", "*", "==", "!=", "<", "<=", ">", ">="]:
             raise "cold scalar: unsupported binary operator"
@@ -58,7 +73,7 @@ def create(irmod, limit):
   counts = {}
   for key in irmod["order"]:
     counts[key] = 0
-  return [irmod, plans, {}, 0, limit, 0, counts, false, 0, 0]
+  return [irmod, plans, {}, 0, limit, 0, counts, false, 0, 0, 0]
 # Explicit trusted host bridge, not hot compilation or native object sharing.
 # Install only before run. Normal source global assignment still shadows it.
 def bind_scalar_bridge(state, name, handler, context):
@@ -77,7 +92,29 @@ def tick(state):
   if state[3] >= state[4]:
     raise "cold scalar: instruction budget exhausted"
   state[3] = state[3] + 1
-def binary(op, left, right):
+def binary(state, op, left, right):
+  left_text = pyrt.py_type(left) == "str"
+  right_text = pyrt.py_type(right) == "str"
+  if left_text or right_text:
+    if not left_text or not right_text:
+      raise "cold scalar: text operands must both be Str"
+    if op == "+":
+      length = len(left) + len(right)
+      text_charge(state, length)
+      return left + right
+    if op == "==":
+      return left == right
+    if op == "!=":
+      return left != right
+    if op == "<":
+      return left < right
+    if op == "<=":
+      return left <= right
+    if op == ">":
+      return left > right
+    if op == ">=":
+      return left >= right
+    raise "cold scalar: unsupported text operator"
   scalar(left)
   scalar(right)
   if op == "==":
@@ -106,6 +143,8 @@ def list_items(value):
     raise "cold scalar: wants flat scalar List"
   return value["items"]
 def truth(value):
+  if pyrt.py_type(value) == "str":
+    return len(value) != 0
   if pyrt.py_type(value) == "dict" and "cold_kind" in value and value["cold_kind"] == "list":
     return len(value["items"]) != 0
   scalar(value)
@@ -129,6 +168,8 @@ def builtin(state, name, args):
   if name == "len":
     if len(args) != 1:
       raise "cold scalar: len wants one argument"
+    if pyrt.py_type(args[0]) == "str":
+      return len(args[0])
     return len(list_items(args[0]))
   if len(args) != 2:
     raise "cold scalar: append wants two arguments"
@@ -181,6 +222,8 @@ def execute(state, key, arguments):
       value = null
       if op == "const":
         value = ins["val"]
+        if pyrt.py_type(value) == "str":
+          text_charge(state, len(value))
       elif op == "load":
         name = ins["name"]
         if key != state[0]["entry"] and name in plan[0]:
@@ -231,15 +274,21 @@ def execute(state, key, arguments):
         charge(state, len(items), true)
         value = {"cold_kind": "list", "items": items}
       elif op == "index":
-        items = list_items(values[ins["obj"]])
-        value = items[list_index(items, values[ins["idx"]])]
+        obj = values[ins["obj"]]
+        if pyrt.py_type(obj) == "str":
+          index = list_index(obj, values[ins["idx"]])
+          text_charge(state, 1)
+          value = obj[index]
+        else:
+          items = list_items(obj)
+          value = items[list_index(items, values[ins["idx"]])]
       elif op == "setindex":
         items = list_items(values[ins["obj"]])
         index = list_index(items, values[ins["idx"]])
         item = scalar(values[ins["val"]])
         items[index] = item
       elif op == "bin":
-        value = binary(ins["binop"], values[ins["l"]], values[ins["r"]])
+        value = binary(state, ins["binop"], values[ins["l"]], values[ins["r"]])
       elif op == "un":
         arg = values[ins["v"]]
         if ins["unop"] == "not":
@@ -251,7 +300,7 @@ def execute(state, key, arguments):
       elif op == "copy":
         value = values[ins["src"]]
       elif op == "print":
-        value = scalar(values[ins["args"][0]])
+        value = constant(values[ins["args"][0]])
         print value
       if op != "phi" and "dest" in ins:
         values[ins["dest"]] = value

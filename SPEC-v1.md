@@ -1795,3 +1795,16 @@ console demo now uses code input directly. Deterministic IR/AST FIFO+allocation
 markers, seed-native full image/100000empty polls and actual local GRUB visual
 keyboard gate required. Not hosted/first-class, no generalGC/indefiniteterminal/
 totalinteractivezeroalloc/perf/hardware claim. See docs/keyboard-code.md.
+
+### Cold bounded ASCII text
+Cold constants may be Str of printable ASCII/newline/tab/return, max1024bytes;
+other text constants preflight-reject before effects. Immutable assignment/pass/
+return, Str+Str, same-type equality/order, truth/not/shortcircuit, len, negative
+Int indexing and one-value print work. Mixed types/repetition/slicing/iteration/
+methods/Unicode/string List elements remain outside subset; string ternary arms
+reject through existing singleton-list lowering. Per-state logical text budget
+65536bytes cumulative: const execution charges length, concatenation full result,
+index one. No refunds; aliases/pass/print/len/compare no added charge. Validate
+before allocation/accounting; not exact heap/parser/temporary storage bound.
+FlatList/nativeInt-only boundaries unchanged. No sharednativeGC/hot/perfclaim.
+See docs/cold-text.md for runtime/preflight limits.
