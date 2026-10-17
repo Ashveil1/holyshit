@@ -96,6 +96,7 @@ SUITES = [
     ("test_cold_iterseq.py", "bounded cold iteration over text and flat Lists"),
     ("test_cold_search.py", "bounded cold text find and contains over text and flat Lists"),
     ("test_cold_split_join.py", "bounded cold split/join over text and flat Lists"),
+    ("test_cold_convert.py", "bounded cold str/int conversions with byte accounting"),
     ("test_cold_scalar.py", "self-hosted cold scalar IR execution, no target code generation"),
     ("test_jit_dynamic.py", "runtime scalar arguments through one native global shim"),
     ("test_jit_dispatch.py", "dynamic target global/closure scalar invocation"),
