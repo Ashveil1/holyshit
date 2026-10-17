@@ -112,6 +112,12 @@ def binary(state, op, left, right):
     if op == ">=":
       return left >= right
     raise "cold scalar: unsupported text operator"
+  if op == "==" or op == "!=":
+    eq = cold_equal(state, left, right)
+    if eq != null:
+      if op == "==":
+        return eq
+      return not eq
   scalar(left)
   scalar(right)
   if op == "==":
@@ -133,6 +139,38 @@ def binary(state, op, left, right):
   if op == ">":
     return left > right
   return left >= right
+def cold_equal(state, left, right):
+  left_list = pyrt.py_type(left) == "dict" and "cold_kind" in left and left["cold_kind"] == "list"
+  right_list = pyrt.py_type(right) == "dict" and "cold_kind" in right and right["cold_kind"] == "list"
+  if left_list or right_list:
+    if not left_list or not right_list:
+      return false
+    li = left["items"]
+    ri = right["items"]
+    if len(li) != len(ri):
+      return false
+    i = 0
+    while i < len(li):
+      if not binary(state, "==", li[i], ri[i]):
+        return false
+      i = i + 1
+    return true
+  left_dict = pyrt.py_type(left) == "dict" and "cold_kind" in left and left["cold_kind"] == "dict"
+  right_dict = pyrt.py_type(right) == "dict" and "cold_kind" in right and right["cold_kind"] == "dict"
+  if left_dict or right_dict:
+    if not left_dict or not right_dict:
+      return false
+    li = left["items"]
+    ri = right["items"]
+    if len(li) != len(ri):
+      return false
+    for key in keys(li):
+      if not has(ri, key):
+        return false
+      if not binary(state, "==", li[key], ri[key]):
+        return false
+    return true
+  return null
 # Source lists are explicit interpreter-owned records, never raw Func records.
 # Flat scalar elements keep cycles/nested identity outside this first boundary.
 def list_items(value):

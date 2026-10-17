@@ -19,10 +19,10 @@ methods/formatting and Unicode remain unsupported. Conversions are covered
 in [Bounded cold conversions](cold-convert.md). Iteration is
 covered in [Bounded cold iteration](cold-iteration.md) and split/join in
 [Bounded cold split and join](cold-split-join.md). Slices are
-covered in [Bounded cold text slices](cold-text-slice.md); source string
-elements in Lists remain unsupported. In particular string-valued ternary arms currently lower
-through singleton Lists and therefore reject at runtime. Existing flat Lists
-still contain only Int30/Bool/null; their ownership/budgets remain unchanged.
+covered in [Bounded cold text slices](cold-text-slice.md). Source string
+elements in Lists and string-valued ternary arms are covered in
+[Bounded cold text in flat Lists](cold-text-list.md). Existing flat List
+ownership/budgets remain unchanged.
 
 Each execution of a string constant charges its length, every concatenation
 charges its complete result length, and indexing charges one byte. Maximum

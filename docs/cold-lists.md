@@ -5,8 +5,9 @@ Int30/Bool/null elements, len, append, negative indexing, indexed mutation,
 truth/not, aliasing and passing/returning the same List through interpreted
 functions. `len`/`append` load as ordinary builtin values when unshadowed;
 module globals and function locals take precedence. Scalar-only printing and
-comparison remain; bounded slices are covered in
-[Bounded cold flat List slices](cold-list-slice.md). Nested/cyclic Lists,
+ordering remain; bounded slices are covered in
+[Bounded cold flat List slices](cold-list-slice.md) and equality in
+[Bounded cold container equality](cold-equality.md). Nested/cyclic Lists,
 object elements, builtins and arbitrary source objects remain outside the
 subset.
 
