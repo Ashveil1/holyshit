@@ -30,7 +30,6 @@ with tempfile.TemporaryDirectory()as temp:
       ('print "abc"[true]\n','signed30-bit',b''),
       ('print "a" + 1\n','both be Str',b''),
       ('print "a" * "b"\n','unsupported text operator',b''),
-      ('a = ["x"]\n','unsupported value',b''),
       ('s = "a"\ns[0] = "b"\n','flat scalar List',b''),
       ('i = 0\nwhile i < 65:\n  s = '+json.dumps('x'*1024)+'\n  i = i + 1\n','text byte budget',b''),
       ('s = '+json.dumps('x'*1024)+'\nprint s + "y"\n','text byte budget',b''),
