@@ -58,7 +58,7 @@ def preflight(irmod):
             locals[ins["name"]] = true
         elif op not in ["load", "stglobal", "call", "phi", "copy", "build_list", "build_dict", "index", "setindex", "slice", "iterseq", "print"]:
           raise "cold scalar: unsupported instruction " + op
-      if block["term"]["term"] not in ["ret", "jmp", "br"]:
+      if block["term"]["term"] not in ["ret", "jmp", "br", "raise"]:
         raise "cold scalar: unsupported terminator"
     plans[key] = [locals, blocks]
   return plans
@@ -582,6 +582,13 @@ def execute(state, key, arguments):
     term = block["term"]
     if term["term"] == "ret":
       return values[term["val"]] if term["val"] != null else null
+    if term["term"] == "raise":
+      if term["src"] == null:
+        raise "cold scalar: raise without active exception"
+      message = values[term["src"]]
+      if pyrt.py_type(message) != "str":
+        raise "cold scalar: raise wants Str"
+      raise message
     previous = label
     if term["term"] == "jmp":
       label = term["to"]
