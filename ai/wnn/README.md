@@ -46,3 +46,32 @@ python3 hs.py xbuild ai/wnn/digits.holy -o /tmp/wnn
 
 The interpreter (`python3 interp.py ai/wnn/digits.holy`) runs the same
 program ~400x slower; use it only to check semantics, not for benchmarks.
+
+
+## mnist.holy — MNIST (milestone 2)
+
+Full MNIST (60,000 train / 10,000 test, 28x28 gray). Raw-byte thermometer-8
+encoding, tuple-14 tables, 4-bank ensemble, U8 counters, capped-count
+summation scoring (beat classic bleaching here: 92.6% vs 91.8%).
+
+Measured (1 GB / 2-core sandbox, xbuild binary):
+
+| stage | time | memory |
+|---|---|---|
+| train 60,000 images | ~30 s | 636 MB peak RSS incl. 280 MB tables + data |
+| test 10,000 images | ~5 s | same process |
+
+Accuracy: **92.6%** (9,262/10,000, best config), 92.2-92.6% across nearby
+configs (banks 4-6, tuple 14-16). Honest context: classic WiSARD papers
+report ~92-96% on MNIST depending on encoding; reaching 97%+ needs known
+extensions (Bloom WiSARD, differentiable WNNs, or richer encodings) - those
+are future milestones, not claimed here. k-NN gets ~97%, a small CNN ~99%+,
+both far heavier at inference/training than this.
+
+Data: `python3 ai/wnn/prepare_mnist.py /path/to/dir` downloads MNIST and
+writes the hex-text files; the model is pure hs.
+
+```sh
+python3 hs.py xbuild ai/wnn/mnist.holy -o /tmp/mnist
+/tmp/mnist mnist_train_raw.txt mnist_test_raw.txt [ntrain] [ntest]
+```
