@@ -1,0 +1,408 @@
+// P5b: exact logic and arithmetic via the SYMBOLIC route (HDC/VSA memory).
+// Contrast with logic.holy (statistical route): there the readout learns
+// from examples and generalizes only where input similarity matches the
+// target function. Here operations are exact because each relation is
+// stored symbolically (one XOR write per fact) - but ONLY what was stored
+// can be chained. Honest limits measured, not hidden.
+//
+//   T1  arithmetic by chaining: store x -> x+1 for 0..99 (one write each),
+//       then a+k computed by k chained recalls (a in 0..94, k in 1..5)
+//   T2  transitive inference: chains A->B->C->D stored one-shot;
+//       query A, follow 2 hops, expect C (multi-hop deduction)
+//   T3  XOR one-shot: store all 4 (bit,bit)->result facts keyed by
+//       bind(b0,b1); recall all 4 (a gradient net needs many passes)
+//   T4  honest negative: 3-bit parity, store 7 of 8 rows, query the 8th
+//       (symbolic memory cannot infer an unseen row either)
+
+def xr_next(state):
+  state = state ^ ((state << 13) & 17592186044415)
+  state = state ^ (state >> 7)
+  state = state ^ ((state << 17) & 17592186044415)
+  return state
+
+def newbuf(n):
+  unsafe:
+    Ptr p = alloc(n)
+    return as_int(p)
+
+def st8(buf, i, v):
+  unsafe:
+    Ptr p = as_ptr(buf) + i
+    store8(p, v & 255)
+
+def hash_seed(s, n):
+  unsafe:
+    Ptr p = as_ptr(s) + 16
+    I64 h = 1469598103
+    I64 i = 0
+    while i < n:
+      h = (h * 1099511) ^ load8(p + i)
+      h = h & 17592186044415
+      i = i + 1
+    return h
+
+def gen_sym(symbuf, slot, seed, DIM):
+  i = 0
+  s = seed
+  while i < DIM:
+    s = xr_next(s + i + 1)
+    st8(symbuf, slot * DIM + i, s % 2)
+    i = i + 1
+
+// accumulate bind(a,b) into bundled memory (U8 counters centered 128)
+def bind_bundle(symbuf, a, b, mem, DIM):
+  unsafe:
+    Ptr sy = as_ptr(symbuf)
+    Ptr mm = as_ptr(mem)
+    I64 d = 0
+    while d < DIM:
+      I64 va = load8(sy + a * DIM + d)
+      I64 vb = load8(sy + b * DIM + d)
+      I64 c = load8(mm + d)
+      if va == vb:
+        c = c - 1
+      else:
+        c = c + 1
+      if c > 255:
+        c = 255
+      if c < 0:
+        c = 0
+      store8(mm + d, c)
+      d = d + 1
+
+// directional: accumulate bind(a, rot(b)) - relation has a direction,
+// so an interior node is not ambiguous between "previous" and "next"
+def bind_bundle_dir(symbuf, a, b, mem, DIM):
+  unsafe:
+    Ptr syd = as_ptr(symbuf)
+    Ptr mmd = as_ptr(mem)
+    I64 d = 0
+    while d < DIM:
+      I64 va = load8(syd + a * DIM + d)
+      I64 vb = load8(syd + b * DIM + ((d + 1) % DIM))
+      I64 c = load8(mmd + d)
+      if va == vb:
+        c = c - 1
+      else:
+        c = c + 1
+      if c > 255:
+        c = 255
+      if c < 0:
+        c = 0
+      store8(mmd + d, c)
+      d = d + 1
+
+// unbind with key a, rotate back, return nearest symbol slot in [0, nsym)
+def recall_dir(symbuf, a, mem, nsym, DIM, qbuf):
+  unsafe:
+    Ptr syr = as_ptr(symbuf)
+    Ptr mmr = as_ptr(mem)
+    Ptr qr = as_ptr(qbuf)
+    I64 d2 = 0
+    while d2 < DIM:
+      I64 dprev = d2 - 1
+      if dprev < 0:
+        dprev = DIM - 1
+      I64 va2 = load8(syr + a * DIM + dprev)
+      I64 mj = 0
+      if load8(mmr + dprev) >= 128:
+        mj = 1
+      I64 uu = va2 + mj
+      if uu == 2:
+        uu = 0
+      store8(qr + d2, uu)
+      d2 = d2 + 1
+    I64 best = 0 - 1
+    I64 bestd = DIM + 1
+    I64 s2 = 0
+    while s2 < nsym:
+      I64 dist = 0
+      I64 d3 = 0
+      while d3 < DIM:
+        if load8(syr + s2 * DIM + d3) != load8(qr + d3):
+          dist = dist + 1
+        d3 = d3 + 1
+      if dist < bestd:
+        bestd = dist
+        best = s2
+      s2 = s2 + 1
+    return best
+
+// unbind with key a, return nearest symbol slot in [0, nsym)
+def recall(symbuf, a, mem, nsym, DIM, qbuf):
+  unsafe:
+    Ptr sy2 = as_ptr(symbuf)
+    Ptr mm2 = as_ptr(mem)
+    Ptr qb = as_ptr(qbuf)
+    I64 d2 = 0
+    while d2 < DIM:
+      I64 va2 = load8(sy2 + a * DIM + d2)
+      I64 mj = 0
+      if load8(mm2 + d2) >= 128:
+        mj = 1
+      I64 uu = va2 + mj
+      if uu == 2:
+        uu = 0
+      store8(qb + d2, uu)
+      d2 = d2 + 1
+    I64 best = 0 - 1
+    I64 bestd = DIM + 1
+    I64 s2 = 0
+    while s2 < nsym:
+      I64 dist = 0
+      I64 d3 = 0
+      while d3 < DIM:
+        if load8(sy2 + s2 * DIM + d3) != load8(qb + d3):
+          dist = dist + 1
+        d3 = d3 + 1
+      if dist < bestd:
+        bestd = dist
+        best = s2
+      s2 = s2 + 1
+    return best
+
+// key for a PAIR: bind(u, v) materialized into keybuf slot
+def pair_key(symbuf, u, v, keybuf, DIM):
+  unsafe:
+    Ptr sy3 = as_ptr(symbuf)
+    Ptr kb = as_ptr(keybuf)
+    I64 d4 = 0
+    while d4 < DIM:
+      I64 x1 = load8(sy3 + u * DIM + d4)
+      I64 x2 = load8(sy3 + v * DIM + d4)
+      I64 xr = 0
+      if x1 != x2:
+        xr = 1
+      store8(kb + d4, xr)
+      d4 = d4 + 1
+
+// bind raw vector (keybuf) with sym b into memory
+def bind_bundle_raw(keybuf, b, symbuf, mem, DIM):
+  unsafe:
+    Ptr kb2 = as_ptr(keybuf)
+    Ptr sy4 = as_ptr(symbuf)
+    Ptr mm3 = as_ptr(mem)
+    I64 d5 = 0
+    while d5 < DIM:
+      I64 va3 = load8(kb2 + d5)
+      I64 vb3 = load8(sy4 + b * DIM + d5)
+      I64 c3 = load8(mm3 + d5)
+      if va3 == vb3:
+        c3 = c3 - 1
+      else:
+        c3 = c3 + 1
+      if c3 > 255:
+        c3 = 255
+      if c3 < 0:
+        c3 = 0
+      store8(mm3 + d5, c3)
+      d5 = d5 + 1
+
+// unbind raw vector key, nearest symbol
+def recall_raw(keybuf, mem, symbuf, nsym, DIM, qbuf):
+  unsafe:
+    Ptr kb3 = as_ptr(keybuf)
+    Ptr mm4 = as_ptr(mem)
+    Ptr qb2 = as_ptr(qbuf)
+    I64 d6 = 0
+    while d6 < DIM:
+      I64 va4 = load8(kb3 + d6)
+      I64 mj2 = 0
+      if load8(mm4 + d6) >= 128:
+        mj2 = 1
+      I64 uu2 = va4 + mj2
+      if uu2 == 2:
+        uu2 = 0
+      store8(qb2 + d6, uu2)
+      d6 = d6 + 1
+    I64 best2 = 0 - 1
+    I64 bestd2 = DIM + 1
+    I64 s3 = 0
+    while s3 < nsym:
+      I64 dist2 = 0
+      Ptr sy5 = as_ptr(symbuf)
+      I64 d7 = 0
+      while d7 < DIM:
+        if load8(sy5 + s3 * DIM + d7) != load8(qb2 + d7):
+          dist2 = dist2 + 1
+        d7 = d7 + 1
+      if dist2 < bestd2:
+        bestd2 = dist2
+        best2 = s3
+      s3 = s3 + 1
+    return best2
+
+def main():
+  DIM = 16384
+  // symbols: n0..n99 (numbers), c0..c199 (chain letters), z (zero), o (one)
+  nsym = 302
+  symbuf = newbuf(nsym * DIM)
+  i = 0
+  while i < nsym:
+    gen_sym(symbuf, i, 31337 + i * 7919, DIM)
+    i = i + 1
+  qbuf = newbuf(DIM)
+  keybuf = newbuf(DIM)
+
+  // ---- T1: successor chaining = exact addition ----
+  mem = newbuf(DIM)
+  i = 0
+  while i < DIM:
+    st8(mem, i, 128)
+    i = i + 1
+  i = 0
+  while i < 99:
+    bind_bundle_dir(symbuf, i, i + 1, mem, DIM)
+    i = i + 1
+  ok = 0
+  tot = 0
+  a = 0
+  while a <= 94:
+    k = 1
+    while k <= 5:
+      cur = a
+      j = 0
+      while j < k:
+        cur = recall_dir(symbuf, cur, mem, 100, DIM, qbuf)
+        j = j + 1
+      if cur == a + k:
+        ok = ok + 1
+      tot = tot + 1
+      k = k + 1
+    a = a + 1
+  print "T1 arithmetic by chaining (a+k, a 0..94, k 1..5):", ok, "/", tot
+
+  // ---- T2: transitive inference A->B->C->D, query A expect C (2 hops) ----
+  mem2 = newbuf(DIM)
+  i = 0
+  while i < DIM:
+    st8(mem2, i, 128)
+    i = i + 1
+  nchains = 50
+  c = 0
+  while c < nchains:
+    bind_bundle_dir(symbuf, 100 + c * 4, 100 + c * 4 + 1, mem2, DIM)
+    bind_bundle_dir(symbuf, 100 + c * 4 + 1, 100 + c * 4 + 2, mem2, DIM)
+    bind_bundle_dir(symbuf, 100 + c * 4 + 2, 100 + c * 4 + 3, mem2, DIM)
+    c = c + 1
+  ok2 = 0
+  ok3 = 0
+  c = 0
+  while c < nchains:
+    h1 = recall_dir(symbuf, 100 + c * 4, mem2, nsym, DIM, qbuf)
+    if h1 == 100 + c * 4 + 1:
+      ok2 = ok2 + 1
+    h2 = recall_dir(symbuf, h1, mem2, nsym, DIM, qbuf)
+    if h2 == 100 + c * 4 + 2:
+      ok3 = ok3 + 1
+    c = c + 1
+  print "T2 transitive inference: 1-hop", ok2, "/", nchains, " 2-hop (A=>C)", ok3, "/", nchains
+
+  // ---- T3: XOR one-shot (pair keys) ----
+  // symbols: b0f/b0t/b1f/b1t + ans0/ans1
+  ns3 = 306
+  names2 = ["b0f", "b0t", "b1f", "b1t", "ans0", "ans1"]
+  symbuf3 = newbuf(6 * DIM)
+  i = 0
+  while i < 6:
+    gen_sym(symbuf3, i, hash_seed(names2[i], len(names2[i])) + 999, DIM)
+    i = i + 1
+  mem3 = newbuf(DIM)
+  i = 0
+  while i < DIM:
+    st8(mem3, i, 128)
+    i = i + 1
+  x0 = 0
+  while x0 < 2:
+    x1 = 0
+    while x1 < 2:
+      pair_key(symbuf3, x0, 2 + x1, keybuf, DIM)
+      ans = 4
+      if x0 != x1:
+        ans = 5
+      bind_bundle_raw(keybuf, ans, symbuf3, mem3, DIM)
+      x1 = x1 + 1
+    x0 = x0 + 1
+  okx = 0
+  x0 = 0
+  while x0 < 2:
+    x1 = 0
+    while x1 < 2:
+      pair_key(symbuf3, x0, 2 + x1, keybuf, DIM)
+      r = recall_raw(keybuf, mem3, symbuf3, 6, DIM, qbuf)
+      want = 4
+      if x0 != x1:
+        want = 5
+      if r == want:
+        okx = okx + 1
+      x1 = x1 + 1
+    x0 = x0 + 1
+  print "T3 XOR learned one-shot (4 facts, 1 write each): recall", okx, "/4"
+
+  // ---- T4: 3-bit parity, 7 of 8 rows stored, query the unseen row ----
+  ns4 = 8
+  names4 = ["p0f", "p0t", "p1f", "p1t", "p2f", "p2t", "par0", "par1"]
+  symbuf4 = newbuf(8 * DIM)
+  i = 0
+  while i < 8:
+    gen_sym(symbuf4, i, hash_seed(names4[i], len(names4[i])) + 555, DIM)
+    i = i + 1
+  mem4 = newbuf(DIM)
+  i = 0
+  while i < DIM:
+    st8(mem4, i, 128)
+    i = i + 1
+  // rows 0..6 of 8 (pattern = x, parity = popcount%2); leave out pattern 7 (111)
+  pat = 0
+  while pat < 7:
+    pair_key(symbuf4, (pat & 1), 2 + ((pat >> 1) & 1), keybuf, DIM)
+    // bind in the third bit too: key = bind(bind(b0,b1),b2)
+    pair_key2 = newbuf(DIM)
+    unsafe:
+      Ptr ka = as_ptr(keybuf)
+      Ptr kb4 = as_ptr(pair_key2)
+      Ptr sy6 = as_ptr(symbuf4)
+      I64 d8 = 0
+      while d8 < DIM:
+        I64 xa = load8(ka + d8)
+        I64 xb = load8(sy6 + (4 + ((pat >> 2) & 1)) * DIM + d8)
+        I64 xr2 = 0
+        if xa != xb:
+          xr2 = 1
+        store8(kb4 + d8, xr2)
+        d8 = d8 + 1
+    pc = ((pat & 1) + ((pat >> 1) & 1) + ((pat >> 2) & 1)) % 2
+    bind_bundle_raw(pair_key2, 6 + pc, symbuf4, mem4, DIM)
+    pat = pat + 1
+  // query all 8 rows; row 7 was NEVER stored
+  okp = 0
+  pat = 0
+  while pat < 8:
+    pair_key(symbuf4, (pat & 1), 2 + ((pat >> 1) & 1), keybuf, DIM)
+    pair_key3 = newbuf(DIM)
+    unsafe:
+      Ptr ka2 = as_ptr(keybuf)
+      Ptr kb5 = as_ptr(pair_key3)
+      Ptr sy7 = as_ptr(symbuf4)
+      I64 d9 = 0
+      while d9 < DIM:
+        I64 xa2 = load8(ka2 + d9)
+        I64 xb2 = load8(sy7 + (4 + ((pat >> 2) & 1)) * DIM + d9)
+        I64 xr3 = 0
+        if xa2 != xb2:
+          xr3 = 1
+        store8(kb5 + d9, xr3)
+        d9 = d9 + 1
+    r2 = recall_raw(pair_key3, mem4, symbuf4, 8, DIM, qbuf)
+    pc2 = ((pat & 1) + ((pat >> 1) & 1) + ((pat >> 2) & 1)) % 2
+    if r2 == 6 + pc2:
+      okp = okp + 1
+    if pat == 7:
+      if r2 == 7:
+        print "T4 unseen parity row 111: predicted par1 (correct only by luck)"
+      else:
+        print "T4 unseen parity row 111: predicted par0 (wrong) - an unseen row cannot be inferred"
+    pat = pat + 1
+  print "T4 3-bit parity (7 rows stored): stored-row recall", okp, "/8 (incl. unseen row)"
+
+main()

@@ -149,3 +149,93 @@ Honest summary: this system learns in one pass, never catastrophically
 forgets, and picks up new facts in one shot - things LLMs cannot do
 without retraining. It is NOT smarter than an LLM and does not reason
 or generate free text.
+
+
+## logic.holy / logic_hdc.holy — logic and math (P5)
+
+Question: can training on logic and mathematics "develop the logic" of the
+connectome system? Measured answer: **no for learned reasoning, yes for
+memory- and symbol-based exact operations** — details below, nothing hidden.
+
+Same machinery as P1: frozen C. elegans reservoir + one-pass weightless
+readout, plus an ablation that skips the reservoir (raw encoded bits) and
+MLP / lookup baselines (`logic_baseline.py`, same splits, same encodings).
+All data is generated programmatically; splits are deterministic.
+
+### E1 — boolean functions, 8-bit inputs (train 188 patterns, held-out 68)
+
+| function | worm+WNN train | worm held-out | raw+WNN train | raw held-out | MLP held-out | lookup held-out |
+|---|---|---|---|---|---|---|
+| MAJORITY8 (>=4 ones) | 172/188 (91%) | 55/68 (81%) | 188/188 | 61/68 (90%) | 100% | 65% |
+| PARITY8 | 118/188 (63%) | 16/68 (24%) | 141/188 (75%) | 0/68 (0%) | 60% | 49% |
+| DNF4 (OR of 4 ANDs) | 164/188 (87%) | 56/68 (82%) | 188/188 | 65/68 (96%) | 100% | 68% |
+
+Reading: where input similarity aligns with the target (majority, DNF),
+the one-pass readout generalizes. Parity is the classic failure: held-out
+accuracy is at/below chance — the readout **anti-generalizes**, because a
+pattern's nearest neighbors always have the opposite parity. No local
+similarity method can beat this; an MLP barely can (60%).
+
+### E2/E3 — arithmetic and sequence rules: no generalization, for anyone
+
+Addition a+b (a,b in 0..15 -> 31 sums) and next-in-sequence
+(given a, a+d predict a+2d mod 32), held-out pairs AND a systematic split
+(train a<8, test a>=8; unseen step d=7), one-hot and thermometer encodings:
+
+- held-out accuracy is **0/68, 0/128, 0/59, 0/32 for worm+WNN, raw+WNN AND
+  the MLP** (MLP train accuracy: 100%). Lookup baseline: ~1.5% (chance).
+- Exact arithmetic from examples is memorization, not rule extraction, for
+  every method tested here. Even memorization is imperfect for the WNN:
+  42-66% training accuracy on 256 arbitrary pair->sum rows (local 8-bit
+  tuples can't isolate the pair interaction), while it memorizes 2-class
+  boolean functions at 75-100%.
+
+### E4 — continual logic: learn AND, then OR, then PARITY (retention)
+
+Function selected by 2 extra input bits; each function learned on all 256
+patterns, one pass, same tables:
+
+| after learning | WNN (worm and raw): AND | OR | PARITY | MLP: AND | OR | PARITY |
+|---|---|---|---|---|---|---|
+| AND | 255/256 | - | - | 255/256 | - | - |
+| + OR | 255/256 | 255/256 | - | 2/256 (0.8%) | 255/256 | - |
+| + PARITY | 255/256 | 255/256 | 132/256 (52%) | 1/256 | 255/256 | 151/256 (59%) |
+
+The standing result holds for logic too: tables never forget (AND survives
+two later functions); sequential gradient training destroys AND. Parity
+stays hard for both even with full data (WNN random 8-bit tuples rarely
+cover exactly the 8 data bits).
+
+### E5 — the symbolic route is exact (logic_hdc.holy, HDC memory)
+
+| test | result |
+|---|---|
+| T1 arithmetic by chaining: store x->x+1 (0..99), compute a+k by k recalls | 475/475 (100%) |
+| T2 transitive inference: store A->B->C->D chains, query A, follow 2 hops | 50/50 (100%) |
+| T3 XOR learned one-shot (4 facts, one write each) | 4/4 |
+| T4 3-bit parity, 7 of 8 rows stored, query the unseen 8th row | wrong - an unseen row cannot be inferred |
+
+Two honest implementation lessons: commutative XOR binding is ambiguous on
+interior chain nodes (a node that is both value and key unbinds to a 50/50
+mix; T1 scored 13%, T2 2-hop 60% before the fix); directional
+(permutation) binding fixes it (both 100%) at the cost of free reverse
+recall. And the symbolic route only ever works for what was stored — T4.
+
+### Conclusion (P5)
+
+The connectome reservoir does not "grow logic" from data — if anything it
+blurs small structured inputs (raw beats worm on every E1 row). What the
+system genuinely has: (a) one-pass similarity-based generalization where
+the function respects similarity, (b) perfect retention across continual
+learning, (c) exact symbolic arithmetic/inference through one-shot HDC
+chaining — but only over stored relations. This is not reasoning and is
+nowhere near LLM competence; it is also not nothing: 475/475 chained
+additions on a 16KB fixed memory with one integer-XOR write per fact.
+
+```sh
+python3 hs.py xbuild ai/wnn/logic.holy -o /tmp/logic
+/tmp/logic ai/wnn/data/connectome.txt      # ~90 s: E1-E4
+python3 hs.py xbuild ai/wnn/logic_hdc.holy -o /tmp/logic_hdc
+/tmp/logic_hdc                             # ~75 s: T1-T4
+python3 ai/wnn/logic_baseline.py           # MLP + lookup baselines
+```
