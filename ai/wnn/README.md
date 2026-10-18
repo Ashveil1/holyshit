@@ -75,3 +75,24 @@ writes the hex-text files; the model is pure hs.
 python3 hs.py xbuild ai/wnn/mnist.holy -o /tmp/mnist
 /tmp/mnist mnist_train_raw.txt mnist_test_raw.txt [ntrain] [ntest]
 ```
+
+
+## intent.holy — text intent classification (milestone 3)
+
+SNIPS NLU benchmark (7 intents, 2,100 train / 700 test utterances;
+`2017-06-custom-intent-engines` split). Weightless classifier: one 2^16
+RAM table per class over hashed (FNV-1a) unigram+bigram features, U8
+saturating counters, capped-count scoring normalized by class size.
+No floats, no embeddings, no gradients.
+
+Measured (xbuild binary): **96.6% (676/700)**, train+test together ~10 ms,
+tables 458 KB. Context: classical ML baselines on SNIPS-7 sit ~95-97%,
+neural SOTA ~98-99% - this is honestly in the classical band.
+
+Data prep: `python3 ai/wnn/prepare_snips.py /path/to/nlu-benchmark-master/2017-06-custom-intent-engines outdir`
+(from https://github.com/sonos/nlu-benchmark).
+
+```sh
+python3 hs.py xbuild ai/wnn/intent.holy -o /tmp/intent
+/tmp/intent snips_train.txt snips_test.txt
+```
