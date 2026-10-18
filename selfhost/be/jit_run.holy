@@ -9,6 +9,45 @@ import pyrt
 import asm
 import jitimage
 import jitbind
+extern:
+  U0 exit(I64 status)
+def trailing_line(s):
+  n = len(s)
+  k = n
+  while k > 0 and find("0123456789", s[k - 1]) >= 0:
+    k = k - 1
+  if k == n or k < 9:
+    return [s, null]
+  if s[k - 9:k] != " at line ":
+    return [s, null]
+  return [s[0:k - 9], s[k:n]]
+def error_exit(e):
+  # Match the interpreter's "error: {msg} at line {line}" on stderr, rc 1.
+  # py_err strings carry the target line after a u0002 marker; hs raise then
+  # appends " at line N" for the driver line, so py_eline's j+1 skip reads
+  # the marker's own digits. Plain raises (parselib) get the same appended
+  # suffix after their baked target line, so strip one suffix only when two
+  # are present.
+  i = find(e, pyrt.EMARK)
+  if i >= 0:
+    rest = e[i + len(pyrt.EMARK):len(e)]
+    j = find(rest, "u0002")
+    msg = rest[0:j]
+    tail = rest[j + 5:len(rest)]
+    k = 0
+    while k < len(tail) and find("0123456789", tail[k]) >= 0:
+      k = k + 1
+    if k > 0:
+      msg = msg + " at line " + tail[0:k]
+  else:
+    msg = e
+    once = trailing_line(e)
+    if once[1] != null and trailing_line(once[0])[1] != null:
+      msg = once[0]
+  f = open("/dev/stderr", "w")
+  write(f, "error: " + msg + "\n")
+  close(f)
+  exit(1)
 def prepare():
   parselib.P["wide_literals"] = true
   srcpath = argv()[0]
@@ -57,7 +96,6 @@ def prepare():
 try:
   pointer = prepare()
 except as e:
-  print pyrt.py_estr(e)
-  raise "jit compilation failed"
+  error_exit(e)
 unsafe:
   I64 result = call0(as_ptr(pointer))
