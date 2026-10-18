@@ -239,3 +239,50 @@ python3 hs.py xbuild ai/wnn/logic_hdc.holy -o /tmp/logic_hdc
 /tmp/logic_hdc                             # ~75 s: T1-T4
 python3 ai/wnn/logic_baseline.py           # MLP + lookup baselines
 ```
+
+## P6: procedures instead of answers (working memory + learned rules)
+
+P5 showed the system memorizes. P6 tests the other route from the survey
+(scratchpads, ACT-R style production systems): learn a PROCEDURE and run it
+step by step in a working memory, so the answer is computed, not recalled.
+Files: `reason.py` (all experiments T1-T5 + baselines, deterministic),
+`reason.holy` (native port of the core: add + sub, matches reason.py's
+numbers on 1-3 digits and fact counts exactly).
+
+**Given (hand-built):** primitive actions READ / FACT / WRITE / ADV / HALT;
+digit tapes (LSB first); the carry abstraction (zero/nonzero) in the policy
+observation; the teacher that emits demonstration traces; counting demos
+0..9; "add/sub = count forward/back" and "mul = repeated addition" as
+derivation procedures; for word problems the sentence template, number
+extraction and the verb position. **Learned:** the policy (observation ->
+next action, majority vote over trace steps), the (op,x,y,carry) -> (digit,
+carry') fact table, and the verb -> operation map. The learning itself is
+tabular; nothing here discovers arithmetic from scratch.
+
+Measured (`python3 ai/wnn/reason.py`; native: `hs.py xbuild ai/wnn/reason.holy`):
+
+| test | result |
+|---|---|
+| T1 held-out digit facts (56/200 unseen) | lookup 0%, MLP 0% (train 100%), + counting derivation 100% |
+| T2 add, 200 traces, unseen operand pairs 1-3 digits | 100% |
+| T2 length generalization 4/6/10/20/50 digits | 100% (native holy: 300/300 each) |
+| T2 baseline direct MLP (3000 pairs) | train 100%, held-out 57%, 4+ digits cannot be encoded |
+| T2 baseline gradient step-net inside the same loop | 100% - the structure generalizes, not the WNN |
+| demos needed (6-digit acc) | 5 traces 82%, 10 traces 100% with counting; lookup-only needs >200 |
+| T3 sub 2-30 digits | 100% (with counting) |
+| T3 mul by 1 digit | 100% with repeated-addition derivation; ~86-98% with 8000 traces and no derivation (missing facts) |
+| T3 compare | 94-100% only with 8000 traces (300/300 facts stored); no derivation rule, so low with few demos |
+| T4 2-step word problems, new names/numbers, seen verbs | 100% (always-add baseline ~25%) |
+| T4 unseen verbs (char-trigram nearest neighbour) | 25%, at chance: spelling similarity is not meaning |
+| T5 drop carry rule | wrong on 98%; failure iff operands generate a carry (100% predictable) |
+| T5 corrupt carry at step k | first wrong digit is k+1 in 87% of cases |
+
+Reading it honestly: it generalizes to unseen operands and to much longer
+numbers because the controller is length-free (its observation is local) and
+the facts are exact. That is the scratchpad result from the literature
+reproduced in a tiny system, and a plain gradient net does equally well once
+it is placed in the same loop. What is NOT shown: reasoning, discovering a
+new algorithm, general word problems (unseen words fail), or any role for the
+connectome reservoir (it is not used; P5 found it does not help logic). The
+facts that generalize do so only where a counting/derivation procedure was
+given. Not run: grokking-style gradient training with weight decay.
