@@ -1,0 +1,197 @@
+// P2: one-shot fact memory via hyperdimensional computing (HDC/VSA).
+// Each symbol = random 2048-bit hypervector. A fact A->B is stored by
+// BINDING the two vectors (XOR) and BUNDLING into one memory vector
+// (per-dimension majority vote). Each fact is written ONCE - one-shot,
+// no training loop. Recall: unbind with A's vector, find nearest symbol
+// by Hamming distance. XOR binding is symmetric, so B->A recall is free.
+// Interference is graceful (measured honestly), forgetting is zero writes.
+
+def xr_next(state):
+  state = state ^ ((state << 13) & 17592186044415)
+  state = state ^ (state >> 7)
+  state = state ^ ((state << 17) & 17592186044415)
+  return state
+
+def newbuf(n):
+  unsafe:
+    Ptr p = alloc(n)
+    return as_int(p)
+
+def st8(buf, i, v):
+  unsafe:
+    Ptr p = as_ptr(buf) + i
+    store8(p, v & 255)
+
+def ld8(buf, i):
+  unsafe:
+    Ptr p = as_ptr(buf) + i
+    return load8(p)
+
+def hash_seed(s, n):
+  unsafe:
+    Ptr p = as_ptr(s) + 16
+    I64 h = 1469598103
+    I64 i = 0
+    while i < n:
+      h = (h * 1099511) ^ load8(p + i)
+      h = h & 17592186044415
+      i = i + 1
+    return h
+
+// DIM hypervector bits, one byte per bit
+def gen_sym(symbuf, slot, seed, DIM):
+  i = 0
+  s = seed
+  while i < DIM:
+    s = xr_next(s + i + 1)
+    st8(symbuf, slot * DIM + i, s % 2)
+    i = i + 1
+
+// bind A(slot a) with B(slot b) into memory accum mem (U8 centered 128)
+def bind_bundle(symbuf, a, b, mem, DIM):
+  unsafe:
+    Ptr sy = as_ptr(symbuf)
+    Ptr mm = as_ptr(mem)
+    I64 d = 0
+    while d < DIM:
+      I64 va = load8(sy + a * DIM + d)
+      I64 vb = load8(sy + b * DIM + d)
+      I64 c = load8(mm + d)
+      if va == vb:
+        c = c - 1
+      else:
+        c = c + 1
+      if c > 255:
+        c = 255
+      if c < 0:
+        c = 0
+      store8(mm + d, c)
+      d = d + 1
+
+// unbind: u = a XOR majority(mem); nearest symbol; returns slot or -1
+def recall(symbuf, a, mem, nsym, DIM, qbuf):
+  unsafe:
+    Ptr sy2 = as_ptr(symbuf)
+    Ptr mm2 = as_ptr(mem)
+    Ptr qb = as_ptr(qbuf)
+    I64 d2 = 0
+    while d2 < DIM:
+      I64 va2 = load8(sy2 + a * DIM + d2)
+      I64 mj = 0
+      if load8(mm2 + d2) >= 128:
+        mj = 1
+      I64 uu = va2 + mj
+      if uu == 2:
+        uu = 0
+      store8(qb + d2, uu)
+      d2 = d2 + 1
+    I64 best = 0 - 1
+    I64 bestd = DIM + 1
+    I64 s2 = 0
+    while s2 < nsym:
+      I64 dist = 0
+      I64 d3 = 0
+      while d3 < DIM:
+        if load8(sy2 + s2 * DIM + d3) != load8(qb + d3):
+          dist = dist + 1
+        d3 = d3 + 1
+      if dist < bestd:
+        bestd = dist
+        best = s2
+      s2 = s2 + 1
+    return best
+
+def main():
+  DIM = 4096
+  // symbol inventory: 50 countries + 50 capitals + 40 demo words
+  countries = ["france","japan","thailand","brazil","egypt","canada","germany","india","china","australia","mexico","italy","spain","russia","korea","vietnam","indonesia","turkey","argentina","peru","chile","norway","sweden","finland","poland","greece","portugal","ireland","austria","belgium","netherlands","switzerland","denmark","czechia","hungary","romania","ukraine","israel","iran","iraq","pakistan","bangladesh","malaysia","singapore","philippines","zealand","morocco","nigeria","kenya","ethiopia"]
+  capitals = ["paris","tokyo","bangkok","brasilia","cairo","ottawa","berlin","delhi","beijing","canberra","mexico-city","rome","madrid","moscow","seoul","hanoi","jakarta","ankara","buenos-aires","lima","santiago","oslo","stockholm","helsinki","warsaw","athens","lisbon","dublin","vienna","brussels","amsterdam","bern","copenhagen","prague","budapest","bucharest","kyiv","jerusalem","tehran","baghdad","islamabad","dhaka","kuala-lumpur","singapore-city","manila","wellington","rabat","abuja","nairobi","addis-ababa"]
+  // made-up NEW facts (names -> things): the point is arbitrary one-shot facts
+  newkeys = ["ash","mali","chana","bordin","pim","narin","tara","kan","fah","mond","lee","noi","oat","palm","q","ruk","sun","tong","uma","view"]
+  newvals = ["gtx950m","cat","tea","bicycle","rain","river","star","drum","sky","stone","paper","bird","bread","tree","quartz","love","solar","gold","umbrella","mountain"]
+
+  allsyms = countries + capitals + newkeys + newvals
+  nsym = len(allsyms)
+  symidx = {}
+  i = 0
+  while i < nsym:
+    symidx[allsyms[i]] = i
+    i = i + 1
+
+  symbuf = newbuf(nsym * DIM)
+  mem = newbuf(DIM)
+  i = 0
+  while i < DIM:
+    st8(mem, i, 128)
+    i = i + 1
+  qbuf = newbuf(DIM)
+
+  i = 0
+  while i < nsym:
+    gen_sym(symbuf, i, hash_seed(allsyms[i], len(allsyms[i])) + 7777, DIM)
+    i = i + 1
+  print "symbols:", nsym, "dims:", DIM, "memory bytes:", DIM, "(fixed size, any number of facts)"
+
+  // PHASE 1: teach 30 country->capital, each ONCE
+  n1 = 30
+  i = 0
+  while i < n1:
+    bind_bundle(symbuf, symidx[countries[i]], symidx[capitals[i]], mem, DIM)
+    i = i + 1
+  ok = 0
+  i = 0
+  while i < n1:
+    r = recall(symbuf, symidx[countries[i]], mem, nsym, DIM, qbuf)
+    if allsyms[r] == capitals[i]:
+      ok = ok + 1
+    i = i + 1
+  print "after 30 one-shot facts: recall", ok, "/", n1
+  // reverse recall (capital -> country) free via XOR symmetry
+  okr = 0
+  i = 0
+  while i < n1:
+    r = recall(symbuf, symidx[capitals[i]], mem, nsym, DIM, qbuf)
+    if allsyms[r] == countries[i]:
+      okr = okr + 1
+    i = i + 1
+  print "reverse recall (capital->country):", okr, "/", n1
+
+  // PHASE 2: teach 20 more + 20 made-up facts; re-test the first 30
+  i = 30
+  while i < 50:
+    bind_bundle(symbuf, symidx[countries[i]], symidx[capitals[i]], mem, DIM)
+    i = i + 1
+  i = 0
+  while i < 20:
+    bind_bundle(symbuf, symidx[newkeys[i]], symidx[newvals[i]], mem, DIM)
+    i = i + 1
+  ok = 0
+  i = 0
+  while i < 30:
+    r = recall(symbuf, symidx[countries[i]], mem, nsym, DIM, qbuf)
+    if allsyms[r] == capitals[i]:
+      ok = ok + 1
+    i = i + 1
+  print "after 40 MORE one-shot facts (70 total): first-30 recall", ok, "/30"
+  ok2 = 0
+  i = 30
+  while i < 50:
+    r = recall(symbuf, symidx[countries[i]], mem, nsym, DIM, qbuf)
+    if allsyms[r] == capitals[i]:
+      ok2 = ok2 + 1
+    i = i + 1
+  ok3 = 0
+  i = 0
+  while i < 20:
+    r = recall(symbuf, symidx[newkeys[i]], mem, nsym, DIM, qbuf)
+    if allsyms[r] == newvals[i]:
+      ok3 = ok3 + 1
+    i = i + 1
+  print "facts 31-50 recall:", ok2, "/20, made-up facts recall:", ok3, "/20"
+  // spot check for the demo
+  r = recall(symbuf, symidx["ash"], mem, nsym, DIM, qbuf)
+  print "spot check: ash ->", allsyms[r]
+  r = recall(symbuf, symidx["japan"], mem, nsym, DIM, qbuf)
+  print "spot check: japan ->", allsyms[r]
+
+main()
