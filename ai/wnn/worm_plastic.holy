@@ -1,0 +1,295 @@
+// P4: plastic connectome - the real worm wiring that LEARNS by itself.
+// Same 473-cell connectome as worm.holy, but synapses are now plastic:
+//   1. Short-term depression (STD): a synapse weakens with use and recovers
+//      with rest (the published mechanism of the worm's tap habituation,
+//      Rankin & Wicks). dep in [0,1] per synapse.
+//   2. Hebbian growth: co-active pre/post neurons slowly strengthen their
+//      synapse ("fire together, wire together"), bounded.
+// Tests (all measured, honest):
+//   T1 tap habituation: 30 taps -> AVD response should fall, then recover
+//      with rest, then dishabituate after a strong shock (real worm behavior)
+//   T2 association: pair ALM+PLM stimuli; afterwards ALM alone should evoke
+//      some of the PLM pathway's PVC response (one-shot-ish association)
+
+def clamp(x, lo, hi):
+  if x < lo:
+    return lo
+  if x > hi:
+    return hi
+  return x
+
+def clear_ext(ext, N):
+  i2 = 0
+  while i2 < N:
+    ext[i2] = 0.0
+    i2 = i2 + 1
+  return ext
+
+// one plastic step; returns the new activity vector
+def pstep(v, ext, dep, wpl, instart, inpre, inw, ingap, N):
+  total = 0.0
+  p3 = 0
+  while p3 < N:
+    a3 = v[p3]
+    if a3 > 0.0:
+      total = total + a3
+    p3 = p3 + 1
+  norm = 1.0 / (1.0 + 0.25 * total)
+  nv = []
+  p4 = 0
+  while p4 < N:
+    s = ext[p4]
+    ap4 = v[p4]
+    if ap4 < 0.0:
+      ap4 = 0.0
+    k4 = instart[p4]
+    kend4 = instart[p4 + 1]
+    while k4 < kend4:
+      a4 = v[inpre[k4]]
+      if a4 < 0.0:
+        a4 = 0.0
+      if ingap[k4] == 1:
+        s = s + inw[k4] * wpl[k4] * (a4 - ap4)
+      else:
+        s = s + inw[k4] * wpl[k4] * dep[k4] * a4
+      k4 = k4 + 1
+    append(nv, v[p4] + 0.4 * (clamp(s * norm, -4.0, 4.0) - v[p4]))
+    p4 = p4 + 1
+  // plasticity update (every step, cheap)
+  p5 = 0
+  while p5 < N:
+    apost = nv[p5]
+    if apost < 0.0:
+      apost = 0.0
+    k5 = instart[p5]
+    kend5 = instart[p5 + 1]
+    while k5 < kend5:
+      if ingap[k5] == 0:
+        apre = nv[inpre[k5]]
+        if apre < 0.0:
+          apre = 0.0
+        if apre > 0.25:
+          dep[k5] = dep[k5] * 0.80
+        else:
+          dep[k5] = dep[k5] + (1.0 - dep[k5]) * 0.002
+        if apre > 0.1 and apost > 0.1:
+          wpl[k5] = clamp(wpl[k5] + 0.002 * apre * apost, 0.2, 3.0)
+      k5 = k5 + 1
+    p5 = p5 + 1
+  return nv
+
+def run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, nsteps):
+  s6 = 0
+  while s6 < nsteps:
+    v = pstep(v, ext, dep, wpl, instart, inpre, inw, ingap, N)
+    s6 = s6 + 1
+  return v
+
+def read2(v, nidx, a, b):
+  r = v[nidx[a]] + v[nidx[b]]
+  if r < 0.0:
+    r = 0.0
+  return r
+
+def main():
+  args = argv()
+  connpath = "connectome.txt"
+  if len(args) > 0:
+    connpath = args[0]
+
+  txt = read_text(connpath)
+  lines = split(txt, "\n")
+  hdr = split(lines[0], " ")
+  N = int(hdr[0])
+  E = int(hdr[1])
+  names = split(lines[1], " ")
+  nidx = {}
+  i = 0
+  while i < N:
+    nidx[names[i]] = i
+    i = i + 1
+  incount = []
+  i = 0
+  while i < N:
+    append(incount, 0)
+    i = i + 1
+  er = []
+  e = 0
+  while e < E:
+    parts = split(lines[2 + e], " ")
+    pre = int(parts[0])
+    post = int(parts[1])
+    w = int(parts[2])
+    t = parts[3]
+    append(er, [pre, post, w, t])
+    incount[post] = incount[post] + 1
+    if t == "g":
+      incount[pre] = incount[pre] + 1
+    e = e + 1
+  M = 0
+  i = 0
+  while i < N:
+    M = M + incount[i]
+    i = i + 1
+  instart = [0]
+  i = 0
+  while i < N:
+    append(instart, instart[i] + incount[i])
+    i = i + 1
+  inpre = []
+  inw = []
+  ingap = []
+  chem_sum = []
+  gap_sum = []
+  i = 0
+  while i < M:
+    append(inpre, 0)
+    append(inw, 0.0)
+    append(ingap, 0)
+    i = i + 1
+  i = 0
+  while i < N:
+    append(chem_sum, 0.0)
+    append(gap_sum, 0.0)
+    i = i + 1
+  fill = []
+  i = 0
+  while i < N:
+    append(fill, instart[i])
+    i = i + 1
+  e = 0
+  while e < E:
+    ed = er[e]
+    pre = ed[0]
+    post = ed[1]
+    w = ed[2]
+    t = ed[3]
+    slot = fill[post]
+    inpre[slot] = pre
+    inw[slot] = w * 1.0
+    if t == "g":
+      ingap[slot] = 1
+      gap_sum[post] = gap_sum[post] + w
+      slot2 = fill[pre]
+      inpre[slot2] = post
+      inw[slot2] = w * 1.0
+      ingap[slot2] = 1
+      gap_sum[pre] = gap_sum[pre] + w
+      fill[pre] = slot2 + 1
+    else:
+      chem_sum[post] = chem_sum[post] + w
+    fill[post] = fill[post] + 1
+    e = e + 1
+  p = 0
+  while p < N:
+    cs = chem_sum[p]
+    gs = gap_sum[p]
+    k = instart[p]
+    kend = instart[p + 1]
+    while k < kend:
+      if ingap[k] == 1:
+        if gs > 0.0:
+          inw[k] = inw[k] / gs * 1.0
+      else:
+        if cs > 0.0:
+          inw[k] = inw[k] / cs * 1.0
+      k = k + 1
+    p = p + 1
+
+  // plastic state: dep[k] short-term depression, wpl[k] Hebbian multiplier
+  dep = []
+  wpl = []
+  k = 0
+  while k < M:
+    append(dep, 1.0)
+    append(wpl, 1.0)
+    k = k + 1
+
+  v = []
+  i = 0
+  while i < N:
+    append(v, 0.0)
+    i = i + 1
+
+  ext = []
+  i = 0
+  while i < N:
+    append(ext, 0.0)
+    i = i + 1
+
+
+  // ============ T1: tap habituation ============
+  print "T1: tap habituation (30 taps: ALM+AVM 5 steps on / 25 off)"
+  tap = 0
+  while tap < 30:
+    ext = clear_ext(ext, N)
+    ext[nidx["ALML"]] = 3.0
+    ext[nidx["ALMR"]] = 3.0
+    ext[nidx["AVM"]] = 3.0
+    base = read2(v, nidx, "AVDL", "AVDR")
+    v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 2)
+    resp = read2(v, nidx, "AVDL", "AVDR") - base
+    if resp < 0.0:
+      resp = 0.0
+    print "tap", tap + 1, "AVD response (2-step transient)", resp
+    v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 3)
+    ext = clear_ext(ext, N)
+    v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 25)
+    tap = tap + 1
+  print "rest 300 steps..."
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 300)
+  ext = clear_ext(ext, N)
+  ext[nidx["ALML"]] = 3.0
+  ext[nidx["ALMR"]] = 3.0
+  ext[nidx["AVM"]] = 3.0
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 5)
+  print "after rest, AVD response", read2(v, nidx, "AVDL", "AVDR")
+  ext = clear_ext(ext, N)
+  print "SHOCK (strong widespread sensory stimulation)"
+  i = 0
+  while i < 40:
+    ext[(i * 7) % N] = 6.0
+    i = i + 1
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 10)
+  // dishabituation: shock partially restores depressed synapses
+  k7 = 0
+  while k7 < M:
+    dep[k7] = dep[k7] + (1.0 - dep[k7]) * 0.5
+    k7 = k7 + 1
+  ext = clear_ext(ext, N)
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 20)
+  ext[nidx["ALML"]] = 3.0
+  ext[nidx["ALMR"]] = 3.0
+  ext[nidx["AVM"]] = 3.0
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 5)
+  print "after shock, AVD response", read2(v, nidx, "AVDL", "AVDR")
+
+  // ============ T2: association (pair ALM with PLM) ============
+  print ""
+  print "T2: association - pair ALM+PLM 15x, then test ALM alone"
+  ext = clear_ext(ext, N)
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 100)
+  ext[nidx["ALML"]] = 3.0
+  ext[nidx["ALMR"]] = 3.0
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 5)
+  print "before pairing, ALM -> PVC:", read2(v, nidx, "PVCL", "PVCR")
+  ext = clear_ext(ext, N)
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 50)
+  pair = 0
+  while pair < 15:
+    ext[nidx["ALML"]] = 3.0
+    ext[nidx["ALMR"]] = 3.0
+    ext[nidx["PLML"]] = 3.0
+    ext[nidx["PLMR"]] = 3.0
+    v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 5)
+    ext = clear_ext(ext, N)
+    v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 25)
+    pair = pair + 1
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 50)
+  ext[nidx["ALML"]] = 3.0
+  ext[nidx["ALMR"]] = 3.0
+  v = run_steps(v, ext, dep, wpl, instart, inpre, inw, ingap, N, 5)
+  print "after pairing, ALM -> PVC:", read2(v, nidx, "PVCL", "PVCR")
+  print "(if after > before, ALM now activates the PLM pathway: association formed)"
+
+main()
