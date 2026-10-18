@@ -1,0 +1,11 @@
+10
+0|3|Hello!||Hi there!||Hey! How can I help?
+1|2|I'm running well, thanks! All my lookup tables are warm.||Doing great - no gradients to descend today. You?
+2|2|I'm a weightless neural network written in holyshit. No floats, just tables.||They call me Weightless. I'm a small RAM-based net, not an LLM.
+3|2|Why did the gradient descent quit? Too many ups and downs.||I told an LLM a joke once. It took 7 billion parameters to laugh.
+4|2|I classify what you say into intents using RAM lookup tables - no floats, no GPU, under a megabyte. I can chat about simple things and tell you how I work.||I'm a demo: intent in, answer out. Ask me about the weather, music, restaurants, or how I work.
+5|2|You're welcome!||Anytime.
+6|2|Bye! I'll stay right here in my lookup tables.||See you!
+7|2|I can't fetch live weather yet, but I recognized a weather question! (intent: weather)||Weather intent detected. A real backend would answer here.
+8|2|Music intent recognized. Imagine your song playing now.||I'd play that on a real system - music intent detected.
+9|2|Restaurant booking intent recognized. No table was actually booked.||Got it - that's a restaurant request (intent only, no booking made).

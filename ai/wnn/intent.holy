@@ -134,7 +134,7 @@ def main():
         unsafe:
           Ptr sb3 = as_ptr(sbuf) + (c * 8)
           sc = as_int(load64(sb3))
-        sc = (sc * 1000000) / tots[c]
+        sc = (sc * 1000) / nf
         if sc > bests:
           bests = sc
           best = c

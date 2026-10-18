@@ -85,7 +85,9 @@ RAM table per class over hashed (FNV-1a) unigram+bigram features, U8
 saturating counters, capped-count scoring normalized by class size.
 No floats, no embeddings, no gradients.
 
-Measured (xbuild binary): **96.6% (676/700)**, train+test together ~10 ms,
+Measured (xbuild binary): **98.4% (689/700)** with per-feature averaged scoring
+(the first cut normalized by class size - that inflates rare classes;
+fixed and noted for honesty), train+test together ~10 ms,
 tables 458 KB. Context: classical ML baselines on SNIPS-7 sit ~95-97%,
 neural SOTA ~98-99% - this is honestly in the classical band.
 
@@ -95,4 +97,26 @@ Data prep: `python3 ai/wnn/prepare_snips.py /path/to/nlu-benchmark-master/2017-0
 ```sh
 python3 hs.py xbuild ai/wnn/intent.holy -o /tmp/intent
 /tmp/intent snips_train.txt snips_test.txt
+```
+
+
+## chat.holy — tiny conversational demo (milestone 4)
+
+Console REPL: the same weightless classifier over 10 intents (7 smalltalk +
+weather/music/restaurant trained on real SNIPS utterances), per-intent
+response templates, and an explicit fallback when confidence is low
+("I don't know how to answer that yet"). Byte-level input normalization in
+`unsafe:` (lowercase, punctuation), zero model floats, 655 KB of tables,
+9.2 MB peak RSS total.
+
+Honest limits: this is intent recognition + canned answers, NOT open
+conversation. It cannot compose, reason, remember across turns, or answer
+outside its 10 intents. Held-out check on the mixed 10-intent set (351
+train / 88 test): 86.4%; 97.7% trained on the full set. A ChatGPT-like open
+chat at this size is not achievable with published weightless methods -
+see the research summary reported separately.
+
+```sh
+python3 hs.py xbuild ai/wnn/chat.holy -o /tmp/chat
+cd ai/wnn && /tmp/chat    # or: printf 'hello\nquit\n' | /tmp/chat
 ```
