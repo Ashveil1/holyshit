@@ -1,0 +1,198 @@
+// Weightless neural network (WiSARD-family) on sklearn digits, pure holyshit.
+// Thermometer-4 encoding, tuple-16 RAM tables, 4-bank ensemble, int counts + bleaching.
+
+def xr_next(state):
+  // xorshift, kept in the 44-bit positive range for the x64 backend
+  state = state ^ ((state << 13) & 17592186044415)
+  state = state ^ (state >> 7)
+  state = state ^ ((state << 17) & 17592186044415)
+  return state
+
+def make_perm(seed):
+  p = range(256)
+  s = seed
+  i = 255
+  while i > 0:
+    s = xr_next(s)
+    j = s % (i + 1)
+    t = p[i]
+    p[i] = p[j]
+    p[j] = t
+    i = i - 1
+  return p
+
+def encode(px):
+  // 64 pixels, 4 thermometer bits each -> 256 bits
+  bits = []
+  i = 0
+  while i < 64:
+    v = px[i]
+    append(bits, int(v >= 1))
+    append(bits, int(v >= 4))
+    append(bits, int(v >= 8))
+    append(bits, int(v >= 12))
+    i = i + 1
+  return bits
+
+def addr_of(bits, perm, base):
+  a = 0
+  k = 0
+  while k < 16:
+    a = a * 2 + bits[perm[base + k]]
+    k = k + 1
+  return a
+
+def main():
+  args = argv()
+  path = "ai/wnn/data/digits.txt"
+  if len(args) > 0:
+    path = args[0]
+  raw = read_text(path)
+  lines = split(raw, "\n")
+  head = split(lines[0], " ")
+  n = int(head[0])
+  images = []
+  labels = []
+  i = 0
+  while i < n:
+    parts = split(lines[i + 1], " ")
+    append(labels, int(parts[0]))
+    row = []
+    j = 0
+    while j < 64:
+      append(row, int(parts[j + 1]))
+      j = j + 1
+    append(images, row)
+    i = i + 1
+
+  order = range(n)
+  s = 99991
+  i = n - 1
+  while i > 0:
+    s = xr_next(s)
+    j = s % (i + 1)
+    t = order[i]
+    order[i] = order[j]
+    order[j] = t
+    i = i - 1
+  ntrain = int((n * 3) / 4)
+  NB = 4
+  NT = 16
+
+  perms = []
+  b = 0
+  while b < NB:
+    append(perms, make_perm(12345 + b * 777))
+    b = b + 1
+
+  // tables[bank][tuple][class] -> list of 65536 int counts
+  print "alloc"
+  tables = []
+  b = 0
+  while b < NB:
+    tbank = []
+    t = 0
+    while t < NT:
+      tclass = []
+      c = 0
+      while c < 10:
+        tt = []
+        k = 0
+        while k < 65536:
+          append(tt, 0)
+          k = k + 1
+        append(tclass, tt)
+        c = c + 1
+      append(tbank, tclass)
+      t = t + 1
+    append(tables, tbank)
+    b = b + 1
+
+  print "train", ntrain
+  i = 0
+  while i < ntrain:
+    oi = order[i]
+    bits = encode(images[oi])
+    cls = labels[oi]
+    b = 0
+    while b < NB:
+      p = perms[b]
+      t = 0
+      while t < NT:
+        a = addr_of(bits, p, t * 16)
+        tab = tables[b][t][cls]
+        tab[a] = tab[a] + 1
+        t = t + 1
+      b = b + 1
+    i = i + 1
+
+  print "test"
+  correct = 0
+  ntest = 0
+  i = ntrain
+  while i < n:
+    oi = order[i]
+    bits = encode(images[oi])
+    // collect counts for the 64 (bank,tuple) addresses x 10 classes once
+    counts = []
+    idx = 0
+    b = 0
+    while b < NB:
+      p = perms[b]
+      t = 0
+      while t < NT:
+        a = addr_of(bits, p, t * 16)
+        row = []
+        c = 0
+        while c < 10:
+          append(row, tables[b][t][c][a])
+          c = c + 1
+        append(counts, row)
+        t = t + 1
+      b = b + 1
+    // bleaching: raise threshold until single winner
+    bestc = 0
+    bleach = 1
+    done = 0
+    while done == 0:
+      mx = 0
+      c = 0
+      while c < 10:
+        s = 0
+        q = 0
+        while q < 64:
+          if counts[q][c] >= bleach:
+            s = s + 1
+          q = q + 1
+        if s > mx:
+          mx = s
+        c = c + 1
+      win = 0
+      c = 0
+      while c < 10:
+        s = 0
+        q = 0
+        while q < 64:
+          if counts[q][c] >= bleach:
+            s = s + 1
+          q = q + 1
+        if s == mx:
+          win = win + 1
+          bestc = c
+        c = c + 1
+      if win == 1:
+        done = 1
+      if win > 1:
+        bleach = bleach + 1
+      if bleach > 32:
+        done = 1
+      if mx == 0:
+        done = 1
+    if bestc == labels[oi]:
+      correct = correct + 1
+    ntest = ntest + 1
+    i = i + 1
+
+  print "acc", correct, "/", ntest
+
+main()
