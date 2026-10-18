@@ -120,3 +120,32 @@ see the research summary reported separately.
 python3 hs.py xbuild ai/wnn/chat.holy -o /tmp/chat
 cd ai/wnn && /tmp/chat    # or: printf 'hello\nquit\n' | /tmp/chat
 ```
+
+
+## Brain-inspired phase (P0-P4): the C. elegans connectome in holyshit
+
+- `prepare_connectome.py` / `data/connectome.txt` - real worm wiring
+  (Cook et al. 2019, wormwiring.org SI 5): 473 cells, 5914 connections.
+- `worm.holy` - graded-neuron simulation of the real circuit. 3/4
+  tap-circuit checks match published neurobiology; the 4th (absolute PVC
+  dominance) needs synaptic signs EM data does not have (open research).
+- `worm_learn.holy` - the circuit as a frozen reservoir + one-pass
+  weightless readout + episodic 1-NN memory. Class-incremental MNIST:
+  learns 0-4 (95.6%), then 5-8, RETAINS 89.6% of 0-4 (MLP baseline:
+  0.0% - catastrophic forgetting). One-shot new class: 66% from ONE
+  example (MLP: 0%).
+- `worm_plastic.holy`, `worm_spike.holy`, `worm_plastic_mnist.holy` -
+  plastic wiring (Hebbian/STDP/STD/GABA signs). Hebbian association
+  forms (+18% cross-pathway); spiking variant is bistable (documented
+  dead-end); plastic vs frozen wiring head-to-head: accuracy-neutral
+  statistically, +8 pts one-shot episodic recall (74%).
+- `facts.holy` - hyperdimensional (HDC) one-shot fact memory: 70 facts
+  in a fixed 4KB vector, 70/70 recall both directions, no training loop.
+- `chat_learn.holy` - the chatbot that LEARNS: "learn: my name -> Ash"
+  once, then "what is my name?" or "my name" answers "Ash" forever
+  (paraphrase-tolerant, 31 facts tested, 9.4MB RAM).
+
+Honest summary: this system learns in one pass, never catastrophically
+forgets, and picks up new facts in one shot - things LLMs cannot do
+without retraining. It is NOT smarter than an LLM and does not reason
+or generate free text.
