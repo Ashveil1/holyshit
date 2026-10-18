@@ -304,3 +304,22 @@ Measured (same 40-example training sets, unseen 4-50 digit tests, all found prog
 - Raw size<=7 (76.6k exprs) also finds add (1s), mul1 (1s) and sub (202s). So at this scale the library is a speed/size gain (sub 7x faster), not a new capability.
 - Mining is crude (regex over program text, threshold set by hand: with threshold 2 only `%10` was adopted and add was still out of reach; `//10` needed threshold 1).
 Not done: searching the skeleton itself (number of registers, loops). Two registers makes the joint search square the cost; not feasible with this enumerator on CPU.
+
+## P9: evolutionary search over K-register machines (`gp.py`)
+
+GIVEN: scan machine, K integer registers (init 0), arithmetic DSL, output mode read off the example shape. LEARNED: directions, per-register update trees, output tree. Fitness = partial credit on end-to-end examples; mutation can wrap a subtree in the mined library ops `%10`/`//10` (P8). Tested on unseen lengths 4/6/10/20/50; "ok" = train-perfect AND >=99% at every length. Seeds are independent runs; 6 seeds x 30,000 evals unless noted (K=1 rows marked * were 8 seeds x 60,000 evals).
+
+| task | K=1 GP | K=3 GP | K=3 random |
+|---|---|---|---|
+| second_max | 0/6, 0/8* | 3/6 | 0/6 |
+| alt_sum (needs position parity) | 3/6, 7/8* | 6/6 | 5/6 |
+| count_max | 0/6 | 0/6 | 0/6 |
+| count_gt_first | 0/6 | 0/6 | 0/6 |
+| max_minus_min | 0/6 | 0/6 | 0/6 |
+| add | 0/6, 6/8* | 0/6 | 0/6 |
+| sub | 2/6, 3/8* | 1/6 | 0/6 |
+| compare | 5/6, 7/8* | 2/6 | 0/6 |
+| run_parity | 4/6 | 2/6 | 0/6 |
+| mul1 | 0/6 | 0/6 | 0/6 |
+
+Reading: extra registers let GP find tasks one register cannot (second_max 3/6 vs 0/14; alt_sum), and GP beats random search at equal budget. But success rates are modest and noisy: more registers makes already-solvable tasks (add, compare, sub) harder at a fixed budget, and count_max, count_gt_first, max_minus_min, mul1 are not solved at all here. Budgets differ between table cells (see above) so K=1* vs K=3 is not a clean comparison. The exhaustive search in P7/P8 still solves add/sub/compare/mul1 reliably and faster. The scan idea, registers-as-state and the arithmetic DSL are still given; this does not discover them. Not done: learned neural scorer (only the hand-set `%10`/`//10` wrap mutation is used), DSL-ablation sweep.
