@@ -1,0 +1,440 @@
+439 10
+0|hello
+0|hi
+0|hey
+0|good morning
+0|good evening
+0|hi there
+0|hey there
+0|hello there
+0|yo
+0|hiya
+0|greetings
+0|hi bot
+0|hello bot
+0|hey bot
+0|good afternoon
+1|how are you
+1|how are you doing
+1|how is it going
+1|how do you feel
+1|are you ok
+1|how have you been
+1|how's it going
+1|how r u
+1|how are u
+1|you ok
+1|are you well
+1|how are things
+2|what is your name
+2|who are you
+2|your name
+2|what are you called
+2|tell me your name
+2|what should i call you
+2|who am i talking to
+2|what's your name
+2|say your name
+2|name please
+3|tell me a joke
+3|make me laugh
+3|say something funny
+3|joke please
+3|another joke
+3|tell a joke
+3|give me a joke
+3|know any jokes
+3|joke
+3|funny please
+4|what can you do
+4|help
+4|what do you know
+4|show me what you can do
+4|abilities
+4|help me
+4|what are you able to do
+4|how can you help
+4|what is this
+4|how do you work
+5|thank you
+5|thanks
+5|thanks a lot
+5|thank you very much
+5|thx
+5|ty
+5|much appreciated
+5|thanks so much
+5|thank u
+5|cheers thanks
+6|bye
+6|goodbye
+6|see you
+6|see you later
+6|good night
+6|farewell
+6|bye bye
+6|talk later
+6|gtg
+6|got to go
+6|later
+6|cya
+7|how s the weather in munchique national natural park
+7|tell me the weather forecast for france
+7|will there be wind in hornitos dc
+7|is it warm here now
+7|what is the forecast for roulo for foggy conditions on february the eighteenth 2018
+7|i want to eat in wallis and futuna and get a blizzard
+7|what is the forecast in 23 hours and seventeen seconds at this current spot
+7|i need a table at a restaurant in montserrat
+7|what is the weather forecast for one am in west athens benin
+7|what will the weather be this afternoon in brilliant mi
+7|what is the weather not far from upper klamath national wildlife refuge
+7|weather in parc national de nech sar
+7|what will the weather be in battle lake
+7|will it be temperate in the current place
+7|what is the weather for eight o clock in laos that is within walking distance
+7|tell me if it will it be windy in grizzled squirrel wildlife sanctuary
+7|will it be windy here on dec 16th
+7|what is the weather forecast for danvers
+7|will it be freezing on jul 7 2038 in vananda alaska
+7|what will the weather be in sche phoksundo nationalpark on leif erikson day
+7|is the weather chilly in pintura
+7|what s the weather in nigeria
+7|what is the overcast forecast within the same area of rio grande nature center state park for fifteen o clock
+7|is it hot in the current location
+7|tell me the weather for oct the 26th in rosewood heights
+7|what is the sd forecast for oct 6th 2037 for hot weather at belle vernon
+7|is it rainy in greely center
+7|i need the weather in hubbardston will it be chillier
+7|will it be colder in texas
+7|tell me the weather forecast for close by my current location
+7|what is the forecast for uganda at yom ha atzmaut for chilly weather close from
+7|will it be sunny on march 1 2026 in forty fort
+7|i want to book a restaurant in 40 weeks in iowa
+7|what is the forecast for nv for first day of sukkot
+7|what is the weather forecast for agate fossil beds national monument
+7|tell me if it is cold in federated states of micronesia
+7|i need the weather for 7 13 2036 in gwynedd valley
+7|is it cold here
+7|will there be rain next year in new hampshire
+7|what is the weather at 5 am on the farallon islands
+7|will it be windy at 4 pm in ny
+7|tell me the weather forecast for roseburg iowa
+7|weather in malaysia
+7|need weather for 1 pm in russell gardens or close by
+7|will it be windy in john day
+7|what s the weather like at nationaal park bạch mã
+7|will it be hotter in hungary on february the 16th
+7|what will the weather be at six o clock in the virgin islands
+7|is the weather going to be hotter in ri in one year
+7|what is the weather in weidman will it be warm
+7|how cold will it get in tajikistan around oct eleventh
+7|what is the weather forecast here
+7|will it be warmer near here on jan the fifteenth
+7|tell me the weather forecast for eight a m in reminderville fl
+7|will it be chilly at 0 pm in guam
+7|is it chillier here
+7|is it hot in the current location
+7|is it cold in vigus tn
+7|need a table now somewhere nearby petit manan national wildlife refuge
+7|what s the weather in ransom canyon
+7|what is the forecast for orienta for hotter weather
+7|will it be hotter neighboring me on august eighteenth 2025
+7|what s the forecast for sweden at 9 a m
+7|will it be temperate in west liberty mh
+7|will it be freezing 4 hours from now in tonga
+7|will it be colder in tallgrass prairie national preserve
+7|what will the weather be on the keeling islands on aug third 2037
+7|will there be a snowstorm on september the first in bechtelsville georgia
+7|tell me the weather forecast for finland
+7|give me the forecast for san pedro river preserve
+7|is it humid in humboldt bay national wildlife refuge
+7|tell me if it will hail in kyrgyzstan
+7|will it be cold in haiti
+7|what s the weather in humarock
+7|tell me the weather forecast for fort yargo state park
+7|i need the weather in nd in three hundred fifty one days
+7|tell me the weather forecast within the same area of pocomoke river state park
+7|is it going to be windy on 8 8 2032 in north charleston mt
+7|will the weather be freezing in tennessee
+7|humidity in netawaka wi
+7|what s the weather this week in distant bartholomew s cobble
+7|what is the foreast for spain at east glacier park at one pm
+7|is it cloudy in turkmenistan
+7|what is the forecast for chillier conditions at calipuy national reservation
+7|will it rain in blissfield namibia nine hours 1 minute and one second from now
+7|is it going to be colder in bonnie
+7|what is the weather forecast for deaver sc on may 10th
+7|want to eat somewhere cold in the neighboring antlers region on aug 22
+7|is it colder in istanbul turkey or amarillo greece
+7|will it be warm on pink hill
+7|what is the forecast for winnabow
+7|when will there be wind this year in racine
+7|will it be humid in weippe dc
+7|i need a table in uruguay in 213 days when it s chillier
+7|what is the weather forecast for my current position
+7|will there be cloud a year from now in mn
+7|will there be snowfall at the current location at 3 o clock
+7|weather in holly recreation area at eight p m
+7|what will the weather be here at 10 19
+7|what is the weather now and here
+7|will the weather be hot in netherlands antilles
+7|when will wi be temperate
+7|what will the weather be here
+7|when will it be temperate in lansford
+7|what s the weather in macedonia
+7|weather in 3 minutes at jean lafitte national historical park and preserve
+7|will it be cold in east mckeesport norfolk island on february the twenty second 2038
+7|weather in gibraltar at meal time
+7|tell me if it will be foggy in maxwell
+7|what is the forecast for in one minute here
+7|weather conditions in east pasadena
+7|will the weather be colder on jul 21st 2020 in hi in gost creek
+7|weather in grey eagle on feb fifteenth 2034
+7|what is the weather in cotton valley
+7|what is the weather forecast for cistern
+7|how s the weather in nebraska
+7|what is the forecast in mankins for seven p m for snow in new caledonia
+7|will it be foggy in dunedin nd
+7|what is the weather forecast for cistern
+7|will it be chillier in elko wi at 07 51 p m
+8|i d like to hear music that s popular from trick trick on the slacker service
+8|play making out by alexander rosenbaum off google music
+8|i want to hear pamela jintana racine from 1986 on lastfm
+8|is there something new you can play by lola monroe
+8|i want to hear something from post punk revival
+8|song from brian chase in 2004
+8|give me something from the fifties
+8|play the top music from epic mazur
+8|i want to hear track 34
+8|i want something from the year 1961 that was on record from deezer
+8|play some eighties music by emil de cou on slacker
+8|let s listen to matthew shipp
+8|play natalie maines 1959 concerto
+8|put on a serge robert track
+8|play some hridaynath mangeshkar
+8|play music from sleepy john estes from 2002
+8|play a sound track from 1952
+8|i want to hear music from fonzworth bentley using the service slacker with any song
+8|open up google music and play anything
+8|play music from youtube
+8|please play the album prvi poljubac by hiroki uchi on youtube
+8|i want to hear merry go round by gary nichols from groove shark please
+8|play the top twenty from tony calder off slacker
+8|let me hear wintley phipps top fifty album
+8|play an album from 1956 off spotify
+8|play me some dom pachino
+8|see if netflix has the lightspeed champion album boris
+8|play a symphony from 1989
+8|i wish to listen to some fifties music
+8|i want to hear music from 1993 on pandora
+8|put the silent enigma album by yoko kanno
+8|please play every woman in me
+8|play a good song by baaba maal on lastfm
+8|play bouncy techno from lastfm
+8|play in the disco by danny hutton
+8|play some lyn paul
+8|play ocean beach from paul delay
+8|play music from the thirties by swjatoslaw wakartschuk
+8|i would like to hear the worst is yet to come
+8|i would like to hear something from groove shark
+8|can you play nineties music from paul kelly
+8|play the latest movement by charlie higgins
+8|play some chant from 1974
+8|go to mick fleetwood on my vimeo
+8|play a tune from 2007
+8|play some klezmer fiddle
+8|play the broom of the cowdenknowes
+8|i want to hear my entre los andes playlist
+8|can you play some decent work by timour moutsouraev
+8|play some 1988 harry t burleigh
+8|most popular song of taco ockerse
+8|play tennessee saturday night by mr porter
+8|please play a track from the nineties by any artist
+8|can i hear anna vissi s new music on pandora
+8|let s listen to the 1986 sound track by mike park
+8|i want to hear the last album from frank iero
+8|play them good songs by the singing nun
+8|play them the greatest music by chris frantz
+8|play me a concerto by jethro burns from zvooq
+8|can you play some music by abatte barihun
+8|i want to hear shooby taylor s tearing up the album charts
+8|play itunes and vimeo music
+8|play something new by tansen
+8|please play last fm from le jardin de heavenly by edward leeson
+8|open itunes and play some twenties songs
+8|play music from 1974
+8|play some grand puba
+8|play the top fifty by kate bush
+8|play the stephen stills album verge
+8|i need some hardcore hip hop
+8|play the new feist on deezer
+8|play gaston by daniel de los reyes
+8|play man like me by heather b
+8|put some of patrick lachman s eighties music on zvooq
+8|please a sound track of jyotsna radhakrishnan
+8|play some darkcore
+8|i want to listen to say it again by blackstratblues
+8|can i hear jeremy taggart s newest chant on deezer
+8|i would like to hear music from 1993
+8|i want to hear music from the top fifty by yasuhiko fukuda
+8|play seventies music on itunes
+8|open up last fm and play me some medieval folk rock
+8|i d like to listen to mark rae
+8|play the most popular bret michaels record
+8|i want to listen to lastfm play a drop of the hard stuff by joi chua
+8|i wanna listen to electroclash
+8|play march 12 by john moyer on groove shark
+8|play an ep from preap sovath
+8|i want to listen to some music from 2003 on pandora from them
+8|play the vic damone album named tuonela
+8|play some nineties stuff from clem burke
+8|play a song from lars danielsson from the fourties using the service last fm
+8|open lastfm and sort by the top fifty by the artist korpiklaani
+8|put th power gaming playlist
+8|something on spotify please
+8|play some concerto from t s monk
+8|can you play the star tales album by colleen
+8|play some g v prakash kumar
+8|play got djent
+8|i want to hear jimmy james from the thirties play a song on groove shark
+8|i want to play music from 1979 on groove shark
+8|please play something from the twenties google music
+8|play a song from 1994
+8|please play a song from jesse harris that s on youtube
+8|play music from linzi stoppard in 1994 from itunes
+8|please play something from the fifties by roscoe
+8|play a ballad by project pat on google music
+8|can i lesten to the latest album of t bone burnett
+8|play chant music from 2016 off pandora
+8|play some good music from jamelia
+8|play alabama concerto by kou shibasaki
+8|play some good symphony music from avispa
+8|i want to hear the greatest hits from king ov hell on vimeo
+8|play pandora on last fm
+8|let s listen to the best from jeff loomis
+8|play goldie hill s record on google music
+8|please play jim martin on vimeo
+8|play bonnie annie by tolmatschowa schwestern on last fm
+8|play my women of rock playlist
+8|i want to hear nellie mckay s new music
+9|book a reservation for seven people at a bakery in osage city
+9|book spot for three at maid rite sandwich shop in antigua and barbuda
+9|i need a table for breakfast in mi at the pizzeria
+9|book a restaurant reservation for me and my child for 2 pm in faysville
+9|i want to book a highly rated churrascaria ten months from now
+9|i need a table for 7 in kashegelok vt
+9|book spot for eight at a bar that serves pastelaria
+9|i need a table for clare and yvonne ramirez at baker s keyboard lounge
+9|i want to book cheese board collective in poland for april the first 2030
+9|book a reservation for a pub serving burritos
+9|book a reservation for eight people in north dakota
+9|book me a reservation for eight for the top rated bakery eleven hours from now in mango
+9|book a reservation for a restaurant in palau in six years
+9|need a table for a party of six at the ringside steakhouse in the state of nevada
+9|book spot for 7 at nh theressa
+9|book a restaurant in georgia
+9|i need a table in elba for ten that has a bar
+9|need a table at a close by restaurant right now in marco
+9|i want to book a restaurant in a distant id spa for lidia latasha and diann
+9|book a table in fl for ten people
+9|i want to book a restaurant in ayer for 2 people
+9|book spot at a highly rated restaurant in tajikistan
+9|book a spot for now in ny for 10
+9|book a reservation for the training table on mar thirteenth 2026
+9|book a table for me heidi and cara in saudi arabia
+9|book a reservation for eight at a cafeteria saturday
+9|book reservation in gasconade at the best restaurant in dc
+9|book spot at fried chicken restaurant in mauritania
+9|i need a table at spa joint
+9|book a restaurant in ne for ascension day in cle elum that serves seafood for me and my nieces
+9|book spot for 4 in somalia
+9|book spot for john pearson soda works in cambodia on mar 21st 2023
+9|i want to make a reservation for one at a sushi restaurant in brucetown
+9|i want to book the hat for my grandfather and i in arkansas
+9|party of six this week in oman
+9|i need a table in anderson arkansas
+9|book spot for eight at bar that serves potée
+9|need to book a table in ludden
+9|book a table at the crab cooker for now for angelina melva cooper and gwen
+9|book a table for 10 in char no 4 in colombia
+9|book spot for melisa castillo and vicky allen in sadorus mt
+9|book a reservation for 8 people at an irish bar
+9|book me a reservation for a party of 3 at a restaurant in ky
+9|book spot in north catasauqua sd in sixteen minutes
+9|i want to book a highly rated fast food restaurant for eight people
+9|i need to find a table for 4 at a brasserie that has fondue
+9|book a reservation for eight people at a top rated restaurant in busby gu on may second 2024
+9|i want to book moishes steakhouse in lucky
+9|book restaurant at ten that has internet
+9|book a reservation for seven people at a highly rated restaurant this month in hawaii
+9|i want to book a restaurant for me carissa and lynn ramirez in colorado
+9|book me a lunch at boreas for a party of 8
+9|lets eat in little eagle on may nineteenth for 7 people
+9|i want to book a restaurant in new mexico for kenya lilia and ingrid
+9|i want to book baker s keyboard lounge for clare and yvonne ramirez
+9|i want to book a bar in bonaparte palau
+9|need a table eighteen seconds from now at a restaurant serving muffuletta
+9|i want to book a highly rated oyster bar for this week close by in fl
+9|book spot for seven that is distant from your gf s current location at a bar that serves middle eastern for midnight
+9|book a reservation for leticia melva and twila edwards at glassy junction for five p m within the same area of our secondary residence
+9|book me a reservation for a party of 5 for the best coffeehouse nearby borough londonien de wandsworth on lee jackson day
+9|book me a reservation for a puglia restaurant at three
+9|i want a table in one week at glen arm for esmeralda andrea and i
+9|i want a table at an outdoor restaurant for me helene and alana
+9|book a reservation for a delicatessen restaurant that serves farçous in ok
+9|i want to book a restaurantin perrytown missouri for candice jeannie and nichole
+9|book me a reservation for 2 at fraser mansion in serbia
+9|need a table somewhere in mclaurin connecticut
+9|i want to book an osteria in morningside al
+9|book me a reservation for a party of three next year
+9|book a reservation for a restaurant now
+9|book spot at top rated restaurant
+9|book a reservation for my great grandfather and i at a macaroni pub in ct
+9|book a reservation for the windmill in northern mariana islands
+9|i want to book a latin restaurant for five people
+9|i want to book a pub now
+9|i want to book a restaurant in reily vt
+9|book spot for 7 at a steakhouse in bulgaria
+9|i want to book a restaurant in nm for two people
+9|table for 1 please
+9|book a reservation for a party of 6 at the waterside inn
+9|book a party of nine for an indoor cafe
+9|book a reservation at a restaurant nearby their airbnb
+9|book a reservation for one at bouchon in oregon on 6 13 2039
+9|book a restaurant reservation for nine in va on august 21
+9|table for 7 at blueberry hill
+9|i want to book a restaurant for five people
+9|i want to book a bistro that serves pasta salad in brazil
+9|book a party of six at atascadero
+9|book a restaurant for seven in sudan
+9|i want to book a restaurant in federated states of micronesia 1 hour from now
+9|book me a restaurant reservation for a party of 8 ten hours from now
+9|i want to book ribera steakhouse in sint maarten for tamra desiree and lesley
+9|book a table for me and bettye at washington d c jewish community center in montana
+9|book a reservation for 3 at union square cafe
+9|i want to book a restaurant close by my girlfriend s work location on 11 22 2038
+9|need a table for 2 in kuwait
+9|i want to book a restaurant in 1 day for me and my boyfriend
+9|want to book a table at a restaurant in samoa
+9|i want to book a restaurant in cooperdale for five people
+9|book spot in twelve hours nineteen minutes and seven seconds from now at a cafe that serves molise
+9|book me a reservation for ad hoc in brazil for a party of 7
+9|book me a reservation for a rajasthani restaurant in micronesia
+9|i want to book a restaurant in glenarden south dakota for two people
+9|book a reservation for a highly rated cafeteria on october the 11th
+9|book a table in grove place for two
+9|book a table for now for 4 for an oyster bar
+9|book me a reservation for six in mar at a coffeehouse neighboring scott depot
+9|book a table at big city burrito in tower city
+9|book a table at georgetown cupcake in ga for two people
+9|i want to book a restaurant not far from our college
+9|i want to book a restaurant far from rollins for four people in eighteen seconds
+9|book me a reservation for six for crown burgers in lebanon
+9|book spot at candle cafe
+9|book a table for lillian and edna at the berghoff
+9|book spot at highly rated pub on tisha b av
+9|need a reservation close by east hanover
+9|get a chimichanga meal at a bakery
+9|i want to book a restaurant within the same area of horse pasture
+9|book me a reservation for a top rated pub in ladue colorado

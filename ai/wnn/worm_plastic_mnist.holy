@@ -1,0 +1,586 @@
+// P4: PLASTIC worm connectome as reservoir - Hebbian wiring growth during
+// training, frozen during testing. Same protocol as worm_learn.holy (P1)
+// so numbers compare exactly (deterministic): does plastic wiring help?
+//// P1: learning on the worm substrate (reservoir computing + weightless readout).
+// The real C. elegans connectome (worm.holy dynamics) is FROZEN as a recurrent
+// reservoir: an image is injected as sensory currents, the network settles,
+// and the final 473-dim activity vector is the "brain state". A one-pass
+// weightless (WiSARD) readout learns from those states; it never forgets by
+// construction (tables only accumulate) - the thing gradient nets cannot do.
+//
+// Class-incremental protocol (standard continual-learning test):
+//   Phase A: learn digits 0-4 -> test 0-4 and unseen 5-8
+//   Phase B: learn digits 5-8 -> re-test 0-4 (forgetting?) and 5-8
+//   Phase C: learn digit 9 from ONE image -> test unseen 9s
+
+def clamp(x, lo, hi):
+  if x < lo:
+    return lo
+  if x > hi:
+    return hi
+  return x
+
+def xr_next(state):
+  state = state ^ ((state << 13) & 17592186044415)
+  state = state ^ (state >> 7)
+  state = state ^ ((state << 17) & 17592186044415)
+  return state
+
+def newbuf(n):
+  unsafe:
+    Ptr p = alloc(n)
+    return as_int(p)
+
+def hexbyte(s, i):
+  a = find("0123456789abcdef", s[i:i+1])
+  b = find("0123456789abcdef", s[i+1:i+2])
+  return a * 16 + b
+
+def st16(buf, i, v):
+  unsafe:
+    Ptr p = as_ptr(buf) + (i * 2)
+    store8(p, v & 255)
+    store8(p + 1, (v >> 8) & 255)
+
+def reservoir(N, instart, inpre, inw, ingap, wpl, plastic, ext, steps):
+  v = []
+  i = 0
+  while i < N:
+    append(v, 0.0)
+    i = i + 1
+  step = 0
+  while step < steps:
+    total = 0.0
+    p = 0
+    while p < N:
+      a0 = v[p]
+      if a0 > 0.0:
+        total = total + a0
+      p = p + 1
+    norm = 1.0 / (1.0 + 0.25 * total)
+    nv = []
+    p = 0
+    while p < N:
+      s = ext[p]
+      ap0 = v[p]
+      if ap0 < 0.0:
+        ap0 = 0.0
+      k = instart[p]
+      kend = instart[p + 1]
+      while k < kend:
+        a = v[inpre[k]]
+        if a < 0.0:
+          a = 0.0
+        if ingap[k] == 1:
+          s = s + inw[k] * (a - ap0)
+        else:
+          s = s + inw[k] * wpl[k] * a
+        k = k + 1
+      nv2 = v[p] + 0.4 * (clamp(s * norm, -4.0, 4.0) - v[p])
+      append(nv, nv2)
+      p = p + 1
+    v = nv
+    if plastic == 1:
+      // Hebbian wiring growth: co-active synapses strengthen (bounded)
+      hp = 0
+      while hp < N:
+        ha = v[hp]
+        if ha < 0.0:
+          ha = 0.0
+        hk = instart[hp]
+        hkend = instart[hp + 1]
+        while hk < hkend:
+          if ingap[hk] == 0:
+            hpre = v[inpre[hk]]
+            if hpre < 0.0:
+              hpre = 0.0
+            if hpre > 0.05 and ha > 0.05:
+              wpl[hk] = wpl[hk] + 0.001 * hpre * ha
+              if wpl[hk] > 3.0:
+                wpl[hk] = 3.0
+          hk = hk + 1
+        hp = hp + 1
+    step = step + 1
+  return v
+
+def state_hex(v, N):
+  parts = []
+  i = 0
+  while i < N:
+    q = v[i]
+    if q < 0.0:
+      q = 0.0
+    q = int(q * 400.0)
+    if q > 255:
+      q = 255
+    append(parts, "0123456789abcdef"[int(q / 16):int(q / 16) + 1])
+    qq = q % 16
+    append(parts, "0123456789abcdef"[qq:qq + 1])
+    i = i + 1
+  return join("", parts)
+
+def wnn_train(hstr, cls, NB, NT, NBITS, permbuf, tables, scratch):
+  unsafe:
+    Ptr hp = as_ptr(hstr) + 16
+    Ptr scp = as_ptr(scratch)
+    I64 j = 0
+    while j < 473:
+      I64 ch = load8(hp + j * 2)
+      I64 v = ch - 48
+      if ch > 57:
+        v = ch - 87
+      I64 ch2 = load8(hp + j * 2 + 1)
+      I64 v2 = ch2 - 48
+      if ch2 > 57:
+        v2 = ch2 - 87
+      v = (v * 16) + v2
+      I64 o = j * 4
+      store8(scp + o + 0, v >= 8)
+      store8(scp + o + 1, v >= 24)
+      store8(scp + o + 2, v >= 64)
+      store8(scp + o + 3, v >= 128)
+      j = j + 1
+    Ptr pm = as_ptr(permbuf)
+    Ptr tb = as_ptr(tables)
+    I64 cl = cls
+    I64 nb = NB
+    I64 nt = NT
+    I64 nb2 = 0
+    while nb2 < nb:
+      Ptr pb = pm + (nb2 * NBITS * 2)
+      I64 t = 0
+      while t < nt:
+        Ptr pp = pb + (t * 16)
+        I64 a = 0
+        I64 k2 = 0
+        while k2 < 8:
+          I64 pos = load8(pp) + (load8(pp + 1) * 256)
+          a = (a * 2) + load8(scp + pos)
+          pp = pp + 2
+          k2 = k2 + 1
+        I64 off = (((nb2 * nt) + t) * 10 + cl) * 256 + a
+        Ptr q = tb + off
+        I64 cnt = load8(q)
+        if cnt < 255:
+          store8(q, cnt + 1)
+        t = t + 1
+      nb2 = nb2 + 1
+
+def wnn_test(hstr, NB, NT, NBITS, permbuf, tables, scratch, addrbuf, cntbuf):
+  unsafe:
+    Ptr hp2 = as_ptr(hstr) + 16
+    Ptr scp2 = as_ptr(scratch)
+    I64 j2 = 0
+    while j2 < 473:
+      I64 chh = load8(hp2 + j2 * 2)
+      I64 vv = chh - 48
+      if chh > 57:
+        vv = chh - 87
+      I64 chh2 = load8(hp2 + j2 * 2 + 1)
+      I64 vv2 = chh2 - 48
+      if chh2 > 57:
+        vv2 = chh2 - 87
+      vv = (vv * 16) + vv2
+      I64 o2 = j2 * 4
+      store8(scp2 + o2 + 0, vv >= 8)
+      store8(scp2 + o2 + 1, vv >= 24)
+      store8(scp2 + o2 + 2, vv >= 64)
+      store8(scp2 + o2 + 3, vv >= 128)
+      j2 = j2 + 1
+    Ptr pm2 = as_ptr(permbuf)
+    Ptr tb2 = as_ptr(tables)
+    Ptr ab = as_ptr(addrbuf)
+    I64 nbb = NB
+    I64 ntt = NT
+    I64 nb3 = 0
+    while nb3 < nbb:
+      Ptr pb2 = pm2 + (nb3 * NBITS * 2)
+      I64 t2 = 0
+      while t2 < ntt:
+        Ptr pp2 = pb2 + (t2 * 16)
+        I64 a2 = 0
+        I64 k3 = 0
+        while k3 < 8:
+          I64 pos2 = load8(pp2) + (load8(pp2 + 1) * 256)
+          a2 = (a2 * 2) + load8(scp2 + pos2)
+          pp2 = pp2 + 2
+          k3 = k3 + 1
+        Ptr aw = ab + ((nb3 * ntt + t2) * 2)
+        store8(aw, a2 & 255)
+        store8(aw + 1, (a2 >> 8) & 255)
+        t2 = t2 + 1
+      nb3 = nb3 + 1
+    Ptr cb = as_ptr(cntbuf)
+    I64 q2 = 0
+    while q2 < (nbb * ntt):
+      Ptr ar = ab + (q2 * 2)
+      I64 av = load8(ar) + (load8(ar + 1) * 256)
+      I64 c2 = 0
+      while c2 < 10:
+        I64 off2 = ((q2 * 10) + c2) * 256 + av
+        store8(cb + (q2 * 10) + c2, load8(tb2 + off2))
+        c2 = c2 + 1
+      q2 = q2 + 1
+    I64 best = 0
+    I64 bestscore = 0 - 1
+    I64 c3 = 0
+    while c3 < 10:
+      I64 sc3 = 0
+      I64 q3 = 0
+      while q3 < (nbb * ntt):
+        I64 cv = load8(cb + (q3 * 10) + c3)
+        if cv > 4:
+          cv = 4
+        sc3 = sc3 + cv
+        q3 = q3 + 1
+      if sc3 > bestscore:
+        bestscore = sc3
+        best = c3
+      c3 = c3 + 1
+    return best
+
+def encode_to(hstr, buf):
+  unsafe:
+    Ptr hpe = as_ptr(hstr) + 16
+    Ptr bp = as_ptr(buf)
+    I64 je = 0
+    while je < 473:
+      I64 ce = load8(hpe + je * 2)
+      I64 ve = ce - 48
+      if ce > 57:
+        ve = ce - 87
+      I64 ce2 = load8(hpe + je * 2 + 1)
+      I64 ve2 = ce2 - 48
+      if ce2 > 57:
+        ve2 = ce2 - 87
+      ve = (ve * 16) + ve2
+      I64 oe = je * 4
+      store8(bp + oe + 0, ve >= 8)
+      store8(bp + oe + 1, ve >= 24)
+      store8(bp + oe + 2, ve >= 64)
+      store8(bp + oe + 3, ve >= 128)
+      je = je + 1
+
+def epi_match(scratch, ebuf, nclass, NBITS):
+  unsafe:
+    Ptr sc5 = as_ptr(scratch)
+    Ptr eb5 = as_ptr(ebuf)
+    I64 bestc = 0
+    I64 bestm = 0 - 1
+    I64 c5 = 0
+    while c5 < nclass:
+      Ptr ep = eb5 + (c5 * NBITS)
+      I64 m = 0
+      I64 i5 = 0
+      while i5 < NBITS:
+        if load8(sc5 + i5) == load8(ep + i5):
+          m = m + 1
+        i5 = i5 + 1
+      if m > bestm:
+        bestm = m
+        bestc = c5
+      c5 = c5 + 1
+    return bestc
+
+def mnist_ext(ln, pmap, N):
+  ext = []
+  pi = 0
+  while pi < N:
+    append(ext, 0.0)
+    pi = pi + 1
+  pj = 0
+  while pj < 784:
+    b = find("0123456789abcdef", ln[2+pj:2+pj+1])
+    if b > 0:
+      ext[pmap[pj]] = ext[pmap[pj]] + (b / 15.0) * 2.0
+    pj = pj + 1
+  return ext
+
+def main():
+  args = argv()
+  connpath = "connectome.txt"
+  trainpath = "mnist_train.txt"
+  testpath = "mnist_test.txt"
+  if len(args) > 0:
+    connpath = args[0]
+  if len(args) > 1:
+    trainpath = args[1]
+  if len(args) > 2:
+    testpath = args[2]
+  RSTEP = 15
+  if len(args) > 3:
+    RSTEP = int(args[3])
+
+  txt = read_text(connpath)
+  lines = split(txt, "\n")
+  hdr = split(lines[0], " ")
+  N = int(hdr[0])
+  E = int(hdr[1])
+  names = split(lines[1], " ")
+  nidx = {}
+  i = 0
+  while i < N:
+    nidx[names[i]] = i
+    i = i + 1
+  GABA = ["DD01","DD02","DD03","DD04","DD05","DD06","VD01","VD02","VD03","VD04","VD05","VD06","VD07","VD08","VD09","VD10","VD11","VD12","VD13","RMEL","RMER","RMED","RMEV","AVL","RIS","DVB"]
+  incount = []
+  i = 0
+  while i < N:
+    append(incount, 0)
+    i = i + 1
+  er = []
+  e = 0
+  while e < E:
+    parts = split(lines[2 + e], " ")
+    pre = int(parts[0])
+    post = int(parts[1])
+    w = int(parts[2])
+    t = parts[3]
+    append(er, [pre, post, w, t])
+    incount[post] = incount[post] + 1
+    if t == "g":
+      incount[pre] = incount[pre] + 1
+    e = e + 1
+  M = 0
+  i = 0
+  while i < N:
+    M = M + incount[i]
+    i = i + 1
+  instart = [0]
+  i = 0
+  while i < N:
+    append(instart, instart[i] + incount[i])
+    i = i + 1
+  inpre = []
+  inw = []
+  ingap = []
+  chem_sum = []
+  gap_sum = []
+  i = 0
+  while i < M:
+    append(inpre, 0)
+    append(inw, 0.0)
+    append(ingap, 0)
+    i = i + 1
+  i = 0
+  while i < N:
+    append(chem_sum, 0.0)
+    append(gap_sum, 0.0)
+    i = i + 1
+  fill = []
+  i = 0
+  while i < N:
+    append(fill, instart[i])
+    i = i + 1
+  e = 0
+  while e < E:
+    ed = er[e]
+    pre = ed[0]
+    post = ed[1]
+    w = ed[2]
+    t = ed[3]
+    slot = fill[post]
+    inpre[slot] = pre
+    inw[slot] = w * 1.0
+    if t == "g":
+      ingap[slot] = 1
+      gap_sum[post] = gap_sum[post] + w
+      slot2 = fill[pre]
+      inpre[slot2] = post
+      inw[slot2] = w * 1.0
+      ingap[slot2] = 1
+      gap_sum[pre] = gap_sum[pre] + w
+      fill[pre] = slot2 + 1
+    else:
+      chem_sum[post] = chem_sum[post] + w
+    fill[post] = fill[post] + 1
+    e = e + 1
+  p = 0
+  while p < N:
+    cs = chem_sum[p]
+    gs = gap_sum[p]
+    k = instart[p]
+    kend = instart[p + 1]
+    while k < kend:
+      if ingap[k] == 1:
+        if gs > 0.0:
+          inw[k] = inw[k] / gs * 1.0
+      else:
+        if cs > 0.0:
+          inw[k] = inw[k] / cs * 1.0
+        gi = 0
+        while gi < len(GABA):
+          if inpre[k] == nidx[GABA[gi]]:
+            inw[k] = 0.0 - inw[k]
+          gi = gi + 1
+      k = k + 1
+    p = p + 1
+  print "connectome:", N, "cells,", M, "edges (gap doubled)"
+
+  wpl = []
+  i = 0
+  while i < M:
+    append(wpl, 1.0)
+    i = i + 1
+  pmap = range(784)
+  rs = 987654321
+  i = 783
+  while i > 0:
+    rs = xr_next(rs)
+    j = rs % (i + 1)
+    tmp = pmap[i]
+    pmap[i] = pmap[j]
+    pmap[j] = tmp
+    i = i - 1
+  i = 0
+  while i < 784:
+    pmap[i] = pmap[i] % N
+    i = i + 1
+
+  NB = 4
+  NBITS = N * 4
+  NT = int(NBITS / 8)
+  permbuf = newbuf(NB * NBITS * 2)
+  wb = 0
+  while wb < NB:
+    perm = range(NBITS)
+    ws = 424242 + wb * 999
+    wi = NBITS - 1
+    while wi > 0:
+      ws = xr_next(ws)
+      wj = ws % (wi + 1)
+      wt = perm[wi]
+      perm[wi] = perm[wj]
+      perm[wj] = wt
+      wi = wi - 1
+    wi = 0
+    while wi < NBITS:
+      st16(permbuf, wb * NBITS + wi, perm[wi])
+      wi = wi + 1
+    wb = wb + 1
+  tables = newbuf(NB * NT * 10 * 256)
+  scratch = newbuf(NBITS)
+  addrbuf = newbuf(NB * NT * 2)
+  cntbuf = newbuf(NB * NT * 10)
+  print "wnn readout: banks", NB, "tuples/bank", NT, "table bytes", NB * NT * 10 * 256
+
+  tr = read_text(trainpath)
+  te = read_text(testpath)
+  trlines = split(tr, "\n")
+  telines = split(te, "\n")
+  tr_by_cls = [[], [], [], [], [], [], [], [], [], []]
+  i = 0
+  while i < len(trlines) - 1:
+    c9 = int(trlines[i][0:1])
+    if len(tr_by_cls[c9]) < 400:
+      append(tr_by_cls[c9], i)
+    i = i + 1
+  te_by_cls = [[], [], [], [], [], [], [], [], [], []]
+  i = 0
+  while i < len(telines) - 1:
+    c8 = int(telines[i][0:1])
+    if len(te_by_cls[c8]) < 60:
+      append(te_by_cls[c8], i)
+    i = i + 1
+  print "mnist indexed"
+
+  def train_group(clslist, per_cls):
+    ci = 0
+    while ci < len(clslist):
+      cl2 = clslist[ci]
+      lst = tr_by_cls[cl2]
+      ii = 0
+      while ii < per_cls and ii < len(lst):
+        ln = trlines[lst[ii]]
+        ext = mnist_ext(ln, pmap, N)
+        st = reservoir(N, instart, inpre, inw, ingap, wpl, 1, ext, RSTEP)
+        hs = state_hex(st, N)
+        wnn_train(hs, cl2, NB, NT, NBITS, permbuf, tables, scratch)
+        ii = ii + 1
+      ci = ci + 1
+
+  def test_group(clslist, per_cls):
+    correct = 0
+    total = 0
+    ci = 0
+    while ci < len(clslist):
+      cl3 = clslist[ci]
+      lst = te_by_cls[cl3]
+      ii = 0
+      while ii < per_cls and ii < len(lst):
+        ln = telines[lst[ii]]
+        ext = mnist_ext(ln, pmap, N)
+        st = reservoir(N, instart, inpre, inw, ingap, wpl, 0, ext, RSTEP)
+        hs = state_hex(st, N)
+        pred = wnn_test(hs, NB, NT, NBITS, permbuf, tables, scratch, addrbuf, cntbuf)
+        if pred == cl3:
+          correct = correct + 1
+        total = total + 1
+        ii = ii + 1
+      ci = ci + 1
+    return [correct, total]
+
+  gA = [0, 1, 2, 3, 4]
+  gB = [5, 6, 7, 8]
+
+  print "PLASTIC wiring (Hebbian growth during training)"
+  print "phase A: learn digits 0-4 (300/class)"
+  train_group(gA, 300)
+  r = test_group(gA, 50)
+  print "after A, digits 0-4:", r[0], "/", r[1]
+  r = test_group(gB, 50)
+  print "after A, digits 5-8 (unseen):", r[0], "/", r[1]
+
+  print "phase B: learn digits 5-8 (375/class)"
+  train_group(gB, 375)
+  r = test_group(gA, 50)
+  print "after B, digits 0-4 (forgetting check):", r[0], "/", r[1]
+  r = test_group(gB, 50)
+  print "after B, digits 5-8:", r[0], "/", r[1]
+
+  print "phase C: one-shot digit 9 (1 training image)"
+  train_group([9], 1)
+  r = test_group([9], 50)
+  print "after one-shot, unseen digit 9 (statistical WNN memory):", r[0], "/", r[1]
+  r = test_group(gA, 50)
+  print "after one-shot, digits 0-4 re-check:", r[0], "/", r[1]
+
+  // Episodic memory (hippocampus analog): store ONE raw pattern per class,
+  // recall by bit overlap (1-NN). This is the complementary-learning-systems
+  // answer to one-shot learning.
+  print "phase C2: episodic one-shot (1 stored pattern per class 0-9)"
+  ebuf = newbuf(10 * NBITS)
+  ec = 0
+  while ec < 10:
+    ln2 = trlines[tr_by_cls[ec][0]]
+    ext2 = mnist_ext(ln2, pmap, N)
+    st2 = reservoir(N, instart, inpre, inw, ingap, wpl, 0, ext2, RSTEP)
+    hs2 = state_hex(st2, N)
+    unsafe:
+      Ptr sct = as_ptr(scratch)
+    encode_to(hs2, scratch)
+    unsafe:
+      Ptr sc6 = as_ptr(scratch)
+      Ptr eb6 = as_ptr(ebuf)
+      I64 i6 = 0
+      while i6 < NBITS:
+        store8(eb6 + (ec * NBITS) + i6, load8(sc6 + i6))
+        i6 = i6 + 1
+    ec = ec + 1
+  eok = 0
+  etot = 0
+  ti = 0
+  while ti < 50 and ti < len(te_by_cls[9]):
+    ln3 = telines[te_by_cls[9][ti]]
+    ext3 = mnist_ext(ln3, pmap, N)
+    st3 = reservoir(N, instart, inpre, inw, ingap, wpl, 0, ext3, RSTEP)
+    hs3 = state_hex(st3, N)
+    encode_to(hs3, scratch)
+    pred3 = epi_match(scratch, ebuf, 10, NBITS)
+    if pred3 == 9:
+      eok = eok + 1
+    etot = etot + 1
+    ti = ti + 1
+  print "episodic one-shot, unseen digit 9:", eok, "/", etot
+
+main()

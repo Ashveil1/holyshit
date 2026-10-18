@@ -1,0 +1,222 @@
+// Weightless neural network (WiSARD-family) on MNIST, pure holyshit, zero-alloc hot loop.
+// Raw-byte thermometer-8 encoding, tuple-14 RAM tables, 4-bank ensemble,
+// U8 counters + capped-count summation scoring. Data lives in raw unsafe
+// buffers; the trained tables are one 280 MB byte array (fits <1GB RAM).
+// Full run: trains 60,000 images in ~30 s, tests 10,000 in ~5 s (1 GB sandbox).
+def xr_next(state):
+  state = state ^ ((state << 13) & 17592186044415)
+  state = state ^ (state >> 7)
+  state = state ^ ((state << 17) & 17592186044415)
+  return state
+
+def newbuf(n):
+  unsafe:
+    Ptr p = alloc(n)
+    return as_int(p)
+
+def st16(buf, i, v):
+  unsafe:
+    Ptr p = as_ptr(buf) + (i * 2)
+    store8(p, v & 255)
+    store8(p + 1, (v >> 8) & 255)
+
+def main():
+  args = argv()
+  train_path = "mnist_train.txt"
+  test_path = "mnist_test.txt"
+  ntrain_want = 60000
+  ntest_want = 10000
+  if len(args) > 0:
+    train_path = args[0]
+  if len(args) > 1:
+    test_path = args[1]
+  if len(args) > 2:
+    ntrain_want = int(args[2])
+  if len(args) > 3:
+    ntest_want = int(args[3])
+
+  NB = 4
+  NT = 448
+  NBITS = 6272
+
+  print "load", train_path
+  tr = read_text(train_path)
+  te = read_text(test_path)
+
+  // permutation buffers: NB * NBITS U16 entries
+  permbuf = newbuf(NB * NBITS * 2)
+  wb = 0
+  while wb < NB:
+    perm = range(NBITS)
+    ws = 424242 + wb * 999
+    wi = NBITS - 1
+    while wi > 0:
+      ws = xr_next(ws)
+      wj = ws % (wi + 1)
+      wt = perm[wi]
+      perm[wi] = perm[wj]
+      perm[wj] = wt
+      wi = wi - 1
+    wi = 0
+    while wi < NBITS:
+      st16(permbuf, wb * NBITS + wi, perm[wi])
+      wi = wi + 1
+    wb = wb + 1
+
+  print "alloc tables", NB * NT * 10 * 16384
+  tables = newbuf(NB * NT * 10 * 16384)
+  scratch = newbuf(NBITS)      // thermometer bits, 1 byte each
+  addrbuf = newbuf(NB * NT * 2) // per-(bank,tuple) U16 addresses
+  cntbuf = newbuf(NB * NT * 10) // per-(bank,tuple,class) U8 counts for one image
+
+  trlen = find(tr, "\n") + 1
+  telen = find(te, "\n") + 1
+
+  print "train"
+  i = 0
+  while i < ntrain_want:
+    unsafe:
+      Ptr tp = as_ptr(tr)
+      Ptr tbase = tp + 16
+      Ptr img = tbase + trlen + (i * 1571)
+      I64 cls = load8(img) - 48
+      Ptr sc = as_ptr(scratch)
+      Ptr px = img + 2
+      I64 j = 0
+      while j < 784:
+        I64 ch = load8(px)
+        I64 v = ch - 48
+        if ch > 57:
+          v = ch - 87
+        I64 chb = load8(px + 1)
+        I64 vb = chb - 48
+        if chb > 57:
+          vb = chb - 87
+        v = (v * 16) + vb
+        I64 o = j * 8
+        store8(sc + o + 0, v >= 16)
+        store8(sc + o + 1, v >= 48)
+        store8(sc + o + 2, v >= 80)
+        store8(sc + o + 3, v >= 112)
+        store8(sc + o + 4, v >= 144)
+        store8(sc + o + 5, v >= 176)
+        store8(sc + o + 6, v >= 208)
+        store8(sc + o + 7, v >= 240)
+        px = px + 2
+        j = j + 1
+      Ptr pm = as_ptr(permbuf)
+      Ptr tb = as_ptr(tables)
+      I64 b = 0
+      while b < NB:
+        Ptr pb = pm + (b * NBITS * 2)
+        I64 t = 0
+        while t < NT:
+          Ptr pp = pb + (t * (14 * 2))
+          I64 a = 0
+          I64 k = 0
+          while k < 14:
+            I64 pos = load8(pp) + (load8(pp + 1) * 256)
+            a = (a * 2) + load8(sc + pos)
+            pp = pp + 2
+            k = k + 1
+          I64 off = (((b * NT) + t) * 10 + cls) * 16384 + a
+          Ptr q = tb + off
+          I64 cnt = load8(q)
+          if cnt < 255:
+            store8(q, cnt + 1)
+          t = t + 1
+        b = b + 1
+    i = i + 1
+
+  print "test"
+  correct = 0
+  i = 0
+  while i < ntest_want:
+    unsafe:
+      Ptr tp2 = as_ptr(te)
+      Ptr tbase2 = tp2 + 16
+      Ptr img2 = tbase2 + telen + (i * 1571)
+      Ptr sc2 = as_ptr(scratch)
+      Ptr px2 = img2 + 2
+      I64 j2 = 0
+      while j2 < 784:
+        I64 ch2 = load8(px2)
+        I64 v2 = ch2 - 48
+        if ch2 > 57:
+          v2 = ch2 - 87
+        I64 chb2 = load8(px2 + 1)
+        I64 vb2 = chb2 - 48
+        if chb2 > 57:
+          vb2 = chb2 - 87
+        v2 = (v2 * 16) + vb2
+        I64 o2 = j2 * 8
+        store8(sc2 + o2 + 0, v2 >= 16)
+        store8(sc2 + o2 + 1, v2 >= 48)
+        store8(sc2 + o2 + 2, v2 >= 80)
+        store8(sc2 + o2 + 3, v2 >= 112)
+        store8(sc2 + o2 + 4, v2 >= 144)
+        store8(sc2 + o2 + 5, v2 >= 176)
+        store8(sc2 + o2 + 6, v2 >= 208)
+        store8(sc2 + o2 + 7, v2 >= 240)
+        px2 = px2 + 2
+        j2 = j2 + 1
+      Ptr pm2 = as_ptr(permbuf)
+      Ptr tb2 = as_ptr(tables)
+      Ptr ab = as_ptr(addrbuf)
+      I64 b2 = 0
+      while b2 < NB:
+        Ptr pb2 = pm2 + (b2 * NBITS * 2)
+        I64 t2 = 0
+        while t2 < NT:
+          Ptr pp2 = pb2 + (t2 * (14 * 2))
+          I64 a2 = 0
+          I64 k2 = 0
+          while k2 < 14:
+            I64 pos2 = load8(pp2) + (load8(pp2 + 1) * 256)
+            a2 = (a2 * 2) + load8(sc2 + pos2)
+            pp2 = pp2 + 2
+            k2 = k2 + 1
+          Ptr aw = ab + ((b2 * NT + t2) * 2)
+          store8(aw, a2 & 255)
+          store8(aw + 1, (a2 >> 8) & 255)
+          t2 = t2 + 1
+        b2 = b2 + 1
+      // gather counts: cntbuf[q*10+c]
+      Ptr cb = as_ptr(cntbuf)
+      I64 q2 = 0
+      while q2 < (NB * NT):
+        Ptr ar = ab + (q2 * 2)
+        I64 av = load8(ar) + (load8(ar + 1) * 256)
+        I64 c2 = 0
+        while c2 < 10:
+          I64 off2 = ((q2 * 10) + c2) * 16384 + av
+          store8(cb + (q2 * 10) + c2, load8(tb2 + off2))
+          c2 = c2 + 1
+        q2 = q2 + 1
+      // capped-count summation scoring
+      I64 best = 0
+      I64 bestscore = 0 - 1
+      I64 c3 = 0
+      while c3 < 10:
+        I64 sc3 = 0
+        I64 q3 = 0
+        while q3 < (NB * NT):
+          I64 cv = load8(cb + (q3 * 10) + c3)
+          if cv > 8:
+            cv = 8
+          sc3 = sc3 + cv
+          q3 = q3 + 1
+        if sc3 > bestscore:
+          bestscore = sc3
+          best = c3
+        c3 = c3 + 1
+      I64 truelab = load8(img2) - 48
+      if best == truelab:
+        store8(as_ptr(cntbuf) + (NB * NT * 10) - 1, 1)  // marker, unused
+      if best == truelab:
+        correct = correct + 1
+    i = i + 1
+
+  print "acc", correct, "/", ntest_want
+
+main()
