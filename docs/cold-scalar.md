@@ -20,10 +20,11 @@ scalar equality; negation/not; scalar branch conditions, jumps, simultaneous
 phi assignment; variable/global stores; module-level functions, dynamic aliases/
 rebinding, recursion and exact-arity calls; return. While,
 break/continue, if/elif and short-circuit expressions lower to these operations.
-No nested functions/captures, classes, imports, source collections/strings,
+No nested functions/captures, class methods, imports, source collections/strings,
 floats/division, builtins, unsafe/FFI, exceptions/try/finally or shared native objects.
 Abort-only raise/assert are covered in
-[Bounded cold raise and assert](cold-raise.md).
+[Bounded cold raise and assert](cold-raise.md). The subset/exclusion contract
+is pinned end to end in [Cold/reference parity audit](cold-parity.md).
 Unknown instructions/operators/terminators or unsupported constants anywhere
 in the module reject during whole-module preflight before target side effects,
 even in unreachable code. Runtime operand violations can occur after effects.
