@@ -15,7 +15,7 @@ def clamp(x, lo, hi):
   return x
 
 // returns [v, spk, avd_spikes, pvc_spikes]
-def sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, do_plastic):
+def sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, do_plastic):
   // synaptic input from last step's spikes
   inp = []
   i = 0
@@ -40,7 +40,10 @@ def sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, do_plastic):
     while k < kend:
       if ingap[k] == 0:
         if spk[inpre[k]] == 1:
-          inp[p] = inp[p] + inw[k] * wpl[k] * dep[k]
+          if isgaba[inpre[k]] == 1:
+            inp[p] = inp[p] - inw[k] * wpl[k] * dep[k]
+          else:
+            inp[p] = inp[p] + inw[k] * wpl[k] * dep[k]
       k = k + 1
     p = p + 1
   // LIF update + spikes
@@ -57,7 +60,15 @@ def sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, do_plastic):
         nv = 0.0
     v[p] = nv
     p = p + 1
-  // plasticity
+  // eligibility trace: 1 on spike, decays 0.7/step
+  p = 0
+  while p < N:
+    if nspk[p] == 1:
+      trc[p] = 1.0
+    else:
+      trc[p] = trc[p] * 0.7
+    p = p + 1
+  // plasticity: STD + STDP (pre trace x post spike), skip inhibitory
   if do_plastic == 1:
     p = 0
     while p < N:
@@ -67,11 +78,14 @@ def sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, do_plastic):
         if ingap[k] == 0:
           pre = inpre[k]
           if spk[pre] == 1:
-            dep[k] = dep[k] * 0.8
-            if nspk[p] == 1:
-              wpl[k] = clamp(wpl[k] + 0.05, 0.2, 3.0)
+            dep[k] = dep[k] * 0.9
+            if dep[k] < 0.15:
+              dep[k] = 0.15
           else:
-            dep[k] = dep[k] + (1.0 - dep[k]) * 0.002
+            dep[k] = dep[k] + (1.0 - dep[k]) * 0.005
+          if isgaba[pre] == 0:
+            if nspk[p] == 1 and trc[pre] > 0.2:
+              wpl[k] = clamp(wpl[k] + 0.03 * trc[pre], 0.2, 3.0)
         k = k + 1
       p = p + 1
   return nspk
@@ -79,11 +93,41 @@ def sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, do_plastic):
 def count_sp(spk, nidx, a, b):
   return spk[nidx[a]] + spk[nidx[b]]
 
+def measure_alm_pvc(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, nidx, N, STIM, nwarm):
+  i2 = 0
+  while i2 < N:
+    ext[i2] = 0.0
+    i2 = i2 + 1
+  s = 0
+  while s < nwarm:
+    spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 0)
+    s = s + 1
+  ext[nidx["ALML"]] = STIM
+  ext[nidx["ALMR"]] = STIM
+  pvcsp = 0
+  s = 0
+  while s < 10:
+    spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 0)
+    pvcsp = pvcsp + count_sp(spk, nidx, "PVCL", "PVCR")
+    if s == 2:
+      i2 = 0
+      while i2 < N:
+        ext[i2] = 0.0
+        i2 = i2 + 1
+    s = s + 1
+  return pvcsp
+
 def main():
   args = argv()
   connpath = "connectome.txt"
   if len(args) > 0:
     connpath = args[0]
+  GAIN = 2.5
+  if len(args) > 1:
+    GAIN = float(args[1])
+  STIM = 1.2
+  if len(args) > 2:
+    STIM = float(args[2])
   txt = read_text(connpath)
   lines = split(txt, "\n")
   hdr = split(lines[0], " ")
@@ -95,6 +139,17 @@ def main():
   while i < N:
     nidx[names[i]] = i
     i = i + 1
+  GABA = ["DD01","DD02","DD03","DD04","DD05","DD06","VD01","VD02","VD03","VD04","VD05","VD06","VD07","VD08","VD09","VD10","VD11","VD12","VD13","RMEL","RMER","RMED","RMEV","AVL","RIS","DVB"]
+  isgaba = []
+  i = 0
+  while i < N:
+    append(isgaba, 0)
+    i = i + 1
+  if len(args) < 4 or args[3] != "nogaba":
+    gi0 = 0
+    while gi0 < len(GABA):
+      isgaba[nidx[GABA[gi0]]] = 1
+      gi0 = gi0 + 1
   incount = []
   i = 0
   while i < N:
@@ -179,7 +234,7 @@ def main():
           inw[k] = inw[k] / gs * 0.05
       else:
         if cs > 0.0:
-          inw[k] = inw[k] / cs * 4.0
+          inw[k] = inw[k] / cs * GAIN
       k = k + 1
     p = p + 1
   dep = []
@@ -191,11 +246,13 @@ def main():
     k = k + 1
   v = []
   spk = []
+  trc = []
   ext = []
   i = 0
   while i < N:
     append(v, 0.0)
     append(spk, 0)
+    append(trc, 0.0)
     append(ext, 0.0)
     i = i + 1
   print "LIF spiking connectome:", N, "cells,", M, "edges"
@@ -211,40 +268,40 @@ def main():
   tap = 0
   while tap < 30:
     clear_ext()
-    ext[nidx["ALML"]] = 1.2
-    ext[nidx["ALMR"]] = 1.2
-    ext[nidx["AVM"]] = 1.2
+    ext[nidx["ALML"]] = STIM
+    ext[nidx["ALMR"]] = STIM
+    ext[nidx["AVM"]] = STIM
     avdsp = 0
     s = 0
     while s < 3:
-      spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+      spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
       avdsp = avdsp + count_sp(spk, nidx, "AVDL", "AVDR")
       s = s + 1
     clear_ext()
     s = 0
     while s < 7:
-      spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+      spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
       avdsp = avdsp + count_sp(spk, nidx, "AVDL", "AVDR")
       s = s + 1
     print "tap", tap + 1, "AVD spikes", avdsp
     s = 0
     while s < 20:
-      spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+      spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
       s = s + 1
     tap = tap + 1
   print "rest 400 steps"
   s = 0
   while s < 400:
-    spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+    spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
     s = s + 1
   clear_ext()
-  ext[nidx["ALML"]] = 1.2
-  ext[nidx["ALMR"]] = 1.2
-  ext[nidx["AVM"]] = 1.2
+  ext[nidx["ALML"]] = STIM
+  ext[nidx["ALMR"]] = STIM
+  ext[nidx["AVM"]] = STIM
   avdsp = 0
   s = 0
   while s < 10:
-    spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+    spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
     avdsp = avdsp + count_sp(spk, nidx, "AVDL", "AVDR")
     if s == 2:
       clear_ext()
@@ -257,7 +314,7 @@ def main():
     i = i + 1
   s = 0
   while s < 8:
-    spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+    spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
     s = s + 1
   k = 0
   while k < M:
@@ -266,72 +323,65 @@ def main():
   clear_ext()
   s = 0
   while s < 20:
-    spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+    spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
     s = s + 1
-  ext[nidx["ALML"]] = 1.2
-  ext[nidx["ALMR"]] = 1.2
-  ext[nidx["AVM"]] = 1.2
+  ext[nidx["ALML"]] = STIM
+  ext[nidx["ALMR"]] = STIM
+  ext[nidx["AVM"]] = STIM
   avdsp = 0
   s = 0
   while s < 10:
-    spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+    spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
     avdsp = avdsp + count_sp(spk, nidx, "AVDL", "AVDR")
     if s == 2:
       clear_ext()
     s = s + 1
   print "after shock, AVD spikes", avdsp
 
-  // T2 association
+  // T2 association: dose-response + unpaired control
   print ""
-  print "T2: Hebbian association (pair ALM+PLM 20x)"
-  clear_ext()
-  s = 0
-  while s < 100:
-    spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 0)
-    s = s + 1
-  ext[nidx["ALML"]] = 1.2
-  ext[nidx["ALMR"]] = 1.2
-  pvcsp = 0
-  s = 0
-  while s < 10:
-    spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 0)
-    pvcsp = pvcsp + count_sp(spk, nidx, "PVCL", "PVCR")
-    if s == 2:
+  print "T2: Hebbian association with control"
+
+
+  print "pairings 0: ALM -> PVC spikes:", measure_alm_pvc(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, nidx, N, STIM, 100)
+  doses = [5, 10, 20]
+  di = 0
+  while di < 3:
+    npair = doses[di]
+    pair = 0
+    while pair < npair:
       clear_ext()
-    s = s + 1
-  print "before pairing, ALM -> PVC spikes:", pvcsp
+      ext[nidx["ALML"]] = STIM
+      ext[nidx["ALMR"]] = STIM
+      ext[nidx["PLML"]] = STIM
+      ext[nidx["PLMR"]] = STIM
+      s = 0
+      while s < 4:
+        spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
+        s = s + 1
+      clear_ext()
+      s = 0
+      while s < 26:
+        spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
+        s = s + 1
+      pair = pair + 1
+    print "pairings +", npair, ": ALM -> PVC spikes:", measure_alm_pvc(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, nidx, N, STIM, 30)
+    di = di + 1
   pair = 0
   while pair < 20:
     clear_ext()
-    ext[nidx["ALML"]] = 1.2
-    ext[nidx["ALMR"]] = 1.2
-    ext[nidx["PLML"]] = 1.2
-    ext[nidx["PLMR"]] = 1.2
+    ext[nidx["ALML"]] = STIM
+    ext[nidx["ALMR"]] = STIM
     s = 0
     while s < 4:
-      spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+      spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
       s = s + 1
     clear_ext()
     s = 0
     while s < 26:
-      spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
+      spk = sstep(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, N, 1)
       s = s + 1
     pair = pair + 1
-  clear_ext()
-  s = 0
-  while s < 50:
-    spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 1)
-    s = s + 1
-  ext[nidx["ALML"]] = 1.2
-  ext[nidx["ALMR"]] = 1.2
-  pvcsp = 0
-  s = 0
-  while s < 10:
-    spk = sstep(v, spk, ext, dep, wpl, instart, inpre, inw, ingap, N, 0)
-    pvcsp = pvcsp + count_sp(spk, nidx, "PVCL", "PVCR")
-    if s == 2:
-      clear_ext()
-    s = s + 1
-  print "after pairing, ALM -> PVC spikes:", pvcsp
+  print "after 20 UNPAIRED ALM-only: ALM -> PVC spikes:", measure_alm_pvc(v, spk, trc, ext, dep, wpl, instart, inpre, inw, ingap, isgaba, nidx, N, STIM, 30)
 
 main()
