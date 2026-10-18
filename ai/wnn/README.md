@@ -286,3 +286,12 @@ new algorithm, general word problems (unseen words fail), or any role for the
 connectome reservoir (it is not used; P5 found it does not help logic). The
 facts that generalize do so only where a counting/derivation procedure was
 given. Not run: grokking-style gradient training with weight decay.
+
+## P7: procedures induced from end-to-end examples (feasibility)
+
+`induce.py` learns step-programs from I/O pairs only (20-40 examples, 1-4 digits): no demo traces, no hand-given READ/FACT/WRITE/ADV/HALT, carry abstraction or derivation rules.
+GIVEN: a scan machine (walk the tape, one integer register r, per step output f(x,y,r) and update r=g(x,y,r)) and an arithmetic DSL (+ - * // % < > == min max ite; consts 0 1 2 3 10).
+LEARNED by shortest-first enumerative search: read/write direction, output mode, f and g.
+Result (unseen inputs, 200 each at 4/6/10/20/50 digits, all 100%): copy, +1/digit, reverse, count of 3s, digit sum, max, parity of sum, add (found f=(x+y+r)%10, g=(x+y+r)//10, i.e. the carry), sub (borrow), compare.
+Caveat: with few easy examples the search returns a shorter wrong program (sub 12% at 50 digits, compare ~50%); adversarial examples (borrow chains, prefix ties) fixed both. Search is brute force; programs of size >~9 need ~minutes and more memory. This is program search over a hand-picked DSL, not discovery of primitives.
+Run: `python3 induce.py 7 [task ...]` (needs ~1.5 GB RAM).
