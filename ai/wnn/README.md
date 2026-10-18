@@ -295,3 +295,12 @@ LEARNED by shortest-first enumerative search: read/write direction, output mode,
 Result (unseen inputs, 200 each at 4/6/10/20/50 digits, all 100%): copy, +1/digit, reverse, count of 3s, digit sum, max, parity of sum, add (found f=(x+y+r)%10, g=(x+y+r)//10, i.e. the carry), sub (borrow), compare.
 Caveat: with few easy examples the search returns a shorter wrong program (sub 12% at 50 digits, compare ~50%); adversarial examples (borrow chains, prefix ties) fixed both. Search is brute force; programs of size >~9 need ~minutes and more memory. This is program search over a hand-picked DSL, not discovery of primitives.
 Run: `python3 induce.py 7 [task ...]` (needs ~1.5 GB RAM).
+
+## P8: library learning over the P7 search (`lib.py`, `lib_run.py`)
+
+Solve base tasks (inc, add, sub) with the raw DSL, mine repeated (op, const) patterns from the solved programs' text (`%10` x3, `//10` x1), add them as primitives that cost +1 over the child, then search again with a smaller bank.
+Measured (same 40-example training sets, unseen 4-50 digit tests, all found programs 100%):
+- raw bank size<=6: add, sub, mul-by-digit NOT found. Library bank size<=6 (31.8k exprs vs 16.6k): add 0s, sub 29s, mul1 0s, all found.
+- Raw size<=7 (76.6k exprs) also finds add (1s), mul1 (1s) and sub (202s). So at this scale the library is a speed/size gain (sub 7x faster), not a new capability.
+- Mining is crude (regex over program text, threshold set by hand: with threshold 2 only `%10` was adopted and add was still out of reach; `//10` needed threshold 1).
+Not done: searching the skeleton itself (number of registers, loops). Two registers makes the joint search square the cost; not feasible with this enumerator on CPU.

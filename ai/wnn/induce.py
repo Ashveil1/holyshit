@@ -20,7 +20,7 @@ for c in (0, 1, 2, 3, 10): LEAVES[str(c)] = np.full(gx.size, c)
 BIN = {'+': np.add, '-': np.subtract, '*': np.multiply, '//': None, '%': None,
        '<': lambda a, b: (a < b) * 1, '>': lambda a, b: (a > b) * 1, '==': lambda a, b: (a == b) * 1,
        'min': np.minimum, 'max': np.maximum}
-def build(maxsize, cap=60000):
+def build(maxsize, cap=60000, lib=()):
     bank = {}; seen = {}; bysize = {}
     def add(e, t, s):
         if (t.min() < -999) or (t.max() > 999): return
@@ -54,6 +54,10 @@ def build(maxsize, cap=60000):
                         for ea, ta in bysize.get(sa, []):
                             for eb, tb in bysize.get(sb, []):
                                 add(('ite', ec, ea, eb), np.where(tc != 0, ta, tb), s)
+        for (lop, lc) in lib:  # learned library ops: (op, const) applied to any expr, cost 1 more than the child
+            for ea, ta in list(bysize.get(s - 1, [])):
+                c = int(lc); ta32 = ta.astype(np.int32)
+                add((lop, ea, lc), np.floor_divide(ta32, c) if lop == '//' else np.mod(ta32, c) if lop == '%' else None, s) if lop in ('//', '%') else None
         if len(bysize.get(s, [])) > cap: bysize[s] = bysize[s][:cap]
         print('  dsl size', s, len(bysize.get(s, [])), file=sys.stderr)
     return bysize
@@ -90,6 +94,10 @@ def mk(task, rng, n):
         xs, ys = digs(a, n), digs(b, n)
         o = digs(a + b, n + 1) if task == 'add' else digs(a - b, n) if task == 'sub' else [1 if a > b else 0]
         return xs, ys, o
+    if task in ('mul1', 'addmod'):
+        a = rng.randrange(10**n); m = rng.randrange(10); xs = digs(a, n)
+        if task == 'mul1': return xs, [m] * n, digs(a * m, n + 1)
+        b = rng.randrange(10**n); ys = digs(b, n); return xs, ys, [(p + q) % 10 for p, q in zip(xs, ys)]
     xs = [rng.randrange(10) for _ in range(n)]
     o = {'reverse': xs[::-1], 'copy': xs[:], 'inc': [(v + 1) % 10 for v in xs], 'count3': [sum(v == 3 for v in xs)],
          'sumdigits': [sum(xs)], 'max': [max(xs)], 'parity_sum': [sum(xs) % 2], 'first_gt_last': [1 if xs[0] > xs[-1] else 0]}[task]
