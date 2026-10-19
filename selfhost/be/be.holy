@@ -10775,6 +10775,14 @@ class GenIR(Gen):
           if ins["op"] == "mkfunc":
             parents[ins["func"]] = key
     self.parents = parents
+    usage = {}
+    for key in self.allorder:
+      fdef = self.allfuncs[key]
+      for b in fdef["blocks"]:
+        for ins in b["instrs"]:
+          if ins["op"] in ["load", "stvar", "stglobal", "sload", "svarptr", "sset", "unbind", "attr", "setattr"] and pyrt.py_get(ins, "name", null) != null:
+            pyrt.py_add(pyrt.py_setdefault(usage, ins["name"], pyrt.py_set(null)), key)
+    self._name_usage = usage
     for key in self.allorder:
       f = self.frames[key]
       both = self._compute_iraw(self.allfuncs[key], self._compute_ivars(key, self.allfuncs[key], f["is_entry"]))
@@ -10943,14 +10951,9 @@ class GenIR(Gen):
     self._capnames = c
     return c
   def _var_uses_elsewhere(self, key, name):
-    for k2 in self.allorder:
-      if k2 == key:
-        continue
-      f2 = self.allfuncs[k2]
-      for b in f2["blocks"]:
-        for ins in b["instrs"]:
-          if ins["op"] in ["load", "stvar", "stglobal", "sload", "svarptr", "sset", "unbind", "attr", "setattr"] and pyrt.py_get(ins, "name", null) == name:
-            return true
+    for k2 in pyrt.py_get(pyrt.py_getattr(self, "_name_usage", {}), name, pyrt.py_set(null)):
+      if k2 != key:
+        return true
     return false
   def _compute_ivars(self, key, fdef, is_entry):
     cand = pyrt.py_set(null)
