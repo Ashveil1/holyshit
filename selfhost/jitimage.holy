@@ -17,4 +17,4 @@ def relocate(text, data):
   return asm.resolve_at(text, data)
 def publish():
   state = asm.state()
-  return jitmem.publish_sections(state["code"], state["data"], relocate)
+  return jitmem.publish_resolved(state["code"], state["data"], relocate)
