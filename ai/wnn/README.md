@@ -149,3 +149,287 @@ Honest summary: this system learns in one pass, never catastrophically
 forgets, and picks up new facts in one shot - things LLMs cannot do
 without retraining. It is NOT smarter than an LLM and does not reason
 or generate free text.
+
+
+## logic.holy / logic_hdc.holy — logic and math (P5)
+
+Question: can training on logic and mathematics "develop the logic" of the
+connectome system? Measured answer: **no for learned reasoning, yes for
+memory- and symbol-based exact operations** — details below, nothing hidden.
+
+Same machinery as P1: frozen C. elegans reservoir + one-pass weightless
+readout, plus an ablation that skips the reservoir (raw encoded bits) and
+MLP / lookup baselines (`logic_baseline.py`, same splits, same encodings).
+All data is generated programmatically; splits are deterministic.
+
+### E1 — boolean functions, 8-bit inputs (train 188 patterns, held-out 68)
+
+| function | worm+WNN train | worm held-out | raw+WNN train | raw held-out | MLP held-out | lookup held-out |
+|---|---|---|---|---|---|---|
+| MAJORITY8 (>=4 ones) | 172/188 (91%) | 55/68 (81%) | 188/188 | 61/68 (90%) | 100% | 65% |
+| PARITY8 | 118/188 (63%) | 16/68 (24%) | 141/188 (75%) | 0/68 (0%) | 60% | 49% |
+| DNF4 (OR of 4 ANDs) | 164/188 (87%) | 56/68 (82%) | 188/188 | 65/68 (96%) | 100% | 68% |
+
+Reading: where input similarity aligns with the target (majority, DNF),
+the one-pass readout generalizes. Parity is the classic failure: held-out
+accuracy is at/below chance — the readout **anti-generalizes**, because a
+pattern's nearest neighbors always have the opposite parity. No local
+similarity method can beat this; an MLP barely can (60%).
+
+### E2/E3 — arithmetic and sequence rules: no generalization, for anyone
+
+Addition a+b (a,b in 0..15 -> 31 sums) and next-in-sequence
+(given a, a+d predict a+2d mod 32), held-out pairs AND a systematic split
+(train a<8, test a>=8; unseen step d=7), one-hot and thermometer encodings:
+
+- held-out accuracy is **0/68, 0/128, 0/59, 0/32 for worm+WNN, raw+WNN AND
+  the MLP** (MLP train accuracy: 100%). Lookup baseline: ~1.5% (chance).
+- Exact arithmetic from examples is memorization, not rule extraction, for
+  every method tested here. Even memorization is imperfect for the WNN:
+  42-66% training accuracy on 256 arbitrary pair->sum rows (local 8-bit
+  tuples can't isolate the pair interaction), while it memorizes 2-class
+  boolean functions at 75-100%.
+
+### E4 — continual logic: learn AND, then OR, then PARITY (retention)
+
+Function selected by 2 extra input bits; each function learned on all 256
+patterns, one pass, same tables:
+
+| after learning | WNN (worm and raw): AND | OR | PARITY | MLP: AND | OR | PARITY |
+|---|---|---|---|---|---|---|
+| AND | 255/256 | - | - | 255/256 | - | - |
+| + OR | 255/256 | 255/256 | - | 2/256 (0.8%) | 255/256 | - |
+| + PARITY | 255/256 | 255/256 | 132/256 (52%) | 1/256 | 255/256 | 151/256 (59%) |
+
+The standing result holds for logic too: tables never forget (AND survives
+two later functions); sequential gradient training destroys AND. Parity
+stays hard for both even with full data (WNN random 8-bit tuples rarely
+cover exactly the 8 data bits).
+
+### E5 — the symbolic route is exact (logic_hdc.holy, HDC memory)
+
+| test | result |
+|---|---|
+| T1 arithmetic by chaining: store x->x+1 (0..99), compute a+k by k recalls | 475/475 (100%) |
+| T2 transitive inference: store A->B->C->D chains, query A, follow 2 hops | 50/50 (100%) |
+| T3 XOR learned one-shot (4 facts, one write each) | 4/4 |
+| T4 3-bit parity, 7 of 8 rows stored, query the unseen 8th row | wrong - an unseen row cannot be inferred |
+
+Two honest implementation lessons: commutative XOR binding is ambiguous on
+interior chain nodes (a node that is both value and key unbinds to a 50/50
+mix; T1 scored 13%, T2 2-hop 60% before the fix); directional
+(permutation) binding fixes it (both 100%) at the cost of free reverse
+recall. And the symbolic route only ever works for what was stored — T4.
+
+### Conclusion (P5)
+
+The connectome reservoir does not "grow logic" from data — if anything it
+blurs small structured inputs (raw beats worm on every E1 row). What the
+system genuinely has: (a) one-pass similarity-based generalization where
+the function respects similarity, (b) perfect retention across continual
+learning, (c) exact symbolic arithmetic/inference through one-shot HDC
+chaining — but only over stored relations. This is not reasoning and is
+nowhere near LLM competence; it is also not nothing: 475/475 chained
+additions on a 16KB fixed memory with one integer-XOR write per fact.
+
+```sh
+python3 hs.py xbuild ai/wnn/logic.holy -o /tmp/logic
+/tmp/logic ai/wnn/data/connectome.txt      # ~90 s: E1-E4
+python3 hs.py xbuild ai/wnn/logic_hdc.holy -o /tmp/logic_hdc
+/tmp/logic_hdc                             # ~75 s: T1-T4
+python3 ai/wnn/logic_baseline.py           # MLP + lookup baselines
+```
+
+## P6: procedures instead of answers (working memory + learned rules)
+
+P5 showed the system memorizes. P6 tests the other route from the survey
+(scratchpads, ACT-R style production systems): learn a PROCEDURE and run it
+step by step in a working memory, so the answer is computed, not recalled.
+Files: `reason.py` (all experiments T1-T5 + baselines, deterministic),
+`reason.holy` (native port of the core: add + sub, matches reason.py's
+numbers on 1-3 digits and fact counts exactly).
+
+**Given (hand-built):** primitive actions READ / FACT / WRITE / ADV / HALT;
+digit tapes (LSB first); the carry abstraction (zero/nonzero) in the policy
+observation; the teacher that emits demonstration traces; counting demos
+0..9; "add/sub = count forward/back" and "mul = repeated addition" as
+derivation procedures; for word problems the sentence template, number
+extraction and the verb position. **Learned:** the policy (observation ->
+next action, majority vote over trace steps), the (op,x,y,carry) -> (digit,
+carry') fact table, and the verb -> operation map. The learning itself is
+tabular; nothing here discovers arithmetic from scratch.
+
+Measured (`python3 ai/wnn/reason.py`; native: `hs.py xbuild ai/wnn/reason.holy`):
+
+| test | result |
+|---|---|
+| T1 held-out digit facts (56/200 unseen) | lookup 0%, MLP 0% (train 100%), + counting derivation 100% |
+| T2 add, 200 traces, unseen operand pairs 1-3 digits | 100% |
+| T2 length generalization 4/6/10/20/50 digits | 100% (native holy: 300/300 each) |
+| T2 baseline direct MLP (3000 pairs) | train 100%, held-out 57%, 4+ digits cannot be encoded |
+| T2 baseline gradient step-net inside the same loop | 100% - the structure generalizes, not the WNN |
+| demos needed (6-digit acc) | 5 traces 82%, 10 traces 100% with counting; lookup-only needs >200 |
+| T3 sub 2-30 digits | 100% (with counting) |
+| T3 mul by 1 digit | 100% with repeated-addition derivation; ~86-98% with 8000 traces and no derivation (missing facts) |
+| T3 compare | 94-100% only with 8000 traces (300/300 facts stored); no derivation rule, so low with few demos |
+| T4 2-step word problems, new names/numbers, seen verbs | 100% (always-add baseline ~25%) |
+| T4 unseen verbs (char-trigram nearest neighbour) | 25%, at chance: spelling similarity is not meaning |
+| T5 drop carry rule | wrong on 98%; failure iff operands generate a carry (100% predictable) |
+| T5 corrupt carry at step k | first wrong digit is k+1 in 87% of cases |
+
+Reading it honestly: it generalizes to unseen operands and to much longer
+numbers because the controller is length-free (its observation is local) and
+the facts are exact. That is the scratchpad result from the literature
+reproduced in a tiny system, and a plain gradient net does equally well once
+it is placed in the same loop. What is NOT shown: reasoning, discovering a
+new algorithm, general word problems (unseen words fail), or any role for the
+connectome reservoir (it is not used; P5 found it does not help logic). The
+facts that generalize do so only where a counting/derivation procedure was
+given. Not run: grokking-style gradient training with weight decay.
+
+## P7: procedures induced from end-to-end examples (feasibility)
+
+`induce.py` learns step-programs from I/O pairs only (20-40 examples, 1-4 digits): no demo traces, no hand-given READ/FACT/WRITE/ADV/HALT, carry abstraction or derivation rules.
+GIVEN: a scan machine (walk the tape, one integer register r, per step output f(x,y,r) and update r=g(x,y,r)) and an arithmetic DSL (+ - * // % < > == min max ite; consts 0 1 2 3 10).
+LEARNED by shortest-first enumerative search: read/write direction, output mode, f and g.
+Result (unseen inputs, 200 each at 4/6/10/20/50 digits, all 100%): copy, +1/digit, reverse, count of 3s, digit sum, max, parity of sum, add (found f=(x+y+r)%10, g=(x+y+r)//10, i.e. the carry), sub (borrow), compare.
+Caveat: with few easy examples the search returns a shorter wrong program (sub 12% at 50 digits, compare ~50%); adversarial examples (borrow chains, prefix ties) fixed both. Search is brute force; programs of size >~9 need ~minutes and more memory. This is program search over a hand-picked DSL, not discovery of primitives.
+Run: `python3 induce.py 7 [task ...]` (needs ~1.5 GB RAM).
+
+## P8: library learning over the P7 search (`lib.py`, `lib_run.py`)
+
+Solve base tasks (inc, add, sub) with the raw DSL, mine repeated (op, const) patterns from the solved programs' text (`%10` x3, `//10` x1), add them as primitives that cost +1 over the child, then search again with a smaller bank.
+Measured (same 40-example training sets, unseen 4-50 digit tests, all found programs 100%):
+- raw bank size<=6: add, sub, mul-by-digit NOT found. Library bank size<=6 (31.8k exprs vs 16.6k): add 0s, sub 29s, mul1 0s, all found.
+- Raw size<=7 (76.6k exprs) also finds add (1s), mul1 (1s) and sub (202s). So at this scale the library is a speed/size gain (sub 7x faster), not a new capability.
+- Mining is crude (regex over program text, threshold set by hand: with threshold 2 only `%10` was adopted and add was still out of reach; `//10` needed threshold 1).
+Not done: searching the skeleton itself (number of registers, loops). Two registers makes the joint search square the cost; not feasible with this enumerator on CPU.
+
+## P9: evolutionary search over K-register machines (`gp.py`)
+
+GIVEN: scan machine, K integer registers (init 0), arithmetic DSL, output mode read off the example shape. LEARNED: directions, per-register update trees, output tree. Fitness = partial credit on end-to-end examples; mutation can wrap a subtree in the mined library ops `%10`/`//10` (P8). Tested on unseen lengths 4/6/10/20/50; "ok" = train-perfect AND >=99% at every length. Seeds are independent runs; 6 seeds x 30,000 evals unless noted (K=1 rows marked * were 8 seeds x 60,000 evals).
+
+| task | K=1 GP | K=3 GP | K=3 random |
+|---|---|---|---|
+| second_max | 0/6, 0/8* | 3/6 | 0/6 |
+| alt_sum (needs position parity) | 3/6, 7/8* | 6/6 | 5/6 |
+| count_max | 0/6 | 0/6 | 0/6 |
+| count_gt_first | 0/6 | 0/6 | 0/6 |
+| max_minus_min | 0/6 | 0/6 | 0/6 |
+| add | 0/6, 6/8* | 0/6 | 0/6 |
+| sub | 2/6, 3/8* | 1/6 | 0/6 |
+| compare | 5/6, 7/8* | 2/6 | 0/6 |
+| run_parity | 4/6 | 2/6 | 0/6 |
+| mul1 | 0/6 | 0/6 | 0/6 |
+
+Reading: extra registers let GP find tasks one register cannot (second_max 3/6 vs 0/14; alt_sum), and GP beats random search at equal budget. But success rates are modest and noisy: more registers makes already-solvable tasks (add, compare, sub) harder at a fixed budget, and count_max, count_gt_first, max_minus_min, mul1 are not solved at all here. Budgets differ between table cells (see above) so K=1* vs K=3 is not a clean comparison. The exhaustive search in P7/P8 still solves add/sub/compare/mul1 reliably and faster. The scan idea, registers-as-state and the arithmetic DSL are still given; this does not discover them. Not done: learned neural scorer (only the hand-set `%10`/`//10` wrap mutation is used), DSL-ablation sweep.
+
+## P10: learned proposer + curriculum/transfer (`proposer.py`, `exp_prop.py`, `curr.py`)
+
+**Proposer.** Small numpy MLP (43 hand-designed example features -> which ops/constants/leaves the hidden program uses), trained on 20k random synthetic programs, never on the eval tasks. On held-out random programs it is barely better than base rates (logloss 0.548 vs 0.574; strong only for "uses y" and a little for "uses x"/constants), because many ops in random programs are dead code. Used as sampling weights in the GP (K=3, 6 seeds x 20k evals), generalizing solves guided vs unguided: second_max 3/6 vs 3/6, count_max 0 vs 0, max_minus_min 0 vs 0, count_gt_first 0 vs 0, mul1 0 vs 0, alt_sum 5/6 vs 6/6, compare 3/6 vs 2/6, run_parity 1/6 vs 2/6. Net effect: no measurable gain. The features are hand-designed (they encode tasks like sum/max/compare), so even this much is not "learned from scratch".
+
+**Curriculum.** Learn skill A with GP, mine its subtrees (size 3-9) as macros, then learn B with macros available (6 seeds x 20k evals, generalizing solves). Skills learned: sumdigits, max, count3, parity_sum, compare; add and sub FAILED at this budget (so the add -> mul1 chain had 0 macros). Learned skill programs are messy (dead code), so macros are noisy.
+- second_max: alone 3/6; after max 4/6 (mean evals 12.4k -> 6.5k); after all skills mixed 5/6.
+- alt_sum: alone 6/6; after sumdigits+parity 5/6; mixed 5/6 (slightly worse).
+- count_max, max_minus_min, count_gt_first, mul1: 0/6 in every condition.
+Reading: a hint of transfer on one task (second_max, builds on max) that is within noise at n=6; no transfer elsewhere. Mixed-task libraries did not connect skills on their own here. Honest conclusion: with this DSL and budget, neither a learned proposer nor curriculum macros produced a clear capability gain; the exhaustive search (P7/P8) remains the reliable component.
+
+## P11: stair-step curriculum with the exhaustive learner (`cur1.py`, `cur2.py`, `cur2_test.py`)
+
+**Level 1: base skills learned from examples (20 different random training sets each, tested 4-50 digits).** lib6 = bank<=6 with mined `%10`/`//10` (P8); raw7 = raw bank<=7.
+- add: found 20/20, correct 11/20 (both banks; the other 9 training sets underdetermine the carry, so a validated set must be chosen), mul1 20/20, shift (x10) 20/20, compare 20/20, addmod 20/20 (lib6). raw7: add 11/20, mul1 20/20, shift 20/20 (mean search 1.3s / 0.9s vs 0.5s / 0.4s for lib6). sub: learned from seed 0 (borrow), not run over 20 seeds.
+
+**Level 2: compose the learned procedures** (library: learned add, sub, mul1, shift, compare, run as the induced programs on digit tapes). Level-1 programs used were the first training set passing held-out validation at 4-30 digits. Level-2 search = enumeration of typed compositions over the whole library at once (no hint which skill is needed), fitted on 25 examples of 1-3 digits, then tested on 60 unseen pairs at each of 4/8/15/30 digits:
+- |a-b|: `ite(cmp(x,y), sub(x,y), sub(y,x))` found (763 candidates), 60/60 at every length.
+- a*b: FOLD over digits of b: `acc <- add(shift(acc), mul1(x,d))` (Horner) found (2502 candidates, 26.7k expressions in the library), 60/60 at every length up to 30x30 digits.
+- a mod b (quotient <= 9): `while not cmp(y,acc): acc <- sub(acc,y)` found (439 candidates), 60/60 at every length.
+- Ablation (remove one primitive): mul fails without add, without shift, or without mul1; |a-b| fails without ite or without sub; mod fails without sub. Every link of the chain is needed.
+
+**What is still given:** the level-1 scan machine and arithmetic DSL, digit-tape glue (pad, strip, broadcast), the constant [1], `ite`, `not`, and the three loop skeletons (direct, fold over digits of the second number, while-condition). The level-2 program shapes are small (<=6 nodes) because the primitives do the work. Not done: integer division (needs a counter register), a separate test of interleaved training order (the mixed library was searched all at once, not trained in an order), skeleton discovery. Level-2 tasks are impossible for the level-1 search alone (nested loops), so "alone" is not a baseline here; the ablation shows dependence instead.
+
+## P12: level 3 of the curriculum (cur3.py)
+
+Re-learn mul and mod from level 2 (as in P11), then enumerate a two-variable WHILE loop on top of them.
+Given: the loop skeleton, inits from {x,y,1}, conditions from cmp/not/0, updates of size <=3 over {add,sub,mul,mod,shift}.
+Train on 25 examples; test on 40 unseen per digit length 2/4/6/8.
+
+| task | result | candidates | unseen 2/4/6/8 digits |
+|---|---|---|---|
+| gcd | FOUND: init (x,y); while cmp(s0,0): s0<-mod(s1,s0); s1<-s0; result s1 (Euclid) | 598k | 40/40 each |
+| power | FOUND: init (1,1); while not cmp(s0,y): s0<-s0+1; s1<-mul(s1,x); result s1 | 431k | 40/40 each |
+
+Ablations:
+- gcd without mod: NOT FOUND (1.59M candidates, whole space).
+- power without mul: NOT FOUND (1.59M candidates, whole space).
+- gcd without sub: still found (361k). Caveat: this only removes sub from the top-level loop updates; the learned mod still uses sub inside, so this is not a real ablation of sub. Not re-run with sub removed from level 1.
+- Not run: without cmp, level-1-only library.
+
+Honest limits: the scan machine, arithmetic DSL, loop skeletons, constants and glue are still hand-given. The search space is small and hand-picked, so a hit is not surprising once the right pieces exist; the ablations show mod and mul are needed. mod relies on small quotients, there is no division, and the power test exponent range is small (not checked precisely). Search effort is hundreds of thousands of candidates, so this does not scale far.
+
+## P12b: level 4 (cur4.py): div and lcm
+
+- div (quotient <= 9) FOUND by the same loop search with 0 added to the inits: init (y,0); while not cmp(s0,x): s0<-s0+y; s1<-s1+1; result s1. 447k candidates. Unseen 40/40 at 2/4/6/8 digits (quotients <= 9 in the test too).
+- gcd re-learned (598k candidates, 40/40).
+- lcm: straight-line search over learned {mul, div, gcd}, expressions up to nesting 2. Picked div(mul(x,y), gcd(x,y)) after 139 expressions (the intended composition, from 25 training pairs of 1-2 digits).
+- lcm held-out accuracy is poor beyond tiny sizes: 39/40 at 2 digits, 5/40 at 4, 0/40 at 6 and 8. Reason: the learned div only counts up to quotients of 9 (its training range), but lcm needs div(x*y, gcd) with huge quotients. The composition is right; the learned div does not generalise. Fixing it needs a learned long division (nested loop), not done.
+- Ablations: lcm without mul, div or gcd: NOT FOUND (62/122/122 expressions, whole space).
+- Hand-given as before, plus 0 as an extra init constant.
+
+## P13: S1 basics library + S2 unhinted composition (cur5.py)
+
+S1, learned from examples: max/min (ite over learned cmp, found at once); is-prime: fold over d=2..x-1 with acc<-mul(acc,mod(x,d)), result nonzero(acc) (1605 candidates; 200/200 on unseen x<2000, but only trained on x>=2, so is-prime(1) is wrong, and the product grows to thousands of digits). div, gcd, mul, mod come from P11/P12 (div only for quotients <=9, mod only for modest quotients).
+Given: iszero as glue, the loop/fold skeletons, the tape machine, "(x,y)->number" signature.
+
+S2: for each unseen task the system sees only 25 (x,y)->out pairs (1-2 digits). It searches expressions up to depth 2 over all library ops, shortest first, and I test on 40 fresh pairs at 1/2/3 digits.
+Result: 6/10 generalise (>=38/40 at every size):
+- found: divisible(x by y) = div(gcd(x,y),y); larger-smaller = sub(max,min); larger mod smaller = mod(x+y, min) (equivalent function, not the "natural" form); x^2+y^2; coprime = div(1, gcd(x,y)); gcd+larger. Several are clever equivalents (floor-division tricks), not the textbook program.
+- is (x+y) prime: right composition isprime(add(x,y)) chosen, but 35/40 at 3 digits (not diagnosed).
+- NOT found / fail: lcm (right composition div(mul,gcd) exists in the space but learned div breaks on large quotients, so it was never consistent with the training pairs); x*x mod y (mod limit); "both prime" (training pairs include x=1, where the learned is-prime is wrong).
+- Ablation (library op removed): without gcd 4/10 (coprime lost too), without mod 5/10. without mul 5/10, without max+min 3/10, without div 5/10 (divisible is then found as iszero(mod x y), the textbook form). Caveat: ablation removes an op from the expression grammar only; is-prime still uses mod and mul inside, and the floor-division tricks (coprime = div(1,gcd)) survive when mod/mul go.
+Honest limits: this is NOT word problems; the "format" is numeric pairs only. The ops, depth bound, expression grammar and the 0/1 convention are hand-given; the task pool is small and chosen by me; the search is plain enumeration, so "solves problems itself" means "finds a short composition of learned skills that fits the examples". Failures come from learned skills with narrow training ranges.
+
+## P14: learn the loop skeleton itself (cur6.py)
+
+Instead of the hand-given direct / fold / while skeletons of P11-P13, ONE generic linear-recursion schema is searched:
+f(a,b) = base if cond(a,b) else comb(a,b, f(step0(a,b), step1(a,b))); answer = post(f(x, init)), init in {y,1,0,2}, post in {id, iszero, nonzero}. Tail loops, counting loops, folds and accumulator loops are instances (comb = identity for tail loops). The search picks cond, base, both step expressions, comb, init and post from 25 examples (1-2 digits). Each learned function enters the library as a new op (curriculum order mod, mul, div, power, gcd, is-prime, factorial, sum-to-n).
+
+Seed 0 (all 8 learned, each 40/40 on unseen at 1,2,3,4 digit scales except where noted):
+- mod: if a<b then a else mod(a-b,b) (642 candidates)
+- mul: if b<1 then 0 else a+mul(a,b-1) (repeated addition)
+- div: if a<b then 0 else 1+div(a-b,b), 40/40 even for LARGE quotients (the quotient<=9 limit of P12b is gone; by-product "long division" but still repeated subtraction, cost O(quotient), not digit-wise)
+- power: if b<1 then 1 else a*power(a,b-1) (2.4M candidates)
+- gcd: f(a,b) with step (b mod a, a): Euclid, found as a tail loop (60k candidates)
+- is-prime: init b=2; if not(b<a) -> a else step (a,b+1); comb val*(a mod b); post nonzero (24.7M candidates; found after the combine order was allowed to be either way)
+- factorial: tail loop with accumulator, step (a-1, b*a)
+- sum 1..n: tail loop step (a-1, a+b)
+Seed 1 (7 tasks without is-prime): all found, 40/40 at all scales except sum-to-n 37/39/40/40 (the found program starts its accumulator at 1 so n=0 is wrong; training set lacked n=0).
+Ablations (seed 0): no-combine (tail loops only): mod, gcd, sum-to-n still found; mul, div, power, factorial NOT found (whole space searched). Pair-step off (only one state variable changes per step): mod, mul, div, power, sum-to-n found, gcd NOT found (21.7M candidates, whole space), factorial found but only 32/40 and 34/40 at 3 and 4 digits (a different, weaker program: it is not tail with accumulator, and the mul recursion hits its depth cap). No learned ops in the grammar (only add/sub): mod, mul, div, sum-to-n found; power, gcd, factorial NOT found. So each of the three given-by-search ingredients (combine, two-variable step, library growth) is needed for some skill. Seed 2 (7 tasks without is-prime): all found, 40/40 at every scale.
+Honest limits: given are the recursion schema itself (two args, one recursive call), the expression grammar (leaves a,b,1,0 and one binary op), the cond forms, post set, int-level add/sub/lt, curriculum order, the (x,y)->out format. The recursion depth is capped (400 during search, 20000 at test), so learned mul/div are repeated addition/subtraction: correct but slow, and power training values had to stay small for that reason. Search cost is millions of candidates for the later tasks, so it will not scale to longer programs. Some programs have training-range blind spots (sum-to-n at n=0, is-prime at x<2).
+
+## P15: learn simple text commands (English + Thai) -> program (text2prog.py)
+
+Learned from (sentence, answer) pairs only; nobody says which operation a sentence means. For each training pair the learner finds which (op, argument order) hypotheses reproduce the answer, splits credit across them, and learns word / char-n-gram -> hypothesis weights (naive Bayes with soft counts; ambiguity from coinciding numbers is resolved across examples). 12 ops (add sub mul div mod power gcd max min is-prime factorial sum-to-n), 21 hypotheses (op x forward/reverse; "subtract 3 from 10" and "ลบ 3 ออกจาก 10" need the reverse order, which is learned).
+Data: per op 4-5 training templates, 4 new-frame templates (same keywords, new wording, extra filler such as "please"/"ช่วย"), 2 new-synonym templates (words never seen), English and Thai mixed. Test numbers are always unseen (31-99 vs 2-30 in training). 5 seeds, mean [min-max], answer accuracy:
+
+| features | n train | unseen numbers | unseen frames | unseen synonyms |
+|---|---|---|---|---|
+| word tokens + bigrams | 24 / 60 / 150 / 400 | .42 / .78 / .94 / .99 | .43 / .73 / .82 / .84 | .12 / .15 / .20 / .20 |
+| char 2-3-grams | 24 / 60 / 150 / 400 | .43 / .77 / .94 / .98 | .42 / .70 / .78 / .77 | .18 / .28 / .41 / .40 |
+
+- Thai written WITHOUT spaces, char n-grams, n=400: unseen frames 0.80 [0.77-0.84], so no tokenizer is needed.
+- Unseen frames are the weak point (~0.8): per-op failures are mul 23/55, add 22/50, sub 23/45, mod 34/56, gcd 19/37, min 30/57; the cause is spurious associations (e.g. "what is" / "please" / "ช่วย" were seen with other ops during training), not a bug. max, isprime, power, sumto are perfect.
+- Unseen synonyms: ~0.2 (tokens) / ~0.4 (chars) with zero examples, which is near chance and what a lexicon learner should do. Fast mapping: after k labelled examples with the new wording, accuracy is k=1 .89 (tok) / .90 (char), k=2 .97 / .95, k=4 and 8 1.00.
+GIVEN: skill library and hypothesis space (op x order, variadic fold), digit extraction by regex, feature extractors, and the templates themselves (my own synthetic sentences, not real user text). NOT covered: number words ("three"), sentences with more structure than one op, multi-step problems, real free text. Accuracy counts the final number matching, so yes/no answers (is-prime) have a high chance baseline.
+
+## P16: number words and two-step sentences (text2prog2.py)
+
+(a) Number WORDS (one..ten, หนึ่ง..สิบ) with values learned, not given. Stage A learns ops from digit sentences (P15 learner, 300 sentences). Stage B sees sentences where number slots are sometimes words; for every token and each value 1..10 it checks whether rewriting that token as that digit reproduces the answer under the stage-A learner (4 rounds, learned words are substituted first so two-word sentences become one-word sentences). Tokens whose vote is clear (>=3 votes, >=25% of their sentences, top value >=2.5x the runner-up) enter the lexicon. 5 seeds, answer accuracy on unseen frames with words:
+- n=150 stage-B sentences: 6.8/20 words learned (0.4 spurious entries), accuracy .37
+- n=400: 12.4/20 (1.4 spurious), .54
+- n=1000: 17.6/20 (1.2 spurious), .74
+- reference: gold lexicon .85, no lexicon .18. So the learner closes most of the gap to a hand-written lexicon, but needs ~1000 examples; the spurious entries are real errors.
+(b) Two-step sentences ("gcd of 21 and 9 then subtract 11"): the learner sees only (sentence, answer). It explains each sentence by (split point, op1 on the left clause, op2 on the right clause applied to the first result) or by a single op (Occam: single-op explanations win), and learns left-clause words, right-clause words and which token pairs mark a boundary. 5 seeds [min-max]:
+- same phrasing: .46 / .64 / .82 with 100 / 300 / 1000 sentences
+- new connectors and frames ("after that", "afterwards", "then also ... please"): .25 / .36 / .44
+It learns the structure, but the new-phrasing numbers are poor. Errors come from left-clause misreads, wrong cut points inside a single clause, and mixed Thai/English sentences in my own templates.
+GIVEN: skill library, hypothesis space (op x order; second-step op over the first result), digit regex, whitespace tokens, the candidate number-word values 1..10, and the templates (synthetic). Not covered: larger numbers as words, three or more steps, real text. Note: factorial is capped at 20 in text2prog.py (an unbounded factorial hung the two-step explanation search).

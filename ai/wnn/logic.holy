@@ -1,0 +1,741 @@
+// P5: can the worm-connectome system learn LOGIC and MATH? (honest measurement)
+// Same machinery as worm_learn.holy: frozen C. elegans reservoir + one-pass
+// weightless (WiSARD) readout. No gradients, no floats in the readout.
+//
+// Experiments (all patterns generated programmatically, deterministic splits):
+//   E1  boolean functions on 8-bit inputs (MAJORITY / PARITY / DNF),
+//       train on 75% of the 256 patterns, test on held-out 25% (GENERALIZATION)
+//   E2  addition a+b (0..15) -> 31 sums, one-hot vs thermometer encodings,
+//       in-domain held-out pairs AND systematic split (train a<8, test a>=8)
+//   E3  sequence rule: given (a, a+d) predict a+2d mod 32,
+//       in-domain held-out AND unseen step size d=7
+//   E4  continual logic: learn AND, then OR, then PARITY on the same tables
+//       (function-selector bits in the input) - RETENTION, not generalization
+// Each experiment runs twice: worm-reservoir states vs raw encoded bits
+// (ablation: does the connectome expansion actually help?).
+// MLP / lookup baselines: logic_baseline.py (same splits, same encodings).
+
+def clamp(x, lo, hi):
+  if x < lo:
+    return lo
+  if x > hi:
+    return hi
+  return x
+
+def xr_next(state):
+  state = state ^ ((state << 13) & 17592186044415)
+  state = state ^ (state >> 7)
+  state = state ^ ((state << 17) & 17592186044415)
+  return state
+
+def newbuf(n):
+  unsafe:
+    Ptr p = alloc(n)
+    return as_int(p)
+
+def st16(buf, i, v):
+  unsafe:
+    Ptr p = as_ptr(buf) + (i * 2)
+    store8(p, v & 255)
+    store8(p + 1, (v >> 8) & 255)
+
+def st8(buf, i, v):
+  unsafe:
+    Ptr p = as_ptr(buf) + i
+    store8(p, v & 255)
+
+def ld8(buf, i):
+  unsafe:
+    Ptr p = as_ptr(buf) + i
+    return load8(p)
+
+// ---------------- reservoir (identical dynamics to worm_learn.holy) ----------------
+
+def reservoir(N, instart, inpre, inw, ingap, ext, steps):
+  v = []
+  i = 0
+  while i < N:
+    append(v, 0.0)
+    i = i + 1
+  step = 0
+  while step < steps:
+    total = 0.0
+    p = 0
+    while p < N:
+      a0 = v[p]
+      if a0 > 0.0:
+        total = total + a0
+      p = p + 1
+    norm = 1.0 / (1.0 + 0.25 * total)
+    nv = []
+    p = 0
+    while p < N:
+      s = ext[p]
+      ap0 = v[p]
+      if ap0 < 0.0:
+        ap0 = 0.0
+      k = instart[p]
+      kend = instart[p + 1]
+      while k < kend:
+        a = v[inpre[k]]
+        if a < 0.0:
+          a = 0.0
+        if ingap[k] == 1:
+          s = s + inw[k] * (a - ap0)
+        else:
+          s = s + inw[k] * a
+        k = k + 1
+      nv2 = v[p] + 0.4 * (clamp(s * norm, -4.0, 4.0) - v[p])
+      append(nv, nv2)
+      p = p + 1
+    v = nv
+    step = step + 1
+  return v
+
+// quantize 473-float state into 4 thermometer bits per cell (1892 bits)
+def state_bits(v, N, bitbuf, base):
+  i = 0
+  while i < N:
+    q = 0
+    if v[i] > 0.0:
+      q = int(v[i] * 400.0)
+    if q > 255:
+      q = 255
+    st8(bitbuf, base + i * 4 + 0, int(q >= 8))
+    st8(bitbuf, base + i * 4 + 1, int(q >= 24))
+    st8(bitbuf, base + i * 4 + 2, int(q >= 64))
+    st8(bitbuf, base + i * 4 + 3, int(q >= 128))
+    i = i + 1
+
+// ---------------- weightless readout (parametrized classes/bits/banks) ----------------
+
+def wnn_perm(permbuf, NB, NBITS):
+  wb = 0
+  while wb < NB:
+    perm = range(NBITS)
+    ws = 424242 + wb * 999
+    wi = NBITS - 1
+    while wi > 0:
+      ws = xr_next(ws)
+      wj = ws % (wi + 1)
+      wt = perm[wi]
+      perm[wi] = perm[wj]
+      perm[wj] = wt
+      wi = wi - 1
+    wi = 0
+    while wi < NBITS:
+      st16(permbuf, wb * NBITS + wi, perm[wi])
+      wi = wi + 1
+    wb = wb + 1
+
+def wnn_train_bits_off(bitbuf, boff, cls, NB, NT, NCLS, NBITS, permbuf, tables):
+  unsafe:
+    Ptr bp = as_ptr(bitbuf) + boff
+    Ptr pm = as_ptr(permbuf)
+    Ptr tb = as_ptr(tables)
+    I64 cl = cls
+    I64 nb2 = 0
+    while nb2 < NB:
+      Ptr pb = pm + (nb2 * NBITS * 2)
+      I64 t = 0
+      while t < NT:
+        Ptr pp = pb + (t * 16)
+        I64 a = 0
+        I64 k2 = 0
+        while k2 < 8:
+          I64 pos = load8(pp) + (load8(pp + 1) * 256)
+          a = (a * 2) + load8(bp + pos)
+          pp = pp + 2
+          k2 = k2 + 1
+        I64 off = (((nb2 * NT) + t) * NCLS + cl) * 256 + a
+        Ptr q = tb + off
+        I64 cnt = load8(q)
+        if cnt < 255:
+          store8(q, cnt + 1)
+        t = t + 1
+      nb2 = nb2 + 1
+
+def wnn_test_bits_off(bitbuf, boff, NB, NT, NCLS, NBITS, permbuf, tables):
+  unsafe:
+    Ptr bp2 = as_ptr(bitbuf) + boff
+    Ptr pm2 = as_ptr(permbuf)
+    Ptr tb2 = as_ptr(tables)
+    I64 best = 0
+    I64 bestscore = 0 - 1
+    I64 c3 = 0
+    while c3 < NCLS:
+      I64 sc3 = 0
+      I64 nb3 = 0
+      while nb3 < NB:
+        Ptr pb2 = pm2 + (nb3 * NBITS * 2)
+        I64 t2 = 0
+        while t2 < NT:
+          Ptr pp2 = pb2 + (t2 * 16)
+          I64 a2 = 0
+          I64 k3 = 0
+          while k3 < 8:
+            I64 pos2 = load8(pp2) + (load8(pp2 + 1) * 256)
+            a2 = (a2 * 2) + load8(bp2 + pos2)
+            pp2 = pp2 + 2
+            k3 = k3 + 1
+          I64 off2 = (((nb3 * NT) + t2) * NCLS + c3) * 256 + a2
+          I64 cv = load8(tb2 + off2)
+          if cv > 4:
+            cv = 4
+          sc3 = sc3 + cv
+          t2 = t2 + 1
+        nb3 = nb3 + 1
+      if sc3 > bestscore:
+        bestscore = sc3
+        best = c3
+      c3 = c3 + 1
+    return best
+
+// ---------------- encodings (active-channel lists) ----------------
+
+def bipolar8(x, nbits):
+  out = []
+  i = 0
+  while i < nbits:
+    if (x >> i) & 1 == 1:
+      append(out, 2 * i)
+    else:
+      append(out, 2 * i + 1)
+    i = i + 1
+  return out
+
+def onehot2(a, b, wa, wb):
+  return [a, wa + b]
+
+def therm2(a, b, wa, wb):
+  out = []
+  i = 0
+  while i <= a:
+    append(out, i)
+    i = i + 1
+  j = 0
+  while j <= b:
+    append(out, wa + j)
+    j = j + 1
+  return out
+
+def ext_from_channels(N, chans, pmap, cur):
+  ext = []
+  i = 0
+  while i < N:
+    append(ext, 0.0)
+    i = i + 1
+  ci = 0
+  while ci < len(chans):
+    ext[pmap[chans[ci]]] = ext[pmap[chans[ci]]] + cur
+    ci = ci + 1
+  return ext
+
+def raw_bits(chans, nch, bitbuf, base):
+  i = 0
+  while i < nch:
+    st8(bitbuf, base + i, 0)
+    i = i + 1
+  ci = 0
+  while ci < len(chans):
+    st8(bitbuf, base + chans[ci], 1)
+    ci = ci + 1
+
+// deterministic interleaved split (matches logic_baseline.py)
+def split_list(P, seed):
+  te = []
+  s = seed
+  i = 0
+  while i < P:
+    s = xr_next(s + i * 7919 + 1)
+    if s % 4 == 0:
+      append(te, 1)
+    else:
+      append(te, 0)
+    i = i + 1
+  return te
+
+def make_pmap(N, nch, seed):
+  perm = range(N)
+  s = seed
+  i = N - 1
+  while i > 0:
+    s = xr_next(s)
+    j = s % (i + 1)
+    tmp = perm[i]
+    perm[i] = perm[j]
+    perm[j] = tmp
+    i = i - 1
+  out = []
+  i = 0
+  while i < nch:
+    append(out, perm[i])
+    i = i + 1
+  return out
+
+// ---------------- connectome loading (identical to worm_learn.holy) ----------------
+
+def load_conn(path):
+  txt = read_text(path)
+  lines = split(txt, "\n")
+  hdr = split(lines[0], " ")
+  N = int(hdr[0])
+  E = int(hdr[1])
+  names = split(lines[1], " ")
+  nidx = {}
+  i = 0
+  while i < N:
+    nidx[names[i]] = i
+    i = i + 1
+  GABA = ["DD01","DD02","DD03","DD04","DD05","DD06","VD01","VD02","VD03","VD04","VD05","VD06","VD07","VD08","VD09","VD10","VD11","VD12","VD13","RMEL","RMER","RMED","RMEV","AVL","RIS","DVB"]
+  incount = []
+  i = 0
+  while i < N:
+    append(incount, 0)
+    i = i + 1
+  er = []
+  e = 0
+  while e < E:
+    parts = split(lines[2 + e], " ")
+    pre = int(parts[0])
+    post = int(parts[1])
+    w = int(parts[2])
+    t = parts[3]
+    append(er, [pre, post, w, t])
+    incount[post] = incount[post] + 1
+    if t == "g":
+      incount[pre] = incount[pre] + 1
+    e = e + 1
+  M = 0
+  i = 0
+  while i < N:
+    M = M + incount[i]
+    i = i + 1
+  instart = [0]
+  i = 0
+  while i < N:
+    append(instart, instart[i] + incount[i])
+    i = i + 1
+  inpre = []
+  inw = []
+  ingap = []
+  i = 0
+  while i < M:
+    append(inpre, 0)
+    append(inw, 0.0)
+    append(ingap, 0)
+    i = i + 1
+  chem_sum = []
+  gap_sum = []
+  i = 0
+  while i < N:
+    append(chem_sum, 0.0)
+    append(gap_sum, 0.0)
+    i = i + 1
+  fill = []
+  i = 0
+  while i < N:
+    append(fill, instart[i])
+    i = i + 1
+  e = 0
+  while e < E:
+    ed = er[e]
+    pre = ed[0]
+    post = ed[1]
+    w = ed[2]
+    t = ed[3]
+    slot = fill[post]
+    inpre[slot] = pre
+    inw[slot] = w * 1.0
+    if t == "g":
+      ingap[slot] = 1
+      gap_sum[post] = gap_sum[post] + w
+      slot2 = fill[pre]
+      inpre[slot2] = post
+      inw[slot2] = w * 1.0
+      ingap[slot2] = 1
+      gap_sum[pre] = gap_sum[pre] + w
+      fill[pre] = slot2 + 1
+    else:
+      chem_sum[post] = chem_sum[post] + w
+    fill[post] = fill[post] + 1
+    e = e + 1
+  p = 0
+  while p < N:
+    cs = chem_sum[p]
+    gs = gap_sum[p]
+    k = instart[p]
+    kend = instart[p + 1]
+    while k < kend:
+      if ingap[k] == 1:
+        if gs > 0.0:
+          inw[k] = inw[k] / gs * 1.0
+      else:
+        if cs > 0.0:
+          inw[k] = inw[k] / cs * 1.0
+        gi = 0
+        while gi < len(GABA):
+          if inpre[k] == nidx[GABA[gi]]:
+            inw[k] = 0.0 - inw[k]
+          gi = gi + 1
+      k = k + 1
+    p = p + 1
+  return [N, instart, inpre, inw, ingap]
+
+// ---------------- experiment helpers ----------------
+
+def maj8(x):
+  c = 0
+  i = 0
+  while i < 8:
+    c = c + ((x >> i) & 1)
+    i = i + 1
+  if c >= 4:
+    return 1
+  return 0
+
+def par8(x):
+  c = 0
+  i = 0
+  while i < 8:
+    c = c + ((x >> i) & 1)
+    i = i + 1
+  return c % 2
+
+def dnf4(x):
+  t = 0
+  while t < 4:
+    if (x >> (2 * t)) & 3 == 3:
+      return 1
+    t = t + 1
+  return 0
+
+def main():
+  args = argv()
+  connpath = "connectome.txt"
+  if len(args) > 0:
+    connpath = args[0]
+  cc = load_conn(connpath)
+  N = cc[0]
+  instart = cc[1]
+  inpre = cc[2]
+  inw = cc[3]
+  ingap = cc[4]
+  print "connectome:", N, "cells"
+  RSTEP = 15
+  CUR = 8.0
+  NBB = 16
+  WBITS = N * 4
+  WNT = int(WBITS / 8)
+
+  // per-config buffers: worm states (1892 bits) and raw (64 bits max)
+  wperm = newbuf(NBB * WBITS * 2)
+  wnn_perm(wperm, NBB, WBITS)
+  wstate = newbuf(256 * WBITS)   // states for up to 256 patterns
+  rperm = newbuf(NBB * 16 * 2)
+  wnn_perm(rperm, NBB, 16)
+  rbits = newbuf(256 * 64)
+
+  te1 = split_list(256, 555)
+  ntr = 0
+  nte = 0
+  i = 0
+  while i < 256:
+    if te1[i] == 1:
+      nte = nte + 1
+    else:
+      ntr = ntr + 1
+    i = i + 1
+  print "E1: 8-bit boolean functions, train", ntr, "held-out", nte
+
+  pmap16 = make_pmap(N, 16, 135792468)
+  // precompute worm states + raw bits for all 256 boolean inputs
+  x = 0
+  while x < 256:
+    ch = bipolar8(x, 8)
+    ext = ext_from_channels(N, ch, pmap16, CUR)
+    st = reservoir(N, instart, inpre, inw, ingap, ext, RSTEP)
+    state_bits(st, N, wstate, x * WBITS)
+    raw_bits(ch, 16, rbits, x * 64)
+    x = x + 1
+  print "states computed"
+
+  funcs = ["MAJORITY8", "PARITY8", "DNF4"]
+  fi = 0
+  while fi < 3:
+    wtables = newbuf(NBB * WNT * 2 * 256)
+    rtables = newbuf(NBB * 8 * 2 * 256)
+    x = 0
+    while x < 256:
+      if te1[x] == 0:
+        lbl = 0
+        if fi == 0:
+          lbl = maj8(x)
+        if fi == 1:
+          lbl = par8(x)
+        if fi == 2:
+          lbl = dnf4(x)
+        wnn_train_bits_off(wstate, x * WBITS, lbl, NBB, WNT, 2, WBITS, wperm, wtables)
+        wnn_train_bits_off(rbits, x * 64, lbl, NBB, 2, 2, 16, rperm, rtables)
+      x = x + 1
+    wtrc = 0
+    wtec = 0
+    rtrc = 0
+    rte_ = 0
+    x = 0
+    while x < 256:
+      lbl = 0
+      if fi == 0:
+        lbl = maj8(x)
+      if fi == 1:
+        lbl = par8(x)
+      if fi == 2:
+        lbl = dnf4(x)
+      wp = wnn_test_bits_off(wstate, x * WBITS, NBB, WNT, 2, WBITS, wperm, wtables)
+      rp = wnn_test_bits_off(rbits, x * 64, NBB, 2, 2, 16, rperm, rtables)
+      if te1[x] == 0:
+        if wp == lbl:
+          wtrc = wtrc + 1
+        if rp == lbl:
+          rtrc = rtrc + 1
+      else:
+        if wp == lbl:
+          wtec = wtec + 1
+        if rp == lbl:
+          rte_ = rte_ + 1
+      x = x + 1
+    print "E1", funcs[fi], ": worm train", wtrc, "/", ntr, "held-out", wtec, "/", nte, " | raw train", rtrc, "/", ntr, "held-out", rte_, "/", nte
+    fi = fi + 1
+
+  // ================= E2: addition =================
+  te2 = split_list(256, 777)
+  encnames = ["onehot", "thermometer"]
+  ei = 0
+  while ei < 2:
+    pmap32 = make_pmap(N, 32, 135792468)
+    x = 0
+    while x < 256:
+      a2 = int(x / 16)
+      b2 = x % 16
+      ch = []
+      if ei == 0:
+        ch = onehot2(a2, b2, 16, 16)
+      else:
+        ch = therm2(a2, b2, 16, 16)
+      ext = ext_from_channels(N, ch, pmap32, CUR)
+      st = reservoir(N, instart, inpre, inw, ingap, ext, RSTEP)
+      state_bits(st, N, wstate, x * WBITS)
+      raw_bits(ch, 32, rbits, x * 64)
+      x = x + 1
+    si = 0
+    while si < 2:
+      wtables2 = newbuf(NBB * WNT * 31 * 256)
+      rperm2 = newbuf(NBB * 32 * 2)
+      wnn_perm(rperm2, NBB, 32)
+      rtables2 = newbuf(NBB * 4 * 31 * 256)
+      ntr2 = 0
+      x = 0
+      while x < 256:
+        a3 = int(x / 16)
+        istr = 0
+        if si == 0:
+          if te2[x] == 0:
+            istr = 1
+        else:
+          if a3 < 8:
+            istr = 1
+        if istr == 1:
+          lbl2 = a3 + (x % 16)
+          wnn_train_bits_off(wstate, x * WBITS, lbl2, NBB, WNT, 31, WBITS, wperm, wtables2)
+          wnn_train_bits_off(rbits, x * 64, lbl2, NBB, 4, 31, 32, rperm2, rtables2)
+          ntr2 = ntr2 + 1
+        x = x + 1
+      wtrc = 0
+      wtec = 0
+      rtrc = 0
+      rte2_ = 0
+      nte2 = 0
+      x = 0
+      while x < 256:
+        a4 = int(x / 16)
+        istr2 = 0
+        if si == 0:
+          if te2[x] == 0:
+            istr2 = 1
+        else:
+          if a4 < 8:
+            istr2 = 1
+        lbl3 = a4 + (x % 16)
+        wp = wnn_test_bits_off(wstate, x * WBITS, NBB, WNT, 31, WBITS, wperm, wtables2)
+        rp = wnn_test_bits_off(rbits, x * 64, NBB, 4, 31, 32, rperm2, rtables2)
+        if istr2 == 1:
+          if wp == lbl3:
+            wtrc = wtrc + 1
+          if rp == lbl3:
+            rtrc = rtrc + 1
+        else:
+          nte2 = nte2 + 1
+          if wp == lbl3:
+            wtec = wtec + 1
+          if rp == lbl3:
+            rte2_ = rte2_ + 1
+        x = x + 1
+      sname = "in-domain"
+      if si == 1:
+        sname = "systematic"
+      print "E2 add[", encnames[ei], "]", sname, ": worm train", wtrc, "/", ntr2, "held-out", wtec, "/", nte2, " | raw train", rtrc, "/", ntr2, "held-out", rte2_, "/", nte2
+      si = si + 1
+    ei = ei + 1
+
+  // ================= E3: sequence rule (a, a+d) -> a+2d mod 32 =================
+  te3 = split_list(224, 999)
+  pmap64 = make_pmap(N, 64, 135792468)
+  x = 0
+  while x < 224:
+    a5 = int(x / 7)
+    d5 = (x % 7) + 1
+    ch = therm2(a5, (a5 + d5) % 32, 32, 32)
+    ext = ext_from_channels(N, ch, pmap64, CUR)
+    st = reservoir(N, instart, inpre, inw, ingap, ext, RSTEP)
+    state_bits(st, N, wstate, x * WBITS)
+    raw_bits(ch, 64, rbits, x * 64)
+    x = x + 1
+  si = 0
+  while si < 2:
+    wtables3 = newbuf(NBB * WNT * 32 * 256)
+    rperm3 = newbuf(NBB * 64 * 2)
+    wnn_perm(rperm3, NBB, 64)
+    rtables3 = newbuf(NBB * 8 * 32 * 256)
+    ntr3 = 0
+    x = 0
+    while x < 224:
+      a6 = int(x / 7)
+      d6 = (x % 7) + 1
+      istr3 = 0
+      if si == 0:
+        if te3[x] == 0:
+          istr3 = 1
+      else:
+        if d6 < 7:
+          istr3 = 1
+      if istr3 == 1:
+        lbl4 = (a6 + 2 * d6) % 32
+        wnn_train_bits_off(wstate, x * WBITS, lbl4, NBB, WNT, 32, WBITS, wperm, wtables3)
+        wnn_train_bits_off(rbits, x * 64, lbl4, NBB, 8, 32, 64, rperm3, rtables3)
+        ntr3 = ntr3 + 1
+      x = x + 1
+    wtrc = 0
+    wtec = 0
+    rtrc = 0
+    rte3_ = 0
+    nte3 = 0
+    x = 0
+    while x < 224:
+      a7 = int(x / 7)
+      d7 = (x % 7) + 1
+      istr4 = 0
+      if si == 0:
+        if te3[x] == 0:
+          istr4 = 1
+      else:
+        if d7 < 7:
+          istr4 = 1
+      lbl5 = (a7 + 2 * d7) % 32
+      wp = wnn_test_bits_off(wstate, x * WBITS, NBB, WNT, 32, WBITS, wperm, wtables3)
+      rp = wnn_test_bits_off(rbits, x * 64, NBB, 8, 32, 64, rperm3, rtables3)
+      if istr4 == 1:
+        if wp == lbl5:
+          wtrc = wtrc + 1
+        if rp == lbl5:
+          rtrc = rtrc + 1
+      else:
+        nte3 = nte3 + 1
+        if wp == lbl5:
+          wtec = wtec + 1
+        if rp == lbl5:
+          rte3_ = rte3_ + 1
+      x = x + 1
+    sname3 = "in-domain"
+    if si == 1:
+      sname3 = "systematic(d=7)"
+    print "E3 seq", sname3, ": worm train", wtrc, "/", ntr3, "held-out", wtec, "/", nte3, " | raw train", rtrc, "/", ntr3, "held-out", rte3_, "/", nte3
+    si = si + 1
+
+  // ================= E4: continual logic AND -> OR -> PARITY =================
+  print "E4: continual logic (learn AND, then OR, then PARITY; retention check)"
+  wstate4 = newbuf(768 * WBITS)
+  rbits4 = newbuf(768 * 64)
+  pmap20 = make_pmap(N, 20, 135792468)
+  fn = 0
+  while fn < 3:
+    x = 0
+    while x < 256:
+      bits10 = bipolar8(x, 8)
+      if fn & 1 == 1:
+        append(bits10, 16)
+      else:
+        append(bits10, 17)
+      if (fn >> 1) & 1 == 1:
+        append(bits10, 18)
+      else:
+        append(bits10, 19)
+      ext = ext_from_channels(N, bits10, pmap20, CUR)
+      st = reservoir(N, instart, inpre, inw, ingap, ext, RSTEP)
+      state_bits(st, N, wstate4, (fn * 256 + x) * WBITS)
+      raw_bits(bits10, 20, rbits4, (fn * 256 + x) * 64)
+      x = x + 1
+    fn = fn + 1
+  wtables4 = newbuf(NBB * WNT * 2 * 256)
+  rperm4 = newbuf(NBB * 20 * 2)
+  wnn_perm(rperm4, NBB, 20)
+  rtables4 = newbuf(NBB * 2 * 2 * 256)
+  fnnames = ["AND", "OR", "PARITY"]
+  fn = 0
+  while fn < 3:
+    x = 0
+    while x < 256:
+      lbl6 = 0
+      if fn == 0:
+        if x == 255:
+          lbl6 = 1
+      if fn == 1:
+        if x != 0:
+          lbl6 = 1
+      if fn == 2:
+        lbl6 = par8(x)
+      wnn_train_bits_off(wstate4, (fn * 256 + x) * WBITS, lbl6, NBB, WNT, 2, WBITS, wperm, wtables4)
+      wnn_train_bits_off(rbits4, (fn * 256 + x) * 64, lbl6, NBB, 2, 2, 20, rperm4, rtables4)
+      x = x + 1
+    // retention row
+    wcs = [0, 0, 0]
+    rcs = [0, 0, 0]
+    f2 = 0
+    while f2 < 3:
+      wok = 0
+      rok = 0
+      x = 0
+      while x < 256:
+        lbl7 = 0
+        if f2 == 0:
+          if x == 255:
+            lbl7 = 1
+        if f2 == 1:
+          if x != 0:
+            lbl7 = 1
+        if f2 == 2:
+          lbl7 = par8(x)
+        wp = wnn_test_bits_off(wstate4, (f2 * 256 + x) * WBITS, NBB, WNT, 2, WBITS, wperm, wtables4)
+        rp = wnn_test_bits_off(rbits4, (f2 * 256 + x) * 64, NBB, 2, 2, 20, rperm4, rtables4)
+        if wp == lbl7:
+          wok = wok + 1
+        if rp == lbl7:
+          rok = rok + 1
+        x = x + 1
+      wcs[f2] = wok
+      rcs[f2] = rok
+      f2 = f2 + 1
+    print "E4 worm after", fnnames[fn], ": AND", wcs[0], "/256  OR", wcs[1], "/256  PARITY", wcs[2], "/256"
+    print "E4 raw  after", fnnames[fn], ": AND", rcs[0], "/256  OR", rcs[1], "/256  PARITY", rcs[2], "/256"
+    fn = fn + 1
+
+main()
