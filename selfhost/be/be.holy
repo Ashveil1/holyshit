@@ -10949,7 +10949,7 @@ class GenIR(Gen):
       f2 = self.allfuncs[k2]
       for b in f2["blocks"]:
         for ins in b["instrs"]:
-          if ins["op"] in ["load", "stvar", "stglobal", "sload", "svarptr", "sset", "unbind"] and pyrt.py_get(ins, "name", null) == name:
+          if ins["op"] in ["load", "stvar", "stglobal", "sload", "svarptr", "sset", "unbind", "attr", "setattr"] and pyrt.py_get(ins, "name", null) == name:
             return true
     return false
   def _compute_ivars(self, key, fdef, is_entry):
@@ -10959,7 +10959,7 @@ class GenIR(Gen):
       for ins in b["instrs"]:
         if ins["op"] == "stvar":
           pyrt.py_add(cand, ins["name"])
-        elif ins["op"] in ["sdecl", "sset", "svarptr", "unbind", "stglobal"] and pyrt.py_get(ins, "name", null) != null:
+        elif ins["op"] in ["sdecl", "sset", "svarptr", "unbind", "stglobal", "attr", "setattr"] and pyrt.py_get(ins, "name", null) != null:
           pyrt.py_add(bad, ins["name"])
         elif ins["op"] == "sload" and pyrt.py_get(ins, "name", null) != null:
           pyrt.py_add(bad, ins["name"])

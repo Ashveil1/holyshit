@@ -531,8 +531,8 @@ class GenIR(Gen):
             for b in f2["blocks"]:
                 for ins in b["instrs"]:
                     if ins["op"] in ("load", "stvar", "stglobal", "sload",
-                                     "svarptr", "sset", "unbind") and \
-                            ins.get("name") == name:
+                                     "svarptr", "sset", "unbind", "attr",
+                                     "setattr") and ins.get("name") == name:
                         return True
         return False
 
@@ -544,7 +544,8 @@ class GenIR(Gen):
                 if ins["op"] == "stvar":
                     cand.add(ins["name"])
                 elif ins["op"] in ("sdecl", "sset", "svarptr", "unbind",
-                                   "stglobal") and ins.get("name") is not None:
+                                   "stglobal", "attr", "setattr") and \
+                            ins.get("name") is not None:
                     bad.add(ins["name"])
                 elif ins["op"] == "sload" and ins.get("name") is not None:
                     bad.add(ins["name"])
