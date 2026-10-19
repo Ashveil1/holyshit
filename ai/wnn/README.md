@@ -436,3 +436,6 @@ GIVEN: skill library, hypothesis space (op x order; second-step op over the firs
 
 ## P17 (nulls, text2prog3.py)
 Three ideas tested, none beat P16: slot-context candidates for number words (no gain), a type-based cut model for two-step sentences (worse: .33/.43/.51 vs .46/.64/.82), and joint explanation of number words (near 0 words learned with my thresholds). P16 stays the baseline.
+
+## P18 (null, text2prog4.py)
+EM reweighting of two-step explanations (soft weights from the current model instead of uniform) slightly hurt: same phrasing n=100/300 .46/.64 (no EM) vs .40/.61 (2 iters); new phrasing unchanged (.25/.36 vs .25/.34). The uniform Occam rule of P16 stays.
