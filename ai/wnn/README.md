@@ -433,3 +433,9 @@ GIVEN: skill library and hypothesis space (op x order, variadic fold), digit ext
 - new connectors and frames ("after that", "afterwards", "then also ... please"): .25 / .36 / .44
 It learns the structure, but the new-phrasing numbers are poor. Errors come from left-clause misreads, wrong cut points inside a single clause, and mixed Thai/English sentences in my own templates.
 GIVEN: skill library, hypothesis space (op x order; second-step op over the first result), digit regex, whitespace tokens, the candidate number-word values 1..10, and the templates (synthetic). Not covered: larger numbers as words, three or more steps, real text. Note: factorial is capped at 20 in text2prog.py (an unbounded factorial hung the two-step explanation search).
+
+## P17 (nulls, text2prog3.py)
+Three ideas tested, none beat P16: slot-context candidates for number words (no gain), a type-based cut model for two-step sentences (worse: .33/.43/.51 vs .46/.64/.82), and joint explanation of number words (near 0 words learned with my thresholds). P16 stays the baseline.
+
+## P18 (null, text2prog4.py)
+EM reweighting of two-step explanations (soft weights from the current model instead of uniform) slightly hurt: same phrasing n=100/300 .46/.64 (no EM) vs .40/.61 (2 iters); new phrasing unchanged (.25/.36 vs .25/.34). The uniform Occam rule of P16 stays.
