@@ -323,3 +323,13 @@ GIVEN: scan machine, K integer registers (init 0), arithmetic DSL, output mode r
 | mul1 | 0/6 | 0/6 | 0/6 |
 
 Reading: extra registers let GP find tasks one register cannot (second_max 3/6 vs 0/14; alt_sum), and GP beats random search at equal budget. But success rates are modest and noisy: more registers makes already-solvable tasks (add, compare, sub) harder at a fixed budget, and count_max, count_gt_first, max_minus_min, mul1 are not solved at all here. Budgets differ between table cells (see above) so K=1* vs K=3 is not a clean comparison. The exhaustive search in P7/P8 still solves add/sub/compare/mul1 reliably and faster. The scan idea, registers-as-state and the arithmetic DSL are still given; this does not discover them. Not done: learned neural scorer (only the hand-set `%10`/`//10` wrap mutation is used), DSL-ablation sweep.
+
+## P10: learned proposer + curriculum/transfer (`proposer.py`, `exp_prop.py`, `curr.py`)
+
+**Proposer.** Small numpy MLP (43 hand-designed example features -> which ops/constants/leaves the hidden program uses), trained on 20k random synthetic programs, never on the eval tasks. On held-out random programs it is barely better than base rates (logloss 0.548 vs 0.574; strong only for "uses y" and a little for "uses x"/constants), because many ops in random programs are dead code. Used as sampling weights in the GP (K=3, 6 seeds x 20k evals), generalizing solves guided vs unguided: second_max 3/6 vs 3/6, count_max 0 vs 0, max_minus_min 0 vs 0, count_gt_first 0 vs 0, mul1 0 vs 0, alt_sum 5/6 vs 6/6, compare 3/6 vs 2/6, run_parity 1/6 vs 2/6. Net effect: no measurable gain. The features are hand-designed (they encode tasks like sum/max/compare), so even this much is not "learned from scratch".
+
+**Curriculum.** Learn skill A with GP, mine its subtrees (size 3-9) as macros, then learn B with macros available (6 seeds x 20k evals, generalizing solves). Skills learned: sumdigits, max, count3, parity_sum, compare; add and sub FAILED at this budget (so the add -> mul1 chain had 0 macros). Learned skill programs are messy (dead code), so macros are noisy.
+- second_max: alone 3/6; after max 4/6 (mean evals 12.4k -> 6.5k); after all skills mixed 5/6.
+- alt_sum: alone 6/6; after sumdigits+parity 5/6; mixed 5/6 (slightly worse).
+- count_max, max_minus_min, count_gt_first, mul1: 0/6 in every condition.
+Reading: a hint of transfer on one task (second_max, builds on max) that is within noise at n=6; no transfer elsewhere. Mixed-task libraries did not connect skills on their own here. Honest conclusion: with this DSL and budget, neither a learned proposer nor curriculum macros produced a clear capability gain; the exhaustive search (P7/P8) remains the reliable component.

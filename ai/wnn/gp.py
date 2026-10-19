@@ -22,12 +22,14 @@ def src(e):
     return f'({src(e[1])}{o}{src(e[2])})'
 def size(e): return 1 if not isinstance(e, tuple) else 1 + sum(size(c) for c in e[1:])
 class Ctx:
-    def __init__(s, K, leaves, ops_prior=None, lib=True):
-        s.K = K; s.leaves = leaves; s.lib = lib
+    def __init__(s, K, leaves, ops_prior=None, lib=True, lw=None, cw=None, macros=()):
+        s.K = K; s.leaves = leaves; s.lib = lib; s.lw = lw; s.cw = cw; s.macros = list(macros)
         s.ops = ops_prior or {o: 1.0 for o in OPS2 + ['ite']}
         s.regs = [f'r{i}' for i in range(K)]
     def leaf(s, rng):
-        return rng.choice(s.leaves) if rng.random() < .7 else rng.choice(CONSTS)
+        if s.macros and rng.random() < .2: return rng.choice(s.macros)
+        if rng.random() < .7: return rng.choices(s.leaves, [s.lw.get(l, 1.0) for l in s.leaves])[0] if s.lw else rng.choice(s.leaves)
+        return rng.choices(CONSTS, [s.cw.get(c, 1.0) for c in CONSTS])[0] if s.cw else rng.choice(CONSTS)
     def tree(s, rng, d):
         if d == 0 or rng.random() < .3: return s.leaf(rng)
         o = rng.choices(list(s.ops), list(s.ops.values()))[0]
@@ -90,10 +92,10 @@ def detect_mode(data):
     if all(len(o) == len(xs) for xs, _, o in data): return 'tape'
     if all(len(o) == len(xs) + 1 for xs, _, o in data): return 'tape+r'
     raise ValueError('unsupported output shape')
-def evolve(data, K, evals, seed, rand_only=False, pop=300, lib=True, prior=None):
+def evolve(data, K, evals, seed, rand_only=False, pop=300, lib=True, prior=None, lw=None, cw=None, macros=()):
     rng = random.Random(seed); two = data[0][1] is not None
     leaves = ['x'] + (['y'] if two else []) + [f'r{i}' for i in range(K)]
-    ctx = Ctx(K, leaves, prior, lib); mode = detect_mode(data)
+    ctx = Ctx(K, leaves, prior, lib, lw, cw, macros); mode = detect_mode(data)
     def rand_g():
         g = [(f'r{i}' if rng.random() < .5 else ctx.tree(rng, 3)) for i in range(K)]
         return G(rng.choice(['fwd', 'bwd']), rng.choice(['fwd', 'bwd']), g, ctx.tree(rng, 3))
