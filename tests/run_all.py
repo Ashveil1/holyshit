@@ -116,6 +116,7 @@ SUITES = [
     ("test_jitrun.py", "experimental eager in-process hs JIT"),
     ("test_jit_corpus.py", "JIT-vs-interp byte parity on the full tests/ corpus"),
     ("test_jit_startup.py", "JIT startup: <50ms driver gate + launcher verification memoization"),
+    ("test_ir_unbox.py", "raw-Int unboxed arithmetic parity: outputs, errors, exit codes"),
     ("test_jitimage.py", "relocated RX code and RW data in hs"),
     ("test_jitmem.py", "executable-memory groundwork, W^X and generated code"),
     ("test_native_bundle.py", "relocated native directory without checkout/Python/gcc"),
