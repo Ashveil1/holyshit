@@ -12,6 +12,7 @@ python3 cur6.py SEED [ablation]  ablation in: notail (no comb), nopair (one step
 import sys, random, math, time, itertools, functools
 sys.setrecursionlimit(100000)
 CAP = [400]
+CAPF = [400]
 class Fail(Exception): pass
 def p_add(a, b): return a + b
 def p_sub(a, b):
@@ -69,9 +70,9 @@ def search(train, abl, tag=''):
     steps_single = [(s, 'b') for s in E1] + [('a', s) for s in E1]
     t0 = time.time(); tried = 0
     x0, y0, r0 = train[0]
-    for init in ('y', 'one', 'zero', 'two'):
-        if init != 'y' and False: pass
-        for comb in comb_list:
+    comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
+    for comb in comb_list:
+        for init in ('y', 'one', 'zero', 'two'):
             st = steps_pair if (comb is None and abl != 'nopair') else steps_single
             if comb is not None and abl == 'nocombe': continue
             for cond in conds:
@@ -98,7 +99,7 @@ def show_prog(p):
     return f"init b={init}; if {show_e(cond)} -> {base}; else step ({show_e(s0)},{show_e(s1)}); comb={comb if comb is None else (comb[0], show_e(comb[1]), comb[2])}; post={pn}"
 def make_fn(p):
     init, spec, pn = p
-    def f(x, y): return POST[pn](run(spec, x, inits_for(init, y), cap=20000))
+    def f(x, y): return POST[pn](run(spec, x, inits_for(init, y), cap=CAPF[0]))
     return f
 isp = lambda n: int(n > 1 and all(n % d for d in range(2, int(n ** .5) + 1)))
 def gen(task, rng, scale):
@@ -127,7 +128,7 @@ if __name__ == '__main__':
         else: p, tried, dt = search(train, abl)
         if p and task not in saved: saved[task] = p; json.dump(saved, open(sv, 'w'))
         if not p: print(f'seed{seed} {abl} {task}: NOT FOUND tried {tried} {dt:.0f}s', flush=True); continue
-        f = make_fn(p); te = random.Random(1000 + seed); res = {}
+        f = make_fn(p); te = random.Random(1000 + seed); res = {}; CAPF[0] = 20000
         for sc in (1, 2, 3, 4):
             ok = 0
             for _ in range(40):
@@ -136,4 +137,5 @@ if __name__ == '__main__':
                 except (Fail, KeyError, RecursionError, OverflowError): pass
             res[sc] = ok
         print(f'seed{seed} {abl} {task}: FOUND {show_prog(p)} tried {tried} {dt:.0f}s unseen/40 by scale {res}', flush=True)
+        CAPF[0] = 400; ev.cache_clear()
         if task in ('mod', 'mul', 'div', 'power', 'gcd') and res[2] >= 36: LIB[task] = (lambda ff: (lambda a, b: ff(a, b)))(f)
