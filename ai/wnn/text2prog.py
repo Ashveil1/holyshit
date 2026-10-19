@@ -15,7 +15,7 @@ OPS = {
  'add': lambda *v: sum(v), 'sub': lambda a, b: a - b, 'mul': lambda *v: math.prod(v), 'div': lambda a, b: a // b,
  'mod': lambda a, b: a % b, 'power': lambda a, b: a ** b, 'gcd': lambda *v: math.gcd(*v),
  'max': lambda *v: max(v), 'min': lambda *v: min(v), 'isprime': lambda a: isp(a),
- 'fact': lambda a: math.factorial(a), 'sumto': lambda a: a * (a + 1) // 2}
+ 'fact': lambda a: math.factorial(a) if a <= 20 else (_ for _ in ()).throw(ValueError('big')), 'sumto': lambda a: a * (a + 1) // 2}
 UNARY = {'isprime', 'fact', 'sumto'}
 HYP = [(o, d) for o in OPS for d in ('f', 'r') if not (o in UNARY and d == 'r')]
 # templates: (train, new_frames, new_words).  {a}{b}{c} are numbers; Thai written with spaces between words.

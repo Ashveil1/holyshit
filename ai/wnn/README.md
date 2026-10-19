@@ -420,3 +420,16 @@ Data: per op 4-5 training templates, 4 new-frame templates (same keywords, new w
 - Unseen frames are the weak point (~0.8): per-op failures are mul 23/55, add 22/50, sub 23/45, mod 34/56, gcd 19/37, min 30/57; the cause is spurious associations (e.g. "what is" / "please" / "ช่วย" were seen with other ops during training), not a bug. max, isprime, power, sumto are perfect.
 - Unseen synonyms: ~0.2 (tokens) / ~0.4 (chars) with zero examples, which is near chance and what a lexicon learner should do. Fast mapping: after k labelled examples with the new wording, accuracy is k=1 .89 (tok) / .90 (char), k=2 .97 / .95, k=4 and 8 1.00.
 GIVEN: skill library and hypothesis space (op x order, variadic fold), digit extraction by regex, feature extractors, and the templates themselves (my own synthetic sentences, not real user text). NOT covered: number words ("three"), sentences with more structure than one op, multi-step problems, real free text. Accuracy counts the final number matching, so yes/no answers (is-prime) have a high chance baseline.
+
+## P16: number words and two-step sentences (text2prog2.py)
+
+(a) Number WORDS (one..ten, หนึ่ง..สิบ) with values learned, not given. Stage A learns ops from digit sentences (P15 learner, 300 sentences). Stage B sees sentences where number slots are sometimes words; for every token and each value 1..10 it checks whether rewriting that token as that digit reproduces the answer under the stage-A learner (4 rounds, learned words are substituted first so two-word sentences become one-word sentences). Tokens whose vote is clear (>=3 votes, >=25% of their sentences, top value >=2.5x the runner-up) enter the lexicon. 5 seeds, answer accuracy on unseen frames with words:
+- n=150 stage-B sentences: 6.8/20 words learned (0.4 spurious entries), accuracy .37
+- n=400: 12.4/20 (1.4 spurious), .54
+- n=1000: 17.6/20 (1.2 spurious), .74
+- reference: gold lexicon .85, no lexicon .18. So the learner closes most of the gap to a hand-written lexicon, but needs ~1000 examples; the spurious entries are real errors.
+(b) Two-step sentences ("gcd of 21 and 9 then subtract 11"): the learner sees only (sentence, answer). It explains each sentence by (split point, op1 on the left clause, op2 on the right clause applied to the first result) or by a single op (Occam: single-op explanations win), and learns left-clause words, right-clause words and which token pairs mark a boundary. 5 seeds [min-max]:
+- same phrasing: .46 / .64 / .82 with 100 / 300 / 1000 sentences
+- new connectors and frames ("after that", "afterwards", "then also ... please"): .25 / .36 / .44
+It learns the structure, but the new-phrasing numbers are poor. Errors come from left-clause misreads, wrong cut points inside a single clause, and mixed Thai/English sentences in my own templates.
+GIVEN: skill library, hypothesis space (op x order; second-step op over the first result), digit regex, whitespace tokens, the candidate number-word values 1..10, and the templates (synthetic). Not covered: larger numbers as words, three or more steps, real text. Note: factorial is capped at 20 in text2prog.py (an unbounded factorial hung the two-step explanation search).
