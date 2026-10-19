@@ -374,3 +374,16 @@ Honest limits: the scan machine, arithmetic DSL, loop skeletons, constants and g
 - lcm held-out accuracy is poor beyond tiny sizes: 39/40 at 2 digits, 5/40 at 4, 0/40 at 6 and 8. Reason: the learned div only counts up to quotients of 9 (its training range), but lcm needs div(x*y, gcd) with huge quotients. The composition is right; the learned div does not generalise. Fixing it needs a learned long division (nested loop), not done.
 - Ablations: lcm without mul, div or gcd: NOT FOUND (62/122/122 expressions, whole space).
 - Hand-given as before, plus 0 as an extra init constant.
+
+## P13: S1 basics library + S2 unhinted composition (cur5.py)
+
+S1, learned from examples: max/min (ite over learned cmp, found at once); is-prime: fold over d=2..x-1 with acc<-mul(acc,mod(x,d)), result nonzero(acc) (1605 candidates; 200/200 on unseen x<2000, but only trained on x>=2, so is-prime(1) is wrong, and the product grows to thousands of digits). div, gcd, mul, mod come from P11/P12 (div only for quotients <=9, mod only for modest quotients).
+Given: iszero as glue, the loop/fold skeletons, the tape machine, "(x,y)->number" signature.
+
+S2: for each unseen task the system sees only 25 (x,y)->out pairs (1-2 digits). It searches expressions up to depth 2 over all library ops, shortest first, and I test on 40 fresh pairs at 1/2/3 digits.
+Result: 6/10 generalise (>=38/40 at every size):
+- found: divisible(x by y) = div(gcd(x,y),y); larger-smaller = sub(max,min); larger mod smaller = mod(x+y, min) (equivalent function, not the "natural" form); x^2+y^2; coprime = div(1, gcd(x,y)); gcd+larger. Several are clever equivalents (floor-division tricks), not the textbook program.
+- is (x+y) prime: right composition isprime(add(x,y)) chosen, but 35/40 at 3 digits (not diagnosed).
+- NOT found / fail: lcm (right composition div(mul,gcd) exists in the space but learned div breaks on large quotients, so it was never consistent with the training pairs); x*x mod y (mod limit); "both prime" (training pairs include x=1, where the learned is-prime is wrong).
+- Ablation (library op removed): without gcd 4/10 (coprime lost too), without mod 5/10. mul/max,min/div ablations: see next commit if present.
+Honest limits: this is NOT word problems; the "format" is numeric pairs only. The ops, depth bound, expression grammar and the 0/1 convention are hand-given; the task pool is small and chosen by me; the search is plain enumeration, so "solves problems itself" means "finds a short composition of learned skills that fits the examples". Failures come from learned skills with narrow training ranges.
