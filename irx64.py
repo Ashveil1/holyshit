@@ -264,6 +264,7 @@ class GenIR(Gen):
                 self.modtab[mpref].setdefault("imports", {})[top] = topmod
 
     JSON_CALLS = {"json_parse", "json_str", "json_load", "json_save"}
+    INT_BINOPS = {"+", "-", "*", "%", "<<", ">>", "&", "|", "^"}
 
     def _plan(self):
         self._load_all()
@@ -308,6 +309,23 @@ class GenIR(Gen):
                     if ins["op"] == "mkfunc":
                         parents[ins["func"]] = key
         self.parents = parents
+        usage = {}
+        for key in self.allorder:
+            fdef = self.allfuncs[key]
+            for b in fdef["blocks"]:
+                for ins in b["instrs"]:
+                    if ins["op"] in ("load", "stvar", "stglobal", "sload",
+                                     "svarptr", "sset", "unbind", "attr",
+                                     "setattr") and \
+                            ins.get("name") is not None:
+                        usage.setdefault(ins["name"], set()).add(key)
+        self._name_usage = usage
+        for key in self.allorder:
+            fr = self.frames[key]
+            iv = self._compute_ivars(key, self.allfuncs[key],
+                                     fr["is_entry"])
+            fr["iraw"], fr["ivars"] = self._compute_iraw(
+                self.allfuncs[key], iv)
         self._note_imports()
         for key in self.allorder:
             self._plan_res(key)
@@ -501,6 +519,100 @@ class GenIR(Gen):
                 "definstr": definstr,
                 "floattemps": set(), "mod": modpfx, "is_entry": is_entry}
 
+    def _captured_names(self):
+        c = getattr(self, "_capnames", None)
+        if c is not None:
+            return c
+        c = set()
+        for key in self.allorder:
+            fdef = self.allfuncs[key]
+            for b in fdef["blocks"]:
+                for ins in b["instrs"]:
+                    if ins["op"] == "load" and \
+                            self._classify(key, ins["name"]) == "cap":
+                        c.add(ins["name"])
+        self._capnames = c
+        return c
+
+    def _var_uses_elsewhere(self, key, name):
+        return any(k2 != key
+                   for k2 in self._name_usage.get(name, ()))
+
+    def _compute_ivars(self, key, fdef, is_entry):
+        cand = set()
+        bad = self._captured_names()
+        for b in fdef["blocks"]:
+            for ins in b["instrs"]:
+                if ins["op"] == "stvar":
+                    cand.add(ins["name"])
+                elif ins["op"] in ("sdecl", "sset", "svarptr", "unbind",
+                                   "stglobal", "attr", "setattr") and \
+                            ins.get("name") is not None:
+                    bad.add(ins["name"])
+                elif ins["op"] == "sload" and ins.get("name") is not None:
+                    bad.add(ins["name"])
+        params = set(fdef["params"])
+        out = set()
+        for v in sorted(cand):
+            if v in params or v in bad:
+                continue
+            if self._var_uses_elsewhere(key, v):
+                continue
+            out.add(v)
+        return out
+
+    def _compute_iraw(self, fdef, ivars):
+        iraw = set()
+        definstr = {}
+        stvar_srcs = {}
+        for b in fdef["blocks"]:
+            for ins in b["instrs"]:
+                if ins["op"] == "stvar":
+                    stvar_srcs.setdefault(ins["name"], []).append(ins["src"])
+                if ins.get("dest") is not None:
+                    definstr[ins["dest"]] = ins
+                    if ins["op"] == "const" and type(ins["val"]) is int and \
+                            -(1 << 61) <= ins["val"] < (1 << 61):
+                        iraw.add(ins["dest"])
+                    elif ins["op"] == "bin" and \
+                            ins["binop"] in GenIR.INT_BINOPS:
+                        iraw.add(ins["dest"])
+                    elif ins["op"] == "un" and \
+                            ins["unop"] in ("neg", "unot"):
+                        iraw.add(ins["dest"])
+                    elif ins["op"] == "phi":
+                        iraw.add(ins["dest"])
+                    elif ins["op"] == "load" and ins["name"] in ivars:
+                        iraw.add(ins["dest"])
+        changed = True
+        while changed:
+            keepv = set()
+            for v in sorted(ivars):
+                if all(s in iraw for s in stvar_srcs.get(v, [])):
+                    keepv.add(v)
+            keep = set()
+            for d in sorted(iraw):
+                ins = definstr[d]
+                if ins["op"] == "bin":
+                    ok = ins["l"] in iraw and ins["r"] in iraw
+                elif ins["op"] == "un":
+                    ok = ins["v"] in iraw
+                elif ins["op"] == "phi":
+                    ok = all(a[1] in iraw for a in ins["arms"])
+                elif ins["op"] == "load":
+                    ok = ins["name"] in keepv
+                else:
+                    ok = True
+                if ok:
+                    keep.add(d)
+            changed = len(keep) != len(iraw) or len(keepv) != len(ivars)
+            iraw = keep
+            ivars = keepv
+        return iraw, ivars
+
+    def _raw_load(self, fr, ref):
+        self.a.mov_rm("rax", "rbp", fr["slots"][ref])
+
     # ----- operands -----
 
     def _load(self, fr, ref, ln):
@@ -513,6 +625,9 @@ class GenIR(Gen):
                             "first-class value in x64 subset (use "
                             "mod.attr)", ln)
             a.mov_rm("rax", "rbp", fr["slots"][ref])
+            ir = fr.get("iraw")
+            if ir is not None and ref in ir:
+                self.tag_box()
             return "temp"
         m = self._alias_visible(fr, ref)
         if m is not None:
@@ -595,8 +710,92 @@ class GenIR(Gen):
         else:
             raise HSErr("IR: bad const value", ln)
 
+    def _ibin(self, op, ln):
+        a = self.a
+        if op == "+":
+            a.add_rr("rax", "rcx")
+            self.trunc62()
+        elif op == "-":
+            a.sub_rr("rax", "rcx")
+            self.trunc62()
+        elif op == "*":
+            a.imul_rr("rax", "rcx")
+            if self.checked_int():
+                a.jcc("o", "int_ovf")
+            self.trunc62()
+        elif op == "%":
+            a.push_r("rdx")
+            a.test_rr("rcx", "rcx")
+            lab_dz = self.new_tmp("dz")
+            a.jcc("ne", lab_dz)
+            self.raise_static("division by zero", ln)
+            a.label(lab_dz)
+            a.cqo()
+            a.idiv_r("rcx")
+            a.mov_rr("rax", "rdx")
+            a.test_rr("rax", "rax")
+            lab_rmok = self.new_tmp("rm")
+            a.jcc("e", lab_rmok)
+            a.mov_rr("r10", "rax")
+            a.xor_rr("r10", "rcx")
+            a.sar_ri8("r10", 63)
+            a.test_rr("r10", "r10")
+            a.jcc("e", lab_rmok)
+            a.add_rr("rax", "rcx")
+            a.label(lab_rmok)
+            a.pop_r("rdx")
+        elif op in ("<<", ">>"):
+            lab_sh = self.new_tmp("be")
+            lab_bad = self.new_tmp("be")
+            a.cmp_ri32("rcx", 63)
+            a.jcc("le", lab_sh)
+            a.jmp(lab_bad)
+            a.label(lab_sh)
+            a.test_rr("rcx", "rcx")
+            a.jcc("s", lab_bad)
+            lab_end = self.new_tmp("be")
+            if op == "<<":
+                a.shl_cl("rax")
+                self.trunc62()
+            else:
+                a.sar_cl("rax")
+            a.jmp(lab_end)
+            a.label(lab_bad)
+            a.mov_rr("rdi", "rcx")
+            a.mov_ri32("rsi", ln)
+            a.jmp("hs_shift_err")
+            a.label(lab_end)
+        elif op == "&":
+            a.and_rr("rax", "rcx")
+        elif op == "|":
+            a.or_rr("rax", "rcx")
+        else:
+            a.xor_rr("rax", "rcx")
+
     def _bin(self, fr, op, l, r, ln):
         a = self.a
+        ir = fr.get("iraw")
+        if ir is not None and l in ir and r in ir and op != "/":
+            self._raw_load(fr, l)
+            a.push_r("rax")
+            self._raw_load(fr, r)
+            a.mov_rr("rcx", "rax")
+            a.pop_r("rax")
+            if op in GenIR.INT_BINOPS:
+                self._ibin(op, ln)
+                return
+            if op in ("<", ">", "<=", ">="):
+                a.cmp_rr("rax", "rcx")
+                a.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
+                self.box_bool_al()
+                return
+            if op in ("==", "!="):
+                a.cmp_rr("rax", "rcx")
+                a.setcc_al("e")
+                self.box_bool_al()
+                if op == "!=":
+                    a.code += bytes((72, 131, 240, 8))
+                return
         self._load(fr, l, ln)
         a.push_r("rax")
         self._load(fr, r, ln)
@@ -803,6 +1002,15 @@ class GenIR(Gen):
 
     def _un(self, fr, op, v, ln):
         a = self.a
+        ir = fr.get("iraw")
+        if ir is not None and v in ir and op in ("neg", "unot"):
+            self._raw_load(fr, v)
+            if op == "neg":
+                a.neg_r("rax")
+            else:
+                a.not_rr("rax")
+            self.trunc62()
+            return
         self._load(fr, v, ln)
         if op == "neg":
             lab_nfl, lab_nno, lab_ndone = (self.new_tmp("ng"),
@@ -1339,7 +1547,11 @@ class GenIR(Gen):
         # static word -> dynamic Int, blind tag (print_unsafe philosophy;
         # out-of-range U64/Ptr box is an accepted micro-divergence).
         a = self.a
-        self._load(fr, src, ln)
+        ir = fr.get("iraw")
+        if ir is not None and src in ir:
+            self._raw_load(fr, src)
+        else:
+            self._load(fr, src, ln)
         self.wrap_int = True        # unsafe word: no 62-bit trap
         self.tag_box()
         self.wrap_int = False
@@ -2684,12 +2896,16 @@ class GenIR(Gen):
         return f"{self.flabel[key]}_{blab}"
 
     def _phi_moves(self, fr, from_lab, to_blk):
+        ir = fr.get("iraw")
         for ins in to_blk["instrs"]:
             if ins["op"] != "phi":
                 continue
             for al, at in ins["arms"]:
                 if al == from_lab:
-                    self._load(fr, at, ins["line"])
+                    if ir is not None and ins["dest"] in ir:
+                        self._raw_load(fr, at)
+                    else:
+                        self._load(fr, at, ins["line"])
                     self.a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
                     break
 
@@ -2739,7 +2955,10 @@ class GenIR(Gen):
             op = ins["op"]
             ln = ins["line"]
             if op == "const":
-                self._const(ins["val"], ln)
+                if ins["dest"] in fr.get("iraw", ()):
+                    a.mov_ri64("rax", ins["val"])
+                else:
+                    self._const(ins["val"], ln)
                 a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
             elif op == "load":
                 if ins["dest"] in fr["floattemps"]:
@@ -2756,7 +2975,17 @@ class GenIR(Gen):
                     pass  # copy-alias use: static only (aliases can be
                     # recorded mid-emission by an earlier copy)
                 else:
-                    self._load(fr, ins["name"], ln)
+                    iv = fr.get("ivars")
+                    if iv is not None and ins["name"] in iv:
+                        if fr["is_entry"]:
+                            a.lea_rip("rax", self._glabel(ins["name"],
+                                                          fr["mod"]))
+                            a.mov_rm("rax", "rax", 0)
+                        else:
+                            a.mov_rm("rax", "rbp",
+                                     fr["slots"][ins["name"]])
+                    else:
+                        self._load(fr, ins["name"], ln)
                     a.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
             elif op == "stvar":
                 r = self._modref(fr, ins["src"])
@@ -2772,9 +3001,19 @@ class GenIR(Gen):
                     # a later plain write drops it again below.
                     fr.setdefault("aliases", {})[ins["name"]] = sub
                     continue
-                self._load(fr, ins["src"], ln)
-                fr.get("aliases", {}).pop(ins["name"], None)
-                self._store(fr, ins["name"], ln)
+                iv = fr.get("ivars")
+                if iv is not None and ins["name"] in iv:
+                    self._raw_load(fr, ins["src"])
+                    if fr["is_entry"]:
+                        lab = self._glabel(ins["name"], fr["mod"])
+                        a.lea_rip("rcx", lab)
+                        a.mov_mr("rcx", "rax", 0)
+                    else:
+                        a.mov_mr("rbp", "rax", fr["slots"][ins["name"]])
+                else:
+                    self._load(fr, ins["src"], ln)
+                    fr.get("aliases", {}).pop(ins["name"], None)
+                    self._store(fr, ins["name"], ln)
             elif op == "stglobal":
                 self._load(fr, ins["src"], ln)
                 fr.get("aliases", {}).pop(ins["name"], None)
@@ -2917,7 +3156,11 @@ class GenIR(Gen):
             elif op == "sraw":
                 self._sraw(fr, ins["dest"], ins["src"], ln)
             elif op == "snz":
-                self._load(fr, ins["src"], ln)
+                ir = fr.get("iraw")
+                if ir is not None and ins["src"] in ir:
+                    self._raw_load(fr, ins["src"])
+                else:
+                    self._load(fr, ins["src"], ln)
                 a.test_rr("rax", "rax")
                 a.setcc_al("ne")
                 a.movzx_eax_al()
@@ -2943,16 +3186,22 @@ class GenIR(Gen):
             self._phi_moves(fr, blk["label"], by[tm["to"]])
             a.jmp(self._blabel(key, tm["to"]))
         elif tm["term"] == "br":
-            self._load(fr, tm["cond"], ln)
+            ir = fr.get("iraw")
             lab_e = self.new_tmp("bre")
-            if self._is_raw_temp(fr, tm["cond"]):
-                # unsafe conditions are raw words (sev `!= 0`): plain
-                # test, not the tagged truthiness path (raw 0 must be
-                # falsy; the tag check would misread it).
+            if ir is not None and tm["cond"] in ir:
+                self._raw_load(fr, tm["cond"])
                 a.test_rr("rax", "rax")
                 a.jcc("e", lab_e)
             else:
-                self.truthy_br(lab_e)
+                self._load(fr, tm["cond"], ln)
+                if self._is_raw_temp(fr, tm["cond"]):
+                    # unsafe conditions are raw words (sev `!= 0`): plain
+                    # test, not the tagged truthiness path (raw 0 must be
+                    # falsy; the tag check would misread it).
+                    a.test_rr("rax", "rax")
+                    a.jcc("e", lab_e)
+                else:
+                    self.truthy_br(lab_e)
             self._phi_moves(fr, blk["label"], by[tm["then"]])
             a.jmp(self._blabel(key, tm["then"]))
             a.label(lab_e)
