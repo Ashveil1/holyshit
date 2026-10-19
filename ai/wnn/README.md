@@ -346,3 +346,22 @@ Reading: a hint of transfer on one task (second_max, builds on max) that is with
 - Ablation (remove one primitive): mul fails without add, without shift, or without mul1; |a-b| fails without ite or without sub; mod fails without sub. Every link of the chain is needed.
 
 **What is still given:** the level-1 scan machine and arithmetic DSL, digit-tape glue (pad, strip, broadcast), the constant [1], `ite`, `not`, and the three loop skeletons (direct, fold over digits of the second number, while-condition). The level-2 program shapes are small (<=6 nodes) because the primitives do the work. Not done: integer division (needs a counter register), a separate test of interleaved training order (the mixed library was searched all at once, not trained in an order), skeleton discovery. Level-2 tasks are impossible for the level-1 search alone (nested loops), so "alone" is not a baseline here; the ablation shows dependence instead.
+
+## P12: level 3 of the curriculum (cur3.py)
+
+Re-learn mul and mod from level 2 (as in P11), then enumerate a two-variable WHILE loop on top of them.
+Given: the loop skeleton, inits from {x,y,1}, conditions from cmp/not/0, updates of size <=3 over {add,sub,mul,mod,shift}.
+Train on 25 examples; test on 40 unseen per digit length 2/4/6/8.
+
+| task | result | candidates | unseen 2/4/6/8 digits |
+|---|---|---|---|
+| gcd | FOUND: init (x,y); while cmp(s0,0): s0<-mod(s1,s0); s1<-s0; result s1 (Euclid) | 598k | 40/40 each |
+| power | FOUND: init (1,1); while not cmp(s0,y): s0<-s0+1; s1<-mul(s1,x); result s1 | 431k | 40/40 each |
+
+Ablations:
+- gcd without mod: NOT FOUND (1.59M candidates, whole space).
+- power without mul: NOT FOUND (1.59M candidates, whole space).
+- gcd without sub: still found (361k). Caveat: this only removes sub from the top-level loop updates; the learned mod still uses sub inside, so this is not a real ablation of sub. Not re-run with sub removed from level 1.
+- Not run: without cmp, level-1-only library.
+
+Honest limits: the scan machine, arithmetic DSL, loop skeletons, constants and glue are still hand-given. The search space is small and hand-picked, so a hit is not surprising once the right pieces exist; the ablations show mod and mul are needed. mod relies on small quotients, there is no division, and the power test exponent range is small (not checked precisely). Search effort is hundreds of thousands of candidates, so this does not scale far.
