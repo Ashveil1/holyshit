@@ -599,7 +599,7 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-## irx64.py — IR ลง x86-64 (49)
+## irx64.py — IR ลง x86-64 (50)
 
 - `'{ins['name']}' already defined in this scope`
 - `'{name}' already defined in this scope`
@@ -610,6 +610,7 @@
 - `IR: bad const value`
 - `IR: bad terminator`
 - `IR: json entry missing`
+- `IR: raw-abi function needs a value on every return`
 - `alloc wants alloc(n)`
 - `append wants append(list, x)`
 - `array field '{name}' needs an index`
@@ -651,4 +652,4 @@
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-รวม 605 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์
+รวม 606 ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์

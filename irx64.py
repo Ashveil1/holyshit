@@ -659,7 +659,8 @@ class GenIR(Gen):
                         ins["src"] not in ir:
                     return False
                 if ins["op"] in ("sload", "sset", "svarptr", "unbind") \
-                        and ins.get("name") in pset:
+                        and ins.get("name") is not None and \
+                        ins["name"] in pset:
                     return False
                 if ins["op"] == "load" and \
                         self._classify(key, ins["name"]) == "cap":

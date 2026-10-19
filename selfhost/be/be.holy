@@ -10763,8 +10763,10 @@ class GenIR(Gen):
             self.global_utypes[pyrt.py_key([mpref, ins["name"]])] = ins["utype"]
       self.mod_globals[mpref] = names
     self.mglob = pyrt.py_get(self.mod_globals, "", pyrt.py_set(null))
+    self.rawlabel = {}
     for i, key in pyrt.py_enumerate(self.allorder):
       self.flabel[key] = "hsIR_" + str(i)
+      self.rawlabel[key] = "hsIRraw_" + str(i)
       mpref = pyrt.py_get(self.funcmod, key, "")
       is_entry = key == pyrt.py_get(self.mod_entries, mpref, null)
       self.frames[key] = self._plan_func(key, self.allfuncs[key], mpref, is_entry)
@@ -10785,9 +10787,8 @@ class GenIR(Gen):
     self._name_usage = usage
     for key in self.allorder:
       f = self.frames[key]
-      both = self._compute_iraw(self.allfuncs[key], self._compute_ivars(key, self.allfuncs[key], f["is_entry"]))
-      f["iraw"] = both[0]
-      f["ivars"] = both[1]
+      f["ivars"] = self._compute_ivars(key, self.allfuncs[key], f["is_entry"])
+    self._compute_rawabi()
     self._note_imports()
     for key in self.allorder:
       self._plan_res(key)
@@ -10975,8 +10976,138 @@ class GenIR(Gen):
         continue
       pyrt.py_add(out, v)
     return out
-  def _compute_iraw(self, fdef, ivars):
+  def _rawabi_fnmap(self):
+    fnmap = {}
+    dup = pyrt.py_set(null)
+    for key in self.allorder:
+      if key == "<main>":
+        continue
+      fr = self.frames[key]
+      if pyrt.py_get(fr, "is_entry", false):
+        continue
+      pk = pyrt.py_get(self.parents, key, null)
+      if pk != null and not pyrt.py_get(self.frames[pk], "is_entry", false):
+        continue
+      fdef = self.allfuncs[key]
+      mk = pyrt.py_key([pyrt.py_get(self.funcmod, key, ""), fdef["dispname"]])
+      if pyrt.py_has_key(mk, fnmap):
+        pyrt.py_add(dup, mk)
+      fnmap[mk] = key
+    for mk in pyrt.py_sorted(dup, null):
+      pyrt.py_del(fnmap, mk)
+    return fnmap
+  def _rawabi_badnames(self):
+    bad = pyrt.py_set(null)
+    for key in self.allorder:
+      fr = self.frames[key]
+      ent = pyrt.py_get(fr, "is_entry", false)
+      counts = {}
+      for b in self.allfuncs[key]["blocks"]:
+        for ins in b["instrs"]:
+          op = ins["op"]
+          nm = pyrt.py_get(ins, "name", null)
+          if nm == null:
+            continue
+          if op in ["setattr", "unbind"]:
+            pyrt.py_add(bad, nm)
+          elif op in ["stvar", "stglobal"]:
+            if ent:
+              counts[nm] = pyrt.py_get(counts, nm, 0) + 1
+            elif op == "stglobal":
+              pyrt.py_add(bad, nm)
+      for nm, n in pyrt.py_items(counts):
+        if n > 1:
+          pyrt.py_add(bad, nm)
+    return bad
+  def _rawabi_target(self, key, fr, ins, fnmap, rawabi):
+    p = pyrt.py_get(fr["prov"], ins["fn"], null)
+    if p == null or p[0] != "load":
+      return null
+    nm = p[1]
+    gk = pyrt.py_get(fnmap, pyrt.py_key([pyrt.py_get(self.funcmod, key, ""), nm]), null)
+    if gk == null or not (gk in rawabi):
+      return null
+    if len(ins["args"]) != len(self.allfuncs[gk]["params"]):
+      return null
+    pk = pyrt.py_get(self.parents, key, null)
+    if pk != null and not pyrt.py_get(self.frames[pk], "is_entry", false):
+      return null
+    if self._classify(key, nm) in ["global", "auto", "cap"]:
+      return gk
+    return null
+  def _rawabi_qualify(self, key, fdef):
+    fr = self.frames[key]
+    ir = pyrt.py_get(fr, "iraw_r", pyrt.py_set(null))
+    rawcalls = pyrt.py_get(fr, "rawcalls_r", {})
+    pset = pyrt.py_set(fdef["params"])
+    rawskips = pyrt.py_set(null)
+    for b in fdef["blocks"]:
+      tm = b["term"]
+      if tm != null and tm["term"] == "ret":
+        if tm["val"] == null or not (tm["val"] in ir):
+          return false
+      for ins in b["instrs"]:
+        if ins["op"] == "mkfunc":
+          return false
+        if ins["op"] == "stvar" and ins["name"] in pset and not (ins["src"] in ir):
+          return false
+        if ins["op"] in ["sload", "sset", "svarptr", "unbind"] and pyrt.py_get(ins, "name", null) != null and ins["name"] in pset:
+          return false
+        if ins["op"] == "load" and self._classify(key, ins["name"]) == "cap":
+          uses = pyrt.py_get(fr["uses"], ins["dest"], [])
+          if not uses or not pyrt.py_all([u == ["call", "fn"] for u in uses]):
+            return false
+          okc = true
+          for b2 in fdef["blocks"]:
+            for ins2 in b2["instrs"]:
+              if ins2["op"] == "call" and ins2["fn"] == ins["dest"] and not (ins2["dest"] in rawcalls):
+                okc = false
+          if not okc:
+            return false
+          pyrt.py_add(rawskips, ins["dest"])
+    fr["rawskips"] = rawskips
+    return true
+  def _compute_rawabi(self):
+    fnmap = self._rawabi_fnmap()
+    badn = self._rawabi_badnames()
+    cand = pyrt.py_set(null)
+    if self.freestanding:
+      fnmap = {}
+    for _mk, key in pyrt.py_items(fnmap):
+      if not (self.allfuncs[key]["dispname"] in badn):
+        pyrt.py_add(cand, key)
+    while true:
+      for key in self.allorder:
+        f = self.frames[key]
+        iv0 = self._compute_ivars(key, self.allfuncs[key], f["is_entry"])
+        r = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, false)
+        f["iraw"] = r[0]
+        f["ivars"] = r[1]
+        f["rawcalls"] = r[2]
+        if key in cand:
+          rr = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, true)
+          f["iraw_r"] = rr[0]
+          f["ivars_r"] = rr[1]
+          f["rawcalls_r"] = rr[2]
+        else:
+          f["iraw_r"] = r[0]
+          f["ivars_r"] = r[1]
+          f["rawcalls_r"] = r[2]
+      newc = pyrt.py_set(null)
+      for key in pyrt.py_sorted(cand, null):
+        if self._rawabi_qualify(key, self.allfuncs[key]):
+          pyrt.py_add(newc, key)
+      if len(pyrt.py_sorted(newc, null)) == len(pyrt.py_sorted(cand, null)):
+        cand = newc
+        break
+      cand = newc
+    self.rawabi = cand
+    self._rawabi_fnmap = fnmap
+  def _compute_iraw(self, key, fdef, ivars, rawabi, fnmap, selfraw):
+    fr = self.frames[key]
+    pset = pyrt.py_set(fdef["params"])
     iraw = pyrt.py_set(null)
+    rawcalls = {}
     definstr = {}
     stvar_srcs = {}
     for b in fdef["blocks"]:
@@ -10995,6 +11126,13 @@ class GenIR(Gen):
             pyrt.py_add(iraw, ins["dest"])
           elif ins["op"] == "load" and ins["name"] in ivars:
             pyrt.py_add(iraw, ins["dest"])
+          elif ins["op"] == "load" and selfraw and ins["name"] in pset:
+            pyrt.py_add(iraw, ins["dest"])
+          elif ins["op"] == "call":
+            gk = self._rawabi_target(key, fr, ins, fnmap, rawabi)
+            if gk != null:
+              pyrt.py_add(iraw, ins["dest"])
+              rawcalls[ins["dest"]] = gk
     changed = true
     while changed:
       keepv = pyrt.py_set(null)
@@ -11016,7 +11154,10 @@ class GenIR(Gen):
         elif ins["op"] == "phi":
           ok = pyrt.py_all([a[1] in iraw for a in ins["arms"]])
         elif ins["op"] == "load":
-          ok = ins["name"] in keepv
+          ok = ins["name"] in keepv or (selfraw and ins["name"] in pset)
+        elif ins["op"] == "call":
+          gk = pyrt.py_get(rawcalls, d, null)
+          ok = gk != null and pyrt.py_all([a in iraw for a in ins["args"]])
         nd = nd + 1
         if ok:
           pyrt.py_add(keep, d)
@@ -11024,7 +11165,7 @@ class GenIR(Gen):
       changed = nk != nd or nv != len(pyrt.py_sorted(ivars, null))
       iraw = keep
       ivars = keepv
-    return [iraw, ivars]
+    return [iraw, ivars, rawcalls]
   def _raw_load(self, fr, ref):
     asm.mov_rm("rax", "rbp", fr["slots"][ref])
   def _load(self, fr, ref, ln):
@@ -11046,6 +11187,8 @@ class GenIR(Gen):
     if kind == "bound":
       if ref in fr["pmap"]:
         asm.mov_rm("rax", "rbp", fr["pmap"][ref])
+        if pyrt.py_getattr(self, "_rawabi_emit", false):
+          self.tag_box()
         return "bound"
       asm.mov_rm("rax", "rbp", fr["slots"][ref])
       if ref in pyrt.py_get(fr, "rawnames", []):
@@ -12332,6 +12475,18 @@ class GenIR(Gen):
       else:
         raise pyrt.py_err("IR: '" + str(name) + "' not in irx64 subset yet", ln)
       return null
+    rc = pyrt.py_get(pyrt.py_get(fr, "rawcalls", {}), dest, null)
+    if rc != null and dest in pyrt.py_get(fr, "iraw", pyrt.py_set(null)) and rc in pyrt.py_getattr(self, "rawabi", pyrt.py_set(null)):
+      for ar in pyrt.py_reversed(args):
+        self._raw_load(fr, ar)
+        asm.push_r("rax")
+      asm.push_r("r15")
+      asm.call(self.rawlabel[rc])
+      asm.pop_r("r15")
+      if len(args):
+        asm.add_ri32("rsp", 8 * len(args))
+      asm.mov_mr("rbp", "rax", fr["slots"][dest])
+      return null
     self._load(fr, fn, ln)
     lab_fnok = self.new_tmp("fn")
     asm.mov_rr("r11", "rax")
@@ -13166,6 +13321,8 @@ class GenIR(Gen):
     asm.mov_mr("rax", "rcx", 24)
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _blabel(self, key, blab):
+    if pyrt.py_getattr(self, "_rawabi_emit", false):
+      return str(self.rawlabel[key]) + "_" + str(blab)
     return str(self.flabel[key]) + "_" + str(blab)
   def _phi_moves(self, fr, from_lab, to_blk):
     ir = pyrt.py_get(fr, "iraw", null)
@@ -13234,9 +13391,13 @@ class GenIR(Gen):
           pass
         elif self._alias_visible(fr, ins["name"]) != null and pyrt.py_get(fr["uses"], ins["dest"], []) and pyrt.py_all([u in pyrt.py_set([["attr", "obj"], ["print", "arg"], ["setattr", "obj"], ["stvar", "src"], ["stglobal", "src"]]) for u in fr["uses"][ins["dest"]]]):
           pass
+        elif pyrt.py_getattr(self, "_rawabi_emit", false) and ins["dest"] in pyrt.py_get(fr, "rawskips", pyrt.py_set(null)):
+          pass
         else:
           iv = pyrt.py_get(fr, "ivars", null)
-          if iv != null and ins["name"] in iv:
+          if pyrt.py_getattr(self, "_rawabi_emit", false) and ins["name"] in fr["pmap"]:
+            asm.mov_rm("rax", "rbp", fr["pmap"][ins["name"]])
+          elif iv != null and ins["name"] in iv:
             if fr["is_entry"]:
               asm.lea_rip("rax", self._glabel(ins["name"], fr["mod"]))
               asm.mov_rm("rax", "rax", 0)
@@ -13258,7 +13419,10 @@ class GenIR(Gen):
           pyrt.py_setdefault(fr, "aliases", {})[ins["name"]] = sub
           continue
         iv = pyrt.py_get(fr, "ivars", null)
-        if iv != null and ins["name"] in iv:
+        if pyrt.py_getattr(self, "_rawabi_emit", false) and ins["name"] in fr["pmap"]:
+          self._raw_load(fr, ins["src"])
+          asm.mov_mr("rbp", "rax", fr["pmap"][ins["name"]])
+        elif iv != null and ins["name"] in iv:
           self._raw_load(fr, ins["src"])
           if fr["is_entry"]:
             lab = self._glabel(ins["name"], fr["mod"])
@@ -13445,7 +13609,11 @@ class GenIR(Gen):
       self._phi_moves(fr, blk["label"], by[tm["els"]])
       asm.jmp(self._blabel(key, tm["els"]))
     elif tm["term"] == "ret":
-      if tm["val"] != null:
+      if pyrt.py_getattr(self, "_rawabi_emit", false):
+        if tm["val"] == null:
+          raise pyrt.py_err("IR: raw-abi function needs a value on every return", ln)
+        self._raw_load(fr, tm["val"])
+      elif tm["val"] != null:
         self._load(fr, tm["val"], ln)
       elif key == "<main>":
         asm.mov_ri32("rax", 0)
@@ -13505,10 +13673,25 @@ class GenIR(Gen):
   def _emit_ifunc(self, key):
     fdef = self.allfuncs[key]
     fr = self.frames[key]
+    self._rawabi_emit = false
     if key == "<main>":
       asm.label("hs_main")
     else:
       asm.label(self.flabel[key])
+    self._emit_frame_body(key, fdef, fr)
+    if key in pyrt.py_getattr(self, "rawabi", pyrt.py_set(null)):
+      saved = [fr["iraw"], fr["ivars"], fr["rawcalls"]]
+      fr["iraw"] = fr["iraw_r"]
+      fr["ivars"] = fr["ivars_r"]
+      fr["rawcalls"] = fr["rawcalls_r"]
+      self._rawabi_emit = true
+      asm.label(self.rawlabel[key])
+      self._emit_frame_body(key, fdef, fr)
+      self._rawabi_emit = false
+      fr["iraw"] = saved[0]
+      fr["ivars"] = saved[1]
+      fr["rawcalls"] = saved[2]
+  def _emit_frame_body(self, key, fdef, fr):
     asm.push_r("rbp")
     asm.mov_rr("rbp", "rsp")
     if fr["nloc"]:
