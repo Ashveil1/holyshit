@@ -571,7 +571,8 @@ class GenIR(Gen):
                     stvar_srcs.setdefault(ins["name"], []).append(ins["src"])
                 if ins.get("dest") is not None:
                     definstr[ins["dest"]] = ins
-                    if ins["op"] == "const" and type(ins["val"]) is int:
+                    if ins["op"] == "const" and type(ins["val"]) is int and \
+                            -(1 << 61) <= ins["val"] < (1 << 61):
                         iraw.add(ins["dest"])
                     elif ins["op"] == "bin" and \
                             ins["binop"] in GenIR.INT_BINOPS:
