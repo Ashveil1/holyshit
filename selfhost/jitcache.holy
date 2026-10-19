@@ -1,0 +1,367 @@
+# .hsc compiled-code cache for the eager JIT driver.
+#
+# Snapshot of the assembler state right after IR generation (before extern
+# binding and before the per-run argv/env trampoline), keyed on the exact
+# bytes of every source file that fed the image: the program itself, every
+# module GenIR loaded (including the embedded runtime/json.holy helper) and
+# a format version. A hit restores the assembler state, re-binds externs
+# fresh (dlopen/dlsym per run), appends the per-run trampoline and publishes
+# - parse, IR and codegen are skipped entirely. Any mismatch, corruption or
+# IO problem falls back to a full compile.
+#
+# The cache never stores: argv/env trampoline code, dlopen handles, GOT
+# pointers (rewritten by jitbind.bind on every run), or mmap addresses (all
+# code references are RIP-relative and re-resolved by jitimage.relocate).
+#
+# Ptr values stay inside unsafe blocks in the x64 backend; every helper
+# here takes plain Int addresses instead (as_ptr/as_int at the boundary).
+import asm
+extern:
+  I64 rename(Str oldpath, Str newpath)
+# Hosted runtime string layout, verified by probe: as_ptr(s) points to
+# [qword 0][qword length][raw bytes...], so byte i lives at ptr + 16 + i.
+STR_BYTES = 16
+# x64 ints are checked 62-bit: a wide FNV multiply raises on overflow, so
+# the mixer is a djb2-style shift-add with the accumulator masked below
+# 2^55 before each shift - the true positive limit is 2^61,. Two independent seeds per key.
+HASH_MASK = 36028797018963967
+HASH_SEED_A = 5381
+HASH_SEED_B = 146959810
+FORMAT = 1
+def fnv(s, h):
+  unsafe:
+    Ptr q = as_ptr(s)
+  n = len(s)
+  i = 0
+  while i < n:
+    unsafe:
+      b = load8(q + STR_BYTES + i)
+    m = h & HASH_MASK
+    h = ((m << 5) + m) ^ b
+    i = i + 1
+  return h
+def key(s):
+  return str(fnv(s, HASH_SEED_A)) + "." + str(fnv(s, HASH_SEED_B))
+def cache_path(srcpath):
+  if len(srcpath) > 5 and srcpath[len(srcpath) - 5:len(srcpath)] == ".holy":
+    return srcpath[0:len(srcpath) - 5] + ".hsc"
+  return srcpath + ".hsc"
+# Binary writer over an alloc'd buffer; read_mem turns it into a string for
+# the write builtin (binary-safe both ways, verified by probe).
+def w64(addr, off, v):
+  unsafe:
+    store64(as_ptr(addr) + off, v)
+  return off + 8
+def wstr(addr, off, s):
+  off = w64(addr, off, len(s))
+  unsafe:
+    Ptr q = as_ptr(s)
+  i = 0
+  while i < len(s):
+    unsafe:
+      b = load8(q + STR_BYTES + i)
+      store8(as_ptr(addr) + off + i, b)
+    i = i + 1
+  return off + len(s)
+def wbytes(addr, off, xs):
+  off = w64(addr, off, len(xs))
+  i = 0
+  while i < len(xs):
+    b = xs[i]
+    unsafe:
+      store8(as_ptr(addr) + off + i, b)
+    i = i + 1
+  return off + len(xs)
+def str_size(s):
+  return 8 + len(s)
+def dict_size(d):
+  total = 8
+  for k in keys(d):
+    total = total + str_size(k) + 8
+  return total
+def save(srcpath, g):
+  # Never let a cache-writing problem break a run.
+  try:
+    st = asm.state()
+    inputs = [[srcpath, key(read_text(srcpath))]]
+    ok = true
+    for name in keys(g.modtab):
+      rec = g.modtab[name]
+      if has(rec, "path") and rec["path"] != null:
+        append(inputs, [rec["path"], key(read_text(rec["path"]))])
+      else:
+        ok = false
+    if not ok:
+      return false
+    libs = g.ffi_libs
+    syms = g.ffi_syms
+    owners = g.ffi_owners
+    total = 4 + 8 + 8
+    for inp in inputs:
+      total = total + str_size(inp[0]) + str_size(inp[1])
+    total = total + 8
+    for s in libs:
+      total = total + str_size(s)
+    total = total + 8
+    for s in syms:
+      total = total + str_size(s)
+    total = total + dict_size(owners) + dict_size(st["labels"]) + dict_size(st["data_labels"])
+    total = total + 8
+    for f in st["fixups"]:
+      total = total + 8 + str_size(f[1])
+    total = total + 8 + len(st["code"]) + 8 + len(st["data"])
+    bufaddr = 0
+    unsafe:
+      bufaddr = as_int(as_ptr(alloc(total)))
+    off = 0
+    unsafe:
+      store8(as_ptr(bufaddr) + 0, 72)
+      store8(as_ptr(bufaddr) + 1, 83)
+      store8(as_ptr(bufaddr) + 2, 67)
+      store8(as_ptr(bufaddr) + 3, 49)
+    off = w64(bufaddr, 4, FORMAT)
+    off = w64(bufaddr, off, len(inputs))
+    for inp in inputs:
+      off = wstr(bufaddr, off, inp[0])
+      off = wstr(bufaddr, off, inp[1])
+    off = w64(bufaddr, off, len(libs))
+    for s in libs:
+      off = wstr(bufaddr, off, s)
+    off = w64(bufaddr, off, len(syms))
+    for s in syms:
+      off = wstr(bufaddr, off, s)
+    off = w64(bufaddr, off, len(keys(owners)))
+    for k in keys(owners):
+      off = wstr(bufaddr, off, k)
+      off = wstr(bufaddr, off, owners[k])
+    off = w64(bufaddr, off, len(keys(st["labels"])))
+    for k in keys(st["labels"]):
+      off = wstr(bufaddr, off, k)
+      off = w64(bufaddr, off, st["labels"][k])
+    off = w64(bufaddr, off, len(keys(st["data_labels"])))
+    for k in keys(st["data_labels"]):
+      off = wstr(bufaddr, off, k)
+      off = w64(bufaddr, off, st["data_labels"][k])
+    off = w64(bufaddr, off, len(st["fixups"]))
+    for f in st["fixups"]:
+      off = w64(bufaddr, off, f[0])
+      off = wstr(bufaddr, off, f[1])
+    off = wbytes(bufaddr, off, st["code"])
+    off = wbytes(bufaddr, off, st["data"])
+    if off != total:
+      return false
+    blob = read_mem(bufaddr, total)
+    cpath = cache_path(srcpath)
+    f = open(cpath + ".tmp", "w")
+    write(f, blob)
+    close(f)
+    rename(cpath + ".tmp", cpath)
+    return true
+  except as e:
+    return false
+# Binary reader over the blob string.
+def r64(addr, off):
+  # Read as two u32 halves: a raw load64 of hostile bytes would trip the
+  # backend's hard 62-bit range fault before the bounds check can run.
+  unsafe:
+    lo = load32(as_ptr(addr) + off)
+    hi = load32(as_ptr(addr) + off + 4)
+  if hi > 536870912:
+    raise "jitcache: bad length"
+  v = lo + hi * 4294967296
+  if v < 0 or v > 68719476736:
+    raise "jitcache: bad length"
+  return v
+def rstr(addr, off, n):
+  ln = r64(addr, off)
+  if ln < 0 or ln > n + STR_BYTES - off - 8:
+    raise "jitcache: bad string"
+  return [read_mem(addr + off + 8, ln), off + 8 + ln]
+def load(srcpath):
+  cpath = cache_path(srcpath)
+  if not exists(cpath):
+    return null
+  try:
+    f = open(cpath, "r")
+    blob = read(f)
+    close(f)
+    n = len(blob)
+    if n < 20:
+      return null
+    addr = 0
+    unsafe:
+      addr = as_int(as_ptr(blob))
+      Ptr qb = as_ptr(blob)
+    m0 = 0
+    m1 = 0
+    m2 = 0
+    m3 = 0
+    unsafe:
+      m0 = load8(qb + STR_BYTES + 0)
+      m1 = load8(qb + STR_BYTES + 1)
+      m2 = load8(qb + STR_BYTES + 2)
+      m3 = load8(qb + STR_BYTES + 3)
+    if m0 != 72 or m1 != 83 or m2 != 67 or m3 != 49:
+      return null
+    base = STR_BYTES
+    fmt = r64(addr, base + 4)
+    if fmt != FORMAT:
+      return null
+    off = base + 12
+    r = r64(addr, off)
+    off = off + 8
+    inputs = []
+    i = 0
+    while i < r:
+      p = rstr(addr, off, n)
+      path = p[0]
+      off = p[1]
+      p = rstr(addr, off, n)
+      want = p[0]
+      off = p[1]
+      append(inputs, [path, want])
+      i = i + 1
+    for inp in inputs:
+      if not exists(inp[0]):
+        return null
+      if key(read_text(inp[0])) != inp[1]:
+        return null
+    libs = []
+    r = r64(addr, off)
+    off = off + 8
+    i = 0
+    while i < r:
+      p = rstr(addr, off, n)
+      append(libs, p[0])
+      off = p[1]
+      i = i + 1
+    syms = []
+    r = r64(addr, off)
+    off = off + 8
+    i = 0
+    while i < r:
+      p = rstr(addr, off, n)
+      append(syms, p[0])
+      off = p[1]
+      i = i + 1
+    owners = {}
+    r = r64(addr, off)
+    off = off + 8
+    i = 0
+    while i < r:
+      p = rstr(addr, off, n)
+      k = p[0]
+      off = p[1]
+      p = rstr(addr, off, n)
+      owners[k] = p[0]
+      off = p[1]
+      i = i + 1
+    labels = {}
+    r = r64(addr, off)
+    off = off + 8
+    i = 0
+    while i < r:
+      p = rstr(addr, off, n)
+      k = p[0]
+      off = p[1]
+      labels[k] = r64(addr, off)
+      off = off + 8
+      i = i + 1
+    dlabels = {}
+    r = r64(addr, off)
+    off = off + 8
+    i = 0
+    while i < r:
+      p = rstr(addr, off, n)
+      k = p[0]
+      off = p[1]
+      dlabels[k] = r64(addr, off)
+      off = off + 8
+      i = i + 1
+    fixups = []
+    r = r64(addr, off)
+    off = off + 8
+    i = 0
+    while i < r:
+      pos = r64(addr, off)
+      off = off + 8
+      p = rstr(addr, off, n)
+      append(fixups, [pos, p[0]])
+      off = p[1]
+      i = i + 1
+    r = r64(addr, off)
+    off = off + 8
+    if r < 1 or r > 16777216 or off + r > n + STR_BYTES:
+      return null
+    code_str = read_mem(addr + off, r)
+    off = off + r
+    r = r64(addr, off)
+    off = off + 8
+    if r > 16777216 or off + r != n + STR_BYTES:
+      return null
+    data_str = read_mem(addr + off, r)
+    # Materialize the assembler state lists.
+    st = asm.state()
+    st["labels"] = labels
+    st["data_labels"] = dlabels
+    st["fixups"] = fixups
+    unsafe:
+      Ptr cq = as_ptr(code_str)
+      Ptr dq = as_ptr(data_str)
+    code = []
+    i = 0
+    while i + 8 <= len(code_str):
+      unsafe:
+        b0 = load8(cq + STR_BYTES + i)
+        b1 = load8(cq + STR_BYTES + i + 1)
+        b2 = load8(cq + STR_BYTES + i + 2)
+        b3 = load8(cq + STR_BYTES + i + 3)
+        b4 = load8(cq + STR_BYTES + i + 4)
+        b5 = load8(cq + STR_BYTES + i + 5)
+        b6 = load8(cq + STR_BYTES + i + 6)
+        b7 = load8(cq + STR_BYTES + i + 7)
+      append(code, b0)
+      append(code, b1)
+      append(code, b2)
+      append(code, b3)
+      append(code, b4)
+      append(code, b5)
+      append(code, b6)
+      append(code, b7)
+      i = i + 8
+    while i < len(code_str):
+      unsafe:
+        b = load8(cq + STR_BYTES + i)
+      append(code, b)
+      i = i + 1
+    data = []
+    i = 0
+    while i + 8 <= len(data_str):
+      unsafe:
+        b0 = load8(dq + STR_BYTES + i)
+        b1 = load8(dq + STR_BYTES + i + 1)
+        b2 = load8(dq + STR_BYTES + i + 2)
+        b3 = load8(dq + STR_BYTES + i + 3)
+        b4 = load8(dq + STR_BYTES + i + 4)
+        b5 = load8(dq + STR_BYTES + i + 5)
+        b6 = load8(dq + STR_BYTES + i + 6)
+        b7 = load8(dq + STR_BYTES + i + 7)
+      append(data, b0)
+      append(data, b1)
+      append(data, b2)
+      append(data, b3)
+      append(data, b4)
+      append(data, b5)
+      append(data, b6)
+      append(data, b7)
+      i = i + 8
+    while i < len(data_str):
+      unsafe:
+        b = load8(dq + STR_BYTES + i)
+      append(data, b)
+      i = i + 1
+    st["code"] = code
+    st["data"] = data
+    return [libs, syms, owners]
+  except as e:
+    return null
