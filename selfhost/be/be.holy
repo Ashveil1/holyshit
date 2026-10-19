@@ -10775,6 +10775,11 @@ class GenIR(Gen):
           if ins["op"] == "mkfunc":
             parents[ins["func"]] = key
     self.parents = parents
+    for key in self.allorder:
+      f = self.frames[key]
+      both = self._compute_iraw(self.allfuncs[key], self._compute_ivars(key, self.allfuncs[key], f["is_entry"]))
+      f["iraw"] = both[0]
+      f["ivars"] = both[1]
     self._note_imports()
     for key in self.allorder:
       self._plan_res(key)
@@ -10923,12 +10928,58 @@ class GenIR(Gen):
         slots[nm] = take()
     if pyrt.py_get(fdef, "xname", null):
       slots["%cline"] = take()
-    return {"key": key, "params": params, "pmap": pmap, "locals": stored, "slots": slots, "nloc": n[0], "rawnames": rawnames, "utypes": utypes, "caps": [], "res": {}, "prov": prov, "uses": uses, "definstr": definstr, "floattemps": pyrt.py_set(null), "mod": modpfx, "is_entry": is_entry, "iraw": self._compute_iraw(fdef)}
-  def _compute_iraw(self, fdef):
-    iraw = pyrt.py_set(null)
-    definstr = {}
+    return {"key": key, "params": params, "pmap": pmap, "locals": stored, "slots": slots, "nloc": n[0], "rawnames": rawnames, "utypes": utypes, "caps": [], "res": {}, "prov": prov, "uses": uses, "definstr": definstr, "floattemps": pyrt.py_set(null), "mod": modpfx, "is_entry": is_entry}
+  def _captured_names(self):
+    c = pyrt.py_getattr(self, "_capnames", null)
+    if c != null:
+      return c
+    c = pyrt.py_set(null)
+    for key in self.allorder:
+      fdef = self.allfuncs[key]
+      for b in fdef["blocks"]:
+        for ins in b["instrs"]:
+          if ins["op"] == "load" and self._classify(key, ins["name"]) == "cap":
+            pyrt.py_add(c, ins["name"])
+    self._capnames = c
+    return c
+  def _var_uses_elsewhere(self, key, name):
+    for k2 in self.allorder:
+      if k2 == key:
+        continue
+      f2 = self.allfuncs[k2]
+      for b in f2["blocks"]:
+        for ins in b["instrs"]:
+          if ins["op"] in ["load", "stvar", "stglobal", "sload", "svarptr", "sset", "unbind"] and pyrt.py_get(ins, "name", null) == name:
+            return true
+    return false
+  def _compute_ivars(self, key, fdef, is_entry):
+    cand = pyrt.py_set(null)
+    bad = self._captured_names()
     for b in fdef["blocks"]:
       for ins in b["instrs"]:
+        if ins["op"] == "stvar":
+          pyrt.py_add(cand, ins["name"])
+        elif ins["op"] in ["sdecl", "sset", "svarptr", "unbind", "stglobal"] and pyrt.py_get(ins, "name", null) != null:
+          pyrt.py_add(bad, ins["name"])
+        elif ins["op"] == "sload" and pyrt.py_get(ins, "name", null) != null:
+          pyrt.py_add(bad, ins["name"])
+    params = pyrt.py_set(fdef["params"])
+    out = pyrt.py_set(null)
+    for v in pyrt.py_sorted(cand, null):
+      if v in params or v in bad:
+        continue
+      if self._var_uses_elsewhere(key, v):
+        continue
+      pyrt.py_add(out, v)
+    return out
+  def _compute_iraw(self, fdef, ivars):
+    iraw = pyrt.py_set(null)
+    definstr = {}
+    stvar_srcs = {}
+    for b in fdef["blocks"]:
+      for ins in b["instrs"]:
+        if ins["op"] == "stvar":
+          append(pyrt.py_setdefault(stvar_srcs, ins["name"], []), ins["src"])
         if pyrt.py_get(ins, "dest", null) != null:
           definstr[ins["dest"]] = ins
           if ins["op"] == "const" and pyrt.py_type(ins["val"]) == "int":
@@ -10939,8 +10990,16 @@ class GenIR(Gen):
             pyrt.py_add(iraw, ins["dest"])
           elif ins["op"] == "phi":
             pyrt.py_add(iraw, ins["dest"])
+          elif ins["op"] == "load" and ins["name"] in ivars:
+            pyrt.py_add(iraw, ins["dest"])
     changed = true
     while changed:
+      keepv = pyrt.py_set(null)
+      nv = 0
+      for v in pyrt.py_sorted(ivars, null):
+        if pyrt.py_all([s in iraw for s in pyrt.py_get(stvar_srcs, v, [])]):
+          pyrt.py_add(keepv, v)
+          nv = nv + 1
       keep = pyrt.py_set(null)
       nk = 0
       nd = 0
@@ -10953,13 +11012,16 @@ class GenIR(Gen):
           ok = ins["v"] in iraw
         elif ins["op"] == "phi":
           ok = pyrt.py_all([a[1] in iraw for a in ins["arms"]])
+        elif ins["op"] == "load":
+          ok = ins["name"] in keepv
         nd = nd + 1
         if ok:
           pyrt.py_add(keep, d)
           nk = nk + 1
-      changed = nk != nd
+      changed = nk != nd or nv != len(pyrt.py_sorted(ivars, null))
       iraw = keep
-    return iraw
+      ivars = keepv
+    return [iraw, ivars]
   def _raw_load(self, fr, ref):
     asm.mov_rm("rax", "rbp", fr["slots"][ref])
   def _load(self, fr, ref, ln):
@@ -13170,7 +13232,15 @@ class GenIR(Gen):
         elif self._alias_visible(fr, ins["name"]) != null and pyrt.py_get(fr["uses"], ins["dest"], []) and pyrt.py_all([u in pyrt.py_set([["attr", "obj"], ["print", "arg"], ["setattr", "obj"], ["stvar", "src"], ["stglobal", "src"]]) for u in fr["uses"][ins["dest"]]]):
           pass
         else:
-          self._load(fr, ins["name"], ln)
+          iv = pyrt.py_get(fr, "ivars", null)
+          if iv != null and ins["name"] in iv:
+            if fr["is_entry"]:
+              asm.lea_rip("rax", self._glabel(ins["name"], fr["mod"]))
+              asm.mov_rm("rax", "rax", 0)
+            else:
+              asm.mov_rm("rax", "rbp", fr["slots"][ins["name"]])
+          else:
+            self._load(fr, ins["name"], ln)
           asm.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
       elif op == "stvar":
         r = self._modref(fr, ins["src"])
@@ -13184,10 +13254,20 @@ class GenIR(Gen):
         if sub != null:
           pyrt.py_setdefault(fr, "aliases", {})[ins["name"]] = sub
           continue
-        self._load(fr, ins["src"], ln)
-        _r1 = pyrt.py_get(fr, "aliases", {})
-        _r1[ins["name"]] = null
-        self._store(fr, ins["name"], ln)
+        iv = pyrt.py_get(fr, "ivars", null)
+        if iv != null and ins["name"] in iv:
+          self._raw_load(fr, ins["src"])
+          if fr["is_entry"]:
+            lab = self._glabel(ins["name"], fr["mod"])
+            asm.lea_rip("rcx", lab)
+            asm.mov_mr("rcx", "rax", 0)
+          else:
+            asm.mov_mr("rbp", "rax", fr["slots"][ins["name"]])
+        else:
+          self._load(fr, ins["src"], ln)
+          _r1 = pyrt.py_get(fr, "aliases", {})
+          _r1[ins["name"]] = null
+          self._store(fr, ins["name"], ln)
       elif op == "stglobal":
         self._load(fr, ins["src"], ln)
         _r2 = pyrt.py_get(fr, "aliases", {})
