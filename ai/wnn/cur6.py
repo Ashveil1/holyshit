@@ -13,6 +13,7 @@ import sys, random, math, time, itertools, functools
 sys.setrecursionlimit(100000)
 CAP = [400]
 CAPF = [400]
+PROG = False
 class Fail(Exception): pass
 def p_add(a, b): return a + b
 def p_sub(a, b):
@@ -71,7 +72,8 @@ def search(train, abl, tag=''):
     t0 = time.time(); tried = 0
     x0, y0, r0 = train[0]
     comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
-    for comb in comb_list:
+    for ci, comb in enumerate(comb_list):
+        if ci % 20 == 0 and PROG: print(f'   comb {ci}/{len(comb_list)} {comb} tried {tried} {time.time()-t0:.0f}s', flush=True)
         for init in ('y', 'one', 'zero', 'two'):
             st = steps_pair if (comb is None and abl != 'nopair') else steps_single
             if comb is not None and abl == 'nocombe': continue
@@ -107,7 +109,7 @@ def gen(task, rng, scale):
     if task == 'mod': y = rng.randrange(1, max(2, s)); x = rng.randrange(0, s * 3 if scale <= 2 else s); return x, y, x % y
     if task == 'mul': x = rng.randrange(0, s); y = rng.randrange(0, 30 if scale <= 2 else s); return x, y, x * y
     if task == 'div': y = rng.randrange(1, max(2, s)); x = rng.randrange(0, s * 3 if scale <= 2 else s * 3); return x, y, x // y
-    if task == 'power': x = rng.randrange(0, 12); y = rng.randrange(0, 5 if scale <= 2 else 9); return x, y, x ** y
+    if task == 'power': x = rng.randrange(0, 8 if scale <= 2 else 12); y = rng.randrange(0, 4 if scale <= 2 else 5); return x, y, x ** y
     if task == 'gcd':
         g = rng.randrange(1, 10 ** max(1, scale // 2)); a = g * rng.randrange(1, s); b = g * rng.randrange(1, s); return a, b, math.gcd(a, b)
     if task == 'isprime': x = rng.randrange(2, 60 if scale <= 2 else 10 ** min(scale, 3)); return x, rng.randrange(1, 50), isp(x)
@@ -115,6 +117,7 @@ def gen(task, rng, scale):
     if task == 'sumto': x = rng.randrange(0, 30 if scale <= 2 else s); return x, rng.randrange(1, 50), x * (x + 1) // 2
 CURR = ['mod', 'mul', 'div', 'power', 'gcd', 'isprime', 'fact', 'sumto']
 if __name__ == '__main__':
+    PROG = True
     seed = int(sys.argv[1]); abl = sys.argv[2] if len(sys.argv) > 2 else ''
     only = sys.argv[3].split(',') if len(sys.argv) > 3 else CURR
     import json, os
