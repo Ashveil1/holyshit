@@ -333,3 +333,16 @@ Reading: extra registers let GP find tasks one register cannot (second_max 3/6 v
 - alt_sum: alone 6/6; after sumdigits+parity 5/6; mixed 5/6 (slightly worse).
 - count_max, max_minus_min, count_gt_first, mul1: 0/6 in every condition.
 Reading: a hint of transfer on one task (second_max, builds on max) that is within noise at n=6; no transfer elsewhere. Mixed-task libraries did not connect skills on their own here. Honest conclusion: with this DSL and budget, neither a learned proposer nor curriculum macros produced a clear capability gain; the exhaustive search (P7/P8) remains the reliable component.
+
+## P11: stair-step curriculum with the exhaustive learner (`cur1.py`, `cur2.py`, `cur2_test.py`)
+
+**Level 1: base skills learned from examples (20 different random training sets each, tested 4-50 digits).** lib6 = bank<=6 with mined `%10`/`//10` (P8); raw7 = raw bank<=7.
+- add: found 20/20, correct 11/20 (both banks; the other 9 training sets underdetermine the carry, so a validated set must be chosen), mul1 20/20, shift (x10) 20/20, compare 20/20, addmod 20/20 (lib6). raw7: add 11/20, mul1 20/20, shift 20/20 (mean search 1.3s / 0.9s vs 0.5s / 0.4s for lib6). sub: learned from seed 0 (borrow), not run over 20 seeds.
+
+**Level 2: compose the learned procedures** (library: learned add, sub, mul1, shift, compare, run as the induced programs on digit tapes). Level-1 programs used were the first training set passing held-out validation at 4-30 digits. Level-2 search = enumeration of typed compositions over the whole library at once (no hint which skill is needed), fitted on 25 examples of 1-3 digits, then tested on 60 unseen pairs at each of 4/8/15/30 digits:
+- |a-b|: `ite(cmp(x,y), sub(x,y), sub(y,x))` found (763 candidates), 60/60 at every length.
+- a*b: FOLD over digits of b: `acc <- add(shift(acc), mul1(x,d))` (Horner) found (2502 candidates, 26.7k expressions in the library), 60/60 at every length up to 30x30 digits.
+- a mod b (quotient <= 9): `while not cmp(y,acc): acc <- sub(acc,y)` found (439 candidates), 60/60 at every length.
+- Ablation (remove one primitive): mul fails without add, without shift, or without mul1; |a-b| fails without ite or without sub; mod fails without sub. Every link of the chain is needed.
+
+**What is still given:** the level-1 scan machine and arithmetic DSL, digit-tape glue (pad, strip, broadcast), the constant [1], `ite`, `not`, and the three loop skeletons (direct, fold over digits of the second number, while-condition). The level-2 program shapes are small (<=6 nodes) because the primitives do the work. Not done: integer division (needs a counter register), a separate test of interleaved training order (the mixed library was searched all at once, not trained in an order), skeleton discovery. Level-2 tasks are impossible for the level-1 search alone (nested loops), so "alone" is not a baseline here; the ablation shows dependence instead.

@@ -94,6 +94,8 @@ def mk(task, rng, n):
         xs, ys = digs(a, n), digs(b, n)
         o = digs(a + b, n + 1) if task == 'add' else digs(a - b, n) if task == 'sub' else [1 if a > b else 0]
         return xs, ys, o
+    if task == 'shift':
+        xs = [rng.randrange(10) for _ in range(n)]; return xs, None, xs + [0]
     if task in ('mul1', 'addmod'):
         a = rng.randrange(10**n); m = rng.randrange(10); xs = digs(a, n)
         if task == 'mul1': return xs, [m] * n, digs(a * m, n + 1)
