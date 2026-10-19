@@ -38,6 +38,7 @@ def relearn_level2():
         return acc
     return cached(mul), cached(mod)
 MUL = MOD = None
+INITL = ('x', 'y', 'one')
 def ev3(e, env):
     if isinstance(e, str): return env[e]
     o = e[0]
@@ -58,6 +59,9 @@ def run_prog(prog, x, y, maxsteps=12):
         s = [ev3(u0, env), ev3(u1, env)]; k += 1
         if k > maxsteps: raise ValueError('loop')
 def data(name, rng, n):
+    if name == 'div':
+        y = rng.randrange(1, 10**n); q = rng.randrange(0, 10); r = rng.randrange(y)
+        return y * q + r, y, q
     if name == 'gcd':
         import math
         g = rng.randrange(1, 10**max(1, n // 2)); p = rng.randrange(1, 10**max(1, n - n // 2)); q = rng.randrange(1, 10**max(1, n - n // 2))
@@ -79,7 +83,7 @@ def search(name, ops, seed=0):
         for a in leaves + ['zero']:
             for b in leaves + ['zero']:
                 if a != b and (a in ('s0', 's1') or b in ('s0', 's1')): conds += [('cmp', a, b), ('not', ('cmp', a, b))]
-    inits = [(a, b) for a in ('x', 'y', 'one') for b in ('x', 'y', 'one')]
+    inits = [(a, b) for a in INITL for b in INITL]
     t0 = time.time(); tried = 0
     for ci, cond in enumerate(conds):
         print(f'  cond {ci+1}/{len(conds)} {show(cond)} tried so far {tried} {time.time()-t0:.0f}s', flush=True)

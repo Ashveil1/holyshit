@@ -365,3 +365,12 @@ Ablations:
 - Not run: without cmp, level-1-only library.
 
 Honest limits: the scan machine, arithmetic DSL, loop skeletons, constants and glue are still hand-given. The search space is small and hand-picked, so a hit is not surprising once the right pieces exist; the ablations show mod and mul are needed. mod relies on small quotients, there is no division, and the power test exponent range is small (not checked precisely). Search effort is hundreds of thousands of candidates, so this does not scale far.
+
+## P12b: level 4 (cur4.py): div and lcm
+
+- div (quotient <= 9) FOUND by the same loop search with 0 added to the inits: init (y,0); while not cmp(s0,x): s0<-s0+y; s1<-s1+1; result s1. 447k candidates. Unseen 40/40 at 2/4/6/8 digits (quotients <= 9 in the test too).
+- gcd re-learned (598k candidates, 40/40).
+- lcm: straight-line search over learned {mul, div, gcd}, expressions up to nesting 2. Picked div(mul(x,y), gcd(x,y)) after 139 expressions (the intended composition, from 25 training pairs of 1-2 digits).
+- lcm held-out accuracy is poor beyond tiny sizes: 39/40 at 2 digits, 5/40 at 4, 0/40 at 6 and 8. Reason: the learned div only counts up to quotients of 9 (its training range), but lcm needs div(x*y, gcd) with huge quotients. The composition is right; the learned div does not generalise. Fixing it needs a learned long division (nested loop), not done.
+- Ablations: lcm without mul, div or gcd: NOT FOUND (62/122/122 expressions, whole space).
+- Hand-given as before, plus 0 as an extra init constant.
