@@ -10653,7 +10653,7 @@ class GenIR(Gen):
     for k in sub["order"]:
       self.funcmod[k] = "<json>"
     self.mod_entries["<json>"] = sub["entry"]
-    self.modtab["<json>"] = {"name": "<json>", "shell": false, "submods": {}, "imports": {}, "irmod": sub, "dir": pyrt.py_os_path_dirname(path), "pfx": "<json>."}
+    self.modtab["<json>"] = {"name": "<json>", "shell": false, "submods": {}, "imports": {}, "irmod": sub, "dir": pyrt.py_os_path_dirname(path), "pfx": "<json>.", "path": path}
     self._moddir["<json>"] = pyrt.py_os_path_dirname(path)
     self.js_entries = {}
     for k in sub["order"]:
@@ -10712,6 +10712,7 @@ class GenIR(Gen):
           verify.verify_module(sub)
           rec["irmod"] = sub
           rec["dir"] = pyrt.py_os_path_dirname(path)
+          rec["path"] = path
           rec["pfx"] = dotted + "."
           self._moddir[dotted] = pyrt.py_os_path_dirname(path)
           self.mod_entries[dotted] = sub["entry"]

@@ -25,7 +25,10 @@ if not driver.is_file():p.error('driver does not exist')
 env=dict(os.environ,HSROOT=str(ROOT),HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'))
 with tempfile.TemporaryDirectory() as d:
     for name in ['fib','loop','dict','alloc','strings']:
-        source=ROOT/'bench'/f'{name}.holy';exe=str(Path(d)/name)
+        # Time the driver on a private copy so the .hsc compiled-code cache
+        # lands in the sandbox, not the repo: the first JIT sample compiles
+        # and writes the cache, the rest run warm from it.
+        source=Path(d)/f'{name}.holy';source.write_bytes((ROOT/'bench'/f'{name}.holy').read_bytes());exe=str(Path(d)/name)
         # Untimed setup uses the audited native hs compiler, not Python.
         subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(source),exe],env=env,check=True,timeout=a.timeout,capture_output=True)
         samples={'aot':[],'jit':[]};expected=None
@@ -40,4 +43,4 @@ with tempfile.TemporaryDirectory() as d:
                 if r.stdout!=expected:raise SystemExit(f'{name}/{kind}: output mismatch')
                 samples[kind].append(elapsed)
         med={k:statistics.median(v) for k,v in samples.items()}
-        print(json.dumps({'case':name,'runs':a.runs,'seconds':med,'jit_over_aot':med['jit']/med['aot'],'scope':'JIT includes compilation; AOT excludes compilation; driver build excluded','output':'same'}),flush=True)
+        print(json.dumps({'case':name,'runs':a.runs,'seconds':med,'jit_over_aot':med['jit']/med['aot'],'scope':'JIT warm via .hsc cache after one cold compile; AOT excludes compilation; driver build excluded','output':'same'}),flush=True)

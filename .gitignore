@@ -11,3 +11,4 @@ __pycache__/
 .playwright-mcp/
 blackhole_*.html
 blackhole_*.png
+*.hsc
