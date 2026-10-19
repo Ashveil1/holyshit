@@ -10941,8 +10941,10 @@ class GenIR(Gen):
             pyrt.py_add(iraw, ins["dest"])
     changed = true
     while changed:
-      changed = false
-      for d in pyrt.py_list(iraw):
+      keep = pyrt.py_set(null)
+      nk = 0
+      nd = 0
+      for d in pyrt.py_sorted(iraw, null):
         ins = definstr[d]
         ok = true
         if ins["op"] == "bin":
@@ -10951,9 +10953,12 @@ class GenIR(Gen):
           ok = ins["v"] in iraw
         elif ins["op"] == "phi":
           ok = pyrt.py_all([a[1] in iraw for a in ins["arms"]])
-        if not ok:
-          pyrt.py_discard(iraw, d)
-          changed = true
+        nd = nd + 1
+        if ok:
+          pyrt.py_add(keep, d)
+          nk = nk + 1
+      changed = nk != nd
+      iraw = keep
     return iraw
   def _raw_load(self, fr, ref):
     asm.mov_rm("rax", "rbp", fr["slots"][ref])
