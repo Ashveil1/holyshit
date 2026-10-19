@@ -387,3 +387,21 @@ Result: 6/10 generalise (>=38/40 at every size):
 - NOT found / fail: lcm (right composition div(mul,gcd) exists in the space but learned div breaks on large quotients, so it was never consistent with the training pairs); x*x mod y (mod limit); "both prime" (training pairs include x=1, where the learned is-prime is wrong).
 - Ablation (library op removed): without gcd 4/10 (coprime lost too), without mod 5/10. without mul 5/10, without max+min 3/10, without div 5/10 (divisible is then found as iszero(mod x y), the textbook form). Caveat: ablation removes an op from the expression grammar only; is-prime still uses mod and mul inside, and the floor-division tricks (coprime = div(1,gcd)) survive when mod/mul go.
 Honest limits: this is NOT word problems; the "format" is numeric pairs only. The ops, depth bound, expression grammar and the 0/1 convention are hand-given; the task pool is small and chosen by me; the search is plain enumeration, so "solves problems itself" means "finds a short composition of learned skills that fits the examples". Failures come from learned skills with narrow training ranges.
+
+## P14: learn the loop skeleton itself (cur6.py)
+
+Instead of the hand-given direct / fold / while skeletons of P11-P13, ONE generic linear-recursion schema is searched:
+f(a,b) = base if cond(a,b) else comb(a,b, f(step0(a,b), step1(a,b))); answer = post(f(x, init)), init in {y,1,0,2}, post in {id, iszero, nonzero}. Tail loops, counting loops, folds and accumulator loops are instances (comb = identity for tail loops). The search picks cond, base, both step expressions, comb, init and post from 25 examples (1-2 digits). Each learned function enters the library as a new op (curriculum order mod, mul, div, power, gcd, is-prime, factorial, sum-to-n).
+
+Seed 0 (all 8 learned, each 40/40 on unseen at 1,2,3,4 digit scales except where noted):
+- mod: if a<b then a else mod(a-b,b) (642 candidates)
+- mul: if b<1 then 0 else a+mul(a,b-1) (repeated addition)
+- div: if a<b then 0 else 1+div(a-b,b), 40/40 even for LARGE quotients (the quotient<=9 limit of P12b is gone; by-product "long division" but still repeated subtraction, cost O(quotient), not digit-wise)
+- power: if b<1 then 1 else a*power(a,b-1) (2.4M candidates)
+- gcd: f(a,b) with step (b mod a, a): Euclid, found as a tail loop (60k candidates)
+- is-prime: init b=2; if not(b<a) -> a else step (a,b+1); comb val*(a mod b); post nonzero (24.7M candidates; found after the combine order was allowed to be either way)
+- factorial: tail loop with accumulator, step (a-1, b*a)
+- sum 1..n: tail loop step (a-1, a+b)
+Seed 1 (7 tasks without is-prime): all found, 40/40 at all scales except sum-to-n 37/39/40/40 (the found program starts its accumulator at 1 so n=0 is wrong; training set lacked n=0).
+Ablations (seed 0): no-combine (tail loops only): mod, gcd, sum-to-n still found; mul, div, power, factorial NOT found (whole space searched). Pair-step off (only one state variable changes per step): mod, mul, div, power still found (gcd run pending at time of writing). No learned ops in the grammar (only add/sub): mod, mul, div found, power NOT found. Seed 2, nopair gcd and the rest of nolib: pending, see later commit if present.
+Honest limits: given are the recursion schema itself (two args, one recursive call), the expression grammar (leaves a,b,1,0 and one binary op), the cond forms, post set, int-level add/sub/lt, curriculum order, the (x,y)->out format. The recursion depth is capped (400 during search, 20000 at test), so learned mul/div are repeated addition/subtraction: correct but slow, and power training values had to stay small for that reason. Search cost is millions of candidates for the later tasks, so it will not scale to longer programs. Some programs have training-range blind spots (sum-to-n at n=0, is-prime at x<2).

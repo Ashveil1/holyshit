@@ -66,9 +66,10 @@ def search(train, abl, tag=''):
     combs = [None] if abl == 'notail' else None
     comb_list = [None]
     if abl != 'notail':
-        comb_list += [(o, e, 0) for o in ops for e in E1] + [(o, e, 1) for o in ops if o in ('sub',) for e in E1]
+        comb_list += [(o, e, 0) for o in ops for e in E1] + [(o, e, 1) for o in ops if o not in ('add',) for e in E1]
     steps_pair = [(s0, s1) for s0 in E1 for s1 in E1]
-    steps_single = [(s, 'b') for s in E1] + [('a', s) for s in E1]
+    E1p = [e for e in E1 if isinstance(e, str) or e[0] in ('add', 'sub')]
+    steps_single = [(s, 'b') for s in E1p] + [('a', s) for s in E1p]
     t0 = time.time(); tried = 0
     x0, y0, r0 = train[0]
     comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
