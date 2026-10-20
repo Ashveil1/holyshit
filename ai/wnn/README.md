@@ -439,3 +439,10 @@ Three ideas tested, none beat P16: slot-context candidates for number words (no 
 
 ## P18 (null, text2prog4.py)
 EM reweighting of two-step explanations (soft weights from the current model instead of uniform) slightly hurt: same phrasing n=100/300 .46/.64 (no EM) vs .40/.61 (2 iters); new phrasing unchanged (.25/.36 vs .25/.34). The uniform Occam rule of P16 stays.
+
+## P19: skills not in the original curriculum (cur6.py, seed 0 only)
+The same generic recursion schema and search (P14), with the learned mod/mul/div/power/gcd in the library, was given 7 new tasks (25 examples each, no hint): absdiff, max, min, square, cube, even, choose2 (x(x-1)/2).
+- Found and 40/40 at all 4 scales: max, min, square (reuses learned `power`: power(a,2)), cube (counting loop with learned mul), choose2 (35 s... 480 s search, 3.3M programs).
+- even: found but overfit, 38/40 at 1 digit, 26/40 at 4 digits (the program uses power(0,y) as a toggle that fits the 25 examples).
+- absdiff: NOT FOUND after 32.6M programs (about 83 min). I did not check whether the grammar can express it.
+Caveats: single seed; the schema, cond forms, expression grammar and library order are hand-given; max/min programs are odd (accepted because they pass 40/40 unseen, not because they read naturally); search times are CPU minutes on one core.

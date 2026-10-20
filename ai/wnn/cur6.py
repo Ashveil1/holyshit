@@ -116,11 +116,20 @@ def gen(task, rng, scale):
     if task == 'isprime': x = rng.randrange(2, 60 if scale <= 2 else 10 ** min(scale, 3)); return x, rng.randrange(1, 50), isp(x)
     if task == 'fact': x = rng.randrange(0, 7 if scale <= 2 else 11); return x, rng.randrange(1, 50), math.factorial(x)
     if task == 'sumto': x = rng.randrange(0, 30 if scale <= 2 else s); return x, rng.randrange(1, 50), x * (x + 1) // 2
+    if task == 'absdiff': x = rng.randrange(0, s); y = rng.randrange(0, s); return x, y, abs(x - y)
+    if task == 'max': x = rng.randrange(0, s); y = rng.randrange(0, s); return x, y, max(x, y)
+    if task == 'min': x = rng.randrange(0, s); y = rng.randrange(0, s); return x, y, min(x, y)
+    if task == 'square': x = rng.randrange(0, 12 if scale <= 2 else 30); return x, rng.randrange(1, 50), x * x
+    if task == 'cube': x = rng.randrange(0, 8 if scale <= 2 else 15); return x, rng.randrange(1, 50), x ** 3
+    if task == 'even': x = rng.randrange(0, s * 3); return x, rng.randrange(1, 50), int(x % 2 == 0)
+    if task == 'choose2': x = rng.randrange(0, 20 if scale <= 2 else 60); return x, rng.randrange(1, 50), x * (x - 1) // 2
 CURR = ['mod', 'mul', 'div', 'power', 'gcd', 'isprime', 'fact', 'sumto']
 if __name__ == '__main__':
     PROG = True
     seed = int(sys.argv[1]); abl = sys.argv[2] if len(sys.argv) > 2 else ''
+    NEW = ['absdiff', 'max', 'min', 'square', 'cube', 'even', 'choose2']
     only = sys.argv[3].split(',') if len(sys.argv) > 3 else CURR
+    CURR = CURR + NEW
     import json, os
     sv = f'/tmp/c6_prog_{seed}_{abl}.json'; saved = json.load(open(sv)) if os.path.exists(sv) else {}
     def tup(e): return tuple(tup(t) for t in e) if isinstance(e, list) else e
