@@ -10993,9 +10993,11 @@ class GenIR(Gen):
       if pyrt.py_has_key(mk, fnmap):
         pyrt.py_add(dup, mk)
       fnmap[mk] = key
-    for mk in pyrt.py_sorted(dup, null):
-      pyrt.py_del(fnmap, mk)
-    return fnmap
+    out = {}
+    for pair in pyrt.py_items(fnmap):
+      if not (pair[0] in dup):
+        out[pair[0]] = pair[1]
+    return out
   def _rawabi_badnames(self):
     bad = pyrt.py_set(null)
     for key in self.allorder:
