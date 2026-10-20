@@ -446,3 +446,10 @@ The same generic recursion schema and search (P14), with the learned mod/mul/div
 - even: found but overfit, 38/40 at 1 digit, 26/40 at 4 digits (the program uses power(0,y) as a toggle that fits the 25 examples).
 - absdiff: NOT FOUND after 32.6M programs (about 83 min). I did not check whether the grammar can express it.
 Caveats: single seed; the schema, cond forms, expression grammar and library order are hand-given; max/min programs are odd (accepted because they pass 40/40 unseen, not because they read naturally); search times are CPU minutes on one core.
+
+## P19b: more seeds (cur6.py)
+Full prerequisite library (mod, mul, div, power, gcd learned first) then the new skills, no hints.
+- seed 1: max, min 40/40 (min 39/40 at 1 digit), cube 40/40, choose2 40/40, square FOUND BUT WEAK (35/38/39/37 of 40 by scale; the program uses (div a b),(mul a b), which fits the 25 examples but is not x*x), even overfit (37/40/40/27).
+- seed 2 (partial, still running when written): max 36/40/40/40 at scales 1-4, min 39/40/40/40, square weak (38/37/38/39). cube, even, choose2 not finished yet.
+- absdiff, seed 0 with learned max/min in the library: still NOT FOUND after 36.6M programs (about 5.6 h CPU); the grammar has no depth-2 expression at the base or step, so this is a limit of my hand-given grammar, not evidence the data is hard.
+Summary: new skills are learned most reliably when they are a loop over an already learned op (cube, choose2, max, min). Square and even depend on the seed: the search accepts the first program that fits 25 examples, and with weak coverage of the example set a wrong short program wins. A validation step with adversarial examples would be the natural fix (not done here).

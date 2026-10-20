@@ -134,7 +134,7 @@ if __name__ == '__main__':
     sv = f'/tmp/c6_prog_{seed}_{abl}.json'; saved = json.load(open(sv)) if os.path.exists(sv) else {}
     def tup(e): return tuple(tup(t) for t in e) if isinstance(e, list) else e
     rng = random.Random(seed); found = 0
-    for task in CURR:
+    for task in [t for t in ['mod','mul','div','power','gcd','max','min','absdiff','isprime','fact','sumto','square','cube','even','choose2'] if t in only]:
         if task not in only: continue
         train = [gen(task, rng, rng.choice([1, 2])) for _ in range(25)]
         if task in saved: p = tup(saved[task]); tried = dt = 0
@@ -151,4 +151,4 @@ if __name__ == '__main__':
             res[sc] = ok
         print(f'seed{seed} {abl} {task}: FOUND {show_prog(p)} tried {tried} {dt:.0f}s unseen/40 by scale {res}', flush=True)
         CAPF[0] = 400; ev.cache_clear()
-        if task in ('mod', 'mul', 'div', 'power', 'gcd') and res[2] >= 36: LIB[task] = (lambda ff: (lambda a, b: ff(a, b)))(f)
+        if task in ('mod', 'mul', 'div', 'power', 'gcd', 'max', 'min') and res[2] >= 36: LIB[task] = (lambda ff: (lambda a, b: ff(a, b)))(f)
