@@ -61,6 +61,11 @@ with tempfile.TemporaryDirectory() as temp:
             _p.kill();_p.communicate()
             raise
         check(want.returncode==0 and want.stdout==expected and (got.returncode,got.stdout,got.stderr)==(want.returncode,want.stdout,want.stderr),label+' '+repr((got.returncode,got.stdout,got.stderr[-200:])))
+        # Regression gate (jitcache save() owners size miscount): a successful
+        # cold compile must leave its cache image on disk. The old undercount
+        # wrote owners values as wstr but counted them as 8 bytes, silently
+        # aborting the save after overflowing the buffer into live heap.
+        check(Path(str(path)+'.hsc').exists(),label+' cache image written')
     for label,source,error in [
       ('conflicting-owner','extern:\n  I64 labs(I64 x)\nprint labs(-17)\nextern from "'+str(so)+'":\n  I64 labs(I64 x)\nprint "TARGET RAN"\nprint labs(-17)\n','conflicting library owners'),
       ('reserved-symbol','extern from "'+str(so)+'":\n  I64 fflush(Ptr x)\nprint "TARGET RAN"\nprint fflush(0)\n','reserved for libc'),
