@@ -37,7 +37,27 @@ with tempfile.TemporaryDirectory() as temp:
         if label=='libm':
             reference=d/'reference-libm.holy';reference.write_text(source.replace(libm,'m'))
             want=subprocess.run([sys.executable,str(ROOT/'interp.py'),str(reference)],env=env,capture_output=True,text=True,timeout=30)
-        got=subprocess.run([str(exe),str(path)],env=env,capture_output=True,text=True,timeout=30)
+        # CI diagnostics: on a driver timeout, dump the hung process state
+        # (/proc + gdb backtrace) before re-raising. Pure wait until then.
+        _p=subprocess.Popen([str(exe),str(path)],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        try:
+            _o,_e=_p.communicate(timeout=30)
+            got=subprocess.CompletedProcess(_p.args,_p.returncode,_o,_e)
+        except subprocess.TimeoutExpired:
+            print('HANGDUMP begin',label,flush=True)
+            try:
+                for _t in os.listdir('/proc/%d/task'%_p.pid):
+                    for _fn in ('wchan','syscall','stack'):
+                        try: print('task',_t,_fn,open('/proc/%d/task/%s/%s'%(_p.pid,_t,_fn)).read().strip()[:400],flush=True)
+                        except Exception as _x: print('task',_t,_fn,'unreadable',_x,flush=True)
+            except Exception as _x: print('proc dump failed',_x,flush=True)
+            try:
+                _bt=subprocess.run(['gdb','-batch','-p',str(_p.pid),'-ex','thread apply all bt'],capture_output=True,text=True,timeout=40)
+                print('GDBBT>>>',_bt.stdout[-4000:],_bt.stderr[-400:],flush=True)
+            except Exception as _x: print('gdb failed',_x,flush=True)
+            print('HANGDUMP end',flush=True)
+            _p.kill();_p.communicate()
+            raise
         check(want.returncode==0 and want.stdout==expected and (got.returncode,got.stdout,got.stderr)==(want.returncode,want.stdout,want.stderr),label+' '+repr((got.returncode,got.stdout,got.stderr[-200:])))
     for label,source,error in [
       ('conflicting-owner','extern:\n  I64 labs(I64 x)\nprint labs(-17)\nextern from "'+str(so)+'":\n  I64 labs(I64 x)\nprint "TARGET RAN"\nprint labs(-17)\n','conflicting library owners'),
