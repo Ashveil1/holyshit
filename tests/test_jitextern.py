@@ -51,6 +51,8 @@ with tempfile.TemporaryDirectory() as temp:
                         try: print('task',_t,_fn,open('/proc/%d/task/%s/%s'%(_p.pid,_t,_fn)).read().strip()[:400],flush=True)
                         except Exception as _x: print('task',_t,_fn,'unreadable',_x,flush=True)
             except Exception as _x: print('proc dump failed',_x,flush=True)
+            print('PARTIAL stdout:',repr(_x.output),flush=True)
+            print('PARTIAL stderr:',repr(_x.stderr),flush=True)
             try:
                 _bt=subprocess.run(['gdb','-batch','-p',str(_p.pid),'-ex','thread apply all bt'],capture_output=True,text=True,timeout=40)
                 print('GDBBT>>>',_bt.stdout[-4000:],_bt.stderr[-400:],flush=True)
