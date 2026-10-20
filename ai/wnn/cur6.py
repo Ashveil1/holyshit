@@ -14,6 +14,7 @@ sys.setrecursionlimit(100000)
 CAP = [400]
 CAPF = [400]
 PROG = False
+VALID = []
 class Fail(Exception): pass
 def p_add(a, b): return a + b
 def p_sub(a, b):
@@ -93,6 +94,11 @@ def search(train, abl, tag=''):
                                 try:
                                     if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
                                 except (Fail, KeyError, RecursionError, OverflowError): ok = False; break
+                            if ok and VALID:
+                                for x, y, r in VALID:
+                                    try:
+                                        if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
+                                    except (Fail, KeyError, RecursionError, OverflowError, ZeroDivisionError): ok = False; break
                             if ok: return (init, spec, pn), tried, time.time() - t0
         ev.cache_clear() if len(ev.cache_info()) and ev.cache_info().currsize > 3_000_000 else None
     return None, tried, time.time() - t0
@@ -138,7 +144,11 @@ if __name__ == '__main__':
         if task not in only: continue
         train = [gen(task, rng, rng.choice([1, 2])) for _ in range(25)]
         if task in saved: p = tup(saved[task]); tried = dt = 0
-        else: p, tried, dt = search(train, abl)
+        else:
+            VALID[:] = []
+            if 'val' in abl:
+                vr = random.Random(5000 + seed); VALID[:] = [gen(task, vr, sc) for sc in (1, 2) for _ in range(16)]
+            p, tried, dt = search(train, abl)
         if p and task not in saved: saved[task] = p; json.dump(saved, open(sv, 'w'))
         if not p: print(f'seed{seed} {abl} {task}: NOT FOUND tried {tried} {dt:.0f}s', flush=True); continue
         f = make_fn(p); te = random.Random(1000 + seed); res = {}; CAPF[0] = 20000

@@ -453,3 +453,12 @@ Full prerequisite library (mod, mul, div, power, gcd learned first) then the new
 - seed 2 (partial, still running when written): max 36/40/40/40 at scales 1-4, min 39/40/40/40, square weak (38/37/38/39). cube, even, choose2 not finished yet.
 - absdiff, seed 0 with learned max/min in the library: still NOT FOUND after 36.6M programs (about 5.6 h CPU); the grammar has no depth-2 expression at the base or step, so this is a limit of my hand-given grammar, not evidence the data is hard.
 Summary: new skills are learned most reliably when they are a loop over an already learned op (cube, choose2, max, min). Square and even depend on the seed: the search accepts the first program that fits 25 examples, and with weak coverage of the example set a wrong short program wins. A validation step with adversarial examples would be the natural fix (not done here).
+
+## P20: acceptance test with extra labelled examples (cur6.py, ablation `val`, seeds 1 and 2)
+The search still takes the first program that fits 25 training examples, but now also requires it to match 32 extra labelled examples (scales 1 and 2, drawn with a different seed than the test set). This is more labelled data (57 examples in total), not a free fix. Whole library re-learned first (mod, mul, div, power, gcd, max, min), then square and even.
+- square: seed 1 and seed 2 both found `square = power(a, 2)` (via the learned `power`), 40/40 at scales 1-4. Without the extra examples (P19b) the same seeds gave a wrong program (div a b, mul a b), 35-39/40.
+- even: unchanged, same program in both seeds, 37/40/40/27 (seed 1) and 40/40/40/28 (seed 2) at scales 1-4. The failures are only at 4 digits (x up to 30000, where a count-down loop needs more steps than the evaluation cap of 20000), so this is probably a step-cap limit and not a wrong program, but I did not verify that.
+- max, min: found in both seeds, 39-40/40.
+- Failed first attempt: the first run validated at scale 4 and killed mul (mul by repeated addition exceeds the recursion cap in search), so the search never finished; I restarted with scales 1-2.
+- Search cost: square took 2.6 to 3.1 hours CPU (4.3M programs); the library search is unchanged.
+Caveats: 2 seeds, hand-given schema/grammar, the validation examples come from the same oracle that labels the training data.
