@@ -295,8 +295,10 @@ class GenIR(Gen):
                             ins["utype"]
             self.mod_globals[mpref] = names
         self.mglob = self.mod_globals.get("", set())
+        self.rawlabel = {}
         for i, key in enumerate(self.allorder):
             self.flabel[key] = f"hsIR_{i}"
+            self.rawlabel[key] = f"hsIRraw_{i}"
             mpref = self.funcmod.get(key, "")
             is_entry = (key == self.mod_entries.get(mpref))
             self.frames[key] = self._plan_func(
@@ -322,10 +324,9 @@ class GenIR(Gen):
         self._name_usage = usage
         for key in self.allorder:
             fr = self.frames[key]
-            iv = self._compute_ivars(key, self.allfuncs[key],
-                                     fr["is_entry"])
-            fr["iraw"], fr["ivars"] = self._compute_iraw(
-                self.allfuncs[key], iv)
+            fr["ivars"] = self._compute_ivars(key, self.allfuncs[key],
+                                              fr["is_entry"])
+        self._compute_rawabi()
         self._note_imports()
         for key in self.allorder:
             self._plan_res(key)
@@ -561,8 +562,174 @@ class GenIR(Gen):
             out.add(v)
         return out
 
-    def _compute_iraw(self, fdef, ivars):
+    def _rawabi_fnmap(self):
+        # (module, display name) -> key for every plain module-level
+        # function (not an entry thunk, not a nested closure).  A name
+        # defined twice in one module is unusable for direct calls.
+        fnmap = {}
+        dup = set()
+        for key in self.allorder:
+            if key == "<main>":
+                continue
+            fr = self.frames[key]
+            if fr.get("is_entry"):
+                continue
+            pk = self.parents.get(key)
+            if pk is not None and not self.frames[pk].get("is_entry"):
+                continue
+            fdef = self.allfuncs[key]
+            mk = (self.funcmod.get(key, ""), fdef["dispname"])
+            if mk in fnmap:
+                dup.add(mk)
+            fnmap[mk] = key
+        for mk in sorted(dup):
+            del fnmap[mk]
+        return fnmap
+
+    def _rawabi_badnames(self):
+        # Names whose global binding may change (or vanish) anywhere in
+        # the program; a raw-ABI callee must be reached only when its
+        # name provably still denotes the def.  The entry thunk writes
+        # each global once to initialise it - a second write rebinds.
+        bad = set()
+        for key in self.allorder:
+            fr = self.frames[key]
+            ent = fr.get("is_entry")
+            counts = {}
+            for b in self.allfuncs[key]["blocks"]:
+                for ins in b["instrs"]:
+                    op = ins["op"]
+                    nm = ins.get("name")
+                    if nm is None:
+                        continue
+                    if op in ("setattr", "unbind"):
+                        bad.add(nm)
+                    elif op in ("stvar", "stglobal"):
+                        if ent:
+                            counts[nm] = counts.get(nm, 0) + 1
+                        elif op == "stglobal":
+                            bad.add(nm)
+            for nm, n in counts.items():
+                if n > 1:
+                    bad.add(nm)
+        return bad
+
+    def _rawabi_target(self, key, fr, ins, fnmap, rawabi):
+        # direct same-module call of a raw-ABI candidate?
+        p = fr["prov"].get(ins["fn"])
+        if p is None or p[0] != "load":
+            return None
+        nm = p[1]
+        gk = fnmap.get((self.funcmod.get(key, ""), nm))
+        if gk is None or gk not in rawabi:
+            return None
+        if len(ins["args"]) != len(self.allfuncs[gk]["params"]):
+            return None
+        # the caller must be module-level so a "cap" resolution denotes
+        # the module global captured by the entry thunk, not a local of
+        # some intermediate function
+        pk = self.parents.get(key)
+        if pk is not None and not self.frames[pk].get("is_entry"):
+            return None
+        if self._classify(key, nm) in ("global", "auto", "cap"):
+            return gk
+        return None
+
+    def _rawabi_qualify(self, key, fdef):
+        # shape conditions for a raw-ABI body: every return value raw,
+        # every store into a parameter from a raw temp, and no static
+        # (address-taken) use of a parameter.  The raw body has no fn
+        # object (r15), so it cannot materialise captured cells: a cap
+        # load is allowed only when every use is a raw direct call
+        # (skipped at emission), and nested defs (mkfunc) are out.
+        fr = self.frames[key]
+        ir = fr.get("iraw_r", set())
+        rawcalls = fr.get("rawcalls_r", {})
+        pset = set(fdef["params"])
+        rawskips = set()
+        for b in fdef["blocks"]:
+            tm = b["term"]
+            if tm is not None and tm["term"] == "ret":
+                if tm["val"] is None or tm["val"] not in ir:
+                    return False
+            for ins in b["instrs"]:
+                if ins["op"] == "mkfunc":
+                    return False
+                if ins["op"] == "stvar" and ins["name"] in pset and \
+                        ins["src"] not in ir:
+                    return False
+                if ins["op"] in ("sload", "sset", "svarptr", "unbind") \
+                        and ins.get("name") is not None and \
+                        ins["name"] in pset:
+                    return False
+                if ins["op"] == "load" and \
+                        self._classify(key, ins["name"]) == "cap":
+                    uses = fr["uses"].get(ins["dest"], [])
+                    if not uses or not all(u == ("call", "fn")
+                                           for u in uses):
+                        return False
+                    okc = True
+                    for b2 in fdef["blocks"]:
+                        for ins2 in b2["instrs"]:
+                            if ins2["op"] == "call" and \
+                                    ins2["fn"] == ins["dest"] and \
+                                    ins2["dest"] not in rawcalls:
+                                okc = False
+                    if not okc:
+                        return False
+                    rawskips.add(ins["dest"])
+        fr["rawskips"] = rawskips
+        return True
+
+    def _compute_rawabi(self):
+        # Greatest fixpoint: functions that can carry an additional
+        # raw-ABI body (params and results as untagged machine ints).
+        # The tagged body is always emitted too; only provable direct
+        # call sites use the raw entry.
+        fnmap = self._rawabi_fnmap()
+        badn = self._rawabi_badnames()
+        cand = set()
+        if self.freestanding:
+            # kernel path: raw-ABI dual emission not validated there yet
+            fnmap = {}
+        for mk, key in fnmap.items():
+            if self.allfuncs[key]["dispname"] not in badn:
+                cand.add(key)
+        while True:
+            for key in self.allorder:
+                f = self.frames[key]
+                iv0 = self._compute_ivars(key, self.allfuncs[key],
+                                          f["is_entry"])
+                iraw, ivars, rawcalls = self._compute_iraw(
+                    key, self.allfuncs[key], iv0, cand, fnmap, False)
+                f["iraw"] = iraw
+                f["ivars"] = ivars
+                f["rawcalls"] = rawcalls
+                if key in cand:
+                    iraw_r, ivars_r, rawcalls_r = self._compute_iraw(
+                        key, self.allfuncs[key], iv0, cand, fnmap, True)
+                    f["iraw_r"] = iraw_r
+                    f["ivars_r"] = ivars_r
+                    f["rawcalls_r"] = rawcalls_r
+                else:
+                    f["iraw_r"] = iraw
+                    f["ivars_r"] = ivars
+                    f["rawcalls_r"] = rawcalls
+            newc = set()
+            for key in sorted(cand):
+                if self._rawabi_qualify(key, self.allfuncs[key]):
+                    newc.add(key)
+            if len(newc) == len(cand):
+                break
+            cand = newc
+        self.rawabi = cand
+        self._rawabi_fnmap = fnmap
+
+    def _compute_iraw(self, key, fdef, ivars, rawabi, fnmap, selfraw):
+        fr = self.frames[key]
+        pset = set(fdef["params"])
         iraw = set()
+        rawcalls = {}
         definstr = {}
         stvar_srcs = {}
         for b in fdef["blocks"]:
@@ -584,6 +751,15 @@ class GenIR(Gen):
                         iraw.add(ins["dest"])
                     elif ins["op"] == "load" and ins["name"] in ivars:
                         iraw.add(ins["dest"])
+                    elif ins["op"] == "load" and selfraw and \
+                            ins["name"] in pset:
+                        iraw.add(ins["dest"])
+                    elif ins["op"] == "call":
+                        gk = self._rawabi_target(key, fr, ins, fnmap,
+                                                 rawabi)
+                        if gk is not None:
+                            iraw.add(ins["dest"])
+                            rawcalls[ins["dest"]] = gk
         changed = True
         while changed:
             keepv = set()
@@ -600,7 +776,12 @@ class GenIR(Gen):
                 elif ins["op"] == "phi":
                     ok = all(a[1] in iraw for a in ins["arms"])
                 elif ins["op"] == "load":
-                    ok = ins["name"] in keepv
+                    ok = ins["name"] in keepv or \
+                        (selfraw and ins["name"] in pset)
+                elif ins["op"] == "call":
+                    gk = rawcalls.get(d)
+                    ok = gk is not None and \
+                        all(a in iraw for a in ins["args"])
                 else:
                     ok = True
                 if ok:
@@ -608,7 +789,7 @@ class GenIR(Gen):
             changed = len(keep) != len(iraw) or len(keepv) != len(ivars)
             iraw = keep
             ivars = keepv
-        return iraw, ivars
+        return iraw, ivars, rawcalls
 
     def _raw_load(self, fr, ref):
         self.a.mov_rm("rax", "rbp", fr["slots"][ref])
@@ -642,6 +823,8 @@ class GenIR(Gen):
         if kind == "bound":
             if ref in fr["pmap"]:
                 a.mov_rm("rax", "rbp", fr["pmap"][ref])
+                if getattr(self, "_rawabi_emit", False):
+                    self.tag_box()
                 return "bound"
             a.mov_rm("rax", "rbp", fr["slots"][ref])
             if ref in fr.get("rawnames", ()):
@@ -2024,6 +2207,21 @@ class GenIR(Gen):
             else:
                 raise HSErr(f"IR: '{name}' not in irx64 subset yet", ln)
             return
+        # direct raw-ABI call: callee and all args proven raw
+        rc = fr.get("rawcalls", {}).get(dest)
+        if rc is not None and dest in fr.get("iraw", ()) and \
+                rc in getattr(self, "rawabi", ()):
+            a = self.a
+            for ar in reversed(args):
+                self._raw_load(fr, ar)
+                a.push_r("rax")
+            a.push_r("r15")
+            a.call(self.rawlabel[rc])
+            a.pop_r("r15")
+            if args:
+                a.add_ri32("rsp", 8 * len(args))
+            a.mov_mr("rbp", "rax", fr["slots"][dest])
+            return
         # otherwise one path for user funcs and builtin values
         # (transliterated Gen.ev_user_call; nparams == -1 lets bi_call
         # check arity itself).
@@ -2893,6 +3091,8 @@ class GenIR(Gen):
     # ----- blocks and functions -----
 
     def _blabel(self, key, blab):
+        if getattr(self, "_rawabi_emit", False):
+            return f"{self.rawlabel[key]}_{blab}"
         return f"{self.flabel[key]}_{blab}"
 
     def _phi_moves(self, fr, from_lab, to_blk):
@@ -2974,9 +3174,15 @@ class GenIR(Gen):
                             fr["uses"][ins["dest"]]):
                     pass  # copy-alias use: static only (aliases can be
                     # recorded mid-emission by an earlier copy)
+                elif getattr(self, "_rawabi_emit", False) and \
+                        ins["dest"] in fr.get("rawskips", ()):
+                    pass  # cap load only feeding raw direct calls
                 else:
                     iv = fr.get("ivars")
-                    if iv is not None and ins["name"] in iv:
+                    if getattr(self, "_rawabi_emit", False) and \
+                            ins["name"] in fr["pmap"]:
+                        a.mov_rm("rax", "rbp", fr["pmap"][ins["name"]])
+                    elif iv is not None and ins["name"] in iv:
                         if fr["is_entry"]:
                             a.lea_rip("rax", self._glabel(ins["name"],
                                                           fr["mod"]))
@@ -3002,7 +3208,11 @@ class GenIR(Gen):
                     fr.setdefault("aliases", {})[ins["name"]] = sub
                     continue
                 iv = fr.get("ivars")
-                if iv is not None and ins["name"] in iv:
+                if getattr(self, "_rawabi_emit", False) and \
+                        ins["name"] in fr["pmap"]:
+                    self._raw_load(fr, ins["src"])
+                    a.mov_mr("rbp", "rax", fr["pmap"][ins["name"]])
+                elif iv is not None and ins["name"] in iv:
                     self._raw_load(fr, ins["src"])
                     if fr["is_entry"]:
                         lab = self._glabel(ins["name"], fr["mod"])
@@ -3208,7 +3418,12 @@ class GenIR(Gen):
             self._phi_moves(fr, blk["label"], by[tm["els"]])
             a.jmp(self._blabel(key, tm["els"]))
         elif tm["term"] == "ret":
-            if tm["val"] is not None:
+            if getattr(self, "_rawabi_emit", False):
+                if tm["val"] is None:
+                    raise HSErr("IR: raw-abi function needs a value on "
+                                "every return", ln)
+                self._raw_load(fr, tm["val"])
+            elif tm["val"] is not None:
                 self._load(fr, tm["val"], ln)
             elif key == "<main>":
                 a.mov_ri32("rax", 0)  # hosted exit code, like emit_main
@@ -3274,10 +3489,24 @@ class GenIR(Gen):
         fdef = self.allfuncs[key]
         fr = self.frames[key]
         a = self.a
+        self._rawabi_emit = False
         if key == "<main>":
             a.label("hs_main")
         else:
             a.label(self.flabel[key])
+        self._emit_frame_body(key, fdef, fr)
+        if key in getattr(self, "rawabi", ()):
+            saved = (fr["iraw"], fr["ivars"], fr["rawcalls"])
+            fr["iraw"], fr["ivars"], fr["rawcalls"] = \
+                fr["iraw_r"], fr["ivars_r"], fr["rawcalls_r"]
+            self._rawabi_emit = True
+            a.label(self.rawlabel[key])
+            self._emit_frame_body(key, fdef, fr)
+            self._rawabi_emit = False
+            fr["iraw"], fr["ivars"], fr["rawcalls"] = saved
+
+    def _emit_frame_body(self, key, fdef, fr):
+        a = self.a
         a.push_r("rbp")
         a.mov_rr("rbp", "rsp")
         if fr["nloc"]:

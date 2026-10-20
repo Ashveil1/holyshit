@@ -47,12 +47,20 @@ def cache_path(srcpath):
     return srcpath[0:len(srcpath) - 5] + ".hsc"
   return srcpath + ".hsc"
 # Binary writer over an alloc'd buffer; read_mem turns it into a string for
-# the write builtin (binary-safe both ways, verified by probe).
+# the write builtin (binary-safe both ways, verified by probe). Every write
+# is bounds-checked against WLIMIT: a size-precompute bug must fail the save,
+# never corrupt the heap past the buffer (such a clobbered header hangs the
+# next GC pre-pass).
+WLIMIT = [0]
 def w64(addr, off, v):
+  if off + 8 > WLIMIT[0]:
+    raise "jitcache: writer overflow"
   unsafe:
     store64(as_ptr(addr) + off, v)
   return off + 8
 def wstr(addr, off, s):
+  if off + 8 + len(s) > WLIMIT[0]:
+    raise "jitcache: writer overflow"
   off = w64(addr, off, len(s))
   unsafe:
     Ptr q = as_ptr(s)
@@ -64,6 +72,8 @@ def wstr(addr, off, s):
     i = i + 1
   return off + len(s)
 def wbytes(addr, off, xs):
+  if off + 8 + len(xs) > WLIMIT[0]:
+    raise "jitcache: writer overflow"
   off = w64(addr, off, len(xs))
   i = 0
   while i < len(xs):
@@ -78,6 +88,11 @@ def dict_size(d):
   total = 8
   for k in keys(d):
     total = total + str_size(k) + 8
+  return total
+def dict_str_size(d):
+  total = 8
+  for k in keys(d):
+    total = total + str_size(k) + str_size(d[k])
   return total
 def save(srcpath, g):
   # Never let a cache-writing problem break a run.
@@ -105,7 +120,7 @@ def save(srcpath, g):
     total = total + 8
     for s in syms:
       total = total + str_size(s)
-    total = total + dict_size(owners) + dict_size(st["labels"]) + dict_size(st["data_labels"])
+    total = total + dict_str_size(owners) + dict_size(st["labels"]) + dict_size(st["data_labels"])
     total = total + 8
     for f in st["fixups"]:
       total = total + 8 + str_size(f[1])
@@ -113,6 +128,7 @@ def save(srcpath, g):
     bufaddr = 0
     unsafe:
       bufaddr = as_int(as_ptr(alloc(total)))
+    WLIMIT[0] = total
     off = 0
     unsafe:
       store8(as_ptr(bufaddr) + 0, 72)
