@@ -1,0 +1,2 @@
+   comb 0/1973 None tried 0 0s
+seed0 init10,baselib,simp,adv sumto: FOUND init b=zero; if (lt a one) -> b; else step ((sub a one),(add a b)); comb=None; post=id tried 1415698 125s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
