@@ -17,6 +17,7 @@ CAPF = [400]
 PROG = False
 VALID = []
 ADV = []
+EXCL = set()
 def boundary(task):
     t = {'square': [(0, 7, 0), (1, 7, 1), (2, 7, 4), (3, 7, 9), (30, 7, 900)],
          'choose2': [(0, 7, 0), (1, 7, 0), (2, 7, 1), (3, 7, 3), (60, 7, 1770)],
@@ -90,7 +91,7 @@ def search(train, abl, tag='', tried_cap=6_000_000):
             saved0 = _json.load(open(sv0))
             def tup0(e): return tuple(tup0(t) for t in e) if isinstance(e, list) else e
             for t0 in ('mod', 'mul', 'div', 'power', 'gcd', 'max', 'min'):
-                if t0 in saved0:
+                if t0 in saved0 and t0 not in EXCL:
                     f0 = make_fn(tup0(saved0[t0]))
                     LIB[t0] = (lambda ff: (lambda a, b: ff(a, b)))(f0)
         search._baselib_done = True
@@ -116,6 +117,7 @@ def search(train, abl, tag='', tried_cap=6_000_000):
     inits = ('y', 'zero') if 'inity0' in abl else (('one', 'zero') if 'init10' in abl else ('y', 'one', 'zero', 'two'))
     posts = {'id': POST['id']} if 'postid' in abl else POST
     t0 = time.time(); tried = 0
+    PROF = {'r0fail': 0, 'earlyfail': 0, 'deepfail': 0, 'evals': 0}
     x0, y0, r0 = train[0]
     def nodes(e): return 1 if isinstance(e, str) else 1 + sum(nodes(t) for t in e[1:])
     if 'simp' in abl:  # B-052: prefer smaller programs - order combs and steps by node count
@@ -131,7 +133,9 @@ def search(train, abl, tag='', tried_cap=6_000_000):
         for init in inits:
             st = steps_pair if (comb is None and abl != 'nopair') else steps_single
             if comb is not None and abl == 'nocombe': continue
-            if tried > tried_cap: return None, tried, time.time() - t0
+            if tried > tried_cap:
+                if 'prof' in abl: print(f'   PROF {PROF}', flush=True)
+                return None, tried, time.time() - t0
             for cond in conds:
                 for base in bases:
                     for (s0, s1) in st:
@@ -140,16 +144,21 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                         except Fail: continue
                         except (KeyError, ZeroDivisionError, RecursionError, OverflowError): continue
                         pm = [pn for pn, pf in posts.items() if pf(v0) == r0]
-                        if not pm: continue
+                        if not pm:
+                            PROF['r0fail'] += 1; PROF['evals'] += 1; continue
                         for pn in pm:
                             ok = True
                             stages = (train[1:6], train[6:]) if 'sub' in abl else (train[1:],)
+                            ndone = 0
                             for stage in stages:
                                 if not ok: break
                                 for x, y, r in stage:
+                                    ndone += 1; PROF['evals'] += 1
                                     try:
                                         if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
                                     except (Fail, KeyError, RecursionError, OverflowError): ok = False; break
+                            if not ok:
+                                PROF['earlyfail' if ndone <= 5 else 'deepfail'] += 1
                             if ok and VALID:
                                 for x, y, r in VALID:
                                     try:
@@ -160,8 +169,11 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                                     try:
                                         if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
                                     except (Fail, KeyError, RecursionError, OverflowError, ZeroDivisionError): ok = False; break
-                            if ok: return (init, spec, pn), tried, time.time() - t0
+                            if ok:
+                                if 'prof' in abl: print(f'   PROF {PROF}', flush=True)
+                                return (init, spec, pn), tried, time.time() - t0
         ev.cache_clear() if len(ev.cache_info()) and ev.cache_info().currsize > 3_000_000 else None
+    if 'prof' in abl: print(f'   PROF {PROF}', flush=True)
     return None, tried, time.time() - t0
 def show_e(e): return e if isinstance(e, str) else '(' + ' '.join(show_e(t) for t in e) + ')'
 def show_prog(p):
@@ -211,6 +223,7 @@ if __name__ == '__main__':
     for task in [t for t in ['mod','mul','div','power','gcd','isprime','fact','sumto','max','min','square','choose2','sumsq','dblfact','absdiff','lcm','even'] if t in only]:
         if task not in only: continue
         train = [gen(task, rng, rng.choice([1, 2])) for _ in range(25)]
+        if 'tr3' in abl: train = train[:3]  # B-061: forget-and-relearn from 3 examples
         if task in saved: p = tup(saved[task]); tried = dt = 0
         else:
             VALID[:] = []; ADV[:] = boundary(task) if 'adv' in abl else []
@@ -220,6 +233,10 @@ if __name__ == '__main__':
             if task in ('square', 'choose2', 'sumsq'):
                 if 'cap1m' in abl: cap = 1_000_000
                 elif 'cap3m' in abl: cap = 3_000_000
+            if 'baselib' in abl:  # per-task honest library: all pinned skills EXCEPT the one being (re)learned
+                for t0 in ('mod', 'mul', 'div', 'power', 'gcd', 'max', 'min'): LIB.pop(t0, None)
+                search._baselib_done = False
+                EXCL.clear(); EXCL.add(task)
             p, tried, dt = search(train, abl, tried_cap=cap)
         if p and task not in saved: saved[task] = p; json.dump(saved, open(sv, 'w'))
         if p:

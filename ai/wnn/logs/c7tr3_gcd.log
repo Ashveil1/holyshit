@@ -1,0 +1,2 @@
+   comb 0/1561 None tried 0 0s
+seed0 baselib,tr3 gcd: FOUND init b=y; if (lt a one) -> b; else step ((mod b a),a); comb=None; post=id tried 100985 7s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
