@@ -6,12 +6,18 @@ import json, sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from baby3 import SIT, Baby
 from baby3h import gen_day, evaluate
-def run(arm, seed, lines):
+def run(arm, seed, lines, pool=None, pool_rng=None):
     b = Baby(); n = 0; out = []
+    from baby3h import SIT_EN
     for d in range(1, 6):
         day = gen_day(seed, d)
         for (s, present) in day:
-            line = lines[n]; n += 1; present = set(present)
+            if pool is not None:
+                key = ' + '.join(sorted(SIT_EN[o] for o in present))
+                arr = pool[key]; line = arr[pool_rng.randrange(len(arr))]
+            else:
+                line = lines[n]
+            n += 1; present = set(present)
             words = [w.strip() for w in line.replace('A:', ' ').replace('B:', ' ').replace('|', ' ').split() if w.strip()]
             b.hear(words, present)
             if arm == 'rewonly':
@@ -25,7 +31,13 @@ def run(arm, seed, lines):
     return out
 if __name__ == '__main__':
     seed = int(sys.argv[1])
-    lines = json.load(sys.stdin)
-    print(f'{len(lines)} dialogue lines')
-    for arm in ('overhear', 'rewonly'):
-        for l in run(arm, seed, lines): print(l, flush=True)
+    data = json.load(sys.stdin)
+    if isinstance(data, dict):  # pool mode: {type: [lines]}
+        import random
+        for arm in ('overhear', 'rewonly'):
+            rng = random.Random(7000 + seed)  # same sampling order for both arms
+            for l in run(arm, seed, None, pool=data, pool_rng=rng): print(l, flush=True)
+    else:
+        print(f'{len(data)} dialogue lines')
+        for arm in ('overhear', 'rewonly'):
+            for l in run(arm, seed, data): print(l, flush=True)
