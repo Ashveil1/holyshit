@@ -16,6 +16,14 @@ CAP = [400]
 CAPF = [400]
 PROG = False
 VALID = []
+ADV = []
+def boundary(task):
+    t = {'square': [(0, 7, 0), (1, 7, 1), (2, 7, 4), (3, 7, 9), (30, 7, 900)],
+         'choose2': [(0, 7, 0), (1, 7, 0), (2, 7, 1), (3, 7, 3), (60, 7, 1770)],
+         'sumsq': [(0, 7, 0), (1, 7, 1), (2, 7, 5), (3, 7, 14), (40, 7, 22140)],
+         'even': [(0, 7, 1), (1, 7, 0), (2, 7, 1), (3, 7, 0)],
+         'sumto': [(0, 7, 0), (1, 7, 1), (2, 7, 3), (3, 7, 6), (100, 7, 5050)]}
+    return t.get(task, [])
 class Fail(Exception): pass
 def p_add(a, b): return a + b
 def p_sub(a, b):
@@ -138,6 +146,11 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                                     try:
                                         if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
                                     except (Fail, KeyError, RecursionError, OverflowError, ZeroDivisionError): ok = False; break
+                            if ok and ADV:
+                                for x, y, r in ADV:
+                                    try:
+                                        if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
+                                    except (Fail, KeyError, RecursionError, OverflowError, ZeroDivisionError): ok = False; break
                             if ok: return (init, spec, pn), tried, time.time() - t0
         ev.cache_clear() if len(ev.cache_info()) and ev.cache_info().currsize > 3_000_000 else None
     return None, tried, time.time() - t0
@@ -191,7 +204,7 @@ if __name__ == '__main__':
         train = [gen(task, rng, rng.choice([1, 2])) for _ in range(25)]
         if task in saved: p = tup(saved[task]); tried = dt = 0
         else:
-            VALID[:] = []
+            VALID[:] = []; ADV[:] = boundary(task) if 'adv' in abl else []
             if 'val' in abl:
                 vr = random.Random(5000 + seed); VALID[:] = [gen(task, vr, sc) for sc in (1, 2) for _ in range(16)]
             cap = 6_000_000

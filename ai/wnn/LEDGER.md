@@ -54,3 +54,5 @@ B-048 (init10+postid, square) | derived | = B-044: both init10 solutions use pos
 B-049 (init10+postid, choose2) | derived | = B-045: 2597867 (50%)
 B-050 (init10+postid, sumsq) | derived | NOT FOUND (= B-046)
 B-051 (init10+postid, dblfact) | derived | NOT FOUND (= B-047)
+B-055 (adversarial boundary acceptance, square) | PASS | init10,baselib,adv arm logs/c7adv_square_choose2.log | boundary examples x in {0,1,2,3,30} from the task formula (no hand labels): the wrong-short div/mul square program (38/37/38/40, fails x=0) is REJECTED at 719709; search continues to the clean repeated-addition program at 2583787 = 59.9% of default 4313812, 40/40 all scales. With the boundary gate, init10 square now meets B-044's criterion (same success, <=70%).
+B-055 overhead check (choose2) | PASS | same log | boundary gate adds no cost when the first program is already clean: identical program at identical tried 2597867 (50.0% of default), 40/40 - no false rejection.
