@@ -62,6 +62,7 @@ def conds_list():
     for p in ('a', 'b'): cs += [('z', p), ('nzc', p)]
     return cs
 MACROS = []
+COMBHIST = {}
 def mine_macros(progs):
     """progs: {task: (init,(cond,base,s0,s1,comb),post)}. Macro = step pair (s0,s1) shared by >=2 tasks."""
     from collections import Counter
@@ -94,6 +95,8 @@ def search(train, abl, tag=''):
     t0 = time.time(); tried = 0
     x0, y0, r0 = train[0]
     comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
+    if 'oops' in abl:  # F-6: order comb generators by past success frequency (OOPS-inspired, not full OOPS)
+        comb_list.sort(key=lambda c: -COMBHIST.get(c[0] if c else 'None', 0))
     for ci, comb in enumerate(comb_list):
         if ci % 20 == 0 and PROG: print(f'   comb {ci}/{len(comb_list)} {comb} tried {tried} {time.time()-t0:.0f}s', flush=True)
         for init in ('y', 'one', 'zero', 'two'):
@@ -178,7 +181,9 @@ if __name__ == '__main__':
                 vr = random.Random(5000 + seed); VALID[:] = [gen(task, vr, sc) for sc in (1, 2) for _ in range(16)]
             p, tried, dt = search(train, abl)
         if p and task not in saved: saved[task] = p; json.dump(saved, open(sv, 'w'))
-        if p: FOUNDPROG[task] = p
+        if p:
+            FOUNDPROG[task] = p
+            cb = p[1][4]; COMBHIST[cb[0] if cb else 'None'] = COMBHIST.get(cb[0] if cb else 'None', 0) + 1
         if task == 'sumto' and abl == 'macro':
             print('mined macros:', mine_macros(FOUNDPROG), flush=True)
         if not p: print(f'seed{seed} {abl} {task}: NOT FOUND tried {tried} {dt:.0f}s', flush=True); continue

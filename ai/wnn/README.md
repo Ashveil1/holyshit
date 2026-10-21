@@ -493,3 +493,10 @@ Format: result | priors handed in | experience consumed
 - P21 3-step zero-shot | above + chaining solver (cut-pair search) | 0 three-step sentences
 - P22 paraphrase teaching | the definition split at "means" (hand-split), known-side templates | 1-8 definitions per wording
 Claim rule going forward (from Chollet 2019): every new result states its priors and experience in this form, and uses EVALPACK.md v1 unless stated.
+
+## P25 (F-5, text2prog8.py): soft Occam / 2^-ops weighting on two-step sentences
+P16 drops every 2-step explanation of a training sentence when a single-op explanation exists (categorical Occam). F-5 (Solomonoff-flavored) keeps all explanations and weights each by 2^-(number of ops). Same EVALPACK protocol as P16(b), 5 seeds.
+- n=100: same phrasing .68 vs P16 .46; new connectors/frames .42 vs .25
+- n=300: .77 vs .64; .46 vs .36
+- n=1000: .73 vs .82 (WORSE); .41 vs .44 (worse)
+Mixed result: soft Occam is much better with little data (roughly matches P16's n=1000 performance using 300 sentences) but the categorical rule wins at n=1000, where accumulated soft credit for spurious 2-step readings hurts. A schedule (soft early, categorical late) is an untested option. Priors/experience as in P16.
