@@ -53,16 +53,19 @@ def error_exit(e):
   # caller sets HS_JIT_FALLBACK_RC (hs run's auto path does), exit with that
   # code instead so the caller can tell "never ran the program" apart from a
   # runtime failure and fall back to another backend safely.
+  # env() is null when the variable is unset, and x64 and/or do not
+  # short-circuit - guard before len().
   stamp = env("HS_JIT_FALLBACK_RC")
-  if stamp != "" and len(stamp) < 4:
-    ok = true
-    k = 0
-    while k < len(stamp):
-      if find("0123456789", stamp[k]) < 0:
-        ok = false
-      k = k + 1
-    if ok:
-      exit(int(stamp))
+  if stamp != null:
+    if stamp != "" and len(stamp) < 4:
+      ok = true
+      k = 0
+      while k < len(stamp):
+        if find("0123456789", stamp[k]) < 0:
+          ok = false
+        k = k + 1
+      if ok:
+        exit(int(stamp))
   exit(1)
 def emit_prologue():
   # Forward arguments and the Linux process environment through an initial

@@ -112,6 +112,8 @@ def save(srcpath, g):
     syms = g.ffi_syms
     owners = g.ffi_owners
     stamp = env("HS_JIT_STAMP")
+    if stamp == null:
+      stamp = ""
     total = 4 + 8 + str_size(stamp) + 8
     for inp in inputs:
       total = total + str_size(inp[0]) + str_size(inp[1])
@@ -235,7 +237,10 @@ def load_raw(srcpath):
     if fmt != FORMAT:
       return null
     sp = rstr(addr, base + 12, n)
-    if sp[0] != env("HS_JIT_STAMP"):
+    want = env("HS_JIT_STAMP")
+    if want == null:
+      want = ""
+    if sp[0] != want:
       # Built by a different compiler generation: recompile.
       return null
     off = sp[1]
