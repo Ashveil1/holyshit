@@ -536,3 +536,9 @@ The recursion schema's `init b=` constant set is a search-cost AND coverage leve
 - B-048..051 (init10+postid): derived - identical to init10 (same reasoning).
 
 Takeaway: init sets trade coverage for speed. {y,zero} is the best pair found (keeps all LIB tasks, halves square/choose2 cost); dropping an init silently loses every task whose recursion bases on it (inity0 lost dblfact on 'two'; init10 lost the entire y-family). Always check the found program's unseen-scale generalization: cheaper searches can return earlier, worse programs (fact under inity0; square under init10+baselib).
+
+## T4: function-approximation baselines on the numeric tasks (t4base.py, evalpack_v1.json)
+Same protocol as the program search: 25 training examples (scales 1-2, y distractor kept), eval 40 examples per scale at scales 1-4, 3 seeds. Baselines: MLP (2-32-32 tanh, pure numpy), kNN-3, majority/mean, linear regression. logs/t4base.json.
+- Every regression baseline collapses at scales 3-4 (0-4/40 on all 18 tasks). Scale-1 "wins" are answer-distribution artifacts (div 18/40 because many x//y=0; power 22/40 because outputs pile at 0/1).
+- Chance reference points: yes/no tasks = 50% (even); isprime majority-class rate is 66%/70%/81%/87% at scales 1-4 (primes thin out) - a no-knowledge predictor scores that high; exact-number chance is ~1/answer-range (~1% or less).
+- evalpack_v1.json freezes the seed-0 train/eval rows for all future comparisons.
