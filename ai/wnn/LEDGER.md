@@ -22,3 +22,7 @@ B-025/026/027 (cap 6M, freq combs) | null | = F-6 oops arm | square 4313812=, ch
 B-013 (cap 3M, combleaf, square) | null | cap3m,combleaf arm /tmp/c7c3l.log | NOT FOUND at 3M (needs 4.31M)
 B-014 (cap 3M, combleaf, choose2) | null | cap3m,combleaf arm | NOT FOUND at 3M (needs 5.2M)
 B-015 (cap 3M, combleaf, sumsq) | null | cap3m,combleaf arm | NOT FOUND at 3M
+B-016 (cap 3M, freq combs, square) | null | cap3m,oops arm /tmp/c7c3o.log | NOT FOUND at 3M (needs 4.31M)
+B-017 (cap 3M, freq combs, choose2) | null | cap3m,oops arm | NOT FOUND at 3M (needs 5.2M)
+B-018 (cap 3M, freq combs, sumsq) | null | cap3m,oops arm | NOT FOUND at 3M
+B-022 (cap 6M, combleaf, square) | null | combleaf arm /tmp/c7l6.log | FOUND 4313812 = default exactly (None phase untouched); tried ratio 100% > 60% criterion
