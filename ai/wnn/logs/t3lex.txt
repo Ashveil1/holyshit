@@ -1,0 +1,60 @@
+DEFAULT n= 60: gold 2.4/20 spur 0.2 acc 0.25
+DEFAULT n=150: gold 6.8/20 spur 0.4 acc 0.37
+DEFAULT n=400: gold 12.4/20 spur 1.4 acc 0.54
+minv=1.5 margin=2 rounds=2 n= 60: gold 5.8/20 spur 1.8 acc 0.32
+minv=1.5 margin=2 rounds=2 n=150: gold 13.4/20 spur 4.0 acc 0.51
+minv=1.5 margin=2 rounds=2 n=400: gold 17.8/20 spur 4.8 acc 0.66
+minv=1.5 margin=2 rounds=4 n= 60: gold 5.8/20 spur 1.8 acc 0.32
+minv=1.5 margin=2 rounds=4 n=150: gold 14.4/20 spur 4.4 acc 0.54
+minv=1.5 margin=2 rounds=4 n=400: gold 18.0/20 spur 5.2 acc 0.66
+minv=1.5 margin=2.5 rounds=2 n= 60: gold 4.2/20 spur 1.0 acc 0.28
+minv=1.5 margin=2.5 rounds=2 n=150: gold 6.2/20 spur 2.4 acc 0.34
+minv=1.5 margin=2.5 rounds=2 n=400: gold 12.0/20 spur 2.4 acc 0.51
+minv=1.5 margin=2.5 rounds=4 n= 60: gold 4.2/20 spur 1.0 acc 0.28
+minv=1.5 margin=2.5 rounds=4 n=150: gold 6.4/20 spur 2.4 acc 0.34
+minv=1.5 margin=2.5 rounds=4 n=400: gold 12.4/20 spur 2.4 acc 0.53
+minv=1.5 margin=4 rounds=2 n= 60: gold 0.6/20 spur 0.0 acc 0.20
+minv=1.5 margin=4 rounds=2 n=150: gold 1.6/20 spur 0.4 acc 0.22
+minv=1.5 margin=4 rounds=2 n=400: gold 1.8/20 spur 0.0 acc 0.23
+minv=1.5 margin=4 rounds=4 n= 60: gold 0.6/20 spur 0.0 acc 0.20
+minv=1.5 margin=4 rounds=4 n=150: gold 1.6/20 spur 0.4 acc 0.22
+minv=1.5 margin=4 rounds=4 n=400: gold 1.8/20 spur 0.0 acc 0.23
+minv=2 margin=2 rounds=2 n= 60: gold 5.8/20 spur 1.8 acc 0.32
+minv=2 margin=2 rounds=2 n=150: gold 13.4/20 spur 4.0 acc 0.51
+minv=2 margin=2 rounds=2 n=400: gold 17.8/20 spur 4.8 acc 0.66
+minv=2 margin=2 rounds=4 n= 60: gold 5.8/20 spur 1.8 acc 0.32
+minv=2 margin=2 rounds=4 n=150: gold 14.4/20 spur 4.4 acc 0.54
+minv=2 margin=2 rounds=4 n=400: gold 18.0/20 spur 5.2 acc 0.66
+minv=2 margin=2.5 rounds=2 n= 60: gold 4.2/20 spur 1.0 acc 0.28
+minv=2 margin=2.5 rounds=2 n=150: gold 6.2/20 spur 2.4 acc 0.34
+minv=2 margin=2.5 rounds=2 n=400: gold 12.0/20 spur 2.4 acc 0.51
+minv=2 margin=2.5 rounds=4 n= 60: gold 4.2/20 spur 1.0 acc 0.28
+minv=2 margin=2.5 rounds=4 n=150: gold 6.4/20 spur 2.4 acc 0.34
+minv=2 margin=2.5 rounds=4 n=400: gold 12.4/20 spur 2.4 acc 0.53
+minv=2 margin=4 rounds=2 n= 60: gold 0.6/20 spur 0.0 acc 0.20
+minv=2 margin=4 rounds=2 n=150: gold 1.6/20 spur 0.4 acc 0.22
+minv=2 margin=4 rounds=2 n=400: gold 1.8/20 spur 0.0 acc 0.23
+minv=2 margin=4 rounds=4 n= 60: gold 0.6/20 spur 0.0 acc 0.20
+minv=2 margin=4 rounds=4 n=150: gold 1.6/20 spur 0.4 acc 0.22
+minv=2 margin=4 rounds=4 n=400: gold 1.8/20 spur 0.0 acc 0.23
+minv=1.5 margin=2.25 rounds=4 n= 60: gold 4.2/20 spur 1.0 acc 0.28
+minv=1.5 margin=2.25 rounds=4 n=150: gold 7.4/20 spur 2.2 acc 0.38
+minv=1.5 margin=2.25 rounds=4 n=400: gold 14.8/20 spur 3.2 acc 0.59
+minv=3 margin=2 rounds=2 n= 60: gold 3.4/20 spur 1.0 acc 0.28
+minv=3 margin=2 rounds=2 n=150: gold 13.2/20 spur 1.8 acc 0.54
+minv=3 margin=2 rounds=2 n=400: gold 17.8/20 spur 3.6 acc 0.67
+minv=3 margin=2 rounds=4 n= 60: gold 3.4/20 spur 1.0 acc 0.28
+minv=3 margin=2 rounds=4 n=150: gold 14.0/20 spur 2.4 acc 0.57
+minv=3 margin=2 rounds=4 n=400: gold 18.0/20 spur 4.0 acc 0.67
+minv=3 margin=2.5 rounds=2 n= 60: gold 2.4/20 spur 0.2 acc 0.25
+minv=3 margin=2.5 rounds=2 n=150: gold 6.4/20 spur 0.4 acc 0.36
+minv=3 margin=2.5 rounds=2 n=400: gold 12.0/20 spur 1.4 acc 0.52
+minv=3 margin=2.5 rounds=4 n= 60: gold 2.4/20 spur 0.2 acc 0.25
+minv=3 margin=2.5 rounds=4 n=150: gold 6.8/20 spur 0.4 acc 0.37
+minv=3 margin=2.5 rounds=4 n=400: gold 12.4/20 spur 1.4 acc 0.54
+minv=3 margin=4 rounds=2 n= 60: gold 0.6/20 spur 0.0 acc 0.20
+minv=3 margin=4 rounds=2 n=150: gold 1.6/20 spur 0.4 acc 0.22
+minv=3 margin=4 rounds=2 n=400: gold 1.8/20 spur 0.0 acc 0.23
+minv=3 margin=4 rounds=4 n= 60: gold 0.6/20 spur 0.0 acc 0.20
+minv=3 margin=4 rounds=4 n=150: gold 1.6/20 spur 0.4 acc 0.22
+minv=3 margin=4 rounds=4 n=400: gold 1.8/20 spur 0.0 acc 0.23

@@ -82,3 +82,13 @@ B-120/121 (bigram off, mc=1) | null | = tokuni soft (B-097/098 measured): frames
 B-123/124 (tokuni, mc=2) | null | frames .78 synonyms .20 - no gain
 B-126/127 (tokuni, mc=4) | WORSE | frames .69 synonyms .17
 T3 min-count summary: feature-frequency filtering never helps at n=150; mc=4 actively hurts. Default (keep all) stands.
+
+T3 word-lexicon grid (B-129..B-182): learn_lexicon params minv(minmass) x margin x rounds x n={60,150,400}, 5 seeds, t3lex.py logs/t3lex.txt. P16 defaults (minv3 m2.5 r4) reproduced exactly (n=150 6.8/.4/.37, n=400 12.4/1.4/.54); new n=60 default baseline: 2.4 gold, 0.2 spur, acc .25. minv 1.5 and 2 identical (integer vote counts). rounds: no effect except m2 n150 (r2 slightly fewer spurious).
+- B-135/138/153/156 (minv1.5/2, m2.5, n=60) | PASS | gold 4.2 vs 2.4, spur +0.8 (bound +1)
+- B-165/168 (minv3, m2, n=60) | PASS | gold 3.4 vs 2.4, spur +0.8
+- B-129/132/147/150 (minv1.5/2, m2, n=60) | FAIL bound | gold 5.8 vs 2.4 but spur +1.6
+- m2 at n>=150 (B-130/131/133/134/148/149/151/152/166/167/169/170) | FAIL bound | gold more than doubles (n=150: 13.2-14.4 vs 6.8; n=400: 17.8-18.0 vs 12.4; acc .51-.67) but spur +1.4..+3.6 exceeds +1
+- m2.5 at n>=150 (B-136/137/139/140/154/155/157/158/171..176) | null | no gold gain over default
+- m4 (B-141..146, B-159..164, B-177..182) | FAIL | collapse to 0.6-1.8 gold - too strict kills word learning
+- extra probe m2.25 minv1.5 r4: n=60 4.2/1.0, n=150 7.4/2.2, n=400 14.8/3.2 - sits on the same tradeoff curve, no free lunch
+T3 lexicon summary: recall-precision tradeoff is real; margin 2 buys 2x word recall for ~2-4 spurious entries (pre-stated bound only passes at n=60). Default margin 2.5 is well-placed. Word recall, not sentence grammar, is the bottleneck at small n.
