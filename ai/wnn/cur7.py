@@ -132,7 +132,9 @@ def search(train, abl, tag='', tried_cap=6_000_000):
         for init in inits:
             st = steps_pair if (comb is None and abl != 'nopair') else steps_single
             if comb is not None and abl == 'nocombe': continue
-            if tried > tried_cap: return None, tried, time.time() - t0
+            if tried > tried_cap:
+                if 'prof' in abl: print(f'   PROF {PROF}', flush=True)
+                return None, tried, time.time() - t0
             for cond in conds:
                 for base in bases:
                     for (s0, s1) in st:
