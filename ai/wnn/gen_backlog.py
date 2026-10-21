@@ -82,8 +82,26 @@ T.append(('T10 data efficiency', 10, [
  ('duplicate/ambiguous example detection and removal', ['all'], 'S', 'keep all', 'no acc loss, fewer examples'),
  ('cross-seed example-set transfer: do good sets generalize', ['square'], 'S', 'fresh random', 'chosen set helps new seed'),
 ]))
+GRIDS = [
+ ('T1 induction-search', 1, 'search cap {cap} tried, comb set {comb}', {'cap': ['1M','3M','6M'], 'comb': ['full','leaf-only','freq-ranked']}, ['square','choose2','sumsq'], 'S', 'P14 default', 'same success, <=60% tried'),
+ ('T3 text-to-program', 3, 'features {feat}, credit {credit}, n={n}', {'feat': ['tok','char','tokuni'], 'credit': ['soft','hard'], 'n': ['24','60','150','400']}, ['unseen-frames','unseen-synonyms'], 'S', 'P15 tok-soft numbers', 'higher acc at same n'),
+ ('T3 text-to-program', 3, 'bigram {bg}, lowercase {lc}, min-count {mc}', {'bg': ['on','off'], 'lc': ['on'], 'mc': ['1','2','4']}, ['unseen-frames','unseen-synonyms','2-step'], 'S', 'P15 default', 'higher acc at n=150'),
+ ('T5 weightless/HDC learners', 5, 'HDC dim {dim}, encoding {enc}', {'dim': ['1k','4k','16k'], 'enc': ['level','thermo','random-proj']}, ['arith','facts','2-hop'], 'S', 'P5 4KB config', 'same acc less RAM or better acc same RAM'),
+ ('T7 continual/few-shot', 7, 'readout {ro}, shots {k}', {'ro': ['1nn','centroid','wiSARD'], 'k': ['1','5','20']}, ['mnist','pmnist','snips'], 'M', 'MLP same shots', 'retention/acc gap'),
+ ('T9 test-time-compute analogs', 9, 'vote k={k}, subset {frac}', {'k': ['3','5','9'], 'frac': ['0.5','0.8']}, ['square','even','sumto','choose2'], 'S', 'single run', 'wrong-program rate down, success same'),
+ ('T2 library-learning', 2, 'macro min-count {mc}, order {ord}', {'mc': ['2','3'], 'ord': ['mine-first','mine-only','interleave']}, ['square','choose2','sumsq','dblfact'], 'M', 'P14 ordering', '<50% tried same success'),
+ ('T10 data efficiency', 10, 'selection {sel}, n={n}', {'sel': ['random','maxdisagree','boundary','covering'], 'n': ['5','10','15','25']}, ['mod','mul','square','even'], 'S', 'random 25', 'same success fewer examples'),
+ ('T4 baselines+harness', 4, 'baseline {bl}', {'bl': ['mlp','knn','majority','linreg']}, ['square','even','sumto','absdiff'], 'S', 'n/a', 'recorded'),
+ ('T8 neurosymbolic-exact', 8, 'HDC chain depth {d}, facts {f}', {'d': ['2','5','10'], 'f': ['70','300','1000']}, ['logic','arith'], 'S', 'P5 numbers', 'exact at larger scale or honest limit'),
+]
 rows = []
 n = 0
+for theme, pri, tmpl, axes, tasks, tier, base, crit in GRIDS:
+    keys = list(axes); combos = list(__import__('itertools').product(*[axes[k] for k in keys]))
+    for c in combos:
+        m = tmpl.format(**dict(zip(keys, c)))
+        for task in tasks:
+            n += 1; rows.append((tier, pri, n, theme, m, task, base, crit))
 for theme, pri, items in sorted(T, key=lambda t: t[1]):
     for i, (m, tasks, tier, base, crit) in enumerate(items):
         for task in tasks:

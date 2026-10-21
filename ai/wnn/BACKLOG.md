@@ -5,78 +5,371 @@ Every candidate carries its baseline and pre-stated success criterion. Results (
 
 Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its baseline on the stated metric at the stated tolerance; a win over transformers must name the transformer-class baseline actually run (or a published number with the same data/protocol, cited).
 
-- [ ] B-001 [S (under 2 min)] (T1 induction-search) simplify-first: prefer programs with fewer nodes on tie -- task: all new -- baseline: first-found -- success: equal accuracy, shorter program, no time loss >10%
-- [ ] B-002 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: square -- baseline: full-set check every candidate -- success: same found programs, <70% time
-- [ ] B-003 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: choose2 -- baseline: full-set check every candidate -- success: same found programs, <70% time
-- [ ] B-004 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: square -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
-- [ ] B-005 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: even -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
-- [ ] B-006 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: sumto -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
-- [ ] B-007 [S (under 2 min)] (T1 induction-search) prune combs that type-fail on first example -- task: choose2 -- baseline: no prune -- success: same result, <80% time
-- [ ] B-008 [S (under 2 min)] (T2 library-learning) add learned fn as leaf only after 40/40 validation (P20 gate) -- task: new skills -- baseline: add-if-36/40 -- success: no skill poisoned by a wrong library entry
-- [ ] B-009 [S (under 2 min)] (T2 library-learning) compress: shortest re-derivation of each learned skill via library -- task: curriculum8 -- baseline: P14 programs -- success: total description length drops
-- [ ] B-010 [S (under 2 min)] (T2 library-learning) forget-and-relearn: relearn a skill from library+3 examples -- task: mod -- baseline: from-scratch 25 examples -- success: found with <=3 examples
-- [ ] B-011 [S (under 2 min)] (T2 library-learning) forget-and-relearn: relearn a skill from library+3 examples -- task: gcd -- baseline: from-scratch 25 examples -- success: found with <=3 examples
-- [ ] B-012 [S (under 2 min)] (T3 text-to-program) active clarification: ask which of top-2 readings (simulated user) -- task: 1-step unseen -- baseline: no clarification -- success: acc of k=2 with k=1 + 1 question
-- [ ] B-013 [S (under 2 min)] (T3 text-to-program) paraphrase teaching for 2-step glue words -- task: new connectors -- baseline: P16 .44 baseline -- success: > .6 on new connectors with 4 definitions
-- [ ] B-014 [S (under 2 min)] (T3 text-to-program) typing: restrict candidates by arg-count signature -- task: all -- baseline: no typing -- success: same acc, faster fit
-- [ ] B-015 [S (under 2 min)] (T3 text-to-program) curriculum: frames ordered by similarity to unseen test frames -- task: unseen synonyms -- baseline: random order -- success: higher acc at n=60
-- [ ] B-016 [S (under 2 min)] (T3 text-to-program) negative examples: sentences with no op (chit-chat) rejected -- task: mixed -- baseline: always-answer -- success: false-answer rate < 10%, op acc -2 pts max
-- [ ] B-017 [S (under 2 min)] (T4 baselines+harness) MLP baseline harness on every numeric task (sklearn-free, pure py) -- task: all numeric -- baseline: n/a -- success: harness runs, numbers recorded
-- [ ] B-018 [S (under 2 min)] (T4 baselines+harness) kNN baseline on same features -- task: all numeric -- baseline: n/a -- success: recorded
-- [ ] B-019 [S (under 2 min)] (T4 baselines+harness) majority/mean baseline -- task: all numeric -- baseline: n/a -- success: recorded
-- [ ] B-020 [S (under 2 min)] (T4 baselines+harness) chance baselines for yes/no and exact-number answers -- task: all -- baseline: n/a -- success: recorded in README
-- [ ] B-021 [S (under 2 min)] (T4 baselines+harness) fixed eval pack v1 frozen for all future comparisons -- task: - -- baseline: n/a -- success: file committed
-- [ ] B-022 [S (under 2 min)] (T5 weightless/HDC learners) bloom WiSARD memory scaling -- task: mnist -- baseline: WiSARD -- success: same acc <= half RAM
-- [ ] B-023 [S (under 2 min)] (T5 weightless/HDC learners) HDC binding for 2-hop inference at 10x facts -- task: facts -- baseline: P5 T2 numbers -- success: >= P5 accuracy at 700 facts
-- [ ] B-024 [S (under 2 min)] (T5 weightless/HDC learners) HDC + program library: recall program by task description -- task: 12 ops -- baseline: random recall -- success: >90% top-1
-- [ ] B-025 [S (under 2 min)] (T5 weightless/HDC learners) DWSA/thermometer encoding for numbers in HDC -- task: arith -- baseline: level encoding -- success: better interpolation on unseen operands
-- [ ] B-026 [S (under 2 min)] (T6 connectome variants (low priority, P5 was negative)) subsampled connectome (sensory->interneuron core) speed test -- task: mnist -- baseline: full -- success: <50% time, <-2 pts acc
-- [ ] B-027 [S (under 2 min)] (T7 continual/few-shot) one-shot per class sweep 1/5/20 examples -- task: mnist -- baseline: MLP -- success: gap at 1 shot
-- [ ] B-028 [S (under 2 min)] (T7 continual/few-shot) episodic recall of named facts after 1000 distractors -- task: facts -- baseline: no distractors -- success: recall unchanged
-- [ ] B-029 [S (under 2 min)] (T8 neurosymbolic-exact) store-and-derive: transitivity chains depth 10 -- task: logic -- baseline: P5 depth2 -- success: depth 10 exact
-- [ ] B-030 [S (under 2 min)] (T8 neurosymbolic-exact) mixed radix and negative numbers in HDC arithmetic -- task: arith -- baseline: positive only -- success: exact
-- [ ] B-031 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: square -- baseline: single run -- success: kills overfit programs
-- [ ] B-032 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: even -- baseline: single run -- success: kills overfit programs
-- [ ] B-033 [S (under 2 min)] (T9 test-time-compute analogs) verify-then-accept: learned program must pass fresh random tests -- task: all skills -- baseline: P20 gate -- success: wrong-program rate to ~0
-- [ ] B-034 [S (under 2 min)] (T9 test-time-compute analogs) search budget as function of example count (adaptive) -- task: mod..sumto -- baseline: fixed cap -- success: same acc less CPU
-- [ ] B-035 [S (under 2 min)] (T9 test-time-compute analogs) ensemble of learner hypotheses with execution agreement -- task: text2prog -- baseline: top-1 -- success: +3 pts unseen frames
-- [ ] B-036 [S (under 2 min)] (T10 data efficiency) choose training examples to maximize hypothesis pruning -- task: mod -- baseline: random 25 -- success: same success with <=15 examples
-- [ ] B-037 [S (under 2 min)] (T10 data efficiency) choose training examples to maximize hypothesis pruning -- task: mul -- baseline: random 25 -- success: same success with <=15 examples
-- [ ] B-038 [S (under 2 min)] (T10 data efficiency) near-miss examples (answers off by one) value -- task: square -- baseline: random -- success: faster acceptance of correct program
-- [ ] B-039 [S (under 2 min)] (T10 data efficiency) duplicate/ambiguous example detection and removal -- task: all -- baseline: keep all -- success: no acc loss, fewer examples
-- [ ] B-040 [S (under 2 min)] (T10 data efficiency) cross-seed example-set transfer: do good sets generalize -- task: square -- baseline: fresh random -- success: chosen set helps new seed
-- [ ] B-041 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: square -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
-- [ ] B-042 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: choose2 -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
-- [ ] B-043 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: sumsq -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
-- [ ] B-044 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: dblfact -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
-- [ ] B-045 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: square -- baseline: P14 ordering -- success: same as above
-- [ ] B-046 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: choose2 -- baseline: P14 ordering -- success: same as above
-- [ ] B-047 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: sumsq -- baseline: P14 ordering -- success: same as above
-- [ ] B-048 [M (under 15 min)] (T1 induction-search) beam over combs ranked by frequency in learned programs -- task: square -- baseline: uniform order -- success: <50% tried
-- [ ] B-049 [M (under 15 min)] (T1 induction-search) beam over combs ranked by frequency in learned programs -- task: choose2 -- baseline: uniform order -- success: <50% tried
-- [ ] B-050 [M (under 15 min)] (T1 induction-search) seed-parallel racing (3 seeds, first hit wins) -- task: square -- baseline: single seed same CPU-min -- success: finds with less wall CPU per success
-- [ ] B-051 [M (under 15 min)] (T1 induction-search) seed-parallel racing (3 seeds, first hit wins) -- task: absdiff -- baseline: single seed same CPU-min -- success: finds with less wall CPU per success
-- [ ] B-052 [M (under 15 min)] (T1 induction-search) cache run() traces across candidate programs -- task: square -- baseline: no cache -- success: >2x throughput, same result
-- [ ] B-053 [M (under 15 min)] (T2 library-learning) anti-unify pairs of learned programs into partial schemas -- task: curriculum8 -- baseline: no schemas -- success: a schema reused by >=2 held-out tasks cuts tried >50%
-- [ ] B-054 [M (under 15 min)] (T3 text-to-program) it-references: "add 3 and 5 then double it" -- task: 2-step -- baseline: explicit number version -- success: acc within 5 pts of explicit
-- [ ] B-055 [M (under 15 min)] (T3 text-to-program) 3-step with mixed connectors en/th -- task: 3-step -- baseline: P21 same-conn -- success: no more than 5 pts below same-conn
-- [ ] B-056 [M (under 15 min)] (T3 text-to-program) Thai no-space char model for 2-step -- task: 2-step th -- baseline: spaced Thai -- success: >=.8 of spaced accuracy
-- [ ] B-057 [M (under 15 min)] (T3 text-to-program) digit-free numbers: learn from word-only training -- task: words -- baseline: P16 mixed -- success: report honest acc
-- [ ] B-058 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD on MNIST 1-pass vs MLP 1-pass -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, and no forgetting where MLP forgets
-- [ ] B-059 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) connectome reservoir with trained linear readout (ridge, pure py) -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beats raw or honest null
-- [ ] B-060 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) degree/spectral features of wiring as static embeddings -- task: mnist -- baseline: raw -- success: honest null or win
-- [ ] B-061 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) signed-synapse hand annotation from literature (AIY/AVA signs) -- task: tap -- baseline: unsigned -- success: 4/4 neurobiology checks
-- [ ] B-062 [M (under 15 min)] (T7 continual/few-shot) class-incremental MNIST 10-class full run, ours vs MLP -- task: mnist -- baseline: MLP -- success: retain >50 pts gap
-- [ ] B-063 [M (under 15 min)] (T7 continual/few-shot) permuted MNIST x5 tasks retention -- task: pmnist -- baseline: MLP -- success: retention gap
-- [ ] B-064 [M (under 15 min)] (T7 continual/few-shot) few-shot on text intents (SNIPS) vs NB baseline -- task: snips -- baseline: NB -- success: win at <=5 shots
-- [ ] B-065 [M (under 15 min)] (T8 neurosymbolic-exact) exact chained arithmetic 10x longer than P5 (4750 ops) -- task: arith -- baseline: P5 475 -- success: same 100% at 16KB? honest RAM report
-- [ ] B-066 [M (under 15 min)] (T8 neurosymbolic-exact) symbolic unit conversion word problems (template) -- task: word problems -- baseline: MLP text baseline -- success: exact where MLP fails
-- [ ] B-067 [M (under 15 min)] (T9 test-time-compute analogs) repair: on test failure, resume search from best partial -- task: square -- baseline: from scratch -- success: recovers in <30% extra time
-- [ ] B-068 [M (under 15 min)] (T10 data efficiency) fewest-examples curve for each curriculum skill -- task: 8 skills -- baseline: 25-example baseline -- success: curve in README
-- [ ] B-069 [L (under 2 h)] (T1 induction-search) iterative deepening on expression depth (allow depth-2, cost-ordered) -- task: absdiff -- baseline: depth-1 6M cap -- success: finds a correct program baseline misses
-- [ ] B-070 [L (under 2 h)] (T1 induction-search) iterative deepening on expression depth (allow depth-2, cost-ordered) -- task: lcm -- baseline: depth-1 6M cap -- success: finds a correct program baseline misses
-- [ ] B-071 [L (under 2 h)] (T2 library-learning) fragment = depth-2 expression mined from pairs of used depth-1 exprs -- task: absdiff -- baseline: depth-1 -- success: absdiff found or honest expressivity proof
-- [ ] B-072 [L (under 2 h)] (T3 text-to-program) learn number words jointly with 2-step (combined stage B) -- task: words+2step -- baseline: separate stages P16 -- success: no loss vs separate
-- [ ] B-073 [L (under 2 h)] (T4 baselines+harness) tiny transformer in pure numpy as reference point -- task: synonym task -- baseline: n/a -- success: runs CPU in <2h, acc recorded
-- [ ] B-074 [L (under 2 h)] (T6 connectome variants (low priority, P5 was negative)) STDP on tap circuit with reward gate -- task: tap -- baseline: no reward -- success: learned association > Hebbian P3
-- [ ] B-075 [L (under 2 h)] (T8 neurosymbolic-exact) grid transforms: learn 3 ARC-like ops by induction -- task: mini-arc -- baseline: random search -- success: finds 3/3, honest scope note
+- [ ] B-001 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set full -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-002 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set full -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-003 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set full -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-004 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set leaf-only -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-005 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set leaf-only -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-006 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set leaf-only -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-007 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set freq-ranked -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-008 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set freq-ranked -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-009 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set freq-ranked -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-010 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set full -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-011 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set full -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-012 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set full -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-013 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set leaf-only -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-014 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set leaf-only -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-015 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set leaf-only -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-016 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set freq-ranked -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-017 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set freq-ranked -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-018 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set freq-ranked -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-019 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set full -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-020 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set full -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-021 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set full -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-022 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set leaf-only -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-023 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set leaf-only -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-024 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set leaf-only -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-025 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set freq-ranked -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-026 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set freq-ranked -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-027 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set freq-ranked -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [ ] B-028 [S (under 2 min)] (T1 induction-search) simplify-first: prefer programs with fewer nodes on tie -- task: all new -- baseline: first-found -- success: equal accuracy, shorter program, no time loss >10%
+- [ ] B-029 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: square -- baseline: full-set check every candidate -- success: same found programs, <70% time
+- [ ] B-030 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: choose2 -- baseline: full-set check every candidate -- success: same found programs, <70% time
+- [ ] B-031 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: square -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
+- [ ] B-032 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: even -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
+- [ ] B-033 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: sumto -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
+- [ ] B-034 [S (under 2 min)] (T1 induction-search) prune combs that type-fail on first example -- task: choose2 -- baseline: no prune -- success: same result, <80% time
+- [ ] B-035 [S (under 2 min)] (T2 library-learning) add learned fn as leaf only after 40/40 validation (P20 gate) -- task: new skills -- baseline: add-if-36/40 -- success: no skill poisoned by a wrong library entry
+- [ ] B-036 [S (under 2 min)] (T2 library-learning) compress: shortest re-derivation of each learned skill via library -- task: curriculum8 -- baseline: P14 programs -- success: total description length drops
+- [ ] B-037 [S (under 2 min)] (T2 library-learning) forget-and-relearn: relearn a skill from library+3 examples -- task: mod -- baseline: from-scratch 25 examples -- success: found with <=3 examples
+- [ ] B-038 [S (under 2 min)] (T2 library-learning) forget-and-relearn: relearn a skill from library+3 examples -- task: gcd -- baseline: from-scratch 25 examples -- success: found with <=3 examples
+- [ ] B-039 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=24 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-040 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=24 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-041 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=60 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-042 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=60 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-043 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=150 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-044 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=150 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-045 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=400 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-046 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=400 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-047 [S (under 2 min)] (T3 text-to-program) features tok, credit hard, n=24 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-048 [S (under 2 min)] (T3 text-to-program) features tok, credit hard, n=24 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-049 [S (under 2 min)] (T3 text-to-program) features tok, credit hard, n=60 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-050 [S (under 2 min)] (T3 text-to-program) features tok, credit hard, n=60 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-051 [S (under 2 min)] (T3 text-to-program) features tok, credit hard, n=150 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-052 [S (under 2 min)] (T3 text-to-program) features tok, credit hard, n=150 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-053 [S (under 2 min)] (T3 text-to-program) features tok, credit hard, n=400 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-054 [S (under 2 min)] (T3 text-to-program) features tok, credit hard, n=400 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-055 [S (under 2 min)] (T3 text-to-program) features char, credit soft, n=24 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-056 [S (under 2 min)] (T3 text-to-program) features char, credit soft, n=24 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-057 [S (under 2 min)] (T3 text-to-program) features char, credit soft, n=60 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-058 [S (under 2 min)] (T3 text-to-program) features char, credit soft, n=60 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-059 [S (under 2 min)] (T3 text-to-program) features char, credit soft, n=150 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-060 [S (under 2 min)] (T3 text-to-program) features char, credit soft, n=150 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-061 [S (under 2 min)] (T3 text-to-program) features char, credit soft, n=400 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-062 [S (under 2 min)] (T3 text-to-program) features char, credit soft, n=400 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-063 [S (under 2 min)] (T3 text-to-program) features char, credit hard, n=24 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-064 [S (under 2 min)] (T3 text-to-program) features char, credit hard, n=24 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-065 [S (under 2 min)] (T3 text-to-program) features char, credit hard, n=60 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-066 [S (under 2 min)] (T3 text-to-program) features char, credit hard, n=60 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-067 [S (under 2 min)] (T3 text-to-program) features char, credit hard, n=150 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-068 [S (under 2 min)] (T3 text-to-program) features char, credit hard, n=150 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-069 [S (under 2 min)] (T3 text-to-program) features char, credit hard, n=400 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-070 [S (under 2 min)] (T3 text-to-program) features char, credit hard, n=400 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-071 [S (under 2 min)] (T3 text-to-program) features tokuni, credit soft, n=24 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-072 [S (under 2 min)] (T3 text-to-program) features tokuni, credit soft, n=24 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-073 [S (under 2 min)] (T3 text-to-program) features tokuni, credit soft, n=60 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-074 [S (under 2 min)] (T3 text-to-program) features tokuni, credit soft, n=60 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-075 [S (under 2 min)] (T3 text-to-program) features tokuni, credit soft, n=150 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-076 [S (under 2 min)] (T3 text-to-program) features tokuni, credit soft, n=150 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-077 [S (under 2 min)] (T3 text-to-program) features tokuni, credit soft, n=400 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-078 [S (under 2 min)] (T3 text-to-program) features tokuni, credit soft, n=400 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-079 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=24 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-080 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=24 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-081 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=60 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-082 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=60 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-083 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=150 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-084 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=150 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-085 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=400 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-086 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=400 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
+- [ ] B-087 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 1 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-088 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 1 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-089 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 1 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-090 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 2 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-091 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 2 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-092 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 2 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-093 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 4 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-094 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 4 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-095 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 4 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-096 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 1 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-097 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 1 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-098 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 1 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-099 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 2 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-100 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 2 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-101 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 2 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-102 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 4 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-103 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 4 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-104 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 4 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [ ] B-105 [S (under 2 min)] (T3 text-to-program) active clarification: ask which of top-2 readings (simulated user) -- task: 1-step unseen -- baseline: no clarification -- success: acc of k=2 with k=1 + 1 question
+- [ ] B-106 [S (under 2 min)] (T3 text-to-program) paraphrase teaching for 2-step glue words -- task: new connectors -- baseline: P16 .44 baseline -- success: > .6 on new connectors with 4 definitions
+- [ ] B-107 [S (under 2 min)] (T3 text-to-program) typing: restrict candidates by arg-count signature -- task: all -- baseline: no typing -- success: same acc, faster fit
+- [ ] B-108 [S (under 2 min)] (T3 text-to-program) curriculum: frames ordered by similarity to unseen test frames -- task: unseen synonyms -- baseline: random order -- success: higher acc at n=60
+- [ ] B-109 [S (under 2 min)] (T3 text-to-program) negative examples: sentences with no op (chit-chat) rejected -- task: mixed -- baseline: always-answer -- success: false-answer rate < 10%, op acc -2 pts max
+- [ ] B-110 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: square -- baseline: n/a -- success: recorded
+- [ ] B-111 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: even -- baseline: n/a -- success: recorded
+- [ ] B-112 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: sumto -- baseline: n/a -- success: recorded
+- [ ] B-113 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: absdiff -- baseline: n/a -- success: recorded
+- [ ] B-114 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: square -- baseline: n/a -- success: recorded
+- [ ] B-115 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: even -- baseline: n/a -- success: recorded
+- [ ] B-116 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: sumto -- baseline: n/a -- success: recorded
+- [ ] B-117 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: absdiff -- baseline: n/a -- success: recorded
+- [ ] B-118 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: square -- baseline: n/a -- success: recorded
+- [ ] B-119 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: even -- baseline: n/a -- success: recorded
+- [ ] B-120 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: sumto -- baseline: n/a -- success: recorded
+- [ ] B-121 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: absdiff -- baseline: n/a -- success: recorded
+- [ ] B-122 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: square -- baseline: n/a -- success: recorded
+- [ ] B-123 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: even -- baseline: n/a -- success: recorded
+- [ ] B-124 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: sumto -- baseline: n/a -- success: recorded
+- [ ] B-125 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: absdiff -- baseline: n/a -- success: recorded
+- [ ] B-126 [S (under 2 min)] (T4 baselines+harness) MLP baseline harness on every numeric task (sklearn-free, pure py) -- task: all numeric -- baseline: n/a -- success: harness runs, numbers recorded
+- [ ] B-127 [S (under 2 min)] (T4 baselines+harness) kNN baseline on same features -- task: all numeric -- baseline: n/a -- success: recorded
+- [ ] B-128 [S (under 2 min)] (T4 baselines+harness) majority/mean baseline -- task: all numeric -- baseline: n/a -- success: recorded
+- [ ] B-129 [S (under 2 min)] (T4 baselines+harness) chance baselines for yes/no and exact-number answers -- task: all -- baseline: n/a -- success: recorded in README
+- [ ] B-130 [S (under 2 min)] (T4 baselines+harness) fixed eval pack v1 frozen for all future comparisons -- task: - -- baseline: n/a -- success: file committed
+- [ ] B-131 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-132 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-133 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-134 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-135 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-136 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-137 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-138 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-139 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-140 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-141 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-142 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-143 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-144 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-145 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-146 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-147 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-148 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-149 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-150 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-151 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-152 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-153 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-154 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-155 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-156 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-157 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [ ] B-158 [S (under 2 min)] (T5 weightless/HDC learners) bloom WiSARD memory scaling -- task: mnist -- baseline: WiSARD -- success: same acc <= half RAM
+- [ ] B-159 [S (under 2 min)] (T5 weightless/HDC learners) HDC binding for 2-hop inference at 10x facts -- task: facts -- baseline: P5 T2 numbers -- success: >= P5 accuracy at 700 facts
+- [ ] B-160 [S (under 2 min)] (T5 weightless/HDC learners) HDC + program library: recall program by task description -- task: 12 ops -- baseline: random recall -- success: >90% top-1
+- [ ] B-161 [S (under 2 min)] (T5 weightless/HDC learners) DWSA/thermometer encoding for numbers in HDC -- task: arith -- baseline: level encoding -- success: better interpolation on unseen operands
+- [ ] B-162 [S (under 2 min)] (T6 connectome variants (low priority, P5 was negative)) subsampled connectome (sensory->interneuron core) speed test -- task: mnist -- baseline: full -- success: <50% time, <-2 pts acc
+- [ ] B-163 [S (under 2 min)] (T7 continual/few-shot) one-shot per class sweep 1/5/20 examples -- task: mnist -- baseline: MLP -- success: gap at 1 shot
+- [ ] B-164 [S (under 2 min)] (T7 continual/few-shot) episodic recall of named facts after 1000 distractors -- task: facts -- baseline: no distractors -- success: recall unchanged
+- [ ] B-165 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-166 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-167 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-168 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-169 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-170 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-171 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-172 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-173 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-174 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-175 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-176 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-177 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-178 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-179 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-180 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-181 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-182 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [ ] B-183 [S (under 2 min)] (T8 neurosymbolic-exact) store-and-derive: transitivity chains depth 10 -- task: logic -- baseline: P5 depth2 -- success: depth 10 exact
+- [ ] B-184 [S (under 2 min)] (T8 neurosymbolic-exact) mixed radix and negative numbers in HDC arithmetic -- task: arith -- baseline: positive only -- success: exact
+- [ ] B-185 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-186 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-187 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-188 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-189 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-190 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-191 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-192 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-193 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-194 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-195 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-196 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-197 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-198 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-199 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-200 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-201 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-202 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-203 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-204 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-205 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-206 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-207 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-208 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
+- [ ] B-209 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: square -- baseline: single run -- success: kills overfit programs
+- [ ] B-210 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: even -- baseline: single run -- success: kills overfit programs
+- [ ] B-211 [S (under 2 min)] (T9 test-time-compute analogs) verify-then-accept: learned program must pass fresh random tests -- task: all skills -- baseline: P20 gate -- success: wrong-program rate to ~0
+- [ ] B-212 [S (under 2 min)] (T9 test-time-compute analogs) search budget as function of example count (adaptive) -- task: mod..sumto -- baseline: fixed cap -- success: same acc less CPU
+- [ ] B-213 [S (under 2 min)] (T9 test-time-compute analogs) ensemble of learner hypotheses with execution agreement -- task: text2prog -- baseline: top-1 -- success: +3 pts unseen frames
+- [ ] B-214 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-215 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-216 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-217 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-218 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-219 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-220 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-221 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-222 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-223 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-224 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-225 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-226 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-227 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-228 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-229 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-230 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-231 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-232 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-233 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-234 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-235 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-236 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-237 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-238 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-239 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-240 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-241 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-242 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-243 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-244 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-245 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-246 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-247 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-248 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-249 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-250 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-251 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-252 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-253 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-254 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-255 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-256 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-257 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-258 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-259 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-260 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-261 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-262 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-263 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-264 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-265 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-266 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-267 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-268 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-269 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-270 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-271 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-272 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-273 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-274 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-275 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-276 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-277 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-278 [S (under 2 min)] (T10 data efficiency) choose training examples to maximize hypothesis pruning -- task: mod -- baseline: random 25 -- success: same success with <=15 examples
+- [ ] B-279 [S (under 2 min)] (T10 data efficiency) choose training examples to maximize hypothesis pruning -- task: mul -- baseline: random 25 -- success: same success with <=15 examples
+- [ ] B-280 [S (under 2 min)] (T10 data efficiency) near-miss examples (answers off by one) value -- task: square -- baseline: random -- success: faster acceptance of correct program
+- [ ] B-281 [S (under 2 min)] (T10 data efficiency) duplicate/ambiguous example detection and removal -- task: all -- baseline: keep all -- success: no acc loss, fewer examples
+- [ ] B-282 [S (under 2 min)] (T10 data efficiency) cross-seed example-set transfer: do good sets generalize -- task: square -- baseline: fresh random -- success: chosen set helps new seed
+- [ ] B-283 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: square -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
+- [ ] B-284 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: choose2 -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
+- [ ] B-285 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: sumsq -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
+- [ ] B-286 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: dblfact -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
+- [ ] B-287 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: square -- baseline: P14 ordering -- success: same as above
+- [ ] B-288 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: choose2 -- baseline: P14 ordering -- success: same as above
+- [ ] B-289 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: sumsq -- baseline: P14 ordering -- success: same as above
+- [ ] B-290 [M (under 15 min)] (T1 induction-search) beam over combs ranked by frequency in learned programs -- task: square -- baseline: uniform order -- success: <50% tried
+- [ ] B-291 [M (under 15 min)] (T1 induction-search) beam over combs ranked by frequency in learned programs -- task: choose2 -- baseline: uniform order -- success: <50% tried
+- [ ] B-292 [M (under 15 min)] (T1 induction-search) seed-parallel racing (3 seeds, first hit wins) -- task: square -- baseline: single seed same CPU-min -- success: finds with less wall CPU per success
+- [ ] B-293 [M (under 15 min)] (T1 induction-search) seed-parallel racing (3 seeds, first hit wins) -- task: absdiff -- baseline: single seed same CPU-min -- success: finds with less wall CPU per success
+- [ ] B-294 [M (under 15 min)] (T1 induction-search) cache run() traces across candidate programs -- task: square -- baseline: no cache -- success: >2x throughput, same result
+- [ ] B-295 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-296 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-297 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-298 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-299 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-300 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-301 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-302 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-303 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-304 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-305 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-306 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-307 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-308 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-309 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-310 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-311 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-312 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-313 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-314 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-315 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-316 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-317 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-318 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-319 [M (under 15 min)] (T2 library-learning) anti-unify pairs of learned programs into partial schemas -- task: curriculum8 -- baseline: no schemas -- success: a schema reused by >=2 held-out tasks cuts tried >50%
+- [ ] B-320 [M (under 15 min)] (T3 text-to-program) it-references: "add 3 and 5 then double it" -- task: 2-step -- baseline: explicit number version -- success: acc within 5 pts of explicit
+- [ ] B-321 [M (under 15 min)] (T3 text-to-program) 3-step with mixed connectors en/th -- task: 3-step -- baseline: P21 same-conn -- success: no more than 5 pts below same-conn
+- [ ] B-322 [M (under 15 min)] (T3 text-to-program) Thai no-space char model for 2-step -- task: 2-step th -- baseline: spaced Thai -- success: >=.8 of spaced accuracy
+- [ ] B-323 [M (under 15 min)] (T3 text-to-program) digit-free numbers: learn from word-only training -- task: words -- baseline: P16 mixed -- success: report honest acc
+- [ ] B-324 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD on MNIST 1-pass vs MLP 1-pass -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, and no forgetting where MLP forgets
+- [ ] B-325 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) connectome reservoir with trained linear readout (ridge, pure py) -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beats raw or honest null
+- [ ] B-326 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) degree/spectral features of wiring as static embeddings -- task: mnist -- baseline: raw -- success: honest null or win
+- [ ] B-327 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) signed-synapse hand annotation from literature (AIY/AVA signs) -- task: tap -- baseline: unsigned -- success: 4/4 neurobiology checks
+- [ ] B-328 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-329 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-330 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-331 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-332 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-333 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-334 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-335 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-336 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-337 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-338 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-339 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-340 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-341 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-342 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-343 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-344 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-345 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-346 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-347 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-348 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-349 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-350 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-351 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-352 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-353 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-354 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-355 [M (under 15 min)] (T7 continual/few-shot) class-incremental MNIST 10-class full run, ours vs MLP -- task: mnist -- baseline: MLP -- success: retain >50 pts gap
+- [ ] B-356 [M (under 15 min)] (T7 continual/few-shot) permuted MNIST x5 tasks retention -- task: pmnist -- baseline: MLP -- success: retention gap
+- [ ] B-357 [M (under 15 min)] (T7 continual/few-shot) few-shot on text intents (SNIPS) vs NB baseline -- task: snips -- baseline: NB -- success: win at <=5 shots
+- [ ] B-358 [M (under 15 min)] (T8 neurosymbolic-exact) exact chained arithmetic 10x longer than P5 (4750 ops) -- task: arith -- baseline: P5 475 -- success: same 100% at 16KB? honest RAM report
+- [ ] B-359 [M (under 15 min)] (T8 neurosymbolic-exact) symbolic unit conversion word problems (template) -- task: word problems -- baseline: MLP text baseline -- success: exact where MLP fails
+- [ ] B-360 [M (under 15 min)] (T9 test-time-compute analogs) repair: on test failure, resume search from best partial -- task: square -- baseline: from scratch -- success: recovers in <30% extra time
+- [ ] B-361 [M (under 15 min)] (T10 data efficiency) fewest-examples curve for each curriculum skill -- task: 8 skills -- baseline: 25-example baseline -- success: curve in README
+- [ ] B-362 [L (under 2 h)] (T1 induction-search) iterative deepening on expression depth (allow depth-2, cost-ordered) -- task: absdiff -- baseline: depth-1 6M cap -- success: finds a correct program baseline misses
+- [ ] B-363 [L (under 2 h)] (T1 induction-search) iterative deepening on expression depth (allow depth-2, cost-ordered) -- task: lcm -- baseline: depth-1 6M cap -- success: finds a correct program baseline misses
+- [ ] B-364 [L (under 2 h)] (T2 library-learning) fragment = depth-2 expression mined from pairs of used depth-1 exprs -- task: absdiff -- baseline: depth-1 -- success: absdiff found or honest expressivity proof
+- [ ] B-365 [L (under 2 h)] (T3 text-to-program) learn number words jointly with 2-step (combined stage B) -- task: words+2step -- baseline: separate stages P16 -- success: no loss vs separate
+- [ ] B-366 [L (under 2 h)] (T4 baselines+harness) tiny transformer in pure numpy as reference point -- task: synonym task -- baseline: n/a -- success: runs CPU in <2h, acc recorded
+- [ ] B-367 [L (under 2 h)] (T6 connectome variants (low priority, P5 was negative)) STDP on tap circuit with reward gate -- task: tap -- baseline: no reward -- success: learned association > Hebbian P3
+- [ ] B-368 [L (under 2 h)] (T8 neurosymbolic-exact) grid transforms: learn 3 ARC-like ops by induction -- task: mini-arc -- baseline: random search -- success: finds 3/3, honest scope note
