@@ -214,7 +214,6 @@ if __name__ == '__main__':
     seed = int(sys.argv[1]); abl = sys.argv[2] if len(sys.argv) > 2 else ''
     NEW = ['absdiff', 'max', 'min', 'square', 'cube', 'even', 'choose2', 'sumsq', 'dblfact', 'lcm']
     only = sys.argv[3].split(',') if len(sys.argv) > 3 else CURR
-    EXCL.update(only)  # relearned tasks must not be in the pinned library (honest forget-and-relearn)
     CURR = CURR + NEW
     import json, os
     FOUNDPROG = {}
@@ -234,6 +233,10 @@ if __name__ == '__main__':
             if task in ('square', 'choose2', 'sumsq'):
                 if 'cap1m' in abl: cap = 1_000_000
                 elif 'cap3m' in abl: cap = 3_000_000
+            if 'baselib' in abl:  # per-task honest library: all pinned skills EXCEPT the one being (re)learned
+                for t0 in ('mod', 'mul', 'div', 'power', 'gcd', 'max', 'min'): LIB.pop(t0, None)
+                search._baselib_done = False
+                EXCL.clear(); EXCL.add(task)
             p, tried, dt = search(train, abl, tried_cap=cap)
         if p and task not in saved: saved[task] = p; json.dump(saved, open(sv, 'w'))
         if p:
