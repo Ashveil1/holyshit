@@ -524,4 +524,4 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-518 [M] joint-attention variant: caregiver sometimes names the secondary object; baby must use a pointing/gaze cue -- baseline: P26 no-cue learner -- success: cue use beats no-cue on named-secondary scenes
 - [ ] B-519 [S] babbling trajectory: production volume + correct-rate per day before criterion -- baseline: none -- success: documented curve
 - [ ] B-520 [M] word segmentation: no whitespace, syllable stream, learner must find word units -- baseline: given segmentation (P26) -- success: >=70% of P26 accuracy
-- [ ] B-521 [L] two-word production ("แม่ มา") with order learned from dialogue statistics -- baseline: bag-of-words production -- success: order correct > chance on held-out scenes
+- [x] B-521 [L] two-word production ("แม่ มา") with order learned from dialogue statistics -- baseline: bag-of-words production -- success: order correct > chance on held-out scenes

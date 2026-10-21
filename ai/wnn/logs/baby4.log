@@ -1,0 +1,7 @@
+seed0 held=[('mae', 'sleep'), ('pho', 'come'), ('cat', 'sleep'), ('dog', 'eat')] class 4/4 bigram 1/4 bag 1/4 | trained-order 12/12 grounding 8/8 | order-counts E>A 555 A>E 1
+seed1 held=[('mae', 'come'), ('pho', 'stay'), ('cat', 'come'), ('dog', 'sleep')] class 4/4 bigram 1/4 bag 2/4 | trained-order 12/12 grounding 8/8 | order-counts E>A 477 A>E 0
+seed2 held=[('mae', 'sleep'), ('pho', 'stay'), ('cat', 'stay'), ('dog', 'stay')] class 4/4 bigram 2/4 bag 2/4 | trained-order 12/12 grounding 8/8 | order-counts E>A 578 A>E 7
+seed3 held=[('mae', 'sleep'), ('pho', 'eat'), ('cat', 'stay'), ('dog', 'sleep')] class 4/4 bigram 3/4 bag 2/4 | trained-order 12/12 grounding 8/8 | order-counts E>A 549 A>E 4
+seed4 held=[('mae', 'sleep'), ('pho', 'come'), ('cat', 'stay'), ('dog', 'stay')] class 4/4 bigram 3/4 bag 1/4 | trained-order 12/12 grounding 8/8 | order-counts E>A 522 A>E 6
+TOTAL held-out novel pairs: class 20/20 bigram 10/20 bag 8/20 (chance ~10)
+CRITERION: class >= 18 = MET
