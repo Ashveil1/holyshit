@@ -166,7 +166,9 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                                     try:
                                         if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
                                     except (Fail, KeyError, RecursionError, OverflowError, ZeroDivisionError): ok = False; break
-                            if ok: return (init, spec, pn), tried, time.time() - t0
+                            if ok:
+                                if 'prof' in abl: print(f'   PROF {PROF}', flush=True)
+                                return (init, spec, pn), tried, time.time() - t0
         ev.cache_clear() if len(ev.cache_info()) and ev.cache_info().currsize > 3_000_000 else None
     if 'prof' in abl: print(f'   PROF {PROF}', flush=True)
     return None, tried, time.time() - t0
