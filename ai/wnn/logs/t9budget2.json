@@ -1,0 +1,482 @@
+[
+ {
+  "task": "square",
+  "seed": 0,
+  "n": 3,
+  "found": true,
+  "tried": 2583787,
+  "dt": 164.8,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "square",
+  "seed": 0,
+  "n": 5,
+  "found": true,
+  "tried": 2583787,
+  "dt": 169.5,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "square",
+  "seed": 0,
+  "n": 10,
+  "found": true,
+  "tried": 2583787,
+  "dt": 175.1,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "square",
+  "seed": 0,
+  "n": 25,
+  "found": true,
+  "tried": 2583787,
+  "dt": 177.7,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "square",
+  "seed": 1,
+  "n": 3,
+  "found": true,
+  "tried": 2583787,
+  "dt": 171.7,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "square",
+  "seed": 1,
+  "n": 5,
+  "found": true,
+  "tried": 2583787,
+  "dt": 174.3,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "square",
+  "seed": 1,
+  "n": 10,
+  "found": true,
+  "tried": 2583787,
+  "dt": 180.4,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "square",
+  "seed": 1,
+  "n": 25,
+  "found": true,
+  "tried": 2583787,
+  "dt": 186.1,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "even",
+  "seed": 0,
+  "n": 3,
+  "found": true,
+  "tried": 123944,
+  "dt": 14.1,
+  "wrong": true,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 26
+  }
+ },
+ {
+  "task": "even",
+  "seed": 0,
+  "n": 5,
+  "found": true,
+  "tried": 123944,
+  "dt": 8.2,
+  "wrong": true,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 26
+  }
+ },
+ {
+  "task": "even",
+  "seed": 0,
+  "n": 10,
+  "found": true,
+  "tried": 123944,
+  "dt": 9.5,
+  "wrong": true,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 26
+  }
+ },
+ {
+  "task": "even",
+  "seed": 0,
+  "n": 25,
+  "found": true,
+  "tried": 123944,
+  "dt": 8.7,
+  "wrong": true,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 26
+  }
+ },
+ {
+  "task": "even",
+  "seed": 1,
+  "n": 3,
+  "found": true,
+  "tried": 123944,
+  "dt": 15.6,
+  "wrong": true,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 27
+  }
+ },
+ {
+  "task": "even",
+  "seed": 1,
+  "n": 5,
+  "found": true,
+  "tried": 123944,
+  "dt": 9.4,
+  "wrong": true,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 27
+  }
+ },
+ {
+  "task": "even",
+  "seed": 1,
+  "n": 10,
+  "found": true,
+  "tried": 123944,
+  "dt": 9.9,
+  "wrong": true,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 27
+  }
+ },
+ {
+  "task": "even",
+  "seed": 1,
+  "n": 25,
+  "found": true,
+  "tried": 123944,
+  "dt": 10.4,
+  "wrong": true,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 27
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 0,
+  "n": 3,
+  "found": true,
+  "tried": 1415698,
+  "dt": 115.1,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 0,
+  "n": 5,
+  "found": true,
+  "tried": 1415698,
+  "dt": 113.8,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 0,
+  "n": 10,
+  "found": true,
+  "tried": 1415698,
+  "dt": 118.7,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 0,
+  "n": 25,
+  "found": true,
+  "tried": 1415698,
+  "dt": 117.8,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 1,
+  "n": 3,
+  "found": true,
+  "tried": 1415698,
+  "dt": 118.7,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 1,
+  "n": 5,
+  "found": true,
+  "tried": 1415698,
+  "dt": 110.9,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 1,
+  "n": 10,
+  "found": true,
+  "tried": 1415698,
+  "dt": 112.1,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 1,
+  "n": 25,
+  "found": true,
+  "tried": 1415698,
+  "dt": 119.6,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "choose2",
+  "seed": 0,
+  "n": 3,
+  "found": true,
+  "tried": 2597867,
+  "dt": 181.3,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "choose2",
+  "seed": 0,
+  "n": 5,
+  "found": true,
+  "tried": 2597867,
+  "dt": 181.8,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "choose2",
+  "seed": 0,
+  "n": 10,
+  "found": true,
+  "tried": 2597867,
+  "dt": 182.6,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "choose2",
+  "seed": 0,
+  "n": 25,
+  "found": true,
+  "tried": 2597867,
+  "dt": 181.5,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "choose2",
+  "seed": 1,
+  "n": 3,
+  "found": true,
+  "tried": 2597867,
+  "dt": 180.9,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "choose2",
+  "seed": 1,
+  "n": 5,
+  "found": true,
+  "tried": 2597867,
+  "dt": 182.4,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "choose2",
+  "seed": 1,
+  "n": 10,
+  "found": true,
+  "tried": 2597867,
+  "dt": 183.0,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "choose2",
+  "seed": 1,
+  "n": 25,
+  "found": true,
+  "tried": 2597867,
+  "dt": 179.5,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ }
+]
