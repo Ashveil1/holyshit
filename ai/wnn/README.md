@@ -477,3 +477,9 @@ Accuracy on the new wording after k definitions / k labelled answers:
 - char n-grams: k=1 .76 / .83, k=2 .92 / .94, k=4 .93 / .96, k=8 .97 / .99 (k=0: .41)
 The pseudo label (the learner's own reading of the known side) was right 91-95% of the time, which is why paraphrase teaching is a little behind answer teaching at k=1 and almost equal at k>=2.
 Not shown: any zero-shot gain. A new wording still needs 1-2 examples (by answer or by paraphrase). Hand-given: the split of a definition at 'means' (the learner does not learn that construction), the known-side templates, the synthetic text. The known side must already be in a wording the learner reads well.
+
+## P23 (mostly null, text2prog7.py): fewer examples for a new wording
+Tried to close the k=1 gap of paraphrase teaching (.75 vs .83 with a true answer; pseudo label right ~91%, so ~16 points are lost in feature learning, not labeling). 3 seeds, same protocol as P22.
+- Alignment weight transfer (new side's unseen content tokens inherit the op-weights of the known side's distinctive tokens): k=1 .79 (tokens, +.04), no change for char n-grams, no change at k=2. Not enough to matter.
+- Confidence gating (skip the definition when the known-side reading is ambiguous, margin < 2): HURTS, k=1 .68, k=2 .73 - gating throws away too many of the few definitions.
+Conclusion: with 1-2 examples the P22 paraphrase recipe is about as good as this learner gets; the remaining k=1 gap is mostly the 9% pseudo-label noise. Zero-shot on unseen wordings is unchanged (.18 tokens / .41 char).
