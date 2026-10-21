@@ -103,3 +103,11 @@ T4 baselines (B-188..B-206): MLP(2-32-32 tanh, pure numpy)/kNN-3/majority/linreg
 - yes/no tasks: even ~50-57% everywhere (chance); isprime majority predictor rises to 87% at scale 4 (primes thin out) without any primality knowledge.
 B-207 (chance) | recorded in README | yes/no = 50% (even), majority-class rate varies (isprime 66-87% by scale); exact-number chance ~1/range ~ 1%
 B-208 (eval pack v1) | committed evalpack_v1.json | 18 tasks x (25 train + 4x40 eval), seed-0 protocol, frozen for future comparisons
+
+T5 HDC encodings at dim=1024 (B-209..B-217, t5hdc.py): 5 seeds, P5 E5 protocol. Memory vector 1KB int8 (128B packed) vs P5 4KB/16KB.
+- facts (35 pairs, XOR binding, 70 queries): random-proj 97.7% [95.7-100] - P5-equivalent accuracy at 1/4 the RAM => PASS (B-216-ish). level 2.9%, thermo 2.9% => FAIL.
+- arith chaining (100 links, all 4950 a+k<=99 pairs): random 6.3%, level 1.0%, thermo 0.0% => FAIL all (P5: 100% at 4KB). 100 superposed links exceed dim-1024 cleanup capacity and recall errors compound over k hops.
+- 2-hop (50 chains x 3 links): random 7.6%, level 0.8%, thermo 0.0% => FAIL all (P5: 100%).
+- implementation note: first run scored ~1% everywhere because unbind used the INVERSE permutation; bind p(k)*v must be read with the SAME p(k) (P5's directional-binding lesson reproduced the hard way).
+- correlated encodings (level/thermo) cannot support exact symbolic recall at any rate - adjacent codes are indistinguishable after bundling. Symbolic HDC requires near-orthogonal (random) codes.
+Follow-up probe queued: random encoding at dim 2048/4096 to find where chaining capacity recovers (P5 RAM parity point).

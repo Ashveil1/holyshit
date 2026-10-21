@@ -213,15 +213,15 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-206 [S (under 2 min)] (T4 baselines+harness) majority/mean baseline -- task: all numeric -- baseline: n/a -- success: recorded
 - [x] B-207 [S (under 2 min)] (T4 baselines+harness) chance baselines for yes/no and exact-number answers -- task: all -- baseline: n/a -- success: recorded in README
 - [x] B-208 [S (under 2 min)] (T4 baselines+harness) fixed eval pack v1 frozen for all future comparisons -- task: - -- baseline: n/a -- success: file committed
-- [ ] B-209 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-210 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-211 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-212 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-213 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-214 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-215 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-216 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-217 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-209 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-210 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-211 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-212 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-213 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-214 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-215 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-216 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-217 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [ ] B-218 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [ ] B-219 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [ ] B-220 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
