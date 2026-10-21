@@ -56,7 +56,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-049 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-050 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-051 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-052 [S (under 2 min)] (T1 induction-search) simplify-first: prefer programs with fewer nodes on tie -- task: all new -- baseline: first-found -- success: equal accuracy, shorter program, no time loss >10%
+- [x] B-052 [S (under 2 min)] (T1 induction-search) simplify-first: prefer programs with fewer nodes on tie -- task: all new -- baseline: first-found -- success: equal accuracy, shorter program, no time loss >10%
 - [x] B-053 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: square -- baseline: full-set check every candidate -- success: same found programs, <70% time
 - [x] B-054 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: choose2 -- baseline: full-set check every candidate -- success: same found programs, <70% time
 - [x] B-055 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: square -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels

@@ -1,0 +1,6 @@
+   comb 0/1973 None tried 0 0s
+seed0 init10,baselib,simp sumto: FOUND init b=one; if (nlt one a) -> b; else step ((sub a one),(add a b)); comb=None; post=id tried 715986 63s unseen/40 by scale {1: 38, 2: 39, 3: 40, 4: 40}
+   comb 0/1973 None tried 0 0s
+seed0 init10,baselib,simp square: FOUND init b=one; if (lt a b) -> zero; else step (a,(add b one)); comb=('add', 'a', 0); post=id tried 2583787 193s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/1973 None tried 0 0s
+seed0 init10,baselib,simp choose2: FOUND init b=one; if (nlt b a) -> zero; else step (a,(add b one)); comb=('add', 'b', 0); post=id tried 2597867 192s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
