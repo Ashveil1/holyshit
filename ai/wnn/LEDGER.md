@@ -111,3 +111,4 @@ T5 HDC encodings at dim=1024 (B-209..B-217, t5hdc.py): 5 seeds, P5 E5 protocol. 
 - implementation note: first run scored ~1% everywhere because unbind used the INVERSE permutation; bind p(k)*v must be read with the SAME p(k) (P5's directional-binding lesson reproduced the hard way).
 - correlated encodings (level/thermo) cannot support exact symbolic recall at any rate - adjacent codes are indistinguishable after bundling. Symbolic HDC requires near-orthogonal (random) codes.
 Follow-up probe queued: random encoding at dim 2048/4096 to find where chaining capacity recovers (P5 RAM parity point).
+T5 dim sweep (random-proj, t5dim.py): arith(475 pairs P5-style) 1k .01 / 2k .17 / 4k .87 ; 2-hop 1k .08 / 2k .43 / 4k .89 (3 seeds). Capacity scales with dims; P5's 16KB arith memory = dim 16384 int8. Probing dim 8192/16384 for the P5-parity point.
