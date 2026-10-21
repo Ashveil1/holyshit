@@ -1,9 +1,9 @@
-# Zed — holyshit
+# Zed - holyshit
 
-Zed ต้องมี extension แยก แต่ตัวโปรโตคอลเป็น LSP ตรง ๆ เหมือนกัน
-เลยต่อได้สองแบบ:
+Zed needs a separate extension, but the protocol is plain LSP,
+so there are two ways to connect:
 
-## 1. ใช้ LSP ตรง (มี custom server)
+## 1. Use LSP directly (custom server)
 
 `~/.config/zed/settings.json`:
 
@@ -23,12 +23,12 @@ Zed ต้องมี extension แยก แต่ตัวโปรโตค�
 }
 ```
 
-หมายเหตุ: diagnostics ของ Zed ต้องเป็น text-edit ที่แมปกลับบรรทัดได้ —
-เซิร์ฟเวอร์คืนทั้งบรรทัด ซึ่ง Zed รับได้
+Note: Zed diagnostics need text edits that map back to lines - the server
+returns whole lines, which Zed accepts.
 
-## 2. เขียน Zed extension เอง (สะอาดกว่า)
+## 2. Write your own Zed extension (cleaner)
 
-โครง `extension.toml` + `src/holyshit.rs`:
+Skeleton `extension.toml` + `src/holyshit.rs`:
 
 ```toml
 # extension.toml
@@ -68,5 +68,5 @@ pub fn language_server(lsp_settings: &Arc<LspSettings>) -> anyhow::Result<Langua
 }
 ```
 
-grammar ของ Zed คือ tree-sitter — ถ้ายังไม่มี ชี้ไปที่ grammar
-ของภาษาอื่นที่ indent ใกล้กัน (Python) ชั่วคราวก็ได้ LSP ยังทำงานครบ
+Zed's grammar is tree-sitter - until one exists, pointing at the grammar of
+a language with similar indentation (Python) works; the LSP still works fully

@@ -1,30 +1,30 @@
 # holyshit VS Code extension
 
-ไม่ต้อง `npm install` — `client.js` spawn `python3 ../../lsp.py` เอง
-(ถ้ามี `vscode-languageclient` ในเครื่องก็จะใช้ตัวนั้น)
+No `npm install` needed - `client.js` spawns `python3 ../../lsp.py` itself
+(if `vscode-languageclient` is installed it will be used)
 
-## ใช้
+## Use
 
-1. เปิด `editors/vscode/` ใน VS Code
-2. `npm run dev:install` (ครั้งเดียว — ลง `holyshit` extension) หรือกด F5
-   เพื่อเปิด Extension Development Host
-3. เปิดไฟล์ `.holy` → diagnostics/hover/completion/goto ใช้ได้ทันที
+1. Open `editors/vscode/` in VS Code
+2. `npm run dev:install` (once - installs the `holyshit` extension) or press F5
+   to open an Extension Development Host
+3. Open a `.holy` file -> diagnostics/hover/completion/goto work immediately
 
-ตั้ง python อื่นได้ด้วย env:
+Point at another python via env:
 
 ```sh
 HS_PYTHON=/usr/bin/python3.12 code editors/vscode
 ```
 
-## ไฟล์
+## Files
 
-- `package.json` — contributes language `holyshit` + คำสั่ง restart/check
-- `language-configuration.json` — comment `#`, indent ตาม `:`, bracket
-- `client.js` — จุดเชื่อม LSP (stdlib + `vscode-languageclient` ถ้ามี)
+- `package.json` - contributes the `holyshit` language + restart/check commands
+- `language-configuration.json` - `#` comments, `:`-based indent, brackets
+- `client.js` - the LSP glue (stdlib + `vscode-languageclient` when present)
 
-## ถ้าอยากใช้กับโปรเจกต์อื่น
+## Using it with another project
 
-เพิ่มการเชื่อม `.holy` เข้ากับ LSP ตรง ๆ ใน `settings.json` ของโปรเจกต์:
+Associate `.holy` with the LSP directly in the project's `settings.json`:
 
 ```json
 {

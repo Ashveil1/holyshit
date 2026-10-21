@@ -1,5 +1,5 @@
-# tour 04: ฟังก์ชัน — closure, ค่า default ไม่มี, global
-# รัน: python3 interp.py examples/04_functions.holy
+# tour 04: functions - closures, no default values, global
+# run: python3 interp.py examples/04_functions.holy
 
 def fib(n):
   if n < 2:
@@ -8,7 +8,7 @@ def fib(n):
 
 print fib(20)
 
-# closure: จำค่าตอน def (ทั้ง interp และ native)
+# closure: captures values at def time (both interp and native)
 def counter(start):
   def step():
     return start + 1
@@ -25,7 +25,7 @@ def mul(a):
 print mul(3)(4)
 print mul(10)(4)
 
-# ฟังก์ชันเป็นค่าได้ ส่งต่อเป็น argument
+# functions are values, pass them as arguments
 def apply_twice(f, x):
   return f(f(x))
 
@@ -34,7 +34,7 @@ def inc(x):
 
 print apply_twice(inc, 5)
 
-# global: เขียนชื่อระดับ module จากในฟังก์ชัน
+# global: write a module-level name from inside a function
 hits = 0
 
 def bump():
@@ -45,7 +45,7 @@ bump()
 bump()
 print hits
 
-# bare return ให้ Null
+# bare return yields Null
 def nothing():
   return
 

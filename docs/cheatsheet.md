@@ -1,7 +1,7 @@
-# cheatsheet — ทั้งภาษาในหน้าเดียว
+# cheatsheet - the whole language on one page
 
-กระชับที่สุดสำหรับคน/AI ที่รู้ Python อยู่แล้ว กฎฉบับเต็มอยู่ที่
-[`../AGENTS.md`](../AGENTS.md)
+The most compact reference for people/AI who already know Python. The full
+rules live in [`../AGENTS.md`](../AGENTS.md)
 
 ## Native install/run/build (Linux x86-64)
 
@@ -17,22 +17,22 @@ run/build only, no interpreter fallback. See [native-install.md](native-install.
 ## Development/reference tools (Python)
 
 ```sh
-python3 interp.py prog.holy        # ตีความ (อ้างอิงความจริง)
+python3 interp.py prog.holy        # interpret (reference of truth)
 python3 hs.py check prog.holy      # syntax + scope
 python3 hs.py run prog.holy        # development CLI, backend selection/fallback
-python3 hs.py fmt prog.holy -w     # จัดรูป canonical
+python3 hs.py fmt prog.holy -w     # canonical formatting
 ```
 
-## ไวยากรณ์
+## Syntax
 
 ```hs
-x = 1                       # กำหนดค่า (ไม่มี : และไม่มี type)
-print x, x + 1              # เว้นวรรค + newline ท้าย
-print "str"                 # Str ต่อกันได้
-"bare string"               # บรรทัดเดียวที่เป็น string ก็ print
+x = 1                       # assignment (no : and no type)
+print x, x + 1              # space-separated + trailing newline
+print "str"                 # Str can be concatenated
+"bare string"               # a lone string line also prints
 
-def f(a, b = 0):            # default arg: ไม่มี
-  return a + b              # return ไม่มีค่า -> null
+def f(a, b = 0):            # default arg: none
+  return a + b              # return with no value -> null
 
 if c:
   x = 1
@@ -42,54 +42,54 @@ else:
   x = 3
 
 while c:
-  break                    # continue ก็มี
+  break                    # continue exists too
 
 for x in xs:                # xs = List | Str | range() | dict keys
   print x
 
 try:
   risky()
-except as e:               # e เป็น Str "msg at line N"
+except as e:               # e is a Str "msg at line N"
   print e
 finally:
-  cleanup()                 # ต้องมี except หรือ finally อย่างน้อยตัวหนึ่ง
-                            # finally รันแม้ handler จะ raise ต่อ
+  cleanup()                 # at least one of except/finally is required
+                            # finally runs even if the handler raises on
 
-raise "msg"                 # Str เท่านั้น; ใน except ใช้ raise ซ้ำได้
-assert x > 0, "msg"        # ไม่จริง = raise "msg" (ไม่ใส่ msg = "assertion failed")
+raise "msg"                 # Str only; bare raise re-raises inside except
+assert x > 0, "msg"        # false = raise "msg" (no msg = "assertion failed")
 print [x * 2 for x in xs if x > 0]   # list comprehension (1 for + optional if)
 for i, x in enumerate(xs):          # tuple loop vars + enumerate (prelude)
 def greet(name, hi="hello"):        # default args: a call f("a") gets the default
   return hi + ", " + name           # appended at parse time (evaluated per call; not on methods)
-import mod.sub              # หาใน: โฟลเดอร์โปรแกรม -> HSPATH -> cwd
-global x                    # เขียนชื่อระดับ module จากใน def
+import mod.sub              # searched in: program dir -> HSPATH -> cwd
+global x                    # write a module-level name from inside def
 ```
 
-คอมเมนต์ `#` หรือ `//` (ท้ายบรรทัด) ไม่มี `;` `{` `}` `++`
-ไม่มี `//` หาร (ใช้ `/` ซึ่งได้ Float) ไม่มี `0..5` (ใช้ `range(5)`)
+Comments are `#` or `//` (end of line). No `;` `{` `}` `++`.
+No `//` division (use `/`, which yields Float). No `0..5` (use `range(5)`).
 
-## ค่า
+## Values
 
-| ชนิด | เขียน | หมายเหตุ |
+| Type | Written | Notes |
 |---|---|---|
 | Int | `42`, `0xFF`, `-7` | 64-bit (x64 subset: 62-bit) |
-| Float | `3.5` | hosted เท่านั้น |
-| Str | `"a\nb"` | escape: `\n \t \" \\` |
+| Float | `3.5` | hosted only |
+| Str | `"a\nb"` | escapes: `\n \t \" \\` |
 | Bool | `true`, `false` | falsy: `false null 0 "" [] {}` |
 | Null | `null` | |
-| List | `[1, "a"]` | ผสมชนิดได้ `append` ต่อท้าย |
-| Dict | `{"k": 1}` | key ต้องเป็น Str; อ่าน key ที่ไม่มี = error |
-| Func | `def`, lambda ไม่มี | first-class เก็บในตัวแปร/ส่งเป็น argument ได้ |
+| List | `[1, "a"]` | mixed types ok; `append` adds at end |
+| Dict | `{"k": 1}` | keys must be Str; reading a missing key = error |
+| Func | `def`, no lambda | first-class: store in vars / pass as arguments |
 
-## ตัวดำเนินการ
+## Operators
 
-`+ - * / %` (`/` ได้ Float เสมอ), `== != < > <= >=`,
-`and or not` (คืน operand ไม่ใช่ Bool), `a[i]`, `a[i] = v`,
-`s[a:b]` (ค่าติดลบได้), `len(x)`
+`+ - * / %` (`/` always yields Float), `== != < > <= >=`,
+`and or not` (returns an operand, not a Bool), `a[i]`, `a[i] = v`,
+`s[a:b]` (negatives ok), `len(x)`
 
-ternary: `a if cond else b` (ประเมินเฉพาะฝั่งที่เลือก, ซ้อนได้ ขวาไปซ้าย)
+ternary: `a if cond else b` (evaluates only the chosen side, nests right-to-left)
 
-bitwise (Int เท่านั้น — Bool ไม่ใช่ Int):
+bitwise (Int only - Bool is not an Int):
 
 ```hs
 print 6 & 3, 6 | 3, 6 ^ 3
@@ -99,32 +99,34 @@ print 1024 >> 3
 print 0x83 & ~0x10
 ```
 
-ผลคือ `2 7 5` / `-1` / `1024` / `128` / `131`
-bitwise ผูกแน่นกว่า `+ -` แต่หลวมกว่า `* / %`; shift count ต้อง 0..63
+Result: `2 7 5` / `-1` / `1024` / `128` / `131`
+bitwise binds tighter than `+ -` but looser than `* / %`; shift count must be 0..63
 
-- `+` ได้กับ Int+Float, Str+Str, List+List — ผสมชนิด = error
-- `< >` ต้องเป็นชนิดเดียวกัน (Str เทียบกันได้)
-- `str + int` ผิดเสมอ ต้อง `str(x) + str(y)` (ไม่มี implicit)
+- `+` works on Int+Float, Str+Str, List+List - mixing types = error
+- `< >` requires same types (Str compares with Str)
+- `str + int` is always wrong; use `str(x) + str(y)` (no implicit conversion)
 
-## builtin ที่ใช้บ่อย
+## Common builtins
 
 ```hs
 print(x, y)   len(x)   range(n) | range(a, b)   str(x)   int(x)
 append(xs, v)        split(s) | split(s, sep)    find(s, sub)
-# เขียนเป็น method ก็ได้: xs.append(v)  s.split(",")  s.find(sub)  ",".join(xs)
+# method form works too: xs.append(v)  s.split(",")  s.find(sub)  ",".join(xs)
 join(sep, xs)        input()   open/read/write/close (hosted)
 argv()  env(k)  system(cmd)          json_*  read_text/write_text (hosted)
-read_mem(p, n)  # n ไบต์ดิบที่ address p เป็น Str (ทุก backend)
+read_mem(p, n)  # n raw bytes at address p as a Str (every backend)
 ```
 
-`alloc/load8/load32/store8/store32/as_ptr/as_int` ใช้ใน `unsafe:` เท่านั้น
+`alloc/load8/load32/store8/store32/as_ptr/as_int` are only allowed inside `unsafe:`
 
-prelude (เขียนด้วย hs เอง ใส่ให้เฉพาะเมื่อโปรแกรมเรียกใช้ และไม่ได้ `def`/ตั้งชื่อเดียวกันเอง):
+prelude (written in hs itself, included only when the program calls it and
+does not `def`/reuse the same name):
 `abs(x)  min(xs) | min(a, b)  max(xs) | max(a, b)  sum(xs)  sorted(xs)  reversed(xs)  upper(s)  lower(s)`
-(`sorted` เป็น merge sort คืน list ใหม่; ไม่มีตัวหาร int — ใช้ `int(a / b)`)
-ดูตารางครบทุกตัว + backend ที่รองรับที่ [`builtins.md`](builtins.md)
+(`sorted` is a merge sort returning a new list; there is no int division -
+use `int(a / b)`)
+See the full table with per-backend support in [`builtins.md`](builtins.md)
 
-## `unsafe:` — ชนิดคงที่ (ไม่มี dynamic)
+## `unsafe:` - static types (no dynamic)
 
 ```hs
 unsafe:
@@ -136,20 +138,20 @@ unsafe:
   p.x = 3
   p.y = 4
   print p.x + p.y
-  Point* q = p + 1           # เดินทีละ sizeof
+  Point* q = p + 1           # steps by sizeof
   print q - p
-  print 7 / 2                # 3 (ตัดทศนิยมแบบ C)
+  print 7 / 2                # 3 (C-style truncation)
   print 1 and 2             # 2 -> I64
-  asm("nop")                 # native build เท่านั้น
+  asm("nop")                 # native build only
 ```
 
-- ใช้ได้: typed decl (`I64 U64 Ptr Name*`), `*p = v`, struct, `p.f`, `p.arr[i]`,
-  `sizeof(T)` (ทุกช่อง 8 bytes ไม่มี padding), `if/while`, `print`
-- raw 64-bit: `load64(p)` / `store64(p, v)` (ไม่ tag — ใช้กับ page table entry)
-- ใช้ไม่ได้: `def`, `for`, `try`, `Str/List/Float`, extern, string
-- ค่าใน `unsafe:` เป็น machine word ดิบ — ข้ามฝั่งด้วย `as_ptr`/`as_int`
+- Allowed: typed decl (`I64 U64 Ptr Name*`), `*p = v`, struct, `p.f`, `p.arr[i]`,
+  `sizeof(T)` (every field is 8 bytes, no padding), `if/while`, `print`
+- raw 64-bit: `load64(p)` / `store64(p, v)` (no tag - for page table entries)
+- Not allowed: `def`, `for`, `try`, `Str/List/Float`, extern, string
+- Values inside `unsafe:` are raw machine words - cross the boundary with `as_ptr`/`as_int`
 
-## `extern:` — เรียก C / ภาษาอื่น
+## `extern:` - call C / other languages
 
 ```hs
 extern:                     # libc
@@ -159,27 +161,28 @@ extern:                     # libc
 extern from "m":             # -lm
   F64 sin(F64 x)
 
-extern from "helper.c":      # คอมไพล์+ลิงก์ให้
+extern from "helper.c":      # compiled + linked for you
   I64 triple(I64 x)
 ```
 
-ชนิดใน signature: `U0 I64 U64 F64 Str Ptr` — ไม่มี struct/callback/variadic
-และไม่มี implicit conversion (ต้องแปลงเองทุกครั้ง) — hosted เท่านั้น
+Signature types: `U0 I64 U64 F64 Str Ptr` - no struct/callback/variadic
+and no implicit conversion (convert explicitly every time) - hosted only
 
-## error
+## Errors
 
-ข้อความ error ทั้งหมดของภาษาอยู่ที่ [`errors.md`](errors.md) (ดึงจาก source อัตโนมัติ)
+Every error message in the language lives in [`errors.md`](errors.md)
+(extracted from source automatically)
 
-ทุก error เป็น Str `"message at line N"` ไม่มี exception object
-ไม่จับ = พิมพ์ `error: <msg> at line N` ที่ stderr แล้ว exit 1
-`hs.py --json check/build` และ `interp.py --json` ให้ผลเป็น JSON
+All errors are Str `"message at line N"`; there is no exception object.
+Uncaught = prints `error: <msg> at line N` to stderr and exits 1.
+`hs.py --json check/build` and `interp.py --json` produce JSON output.
 
-## gotchas ที่ทำให้พังบ่อย
+## Gotchas that break things most often
 
-1. `//` คือคอมเมนต์ — `/` คือหาร
-2. `print (1+2)*3` พัง → `print ((1+2)*3)`
-3. `for i in 0..5` ไม่มี → `range(5)`
-4. block indent ต้องสม่ำเสมอ และ `def` เท่านั้นที่สร้าง scope
-5. closure จำค่า **ตอน `def`** (ไม่ใช่ตอนเรียก)
-6. `print` เว้นวรรค ไม่ใช่ comma แบบ Python
-7. x64/kernel subset ไม่มี Float/Dict/extern/argv — ดู `x64-subset.md`
+1. `//` is a comment - `/` is division
+2. `print (1+2)*3` breaks -> `print ((1+2)*3)`
+3. `for i in 0..5` does not exist -> `range(5)`
+4. Block indent must be consistent, and only `def` creates a scope
+5. A closure captures values **at `def` time** (not at call time)
+6. `print` uses spaces, not Python-style commas
+7. The x64/kernel subset has no Float/Dict/extern/argv - see `x64-subset.md`

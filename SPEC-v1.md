@@ -1,66 +1,66 @@
-# holyshit — SPEC v1.0 (ภาษาใหม่: dynamic + indent + ปลายทาง native)
+# holyshit - SPEC v1.0 (new language: dynamic + indent + native target)
 
-> สถานะ: v0.6.30 — ภาษา + 4 backend (interp / native gcc / x86-64 ตรง /
-> kernel freestanding) + IR กลาง + stdlib + formatter + language server + เอกสารที่เทสตรวจ
-> หลักการ: เขียนง่ายกว่า Python, รันทันทีแบบ JIT workflow, แกน dynamic เต็มตัว,
-> งาน low-level อยู่ใน `unsafe` เท่านั้น, syntax พังจาก v0.3 ได้ (v0.3 เก็บไว้เป็น legacy)
+> Status: v0.6.30 - language + 4 backends (interp / native gcc / direct x86-64 /
+> freestanding kernel) + middle IR + stdlib + formatter + language server + test-checked docs
+> Principles: easier to write than Python, run immediately in a JIT workflow, fully
+> dynamic core, low-level work lives only in `unsafe`, syntax may break from v0.3 (v0.3 kept as legacy)
 
 ## 1. Lexical
 
-- ย่อหน้า (indent) มีความหมายแบบ Python: block เริ่มหลังบรรทัดที่ลงท้าย `:`
-- indent ต้องสม่ำเสมอใน block เดียวกัน (แนะนำ 2 หรือ 4 ช่อง, ห้าม tab นำหน้า)
-- ไฟล์สคริปต์ใช้นามสกุล `.hs`, รันด้วย `python3 interp.py prog.hs`
-- block (if/while/for) ไม่สร้าง scope ใหม่ — มีแค่ function เท่านั้นที่สร้าง scope (แบบ Python)
-- จบ statement ด้วยขึ้นบรรทัดใหม่ (`;` ใช้ไม่ได้แล้ว)
-- คอมเมนต์: `#` และ `//` ถึงท้ายบรรทัด
-- string: `"..."` มี escape `\n \t \r \0 \" \\` (escape ที่ไม่รู้จัก
-  ปล่อยผ่านมาเป็นตัวอักษร), ไม่มี string หลายบรรทัดใน v1
-- เลขทศนิยมเขียนเลขยกกำลังได้: `1.5e3`, `2.5E-2`, `1e3`, `.5e1` (และคงรูป
-  เดิมไว้เวลา `hs fmt`)
+- Indentation is meaningful like Python: a block starts after a line ending in `:`
+- Indent must be consistent within a block (2 or 4 spaces recommended, no leading tabs)
+- Script files use the `.hs` extension, run with `python3 interp.py prog.hs`
+- Blocks (if/while/for) do not create scopes - only functions create scopes (like Python)
+- A statement ends at the newline (`;` no longer works)
+- Comments: `#` and `//` to end of line
+- Strings: `"..."` with escapes `\n \t \r \0 \" \\` (unknown escapes
+  pass through as literal characters); no multi-line strings in v1
+- Floats may use exponent notation: `1.5e3`, `2.5E-2`, `1e3`, `.5e1` (and `hs fmt`
+  preserves the original form)
 
-## 2. ค่า (dynamic ทั้งหมด, ไม่มีประกาศ type)
+## 2. Values (all dynamic, no type declarations)
 
-| ชนิด | ตัวอย่าง | หมายเหตุ |
+| Type | Example | Notes |
 |---|---|---|
 | Int | `42`, `-7`, `0xFF` | 64-bit signed |
-| Float | `3.14`, `2.0`, `1.5e3` | 64-bit; repr คือ shortest round-trip |
-ติดกับ `print`/`str` เหมือน Python (`0.1` ไม่ใช่ `0.10000000000000001`) |
-| Str | `"hello"` | UTF-8, ต่อด้วย `+` ได้ |
+| Float | `3.14`, `2.0`, `1.5e3` | 64-bit; repr is shortest round-trip
+matching `print`/`str` in Python (`0.1` not `0.10000000000000001`) |
+| Str | `"hello"` | UTF-8, concatenate with `+` |
 | Bool | `true`, `false` | |
-| Null | `null` | ค่าเริ่มต้นของ var ที่ยังไม่ assign ไม่ได้ — ต้อง assign ก่อนใช้เสมอ |
-| List | `[1, 2, "x"]` | เก็บค่าผสมชนิดได้, `a[i]`, `a[i] = v` |
-| Dict | `{"k": 1}` | key เป็น Str เท่านั้นใน v1 |
-| Func | `def` สร้าง | first-class: ส่งเป็น arg / คืนจาก func ได้ |
+| Null | `null` | An unassigned var is not Null by default - you must assign before use |
+| List | `[1, 2, "x"]` | holds mixed types, `a[i]`, `a[i] = v` |
+| Dict | `{"k": 1}` | keys are Str only in v1 |
+| Func | made by `def` | first-class: pass as arg / return from func |
 
-- `+` ใช้ได้กับ Int+Int, Float+Float (ผสม Int+Float ได้ → เป็น Float), Str+Str (ต่อ string)
-- `- * / %` ใช้กับตัวเลข (`/` หารทศนิยมเสมอ ได้ Float, หารด้วย 0 = error)
-- `//` ไม่มีในฐานะ operator — `//` เริ่มคอมเมนต์ทั้งบรรทัด (เหมือน `#`)
-- `pass` = คำสั่งว่าง (ไว้เติม block ที่ยังไม่เขียน)
-- เปรียบเทียบ: `== != < > <= >=` ใช้กับชนิดเดียวกัน (Str เทียบ lexicographic ได้)
-- ตรรกะ: `and or not` (short-circuit ยกเว้น backend x64), truthiness: `false null 0 "" [] {}` เป็นเท็จ ที่เหลือจริง
-- ผิดชนิดตอนรัน (เช่น `1 + "a"`) = runtime error พร้อมบรรทัดที่ผิด
+- `+` works on Int+Int, Float+Float (mixed Int+Float -> Float), Str+Str (concatenation)
+- `- * / %` work on numbers (`/` always divides as Float, division by 0 = error)
+- `//` does not exist as an operator - `//` starts a full-line comment (like `#`)
+- `pass` = empty statement (for blocks not yet written)
+- Comparison: `== != < > <= >=` on same types (Str compares lexicographically)
+- Logic: `and or not` (short-circuit except on the x64 backend), truthiness: `false null 0 "" [] {}` are false, everything else true
+- A runtime type error (e.g. `1 + "a"`) = runtime error with the offending line
 
-## 3. ตัวแปรและฟังก์ชัน
+## 3. Variables and functions
 
 ```
-x = 10            # สร้าง/แก้ var, ไม่ต้องประกาศ
+x = 10            # create/update a var, no declaration
 x = x + 1
 
 def fib(n):       # def name(params):
-  if n < 2:       # block ด้วย indent
+  if n < 2:       # block via indent
     return n
   return fib(n - 1) + fib(n - 2)
 
-print fib(10)     # เรียกแบบมีวงเล็บ; เรียก 0 arg วงเล็บได้หรือละก็ได้
+print fib(10)     # called with parens; 0-arg calls may drop the parens
 ```
 
-- `return expr` / `return` (ได้ Null)
-- ขอบเขต: local ใน func, global นอก func; func อ่าน global ได้, เขียน global ต้อง `global x` ก่อน (แบบ Python)
-- recursion ได้, closure ได้ (snapshot ค่าตอน `def` — copy semantics;
-  interp แชร์ env อยู่, native ก็อป; self-recursion ได้, mutual recursion ระหว่าง
-  nested func ยังไม่ได้, kernel ห้าม closure ให้ใช้ global)
+- `return expr` / `return` (yields Null)
+- Scope: local inside func, global outside; a func may read globals, writing a global needs `global x` first (like Python)
+- recursion works, closures work (value snapshot at `def` time - copy semantics;
+  interp shares the env, native copies; self-recursion works, mutual recursion between
+  nested funcs does not yet; the kernel forbids closures, use globals)
 
-## 4. ควบคุมโฟลว์
+## 4. Control flow
 
 ```
 if x > 0:
@@ -77,129 +77,129 @@ for i in range(5):       # 0..4
   print i
 for x in [10, 20]:
   print x
-for k in {"a": 1}:       # วน key
+for k in {"a": 1}:       # iterates keys
   print k
 ```
 
-- `break` / `continue` ใน while/for
-- `range(n)` = 0..n-1, `range(a, b)` = a..b-1 (ของเก่า `0..5` ตัดออก ใช้ range แทน)
-- `for i in range(a, b, s)` (s ลบได้): parse-time desugar เป็น `range(0, N)` + `i = a + k*s`; a,b,s ประเมินครั้งเดียว; s == 0 = division by zero; ใช้ได้เฉพาะใน `for`
+- `break` / `continue` in while/for
+- `range(n)` = 0..n-1, `range(a, b)` = a..b-1 (the old `0..5` is removed, use range)
+- `for i in range(a, b, s)` (s may be negative): parse-time desugar to `range(0, N)` + `i = a + k*s`; a,b,s are evaluated once; s == 0 = division by zero; only usable in `for`
 
-## 5. Builtins ชุดแรก (v1)
+## 5. First builtins (v1)
 
-- `print a, b, ...` → คั่นช่องว่าง + ขึ้นบรรทัดใหม่ (เหมือน v0.3), `print` ว่างๆ = บรรทัดเปล่า
-- `len(x)` → ความยาว Str/List/Dict
+- `print a, b, ...` -> space-separated + newline (like v0.3); bare `print` = empty line
+- `len(x)` -> length of Str/List/Dict
 - `range(n)`, `range(a, b)`
-- `str(x)`, `int(x)`, `float(x)` แปลงชนิด (แปลงไม่ได้ = error)
-- `input()` อ่าน 1 บรรทัดจาก stdin → Str
-- File (น้อยสุดที่พอใช้): `open(path, mode)` + `read(f)` + `write(f, s)` + `close(f)` โดย mode `"r"`/`"w"`
-- `len` ใช้กับ Dict = จำนวน key
-- **Dict key (v0.7):** key เป็น `Str` หรือ `Int` (Bool/Float/อื่นๆ ขึ้น `dict key must be Str or Int`; Bool ไม่รับเพราะ `true == 1`). `{1: "a", "k": 2}`, `d[5] = x`. `json_str` ยังต้องการ key เป็น Str. ทุก backend (interp/IR/native/x64) ตรงกัน; แก้บั๊ก `==` ของ dict บน x64 ที่เคยตอบ true เสมอด้วย.
-- String/List: `append(a, x)`, `split(s)` / `split(s, sep)`, `find(s, sub)` (-1 ถ้าไม่เจอ),
-- **Method sugar (v0.7):** `x.append(v)`, `s.split(sep)`, `s.find(sub)`, `sep.join(list)` เขียนแบบ
-  method ได้ แปลงตอน parse เป็น `append(x, v)` ฯลฯ ทุก backend เห็นการเรียก builtin ธรรมดา
-  (formatter คงรูป method ไว้). ถ้า receiver เป็น path ที่ขึ้นต้นด้วยโมดูลที่ `import` ไว้
-  (`std.heap.find(...)`) ยังหมายถึงฟังก์ชันของโมดูลตามเดิม.
-  `join(sep, list)`, slice `s[a:b]` / `s[:b]` / `s[a:]` (list ก็ได้, index ติดลบได้)
-- **lambda (v0.7):** `lambda x, y: expr` (ไม่มี body หลายบรรทัด) แปลงตอน parse เป็น `def _lamN` ที่ยกขึ้นก่อน statement. formatter พิมพ์กลับเป็น `lambda`.
-- **f-string (v0.7):** `f"x={x}, sum={a + b}"` แปลงตอน parse เป็น `"x=" + str(x) + ...`; `{{` `}}` = วงเล็บจริง; ใน `{}` ใส่ string literal ที่มี `"` ไม่ได้. formatter คงรูป f-string.
-- **class (v0.7):** `class C:` + `def` ที่รับ `self` เป็น param แรก, `__init__` เป็นตัวสร้าง. แปลงตอน parse: แต่ละ method เป็นฟังก์ชัน `C__m`, `C(args)` คือฟังก์ชันที่สร้าง dict `{"m": C__m, ...}` แล้วเรียก `__init__`; `o.f` = `o["f"]`, `o.f = v` = `o["f"] = v`, `o.m(x)` = `o["m"](o, x)`. inheritance แบบเดี่ยว `class D(B):` (คัดตาราง method ของ B มาก่อน แล้ว override; `__init__` สืบทอดถ้าไม่เขียนเอง; เรียก init ของแม่ด้วย `B__init__(self, ...)`; B ต้องประกาศก่อน). ข้อจำกัด: ไม่มี super()/multiple inheritance; ชื่อ method ห้ามซ้ำ builtin sugar (`split find join append`); receiver ของ `o.m()` ต้องเป็นชื่อหรือ field (`a.b.m()` ได้, `f().m()` ไม่ได้ ให้เก็บใส่ตัวแปรก่อน); `x = some_module` ยังเป็นโมดูล (ตามชื่อโมดูลที่ import). object พิมพ์แล้วเห็น dict ของ method ด้วย.
-- Process: `argv()` → List ของ args (ไม่รวมชื่อโปรแกรม), `env(name)` → Str/Null,
-  `system(cmd)` → Int exit status (ผ่าน shell)
-- Net (http อย่างเดียว, ไม่มี https): `tcp_connect(host, port)` + `tcp_send/recv/close`,
-  `tcp_listen(port)` + `tcp_accept`, `http_get(url)` → body ของ 2xx (อื่น error)
-- JSON: `json_parse(s)` ↔ `json_str(x)` (ลึกเกิน 200 ชั้น = error)
-- Agent kit: `read_text/write_text/append_text` (ไฟล์ทั้งก้อน), `exists/ls/mkdir`,
-  `json_load/json_save` (ไฟล์ JSON ตรง), error ทุกตัวมี `--json` โหมดให้ agent parse
-- Memory: `read_mem(ptr, nbytes)` → Str ของ `nbytes` ไบต์ดิบที่ address `ptr`
-  (byte-preserving: NUL กับไบต์สูงรอด, ต่างจาก UTF-8 decode) — ต้องการอ่าน
-  โครงสร้างที่ allocator ไม่ได้เป็นเจ้าของ (boot info, ramdisk) และเป็นตัวเดียวที่
-  ทำงานได้ครบทุก backend รวมถึง kernel
-- ทั้งหมดนี้ใช้ใน kernel ไม่ได้ (ban ชัดเจน) ยกเว้น `ticks/readkey/pmm_alloc/meminfo`
-  ที่มี approximation ฝั่ง kernel และ `read_mem` ที่ใช้จริง
+- `str(x)`, `int(x)`, `float(x)` conversions (failed conversion = error)
+- `input()` reads 1 line from stdin -> Str
+- File (the smallest useful set): `open(path, mode)` + `read(f)` + `write(f, s)` + `close(f)` with mode `"r"`/`"w"`
+- `len` on a Dict = number of keys
+- **Dict keys (v0.7):** keys are `Str` or `Int` (Bool/Float/others raise `dict key must be Str or Int`; Bool is refused because `true == 1`). `{1: "a", "k": 2}`, `d[5] = x`. `json_str` still requires Str keys. All backends (interp/IR/native/x64) agree; this also fixed the x64 dict `==` bug that used to always answer true.
+- String/List: `append(a, x)`, `split(s)` / `split(s, sep)`, `find(s, sub)` (-1 when absent),
+- **Method sugar (v0.7):** `x.append(v)`, `s.split(sep)`, `s.find(sub)`, `sep.join(list)` can be written
+  as methods, desugared at parse time to `append(x, v)` etc.; every backend sees an ordinary builtin call
+  (the formatter keeps the method form). If the receiver is a path starting with an `import`ed module
+  (`std.heap.find(...)`) it still means the module function as before.
+  `join(sep, list)`, slice `s[a:b]` / `s[:b]` / `s[a:]` (lists too, negative indexes ok)
+- **lambda (v0.7):** `lambda x, y: expr` (no multi-line body) desugars at parse time to a hoisted `def _lamN` before the statement. The formatter prints it back as `lambda`.
+- **f-string (v0.7):** `f"x={x}, sum={a + b}"` desugars at parse time to `"x=" + str(x) + ...`; `{{` `}}` are literal braces; a string literal containing `"` is not allowed inside `{}`. The formatter keeps the f-string form.
+- **class (v0.7):** `class C:` + `def`s taking `self` as the first param, `__init__` is the constructor. Parse-time desugar: each method becomes a function `C__m`; `C(args)` is a function that builds the dict `{"m": C__m, ...}` then calls `__init__`; `o.f` = `o["f"]`, `o.f = v` = `o["f"] = v`, `o.m(x)` = `o["m"](o, x)`. Single inheritance `class D(B):` (copies B's method table first, then overrides; `__init__` is inherited if not written; call the parent's init with `B__init__(self, ...)`; B must be declared first). Limitations: no super()/multiple inheritance; method names must not clash with builtin sugar (`split find join append`); the receiver of `o.m()` must be a name or a field (`a.b.m()` works, `f().m()` does not - store it in a variable first); `x = some_module` stays a module (per the imported module name). Printing an object shows its method dict too.
+- Process: `argv()` -> List of args (excluding the program name), `env(name)` -> Str/Null,
+  `system(cmd)` -> Int exit status (through the shell)
+- Net (http only, no https): `tcp_connect(host, port)` + `tcp_send/recv/close`,
+  `tcp_listen(port)` + `tcp_accept`, `http_get(url)` -> body of a 2xx (others error)
+- JSON: `json_parse(s)` <-> `json_str(x)` (deeper than 200 levels = error)
+- Agent kit: `read_text/write_text/append_text` (whole files), `exists/ls/mkdir`,
+  `json_load/json_save` (direct JSON files); every error has a `--json` mode for agents to parse
+- Memory: `read_mem(ptr, nbytes)` -> a Str of the `nbytes` raw bytes at address `ptr`
+  (byte-preserving: NUL and high bytes survive, unlike UTF-8 decode) - needed for
+  structures the allocator does not own (boot info, ramdisk) and the only one that
+  works on every backend including the kernel
+- None of these work in the kernel (explicitly banned) except `ticks/readkey/pmm_alloc/meminfo`
+  which have kernel-side approximations, and `read_mem` which truly works
 
-## 5.1 Module และ stdlib
+## 5.1 Modules and stdlib
 
-- `import mod` / `import pkg.mod` (dotted แปลงเป็น path, หาใน dir โปรแกรมก่อน,
-  แล้ว `HSPATH` (คั่นด้วย `:`), แล้ว cwd)
-- parent ที่ไม่มีไฟล์เป็น package เปล่าอัตโนมัติ, init ครั้งเดียว, circular = runtime error
-- ใช้ attr ข้ามได้ทุกระดับ (`std.str.trim(...)`), `import` ซ้ำโมดูลเดิมได้
-- `std/` มากับภาษา: `std.str` (trim/pad/starts_with/ends_with/lines),
+- `import mod` / `import pkg.mod` (dotted becomes a path; searched in the program's dir first,
+  then `HSPATH` (colon-separated), then cwd)
+- A parent with no file is an automatic empty package; initialized once; circular = runtime error
+- Attribute access works across every level (`std.str.trim(...)`); re-`import`ing the same module is fine
+- `std/` ships with the language: `std.str` (trim/pad/starts_with/ends_with/lines),
   `std.list` (map/filter/fold/any/all), `std.heap` (heap_init/malloc/free,
-  heap_free/heap_nblocks — free-list allocator เขียนด้วย hs+struct เอง)
+  heap_free/heap_nblocks - a free-list allocator written in hs+struct itself)
 
-## 6. Error
+## 6. Errors
 
-- `try:` / [`except:` [`as e`]] / [`finally:`] (ต้องมี except หรือ finally อย่างน้อยหนึ่ง)
-  `e` เป็น string `"msg at line N"`, รองรับ nested try + `break/continue/return` ข้างใน
-  (native ใช้ setjmp/longjmp, C locals เป็น volatile เฉพาะ func ที่มี try)
-  `finally` รันทุกทางออกทั้งสอง backend (รวม return/break/continue และ error ที่ propagate)
-- `raise "msg"` โยน error เอง (ต้องเป็น Str), `raise` ลอยๆ = re-throw ใน `except`
-  (native ใช้ lexical frame — ข้ามขอบ function ไม่ได้, interp ได้)
-- error ที่ไม่มี try ดัก หยุดโปรแกรมทันที พิมพ์ `error: <สาเหตุ> at line N`
+- `try:` / [`except:` [`as e`]] / [`finally:`] (at least one of except/finally required)
+  `e` is a string `"msg at line N"`; nested try + `break/continue/return` inside are supported
+  (native uses setjmp/longjmp, C locals are volatile only in funcs containing try)
+  `finally` runs on every way out on both backends (including return/break/continue and propagating errors)
+- `raise "msg"` throws your own error (must be a Str); bare `raise` = re-throw inside `except`
+  (native uses a lexical frame - it cannot cross a function boundary, interp can)
+- An error with no try stops the program immediately, printing `error: <reason> at line N`
 
-## 7. `unsafe` (static subset สำหรับงาน low-level — ทำแล้ว เฟส 4a)
+## 7. `unsafe` (static subset for low-level work - done, phase 4a)
 
-block `unsafe:` ข้างในเป็นภาษา static อีกภาษาหนึ่ง กฎต่างจากแกน dynamic:
+Inside an `unsafe:` block is another, static language. Its rules differ from the dynamic core:
 
-- **ชนิดมี 3 ตัว**: `I64` (signed 64), `U64` (unsigned 64), `Ptr` (pointer ไบต์)
-  บวก struct pointer `Name*` (ดูข้างล่าง)
-- **ห้าม**: float, string, list, dict, `def`, `for`, เรียกฟังก์ชัน dynamic
-  (`print` ใช้ได้, string literal ใช้กับ `print` ได้อย่างเดียว)
-- **หน่วยความจำ**: `Ptr p = alloc(n)` ได้หน่วยความจำ zeroed n ไบต์ (GC เก็บให้ ไม่ต้อง free)
-  `*p` / `*p = v` อ่าน/เขียน 64-bit (ต้อง align 8, ไม่งั้น error),
-  `load8/load32/store8/store32` เข้าถึงกี่ไบต์ก็ได้
-- **pointer**: `p + n` / `p - n` ขยับเป็นไบต์, `p - q` ระยะห่าง, `==`/`!=` ได้ ห้าม `< >`
-  `as_ptr(int)` แปลงเลขเป็น address (ไว้ทำ MMIO เช่น `as_ptr(753664)`),
-  `as_int(p)` แปลงกลับ, `null` คือ address 0
-  (ทุกตัวนี้รับ struct pointer ได้ — struct สลายเป็น address เสมอ)
-- **struct** (layout hardware/driver โดยตรง):
+- **Three types**: `I64` (signed 64), `U64` (unsigned 64), `Ptr` (byte pointer)
+  plus struct pointers `Name*` (see below)
+- **Forbidden**: float, string, list, dict, `def`, `for`, calling dynamic functions
+  (`print` works; string literals work only with `print`)
+- **Memory**: `Ptr p = alloc(n)` gives n bytes of zeroed memory (GC frees it, no manual free)
+  `*p` / `*p = v` read/write 64-bit (must be 8-aligned, else error),
+  `load8/load32/store8/store32` access any byte width
+- **Pointers**: `p + n` / `p - n` step in bytes, `p - q` is a distance, `==`/`!=` allowed, `< >` forbidden
+  `as_ptr(int)` turns a number into an address (for MMIO, e.g. `as_ptr(753664)`),
+  `as_int(p)` converts back, `null` is address 0
+  (all of these accept struct pointers - a struct always decays to an address)
+- **structs** (direct hardware/driver layouts):
   ```
   unsafe:
     struct Desc:
       U64 low
       U64 high
       U64 entries[512]
-      Node* next        # ชี้ struct อื่น (ต้องประกาศก่อน) / self-ref ได้
-    Desc* d = alloc(sizeof(Desc))   # sizeof ได้ทั้ง struct และ I64/U64/Ptr (=8)
+      Node* next        # points at another struct (declared earlier) / self-ref ok
+    Desc* d = alloc(sizeof(Desc))   # sizeof works on structs and I64/U64/Ptr (=8)
     d.low = 4660
     d.entries[3] = 22
     print d.low
   ```
-  - field มีแต่ `I64/U64/Ptr/Struct*` (+ array `[N]` คงที่), ทุก field 8 ไบต์ ไม่มี padding
-  - `p + n` / `p - n` ขยับทีละ `sizeof` (C semantics), `p - q` (struct เดียวกัน) = จำนวนตัว
-  - `p.field` / `p.arr[i]` อ่าน, `p.field = v` เขียน — มี bounds check + null check
-    ฝั่ง native เป็น volatile access ทั้งหมด (MMIO ปลอดภัย)
-  - `as_int(p)` / `load/store*` รับ struct pointer ได้เลย
-  - struct เป็นชื่อระดับโปรแกรม (ประกาศซ้ำ layout เดิมได้, ต่าง = error),
-    ผูกกับ build เดียว (ไม่ข้ามไฟล์ test/run ใน process เดียวกัน)
-  - ยังไม่มี: nested struct แบบค่า (มีแต่ pointer), bitfield, union, `->` (ใช้ `.` แทน)
-- block ซ้อนใน `unsafe:` (`if`/`while` ข้างใน) ใช้กฎ static เหมือนเดิม
-  ทั้ง parse และ runtime (ไม่มี dynamic หลุดเข้าไป)
-- เขียน global จากใน func ต้อง `global` (กฎเดียวกับ Python ใช้กับ unsafe ด้วย)
-- **strict**: ห้ามผสม `I64` กับ `U64` (error ทั้งสอง backend ข้อความเดียวกัน),
-  literal เลขปรับตามบริบท, `/` และ `%` ตัดทศนิยมทิ้งแบบ C (ต่างจาก `/` ของ safe ที่ได้ Float)
-- **`and/or/not` ใน unsafe คืน I64 0/1** (ไม่คืน operand แบบ safe)
-- **`asm("...")`**: ส่ง assembly ตรงลง binary (ใช้ได้เฉพาะ `hs.py build`, interpreter ตอบ error ชัดเจน)
-- **ทุก load/store เป็น volatile** ใน C ที่ generate — เขียน MMIO ปลอดภัย
-- **สะพาน dynamic**: อ่าน var dynamic ใน unsafe = unbox เป็น I64 พร้อมเช็คชนิด (ผิดชนิด error),
-  เขียนค่าออกไปนอก unsafe = box อัตโนมัติ (`U64` เกิน 63 bit ตอน box จะ error)
-- **scope**: var unsafe อยู่ใน function (หรือ global ถ้าอยู่นอก func), zero-init,
-  ห้าม capture ข้าม function (compile error), ห้าม `global` กับ var unsafe
-- ชื่อสงวนเพิ่มเติม (ห้ามตั้งเป็น var/func): `import module try except`
+  - Fields are only `I64/U64/Ptr/Struct*` (+ fixed arrays `[N]`); every field is 8 bytes, no padding
+  - `p + n` / `p - n` step by `sizeof` (C semantics); `p - q` (same struct) = element count
+  - `p.field` / `p.arr[i]` read, `p.field = v` writes - with bounds check + null check
+    On native, all are volatile accesses (MMIO-safe)
+  - `as_int(p)` / `load/store*` accept struct pointers directly
+  - A struct is a program-level name (redeclaring the same layout is ok, different = error),
+    bound to one build (does not cross test/run files in the same process)
+  - Not yet: nested structs by value (pointers only), bitfields, unions, `->` (use `.`)
+- Blocks nested in `unsafe:` (`if`/`while` inside) keep the static rules
+  at both parse and runtime (no dynamic leaks in)
+- Writing a global from inside a func needs `global` (the Python rule applies to unsafe too)
+- **strict**: never mix `I64` with `U64` (same error message on both backends),
+  number literals adapt to context, `/` and `%` truncate like C (unlike safe `/` which yields Float)
+- **`and/or/not` in unsafe return I64 0/1** (not the operand like safe code)
+- **`asm("...")`**: drops raw assembly into the binary (only with `hs.py build`; the interpreter errors clearly)
+- **Every load/store is volatile** in the generated C - safe for MMIO
+- **Dynamic bridge**: reading a dynamic var inside unsafe = unbox to I64 with a type check (wrong type errors),
+  writing a value out of unsafe = auto-box (a `U64` beyond 63 bits errors when boxed)
+- **scope**: unsafe vars live in the function (or global when outside a func), zero-init,
+  cannot be captured across functions (compile error), cannot be `global`
+- Extra reserved names (cannot be used as var/func): `import module try except`
 
-ตัวอย่าง (แตะ “hardware” จำลอง):
+Example (touching simulated "hardware"):
 ```
 unsafe:
-  Ptr uart = as_ptr(1016)   # จริงๆ คือ MMIO address
-  store8(uart, 72)          # เขียนไบต์เดียว
-  print load8(uart)         # อ่านกลับ
+  Ptr uart = as_ptr(1016)   # really an MMIO address
+  store8(uart, 72)          # write one byte
+  print load8(uart)         # read it back
 ```
 
-ที่ยังไม่มี (ต้อง freestanding runtime + boot ก่อนถึงจะเป็น kernel จริง):
-รันบน bare metal ไม่ได้ — binary ตอนนี้ยังพึ่ง libc/GC ของ OS อยู่
+Still missing (needs a freestanding runtime + boot before it is a real kernel):
+cannot run on bare metal - the binary still depends on the OS's libc/GC
 
-## 8. โปรแกรมตัวอย่าง (ต้องรันได้หลังเฟส 2)
+## 8. Example program (must run after phase 2)
 
 ```
 # fib + file
@@ -215,30 +215,30 @@ write(f, str(fib(15)))
 close(f)
 ```
 
-## 9. โน้ตสำหรับคนทำ interpreter (เฟส 2)
+## 9. Notes for the interpreter implementer (phase 2)
 
-- value = tagged union ใน Python (dict/tuple) ไปก่อน, ไม่ต้องคิดเรื่อง performance
-- เริ่มจาก tree-walk ตรงๆ บน AST; ห้าม optimize ใดๆ ในเฟส 2
-- ชุดเทสขั้นต่ำ: fib recursive, while sum, for+range, list/dict, file write/read กลับ, error ผิดชนิดต้องมีเลขบรรทัด
+- value = a tagged union in Python (dict/tuple) for now; do not think about performance
+- Start with a plain tree-walk over the AST; no optimization of any kind in phase 2
+- Minimal test set: recursive fib, while sum, for+range, list/dict, file write/read back, type errors must carry line numbers
 
-## 10. Backend native (เฟส 3 — ทำแล้ว 3a, เหลือ 3b)
+## 10. Native backend (phase 3 - 3a done, 3b remaining)
 
-- 3a (เสร็จ, `hs.py` + `native/rt.{h,c}`): AST จาก `interp.py` → C → `gcc -O2 -lgc` เป็น native binary
-  (`hs.py build prog.hs [-o prog]`, `hs.py run prog.hs` = build ลง temp แล้วรันทันที)
-- value = tagged `Val` (16 bytes), หน่วยความจำใช้ Boehm GC — ไม่มี refcount bookkeeping
-- fib(22): interpreter 0.85s → native 0.009s (~95x), binary 35KB
-- ข้อจำกัดที่ปลดแล้ว: closure ใช้ได้ (copy semantics ผ่าน `v_func_setcaps` + `hs_cur_caps`),
-  เหลือแค่ mutual recursion ระหว่าง nested func (ใช้ global แทน)
-- เครื่องมือ: `hs.py check` (parse+scope ไม่ต้องมี gcc), `--version`, `run` ส่ง args ต่อ,
-  `VERSION` + `.gitignore` + `README.md` + `legacy/` (ของ v0.3)
-- 3b (เสร็จ): `import` ระบบ module (init ครั้งเดียว, circular = runtime error),
-  `m.attr`/`m.attr=` (static ตรง + dynamic ผ่าน registry), `v_slice`, builtins
-  `append/split/find/join`, `try/except[as]` (setjmp, volatile เฉพาะ func ที่มี try)
-- `tests/test_native.py`: **17/17 ผ่าน** ตรงกับ interpreter ทุกตัวอักษรรวม error + เลขบรรทัด
-  (`mod_*` เป็น helper ไม่ build ตรง, `uasm` native-only)
-- เหลือ: `for` แบบไม่ materialize seq, dict แบบ hash จริง (ของเดิม)
+- 3a (done, `hs.py` + `native/rt.{h,c}`): AST from `interp.py` -> C -> `gcc -O2 -lgc` into a native binary
+  (`hs.py build prog.hs [-o prog]`, `hs.py run prog.hs` = build to temp then run immediately)
+- value = tagged `Val` (16 bytes), memory uses Boehm GC - no refcount bookkeeping
+- fib(22): interpreter 0.85s -> native 0.009s (~95x), 35KB binary
+- Limitation lifted: closures work (copy semantics via `v_func_setcaps` + `hs_cur_caps`);
+  only mutual recursion between nested funcs remains (use globals instead)
+- Tooling: `hs.py check` (parse+scope without gcc), `--version`, `run` forwards args,
+  `VERSION` + `.gitignore` + `README.md` + `legacy/` (from v0.3)
+- 3b (done): the `import` module system (init once, circular = runtime error),
+  `m.attr`/`m.attr=` (exact static + dynamic through a registry), `v_slice`, builtins
+  `append/split/find/join`, `try/except[as]` (setjmp, volatile only in funcs with try)
+- `tests/test_native.py`: **17/17 pass**, matching the interpreter character for character including errors + line numbers
+  (`mod_*` are helpers, not built directly; `uasm` is native-only)
+- Remaining: `for` without materializing the seq, a real hash dict (old item)
 
-## 11. `extern` — ใช้ของจากภาษาอื่น (C ABI = ตัวกลางสากล)
+## 11. `extern` - using things from other languages (C ABI = the universal medium)
 
 ```
 extern:                       # libc (default)
@@ -247,1080 +247,1099 @@ extern:                       # libc (default)
   Ptr malloc(U64 n)
   U0 free(Ptr p)
 
-extern from "m":              # -lm (ชื่อล้วน = -l, มี / = path, .c = คอมไพล์+ลิงก์ให้)
+extern from "m":              # -lm (a bare name = -l, a / = path, .c = compiled+linked for you)
   F64 sin(F64 x)
 
-extern from "helper.c":       # ซอร์ส C (เช่น ส่วน kernel ที่เขียนด้วย C) — build ให้เอง
+extern from "helper.c":       # C source (e.g. a kernel part written in C) - built for you
   I64 hs_add3(I64 a, I64 b, I64 c)
 ```
 
-- ชนิดที่ขอบ: `U0` (void, เป็น return ได้อย่างเดียว), `I64 U64 F64 Str Ptr`
-  `Str` = `char*` (NUL-terminated), `Ptr` = address เป็น Int ฝั่ง dynamic
-- เรียกได้จาก safe code เท่านั้น (ห้ามใน `unsafe`, ห้ามใน kernel — kernel ไม่มี libc)
-- native ไม่ emit prototype แต่ `dlsym` ตรง (`-rdynamic -ldl`) เลยไม่ชนชื่อฟังก์ชัน libc
-- interp รันผ่าน `ctypes` (รวม `.c` ที่คอมไพล์เป็น .so ชั่วคราวให้) ผลตรง native ทุกตัวอักษร
-- struct by pointer ทำได้: `malloc` แล้ว `store*/load*` ใน `unsafe:` ตาม offset (tests/t_ffistruct.hs ใช้ `gmtime_r` เติม `struct tm`) — โปรแกรมที่มี `extern` เท่านั้นที่ load/store ที่อยู่จริงของ C ได้ (interp ใช้ ctypes), ไม่มี extern ยังเป็น arena จำลองตรวจขอบเขต
-- ทำไม่ได้: struct by value, callback, variadic (เช่น `printf` ตรงๆ) — เขียน wrapper C ครอบเอา
-- ต่างภาษา = ต่างแค่ต้นทาง: Rust/Zig/C++/Go(cgo) ที่ export C ABI เอา `.so`/`.a`/`.o`
-  มา `from` ได้หมด; ซอร์ส C ของ kernel เอามาลิงก์ตรงได้แบบ `helper.c` ข้างบน
+- Boundary types: `U0` (void, return-only), `I64 U64 F64 Str Ptr`
+  `Str` = `char*` (NUL-terminated), `Ptr` = an address as a dynamic-side Int
+- Callable from safe code only (forbidden in `unsafe`, forbidden in the kernel - the kernel has no libc)
+- native emits no prototype but `dlsym`s directly (`-rdynamic -ldl`), so libc function names never clash
+- interp runs through `ctypes` (including `.c` files compiled into a temporary .so); results match native character for character
+- struct by pointer works: `malloc` then `store*/load*` in `unsafe:` at offsets (tests/t_ffistruct.hs uses `gmtime_r` filling `struct tm`) - only programs with `extern` may load/store real C addresses (interp uses ctypes); without extern it stays a bounds-checked simulated arena
+- Not possible: struct by value, callbacks, variadics (e.g. `printf` directly) - write a C wrapper
+- A different language = only a different origin: Rust/Zig/C++/Go(cgo) exporting the C ABI can all be
+  `from`ed as `.so`/`.a`/`.o`; C source from the kernel can be linked directly like `helper.c` above
 
-## 12. Kernel (xkernel freestanding ล้วน — สาย gcc ถูกลบออกแล้ว)
+## 12. Kernel (pure xkernel freestanding - the gcc line is deleted)
 
-- ประวัติ: เฟส 5a ใช้ gcc/as/ld + krt.c (C runtime) — ถูกลบทั้งหมดเมื่อ xkernel
-  ครอบคลุมพฤติกรรมครบ (ดู git history) ตอนนี้ kernel มาจาก `.hs` + encoder ล้วน
-- `kernel/` เหลือแต่ `.hs` (xdemo/kx2/kxexc_*); `tests/test_xkernel.py` **18/18**
+- History: phase 5a used gcc/as/ld + krt.c (a C runtime) - all deleted once xkernel
+  covered the behavior fully (see git history). The kernel now comes from `.hs` + the encoder alone
+- `kernel/` holds only `.hs` (xdemo/kx2/kxexc_*); `tests/test_xkernel.py` **18/18**
   (boot, fib, timer ~200 ticks, keyboard, PMM 32768/-3, EXC 14/0)
-- runtime kernel = hs subset + asm ใน `x64gen.py` (serial, bump heap, IDT/PIC/PIT,
-  ticks/readkey/pmm) — ไม่มี C เหลือในสาย kernel เลย
+- kernel runtime = hs subset + asm in `x64gen.py` (serial, bump heap, IDT/PIC/PIT,
+  ticks/readkey/pmm) - no C left in the kernel line at all
 
-## 13. Backend x86-64 ตรง (เฟส 6a — hosted subset, ไม่ใช้ gcc/as/ld/libc)
+## 13. Direct x86-64 backend (phase 6a - hosted subset, no gcc/as/ld/libc)
 
-- `x64.py`: assembler + static ELF64 writer เขียนเอง (REX/ModRM/SIB, rel32/rip-rel,
+- `x64.py`: a self-written assembler + static ELF64 writer (REX/ModRM/SIB, rel32/rip-rel,
   2 segments RX+RW, entry `_start`)
-- `x64gen.py`: hs subset → machine code; runtime เขียนเป็น machine code ล้วน
-  (print_int/fmt_int, bump malloc ผ่าน mmap, type_err, divzero, `_start`+exit) —
-  ทั้งหมดประกอบด้วย instruction ที่ encoder เขียนเอง
-- **ค่าแบบ tagged (v2)**: low 2 bits = tag — `01` Int (payload 62-bit, `v<<2|1`),
+- `x64gen.py`: hs subset -> machine code; the runtime is written as pure machine code
+
+  (print_int/fmt_int, bump malloc over mmap, type_err, divzero, `_start`+exit) -
+  all assembled from instructions written by our own encoder
+- **Tagged values (v2)**: low 2 bits = tag - `01` Int (62-bit payload, `v<<2|1`),
   `10` Bool (0x02 false / 0x0A true), `11` Null 0x03 / Unbound 0x0B, `00` heap object
-  (`[kind][len][bytes]` = Str, `[kind][code][caps…]` = Func,
-  `[kind][len][cap][buf]` = List) → Str/Bool/Null/List เป็นค่าเต็ม
-  ไม่ใช่แค่ int; `print` เลือกเองจาก tag, type error = `type error` + exit(1)/halt
-- runtime ฝั่งค่า: `x_str_at` (สร้าง Str จาก rodata), `x_str_cat`, `x_str_cmp`
-  (ใช้ทั้ง `==`/`!=` และ `<`/`>`), `x_str` (รวม List → `[1, x]` ผ่าน `x_list_str`),
+  (`[kind][len][bytes]` = Str, `[kind][code][caps...]` = Func,
+  `[kind][len][cap][buf]` = List) -> Str/Bool/Null/List are full values,
+  not just ints; `print` picks from the tag, a type error = `type error` + exit(1)/halt
+- value-side runtime: `x_str_at` (build a Str from rodata), `x_str_cat`, `x_str_cmp`
+  (used by both `==`/`!=` and `<`/`>`), `x_str` (including List -> `[1, x]` via `x_list_str`),
   `x_num_to_str`, `x_len` (Str/List), `x_truth`, `print_val` (+ `x_print_list`
-  พิมพ์ `[a, b]` ซ้อนกันได้), `x_eq` (+ `x_list_eq` เทียบลึก), `x_cmp`,
-  `x_slice`, `x_split1/2`, `x_find`, `x_join` และตาราง whitespace 256-byte —
-  ทั้งหมดประกอบด้วย instruction ที่ encoder เขียนเอง
-- subset: Int, Str (literal เป็นค่าได้, `+` ต่อสาย, `len`, เทียบซ้ำกันได้,
-  slicing `s[a:b]` แบบ byte, `split`/`find`/`join`),
-  List (`[..]`, `+` ต่อกัน, `len`, `append` (header อยู่กับที่ เติบโตแค่ buf —
-  alias เห็นตรงกัน), `==` เทียบลึก, `l[i]`/`l[-1]`/`l[i] = v`, `range()` คืน List
-  จริง, `for x in <list>`), Bool, null, not/and/or (คืน operand ตาม hs),
-  if/elif/else, while, `for` (`for i in range([a,] b)` lower เป็น counter loop;
-  `for c in <str>` ได้ Str ทีละตัวอักษร), break/continue (ใช้ได้ทั้ง while/for
-  ซ้อนกัน), def/call/recursion/closure (caps ผ่าน r15),
-  `import` (ไฟล์จริงหรือ dotted package; body รันครั้งเดียวผ่าน guarded init
-  parent-first; อ่าน/เขียน `mod.attr`, `print mod` → `<module name>`;
-  หาไฟล์จาก program-dir + HSPATH; circular = compile error),
-  `global` (ฟังก์ชันแก้ global ของโมดูลตัวเองได้), `str()` (รวม List),
-  `int()`/`len()`, `print` (List ซ้อนกันได้), unsafe I64/U64/Ptr + struct;
-  `/` ตัดทศนิยมแบบ C; index เกินขอบ = `index out of range`;
-  โมดูลเป็น compile-time only (ส่งโมดูลเป็น value ไม่ได้ — ใช้ `mod.attr`)
-- exceptions แบบเต็ม (`try`/`except`/`finally`/`raise`): setjmp/longjmp เขียนเอง
-  บน handler stack คงที่ 256 เฟรม (ไม่ใช้ libc), error ทุกจุดมี message + line
-  ตรง interp (`cannot add Int and Str`, `unknown variable 'x'`, `not callable`,
-  `len of`, `not iterable` ฯลฯ ผ่าน `x_tname` + ตัวสร้าง string);
-  `except as e` ผูก `"msg at line N"`, bare `raise` re-raise แบบ lexical;
-  `break`/`continue`/`return` ใน try รัน finally + pop handler ถูกต้อง;
-  uncaught พิมพ์ `error: msg at line N` exit 1; reads ที่ไม่เคย assign เป็น
-  UNBOUND แล้ว error ตอนอ่าน (ไม่ใช่ขยะจาก stack)
-- runtime: bump allocator บน mmap arena 16MB (align 16, ไม่ free — แบบ kernel heap),
-  ขยาย arena อัตโนมัติเมื่อเต็ม, `alloc` ใหญ่กว่า 16MB ได้ arena ของตัวเอง
-- วัดจริงบน i7-6700HQ (TSC 2592MHz): fib(25) ~0.007-0.012s (gcc-Val 0.021s, interp 3.79s),
-  (เคย 0.005s ก่อนใส่ error-check + unbound-check ทุกจุด — จ่ายค่า diagnostics),
-  binary 4KB เทียบ 77KB; timer-IRQ latency (SIGALRM, `scripts/irq_lat.py`):
+  printing nested `[a, b]`), `x_eq` (+ `x_list_eq` deep compare), `x_cmp`,
+  `x_slice`, `x_split1/2`, `x_find`, `x_join` and the 256-byte whitespace table -
+  all assembled from instructions written by our own encoder
+- subset: Int, Str (literals as values, `+` concatenation, `len`, repetition comparisons,
+  byte-based slicing `s[a:b]`, `split`/`find`/`join`),
+  List (`[..]`, `+` concatenation, `len`, `append` (header stays in place, only buf grows -
+  aliases see the same), `==` deep compare, `l[i]`/`l[-1]`/`l[i] = v`, `range()` returns a real
+  List, `for x in <list>`), Bool, null, not/and/or (returns the operand per hs),
+  if/elif/else, while, `for` (`for i in range([a,] b)` lowers to a counter loop;
+  `for c in <str>` yields one-character Strs), break/continue (works in nested while/for),
+  def/call/recursion/closure (caps through r15),
+  `import` (real file or dotted package; the body runs once through a guarded parent-first
+  init; read/write `mod.attr`, `print mod` -> `<module name>`;
+  files found via program-dir + HSPATH; circular = compile error),
+  `global` (a function may modify its own module's globals), `str()` (including List),
+  `int()`/`len()`, `print` (nested Lists ok), unsafe I64/U64/Ptr + struct;
+  `/` truncates like C; out-of-range index = `index out of range`;
+  modules are compile-time only (a module cannot be passed as a value - use `mod.attr`)
+- full exceptions (`try`/`except`/`finally`/`raise`): a self-written setjmp/longjmp
+  over a fixed 256-frame handler stack (no libc); every error carries message + line
+  matching interp (`cannot add Int and Str`, `unknown variable 'x'`, `not callable`,
+  `len of`, `not iterable` etc. via `x_tname` + string builders);
+  `except as e` binds `"msg at line N"`, bare `raise` re-raises lexically;
+  `break`/`continue`/`return` in try run finally + pop the handler correctly;
+  uncaught prints `error: msg at line N` exit 1; reads of never-assigned names become
+  UNBOUND and error on read (not stack garbage)
+- runtime: bump allocator over a 16MB mmap arena (16-aligned, never freed - like the kernel heap),
+  arena grows automatically when full, an `alloc` larger than 16MB gets its own arena
+- Measured on an i7-6700HQ (TSC 2592MHz): fib(25) ~0.007-0.012s (gcc-Val 0.021s, interp 3.79s),
+  (was 0.005s before adding error-check + unbound-check everywhere - the price of diagnostics),
+  4KB binary vs 77KB; timer-IRQ latency (SIGALRM, `scripts/irq_lat.py`):
   @2ms med 2000us p99 +100us max +116us, @500us p99 +37us max +70us
-  (เลขนี้คือ Linux shared laptop ไม่ใช่ bare metal — bare metal ควรอยู่ระดับ ~1-5us)
-  (fib เพิ่มจาก 0.003s เป็น 0.005s หลังเพิ่ม tag arithmetic — จ่ายค่า representation)
-- ยังไม่มี: Float/Dict, extern, attr บนค่า (มี attr ได้เฉพาะโมดูล),
-  argv, `split`/`find`/`join`, `asm()` (ใช้ไม่ได้กับ encoder ของตัวเอง) —
-  เป็น compile error ชัดเจน
-- ใน `unsafe:` ค่ายังเป็น machine word ดิบ (literal ไม่ถูก tag) — ใช้ `as_ptr(x)` /
-  `as_int(x)` เป็นสะพานจากค่า dynamic
-- `hs.py xbuild prog.hs [-o prog]` / `hs.py xrun prog.hs`, เทส `tests/test_x64.py`
+  (these numbers are a shared Linux laptop, not bare metal - bare metal should be ~1-5us)
+  (fib rose from 0.003s to 0.005s after tagged arithmetic - the price of representation)
+- Not yet: Float/Dict, extern, attrs on values (only modules have attrs),
+  argv, `split`/`find`/`join`, `asm()` (does not work with our own encoder) -
+  all are clear compile errors
+- Inside `unsafe:` values stay raw machine words (literals are not tagged) - use `as_ptr(x)` /
+  `as_int(x)` as the bridge from dynamic values
+- `hs.py xbuild prog.hs [-o prog]` / `hs.py xrun prog.hs`, tests `tests/test_x64.py`
   (**25/25**: + slice, textops, err_slice_idx/obj, err_split/join;
-  `mod_*` = helper ไม่รันตรง)
+  `mod_*` = helper, not run directly)
 
-## 14. Kernel freestanding ด้วย x64 backend ล้วน (เฟส 6b — ไม่ใช้ gcc/as/ld)
+## 14. Freestanding kernel with the x64 backend alone (phase 6b - no gcc/as/ld)
 
-- `hs.py xkernel prog.hs -o k.elf`: encoder 32-bit (`Asm32`) + trampoline
-  (cli → cr3/cr4/EFER/cr0 → lgdt → far jmp) + page table prefill ใน Python
-  (identity 1GB) + payload 64-bit + ELF32 writer — ผลลัพธ์บูต QEMU ได้จริง
-- freestanding runtime: serial COM1, bump heap คงที่ 16MB ที่ 32MB, halt,
+- `hs.py xkernel prog.hs -o k.elf`: 32-bit encoder (`Asm32`) + trampoline
+  (cli -> cr3/cr4/EFER/cr0 -> lgdt -> far jmp) + page-table prefill in Python
+  (1GB identity) + 64-bit payload + ELF32 writer - the result boots in QEMU for real
+- freestanding runtime: serial COM1, a fixed 16MB bump heap at 32MB, halt,
   IDT 48 gates + PIC remap + PIT 100Hz + keyboard scancode map, `ticks/readkey/pmm_*`,
-  ค่าแบบ tagged ชุดเดียวกับ hosted (Str/Bool/Null/List ใช้ได้จริงบน bare metal)
-- `finally` รันทุกทางออกรวมถึง **error ที่เกิดใน `except` ของ try ตัวเดิม** — ทั้ง
-  native (`hs.py build`) และ x64 (`hs_try_push0` ซ้อนเป็น handler ชั้นที่สอง
-  แล้ว `hs_reraise`) ทำให้ตรงกับ interp; เทส regression อยู่ใน
+  the same tagged values as hosted (Str/Bool/Null/List really work on bare metal)
+- `finally` runs on every way out including an **error raised inside the `except` of the
+  same try** - both native (`hs.py build`) and x64 (`hs_try_push0` nested as a second
+  handler layer then `hs_reraise`) match interp; regression tests in
   `tests/t_finally.hs`, `tests/x64/try.hs`, `kernel/ktry.hs`
-- `kernel/xdemo.hs`, `kx2.hs` (timer/keyboard/PMM), `kxstr.hs` (Str บน serial),
-  `kxlist.hs` (List: literal/append/index/`==`/`for`/`str()` บน serial),
-  `kimp.hs`+`kmod_h.hs` (import + `mod.attr` บน bare metal),
-  `kxexc_pf/de.hs` (EXC 14 / EXC 0), `ktry.hs` (try/except/finally/raise บน serial)
-  `kxslice.hs` (slicing + split/find/join บน serial)
-  + `tests/test_xkernel.py`: **62/62 ผ่าน**
-- เหลือ: paging แบบไดนามิก (map/unmap page), frame allocator + `std.heap` ใน kernel,
+- `kernel/xdemo.hs`, `kx2.hs` (timer/keyboard/PMM), `kxstr.hs` (Str over serial),
+  `kxlist.hs` (List: literal/append/index/`==`/`for`/`str()` over serial),
+  `kimp.hs`+`kmod_h.hs` (import + `mod.attr` on bare metal),
+  `kxexc_pf/de.hs` (EXC 14 / EXC 0), `ktry.hs` (try/except/finally/raise over serial)
+  `kxslice.hs` (slicing + split/find/join over serial)
+  + `tests/test_xkernel.py`: **62/62 pass**
+- Remaining: dynamic paging (map/unmap pages), frame allocator + `std.heap` in the kernel,
   scheduler, filesystem, user mode
 
-## 15. เอกสาร + tooling (เฟส 7 — v0.5.0 → v0.6.0)
+## 15. Docs + tooling (phase 7 - v0.5.0 -> v0.6.0)
 
-เป้าหมายเฟสนี้: **ทุกคนและทุก AI เขียนภาษานี้เป็น** — เอกสารต้องไม่หลอก
-(ทุกตัวอย่างต้องรันจริงได้) และ editor ต้องช่วยได้โดยไม่ต้องลง dependency
+This phase's goal: **every person and every AI can write this language** - the docs must
+not lie (every example must really run) and the editor must help with no dependencies
 
-### 15.1 ชั้นข้อมูลเดียว (single source of truth)
+### 15.1 One data layer (single source of truth)
 
-- `scripts/lang_data.py` — keyword (28) + builtin (48) พร้อม signature,
-  คำอธิบาย, และชุด backend ที่รองรับ (`interp`/`native`/`xbuild`/`xkernel`)
-- `interp.BUILTINS` ยังคงเป็นความจริงฝั่ง runtime — `tests/test_docs.py`
-  ยืนยันว่า table ครอบทุกตัวและไม่มีตัวลอย (`pmm_total`/`pmm_free`
-  เป็นของ freestanding จึงอนุญาตเป็นตัวเดียว)
-- `scripts/gen_api.py` อ่านสองแหล่งนี้แล้วเขียน `docs/api.json`
-  (machine-readable) + `docs/builtins.md` (ตาราง markdown) — regenerate
-  ได้ด้วยคำสั่งเดียว และเทสจะ fail ถ้าไฟล์ไม่ตรงกับ generator
-- `scripts/gen_errors.py` ดึง `HSErr(...)` ทุกตัวจาก `interp.py`/`hs.py`/
-  `x64gen.py`/`fmt.py` ด้วย AST แล้วเขียน `docs/errors.md` (351 ข้อความ)
-  พร้อมตาราง "error ที่เจอบ่อย" — AI ใช้ grep หาสาเหตุได้ตรง ๆ
+- `scripts/lang_data.py` - keywords (28) + builtins (48) with signatures,
+  descriptions, and the set of supporting backends (`interp`/`native`/`xbuild`/`xkernel`)
+- `interp.BUILTINS` remains the runtime truth - `tests/test_docs.py`
+  confirms the table covers every one and has no strays (`pmm_total`/`pmm_free`
+  are freestanding, hence the only allowed extras)
+- `scripts/gen_api.py` reads those two sources and writes `docs/api.json`
+  (machine-readable) + `docs/builtins.md` (a markdown table) - regenerable
+  with one command, and the test fails if the files drift from the generator
+- `scripts/gen_errors.py` pulls every `HSErr(...)` from `interp.py`/`hs.py`/
+  `x64gen.py`/`fmt.py` via AST and writes `docs/errors.md` (351 messages)
+  with a "common errors" table - AI can grep causes directly
 
-### 15.2 เอกสาร
+### 15.2 Docs
 
-| ไฟล์ | สำหรับ |
+| File | For |
 |---|---|
-| `docs/index.md` | จุดเริ่ม + ตารางเลือกหัวข้อ |
-| `docs/tutorial.md` | เขียนโปรแกรมแรก 10 นาที (ทุกบล็อกถูกรันจริง) |
-| `examples/` | ตัวอย่าง 8 ไฟล์ครอบทั้งภาษา + `.expected` ทุกไฟล์ |
+| `docs/index.md` | starting point + topic table |
+| `docs/tutorial.md` | first program in 10 minutes (every block really runs) |
+| `examples/` | 8 example files covering the language + `.expected` for each |
 | `docs/stdlib.md` | `std.str` / `std.list` / `std.heap` |
-| `docs/x64-subset.md` | ขอบเขต + กับดักของ backend ที่ไม่ใช้ gcc |
-| `docs/kernel.md` | kernel freestanding |
-| `docs/cheatsheet.md` | ทั้งภาษาในหน้าเดียว |
-| `docs/errors.md` | ข้อความ error ทุกข้อความ (generate จาก source) |
-| `docs/lsp.md` | language server + การต่อ editor |
-| `docs/for-agents.md` | ทางลัด + เครื่องมือสำหรับ AI |
-| `AGENTS.md` | กฎกระชับ (เป็น reference หลักของ agent) |
-| `CONTRIBUTING.md` | กติกา/ขั้นตอนสำหรับคนที่จะเพิ่มภาษา |
-| `SPEC-v1.md` | เหตุผลออกแบบ (ไฟล์นี้) |
+| `docs/x64-subset.md` | scope + traps of the gcc-free backend |
+| `docs/kernel.md` | the freestanding kernel |
+| `docs/cheatsheet.md` | the whole language on one page |
+| `docs/errors.md` | every error message (generated from source) |
+| `docs/lsp.md` | language server + editor hookup |
+| `docs/for-agents.md` | shortcuts + tools for AI |
+| `AGENTS.md` | compact rules (the agent's main reference) |
+| `CONTRIBUTING.md` | rules/steps for extending the language |
+| `SPEC-v1.md` | design rationale (this file) |
 
-`tests/test_examples.py` (**17/17**) บังคับว่าทุก `examples/*.hs`
-ต้องรันได้จริง (interp) และตรงกับ native (gcc) — ตัวอย่างที่พังทำให้เทสแดง
-และค้นพบบั๊ก parity จริง 2 บั๊ก (ดู §15.2 ประวัติ)
+`tests/test_examples.py` (**17/17**) requires every `examples/*.hs`
+to really run (interp) and match native (gcc) - a broken example turns the
+test red, and it found 2 real parity bugs (see §15.2 history)
 
-`tests/test_docs.py` (**38/38**) รันทุกบล็อก ```hs ใน `docs/*.md` เทียบกับ
-บรรทัด `# =>` ตามลำดับ, เช็ค drift ของ `api.json`/`builtins.md`, เช็คว่า
-ลิงก์ทุกอันใน README/`docs/index.md`/`AGENTS.md` มีไฟล์จริง, และสั่งคำสั่ง
-ใน `docs/lsp.md` ว่ารันได้จริง — เอกสารจึงพังตามโค้ด
+`tests/test_docs.py` (**38/38**) runs every ```hs block in `docs/*.md` against
+the `# =>` lines in order, checks drift of `api.json`/`builtins.md`, checks that
+every link in README/`docs/index.md`/`AGENTS.md` points at a real file, and runs the
+commands in `docs/lsp.md` for real - so the docs break with the code
 
 ### 15.3 Language server (`lsp.py`)
 
-- stdio + JSON-RPC เขียนด้วย stdlib ล้วน (ไม่มี pip dependency) เข้าผ่าน
-  `python3 hs.py lsp` หรือ `python3 lsp.py`
-- ฟีเจอร์: `textDocument/publishDiagnostics` (parse + scope check ทุกครั้ง
-  ที่แก้ไฟล์/บันทึก), `hover` (builtin พร้อม backend, keyword, def/param/ตัวแปร,
-  `mod.attr` พร้อมชี้ไฟล์ที่นิยาม), `completion` (keyword + builtin + ชื่อในไฟล์
-  และเฉพาะชื่อระดับบนของโมดูลเมื่อพิมพ์ `mod.`), `definition`,
-  `references` (ข้ามไฟล์ในโฟลเดอร์เดียวกัน + `HSPATH`),
-  `documentHighlight`, `signatureHelp` (ผู้ใช้ + builtin, มี activeParameter),
-  `documentSymbol`, `workspace/symbol`, `formatting` (เรียก `fmt.py`)
-- ตำแหน่งใช้ UTF-16 code unit ตามสเปก LSP (ไทย/อีโมจิไม่เพี้ยน)
-- `scripts/lsp_client.py` เป็น client แบบ one-shot เพื่อให้ agent เรียกใช้
-  ได้โดยไม่ต้องค้าง server (`--diag/--hover/--def/--complete/--symbols/--format`)
-- `tests/test_lsp.py` (**25/25**) ยิง protocol จริงผ่าน pipe
+- stdio + JSON-RPC written in pure stdlib (no pip dependency), entered via
+  `python3 hs.py lsp` or `python3 lsp.py`
+- Features: `textDocument/publishDiagnostics` (parse + scope check on every
+  edit/save), `hover` (builtins with backends, keywords, def/param/vars,
+  `mod.attr` pointing at the defining file), `completion` (keywords + builtins + in-file
+  names, and only a module's top-level names after `mod.`), `definition`,
+  `references` (cross-file within the same directory + `HSPATH`),
+  `documentHighlight`, `signatureHelp` (user + builtin, with activeParameter),
+  `documentSymbol`, `workspace/symbol`, `formatting` (calls `fmt.py`)
+- Positions use UTF-16 code units per the LSP spec (Thai/emoji do not shift)
+- `scripts/lsp_client.py` is a one-shot client so agents can call it without
+  keeping a server alive (`--diag/--hover/--def/--complete/--symbols/--format`)
+- `tests/test_lsp.py` (**25/25**) fires the real protocol through a pipe
 
-### 15.4 editor
+### 15.4 Editors
 
-`editors/vscode` (client.js ไม่ต้อง npm install), `editors/neovim`
-(syntax/vim + `lua/holyshit.lua`), `editors/helix`, `editors/zed` —
-ทุกตัวชี้ไปที่ `python3 <repo>/lsp.py` คำสั่งเดียวกัน
+`editors/vscode` (client.js, no npm install), `editors/neovim`
+(syntax/vim + `lua/holyshit.lua`), `editors/helix`, `editors/zed` -
+all point at the same `python3 <repo>/lsp.py` command
 
-### 15.5 formatter เป็น gate จริง
+### 15.5 The formatter as a real gate
 
-`hs fmt --check` เทียบเฉพาะ "โครงสร้าง" (ไม่นับคอมเมนต์และบรรทัดว่าง เพราะ
-printer พิมพ์คอมเมนต์ไม่ได้ — lexer ทิ้งไปแล้ว) และเปลี่ยนการ parse flag
-ให้รับได้ทั้ง `fmt f.hs --check` กับ `fmt --check f.hs` ตอนนี้ทั้ง repo
-เป็น canonical แล้ว และ `tests/test_fmt.py` ตรวจซ้ำทั้ง repo (ยกเว้น
-`tests/fmt/*.hs` ที่ตั้งใจให้ไม่ canonical) — เทย์ก่อนแก้โค้ดแล้วเทสแดงถ้า
-เพี้ยน
+`hs fmt --check` compares only "structure" (ignoring comments and blank lines,
+because the printer cannot print comments - the lexer already dropped them) and the flag
+parsing now accepts both `fmt f.hs --check` and `fmt --check f.hs`. The whole repo is
+canonical now, and `tests/test_fmt.py` re-checks the whole repo (except
+`tests/fmt/*.hs` which are intentionally non-canonical) - format before editing
+and the test goes red if anything drifts
 
-### 15.6 v0.6.0 — ขยาย LSP + เอกสารที่ generate ได้
+### 15.6 v0.6.0 - wider LSP + generatable docs
 
-- `resolve_parts()` ใน `lsp.py` เป็นตัวแก้ทางเดียวของชื่อแบบ dotted
-  (hover/definition/completion/references/highlight/signature ใช้ร่วมกัน)
-- เพิ่ม `references` (ข้ามไฟล์), `documentHighlight`, `signatureHelp`,
-  `workspace/symbol`, completion หลัง `mod.`, hover บน `mod.attr` ที่ชี้ไฟล์
-- บั๊ก parity 2 ตัวที่ตัวอย่างใหม่เผย: `finally` ถูกข้ามเมื่อ `except` handler
-  raise — แก้ทั้ง native (`hs.py`) และ x64/kernel (`x64gen.py`)
-- `docs/errors.md` generate จาก AST ของ source (351 ข้อความ)
-- `tests/test_examples.py` บังคับให้ตัวอย่างทุกไฟล์รันได้จริง
-- `hs fmt --check` ใช้งานได้จริง (เทียบโครงสร้าง ไม่นับคอมเมนต์) และทั้ง repo
-  ต้อง canonical
+- `resolve_parts()` in `lsp.py` is the single resolver for dotted names
+  (hover/definition/completion/references/highlight/signature all share it)
+- Added `references` (cross-file), `documentHighlight`, `signatureHelp`,
+  `workspace/symbol`, completion after `mod.`, hover on `mod.attr` pointing at the file
+- 2 parity bugs the new examples exposed: `finally` was skipped when the `except` handler
+  raised - fixed in both native (`hs.py`) and x64/kernel (`x64gen.py`)
+- `docs/errors.md` generated from source AST (351 messages)
+- `tests/test_examples.py` forces every example file to really run
+- `hs fmt --check` works for real (structural compare, comments ignored) and the whole
+  repo must be canonical
 
-### 15.7 สถานะเทสหลังเฟส 7
+### 15.7 Test status after phase 7
 
 `test.py` 38 · `test_native.py` 39 · `test_fmt.py` 4 · `test_x64.py` 28 ·
 `test_xkernel.py` 99 · `test_examples.py` 17 · `test_lsp.py` 25 ·
-`test_docs.py` 38 (รันครบทุกชุด: `python3 tests/run_all.py`)
+`test_docs.py` 38 (run everything: `python3 tests/run_all.py`)
 
-### 15.8 เตรียม OS: `load64`/`store64` (v0.6.1)
+### 15.8 OS prep: `load64`/`store64` (v0.6.1)
 
-ฐานของงาน OS คืออ่าน/เขียน page-table entry ขนาด 64-bit จาก `.hs` ได้ — ก่อนนี้
-`unsafe:` มีแค่ `load8/load32/store8/store32` ซึ่งตัดครึ่ง 64-bit ทิ้ง
+The base of OS work is reading/writing 64-bit page-table entries from `.hs` - until
+then `unsafe:` had only `load8/load32/store8/store32`, which cut 64-bit values in half
 
-- `load64(p)` / `store64(p, v)` ใน `interp.py` (ผ่าน `us_load/us_store` ที่เป็น
-  size-generic อยู่แล้ว), `native/rt.c` (`hs_load64/hs_store64`) และ
-  `x64gen.py` (`mov rax,[rax]` / `mov [rax],rcx` ไม่ผ่าน tag) — ทั้ง 3 backend
-  ให้ผลเหมือนกัน เทส `tests/t_load64.hs` + `tests/x64/load64.hs`
-- `hs fmt` เก็บการเขียนเลขฐานสิบหกไว้ (`0x83` ไม่กลายเป็น `131`) เพราะ flag ของ
-  page table ต้องอ่านออก — parser เก็บ `raw` ของ literal, printer ใช้ตัวนั้น
-- เทส: interp 36 · native 37 · x64 26 (เพิ่มไฟล์ใหม่ทั้งคู่)
+- `load64(p)` / `store64(p, v)` in `interp.py` (via the already size-generic
+  `us_load/us_store`), `native/rt.c` (`hs_load64/hs_store64`) and
+  `x64gen.py` (`mov rax,[rax]` / `mov [rax],rcx` with no tag) - all 3 backends
+  agree; tests `tests/t_load64.hs` + `tests/x64/load64.hs`
+- `hs fmt` preserves hex literals (`0x83` does not become `131`) because page-table
+  flags must stay readable - the parser keeps the literal's `raw`, the printer uses it
+- Tests: interp 36 · native 37 · x64 26 (both files newly added)
 
 ### 15.9 bitwise operators (v0.6.1)
 
-OS ต้องบิดขวดบิต (bitmap, page flags) ภาษาเดิมทำไม่ได้เลย รอบนี้เพิ่ม
-`& | ^ << >>` กับ unary `~`
+An OS must twiddle bits (bitmaps, page flags); the language could not at all. This added
+`& | ^ << >>` and unary `~`
 
-- ทั้ง 3 backend + error เดียวกัน: `operator 'OP' needs Ints, got A and B`,
-  `shift count N out of range (0..63)`, `cannot bitwise-not T` (Bool ไม่ใช่ Int)
-- ความสำคัญ: `or` < `and` < เทียบ < `+ -` < `* / %` < bitwise — bitwise ผูก
-  แน่นกว่า `+ -` (ตรงกับ C) และ parser มีชั้น `parse_bits` แยก
-- x64: `shl/sar` ตาม cl, ตัดผลให้เหลือ 62-bit signed (bit 61 เป็นบิตเครื่องหมาย)
-  จึงมี divergence ที่บันทึกไว้: `1 << 61` เป็นลบบน x64 แต่เป็นบวกบน interp
-- `hs fmt` เพิ่ม precedence + เว้นวรรคให้ `& | ^ << >>` และเก็บวงเล็บเมื่อ
-  จำเป็น (`a & (b | c)`) — กฎเดิมคือ flatten ได้เฉพาะ `+`/`*` ฝั่งขวา
-- เทส: `tests/t_bits.hs` (interp+native), `tests/x64/bits.hs` (x64)
-### 15.10 memory management จริงบน bare metal (v0.6.2)
+- All 3 backends + one shared error set: `operator 'OP' needs Ints, got A and B`,
+  `shift count N out of range (0..63)`, `cannot bitwise-not T` (Bool is not an Int)
 
-paging แบบไดนามิก + frame allocator จริง เขียนเป็น `.hs` ล้วน บูตจริงบน QEMU
+- Precedence: `or` < `and` < comparison < `+ -` < `* / %` < bitwise - bitwise binds
+  tighter than `+ -` (matching C) and the parser has a separate `parse_bits` layer
+- x64: `shl/sar` by cl, results cut to 62-bit signed (bit 61 is the sign bit)
+  so there is a recorded divergence: `1 << 61` is negative on x64 but positive on interp
+- `hs fmt` learned the precedence and spacing for `& | ^ << >>` and keeps parens when
+  needed (`a & (b | c)`) - the old rule flattened only right-side `+`/`*`
+- Tests: `tests/t_bits.hs` (interp+native), `tests/x64/bits.hs` (x64)
+### 15.10 Real memory management on bare metal (v0.6.2)
 
-- `kernel/kmb.hs` — อ่าน memory map ของ bootloader รองรับ 2 ABI (ตรวจโดย
-  validate): spec multiboot1 กับ struct 88-byte ของ QEMU เอง (layout ไม่ตรง
-  spec — QEMU ใช้ `mb_buf_phys` ของตัวเอง, entry 20-byte ที่ `0x9000`)
-- `kernel/kpage.hs` — page table 4 ระดับ (`map`/`unmap`/`translate`,
-  `map_phys`/`map_user`): สร้างตารางที่ขาด, แยก huge page (2MB/1GB) เป็น
-  512 children, flush TLB (`invlpg` + `tlb_flush` ทั้ง TLB หลัง split)
-- `kernel/kpmm.hs` — bitmap frame allocator บน region usable ที่ใหญ่สุด
-  (ผ่าน `std.bitmap`), reserve image/heap/bitmap, `alloc`/`free`/`free_run`
-- primitive ใหม่ใน `x64gen.py`: `mb_magic()`, `image_end()`, `tlb_flush()`
-  (บวกของเดิม `mb_info`/`cr2`/`cr3`/`set_cr3`/`invlpg`); `mov_ri64` รับเต็ม
-  64-bit (kernel ต้องการทุกบิต เช่น `0xDEADBEEF...`)
-- บั๊กที่เจอระหว่างทาง (แก้หมด): `0x83` บน PTE 4K เปิดบิต PS (huge) ต้องใช้
-  `0x03`; `pte_addr` ใช้ parent index อ่านตารางลูกหลัง split; `free_run`
-  เรียก `reserve` แทนที่จะ release; `unmap` คืน `false` ใน `unsafe:` กลายเป็น
-  Int 0 (ต้อง return ที่ safe level)
-- เทส: `kprim` (primitives), `kpaging` (30 asserts: map/translate/split/unmap),
-  `kpmmtest` (pool เต็ม + คืน pool) — xkernel 62 -> 77 เคส
+Dynamic paging + a real frame allocator, written in pure `.hs`, really booting on QEMU
+
+- `kernel/kmb.hs` - reads the bootloader memory map, supporting 2 ABIs (detected by
+  validation): the multiboot1 spec and QEMU's own 88-byte struct (layout does not match
+  the spec - QEMU uses its own `mb_buf_phys`, 20-byte entries at `0x9000`)
+- `kernel/kpage.hs` - 4-level page tables (`map`/`unmap`/`translate`,
+  `map_phys`/`map_user`): create missing tables, split huge pages (2MB/1GB) into
+  512 children, flush the TLB (`invlpg` + a whole-TLB `tlb_flush` after a split)
+- `kernel/kpmm.hs` - bitmap frame allocator over the largest usable region
+  (via `std.bitmap`), reserving image/heap/bitmap, `alloc`/`free`/`free_run`
+- New primitives in `x64gen.py`: `mb_magic()`, `image_end()`, `tlb_flush()`
+  (plus the existing `mb_info`/`cr2`/`cr3`/`set_cr3`/`invlpg`); `mov_ri64` now takes a full
+  64-bit immediate (the kernel needs every bit, e.g. `0xDEADBEEF...`)
+- Bugs found on the way (all fixed): `0x83` on a 4K PTE enables the PS (huge) bit, must use
+  `0x03`; `pte_addr` used the parent index to read the child table after a split; `free_run`
+  called `reserve` instead of release; `unmap` returning `false` inside `unsafe:` became
+  Int 0 (must return at the safe level)
+- Tests: `kprim` (primitives), `kpaging` (30 asserts: map/translate/split/unmap),
+  `kpmmtest` (fill the pool + return it) - xkernel 62 -> 77 cases
 ### 15.11 kmalloc + address spaces (v0.6.3)
 
-m2 ของงาน OS: heap ที่ขยายได้จริง + PML4 ใหม่ต่อ space — `.hs` ล้วน บูตจริง
+OS milestone m2: a truly growable heap + a new PML4 per space - pure `.hs`, really booting
 
-- `std/heap.hs` เพิ่ม `heap_init_at(addr, nbytes)` (ของเดิม `heap_init` ไว้
-  เหมือนเดิม): kernel map เฟรมก่อนแล้วค่อยเริ่ม free list บนนั้น
-- `kernel/kheap.hs` — `init(npages)` เอาเฟรมต่อกันจาก PMM, `map_range` ไว้ที่
-  `0x60000000`, แล้ว `malloc`/`free` ธรรมดา (reuse กลางลิสต์, รวมบล็อกกลับ,
-  ขอเกินคืน 0 ไม่พัง)
-- `kernel/kaddr.hs` — `new()` ก็อปทุก entry ที่ present ของ PML4 ปัจจุบัน
-  (kernel อยู่ slot 0 ทั้งหมด), `switch()` โหลด CR3 (flush TLB ในตัว);
-  user page ต้อง `>= 0x8000000000` (slot 1+) จึง isolated จาก space เดิม
-- บั๊ก x64 ที่เจอ: global ที่ถูก assign ดิบใน `unsafe:` ของฟังก์ชันหนึ่ง แต่ถูก
-  อ่านในอีกฟังก์ชัน โดน unbox ผิด (`raw_names` อยู่แค่ scope ละฟังก์ชัน) —
-  ตอนนี้สะสมชื่อ raw ระดับโมดูลด้วย; อาการคือ `x_tname` เดินเข้าหน่วยความจำ
-  ขยะจน `x_malloc` หมด ("out of memory" ปลอม)
-- เทส: `kheaptest` (malloc/free/reuse/patterns), `kaddrtest` (switch แล้ว
-  serial ยังออก, map ใน space ใหม่, เก่าไม่เห็น, กลับมาแล้วยังอยู่) —
-  xkernel 77 -> 87 เคส
-### 15.12 cooperative tasks ใน ring 0 (v0.6.4)
+- `std/heap.hs` adds `heap_init_at(addr, nbytes)` (the old `heap_init` stays as is):
+  the kernel maps frames first, then starts the free list on them
+- `kernel/kheap.hs` - `init(npages)` takes contiguous frames from the PMM, `map_range`s them at
+  `0x60000000`, then ordinary `malloc`/`free` (reuse from the list, coalesce on free,
+  over-request returns 0 without crashing)
+- `kernel/kaddr.hs` - `new()` copies every present entry of the current PML4
+  (the kernel lives entirely in slot 0), `switch()` loads CR3 (flushing the TLB);
+  user pages must be `>= 0x8000000000` (slot 1+) to be isolated from the old space
+- x64 bug found: a global assigned raw inside one function's `unsafe:` but read in
+  another function got unboxed wrongly (`raw_names` lived only per-function scope) -
+  raw names now accumulate module-wide; the symptom was `x_tname` walking into garbage
+  memory until `x_malloc` ran out (a fake "out of memory")
+- Tests: `kheaptest` (malloc/free/reuse/patterns), `kaddrtest` (after a switch serial
+  still works, mapping in the new space is invisible to the old, still there when back) -
+  xkernel 77 -> 87 cases
+### 15.12 Cooperative tasks in ring 0 (v0.6.4)
 
-scheduler แบบ yield (ยังไม่ preemptive): policy `.hs`, กลไก encoder
+A yield-based scheduler (not preemptive yet): policy in `.hs`, mechanism in the encoder
 
-- `kernel/ktask.hs` — `spawn(func)`/`run()`/`yield()`/`exit()` บน queue
-  round-robin (ลิสต์คู่ขนาน ctx+state); entry คือ Func `f()` ธรรมดา
-  (closure ได้ — caps ไปกับ r15); ต้องจบด้วย `exit()` มิฉะนั้น corpse ถูก
-  schedule ซ้ำ (documented, ไม่ guard)
-- กลไกใน `x64gen.py`: `ctx_swap` (save/load callee-saved + rsp + rip แล้ว
-  jmp ไป rip ใหม่), `task_run` (จำ sched ลง slot ให้ task ที่ return),
-  `task_init` (zero regs, r15 = func+16, rip = func code, วาง `task_exit`
-  เป็น return address), stub `task_exit` (สลับกลับด้วย sched ที่จำไว้)
-- บั๊กใหญ่ที่เจอ: `image_end` ไม่รวม main stack (16KB) — PMM แจกเฟรมทับ
-  stack ทำให้ locals/return address พัง อาการโผล่ไกลเป็น wild jump
-  (`EXC 6`), error ผี (`index must be Int` ทั้งที่ค่าถูก), ขึ้นกับ layout —
-  ตามด้วย disassembly เทียบกับ Python อยู่นานก่อนเจอ; EXC report ตอนนี้
-  พิมพ์ fault RIP + CR2 แล้วเลยไม่ต้องเดา
-- เทส: `ktasktest` (3 task สลับกันใช้ counter ร่วม, exit ครบ, กลับ main) —
-  xkernel 87 -> 94 เคส
-### 15.13 preemptive scheduler (v0.6.5)
+- `kernel/ktask.hs` - `spawn(func)`/`run()`/`yield()`/`exit()` over a
+  round-robin queue (parallel ctx+state lists); an entry is a plain Func `f()`
+  (closures work - caps ride in r15); it must end with `exit()` or the corpse gets
+  scheduled again (documented, not guarded)
+- Mechanism in `x64gen.py`: `ctx_swap` (save/load callee-saved + rsp + rip then
+  jmp to the new rip), `task_run` (records the scheduler in a slot for returning tasks),
+  `task_init` (zero regs, r15 = func+16, rip = func code, plant `task_exit`
+  as the return address), a `task_exit` stub (switches back via the recorded scheduler)
+- Big bug found: `image_end` did not include the main stack (16KB) - the PMM handed out
+  frames over the stack, breaking locals/return addresses; symptoms appeared far away as
+  wild jumps (`EXC 6`), ghost errors (`index must be Int` on correct values), layout
+  dependent; chased with disassembly against Python for a long time; the EXC report now
+  prints fault RIP + CR2 so no more guessing
+- Tests: `ktasktest` (3 tasks sharing a counter, all exit, back to main) -
+  xkernel 87 -> 94 cases
+### 15.13 Preemptive scheduler (v0.6.5)
 
-timer IRQ0 พา tasks สลับกันเอง: stub + tick handler `.hs` + switch ใน stub
+Timer IRQ0 switches tasks by itself: stub + a `.hs` tick handler + switching in the stub
 
-- `kernel/ktask.hs` — `tick()` (อ่านอย่างเดียว ไม่ print/alloc) ครบ quantum
-  คืน block เป้าหมาย, `preempt_on/off()`, `npreempted(i)` นับการถูกสลับออก;
-  `spawn`/`exit` ครอบ mutation ด้วย `irq_off/on`
-- กลไกใน `x64gen.py`: stub เซฟเต็ม 15 regs + rsp + rip (ห้ามแตะ rflags),
-  เรียก handler บน stack เดิม (bounded, nest-safe), คืนค่า Null = restore +
-  iret, คืนค่า block = บันทึก + full-load + กระโดด (rip จับคู่ rsp เสมอ:
+- `kernel/ktask.hs` - `tick()` (read-only, no print/alloc) returns the target block when
+  the quantum ends, `preempt_on/off()`, `npreempted(i)` counts preemptions;
+  `spawn`/`exit` bracket mutation with `irq_off/on`
+- Mechanism in `x64gen.py`: the stub saves all 15 regs + rsp + rip (never touching rflags),
+  calls the handler on the same stack (bounded, nest-safe), Null return = restore +
+  iret, a block return = save + full-load + jump (rip always paired with rsp:
   fresh -> entry, preempted -> tick_back + iret, suspended -> resume + ret);
-  `irq_off/on`, `sched_on_tick(f)`/`sched_tick_clear()`, depth counter กัน
-  nested tick (skip ไม่แตะ slot)
-- บั๊กใหญ่ที่เจอ: IDT ใช้ interrupt gate (0x8E) CPU จึง clear IF ตอนเข้า
-  stub แต่ switch path แบบ jmp ไม่เคย restore — task แรกที่ถูก preempt
-  เลยวิ่งแบบหูหนวก (IF=0) จน `exit()` มา sti ให้; อาการคือ spans ยุบเป็น tick
-  เดียวทั้งที่ count ครบ; ตามด้วย IF-sampling + PIC/APIC/monitor จนเจอ;
-  เติม `sti` ก่อนกระโดดแล้วหาย
-- บั๊กที่สอง: `ctx_swap_inner` เก็บแค่ callee-saved — task ที่ถูกปลุกด้วย
-  cooperative load ได้ caller regs เก่ามั่ว (count หายแบบเงียบ); ตอนนี้
-  full save/load ทั้ง inner และ stub (ใช้ push_m + ret เพราะไม่มี scratch
-  reg ว่าง)
-- เทส: `kpreempt` (hog ไม่ yield แต่รอด้วย ticks เองจนโดนสลับแน่ๆ + นับ
-  ตรง + โดนสลับทุกตัว) — xkernel 94 -> 99 เคส
+  `irq_off/on`, `sched_on_tick(f)`/`sched_tick_clear()`, a depth counter against
+  nested ticks (skipped, slot untouched)
+- Big bug found: the IDT uses interrupt gates (0x8E), so the CPU clears IF on entering
+  the stub, but the jmp-style switch path never restored it - the first preempted task
+  ran deaf (IF=0) until `exit()` did sti for it; the symptom was spans collapsing into a
+  single tick despite full counts; chased with IF-sampling + PIC/APIC/monitor;
+  adding `sti` before the jump fixed it
+- Second bug: `ctx_swap_inner` saved only callee-saved - a task woken by a cooperative
+  load got stale caller regs (counts silently vanished); now full save/load in both the
+  inner path and the stub (using push_m + ret because no scratch register is free)
+- Tests: `kpreempt` (a hog that never yields but waits on ticks until certainly switched +
+  exact counts + everyone gets switched) - xkernel 94 -> 99 cases
 ### 15.14 filesystem: ramdisk + VFS (v0.6.6)
 
-ระบบไฟล์แรกของ OS — ทั้งหมดเป็น `.hs` ล้วน ไม่มี block driver
+The OS's first filesystem - all pure `.hs`, no block driver
 
-- builtin ใหม่ `read_mem(ptr, n)` → Str ของไบต์ดิบ (byte-preserving) บนทุก
-  backend; ของเดิมอ่าน memory ได้แค่ทีละไบต์/word ใน `unsafe:` ซึ่งเอาไป
-  ต่อ string ทั่วไปไม่ได้ — kernel ต้องอ่าน struct ของ bootloader เป็นชิ้น
-  (ต้องมี Str เพราะ `path` ใน KRFS เป็น bytes ไม่ใช่ตัวเลข)
-- `kernel/kvfs.hs` — inode เป็นลิสต์ขนาน + bytes เป็น Str: `mkdir`/`mkdirs`
-  (แบ่งชั้น), `create`/`write`(แทนทั้งไฟล์)/`read`, `ls`, `stat` →
-  `[kind, size]|null`, `is_file`/`is_dir`, `unlink` (dir ต้องว่าง; inode ที่ยัง
-  เปิดอยู่กลายเป็น dead → fd stale), fd layer `fopen`/`fread`/`fwrite`/`fseek`/
-  `ftell`/`fclose`. ไม่มี cwd — resolve จาก root เสมอ, `.`/`..` ได้
-  - ชื่อชั้น fd ขึ้นต้นด้วย `f` (`fopen` ไม่ใช่ `open`) เพราะชื่อ `open/read/
-    write/close/mkdir/ls` คือ builtin ของภาษา: ต้องไม่ให้ `.hs` ไปชน
-- `kernel/kramdisk.hs` + `scripts/mkramdisk.py` — อ่าน multiboot module
-  (`kmb.mod_start/mod_end`) เป็น KRFS image แล้วแตกลง `kvfs`: ทุก field
-  pad ขึ้น 4 ไบต์เพื่ออ่านด้วย `load32` อย่างเดียว (ไม่ต้องเชื่อ alignment),
-  path เรียงตามความลึก → สร้างทั้ง tree ใน pass เดียว
-- เทส: `tests/t_vfs.hs` (66 assertion บน interp + native) และ
-  `tests/x64/vfs.hs` (x64 ต้องตรงกันเป๊ะ), `kernel/kfstest.hs` (บูตจริงบน QEMU
-  พร้อม `-initrd`: โหลด 4 entry แล้วอ่าน/เขียน/ลบ)
-### 15.15 บั๊กที่เจอระหว่างทำ filesystem (v0.6.6)
+- New builtin `read_mem(ptr, n)` -> a Str of raw bytes (byte-preserving) on every
+  backend; before, memory could only be read one byte/word at a time in `unsafe:`, which
+  cannot be joined into general strings - the kernel must read bootloader structs in
+  chunks (needs Strs because a KRFS `path` is bytes, not numbers)
+- `kernel/kvfs.hs` - inodes as parallel lists + bytes as Strs: `mkdir`/`mkdirs`
+  (split levels), `create`/`write`(replace whole file)/`read`, `ls`, `stat` ->
+  `[kind, size]|null`, `is_file`/`is_dir`, `unlink` (dirs must be empty; an inode still
+  open becomes dead -> stale fds), an fd layer `fopen`/`fread`/`fwrite`/`fseek`/
+  `ftell`/`fclose`. No cwd - always resolves from root, `.`/`..` work
+  - fd-layer names start with `f` (`fopen` not `open`) because `open/read/
+    write/close/mkdir/ls` are language builtins: `.hs` must not clash with them
+- `kernel/kramdisk.hs` + `scripts/mkramdisk.py` - read the multiboot module
+  (`kmb.mod_start/mod_end`) as a KRFS image and unpack it into `kvfs`: every field
+  pads up to 4 bytes so `load32` alone can read it (no alignment assumptions),
+  paths ordered by depth -> the whole tree built in one pass
+- Tests: `tests/t_vfs.hs` (66 assertions on interp + native) and
+  `tests/x64/vfs.hs` (x64 must match exactly), `kernel/kfstest.hs` (real QEMU boot
+  with `-initrd`: loads 4 entries then reads/writes/deletes)
+### 15.15 Bugs found while building the filesystem (v0.6.6)
 
-- ชื่อฟังก์ชันที่ชนกับ builtin: `kvfs.read(fd, n)` ถูก parse เป็นการเรียก
-  builtin `read` (arity ผิด → error) เพราะ x64 เดิม emit builtin ก่อนเสมอ;
-  แก้โดยให้ `def` ของผู้ใช้ shadow builtin (interp/native เป็นแบบนี้อยู่แล้ว)
-  แต่ชื่อที่อยู่ในรายการ `XBUILTINS` ยังเป็น builtin เสมอ เพราะ capture
-  analysis ข้ามชื่อเหล่านั้น (ถ้าไม่งั้น capture slot ไม่ถูกสร้าง)
-- `image_end()` ต้องรวม **page tables ตอนบูต** ด้วย ไม่ใช่แค่ end ของไฟล์:
-  ตารางอยู่หลัง `.data` ที่ page-aligned ถ้า `image_end` เล็กเกินไป PMM
-  จะแจกเฟรมที่ยังใช้เป็นตารางอยู่ แล้ว heap ที่เพิ่ง init เขียนทับ → PDPT[0]
-  เป็น 0 → `#PF` (เขียนใน bump heap ที่ 0x2008ca0) แล้ว handler เอง fetch
-  fault ที่ 0x101dc1 → double/triple fault → reboot วนจน QEMU ตัดเวลา
-  (อาการคล้าย Heisenbug: ย้ายโค้ดนิดเดียวก็หาย เพราะ layout เปลี่ยนว่าอะไร
-  ทับกันบังเอิญ) — แก้แล้วเป็น `max(stack_top, end of tables)` + ย้าย main
-  stack เข้า `.data` เพื่อไม่ให้ชนข้อมูลของ bootloader ที่ QEMU วางไว้
-  หลัง image และกู้ `busy()` + assertion ใน `kpmmtest` เป็นกันดัก
-- หน้าต่าง bump ของ runtime (`alloc()` → Str/List/page table/bitmap ที่
-  `0x2000000` ขนาด 16MB) อยู่ใน pool ของ PMM ด้วย ต้อง reserve ออกไป
-  ไม่งั้น kmalloc กับ bump allocator เขียนทับกันเงียบ ๆ (คนละคนคิดว่าจอง
-  frame เดียวกันได้)
+- A function name clashing with a builtin: `kvfs.read(fd, n)` was parsed as a call to
+  the `read` builtin (wrong arity -> error) because x64 used to emit builtins first;
+  fixed by letting user `def`s shadow builtins (interp/native already did),
+  but names on the `XBUILTINS` list stay builtins forever, because capture
+  analysis skips those names (otherwise the capture slot is never created)
+- `image_end()` must include the **boot page tables**, not just the file end:
+  the tables sit after the page-aligned `.data`; if `image_end` is too small the PMM
+  hands out frames still in use as tables, and the freshly initialized heap writes over
+  them -> PDPT[0] becomes 0 -> `#PF` (writing in the bump heap at 0x2008ca0), then the
+  handler itself fetch-faults at 0x101dc1 -> double/triple fault -> reboot loop until
+  QEMU times out (a Heisenbug-like symptom: moving code slightly made it vanish, because
+  the layout changed what happened to overlap) - fixed as `max(stack_top, end of tables)`
+  + moving the main stack into `.data` so it never collides with bootloader data QEMU
+  places after the image, plus reviving `busy()` + assertions in `kpmmtest` as a guard
+- The runtime's bump window (`alloc()` -> Str/List/page tables/bitmap at
+  `0x2000000`, 16MB) sits inside the PMM's pool too and must be reserved out
+
+  Otherwise kmalloc and the bump allocator silently overwrite each other
+  (each believes it owns the same frame)
 ### 15.16 user mode + syscall (v0.6.7)
 
-ring 3 จริง: kernel โหลด static ELF (`xbuild` ธรรมดา, ส่งเป็น multiboot
-module) ขึ้นไปรัน แล้วรับ syscall ด้วย handler `.hs`, เสร็จกลับมา kernel —
-ทั้งหมด `.hs` ล้วน (กลไก encoder) ไม่มี C
+Real ring 3: the kernel loads a static ELF (ordinary `xbuild`, passed as a multiboot
+module), runs it, and serves syscalls with a `.hs` handler, then returns to the kernel -
+all pure `.hs` (encoder mechanism), no C
 
-- `kernel/kuser.hs` — ELF loader: เดิน program header, `map` ทุก `PT_LOAD`
-  ที่ `vaddr + USER_BIAS` (PML4 slot 1+; ฝั่ง kernel เป็น supervisor-only),
-  เปิด writable ก่อนแล้ว `protect` text กลับเป็น read-only (W^X), stack 8
-  เพจ; `run()` = `enter_user(entry, frame)`
-- `kernel/ksyscall.hs` — `dispatch(nr, a1..a6)`: write (fd 1/2 → serial),
-  mmap (anonymous, kernel เลือก address), exit (จำ code + `user_stop()`);
-  exit code เป็น opaque (tagged อยู่แล้วใช้เลย, Null → 0)
-- stub ใน `x64gen.py`: park/tag/handler/untag เหมือนเดิม แต่ stack เป็น
-  syscall stack 16KB ของตัวเอง (ไม่ไว้ใจ user rsp) และขากลับเป็น `sysret`
-  (คืน rcx/r11/rsp จาก slot); `user_stop()` กลับทาง `user_cont_` บน stack
-  เดิม; `enter_user` ต่อด้วย `sti` (path นี้มาแบบ IF=0 แต่ kernel วิ่ง IF=1)
-- เทส: `kring3` (exit), `kring3ret` (sysret กลับแล้ว hlt fault ด้วย USER
-  rip + CS=0x23), `kring3wr` (write ออก serial แล้ว exit),
-  `kusermode` (ELF จริงพิมพ์ครบ exit 0 กลับมา kernel) —
-  xkernel 105 -> 126 เคส; `tests/x64/asptr.hs` กันดัก `as_ptr`/`as_int`
-  ข้างล่าง — รวม 322 เคส ผ่านหมด
-### 15.17 บั๊กที่เจอระหว่างทำ user mode (v0.6.7)
+- `kernel/kuser.hs` - ELF loader: walks program headers, `map`s every `PT_LOAD`
+  at `vaddr + USER_BIAS` (PML4 slot 1+; the kernel side is supervisor-only),
+  maps writable first then `protect`s text back to read-only (W^X), an 8-page
+  stack; `run()` = `enter_user(entry, frame)`
+- `kernel/ksyscall.hs` - `dispatch(nr, a1..a6)`: write (fd 1/2 -> serial),
+  mmap (anonymous, kernel-chosen address), exit (records the code + `user_stop()`);
+  the exit code is opaque (already tagged, used as is, Null -> 0)
+- stub in `x64gen.py`: park/tag/handler/untag as before, but the stack is its
+  own 16KB syscall stack (user rsp is not trusted) and the way back is `sysret`
+  (restoring rcx/r11/rsp from slots); `user_stop()` returns through `user_cont_` on
+  the same stack; `enter_user` ends with `sti` (this path arrives with IF=0 but the
+  kernel runs IF=1)
+- Tests: `kring3` (exit), `kring3ret` (sysret back, then an hlt fault with USER
+  rip + CS=0x23), `kring3wr` (write to serial then exit),
+  `kusermode` (a real ELF prints fully, exit 0, back to the kernel) -
+  xkernel 105 -> 126 cases; `tests/x64/asptr.hs` guards the `as_ptr`/`as_int`
+  below - 322 cases total, all passing
+### 15.17 Bugs found while building user mode (v0.6.7)
 
-- `syscall` ไม่ใช่ interrupt: CPU เซฟแค่ rip→rcx กับ rflags→r11 ไม่ push
-  frame ไม่สลับ stack — stub เวอร์ชันแรกทำเหมือน IRQ (park ใต้ "frame"
-  40 ไบต์ที่ไม่มีจริง + กลับด้วย `iretq`) เลย pop ขยะ: ทำ park ทับ user
-  stack ตัวเอง, `iretq` อ่าน RIP/CS ขยะ (`EXC 13` บ้าง `#PF` บ้างตามขยะ);
-  ระหว่างดีบักเคยสงสัยว่า EXC reporter อ่าน RIP ผิด slot (นับ stack ได้
-  136 แทน 128) แต่ disassembly พิสูจน์ว่า 128 ถูกตั้งแต่แรก — บทเรียน:
-  verify ด้วย objdump ก่อนโทษ reporter, และอย่าอ่าน serial ตอน QEMU
-  โดน terminate (เห็นครึ่งเดียวแล้วตีความผิด);
-  สรุป: `syscall` เข้า (rcx/r11, ไม่แตะ stack), กลับด้วย `sysret`
-  (ไม่มี frame ให้ pop), IRQ/fault เท่านั้นที่ใช้ TSS + iretq
-- `as_ptr(x)`/`as_int(x)` กับตัวแปร unbox ซ้ำ: `sev()` แปลง dynamic slot
-  เป็น raw word แล้ว `as_*` เช็ก tag + shift อีกรอบ — pointer ที่ low bits
-  ไม่ใช่ 00 โดน reject/shift ผิด; แก้ให้ `is_raw_expr` คืน True กับ `var`
-  (อ่านครั้งเดียวพอ) + เทส `tests/x64/asptr.hs`
-- `pte_addr` สร้างตารางชั้นกลางแบบ supervisor เสมอ: user page ได้ leaf
-  เป็น user แต่ทางผ่านเป็น supervisor เลย fault ตั้งแต่ `iretq` แรก —
-  ต้องพา U/S bit ลงไปทั้ง path (ตารางเก่าอัปเกรดตอนเจอครั้งแรก)
-- GDT user descriptor ผิด: `| 3` ได้แค่ limit bits ไม่ได้ DPL — DPL ยัง 0
-  `iretq` ไป ring 3 เลย `#GP`; ต้อง access byte 0xF2/0xFA (DPL=3) จริง
-- `EFER` เขียน `or eax, 0x100` ได้แค่ LME (bit 8) ไม่ได้ SCE (bit 0) —
-  `syscall` เป็น `#UD` ทั้งที่ MSR "เขียนแล้ว"; ต้อง `0x101`
-- `IA32_LSTAR` คือ `0xC0000082` ไม่ใช่ `0xC0000080` (นั่น EFER — เขียนทับ
-  แล้ว paging พัง), `EDX` ต้องเคลียร์ก่อน `wrmsr` (MSR 64-bit)
-- `sysret` ไม่มี REX.W คือ compat-mode (CS = STAR base เป็น data selector
-  `0x13`, fetch แตกทันที); ต้อง `48 0F 07` จึงได้ CS=0x20/SS=0x18
-- ครึ่ง sysret ของ `STAR` ต้อง base `0x10` (ได้ CS=0x20/SS=0x18) ไม่ใช่
-  `0x18`; เพิ่ม `FMASK=0x200` (mask IF ตอนเข้า) กันอนาคตที่มี IF=1
-- โปรแกรมมือ (hand stub) เขียน `48 B8` (movabs **rax**) แทน `48 BE`
-  (movabs rsi) — ทับ syscall number ตัวเองด้วย address เลยได้ ENOSYS
-  เงียบ ๆ; กันดักคือ assert ไบต์ทุกตัวแบบ `kring3` (เคสนี้สอนให้ assert
-  ตั้งแต่ `mov eax,1` ตัวแรก ไม่ใช่แค่ส่วนหลัง)
-### 15.18 shell ใน ring 3 + syscall ไฟล์ (v0.6.8)
+- `syscall` is not an interrupt: the CPU saves only rip->rcx and rflags->r11, pushes
+  no frame, does not switch stacks - the first stub version behaved like an IRQ (parked
+  under a 40-byte "frame" that does not exist + returned with `iretq`) so it popped
+  garbage: parked over its own user stack, `iretq` read garbage RIP/CS (`EXC 13` or
+  `#PF` depending on the garbage); during debugging we suspected the EXC reporter read
+  the RIP from the wrong slot (counted 136 instead of 128) but disassembly proved 128
+  was right all along - lessons: verify with objdump before blaming the reporter, and
+  never read serial output while QEMU is being terminated (you see half and misread it);
+  in short: `syscall` enters (rcx/r11, stack untouched), returns via `sysret`
+  (no frame to pop); only IRQs/faults use the TSS + iretq
+- `as_ptr(x)`/`as_int(x)` on already-unboxed variables: `sev()` converts a dynamic slot
+  to a raw word, then `as_*` checked the tag + shifted again - pointers whose low bits
+  are not 00 got rejected/mis-shifted; fixed by making `is_raw_expr` return True for a
+  `var` (one read is enough) + test `tests/x64/asptr.hs`
+- `pte_addr` always created mid-level tables as supervisor: a user page got a user leaf
+  but a supervisor path, so it faulted at the first `iretq` - the U/S bit must ride down
+  the whole path (old tables upgraded on first encounter)
+- GDT user descriptors were wrong: `| 3` only set limit bits, not DPL - DPL stayed 0 and
+  `iretq` to ring 3 `#GP`ed; the access byte must really be 0xF2/0xFA (DPL=3)
+- `EFER` was written with `or eax, 0x100` which sets only LME (bit 8), not SCE (bit 0) -
+  `syscall` was `#UD` even though the MSR was "written"; it needs `0x101`
+- `IA32_LSTAR` is `0xC0000082` not `0xC0000080` (that is EFER - overwriting it breaks
+  paging), and `EDX` must be cleared before `wrmsr` (MSRs are 64-bit)
+- `sysret` without REX.W is compat-mode (CS = STAR base becomes a data selector
+  `0x13`, fetch dies instantly); `48 0F 07` is needed to get CS=0x20/SS=0x18
+- The sysret half of `STAR` must be base `0x10` (giving CS=0x20/SS=0x18), not
+  `0x18`; added `FMASK=0x200` (mask IF on entry) for a future with IF=1
+- The hand-written stub had `48 B8` (movabs **rax**) where `48 BE`
+  (movabs rsi) was meant - overwriting its own syscall number with an address, giving a
+  silent ENOSYS; the guard is asserting every byte like `kring3` does (this case teaches
+  asserting from the very first `mov eax,1`, not just the later parts)
+### 15.18 shell in ring 3 + file syscalls (v0.6.8)
 
-user ต่อ VFS ผ่าน syscall ตัวเลขเดียวกับ Linux — path เป็น `(ptr, len)`
-เพราะ Str ของ hs ไม่มี NUL:
+User code reaches the VFS through the same syscall numbers as Linux - paths are `(ptr, len)`
+because hs Strs have no NUL:
 
-| nr | syscall | ทำอะไร |
+| nr | syscall | what it does |
 | --- | --- | --- |
-| 0 | `read(fd, buf, len)` | fd 0 = keyboard (หนึ่งบรรทัด), อื่น ๆ = ไฟล์ |
-| 1 | `write(fd, buf, len)` | fd 1/2 = serial, fd 3+ = เขียนไฟล์ |
-| 2 | `open(path, len, flags)` | 0 = อ่าน, อื่น ๆ = เขียน → fd user = kvfs + 3 |
+| 0 | `read(fd, buf, len)` | fd 0 = keyboard (one line), others = file |
+| 1 | `write(fd, buf, len)` | fd 1/2 = serial, fd 3+ = file write |
+| 2 | `open(path, len, flags)` | 0 = read, anything else = write -> user fd = kvfs + 3 |
 | 3 | `close(fd)` | |
-| 59 | `exec(path, len)` | โหลด ELF จาก VFS ทับ image เดิม |
-| 78 | `ls` / 83 `mkdir` / 87 `unlink` | ผ่าน `kvfs` ตรง ๆ |
+| 59 | `exec(path, len)` | load an ELF from the VFS over the current image |
+| 78 | `ls` / 83 `mkdir` / 87 `unlink` | straight through `kvfs` |
 
-- `kernel/ksyscall.hs`: `copy_out(dst, s, n)` คัด Str ลง user memory,
-  `readline()` spin `readkey()` หลัง `irq_on()` (path syscall มาแบบ IF=0
-  คีย์บอร์ดไม่มาให้), backspace = byte 8 ที่สร้างครั้งเดียวจาก `alloc`
-  (escape ของ hs ไม่มี `\0..\8`)
-- `exec` ใช้ `exec_enter` (iretq ที่ไม่บันทึก continuation) แยกจาก `run()` —
-  ถ้าใช้ `run()` มันทับ continuation/stack ของ session เดิม
-- `scall(nr, a1..a6)` = builtin ใหม่ของ x64 hosted (ส่ง `syscall` ตรง ๆ,
-  คืนค่าเป็น Int) ให้ `kernel/uush.hs` = shell ใน ring 3 (`help echo cat ls
-  mkdir rm write run exit`) เขียนด้วย hs ล้วนเหมือนกัน
-- เทส: `kiotest` (เรียก syscall ไฟล์จาก ring 0 ตรง ๆ — deterministic ไม่ต้อง
-  พิมพ์คีย์), `kushtest` + shell session จริงสองรอบบน QEMU
-  (`caa\x08t /motd` แก้คำด้วย backspace, `write`+`rm`, `run /nope` แล้ว
-  `run /bin/hi`) + `tests/x64/scall.hs` — x64 31 -> 32 ชุด,
-  xkernel +145 assertion (รวม 274)
+- `kernel/ksyscall.hs`: `copy_out(dst, s, n)` copies a Str into user memory,
+  `readline()` spins on `readkey()` after `irq_on()` (the syscall path arrives with IF=0
+  so keyboard IRQs never arrive), backspace = byte 8 built once from `alloc`
+  (hs escapes have no `\0..\8`)
+- `exec` uses `exec_enter` (an iretq that does not save a continuation), separate from
+  `run()` - `run()` would overwrite the old session's continuation/stack
+- `scall(nr, a1..a6)` = a new builtin of x64 hosted (emits a raw `syscall`,
+  returns an Int) letting `kernel/uush.hs` = a ring-3 shell (`help echo cat ls
+  mkdir rm write run exit`) also be written in pure hs
+- Tests: `kiotest` (calls the file syscalls from ring 0 directly - deterministic, no
+  key typing), `kushtest` + two real shell sessions on QEMU
+  (`caa\x08t /motd` fixing a word with backspace, `write`+`rm`, `run /nope` then
+  `run /bin/hi`) + `tests/x64/scall.hs` - x64 31 -> 32 suites,
+  xkernel +145 assertions (274 total)
 
-### 15.19 บั๊กที่เจอระหว่างทำ shell (v0.6.8)
+### 15.19 Bugs found while building the shell (v0.6.8)
 
-- `copy_out(buf, s)` เรียก `len()` ของ Str แต่ arity ไม่ถูกตรวจ (ช่องว่าง
-  ใน x64 subset) → `n` ที่ไม่ได้ bind เป็น Func → `cannot compare Int and
-  Func` — ผ่าน `kiotest` จับได้ทันทีเพราะไม่ต้องเดา timing
-- resume กลับจาก ring 3 ต้องคืน **rbp** ของเฟรมที่ `enter_user` ถูกเรียก:
-  ตอนนั้น stub ทำงานบน syscall stack และ rbp เหลือเป็นของ handler (หรือของ
-  ring 3) ทำให้ epilogue `mov rsp,rbp; pop rbp; ret` พุ่งไปที่ไหนแล้ว
-  triple fault = reboot เงียบ ๆ (เห็นเป็น "บูตใหม่" ใน serial) — บันทึก
-  `user_saved_rbp_` ตอนเข้าและคืนค่าก่อน `jmp` ที่ continuation
-- `sendkey` ของ QEMU เงียบไปเองตอนพิมพ์เร็วเกิน (PS/2 overrun ทิ้ง key)
-  ทำให้ session ไม่ deterministic — ต้อง reply-check ทุกครั้ง ช้า 0.6s/ตัว
-  และอย่าเริ่มพิมพ์ก่อน shell ขึ้น (จอแรกเป็น 15s)
-### 15.20 ปิดช่องโหว่ syscall + หนี้ docs (v0.6.9)
+- `copy_out(buf, s)` called Str `len()` but the arity was never checked (a gap
+  in the x64 subset) -> the unbound `n` became a Func -> `cannot compare Int and
+  Func` - caught immediately by `kiotest` because no timing guesses are needed
+- Resuming from ring 3 must restore the **rbp** of the frame where `enter_user` was
+  called: back then the stub worked on the syscall stack and rbp was left as the
+  handler's (or ring 3's), so the epilogue `mov rsp,rbp; pop rbp; ret` flew off
+  and triple-faulted = a silent reboot (seen as "rebooting" on serial) - fixed by saving
+  `user_saved_rbp_` on entry and restoring it before jumping to the continuation
+- QEMU's `sendkey` silently drops keys when typed too fast (PS/2 overrun drops keys),
+  making sessions nondeterministic - every key must be reply-checked, 0.6s/key slow,
+  and typing must not start before the shell is up (the first screen is 15s)
+### 15.20 Closing syscall holes + docs debt (v0.6.9)
 
-- `user_range_ok(addr, n)` ใน `ksyscall`: pointer จาก ring 3 ต้อง `>=
-  USER_BIAS` ไม่งั้นคืน `-EFAULT` (14) โดยไม่แตะ memory — เดิม `read_mem`
-  /`copy_out` อ่าน/เขียน address ไหนก็ได้ (info leak + corrupt kernel จาก
-  ring 3); `kiotest` เลยต้อง poke path/buffer ลง user page จริงแทน
-- `copy_out`/`sys_read` fd 0 กัน `n <= 0` คืน 0 ก่อน (เดิม `n` ลบหลุดเป็น
-  return ติดลบ และ fd 0 จะเข้า `readline()` แล้วค้าง)
-- จดไว้เป็นข้อจำกัด: `write` fd 1/2 ผ่าน `print` จึงแถม `\n` เสมอ
-  (byte-exact ต้องมี builtin serial-write ตัวใหม่ — ยังไม่ทำ)
-- error message กลับเป็น literal: `enter/exec_enter wants ...` แยกสอง
-  บรรทัด, `unknown variable` ใช้ string concat (ไม่เพิ่ม template ใหม่) —
-  `docs/errors.md` กลับมามีชื่อจริงแทน `{name}/{ar['name']}`
-### 15.21 arity check ใน x64 (v0.6.10)
+- `user_range_ok(addr, n)` in `ksyscall`: a pointer from ring 3 must be `>=
+  USER_BIAS` or it gets `-EFAULT` (14) with no memory touched - before, `read_mem`
+  /`copy_out` would read/write any address (info leak + kernel corruption from
+  ring 3); `kiotest` therefore pokes the path/buffer into a real user page instead
+- `copy_out`/`sys_read` fd 0 guard `n <= 0` by returning 0 first (before, a negative
+  `n` leaked out as a negative return, and fd 0 would enter `readline()` and hang)
+- Recorded as a limitation: `write` on fd 1/2 goes through `print` so it always appends
+  `\n` (byte-exact needs a new serial-write builtin - not done yet)
+- Error messages went back to literals: `enter/exec_enter wants ...` split into two
+  lines, `unknown variable` uses string concat (no new template) -
+  `docs/errors.md` has real names again instead of `{name}/{ar['name']}`
+### 15.21 Arity check in x64 (v0.6.10)
 
-x64 ไม่เคยตรวจจำนวน arg: เรียกผิดแล้ว callee อ่านขยะจาก stack ได้ error
-มั่ว (`cannot add Int and Func`) — interp/native ดักได้ตั้งแต่แรก
-(`f wants 2 args, got 1`) ตาม native ที่เก็บ `name+arity` ใน Func object:
+x64 never checked argument counts: a wrong call let the callee read stack garbage and
+produce confused errors (`cannot add Int and Func`) - interp/native caught this from
+the start (`f wants 2 args, got 1`). Following native, which stores `name+arity` in the
+Func object:
 
-- Func เป็น `[kind][code][nparams][name][caps...]` (caps ขยับ +16 → +32
-  ทั้ง 4 จุด: call site, task_init, tick stub, syscall stub)
-- ทุก user call เทียบ `nparams` กับจำนวน arg จริง; ผิดทาง cold helper
-  `arity_fail` ประกอบ `"NAME wants N args, got M"` จาก struct (ไม่ใช่ชื่อ
-  静态) แล้ว `hs_raise_msg` — `f = g; f(1,2)` รายงาน `g` ตรง interp,
-  try จับได้
-- `task_init`/`sched_on_tick` ตรวจ 0 arg, `syscall_register` ตรวจ 7 arg
-  ตั้งแต่ตอน register (stub ร้อนไม่ต้องตรวจซ้ำ)
-- เทส: `tests/arity` (interp+native), `tests/x64/arity`,
-  `tests/x64/arity_reassign` — kernel ทั้งหมดบูตผ่านเหมือนเดิม
+- A Func is `[kind][code][nparams][name][caps...]` (caps move +16 -> +32
+  in all 4 places: call sites, task_init, tick stub, syscall stub)
+
+- Every user call compares `nparams` against the actual arg count; on mismatch the
+  cold helper `arity_fail` builds `"NAME wants N args, got M"` from the struct (not a
+  static name) then `hs_raise_msg` - `f = g; f(1,2)` reports `g`, matching interp,
+  and try can catch it
+- `task_init`/`sched_on_tick` check 0 args, `syscall_register` checks 7 args
+  at registration time (the hot stub never re-checks)
+- Tests: `tests/arity` (interp+native), `tests/x64/arity`,
+  `tests/x64/arity_reassign` - every kernel still boots as before
   (kiotest + shell session `fails 0`)
-### 15.22 hosted เติบโต: argv/input/env บน x64 (v0.6.11)
+### 15.22 hosted grows up: argv/input/env on x64 (v0.6.11)
 
-โปรแกรม `xbuild` อ่านโลกภายนอกได้แล้ว (ก่อนหน้านี้ได้แค่คำนวณ+พิมพ์):
+`xbuild` programs can now read the outside world (before: only compute + print):
 
-- `_start` เก็บ argc/argv ลง slot ก่อน align stack (entry: `[rsp]=argc`)
-- `argv()` = List ของ `argv[1:]` (ข้ามชื่อโปรแกรมเหมือน interp),
-  `input()` = หนึ่งบรรทัด (byte-at-a-time เพราะไม่มี pushback,
-  EOF เปล่าๆ = `input: EOF`), `env(name)` = สแกน envp หา `NAME=` (ขาด =
-  null) — ทั้งหมดผ่าน raw syscall/Tempered stack ไม่มี libc
-- `test_x64.py` รู้จัก `.args`/`.stdin` แล้ว และส่ง `.env` ให้ตอนรัน
-  (เดิม overlay มีผลแค่ตอน build) — เทส: `argv`, `input`, `input_eof`,
-  `env` (x64 34 -> 38 ชุด)
-- เหลือ: `open/read/write/close` (ต้องมี heap kind `K_FILE`),
-  `system` (ต้องมี process), Float/Dict/extern/attr บนค่า
-### 15.23 hosted file I/O: open/read/write/close บน x64 (v0.6.12)
+- `_start` stores argc/argv into slots before aligning the stack (at entry: `[rsp]=argc`)
+- `argv()` = a List of `argv[1:]` (skipping the program name like interp),
+  `input()` = one line (byte-at-a-time because there is no pushback,
+  bare EOF = `input: EOF`), `env(name)` = scans envp for `NAME=` (missing =
+  null) - all through raw syscalls on a tempered stack, no libc
+- `test_x64.py` now understands `.args`/`.stdin` and passes `.env` at run time
+  (the overlay used to apply only at build) - tests: `argv`, `input`, `input_eof`,
+  `env` (x64 34 -> 38 suites)
+- Remaining: `open/read/write/close` (needs a heap kind `K_FILE`),
+  `system` (needs processes), Float/Dict/extern/attrs on values
+### 15.23 hosted file I/O: open/read/write/close on x64 (v0.6.12)
 
-- heap kind ใหม่ `K_FILE` (`[kind][fd][flags][path]`) + `print`/`str`
-  แสดง `<file PATH>` + `tname` รู้จัก `File`
-- `open(path, "r"/"w")` ผ่าน `openat` (w = O_WRONLY|O_CREAT|O_TRUNC),
-  `read` อ่านทั้งไฟล์แบบ grow, `write` วนจนครบ (คืน byte count),
-  `close` เป็น no-op เมื่อปิดแล้ว — error เป็น `errno N`
-  (ต่างจาก interp ที่โชว์ strerror; จดไว้)
-- เทส: `file` (เขียน/อ่าน/โชว์/เทียบ), `file_err` (ENOENT),
-  `file_errmode` (mode), `file_closed` — รวมไฟล์ 100KB ผ่าน
-  (x64 38 -> 42 ชุด)
-- เหลือ: `system`, Float/Dict/extern/attr บนค่า
-### 15.24 system() บน x64 (v0.6.13)
+- New heap kind `K_FILE` (`[kind][fd][flags][path]`) + `print`/`str`
+  display `<file PATH>` + `tname` knows `File`
+- `open(path, "r"/"w")` via `openat` (w = O_WRONLY|O_CREAT|O_TRUNC),
+  `read` reads the whole file with growth, `write` loops until done (returns the
+  byte count), `close` is a no-op when already closed - errors are `errno N`
+  (unlike interp which shows strerror; recorded)
+- Tests: `file` (write/read/show/compare), `file_err` (ENOENT),
+  `file_errmode` (mode), `file_closed` - a 100KB file passes
+  (x64 38 -> 42 suites)
+- Remaining: `system`, Float/Dict/extern/attrs on values
+### 15.24 system() on x64 (v0.6.13)
 
-- `system(cmd)` ผ่าน fork + execve(`/bin/sh -c cmd`) + wait4 ล้วนๆ
-  (env ส่งต่อของเดิม, exec ล้ม = 127, โดน signal = ลบเหมือน Python)
-- เทส: `system` (exit 3/0 + kill -9 → -9) — x64 42 -> 43 ชุด
-- เหลือจริงๆ: Float (ต้องเปลี่ยน representation), extern, attr บนค่า
-### 15.25 module alias บน x64 (v0.6.14)
+- `system(cmd)` via fork + execve(`/bin/sh -c cmd`) + wait4 alone
+  (env inherited, failed exec = 127, killed by signal = negative like Python)
+- Tests: `system` (exit 3/0 + kill -9 -> -9) - x64 42 -> 43 suites
+- Truly remaining: Float (needs a representation change), extern, attrs on values
+### 15.25 Module aliases on x64 (v0.6.14)
 
-- `m = mod` / `m = pkg.sub` ผูกชื่อโดยไม่ emit โค้ดเลย; `m.attr` เรียก
-  ได้เหมือนของเดิม (รวม error `has no attribute` และ `print m`)
-- กฎ nearest-wins: value slot ใน scope ที่ใกล้กว่าชนะ (param/def/capture
-  บัง import ได้เหมือนเดิม), เสมอกันใน scope เดียวกันให้ binding ชนะ
-  (เพราะ scope ของ x64 เป็น flow-insensitive), assign ค่าปกติทับ alias
-  ได้ (`m = 42` หลัง `m = mod` กลายเป็นค่าปกติ)
-- ส่งโมดูลเข้า call/operator/index ยังเป็น error เหมือนเดิม
-  (`err_mod_value` เปลี่ยนเป็น `print x + 1`; เพิ่ม `modalias`)
-  — x64 43 -> 44 ชุด
-- เหลือจริงๆ: Float/Dict/extern/attr บนค่า
-### 15.26 _start อ่าน argc พังบน stack ของ kernel (v0.6.15)
+- `m = mod` / `m = pkg.sub` bind a name with no code emitted at all; `m.attr` calls
+  work exactly as before (including the `has no attribute` error and `print m`)
+- Nearest-wins rule: a value slot in a nearer scope wins (param/def/capture
+  may shadow an import as before); a tie within one scope goes to the binding
+  (because x64 scopes are flow-insensitive); assigning an ordinary value over an alias
+  works (`m = 42` after `m = mod` becomes a normal value)
+- Passing a module into a call/operator/index is still an error as before
+  (`err_mod_value` changed to `print x + 1`; added `modalias`)
+  - x64 43 -> 44 suites
+- Truly remaining: Float/Dict/extern/attrs on values
+### 15.26 _start reading argc broke on the kernel's stack (v0.6.15)
 
-- v0.6.11 ใส่ `_start` capture (อ่าน argc จาก `[rsp]`) — บน Linux ถูก
-  แต่โปรแกรมที่ kernel โหลดไม่มี argc บน stack: อ่าน word นอก map ทันที
-  → `EXC 14` ตั้งแต่คำสั่งแรกของ user (`kusermode`/`kushtest` พังทั้งหมด
-  ทั้งที่ kiotest ผ่าน — kiotest ไม่เข้า ring 3)
-- matrix พิสูจน์: kernel เก่า + user ใหม่พัง, kernel ใหม่ + user ใหม่พัง,
-  kernel เก่า + user เก่าผ่าน → ของเสียอยู่ฝั่ง user ELF (hosted emission)
-- แก้ที่ `build_frame`: วาง argc=0 กับ argv[0]=NULL บนยอด user stack
-  แล้วเริ่ม rsp ต่ำลง 16 (frame ขยับลงกันทับ) — `argv()` ว่าง, `env()`
-  เจอ NULL เป็น null ถูกต้อง
-- บทเรียน harness: binary โต + TCG ช้า รอ 10s เห็น serial ขาดกลางทาง
-  แล้วดูเหมือน hang — ต้อง 25s; ปรับ `kusermode` timeout 15 → 25
+- v0.6.11 added the `_start` capture (reading argc from `[rsp]`) - right on Linux,
+  but programs the kernel loads have no argc on the stack: they read an unmapped word
+  immediately -> `EXC 14` at the very first user instruction (`kusermode`/`kushtest`
+  all broke even though kiotest passed - kiotest never enters ring 3)
+- A matrix proved it: old kernel + new user broken, new kernel + new user broken,
+  old kernel + old user fine -> the fault was on the user ELF side (hosted emission)
+- Fixed in `build_frame`: plant argc=0 and argv[0]=NULL on top of the user stack,
+  then start rsp 16 lower (the frame shifted down to avoid overlap) - `argv()` is
+  empty, `env()` correctly sees NULL as null
+- Harness lesson: bigger binary + slow TCG meant a 10s wait showed serial cut off
+  mid-way and looked like a hang - it needs 25s; raised the `kusermode` timeout 15 -> 25
 
-### 15.27 Dict ใน x64 (v0.6.15)
+### 15.27 Dict in x64 (v0.6.15)
 
-ปิดช่องโหว่ตัวสุดท้ายของ subset: Dict ที่เคยเป็น compile error
+Closing the subset's last hole: Dict, which used to be a compile error
 
-- heap kind ใหม่ `K_DICT` = `[kind][len][cap][buf]` โดย buf เก็บคู่
-  (key, value) สลับกัน — หนึ่งคู่ 16 ไบต์ จึงเดินด้วย word index
-  (เลขคู่) และ `for k in d` ข้ามทีละ 2
-- ค้น key แบบ linear scan (`x_str_cmp`) — dict ในภาษานี้เล็ก และลำดับ
-  insertion คือสิ่งที่ interp (Python dict) โชว์อยู่แล้ว; เขียน key เดิม
-  ทับของเดิมไว้ที่ตำแหน่งเดิม (Python semantics)
-- `x_dict_new` เตรียมเป็นจำนวนคู่ตายตัว (รู้ตอน compile) แล้ว `x_dict_set`
-  โตเป็น 2 เท่า/ครั้ง (คัดลอกด้วย copy_bytes)
-- literal `{"k": v}` ประกอบใน stack: push ทุกคู่ตามลำดับต้นฉบับ แล้ว
-  อ่านกลับด้วย offset คงที่ (`16*(n-i)`) เพราะ pop แบบ LIFO จะเดินกลับ
-  ลำดับ — บันทึกเป็น gotcha ไว้ในโค้ด
-- `x_dict_get` ขึ้น `key 'k' not found`, `d[1]` ขึ้น `dict key must be Str`
-  (ตรวจชนิด key ก่อนชนิด index ตามลำดับของ interp)
-- `x_dict_eq` คืน 0 เมื่อเท่า (เหมือน `x_list_eq` — `x_eq` แปลงด้วย
-  `sete` สลับกันแล้ว `==` จะกลับด้านเงียบๆ)
-- เทส `dict` (17 เคส รวม nested/equality/order), `dict_missing`,
-  `dict_keytype` — x64 44 -> 47 ชุด; kernel บูตผ่านเหมือนเดิม
+- New heap kind `K_DICT` = `[kind][len][cap][buf]` where buf stores
+  (key, value) pairs interleaved - one pair is 16 bytes, so it walks by word index
+  (even numbers) and `for k in d` steps by 2
+- Key lookup is a linear scan (`x_str_cmp`) - dicts in this language are small, and
+  insertion order is what interp (a Python dict) already shows; rewriting an existing
+  key overwrites in place (Python semantics)
+- `x_dict_new` prepares a compile-time-known pair count, then `x_dict_set`
+  grows 2x at a time (copying with copy_bytes)
+- A literal `{"k": v}` is assembled on the stack: push every pair in source order, then
+  read back at constant offsets (`16*(n-i)`) because LIFO pops would walk backwards
+  - recorded as a gotcha in the code
+- `x_dict_get` raises `key 'k' not found`, `d[1]` raises `dict key must be Str`
+  (key type checked before index type, following interp's order)
+- `x_dict_eq` returns 0 when equal (like `x_list_eq` - `x_eq` converts with
+  `sete`; swapping them would silently flip `==`)
+- Tests `dict` (17 cases incl. nested/equality/order), `dict_missing`,
+  `dict_keytype` - x64 44 -> 47 suites; the kernel boots as before
   (kiotest `fails 0`)
 
-### 15.28 builtin ใช้เป็นค่าใน x64 (v0.6.15)
+### 15.28 Builtins as values in x64 (v0.6.15)
 
-`f = str; f(65)` เคยเป็น compile error เพราะ x64 ไม่มี trampoline
+`f = str; f(65)` used to be a compile error because x64 had no trampoline
 
-- อ่านชื่อ builtin ในตำแหน่ง value -> สร้าง Func object
-  `[kind][code=bi_call][nparams=-1][name][caps[0]=id]` เก็บใน data slot
-  ต่อชื่อ (cache) จึงเทียบตัวตัวเองได้เหมือน interp
-- sentinel `nparams = -1` บอก call site ให้ข้าม arity check แล้วส่ง
-  `argc` (rdi) + เลขบรรทัดของผู้เรียก (rsi) ไปให้ `bi_call`
-- `bi_call` แตกตาม id แล้วเทียบ argc -> **tail jump** ไป stub ของ
-  (builtin, argc) ที่ emit ปลายโค้ด: stub ไม่สร้าง frame ใหม่ เพราะ
-  frame ของ `bi_call` มี argument อยู่ที่ `[rbp+24]` อยู่แล้ว — stub
-  อ่าน argument ในที่แล้วปิด frame ของ bi_call (`mov rsp,rbp; pop
-  rbp; ret`) ทำให้ inline emitter เดิมใช้ซ้ำได้โดยไม่แตะ
-- argc ผิด -> ข้อความตาม interp (`str wants 1 arg, got 2`) พร้อม
-  เลขบรรทัดของผู้เรียก
-- `print`/`str` ของ builtin เป็น `<builtin NAME>`; `tname` เป็น `Builtin`
-  (Func ที่ประกาศเองยังเป็น type error ตามเดิม)
-- stub emit เฉพาะ builtin ที่โปรแกรมอ้างจริง -> โปรแกรมที่ไม่ใช้เลย
-  ไม่มีต้นทุนโค้ด; เทส `builtin_value` (ผ่านตัวแปร/ผ่าน argument ของ
-  `def`), `builtin_value_arity` — x64 47 -> 49
+- Reading a builtin name in value position -> builds a Func object
+  `[kind][code=bi_call][nparams=-1][name][caps[0]=id]` stored in a per-name data slot
+  (cached), so self-equality matches interp
+- The sentinel `nparams = -1` tells the call site to skip the arity check and pass
+  `argc` (rdi) + the caller's line number (rsi) to `bi_call`
+- `bi_call` switches on the id, compares argc, then **tail jumps** to the stub for
+  (builtin, argc) emitted at the end of the code: the stub builds no new frame because
+  `bi_call`'s frame already holds the arguments at `[rbp+24]` - the stub
+  reads the arguments in place and closes bi_call's frame (`mov rsp,rbp; pop
+  rbp; ret`), letting the existing inline emitter be reused untouched
+- Wrong argc -> the message follows interp (`str wants 1 arg, got 2`) with the
+  caller's line number
+- `print`/`str` of a builtin is `<builtin NAME>`; `tname` is `Builtin`
+  (user-declared Funcs stay a type error as before)
+- Stubs are emitted only for builtins the program actually references -> programs that
+  use none pay no code cost; tests `builtin_value` (through a variable/through a `def`
+  argument), `builtin_value_arity` - x64 47 -> 49
 
-### 15.29 file helpers ใน x64 (v0.6.15)
+### 15.29 File helpers in x64 (v0.6.15)
 
-`read_text/write_text/append_text/exists/ls/mkdir` ที่เคยเป็น compile
-error บน x64 — ตัวแกรม/สคริปต์ที่ใช้ไฟล์จึงรันบน backend นี้ได้แล้ว
+`read_text/write_text/append_text/exists/ls/mkdir` used to be compile errors on
+x64 - file-using tools/scripts now run on this backend
 
-- ทั้งหมดต่อยอดจาก File runtime ที่มีอยู่ (openat/read/write/close)
-  บวก syscall ดิบอีกสามตัว: `access` (21) เป็น `exists`, `mkdir` (83)
-  เป็น `mkdir`, `getdents64` (217) เป็น `ls`
-- `open` ได้โหมดที่สาม = append (`O_WRONLY|O_CREAT|O_APPEND`) เพื่อให้
-  `append_text` ได้
-- `mkdir` ทำ makedirs เหมือน interp: เดินหา `/` ในพาธแล้ว mkdir ทีละ
-  prefix (EEXIST ข้าม) แล้วค่อย mkdir พาธเต็ม — ต้องส่ง **payload** ของ
-  Str เข้า `x_str_at` ไม่ใช่ตัว object (ได้ gotcha)
-- `ls` อ่าน `linux_dirent64` แล้ว **สแกนหา NUL** เพื่อหาความยาวชื่อ
-  (ห้ามใช้ `d_reclen - 19`: `d_reclen` ปัดขึ้นเป็น 8 ไบต์) ข้าม `.`/`..`
-  แล้ว insertion sort ตาม `x_str_cmp` — เทียบเคียง `sorted(os.listdir())`
-- ข้อความ error ของ file helpers รายงาน `errno N` แทน strerror ของ
-  interp (ต่างจุดเดียวที่บันทึกไว้ใน AGENTS.md / docs)
-- เทส `fs_helpers` (makedirs ซ้อน, append, exists จริง/ปลอม, ls สอง
-  ชั้น) — x64 49 -> 50
+- All build on the existing File runtime (openat/read/write/close)
+  plus three more raw syscalls: `access` (21) for `exists`, `mkdir` (83)
+  for `mkdir`, `getdents64` (217) for `ls`
 
-### 15.30 port I/O ดิบใน kernel (v0.6.16)
+- `open` gained a third mode = append (`O_WRONLY|O_CREAT|O_APPEND`) to support
+  `append_text`
+- `mkdir` does makedirs like interp: walk the path for `/` and mkdir each
+  prefix (EEXIST skipped), then mkdir the full path - you must pass the
+  Str **payload** to `x_str_at`, not the object (a gotcha)
+- `ls` reads `linux_dirent64` and **scans for the NUL** to find the name length
+  (never use `d_reclen - 19`: `d_reclen` is padded up to 8 bytes), skips `.`/`..`,
+  then insertion-sorts with `x_str_cmp` - comparable to `sorted(os.listdir())`
+- File helper error messages report `errno N` instead of interp's strerror
+  (the single recorded divergence in AGENTS.md / docs)
+- Test `fs_helpers` (nested makedirs, append, real/fake exists, two-level
+  ls) - x64 49 -> 50
 
-`ioport_in(port, size)` / `ioport_out(port, value, size)` — ขั้นเดินสำคัญ
-ของ driver ตัวจริง (ATA) เพราะ `asm()` มีแต่ฝั่ง native
+### 15.30 Raw port I/O in the kernel (v0.6.16)
 
-- ภาษาไม่มี `asm` ใน `xkernel` จึงต้องมีทางออก: port I/O สดอยู่ใน
-  runtime ฝั่ง freestanding หลัง `x_dict_helpers` เป็น `x_port_in` /
-  `x_port_out` (size = 1/2/4 ไบต์; `in ax,dx` 16-bit zero-extend ให้เอง)
-- ตัว builtin unbox argument เป็น machine word ก่อน (`sar 2`) — port
-  number กับค่าเป็นเลขดิบ ไม่มี tag
-- hosted build ปฏิเสธด้วย `builtin 'ioport_in' not in x64 subset` เหมือน
-  syscall ตัวอื่นที่เป็นของ kernel
-- assembler เพิ่ม `in_ax_dx`/`in_eax_dx`/`out_dx_ax`/`out_dx_eax`
-- เทสใน kiotest: CMOS shadow RAM (0x70 index / 0x71 data) round-trip ได้
-  ทั้ง 0x5A และ 0xA5 และความกว้าง 16/32-bit อ่านพอร์ตว่างได้ 0 —
-  คือ driver จะคุยกับ register จริงได้
+`ioport_in(port, size)` / `ioport_out(port, value, size)` - a key stepping stone
+to a real driver (ATA), because `asm()` exists only on the native side
 
-### 15.31 ATA driver (PIO) ตัวแรกของ OS (v0.6.17)
+- The language has no `asm` in `xkernel`, so it needed an outlet: raw port I/O lives in
+  the freestanding runtime after `x_dict_helpers` as `x_port_in` /
+  `x_port_out` (size = 1/2/4 bytes; `in ax,dx` 16-bit zero-extends itself)
+- The builtins unbox arguments into machine words first (`sar 2`) - the port
+  number and value are raw numbers, untagged
+- A hosted build rejects them with `builtin 'ioport_in' not in x64 subset` like
+  other kernel-only syscalls
+- The assembler gained `in_ax_dx`/`in_eax_dx`/`out_dx_ax`/`out_dx_eax`
+- Tested in kiotest: CMOS shadow RAM (0x70 index / 0x71 data) round-trips both
+  0x5A and 0xA5, and 16/32-bit widths read 0 from an empty port -
+  meaning a driver can talk to real registers
 
-`kernel/kata.hs` — driver อ่าน/เขียน disk จริงตัวแรก เขียนด้วย `.hs`
-ล้วน คุยกับ controller ผ่าน `ioport_in/out` จาก 15.30
+### 15.31 The OS's first ATA driver (PIO) (v0.6.17)
+
+`kernel/kata.hs` - the first real disk read/write driver, written in pure
+`.hs`, talking to the controller through `ioport_in/out` from 15.30
 
 - primary channel / master / LBA28: IDENTIFY (0xEC), READ (0x20),
-  WRITE (0x30); PIO ทีละ word ผ่านพอร์ต 0x1F0 (ไม่ต้องมี DMA/IRQ)
-- `present()` เช็ค IDENTIFY, `read_identify()` ดึง 256 word;
-  `sectors()` อ่าน words 60-61, `model()` ถอดชื่อรุ่น (byte-swapped
-  ในแต่ละ word, NUL ปนมา — compact แล้วค่อย `read_mem` เป็น Str)
-- `read`/`write(lba, count, buf)` ตรวจ count 1..256, `select(lba>>24)`
-  + `lba_setup` ก่อนสั่ง command แล้ว `wait_ready()` ตรวจ DRDY/ERR
-- gotcha ที่เจอ: ค่าที่อ่านใน `unsafe:` เป็น block-local — ส่งออกด้วย
-  `return` ผ่าน helper (`rd8`/`byte_at`/`put_byte`) แทนการ assign ตรง
-- เทส `katatest` บูต QEMU พร้อมดิสก์ raw 1MB: identify, อ่าน sector 4
-  ตรง pattern, เขียน sector 9 แล้วอ่านกลับเท่าเดิม, sector 10 ไม่เสียหาย
-  — ต่อเข้า test_xkernel (274 -> 279)
+  WRITE (0x30); PIO word by word through port 0x1F0 (no DMA/IRQ needed)
+- `present()` checks IDENTIFY, `read_identify()` pulls 256 words;
+  `sectors()` reads words 60-61, `model()` decodes the model name (byte-swapped
+  within each word, NULs mixed in - compacted first, then `read_mem` into a Str)
+- `read`/`write(lba, count, buf)` validate count 1..256, `select(lba>>24)`
+  + `lba_setup` before issuing the command, then `wait_ready()` checks DRDY/ERR
+- Gotcha found: values read inside `unsafe:` are block-local - pass them out via
+  `return` through helpers (`rd8`/`byte_at`/`put_byte`) instead of direct assignment
+- The `katatest` test boots QEMU with a 1MB raw disk: identify, sector 4 matches
+  its pattern, sector 9 written and read back identical, sector 10 unharmed
+  - added to test_xkernel (274 -> 279)
 
-### 15.32 Float ใน x64: IEEE-754 f64 โดยไม่มี libc (v0.6.18)
+### 15.32 Float in x64: IEEE-754 f64 without libc (v0.6.18)
 
-ช่องว่างหลักของ subset x64 ปิดแล้ว — `Float` เต็มรูปแบบทั้ง hosted
-(`xbuild`) และ freestanding (`xkernel`) ด้วย `.hs`+machine code ล้วน
+The x64 subset's main gap is closed - full `Float` on both hosted
+(`xbuild`) and freestanding (`xkernel`), in pure `.hs`+machine code
 
-**การแทนค่า.** tag bit หมด (Int `01`, Bool `10`, Null `11`, heap `00`)
-Float จึงเป็น heap object แบบเต็ม: kind `K_FLOAT = 5` เก็บ f64 bits ดิบ
-(`[kind][f64]`) — ไม่มีทางเลือกอื่นที่ไม่ต้องแก้ทั้ง runtime
+**Representation.** The tag bits are exhausted (Int `01`, Bool `10`, Null `11`, heap `00`),
+so Float is a full heap object: kind `K_FLOAT = 5` storing raw f64 bits
+(`[kind][f64]`) - no alternative that avoids changing the whole runtime
 
-**คณิตศาสตร์.** `- * /` ใช้ SSE2 (`subsd`/`mulsd`/`divsd`) ส่วน `%` ใช้ x87
-`fprem` + แก้ sign ให้เป็น `math.fmod` ตาม Python (`7.5 % 2.0 == 1.5`,
-`-1.5 % 2.0 == 0.5`, `1.5 % -2.0 == -0.5`) ส่วน `/` และ `%` ด้วย 0.0 ให้
-`division by zero` (catchable) เหมือน interp. Int ข้าง Float แปลงผ่าน
-`cvtsi2sd`; Bool/Null ข้าง Float เป็น error (`cannot add Float and Bool`)
+**Arithmetic.** `- * /` use SSE2 (`subsd`/`mulsd`/`divsd`); `%` uses the x87
+`fprem` + sign fix to become `math.fmod` like Python (`7.5 % 2.0 == 1.5`,
+`-1.5 % 2.0 == 0.5`, `1.5 % -2.0 == -0.5`); `/` and `%` by 0.0 give a
+(catchable) `division by zero` like interp. An Int beside a Float converts via
+`cvtsi2sd`; a Bool/Null beside a Float is an error (`cannot add Float and Bool`)
 
-**เทียบ.** `ucomisd` — `0.0 == -0.0` true, `nan == nan` false, NaN ไม่มีทาง
-`<`/`>` (คืน false ทั้ง `<=`/`>=` ด้วย แบบ IEEE). `1.0 == true` true เพราะ
-Python ถือ Bool เป็นตัวเลข 0/1 ใน `==` แต่ *ไม่* ใน `<` (interp ทำแบบนั้น)
+**Comparisons.** `ucomisd` - `0.0 == -0.0` is true, `nan == nan` is false, NaN is never
+`<`/`>` (false for `<=`/`>=` too, IEEE style). `1.0 == true` is true because
+Python treats Bool as the numbers 0/1 in `==` but *not* in `<` (interp does that)
 
-**`print`/`str`: shortest round-trip แบบไม่มี libc.** Python ใช้ dtoa
-mode 0 = *shortest decimal ที่อยู่ในช่วง round-trip* ไม่ใช่ "ปัดเป็น
-p หลักแล้วเอาที่สั้นที่สุด" — ต่างกันจริง เช่น
-`6.290184345309701e-235` (ไม่ใช่ `...7005`) ขั้นตอน:
+**`print`/`str`: shortest round-trip without libc.** Python uses dtoa
+mode 0 = *the shortest decimal within the round-trip interval*, not "round to
+p digits and take the shortest" - a real difference, e.g.
+`6.290184345309701e-235` (not `...7005`). Steps:
 
-1. decompose เป็น `m x 2^e` แล้วขยายทศนิยมแบบ**ตรงเป๊ะ** บน bigint
-   96 คำ (`m x 5^-e` ถ้า `e < 0`) เป็นสตริงตัวเลข
-2. คำนวณขอบเขต round-trip ครั้งเดียว: midpoint กับ pattern เพื่อนบ้าน
-   (`P-1`, `P+1`) เป็น `S x 2^(emin-1)` พร้อม flag ว่า endpoint inclusive
-   ไหม (half-even ดูนิดท้ายของ pattern) — `Lp == 0` และ `Up == inf`
-   มีทางพิเศษ
-3. ลอง `p = 1..17`: เอา `T` = หลักตัวแรก `p` ตัว แล้วทดสอบ `T` กับ
-   `T+1` ว่าอยู่ในช่วงไหม ถ้าอยู่ทั้งคู่เลือกข้างที่ใกล้กว่า (เทียบ
-   `(2T+1)x10^K` กับ `2v` ด้วย bigint) — tie ไปทางหลักท้ายเลขคู่
-4. พิมพ์แบบ Python: fixed ถ้า `-4 <= E10 <= 15` มิฉะนั้น scientific,
-   `.0` เก็บไว้ให้เห็นว่าเป็น float, `inf`/`nan`/`-0.0` เป็นคำพิเศษ
+1. decompose to `m x 2^e`, then expand the decimal **exactly** on a 96-word
+   bigint (`m x 5^-e` when `e < 0`) into a digit string
+2. compute the round-trip interval once: the midpoint with the neighbor
+   patterns (`P-1`, `P+1`) is `S x 2^(emin-1)`, with a flag for whether the endpoint is
+   inclusive (half-even looks at the pattern's low bit) - `Lp == 0` and `Up == inf`
+   have special paths
+3. try `p = 1..17`: take `T` = the first `p` digits, then test `T` and
+   `T+1` for interval membership; if both fit, pick the nearer one (comparing
+   `(2T+1)x10^K` against `2v` on the bigint) - ties go to an even last digit
+4. print Python-style: fixed when `-4 <= E10 <= 15`, else scientific;
+   keep the `.0` so a float looks like a float; `inf`/`nan`/`-0.0` are special words
 
-**`float(str)`: parse ถูกต้องเสมอ.** เก็บ 100 หลักนัยสำคัญ + sticky bit
-(`K` ผูกกับจำนวนหลักทศนิยม) แล้วเทียบแบบ cross-multiply บน bigint
-(`dec_cmp`: `L/R == D_dec/D_dbl` เป๊ะ) จากนั้น binary search บน pattern
-IEEE 63 รอบ จบด้วยการตัดสินที่ midpoint แบบ round-half-to-even
-(เทียบ `2T+1` กับ `S x 2^emin`) — กับ sticky bit ทำให้ input ยาว
-เกิน 100 หลักยังถูกต้อง ไม่ต้องพึ่ง FPU เลย (เลี่ยงบั๊ก subnormal/ties)
+**`float(str)`: always parses correctly.** Keep 100 significant digits + a sticky bit
+(`K` tied to the number of decimal places), then compare by cross-multiplication on the
+bigint (`dec_cmp`: `L/R == D_dec/D_dbl` exactly), then binary-search the IEEE
+pattern space 63 rounds, ending with a round-half-to-even midpoint decision
+(comparing `2T+1` against `S x 2^emin`) - with the sticky bit, inputs longer
+than 100 digits still parse correctly. No FPU reliance (avoiding subnormal/ties bugs)
 
-**เครื่องมือ.** assembler เพิ่ม SSE2/x87 (`cvtsi2sd`, `cvttsd2si`, `ucomisd`,
+**Tooling.** The assembler gained SSE2/x87 (`cvtsi2sd`, `cvttsd2si`, `ucomisd`,
 `addsd`..`divsd`, `movsd_*`, `fprem`, `fnstsw_ax`, `sahf`, `fstp_st1`, `shr_cl`)
-+ `adc_*`/`mul_r`/`or_ri32`/`xor_ri32` และ bigint core 7 ตัว
++ `adc_*`/`mul_r`/`or_ri32`/`xor_ri32` and a 7-piece bigint core
 (`bi_zero`/`bi_from_u64`/`bi_copy`/`bi_mul_small`/`bi_add_small`/
-`bi_shl`/`bi_cmp`/`bi_divmod_small`) — ทุกตัว alias-safe (อ่านก่อนเขียนทีละ
-word) เพราะทั้งสองทางเรียกแบบ in-place
+`bi_shl`/`bi_cmp`/`bi_divmod_small`) - all alias-safe (read before writing each
+word), because both directions are called in place
 
-**gotcha ที่เจอระหว่างทำ.**
-- ค่าใน `unsafe:` เป็น block-local เหมือนเดิม; ที่ใหม่คือ `return` ใน
-  generator ทำให้ `a.label(...)` ที่อยู่ถัดมาเป็น dead code →
-  `undefined label` ต้อง `jmp` ไป end label แทน `return` ตรง ๆ
-- สล็อต `[rbp-N]` ซ้ำกันสองตัวแปร = ค่าหายเงียบ (เจอ 4 ครั้ง:
-  pointer กับ loop counter, `limit` กับ digit, `ecnt` ที่ PUTAL ทับ,
-  `E10c` ที่ carry ดัน) — ดูดีก่อนอ่านค่าใน gdb
-- buffer บน stack ต้อง `bi_zero` ก่อนใช้เสมอ ไม่งั้นผลขึ้นกับว่า stack
-  page เคยถูกแตะหรือไม่ (เจอเป็น parse ผิดเฉพาะ subnormal)
-- `x_dbl_parts` คืน `e = raw - 1075` (ไม่ใช่ `-1023`) เพราะ mantissa
-  มี implicit leading 1 อยู่แล้ว
-- midpoint คือ `S x 2^(emin-1)` ไม่ใช่ `x 2^emin` (S คือผลบวก) — ลืม
-  `-1` ทำให้ทุก candidate เล็กไปหนึ่งเท่า
-- ไม่มี libc แปลว่าไม่มี `snprintf("%.17g")` — ถ้าวันหนึ่งมี
-  `extern:` ใน x64 การเพิ่ม Float จะถูก ง่ายกว่านี้มาก
+**Gotchas found along the way.**
+- Values in `unsafe:` are block-local as before; new: a `return` in the
+  generator makes a following `a.label(...)` dead code ->
+  `undefined label`; you must `jmp` to an end label instead of a plain `return`
+- A `[rbp-N]` slot reused by two variables = values silently vanish (hit 4 times:
+  pointer vs loop counter, `limit` vs digit, `ecnt` overwritten by PUTAL,
+  `E10c` pushed by carry) - look carefully before trusting values in gdb
+- A stack buffer must be `bi_zero`ed before use, always, or results depend on
+  whether the stack page was ever touched (seen as parses failing only on subnormals)
+- `x_dbl_parts` returns `e = raw - 1075` (not `-1023`) because the mantissa
+  already has the implicit leading 1
+- The midpoint is `S x 2^(emin-1)` not `x 2^emin` (S is the sum) - forgetting
+  the `-1` made every candidate one factor too small
+- No libc means no `snprintf("%.17g")` - if `extern:` ever lands in x64,
+  adding Float will be much cheaper than this
 
-**ผลการทดสอบ.** fuzz เทียบ `interp.py` (ซึ่งคือ CPython) กว่า 2500 ค่า
-(สุ่มทั้งทศนิยมหลายรูปแบบ, bit pattern สุ่ม, 2^k/10^k ทุกขั้น, เพื่อนบ้าน
-ของ subnormal/ศูนย์/max-double) — ตรงกันทุกตัว รวม `1e-08`, `5e-324`,
-`1.7976931348623157e+308`; `int()`/`float()`/`str()` และ error messages
-ตรงทุกเคส. เทส `tests/x64/float.hs` (x64 50 -> 51) และ
-`kernel/kfloattest.hs` ที่บูต QEMU จริง (xkernel 279 -> 284)
+**Test results.** Fuzzed against `interp.py` (which is CPython) over 2500+ values
+(random decimals in many forms, random bit patterns, every 2^k/10^k step,
+neighbors of subnormal/zero/max-double) - all match, including `1e-08`,
+`5e-324`, `1.7976931348623157e+308`; `int()`/`float()`/`str()` and error messages
+match every case. Tests `tests/x64/float.hs` (x64 50 -> 51) and
+`kernel/kfloattest.hs` really booting QEMU (xkernel 279 -> 284)
 
-### 15.33 JSON ใน x64: คอมไพล์ parser จากซอร์ส `.hs` เข้าไปใน image (v0.6.19)
+### 15.33 JSON in x64: compiling the parser from `.hs` source into the image (v0.6.19)
 
-`json_parse`/`json_str` เต็มรูปแบบทั้ง `xbuild` และ `xkernel`
-(`json_load`/`json_save` hosted เท่านั้น เพราะต้องมี filesystem)
+Full `json_parse`/`json_str` on both `xbuild` and `xkernel`
+(`json_load`/`json_save` hosted only, since they need a filesystem)
 
-**วิธีที่เลือก.** ไม่เขียน JSON เป็น machine code ด้วยมือ แต่เขียนเป็น
-hs จริงใน `runtime/json.hs` (ราว 430 บรรทัด) แล้วให้ x64gen **คอมไพล์ไฟล์นั้น
-เข้าไปใน image** เป็นโมดูลส่วนตัวชื่อ `<json>` เฉพาะโปรแกรมที่เรียก
-`json_*` — ตรวจด้วยการเดิน AST ก่อน `finalize` ถ้าเจอก็ `collect` + ออก
-label `hsJF_*` แล้วสั่ง `emit_mod_init` เหมือน `import` ทุกอย่าง
+**Chosen approach.** No hand-written JSON in machine code - instead real hs in
+`runtime/json.hs` (about 430 lines), and x64gen **compiles that file into the
+image** as a private module named `<json>` only for programs calling `json_*` -
+detected by an AST walk before `finalize`, then `collect`ed and emitted
 
-- hook เดียวที่มีให้โมดูลนี้คือ `type_name(x)` ซึ่งคอมไพล์ตรงไปที่
-  runtime `x_tname` (hs ไม่มี type introspection) โดย hook อยู่หลังเช็ก
-  `mod["name"] == "<json>"` ผลคือถ้าผู้ใช้เขียน `import runtime.json`
-  เอง (ทำได้ถ้า repo อยู่บน HSPATH) จะได้อีกสำเนาที่ไม่มี hook —
-  ฟังก์ชันที่ต้องใช้ `type_name` จะคอมไพล์ไม่ผ่าน (`unknown variable
-  'type_name'`) ไม่งั้นแค่ helper ที่ไม่ต้อง introspect
-- entry point คืน 2-element List: `[null, value]` หรือ
-  `["<message>", null]` แล้ว wrapper ที่ emit ใน `ev_call` เป็นคน
-  `hs_raise_msg` ด้วย **บรรทัดของผู้เรียก** ข้อความ error จึงตรงกับ
-  CPython ที่ interp ใช้ทุกตัว: `Expecting value`, `Extra data`,
+label `hsJF_*` and run `emit_mod_init` just like an `import`
+
+- The one hook this module gets is `type_name(x)`, compiled straight to the
+  runtime's `x_tname` (hs has no type introspection); the hook sits behind a
+  `mod["name"] == "<json>"` check, so if a user writes `import runtime.json`
+  themselves (possible when the repo is on HSPATH) they get another copy without
+  the hook - functions needing `type_name` will not compile (`unknown variable
+  'type_name'`); helpers that need no introspection still work
+- The entry point returns a 2-element List: `[null, value]` or
+  `["<message>", null]`, and the wrapper emitted in `ev_call` does the
+  `hs_raise_msg` with the **caller's line**, so the error text matches
+  CPython (which interp uses) exactly: `Expecting value`, `Extra data`,
   `Expecting ',' delimiter`, `Illegal trailing comma before end of array`,
-  `Unterminated string starting at`, ... รวมถึง
+  `Unterminated string starting at`, ... plus
   `json_str failed: Out of range float values are not JSON compliant: inf`
-  และ `not JSON-serializable: Builtin`
-- parser/encoder เขียนแบบ byte-oriented (x64 Str คือ buffer UTF-8) จึง
-  ต้องอ่านค่า byte เป็น Int — ทำด้วย `byte_at()` = `as_ptr` + `load8`
+  and `not JSON-serializable: Builtin`
+- The parser/encoder is byte-oriented (an x64 Str is a UTF-8 buffer), so it
+  reads byte values as Ints - done with `byte_at()` = `as_ptr` + `load8`
 
-**สิ่งที่เจอระหว่างทำ (สำคัญ).**
-- **`and`/`or` ฝั่ง x64 ไม่ short-circuit** ทั้ง interp และ native
-  short-circuit แต่ x64 รันทั้งสองข้าง → `while i < len(s) and s[i] == "x"`
-  พังทันที (`index out of range`) แก้โดยเขียน bound check เป็นการเรียก
-  เดี่ยว (`js_at(s, i, n)` คืน -1 เมื่อเลยปลาย) แล้วเทียบ
-- **hs ไม่มี `chr()`** แต่ encoder ต้องปั่น byte ดิบ (UTF-8 ส่วนที่
-  escape ไม่ได้) วิธีเดียวที่ subset มีคือ `alloc` + `store8` + `read_mem`
-  (`js_chr`) — ช้ากว่ามากแต่ถูก
-- **`append()` คืน Null** (เหมือน interp) ไม่ใช่คืน list → ต้องแก้ list
-  ใน place ไม่ใช่ `x = append(x, y)`
-- **register ที่เก็บค่าข้าม `call` ได้ไม่ได้** — ตอนแรกเก็บข้อความ error
-  ไว้ใน rcx แล้วเรียก `x_str_at` เพื่อสร้าง prefix `"json_parse failed: "`
-  rcx ถูก clobber ทิ้ง เปลี่ยนเป็นเก็บบน stack
-- **x64 ไม่มี mutual recursion** และ resolve ชื่อ module-level แบบ static
-  → ต้องรวม array/object parsing ไว้ใน `js_value` ตัวเดียวที่เรียกตัวเอง
-  ได้ (คำนวณไว้ใน `runtime/json.hs` เพราะไม่มี `int()`/`ord()` ให้แยกว่า
-  Int กับ Float — ใช้ `str()` + first char หรือ `len()` + first char แยกแทน)
-- **list ใน x64 คือ `[kind][len][cap][buf]`** element อยู่ใน buf ไม่ใช่
-  inline → wrapper ต้องอ่าน `[[rax+24]+8]` ไม่ใช่ `[rax+16]`
-- `finalize()` เดิมใช้ module scope ของ `<main>` เป็นขอบเขตการหา
-  capture ทำให้ชื่อ module-level ของโมดูลอื่นถูกมองเป็น capture (แล้ว
-  อ่าน global ที่ยังไม่ assign = `unknown variable`) แก้เป็นหยุดที่
-  module scope ของตัวเอง (`p is p._mod.get("scope")`)
-- Python `return` ในตัว emit ทำให้ `a.label(...)` ที่อยู่ถัดมาเป็น dead
-  code (undefined label) — json_save เลยต้อง emit ทั้งก้อน inline ไม่ใช่
-  `jmp` ไป label ท้ายฟังก์ชัน
-- **เทสต์ x64 ไม่ได้เตือนเรื่อง stack** — หลักฐานคือ `gdb` ดู
-  `mov 0x8(%rdi),%rax` ที่ rdi = 0 แล้วไล่กลับด้าน call chain
+**Things found along the way (important).**
+- **`and`/`or` on x64 do not short-circuit** - both interp and native
+  short-circuit but x64 ran both sides -> `while i < len(s) and s[i] == "x"`
+  breaks instantly (`index out of range`); fixed by writing bound checks as
+  separate calls (`js_at(s, i, n)` returning -1 past the end) and comparing
+- **hs has no `chr()`** but the encoder must mint raw bytes (the UTF-8 parts
+  that cannot be escaped); the only subset route is `alloc` + `store8` + `read_mem`
+  (`js_chr`) - much slower but correct
+- **`append()` returns Null** (like interp), not the list -> you must mutate the
+  list in place, not `x = append(x, y)`
+- **Registers cannot keep values across a `call`** - early on the error
+  message lived in rcx across an `x_str_at` call building the `"json_parse failed: "`
+  prefix; rcx got clobbered. Moved to the stack
+- **x64 has no mutual recursion** and resolves module-level names statically
+  -> array/object parsing had to merge into one self-calling `js_value`
+  (computed in `runtime/json.hs`; with no `int()`/`ord()` available to tell
+  Int from Float, it uses `str()` + first char or `len()` + first char instead)
+- **an x64 list is `[kind][len][cap][buf]`** - elements live in buf, not
+  inline -> the wrapper reads `[[rax+24]+8]`, not `[rax+16]`
+- `finalize()` used to bound capture hunting at the `<main>` module scope, so
+  module-level names of other modules looked like captures (then reading an
+  unassigned global = `unknown variable`); fixed to stop at its own
+  module scope (`p is p._mod.get("scope")`)
+- A Python `return` inside the emitter makes a following `a.label(...)` dead
+  code (undefined label) - json_save therefore emits the whole block inline
+  instead of a `jmp` to the function's end label
+- **The x64 tests gave no stack warning** - the evidence was `gdb` showing
+  `mov 0x8(%rdi),%rax` with rdi = 0, traced back up the call chain
 
-**บั๊กที่เจอใน x64 ระหว่างทำงานนี้ (แก้แล้ว).** `int(x)` เมื่อ `x` เป็น Int
-ทาง passthrough ไม่ `pop` ค่าที่ push ไว้เพื่อทำ message
-→ ทิ้งสแต็คค้าง 8 ไบต์ ทำให้ `s[int(n)]` อ่าน operand ผิดตัว
-(`cannot index Int`) และการกิน stack ใน expression ที่ซับซ้อน ก้อนนี้
-เพิ่มเทสต์ `tests/x64/float.hs` (บรรทัดท้าย) กันซ้ำ
+**x64 bugs found during this work (fixed).** `int(x)` on an Int passthrough
+path did not `pop` the value pushed for the message
+-> left 8 stale stack bytes, making `s[int(n)]` read the wrong operand
+(`cannot index Int`) plus stack drift in complex expressions. This adds
+regression coverage at the end of `tests/x64/float.hs`
 
-**ผลตรวจ.** differential test เทียบ interp (ซึ่งคือ CPython) 44 เคส encode
-+ 79 เคส decode — ตรงกันทุกตัวทั้ง stdout, stderr และ exit code
-รวมข้อความ error และเลขบรรทัด เทส `tests/x64/json.hs` (x64 51 -> 52)
-และ `kernel/kjsontest.hs` ที่บูต QEMU จริง 18 assertion + 4 error
+**Check results.** Differential test against interp (i.e. CPython): 44 encode
+cases + 79 decode cases - everything matches: stdout, stderr and exit codes,
+including error messages and line numbers. Tests `tests/x64/json.hs` (x64 51 -> 52)
+and `kernel/kjsontest.hs` really booting QEMU, 18 assertions + 4 errors
 (xkernel 284 -> 291)
 
-### 15.34 เลขทศนิยมนับยกกำลังได้ + native print float แบบ shortest (v0.6.20)
+### 15.34 Exponent float literals + native shortest float printing (v0.6.20)
 
-คำถามว่า "ภาษาครบ 100% ไหม" เปิดช่องโหว่สองตัวที่ไม่ใช่ฟีเจอร์ที่สเปก
-เขียนไว้ แต่เป็นบั๊กจริงที่ต้องแก้
+Asking "is the language 100% complete" opened two holes that were not missing
+spec features but real bugs to fix
 
-**1. `1.5e3` ไม่ใช่เลขทศนิยม.** lexer เดิมมีแต่
-`[0-9]+\.[0-9]*|\.[0-9]+` เลยตัด `1.5e3` เป็น `1.5` แล้วเหลือ
-`e3` ไว้ให้ตายด้วย `unknown variable 'e3'` — ภาษาที่ indent เหมือน
-Python แต่เขียนเลขยกกำลังไม่ได้ ตอนนี้ regex เป็น
+**1. `1.5e3` was not a float.** The old lexer had only
+`[0-9]+\.[0-9]*|\.[0-9]+`, so it cut `1.5e3` into `1.5` and left
+`e3` to die as `unknown variable 'e3'` - a Python-indented language that could not
+write exponent notation. The regex is now
 `[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?|\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+`
-และเก็บ `raw` ไว้ด้วยเพื่อให้ `hs fmt` คืนรูปเดิม (`1.5e3` ไม่กลายเป็น
-`1500.0`) — `0xFF` ก็เก็บแบบเดียวกันอยู่แล้ว
+and it keeps `raw` so `hs fmt` returns the original form (`1.5e3` does not become
+`1500.0`) - `0xFF` was already kept the same way
 
-**2. native print Float ไม่ตรง interp 48% ของค่า.** `v_disp` ใน
-`native/rt.c` ใช้ `%.17g` ตรง ๆ ซึ่งพิมพ์ 17 หลักนัยสำหรับทุกค่าที่ไม่
-แน่นอน: `print 0.1` ได้ `0.10000000000000001` แต่ interp ได้ `0.1`
-fuzz 674 ค่า match แค่ 322 — **บั๊กนี้มีมาตั้งแต่ Float เข้ามาใน native
-(ไม่ใช่ของรอบนี้) และไม่เคยถูกจับ เพราะไม่มี test ไหน print float
-ที่ไม่แน่นอน** แก้ด้วย `fmt_repr()` ที่หา significant digits สั้นที่สุด
-(ไล่ 1..17 แล้วเช็คว่า `strtod` อ่านกลับได้ค่าเดิม) แล้วจัดรูปแบบตาม
-CPython: fixed ตอน 1e-4 <= |x| < 1e16, มี `.0` ตอนลงตัว, เลขชี้กำลัง
-อย่างน้อย 2 หลัก → ผ่าน 2021 ค่าใน 3 seed ที่ fuzz มา ตอนนี้ 100%
+**2. Native Float printing mismatched interp on 48% of values.** `v_disp` in
+`native/rt.c` used plain `%.17g`, printing 17 significant digits for every
+inexact value: `print 0.1` gave `0.10000000000000001` while interp gave `0.1`.
+Fuzzing 674 values matched only 322 - **this bug existed since Float entered
+native (not from this round) and was never caught because no test printed an
+inexact float**. Fixed with `fmt_repr()`, which finds the shortest significant
+digits (trying 1..17 and checking `strtod` reads back the same value), then
+formats like CPython: fixed when 1e-4 <= |x| < 1e16, a `.0` when integral,
+at least 2 exponent digits -> passes 2021 values across 3 fuzz seeds, now 100%
 
-**3. บั๊ก x64 ที่เจอระหว่างทำ: `float("1e309")` ได้ nan.** ค้นพบตอน
-fuzz float หลังแก้ข้อ 2 (seed 77) — `nearest_double()` ไบนารีเซิร์ชค่า
-IEEE pattern โดยตั้ง `hi = inf` แล้วเดิน `lo = mid + 1` 63 รอบ พอ `lo`
-ชน `hi` ที่เป็น pattern ของ inf พอดี ขั้นถัดไปก็เดินข้ามไปเป็น NaN
-(`0x7FF0000000000001`) แล้วคืน nan กลับออกไป แก้ด้วย clamp
-`lo = min(mid + 1, hi)` → ทุกอย่างที่เกิน max double กลายเป็น `inf`
-ตาม Python
+**3. x64 bug found during the work: `float("1e309")` gave nan.** Discovered while
+fuzzing floats after fix 2 (seed 77) - `nearest_double()` binary-searched the
+IEEE pattern space with `hi = inf`, stepping `lo = mid + 1` for 63 rounds; when
+`lo` met `hi` exactly at inf's pattern, the next step walked past it into NaN
+(`0x7FF0000000000001`) and returned nan. Fixed by clamping
+`lo = min(mid + 1, hi)` -> everything beyond max double becomes `inf` per Python
 
-**4. native ต้องมีวิธีพิมพ์ `inf`/`nan` ที่ literal.** `repr(float('inf'))`
-ให้ `inf` ซึ่งเป็น identifier ไม่ใช่ constant ใน C (gcc error) เลยเพิ่ม
-`hs_f64raw(uint64_t)` ใน `rt.c` แล้ว emit เป็น bit pattern ตรง ๆ
-(`v_float(hs_f64raw(0x7ff0000000000000ULL))`) แทนการผูก `math.h`
+**4. Native needed a way to write literal `inf`/`nan`.** `repr(float('inf'))`
+gives `inf`, which is an identifier, not a C constant (gcc error), so
+`hs_f64raw(uint64_t)` was added to `rt.c` and the emitter writes the bit pattern
+directly (`v_float(hs_f64raw(0x7ff0000000000000ULL))`) instead of binding `math.h`
 
-หลักฐาน: `tests/floatlit.hs` (interp 42 / native 43), `tests/x64/float.hs`
-ยาวขึ้น, `tests/test.py` 41 -> 42, `tests/test_native.py` 42 -> 43
+Evidence: `tests/floatlit.hs` (interp 42 / native 43), a longer `tests/x64/float.hs`,
+`tests/test.py` 41 -> 42, `tests/test_native.py` 42 -> 43
 
-### 15.35 IR กลาง: CFG ที่ backend ทุกตัวต้องกินแทน AST (v0.6.21)
+### 15.35 Middle IR: a CFG every backend must eat instead of the AST (v0.6.21)
 
-ก้าวแรกของแผน self-hosting (`docs/superpowers/plans/2026-10-08-ir-backend.md`):
-`ir.py` สร้าง flat CFG จาก AST ของ `interp` — temp นิพจน์เป็น SSA บริสุทธิ์
-(`%1`, `%2`, ...), ตัวแปรซอร์สอยู่ในเฟรม (`stvar`/`load`), โฟลว์เป็นบล็อก
-ชัด (`jmp`/`br`/`ret`) พร้อม verifier (label ซ้ำ, โดดข้ามบล็อกที่ไม่มี,
-temp ไม่ได้นิยาม, phi ผิด) กับ reference interpreter ที่ต้องตรง `interp`
-ทุกไบต์ทั้ง stdout/stderr/rc
+The first step of the self-hosting plan (`docs/superpowers/plans/2026-10-08-ir-backend.md`):
+`ir.py` builds a flat CFG from `interp`'s AST - expression temps are pure SSA
+(`%1`, `%2`, ...), source variables live in a frame (`stvar`/`load`), flow is explicit
+blocks (`jmp`/`br`/`ret`), with a verifier (duplicate labels, jumps to missing
+blocks, undefined temps, bad phis) and a reference interpreter that must match `interp`
+byte for byte on stdout/stderr/rc
 
-การตัดสินใจสำคัญ: `and`/`or` lower เป็น branch+phi (short-circuit เหมือน
-interp) — นี่คือจุดที่ x64 ปัจจุบันทำผิด (รันทั้งสองข้าง) และ backend x64
-ต้องทำ branch จริงตอนย้ายมากิน IR (Task 4). ตัวแปรไม่ทำ mem2reg ตั้งแต่
-ต้น (รอ Task 3) เพื่อให้ closure/forward-ref/path-dependent definedness
-ถูกโดย construction — ฟัซซ์ differential 590 โปรแกรมสุ่มตรงกันหมด
-(ที่เหลือคือ infinite loop ที่ฟัซเซอร์สร้างเอง แฮงก์เหมือนกันทั้งสองฝั่ง)
+Key decision: `and`/`or` lower to branch+phi (short-circuit like
+interp) - this is exactly where current x64 is wrong (it ran both sides), and the x64
+backend must do real branches when it moves to IR (Task 4). Variables get no mem2reg
+from the start (waiting for Task 3) so closures/forward-refs/path-dependent definedness
+are correct by construction - 590 random differential fuzz programs all matched
+(the remainder were fuzzer-made infinite loops, hanging identically on both sides)
 
-divergence ที่ตั้งใจและจดไว้ใน `ir.py`: `break`/`continue` นอก loop กับ
-`return` นอกฟังก์ชันเป็น `error:` สะอาด ส่วน interp ปล่อย exception
-หลุดเป็น traceback — จะ match traceback ตรง ๆ ไม่ได้เพราะผูกกับ layout
-ไฟล์ของ `interp.py` เอง
+An intentional, recorded divergence in `ir.py`: `break`/`continue` outside a loop and
+`return` outside a function are clean `error:`s, while interp lets the exception
+escape as a traceback - matching the traceback exactly is impossible because it is
+bound to `interp.py`'s own file layout
 
-หลักฐาน: `ir.py`, `tests/test_ir.py` (16 differential + 4 verifier/builder
-+ dump + unsupported), `tests/run_all.py` มี suite ที่ 9, `docs/errors.md`
-มี section `ir.py` (ผ่าน `scripts/gen_errors.py` ที่รู้จัก `ir.py` แล้ว)
+Evidence: `ir.py`, `tests/test_ir.py` (16 differential + 4 verifier/builder
++ dump + unsupported), `tests/run_all.py` gained suite 9, `docs/errors.md`
+has an `ir.py` section (via `scripts/gen_errors.py`, which now knows `ir.py`)
 
-### 15.36 Container + `for` ใน IR (v0.6.22)
+### 15.36 Containers + `for` in IR (v0.6.22)
 
-Task 2 ของแผน IR: `list`/`dict` literal, `index`/`slice`, `setindex`,
-`for` (desugar เป็น len/index/while บนสล็อตเฟรมส่วนตัว `$itN`/`$iN`
-ชื่อชนกับโค้ดผู้ใช้ไม่ได้เพราะ `$` เขียนในซอร์สไม่ได้) พร้อม builtin
-เพิ่ม `range`/`append` (reuse ฟังก์ชันเดียวกับ interp ข้อความจึงตรง
-โดย construction)
+Task 2 of the IR plan: `list`/`dict` literals, `index`/`slice`, `setindex`,
+`for` (desugared to len/index/while over private frame slots `$itN`/`$iN` -
+they cannot clash with user code because `$` cannot be written in source), plus
+the `range`/`append` builtins (reusing the same functions as interp, so messages match
 
-บั๊กที่ differential เจอ: `continue` ใน `for` โดดข้ามขั้น increment
-(แขวนทั้งลูป) — แก้ด้วย incr block กลาง: body/break/continue ที่ตกผ่าน
-เข้าบล็อกเพิ่มค่าก่อนกลับ header ส่วน `while` ใช้ header ตรงเหมือนเดิม
-(แยกด้วย `incr: None`)
+by construction)
 
-หลักฐาน: `tests/test_ir.py` 23 -> 47 (เคส container/`for` 16 +
-`forcontinue` + corpus differential บน `tests/*.hs` ทั้งคลัง: 9 ผ่าน,
-33 ข้ามนอก subset อย่างนับแยก), ฟัซซ์สุ่มเพิ่ม 292 โปรแกรมตรงกันหมด
-(รวมสองรอบ 882 เคส, timeout ที่เหลือคือ infinite loop แท้ในซอร์สที่
-แฮงก์เหมือนกันทั้งสองฝั่ง)
+A bug the differential test caught: `continue` in a `for` skipped the increment
+step (hanging the whole loop) - fixed with a middle incr block: fall-through from
+body/break/continue enters the increment block before returning to the header,
+while `while` uses its header directly as before (split by `incr: None`)
 
-### 15.37 Dominance verifier + รูปแบบ text ของ IR + `hs.py ir` (v0.6.23)
+Evidence: `tests/test_ir.py` 23 -> 47 (16 container/`for` cases +
+`forcontinue` + a corpus differential over the whole `tests/*.hs` store: 9 pass,
+33 skipped outside the subset, counted separately), plus 292 more random fuzz
+programs all matching (882 cases across both rounds; the remaining timeouts are
+genuine infinite loops in the source, hanging identically on both sides)
 
-Task 3 ของแผน IR: verifier ตรวจ def-dominates-use จริง (dominator แบบ
-iterative dataflow, phi arm ต้อง dominate บล็อกต้นทางของ edge; บล็อกที่
-ไปไม่ถึงได้รับยกเว้นแต่ยังต้องมี terminator ถูกทรง) พร้อมรูปแบบ text
-มาตรฐาน: `hs.py ir prog.hs` พิมพ์ CFG (`func key(params):`, `label:`,
-`@line` ท้ายทุกบรรทัด, `-` แทน None, string escape `\uXXXX` รวม
-surrogate pair) และ `parse_module` อ่านกลับ — round-trip ทั้ง text
-เท่ากันและการรันเท่ากัน ครอบทุกเคสใน `test_ir.py` รวมสตริงโหด
-(quote/backslash/NUL/ไทย/astral/ลงท้ายด้วย ` @3`)
+### 15.37 Dominance verifier + IR text form + `hs.py ir` (v0.6.23)
 
-ของแถม: `_jerr` ใน `hs.py` ถูกเรียกแต่ไม่เคยนิยาม — path `--json`
-ตอน error พังด้วย NameError มาตลอด แก้ 6 บรรทัดให้ตรง contract
-`{"file","line","message"}` ที่เอกสารสัญญาไว้ พร้อม regression test
+Task 3 of the IR plan: the verifier now checks def-dominates-use for real
+(iterative dataflow dominators; a phi arm must dominate the source block of its
+edge; unreachable blocks are exempt but still need a well-formed terminator),
+plus a standard text form: `hs.py ir prog.hs` prints the CFG (`func key(params):`,
+`label:`, `@line` at the end of every line, `-` for None, string escapes `\uXXXX`
+including surrogate pairs) and `parse_module` reads it back - round-trip is equal
+both as text and as execution, across every case in `test_ir.py` including nasty
+strings (quote/backslash/NUL/Thai/astral/ending with ` @3`)
+
+Bonus: `_jerr` in `hs.py` was called but never defined - the `--json` error path
+had been broken with a NameError all along. Fixed in 6 lines to match the
+`{"file","line","message"}` contract the docs promise, with a regression test
 (`hs-ir --json`)
 
-หลักฐาน: `tests/test_ir.py` 47 -> 83 (dominance unit + round-trip 33 +
-`hs.py ir` dump/--json), `docs/errors.md` งอก section ข้อความ IR
+Evidence: `tests/test_ir.py` 47 -> 83 (dominance unit + 33 round-trip +
+`hs.py ir` dump/--json), `docs/errors.md` grew an IR messages section
 
-### 15.38 IR -> x64: backend ที่สองกิน IR โดยตรง (v0.6.24, Task 4 part 1)
+### 15.38 IR -> x64: a second backend eating IR directly (v0.6.24, Task 4 part 1)
 
-`irx64.py` เป็น Gen subclass ที่ reuse runtime ทั้งก้อนของ x64gen
-(value model, heap, builtins, error) กับ leaf emitter
-(emit_add/compares/arith/bitop/un/print/call/func-construct) — สิ่งที่
-เขียนใหม่มีแค่ driving layer: temp/ชื่อ -> frame slot, IR block ->
-label, phi -> store บน edge, call ผ่าน protocol เดียวกันทั้ง user func
-และ builtin values, `hs_main`/`_start`/link ต่อท้ายแบบเดียวกับ
-build_image
+`irx64.py` is a Gen subclass reusing x64gen's whole runtime
+(value model, heap, builtins, errors) and leaf emitters
+(emit_add/compares/arith/bitop/un/print/call/func-construct) - the only new code is
+the driving layer: temp/name -> frame slot, IR block -> label, phi -> store on the
+edge, calls through one protocol for both user functions and builtin values,
+`hs_main`/`_start`/link epilogue identical to build_image
 
-กับดักที่เจอ: builtin บางตัวใน x64 ไม่มี value form (`float`,
-file helpers) — `load float` แล้ว call ผ่าน value protocol จะ segfault
-(r15 ขยะ) เพราะ num arms ของ ev_call เป็น inline emitter
-แก้ด้วย provenance: temp จาก `load` ของ inline-only builtin ที่ feed
-เฉพาะ call-fn จะได้ dummy (inline path ทิ้งค่าอยู่แล้ว) นอกนั้น error
-`is not a value` เหมือนเดิม; shadowing (`float = 5` ของผู้ใช้) ยังถูก
-เพราะ resolve ตาม scope chain ก่อนเสมอ
+A trap found: some x64 builtins have no value form (`float`,
+file helpers) - `load float` then calling through the value protocol segfaults
+(garbage r15) because ev_call's numeric arms are inline emitters.
+Fixed with provenance: a temp loaded from an inline-only builtin that feeds only
+call-fn gets a dummy (the inline path discards the value anyway); anything else
+errors `is not a value` as before; shadowing (user's `float = 5`) stays correct
+because the scope chain is always resolved first
 
-หลักฐาน: `tests/test_irx64.py` เทียบ ELF ชน ELF (IR path vs AST path)
-9/9; ที่เหลือข้ามอย่างนับแยก (containers = slice ต่อไป; try/import/
-unsafe = งานหลัง; ref ปฏิเสธเองอีก 9)
+Evidence: `tests/test_irx64.py` compares ELF against ELF (IR path vs AST path)
+9/9; the rest are skipped with separate counts (containers = next slice; try/import/
+unsafe = later work; the ref itself rejects another 9)
 
-### 15.39 irx64 part 2: containers + เรียก builtin ตรงแบบ inline (v0.6.25)
+### 15.39 irx64 part 2: containers + direct inline builtin calls (v0.6.25)
 
-- Container ops ครบ: build_list/dict (stack + x_list_new/x_dict_new),
-  index/slice/setindex (transliterate ev_index/ev_slice/ex_setindex),
-  iterseq (List/Str ผ่าน, Dict เป็น list ของ keys ผ่านลูป machine code
-  ไม่มี call ข้างใน) — `for` ทำงานบน IR path แล้ว
-- เรียก builtin ตรงต้อง inline: ฟัซซ์จับได้ว่า `len` ของ Int รายงาน
-  `len of Int` ไม่มีเลขบรรทัดบน IR path (stub อบ line 0 ไว้) ขณะที่
-  AST path มี — เพราะ ev_call มี inline arm แยกจาก value protocol
-  แก้ด้วย provenance: temp จาก `load` ของ builtin ใน INLINE_DIRECT
-  ({float,len,str,int,range,append}) ที่ feed เฉพาะ call-fn และไม่ถูก
-  shadow จะเรียก inline emitter (error ตรงบรรทัด); first-class use
-  ยังผ่าน stub เหมือนเดิม
-- `for k in dict`: IR ทำ keys-snapshot เหมือน interp ส่วน x64gen เดิม
-  เดิน buf สด — IR path ถูกกว่าเดิมตรงนี้ (harness รับเมื่อตรงฝั่งใดฝั่งหนึ่ง)
+- Container ops complete: build_list/dict (stack + x_list_new/x_dict_new),
+  index/slice/setindex (transliterated from ev_index/ev_slice/ex_setindex),
+  iterseq (List/Str pass, Dict becomes a list of keys through a machine-code
+  loop with no calls inside) - `for` works on the IR path
+- Direct builtin calls must be inline: fuzz caught IR-path `len` of an Int
+  reporting `len of Int` with no line number (the stub baked in line 0) while
+  the AST path had one - because ev_call has an inline arm separate from the
+  value protocol. Fixed with provenance: a temp loaded from a builtin in
+  INLINE_DIRECT ({float,len,str,int,range,append}) that feeds only call-fn and
+  is not shadowed calls the inline emitter (errors land on the right line);
+  first-class use still goes through the stub as before
+- `for k in dict`: IR takes a keys snapshot like interp, while old x64gen
+  walked the live buf - the IR path is more correct here (the harness accepts
+  a match against either side)
 
-หลักฐาน: `tests/test_irx64.py` 9 -> 13 (for/func/types/t_strfun),
-ฟัซซ์ ELF-ชน-ELF 240 เคสตรงกันหมด
+Evidence: `tests/test_irx64.py` 9 -> 13 (for/func/types/t_strfun),
+ELF-vs-ELF fuzz over 240 cases all matching
 
-### 15.40 import ครบ end-to-end บน IR (v0.6.26, Task 4 part 3)
+### 15.40 import end-to-end on IR (v0.6.26, Task 4 part 3)
 
-- `ir.py`: builder รับ `import`/`attr`/`setattr`, interpreter มี module
-  registry จริง (file resolve แบบ interp, dotted + shell package,
-  circular error, `in module` wrap, init รันครั้งเดียว, attr read/write,
-  `print mod` เป็น `<module name>`) — `tests/t_import.hs` ตรง interp
-  ทุกไบต์
-- `irx64.py`: resolve ตอน build (parent-first + shell + circular),
-  merge funcs ด้วย dotted prefix, global แยกต่อ module, init guard
-  แบบ hsM_init, attr resolve แบบ static (submodule = phantom temp
-  ที่ value-use แล้ว error ชัด), `print mod` ตรง, copies ของ module
-  (`x = mod`) เป็นช่องโหว่ที่จดไว้
-- กับดัก: alias-load ต้องข้าม emission เมื่อทุก use เป็น chain
-  (ไม่งั้น UNBOUND check ลั่นก่อน attr จะ resolve), attr ซ้อน
-  (`std.str.trim`) ต้องรับ mval ไม่ใช่แค่ mod
+- `ir.py`: the builder accepts `import`/`attr`/`setattr`; the interpreter has a
+  real module registry (interp-style file resolve, dotted + shell package,
+  circular error, `in module` wrap, init runs once, attr read/write,
+  `print mod` shows `<module name>`) - `tests/t_import.hs` matches interp
+  byte for byte
+- `irx64.py`: resolves at build time (parent-first + shell + circular),
+  merges funcs with a dotted prefix, per-module globals, hsM_init-style
+  init guard, static attr resolve (a submodule is a phantom temp whose
+  value-use errors clearly), exact `print mod`; module copies
+  (`x = mod`) are a recorded hole
+- Traps: an alias-load must skip emission when every use is a chain
+  (otherwise the UNBOUND check fires before the attr resolves); nested attr
+  (`std.str.trim`) must accept an mval, not only a mod
 
-หลักฐาน: `test_ir.py` 83 -> 86, `test_irx64.py` 13 -> 18
-(t_import/t_pkg/t_std ผ่าน; t_heap ยังติด unsafe ถูกต้องแล้ว)
+Evidence: `test_ir.py` 83 -> 86, `test_irx64.py` 13 -> 18
+(t_import/t_pkg/t_std pass; t_heap still fails on unsafe, correctly)
 
-### 15.41 try/except/finally/raise บน IR ทั้งสองชั้น (v0.6.27, Task 4 part 4)
+### 15.41 try/except/finally/raise on IR at both layers (v0.6.27, Task 4 part 4)
 
-- `ir.py`: ops ใหม่ `try_push/try_pop/exc_str/exc_pop/unbind/reraise`
-  กับ terminator `raise`; builder inline finally บนทุกทางออกฉับพลัน
-  (return/break/continue พร้อม depth rule แบบ x64gen ผ่าน trystack),
-  handler shape ครบ (guard ซ้อนสำหรับ error ใน handler + finally,
-  save/restore ตาม shadow analysis ทั้งฟังก์ชัน); interpreter ใช้
-  Python exception + handler stack แยกเฟรม (_Jump ข้าม _call)
-- `irx64.py`: transliterate ตรงจาก ex_try (hs_try_push0/pop,
-  hs_exc_str/pop, hs_reraise, hs_raise_raw/Msg) พร้อม exc runtime +
-  data เมื่อมี try; bare raise ตรวจตอน build เหมือน x64gen
-- ฟัซซ์จับได้อีกแล้ว: `len` เสีย line (แก้ด้วย inline ไปแล้วรอบก่อน),
-  รอบนี้ `try_push` คู่กับ `unbind` ระดับ module ที่ลืม (slot ไม่มี
-  เพราะ entry-stvar เป็น global)
+- `ir.py`: new ops `try_push/try_pop/exc_str/exc_pop/unbind/reraise`
+  and a `raise` terminator; the builder inlines finally on every abrupt exit
+  (return/break/continue with the x64gen depth rule via trystack),
+  full handler shapes (nested guards for errors inside handlers + finally,
+  save/restore per the whole-function shadow analysis); the interpreter uses
+  Python exceptions + a per-frame handler stack (_Jump crossing _call)
+- `irx64.py`: transliterated straight from ex_try (hs_try_push0/pop,
+  hs_exc_str/pop, hs_reraise, hs_raise_raw/Msg) with the exc runtime +
+  data emitted when a try exists; bare raise is checked at build like x64gen
+- Fuzz caught more: `len` losing its line (already fixed via inline last round),
+  and this round a `try_push` paired with a module-level `unbind` that was
+  forgotten (no slot, because entry-stvar is a global)
 
-หลักฐาน: `test_ir.py` 86 -> 108 (10 เคส try + corpus t_try/t_finally/
-t_closure/t_circ ผ่าน), `test_irx64.py` 18 -> 22, ฟัซซ์ try 350 เคส
-บวก x64-diff 370 เคสตรงกันหมด
+Evidence: `test_ir.py` 86 -> 108 (10 try cases + corpus t_try/t_finally/
+t_closure/t_circ pass), `test_irx64.py` 18 -> 22, try fuzz over 350 cases
+plus x64-diff over 370 cases all matching
 
-### 15.42 `unsafe:` บน IR ทั้งสองชั้น + xbuild สับไป IR (v0.6.28, Task 4 part 5 + switchover)
+### 15.42 `unsafe:` on IR at both layers + xbuild switches to IR (v0.6.28, Task 4 part 5 + switchover)
 
-- `ir.py`: static world เป็น ops จริง ไม่ใช่ตัวแปร Python ซ่อนไว้
-  - ค่าคงที่/ดึงตัวแปร/เอาเครื่องหมาย: `sconst`, `sload`, `sraw`, `snz`,
+- `ir.py`: the static world becomes real ops, not hidden Python variables
+  - constants/variable fetch/operators: `sconst`, `sload`, `sraw`, `snz`,
     `sbin`, `sun`, `sfield`, `sderef`, `ssizeof`, `scall`
-  - พิมพ์/อ่านเขียน/ผูก: `sdecl`, `sset`, `sstore`, `sfstore`, `box`,
-    `svarptr` (as_ptr/as_int ของตัวแปรตรง — x64gen ไม่ unbox ก่อนแต่
-    ให้ dispatch ที่ tag เป็นตัวตัดสิน โค้ดเดียวกับ x64gen)
-  - error ที่ผูกกับ shape (`str`/`float` literal, collections, attr, slice,
-    call ผลลัพธ์) ย้ายไปเป็น `serr` runtime พร้อมข้อความสองฝั่ง (`imsg`
-    ของ interp / `xmsg` ของ x64) เพื่อให้ stdout ตรงกันแม้ตอน error
-    ตำแหน่งจะต่างกัน (build ของ x64gen vs runtime ของ interp)
-  - interpreter: `UnsafeVal` ตาม `interp.sev*` เป๊ะ — I64/U64/Ptr/LIT
-    ห้ามผสม, ชี้เป็น `Ptr` ไม่ได้, `U64` ใหญ่เกิน Int box ไม่ได้; หน่วยความจำ
-    จำลอง 1MB (`_us_alloc/_us_load/_us_store`) + `read_mem` ผูกกับ image นั้น
-  - ตัวแปรที่ถูก `sdecl` แล้วอ่านจาก safe code ต้อง coerce กลับ
-    (`dset`) ไม่ใช่ทับด้วยค่า dynamic ตรงๆ
-- `irx64.py`: lowering ตาม `sev*`/`ex_unsafe` ของ x64gen แบบคำต่อคำ
-  (raw word ไม่มี tag check, `/` ตัดทิ้ง, `print` ใช้ `print_int`, `fstore`
-  ดัน address ก่อนโหลดค่า, `as_ptr` dispatch tag), `struct` ชนิดของ pointer
-  มาจาก `Ptr:X` declaration + propagation `+`/`-` + field ซ้อน (`_struct_of`),
-  ชื่อซ้ำใน scope เดียวกัน fail ตอน build, `serr`/`ssizeof` ใช้ข้อความฝั่ง x64
-- JSON บน IR: `runtime/json.hs` คอมไพล์เป็น module ปกติ (`<json>`) แล้ว
-  `json_*` เรียกผ่าน `call_js_entry` + `js_finish` ชุดเดิม, hook เดียวคือ
-  `type_name` ในโมดูลนั้น (ตรงกับ AST path เดิม)
-- **Switchover**: `x64gen.build_x64` เดิน parse → IR → verify → GenIR แล้ว;
-  path เก่าย้ายไปชื่อ `build_x64_ast` ใช้เป็น reference ของ `test_irx64.py`
-  และยังเป็นทางที่ `xkernel` (freestanding) ใช้อยู่
-- ฟัซซ์จับได้: nested `and`/`or` ทำ phi arm ชี้ non-predecessor
-  (ต้องอ่าน label ปลายทางจริงหลัง evaluate), `sraw` ปนเข้า `sbin`,
-  `ssizeof` ทำให้ struct ไม่รู้จักตอน build, module alias copy
-  (`x = mod`) เคยตายเพราะ alias เกิดตอน emit แต่ dead-load คำนวณตอน plan
+  - print/read-write/bind: `sdecl`, `sset`, `sstore`, `sfstore`, `box`,
+    `svarptr` (as_ptr/as_int of a variable directly - x64gen does not unbox
+    first; the tag dispatches, same code as x64gen)
+  - shape-bound errors (`str`/`float` literal, collections, attr, slice,
 
-หลักฐาน: `test_x64.py` 52/52 ผ่านบน IR path, `test_irx64.py` 22 -> 35
-(เทียบ ELF ชน ELF กับ path เก่า, เคสที่ต่างกันขึ้น flag `!!` พร้อมบันทึกว่า
-IR path ตรงกว่า เช่น segfault ของ `tests/ufunc.hs` ที่ path เก่าพัง),
-`test_ir.py` 108 -> 134, ฟัซซ์ 480 เคส (IR + x64) ตรงกันหมด
+    result) move to a runtime `serr` carrying both sides' messages (`imsg`
+    for interp / `xmsg` for x64) so stdout matches even on errors, whose
+    positions differ (build time for x64gen vs runtime for interp)
+  - interpreter: `UnsafeVal` follows `interp.sev*` exactly - I64/U64/Ptr/LIT
+    cannot mix, a pointer cannot be `Ptr`-ed, `U64` too large to box as Int
+    fails; simulated 1MB memory (`_us_alloc/_us_load/_us_store`) + `read_mem`
+    bound to that image
+  - a variable that was `sdecl`-ed and is then read from safe code must be
+    coerced back (`dset`), not overwritten with a dynamic value directly
+- `irx64.py`: lowers per x64gen's `sev*`/`ex_unsafe` word for word
+  (raw words with no tag check, truncating `/`, `print` uses `print_int`,
+  `fstore` pushes the address before loading the value, `as_ptr` dispatches
+  on tag), a struct-typed pointer comes from a `Ptr:X` declaration + `+`/`-`
+  propagation + nested field (`_struct_of`), a duplicate name in one scope
+  fails at build, `serr`/`ssizeof` use the x64-side messages
+- JSON on IR: `runtime/json.hs` compiles as a normal module (`<json>`), then
+  `json_*` calls through the same `call_js_entry` + `js_finish` set; the only
+  hook is `type_name` in that module (matching the old AST path)
+- **Switchover**: `x64gen.build_x64` now walks parse -> IR -> verify -> GenIR;
+  the old path moved to `build_x64_ast` as the reference for `test_irx64.py`
+  and remains the path `xkernel` (freestanding) uses
+- Fuzz catches: nested `and`/`or` made a phi arm point at a non-predecessor
+  (you must read the real target label after evaluation), `sraw` leaking into
+  `sbin`, `ssizeof` leaving the struct unknown at build, module alias copies
+  (`x = mod`) dying because the alias was created at emit time but dead-load
+  was computed at plan time
 
-### 15.43 `hs.py xkernel` กลับมาทำงาน + เคส QEMU ที่ค้างผ่านหมด (v0.6.29)
+Evidence: `test_x64.py` 52/52 pass on the IR path, `test_irx64.py` 22 -> 35
+(ELF-vs-ELF against the old path; cases that differ get a `!!` flag noting the
+IR path is more correct, e.g. the `tests/ufunc.hs` segfault the old path hit),
+`test_ir.py` 108 -> 134, fuzz over 480 cases (IR + x64) all matching
 
-- บั๊กจริงที่หลุดมาตั้งแต่ v0.6.23: ตอนแทรก branch `ir` ใน `main()` ของ `hs.py`
-  บรรทัด `if argv[1] == "xkernel":` หายไปติดกับ branch `xbuild` ทำให้
-  `hs.py xkernel` ไหลไปเข้า native backend (gcc) แล้วพังด้วย TypeError
-  — ชุดเทสไม่จับเพราะเรียก `x64gen.build_xkernel` ตรง ๆ ไม่ได้ผ่าน CLI
-- เพิ่ม regression 3 เคสใน `test_x64.py`: สแกน AST ของ `hs.py` ยืนยันว่า
-  subcommand แต่ละตัวมี branch นึงและไม่มี branch ซ้ำ (`run` เป็น
-  fall-through ตั้งใจ ไม่มี branch) + สร้าง ELF freestanding จริงผ่าน CLI
-- เคส QEMU ที่ค้างมานาน (`kio` EXC 14 ×3, `kush` sendkey) ผ่านหมดในรอบ
-  เต็ม: `test_xkernel.py` 291/291 — เคยเป็นปัญหา environment ของ QEMU
-  (รันเดี่ยว ๆ ผ่านตั้งแต่ก่อน) ไม่เกี่ยวกับงาน IR
+### 15.43 `hs.py xkernel` working again + stuck QEMU cases all pass (v0.6.29)
 
-### 15.44 บั๊กจริง 5 ข้อบน x64 ที่ชุดเทสเดิมมองไม่เห็น (v0.6.30)
+- A real bug that escaped back in v0.6.23: while inserting the `ir` branch into
+  `hs.py`'s `main()`, the line `if argv[1] == "xkernel":` vanished into the
+  `xbuild` branch, making `hs.py xkernel` flow into the native backend (gcc)
+  and die with TypeError - the test suite missed it because it calls
+  `x64gen.build_xkernel` directly, not through the CLI
+- Added 3 regression cases to `test_x64.py`: scan `hs.py`'s AST to confirm each
+  subcommand has one branch and no duplicates (`run` is an intentional
+  fall-through with no branch) + build a real freestanding ELF through the CLI
+- The long-stuck QEMU cases (`kio` EXC 14 x3, `kush` sendkey) all pass in a
+  full round: `test_xkernel.py` 291/291 - they had been a QEMU environment
+  problem (passing standalone since before), unrelated to the IR work
 
-เปิด `xbuild` ไปทาง IR แล้วต้องพิสูจน์ว่า path ใหม่ยังตรงทุกภาษา ไม่ใช่แค่ผ่าน
-`tests/x64/` — เพิ่มการเดินคอร์ปัส `tests/*.hs` ทั้งหมดผ่าน IR path แล้วเทียบผลรันกับ
-`interp.py` (build error ที่ `.fail` ตรงก็ถือว่าผ่าน, ข้างนอก subset ขึ้น SKIP,
-ต่างที่เอกสารรับรองไว้แล้วขึ้นเป็น "known divergence" ไม่ใช่ SKIP เงียบ ๆ) ผลคือ
-เจอบั๊กที่ไม่เคยมีเทสต์ครอบ:
+### 15.44 Five real x64 bugs the old suite could not see (v0.6.30)
 
-1. **`Int / Int` คืน Int** ไม่ใช่ Float — ผิดสัญญาภาษา (`7 / 2 is 3.5`); x64 เดิม
-   ตกไปทาง `idiv` ทั้งที่มี float path อยู่แล้ว แก้ด้วย `cvtsi2sd` + `divsd`
-   (ปัดเป็น half-to-even ตรงกับ `float(int)` ของ interp) ทั้ง safe path
-   ของทั้งสอง backend; `unsafe:` คง truncate แบบ C ตามที่เคยกำหนด
-2. **`%` ตาม C ไม่ตาม Python** — `-7 % 3` ได้ `-1` แทน `2` (เติม divisor
-   เมื่อเศษกับตัวหารคนละเครื่องหมาย)
-3. **nested def ที่เรียกตัวเองพัง** — closure เก็บ capture ก่อน `var_set` ผูกชื่อ
-   ตัวเอง ทำให้อ่านได้แต่ UNBOUND; แก้ด้วยการอ่าน capture **หลัง** `var_set`
-   (AST path) และให้ self-capture ชี้ object ที่กำลังสร้าง (IR path)
-4. **`json_load` ส่ง File ที่ปิดแล้วให้ decoder** — ดัน slot ผิดตำแหน่ง
-   (`add $8` ก่อน `pop`) ไม่มีเทสต์ครอบเลย; json_parse/json_save ผ่านมาตลอด
-   ทำให้เห็นแค่ตอนรันคอร์ปัสเต็ม
-5. **`x_str_cmp` ตัดสินด้วยความยาวอย่างเดียว** — `"ab" < "b"` ได้ false
-   ทำให้ `ls` **กลับดับ**รายการ และ dict lookup ของ key ที่หนึ่งเป็น prefix
-   ของอีกอันพัง; แก้ให้ scan ไบต์ร่วมก่อน แล้วค่อยตัดสินด้วยความยาว
-   (พร้อมแก้ `x_list_sort_str` ที่ใช้ `rcx` ซึ่ง `x_str_cmp` ทำลายทิ้งเป็น
-   swap index ผิด)
+Opening `xbuild` through IR required proving the new path matches across the
+whole language, not just passing `tests/x64/` - so the corpus walker now runs
+all of `tests/*.hs` through the IR path and compares run results against
+`interp.py` (build errors matching `.fail` count as pass, outside-subset counts
+as SKIP, documented differences show as "known divergence" instead of a silent
+SKIP). That surfaced bugs no test ever covered:
 
-ผลข้างเคียงที่ต้องแก้ตาม: `kernel/kmb|kpage|kpmm.hs` ใช้ `/` ในโค้ด safe
-เพื่อหารจำนวนเต็มมานาน (พึ่งบั๊กเดิม) — เปลี่ยนเป็น `int(x / y)`; freestanding
-`1 / 0` ยังคงเป็น `#DE` เพราะ SSE divide ไม่ trap (เพิ่ม `idiv` ตัวดักไว้ให้
-ตัวเอง); `tests/x64/fib.expected` เดิมจด `20 / 4` เป็น `5` ตามบั๊ก — แก้เป็น `5.0`
-ตาม interp; `test_xkernel.py` ให้ session B เวลา 30 วินาที (เดิม 20 วินาที
-คือเส้นชั่วชาต่อเมื่อ image ใหญ่ขึ้น)
+1. **`Int / Int` returned Int** instead of Float - breaking the language contract
+   (`7 / 2 is 3.5`); old x64 fell through to `idiv` despite having a float path.
+   Fixed with `cvtsi2sd` + `divsd` (half-to-even rounding, matching interp's
+   `float(int)`) on the safe path of both backends; `unsafe:` keeps C-style
+   truncation as previously specified
+2. **`%` followed C, not Python** - `-7 % 3` gave `-1` instead of `2` (add the
+   divisor when remainder and divisor have opposite signs)
+3. **A nested def calling itself broke** - the closure captured before `var_set`
+   bound its own name, so reads got UNBOUND; fixed by reading captures **after**
+   `var_set` (AST path) and pointing the self-capture at the object being built
+   (IR path)
+4. **`json_load` passed a closed File to the decoder** - a slot pushed at the
+   wrong offset (`add $8` before `pop`); no test covered it, since
+   json_parse/json_save passed all along, so it only showed on the full corpus walk
+5. **`x_str_cmp` decided by length alone** - `"ab" < "b"` was false, making `ls`
+   **reverse** the listing, and breaking dict lookups where one key is a prefix
+   of another; fixed to scan shared bytes first, then decide by length
+   (also fixed `x_list_sort_str`, which used `rcx`, clobbered by `x_str_cmp`,
+   as its swap index)
 
-หลักฐาน: `test_x64.py` 52 -> 97 (เพิ่มการเดินคอร์ปัสทั้งหมด + 3 CLI),
+Knock-on fixes: `kernel/kmb|kpage|kpmm.hs` had long used `/` in safe code for
+integer division (leaning on the old bug) - changed to `int(x / y)`; freestanding
+`1 / 0` still raises `#DE` because SSE divide does not trap (added an `idiv`
+guard for it); `tests/x64/fib.expected` had recorded `20 / 4` as `5` per the bug -
+fixed to `5.0` per interp; `test_xkernel.py` gives session B 30 seconds (the old
+20 was a cliff edge once images grew)
+
+Evidence: `test_x64.py` 52 -> 97 (added the full corpus walk + 3 CLI cases),
 `test.py` 42 -> 48, `test_native.py` 43 -> 49, `test_ir.py` 134 -> 138,
 `test_irx64.py` 35 -> 41, `test_xkernel.py` 291/291
 
-## ขีดจำกัดของ x64 backend และการเลือก backend ของ `hs run`
+## x64 backend limits and how `hs run` picks a backend
 
-- `hs run` ลอง x64 ก่อน (build ~0.1s ไม่ใช้ gcc) ถ้าโปรแกรมอยู่นอก subset
-  หรือมี Int literal เกิน 62-bit จะ fallback ไป native (gcc) หรือ interp เอง
-- **Int บน x64 กว้าง 62-bit** (-2^61 .. 2^61-1) แต่ interp เป็น Python int
-  (ไม่จำกัด) และ native เป็น 64-bit ค่าที่ล้น 62-bit จะ **ไม่ถูกตัดเงียบ ๆ**:
-  build hosted จะ trap ด้วย `error: Int outside the 62-bit range ...` exit 97
-  (บวก/ลบ/คูณ/shift/ประกอบ tag) ถ้ายังไม่มี output/side effect `hs run`
-  จะรันซ้ำด้วย backend ที่ช้ากว่าให้เอง ไม่งั้นพิมพ์ error ชัดเจน + hint
-- ค่าใน `unsafe:` เป็น machine word ดิบ ไม่ตรวจ 62-bit; kernel (freestanding)
-  ยังตัดเป็น 62-bit เหมือนเดิม
-- `true == 1` เป็น `true` ทุก backend (เหมือน Python/interp)
-- บังคับ backend: `HS_BACKEND=auto|x64|native|interp` หรือ `hs.py run prog.hs --backend X`
+- `hs run` tries x64 first (build ~0.1s, no gcc); if the program is outside the
+  subset or has an Int literal beyond 62-bit it falls back to native (gcc) or
+  interp on its own
+- **Int on x64 is 62 bits wide** (-2^61 .. 2^61-1), while interp uses Python ints
+  (unbounded) and native uses 64-bit. Overflowing values are **not silently
+  truncated**: a hosted build traps with `error: Int outside the 62-bit range ...`
+  exit 97 (add/sub/mul/shift/tag assembly). If no output/side effect has happened
+  yet, `hs run` re-runs with a slower backend itself; otherwise it prints a clear
+  error + hint
+- Values in `unsafe:` are raw machine words with no 62-bit check; the kernel
+  (freestanding) still cuts to 62-bit as before
+- `true == 1` is `true` on every backend (like Python/interp)
+- Force a backend: `HS_BACKEND=auto|x64|native|interp` or `hs.py run prog.hs --backend X`
 
 ### Default args (parse-time desugar)
 
-- `def f(a, b=1 + 2):` ค่า default ต้องอยู่หลัง param ที่ไม่มี default เท่านั้น
-  (ผิด = error ตอน parse)
-- เรียก `f(x)` (มี f เป็น `def` ระดับบนที่ชื่อไม่ซ้ำ) ตัว parser เติม argument ท้ายที่ขาด
-  ด้วยสำเนาของ expression default **ทุกครั้งที่เรียก** (ต่างจาก Python ที่คำนวณตอน def;
-  `[]` ได้ list ใหม่ทุกครั้ง) backend ทุกตัวจึงเห็นแต่การเรียกเต็ม arity
-- ยังไม่รองรับ: method ใน class (error ตอน parse), เรียกผ่านตัวแปรอื่น/lambda
-  (จะได้ error arity ตามปกติ), `selfhost/cc.holy` (reject)
-- ทดสอบ: `tests/t_defaults.hs` (ทุก backend), `tests/err_defaults.hs`
+- `def f(a, b=1 + 2):` defaults may only follow params without defaults
+  (otherwise a parse error)
+- Calling `f(x)` (with f a top-level `def` whose name is unique) makes the parser
+  fill each missing trailing argument with a copy of the default expression
+  **on every call** (unlike Python, which computes it at def time;
+  `[]` gets a fresh list each call) - every backend therefore only ever sees
+  full-arity calls
+- Not yet supported: methods inside a class (parse error), calls through another
+  variable/lambda (you get the normal arity error), `selfhost/cc.holy` (rejects)
+- Tests: `tests/t_defaults.hs` (every backend), `tests/err_defaults.hs`
 
 ### Runtime allocation: strings
 String length and contents are unchanged. x64 string copy/concatenation
@@ -1338,6 +1357,7 @@ as with other unsafe memory operations. This does not call hs functions
 with their internal ABI and is unavailable in freestanding kernel mode.
 ### Executable memory groundwork (Linux x86-64)
 `selfhost/jitmem.hs` owns a page-rounded mapping for nonempty byte lists of
+
 at most 16 MiB. `publish` validates before mapping, copies into RW (not X)
 memory and changes the whole mapping to RX (not W). Failure releases the
 mapping. `release` unmaps it once and clears its handle; double release is

@@ -1,4 +1,4 @@
-// holyshit native runtime (เฟส 3a) — tagged values + Boehm GC.
+// holyshit native runtime (phase 3a) - tagged values + Boehm GC.
 // Generated programs link against rt.c with -lgc.
 #ifndef HS_RT_H
 #define HS_RT_H

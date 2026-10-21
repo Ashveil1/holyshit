@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""holyshit v1 interpreter (เฟส 2) — tree-walk, dynamic, indent syntax.
+"""holyshit v1 interpreter (phase 2) - tree-walk, dynamic, indent syntax.
 usage: python3 interp.py prog.holy
 notes: values are plain Python objects (int/float/str/bool/None/list/dict).
-  Native backend (เฟส 3) will wrap ints to 64-bit; here Python ints are unbounded.
+  Native backend (phase 3) will wrap ints to 64-bit; here Python ints are unbounded.
 """
 import re
 import sys

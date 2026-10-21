@@ -1,18 +1,18 @@
-# Neovim — holyshit
+# Neovim - holyshit
 
-1. คัดลอก `syntax/hs.vim` ไป `~/.config/nvim/syntax/hs.vim`
-   (หรือเก็บทั้งโฟลเดอร์แล้วใส่ `runtimepath`)
-2. ใส่ใน `init.lua`:
+1. Copy `syntax/hs.vim` to `~/.config/nvim/syntax/hs.vim`
+   (or keep the folder and add it to `runtimepath`)
+2. Put this in `init.lua`:
 
 ```lua
 vim.opt.runtimepath:append("/path/to/holyshit/editors/neovim")
 require("holyshit").setup({ repo = "/path/to/holyshit" })
 ```
 
-ได้: syntax + indent (2 ช่องว่าง) + LSP (diagnostics/hover/completion/definition)
-+ คำสั่ง `:HolyshitCheck`
+You get: syntax + indent (2 spaces) + LSP (diagnostics/hover/completion/definition)
++ the `:HolyshitCheck` command
 
-ตั้งค่าเสริม:
+Extra settings:
 
 ```lua
 require("holyshit").setup({

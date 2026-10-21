@@ -1,4 +1,4 @@
-# tour: stdlib + extern — ของสำเร็จรูป + ของจากภาษาอื่น
+# tour: stdlib + extern - ready-made pieces + things from other languages
 import std.list
 import std.str
 

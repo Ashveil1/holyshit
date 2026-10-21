@@ -1,24 +1,25 @@
-# holyshit docs — เริ่มตรงนี้
+# holyshit docs - start here
 
-ภาษา dynamic เขียนง่ายแบบ Python, มี 4 ปลายทางรัน (ดูตารางใน `builtins.md`
-ว่าของชิ้นไหนรันที่ไหนได้บ้าง) เขียนเอกสารเองให้คนอ่าน/ให้ AI อ่าน/ให้เครื่องอ่าน —
-และทุกอย่างที่เขียนไว้ถูกเทสตรวจว่าจริง
+A dynamic language that is as easy to write as Python, with 4 run targets
+(see the table in `builtins.md` for which feature runs where). The docs are
+written for humans, for AI agents and for machines - and every claim in them
+is checked by tests.
 
-| อยาก... | อ่าน |
+| I want to... | Read |
 |---|---|
-| ติดตั้งและรัน/build แบบ native (Linux x86-64) | [native-install.md](native-install.md) |
-| **cheatsheet หน้าเดียวจบ** | `cheatsheet.md` |
-| เขียนโปรแกรมแรกใน 10 นาที | `tutorial.md` |
-| ดูตัวอย่างที่รันได้จริง | `../examples/` |
-| หา builtin/keyword (คน) | `builtins.md` |
-| หาว่า error แปลว่าอะไร | `errors.md` |
-| เขียน `std.*` เอง / ใช้ std | `stdlib.md` |
-| รันแบบไม่ใช้ gcc / ลง bare metal | `x64-subset.md`, `kernel.md` |
-| ต่อ editor / ให้ AI เรียกใช้ภาษา | `lsp.md`, `for-agents.md` |
-| ให้โปรแกรมช่วยอ่าน (JSON) | `api.json` |
-| เหตุผลออกแบบ + ประวัติเฟส | `../SPEC-v1.md` |
-| กฎฉบับกระชับที่สุด | `../AGENTS.md` |
-| อยากช่วยเพิ่ม/แก้ภาษา | `../CONTRIBUTING.md` |
+| Install and run/build natively (Linux x86-64) | [native-install.md](native-install.md) |
+| **One-page cheatsheet** | `cheatsheet.md` |
+| Write my first program in 10 minutes | `tutorial.md` |
+| See runnable examples | `../examples/` |
+| Look up a builtin/keyword (human) | `builtins.md` |
+| Find out what an error means | `errors.md` |
+| Write my own `std.*` / use std | `stdlib.md` |
+| Run without gcc / go bare metal | `x64-subset.md`, `kernel.md` |
+| Hook up an editor / let AI drive the language | `lsp.md`, `for-agents.md` |
+| Let a program read the language (JSON) | `api.json` |
+| Design rationale + phase history | `../SPEC-v1.md` |
+| The most compact rules | `../AGENTS.md` |
+| Help extend/fix the language | `../CONTRIBUTING.md` |
 
 ## Normal install/run/build (Linux x86-64)
 
@@ -36,12 +37,11 @@ not all development commands or the entire language. See
 
 ## Development/reference tools (Python)
 
-
 ```sh
-python3 interp.py prog.holy     # tree-walk, พฤติกรรมอ้างอิง
-python3 hs.py check prog.holy   # ตรวจ syntax/scope
-python3 hs.py build prog.holy   # native binary ผ่าน gcc
-python3 hs.py xbuild prog.holy  # machine code ตรง ไม่ใช้ gcc
-python3 hs.py xkernel prog.holy -o k.elf  # kernel บูต QEMU ได้
+python3 interp.py prog.holy     # tree-walk, reference behavior
+python3 hs.py check prog.holy   # syntax/scope check only
+python3 hs.py build prog.holy   # native binary via gcc
+python3 hs.py xbuild prog.holy  # direct machine code, no gcc
+python3 hs.py xkernel prog.holy -o k.elf  # kernel that boots in QEMU
 python3 hs.py lsp             # language server (stdio)
 ```

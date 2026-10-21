@@ -1,4 +1,4 @@
-// holyshit native runtime (เฟส 3a). Build: gcc rt.c prog.c -lgc
+// holyshit native runtime (phase 3a). Build: gcc rt.c prog.c -lgc
 #define _GNU_SOURCE
 #include <signal.h>
 #include <ucontext.h>

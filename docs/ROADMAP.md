@@ -1,14 +1,14 @@
-# holyshit — แผนงาน (ROADMAP)
+# holyshit - ROADMAP
 
-> เขียนเมื่อ 2026-10-12 จากสถานะ **v0.6.30** เพื่อไปให้ถึงเป้าหมายใน [`VISION.md`](VISION.md)
-> แก้ครั้งที่ 2 หลังอ่านโค้ด/รันเทส/วัด benchmark จริง: ตัวเลขอยู่ที่ [`bench.md`](bench.md)
-> ป้าย: **[เอกสาร]** = มีเขียนไว้ในรีโป · **[อนุมาน]** = สมมติฐานของผู้เขียนแผน ต้องยืนยันกับเจ้าของ/โค้ด ·
-> ลำดับและเวลาเป็นข้อเสนอ ไม่ใช่คำมั่น (ไม่มี roadmap เดิมหลัง v0.6.30 ในรีโป นอกจากแผน IR)
+> Written 2026-10-12 from **v0.6.30**, aiming at the goals in [`VISION.md`](VISION.md)
+> Second revision after reading code/running tests/measuring benchmarks for real: numbers in [`bench.md`](bench.md)
+> Labels: **[documented]** = written down in the repo · **[inferred]** = the planner's hypothesis, must be confirmed with the owner/code ·
+> Ordering and durations are proposals, not promises (no pre-v0.6.30 roadmap exists in the repo beyond the IR plan)
 >
-> หลักการ: ทุกเฟสต้องมี **เกณฑ์ผ่านที่รันได้** (คำสั่ง + ผลที่คาด), เทสเดิมต้องเขียวตลอด
-> (`python3 tests/run_all.py`), ทุกการเปลี่ยนมี benchmark ตามด้วย
+> Principle: every phase needs a **runnable pass gate** (command + expected result), existing tests stay green
+> (`python3 tests/run_all.py`), and every change is followed by a benchmark
 
-## Current status: 2026-10-14
+## Current status: 2026-10-21
 
 The seven-goal evidence table is maintained in [VISION.md](VISION.md).
 Overall progress is about **70%**, an engineering judgment, not a test-derived
@@ -23,11 +23,11 @@ Completed native B-path checkpoints:
   the Python reference and a two-generation native fixed point. Unsafe
   literal transport covers decimal/hex words through 64 bits; safe tagged
   integer semantics remain unchanged.
-- `bootstrap/hs-hosted-x86_64` is a pinned Linux x86-64 seed, 9,294,600 bytes,
-  SHA256 `ff7742a04768409cd1d4bb5fe68b19c15c7bfbc1692df21f5a4e85c6d9310fd1`.
-  The source audit rebuilds it independently; the Python-free bootstrap
-  requires seed == stage2 == stage3. It depends on this repository, not
-  Python execution. See [bootstrap instructions](../bootstrap/README.md).
+- `bootstrap/hs-hosted-x86_64` is a pinned Linux x86-64 seed, rebuilt and
+  re-pinned whenever the compiler closure changes (current hash in
+  `bootstrap/SHA256SUMS`). The source audit rebuilds it independently; the
+  Python-free bootstrap requires seed == stage2 == stage3. It depends on
+  this repository, not Python execution. See [bootstrap instructions](../bootstrap/README.md).
 - `scripts/run-native.sh SOURCE [args...]` is one-command compile-and-run.
   It is not JIT and does not silently fall back to Python.
 - Public xkernel selects IR. The unchanged QEMU corpus passes 291/291
@@ -39,12 +39,20 @@ Completed native B-path checkpoints:
   reduced string-benchmark median runtime 0.580149s -> 0.520208s and peak
   RSS 469 MB -> 377 MB. See [benchmark scope](bench.md). A GC arena-cache
   experiment was rejected after it did not improve alternating medians.
+- Experimental eager in-memory JIT driver (`selfhost/be/jit_run.holy`):
+  compiles source to machine code, relocates it into owned RX mappings and
+  executes in-process (see [jit.md](jit.md)). Since 2026-10-19 it has a
+  persistent compiled-code cache (json bench warm startup 30 ms -> 7 ms),
+  an FFI soname fix, and inline fast paths for generic `==`/`!=` and
+  `len()` in the hs emitter. All of this is written in hs itself -
+  no LLVM or external code-generation libraries (owner directive 2026-10-18).
 
 Immediate unfinished work:
 
-1. Real in-memory JIT, with execution/relocation/lifetime/error gates before
-   claiming it replaces compile-and-run. First-call compilation and tiering
-   remain separate steps.
+1. Real in-memory JIT beyond the eager driver: first-call compilation,
+   tiering, type feedback/specialization, deopt, with
+   execution/relocation/lifetime/error gates before claiming it replaces
+   compile-and-run.
 2. Broader FFI (callbacks, struct-by-value, variadics) and explicit ABI tests.
 3. GC/live-heap performance and more representative benchmarks.
 4. Actual model evaluations on the 39-task suite and usability comparisons.
@@ -56,150 +64,160 @@ regeneration toolchain, not a required runtime for the native B-path.
 Each implementation stage still needs its own PR, differential regression
 and green full CI before normal merge.
 
-## ที่วัดได้ก่อนเริ่ม (v0.6.30, ดู `bench.md`)
+## What was measured before starting (v0.6.30, see `bench.md`)
 
-- เทส interp/x64/IR/irx64/fmt/LSP/docs ผ่านทั้งหมด; native และ kernel (QEMU) รันไม่ได้ในเครื่องวัด → ให้ CI ยืนยัน
-- xbuild เร็วกว่า CPython 5-6x ในงาน int/เรียกฟังก์ชัน
-- dict 200k insert: 117 s (CPython 0.1 s) เพราะ linear scan; วน alloc 5M รอบ: 687 MB เพราะไม่มี free
-- ภาษายังขาด class/method/lambda และ dict key ที่ไม่ใช่ Str
+- interp/x64/IR/irx64/fmt/LSP/docs tests all pass; native and kernel (QEMU) cannot run on the measuring machine -> CI confirms
+- xbuild is 5-6x faster than CPython on int/function-call work
+- dict 200k insert: 117 s (CPython 0.1 s) due to linear scan; alloc 5M loop: 687 MB because nothing frees
+- The language still lacks class/method/lambda and non-Str dict keys
 
-## เฟส 0 — พื้นฐานให้ไว้ใจได้ (ทำแล้ว)
+## Phase 0 - trustworthy foundations (done)
 
-| งาน | สถานะ |
+| Work | Status |
 |---|---|
-| CI (`.github/workflows/ci.yml`): quick ทุก push/PR; ทุกคืน = ชุดเต็ม + QEMU + bench | ทำแล้ว (ต้องดูผลรันแรกบน GitHub) |
-| `bench/` คู่ .holy/.py + `bench/run.py` + `docs/bench.md` baseline | ทำแล้ว |
-| sync เลขเวอร์ชัน/จำนวนเทสใน README/AGENTS/run_all | ทำแล้ว |
-| tag `v0.6.30` | ทำที่ commit baseline |
-| LICENSE | **ยังไม่ทำ** รอเจ้าของเลือก |
+| CI (`.github/workflows/ci.yml`): quick on every push/PR; nightly = full suite + QEMU + bench | done |
+| `bench/` .holy/.py pairs + `bench/run.py` + `docs/bench.md` baseline | done |
+| Sync version/test counts in README/AGENTS/run_all | done |
+| tag `v0.6.30` | done at the baseline commit |
+| LICENSE | done (Apache License 2.0, copyright 2026 Ashveil1) |
 
-## เฟส 1 — จุดตายด้านความเร็ว/หน่วยความจำ (กำลังทำ)  [เป้า 1, 5]
+## Phase 1 - speed/memory dead spots (in progress)  [goals 1, 5]
 
-1. **hash dict บน x64 (ทำแล้ว):** dict ที่มี ≥ 8 key สร้างตาราง hash (FNV-1a, open addressing, load ≤ 0.5) ข้างอาร์เรย์คู่ key/value เดิม
-   (ลำดับ insertion คงเดิม; dict เล็กยังเป็น linear scan) — 200k insert: 117 s → 0.05 s (CPython 0.08 s); เทส `tests/dict_hash.holy` เทียบ interp
-2. **ตัวคืนหน่วยความจำ:** free list อย่างเดียวช่วยไม่ได้เพราะไม่มีใครรู้ว่าอะไรตาย จึงต้องมี GC —
-   แผน: mark-sweep แบบ conservative, รันเฉพาะ "จุดปลอดภัย" ที่ IR backend emit (หัวฟังก์ชัน/loop back-edge) เพื่อไม่ให้ helper ของ runtime
-   ค้างกลางทาง, header 16 ไบต์ต่อ block + bitmap จุดเริ่ม block ต่อ arena, block ของ `unsafe` ที่ `x_alloc` ถูก pin ไม่เก็บ
-   เกณฑ์ผ่าน: `bench/alloc` ใช้ < 50 MB, ทุกชุดเทสเขียว, เทส stress (list/dict/closure/exception ซ้อนกัน) เทียบ interp;
-   ถ้าทำให้มั่นคงไม่ได้ให้ revert และเก็บเป็นงานของเฟส 3 (runtime ใหม่เป็น hs)
+1. **Hash dict on x64 (done):** a dict with >= 8 keys builds a hash table (FNV-1a, open addressing, load <= 0.5) beside the original key/value pair array
+   (insertion order preserved; small dicts stay linear scan) - 200k insert: 117 s -> 0.05 s (CPython 0.08 s); test `tests/dict_hash.holy` compares against interp
+2. **Memory reclamation:** a free list alone does not help because nobody knows what is dead, so a GC is needed -
+   plan: conservative mark-sweep, running only at "safe points" the IR backend emits (function entries/loop back-edges) so runtime helpers
+   are never interrupted mid-call; 16-byte header per block + block-start bitmap per arena; `unsafe` blocks allocated by `x_alloc` are pinned and not collected
+   Pass gate: `bench/alloc` uses < 50 MB, all suites green, stress tests (nested list/dict/closure/exception) match interp;
+   if it cannot be made stable, revert and keep it as phase 3 work (new runtime in hs)
 
-## เฟส 2 — ย้าย kernel ไป IR และปิด backend AST เก่า (1–2 สัปดาห์)  [เป้า 4, 5]
+## Phase 2 - move the kernel to IR and close the old AST backend (1-2 weeks)  [goals 4, 5]
 
-เหตุผล [เอกสาร]: SPEC §15.35/15.38: `xkernel` ยังใช้ `x64gen.build_x64_ast`; `xbuild` ใช้ IR แล้ว (v0.6.28)
+Rationale [documented]: SPEC §15.35/15.38: `xkernel` still used `x64gen.build_x64_ast`; `xbuild` already used IR (v0.6.28)
 
-1. เพิ่ม lowering ของ freestanding (serial, heap, IDT, PIT, port I/O, `unsafe`) ใน `irx64.py`
-2. รัน kernel corpus (`kernel/*.holy`, 291 เคส) ผ่าน IR path เทียบกับ AST path แบบ ELF-ต่อ-ELF + QEMU
-3. สลับ `hs.py xkernel` ไป IR; เก็บ AST path ไว้หลัง flag 1 รุ่น แล้วลบ
-4. ให้ IR path ผ่านการเดินคอร์ปัสทั้งหมดอย่างที่ v0.6.30 ทำกับ `xbuild` (หาบั๊กแบบที่เจอ 5 ข้อ)
+1. Add freestanding lowering (serial, heap, IDT, PIT, port I/O, `unsafe`) in `irx64.py`
+2. Run the kernel corpus (`kernel/*.holy`, 291 cases) through the IR path, ELF-to-ELF + QEMU against the AST path
+3. Switch `hs.py xkernel` to IR; keep the AST path behind a flag for one release, then delete
+4. Give the IR path the same full corpus walk v0.6.30 gave `xbuild` (to find bugs like the 5 found then)
 
-**เกณฑ์ผ่าน:** `test_xkernel.py` 291/291 บน IR path; ลบ `build_x64_ast` ได้โดยเทสเขียว; bench kernel boot ไม่ช้าลง
+**Done:** `test_xkernel.py` passes 291/291 on the IR path in full CI; `xkernel` defaults to IR (see "S8 default kernel IR" below).
 
-## เฟส 3 — ความสามารถของภาษา + optimizer (4–6 สัปดาห์)  [เป้า 1, 3, 7]
+## Phase 3 - language capability + optimizer (4-6 weeks)  [goals 1, 3, 7]
 
-ภาษายังขาดสิ่งที่ AI/คนคุ้นจาก Python: method บน builtin (`s.split(",")`, `l.append(x)`, `d.get(k)`), lambda, key ของ dict ที่ไม่ใช่ Str, class/struct พร้อม method, string formatting.
-ทุกฟีเจอร์ต้อง: เขียน SPEC ก่อน, เปลี่ยน `interp.py` ก่อน (ต้นแบบพฤติกรรม), แล้วตามด้วย IR/x64/native พร้อมเทสเทียบ
+The language still lacks things AI/people expect from Python: methods on builtins (`s.split(",")`, `l.append(x)`, `d.get(k)`), lambda, non-Str dict keys, class/struct with methods, string formatting.
+Every feature must: be specified in SPEC first, change `interp.py` first (the behavior prototype), then IR/x64/native follow with differential tests.
 
-[เอกสาร] ปัจจุบัน: ค่า tagged (Int 62-bit), bump allocator ไม่ free บน x64, Boehm GC บน native
+[documented] Today: tagged values (Int 62-bit), non-freeing bump allocator on x64, Boehm GC on native.
 
-- 3.1 ถ้า GC ในเฟส 1 ไม่ผ่าน: ตัวจัดสรร + GC เขียนด้วย hs/IR (runtime ใหม่) — จำเป็นสำหรับโปรแกรมยาว, kernel, JIT และ self-host
-- 3.2 optimization บน IR: constant folding, dead code, inline ฟังก์ชันเล็ก, mem2reg (plan IR บอกว่าเลื่อนไว้)
-  [เอกสาร: "ตัวแปรไม่ทำ mem2reg ตั้งแต่…"] — ทุกตัวต้องรักษา "ผลตรง interp ทุกไบต์"
-- 3.3 register allocation แบบง่าย (linear scan) แทนการใช้ stack ทุกตัว **[อนุมาน — ต้องดู x64gen ว่าทำอย่างไรตอนนี้]**
-- 3.4 แก้ divergence ที่จดไว้: Int 62-bit บน x64 vs 64-bit บน interp ตัดสินใจเลือกอย่างใดอย่างหนึ่ง (bigint/overflow semantic)
-- **เกณฑ์ผ่าน:** bench เฟส 1 ดีขึ้นตามเป้าและไม่มี regression ในเทสความตรงกับ interp; โปรแกรมที่วน allocate 10^8 ครั้งไม่หมดหน่วยความจำ
+- 3.1 If the phase 1 GC does not pass: allocator + GC written in hs/IR (new runtime) - needed for long programs, kernel, JIT and self-hosting
+- 3.2 IR optimizations: constant folding, dead code, small-function inlining, mem2reg (the IR plan says deferred)
+  [documented: "variables do not get mem2reg since..."] - every one must preserve "byte-exact match with interp"
+- 3.3 Simple register allocation (linear scan) instead of using the stack for everything **[inferred - check what x64gen does today]**
+- 3.4 Fix the recorded divergence: Int 62-bit on x64 vs 64-bit on interp - pick one (bigint/overflow semantics)
+- **Pass gate:** phase 1 benches improve to target with no regression in interp-equality tests; a program allocating 10^8 times does not run out of memory
 
-## เฟส 4 — JIT (historical duration estimate; implementation remains open)  [เป้า 2, 1]
+## Phase 4 - JIT (historical duration estimate; implementation remains open)  [goals 2, 1]
 
-ฐานที่มีแล้ว [เอกสาร]: IR (`ir.py`) + backend x64 (`irx64.py`) + encoder (`x64.py`) ไม่ใช้ libc
+Existing base [documented]: IR (`ir.py`) + x64 backend (`irx64.py`) + encoder (`x64.py`) without libc.
+Owner directive (2026-10-18): the JIT emitter is written in holyshit itself, x86-64, no LLVM/external libraries.
 
-ออกแบบ (ข้อเสนอ **[อนุมาน]**):
-1. **JIT แบบ "compile-on-first-call" ก่อน** (method JIT ไม่มี tiering): เมื่อรัน `hs prog.holy` → parse → IR → โค้ดเครื่องลง mmap(RWX→RX) → กระโดดเข้า
-   - ถ้าเขียนด้วย Python: ใช้ `ctypes`/`mmap` เรียกโค้ดที่สร้าง (พิสูจน์แนวคิดเร็ว แต่ยังต้องมี Python)
-   - ถ้า self-host แล้ว: runtime เป็น native, JIT ในตัวเอง (เฟส 5)
-2. เก็บ interpreter เป็น tier ล่าง (ตรวจพฤติกรรมอ้างอิงและ fallback เมื่อเจอ feature นอก subset)
-3. **เฟสย่อย 4b:** type feedback + specialization (Int/Float/Str fast path, guard + deopt กลับ interp)
-   เพราะภาษา dynamic ทั้งหมด; เริ่มจาก inline caching ของ `+ - < ==` และ index
-4. cache โค้ดที่คอมไพล์แล้ว (ไฟล์ .hsc ข้างต้นฉบับ) ลดเวลาเริ่ม — ยังเป็น "ไม่ต้องคอมไพล์เองจากมุมผู้ใช้"
-5. `hs prog.holy` เป็นคำสั่งเดียว ไม่มี `build` ให้ผู้ใช้เห็น; `build`/`xbuild` คงไว้สำหรับ AOT/ส่งมอบ binary
+Current state (2026-10-21): an experimental eager in-memory driver exists
+(`selfhost/be/jit_run.holy`, `scripts/run-jit-native.sh`) with a persistent
+code cache. It compiles the whole program eagerly, relocates into owned RX
+mappings and executes in-process. There is no first-call compilation,
+tiering, type feedback or deoptimization yet.
 
-**เกณฑ์ผ่าน:** `hs prog.holy` เริ่มรันใน <50 ms สำหรับโปรแกรมเล็ก (วัดจริง), ผล stdout/stderr/rc ตรง interp ทุกไบต์
-บนคอร์ปัสเดียวกับเฟส 2, bench ≥ `xbuild` ± 10% และดีกว่า CPython ตามเป้าเฟส 1
+Design (proposal **[inferred]**):
+1. **"Compile-on-first-call" JIT next** (method JIT without tiering): on `hs prog.holy` -> parse -> IR -> machine code into mmap(RW->RX) -> jump in
+2. Keep the interpreter as the lower tier (reference behavior + fallback for out-of-subset features)
+3. **Sub-phase 4b:** type feedback + specialization (Int/Float/Str fast paths, guard + deopt back to interp)
+   because the language is fully dynamic; start with inline caching of `+ - < ==` and indexing
+4. Cache compiled code (a .hsc file beside the source) to cut startup - still "no explicit compile from the user's view" (done for the JIT driver)
+5. `hs prog.holy` stays a single command with no user-visible `build`; `build`/`xbuild` remain for AOT/binary delivery
 
-## เฟส 5 — Self-hosting (historical plan; native gates now implemented)  [เป้า 5]
+**Pass gate:** `hs prog.holy` starts running in <50 ms for small programs (measured), stdout/stderr/rc byte-identical to interp
+on the same corpus as phase 2, bench >= `xbuild` ± 10% and better than CPython per phase 1 targets
 
-เหตุผล: ตอนนี้ parser/IR/backend/LSP เป็น Python; SPEC §15.35 เรียก IR ว่า "ก้าวแรกของแผน self-hosting"
+## Phase 5 - Self-hosting (historical plan; native gates now implemented)  [goal 5]
 
-ลำดับ **[อนุมาน]**:
-1. **ให้ภาษาพอสำหรับเขียน compiler:** dict/hash จริง, string builder, file I/O ครบ, error ที่ดี, recursion/stack ลึก,
-   ตัวจัดการหน่วยความจำ (เฟส 3.1) — ทำเป็นรายการ "ขาดอะไรจะเขียน lexer ได้" โดยลองเขียนจริง
-2. เขียน **lexer + parser ด้วย hs** (ผลต้อง AST เหมือน `interp.parse_program` เทียบ dump ทั้งคอร์ปัส)
-3. เขียน **IR builder + verifier ด้วย hs** (เทียบกับ `ir.py` ด้วย IR text dump `hs.py ir`)
-4. เขียน **backend x64 + assembler/ELF writer ด้วย hs** (`x64.py`, `x64gen.py`, `irx64.py` ~ 600 KB — ส่วนใหญ่เป็น `x64gen.py`
-   ที่ควรถูกแทนด้วย `irx64`; ให้ตัดของเก่าก่อนพอร์ต)
-5. **bootstrap:** stage0 = Python ปัจจุบัน → compile stage1 (hs compiler เป็น ELF) → stage1 compile ตัวเอง = stage2;
-   **เกณฑ์ผ่าน:** stage1 และ stage2 ให้ไบนารีเหมือนกันทุกไบต์ (fixed point) และผ่านเทสทั้งชุด
-6. ลบการพึ่ง Python/gcc/Boehm ออกจากเส้นทางหลัก (`build` ผ่าน gcc เก็บเป็นตัวเลือก)
+Rationale: originally parser/IR/backend/LSP were Python; SPEC §15.35 called IR "the first step of the self-hosting plan"
 
-## เฟส 6 — FFI ที่ใช้งานได้จริง (2–4 สัปดาห์ ขนานกับเฟส 3–5 ได้)  [เป้า 6]
+Order **[inferred]**:
+1. **Make the language sufficient to write a compiler:** real dict/hash, string builder, full file I/O, good errors, deep recursion/stack,
+   memory management (phase 3.1) - build a "what is missing to write a lexer" list by actually writing one
+2. Write the **lexer + parser in hs** (AST must match `interp.parse_program`, dump-compared across the corpus)
+3. Write the **IR builder + verifier in hs** (compared with `ir.py` via the IR text dump `hs.py ir`)
+4. Write the **x64 backend + assembler/ELF writer in hs** (`x64.py`, `x64gen.py`, `irx64.py` ~ 600 KB - mostly `x64gen.py`,
+   which should be replaced by `irx64`; cut the old one before porting)
+5. **bootstrap:** stage0 = current Python -> compile stage1 (hs compiler as ELF) -> stage1 compiles itself = stage2;
+   **pass gate:** stage1 and stage2 are byte-identical binaries (fixed point) and pass the whole suite
+6. Remove Python/gcc/Boehm from the main path (`build` via gcc stays an option)
 
-[เอกสาร] ปัจจุบัน: `extern` ผ่าน C ABI, ชนิดพื้นฐาน, ไม่มี struct/callback/variadic, ห้ามใน unsafe/kernel
+**Status 2026-10-21:** steps 1-5 are done for the hosted compiler (pinned seed,
+seed == stage2 == stage3 fixed point, `scripts/run-native.sh`). Step 6 is done
+for the hosted/native-kernel routes; Python remains the reference/test toolchain.
 
-1. ตรวจสถานะ `extern` บน `xbuild` (SPEC §15.22–15.28 ระบุว่ายังไม่มีที่ v0.6.14–15) แล้วทำให้เท่ากับ native
-2. ชนิดข้อมูล: struct by pointer/by value, array, callback (hs function → C function pointer), variadic (`printf`)
-3. ตัวโหลด `.so` เองใน x64 โดยไม่พึ่ง libc ถ้าทำได้ (dynamic ELF loader/`dlopen` เขียนเอง) **[อนุมาน — งานใหญ่; ทางเลือก: ลิงก์ static ผ่าน linker เอง]**
-4. ตัวสร้าง binding จากไฟล์ header C อัตโนมัติ (`hs.py bind foo.h`)
-5. ตัวอย่างและเทสกับ Rust / Zig / C++ ที่ export C ABI (ตามที่ SPEC §11 อ้าง) — เทสจริงในเครื่องมีคอมไพล์เลอร์เหล่านั้น
-- **เกณฑ์ผ่าน:** เรียก libc (`printf`, `qsort` พร้อม callback), libm, ไลบรารี C ภายนอกอย่างน้อย 1 ตัว (เช่น sqlite หรือ zlib) และ `.so` ที่ Rust สร้าง จาก hs ได้ในโหมด interp, build, xbuild
-- นอกขอบเขต (ตัดแล้ว): CPython C-API / ไลบรารี Python ครบ
+## Phase 6 - practical FFI (2-4 weeks, can run parallel to phases 3-5)  [goal 6]
 
-## เฟส 7 — OS ให้ครบพอใช้ (ต่อเนื่อง)  [เป้า 4]
+[documented] Today: `extern` through the C ABI, basic types, no struct/callback/variadic, forbidden in unsafe/kernel.
 
-ที่มีแล้ว [เอกสาร] ถึง ATA PIO driver (v0.6.17) ที่ไม่มีใน SPEC ที่อ่านและต้องตรวจ [อนุมาน]: network, ดิสก์จริง/filesystem บนดิสก์, SMP, ACPI/APIC, กราฟิก, bootloader เอง, รันบนเครื่องจริง
+1. Check `extern` on `xbuild` (SPEC §15.22-15.28 said missing at v0.6.14-15) and bring it level with native
+2. Data types: struct by pointer/by value, arrays, callbacks (hs function -> C function pointer), variadics (`printf`)
+3. A self-written `.so` loader on x64 without libc if feasible (own dynamic ELF loader/`dlopen`) **[inferred - big job; alternative: static linking through our own linker]**
+4. Automatic binding generator from C header files (`hs.py bind foo.h`)
+5. Examples and tests with Rust / Zig / C++ exporting the C ABI (as SPEC §11 claims) - test for real on a machine with those compilers
+- **Pass gate:** call libc (`printf`, `qsort` with callback), libm, at least one external C library (e.g. sqlite or zlib) and a Rust-built `.so` from hs in interp, build and xbuild modes
+- Out of scope (dropped): CPython C-API / full Python libraries
 
-ลำดับข้อเสนอ: (1) filesystem บนดิสก์ (ext2-like หรือแบบง่าย) เหนือ ATA (2) ELF loader ใน kernel รันโปรแกรม user
-ที่เขียนด้วย hs (3) bootloader/UEFI เองหรือ multiboot ที่ไม่ต้องพึ่ง QEMU `-kernel` (4) network (virtio-net หรือ e1000 + ARP/IP/UDP/TCP แบบเล็ก)
-(5) APIC/timer ใหม่/SMP (6) boot บนเครื่องจริง/VM อื่น
-**เกณฑ์ผ่านต่อข้อ:** เทส QEMU อัตโนมัติ (ต่อยอด `test_xkernel.py`) + demo สั้น
+## Phase 7 - a complete-enough OS (ongoing)  [goal 4]
 
-## เฟส 8 — AI-first: วัดและเสริม (ทำคู่ไปกับทุกเฟสเริ่มตั้งแต่เฟส 1)  [เป้า 7, 3]
+What exists [documented]: up to an ATA PIO driver (v0.6.17) plus, since then, VFS/file I/O and floats in the native IR kernel compiler gate. Not in the read SPEC and needs checking [inferred]: network, real disk/filesystem on disk, SMP, ACPI/APIC, graphics, own bootloader, running on real hardware
 
-ฐาน [เอกสาร]: AGENTS.md, for-agents.md, api.json, errors.md, error `--json`, LSP, docs ที่เทสตรวจ
+Proposed order: (1) filesystem on disk (ext2-like or simpler) over ATA (2) ELF loader in the kernel running user
+programs written in hs (3) own bootloader/UEFI or multiboot without QEMU `-kernel` (4) network (virtio-net or e1000 + small ARP/IP/UDP/TCP)
+(5) APIC/new timer/SMP (6) boot on real hardware/other VMs
+**Pass gate per item:** automated QEMU tests (extending `test_xkernel.py`) + a short demo
 
-1. **eval suite:** 50–100 โจทย์เขียนโปรแกรม (`evals/*.md` + เทสอัตโนมัติ); รันกับโมเดลหลายตัวในโหมด "มีเอกสาร" และ "ไม่มีเอกสาร"; ตัวชี้วัด: pass@1, จำนวนรอบแก้, token ต่อโปรแกรม; เทียบ Python บนโจทย์เดียวกัน
-2. ทุก error มีรหัส + คำแนะนำแก้ (`E0xx: …; hint: …`) เป็น JSON (ต่อยอด errors.md)
-3. `hs fmt` canonical ที่ไม่ตัดคอมเมนต์ (ทำแล้ว: `fmt -w` เก็บคอมเมนต์ (ตำแหน่งอาจขยับ blank line ยังหาย)) — AI เขียนคอมเมนต์ได้โดยไม่หาย
-4. คำสั่ง "agent mode": `hs check --json`, `hs explain <error>`, `hs test` ที่ส่งผลเป็น JSON; LSP ที่ใช้ได้ผ่าน MCP/CLI
-5. ตัดความกำกวมของภาษา (มีทางเขียนเดียว), ลบ divergence ที่ต้องจำ (เช่น `/` ใน unsafe ต่างจาก safe)
-6. ชุดตัวอย่าง "โจทย์→โค้ด" ที่รันได้ ให้โมเดลเรียนจากบริบท
-- **เกณฑ์ผ่าน:** รายงานผล eval ทุกรุ่น; เป้า **[อนุมาน]** pass@1 ≥ 80% ของ Python บนโจทย์ชุดเดียวกัน เมื่อให้ AGENTS.md เป็นบริบท
+## Phase 8 - AI-first: measure and strengthen (alongside every phase from phase 1)  [goals 7, 3]
 
-## ลำดับสรุป
+Base [documented]: AGENTS.md, for-agents.md, api.json, errors.md, `--json` errors, LSP, test-checked docs
+
+1. **eval suite:** 50-100 programming tasks (`evals/*.md` + automatic tests); run with several models in "with docs" and "without docs" modes; metrics: pass@1, fix iterations, tokens per program; compare Python on the same tasks
+2. Every error gets a code + fix hint (`E0xx: ...; hint: ...`) as JSON (extending errors.md)
+3. Canonical `hs fmt` that does not strip comments (done: `fmt -w` keeps comments (positions may shift, blank lines still drop)) - AI can write comments without losing them
+4. "agent mode" commands: `hs check --json`, `hs explain <error>`, `hs test` with JSON output; an LSP usable through MCP/CLI
+5. Remove language ambiguity (one way to write things), remove memorized divergences (e.g. `/` in unsafe vs safe)
+6. A runnable "task -> code" example set for models to learn from in context
+- **Pass gate:** eval results reported every release; target **[inferred]** pass@1 >= 80% of Python on the same task set when given AGENTS.md as context
+
+## Order summary
 
 ```
-เฟส 0 (CI/ฐาน) → เฟส 1 (bench+eval เริ่ม) → เฟส 2 (kernel→IR)
-      → เฟส 3 (ภาษา+optimizer) → เฟส 4 (JIT) → เฟส 5 (self-host)
-      ขนาน: เฟส 6 (FFI), เฟส 7 (OS), เฟส 8 (AI eval) ตลอดทาง
+phase 0 (CI/base) -> phase 1 (bench+eval start) -> phase 2 (kernel->IR)
+      -> phase 3 (language+optimizer) -> phase 4 (JIT) -> phase 5 (self-host)
+      parallel: phase 6 (FFI), phase 7 (OS), phase 8 (AI eval) throughout
 ```
 
-## ความเสี่ยงและข้อสังเกตตรง ๆ
+## Risks and blunt observations
 
-1. **ขอบเขตใหญ่มากสำหรับคนเดียว/AI ช่วย** (ภาษา + 4 backend + JIT + OS + self-host + FFI) — แนะนำจบเฟส 0–2 ก่อน
-   และกำหนดว่าเป้า "เร็วกว่า Python" วัดที่งานไหนบ้างตั้งแต่เฟส 1
-2. **JIT บนภาษา dynamic ทั้งหมดยาก** ถ้าไม่มี type feedback จะเร็วแค่ระดับ "baseline" — ยอมรับได้ถ้าเป้าคือเร็วกว่า CPython ไม่ใช่เท่า V8/LuaJIT
-3. **"พึ่งตัวเองสมบูรณ์" ขัดกับ "เข้ากันได้กับทุกภาษา":** FFI ผ่าน C ABI ต้องมี dynamic loader — ถ้าไม่ใช้ libc ต้องเขียนเอง
-4. **ความตรงทุกไบต์กับ interp** คือจุดแข็งของโปรเจกต์นี้ (differential testing) แต่ทำให้การเปลี่ยน semantics (เช่น Int 64-bit) ต้องเปลี่ยน interp ก่อน
-5. **เทสเดิมมองไม่เห็นบั๊ก** (v0.6.30 เจอ 5 ข้อ) → เพิ่ม fuzz/differential เป็นหลักทุกเฟส ไม่ใช่แค่เทสเคสเขียนมือ
-6. **ภาษาใหม่ + AI-first:** โมเดลไม่เคยเห็น hs ในข้อมูลฝึก คุณภาพขึ้นกับเอกสาร/ตัวอย่าง/error ล้วน ๆ จึงต้องวัด (เฟส 8) ไม่ใช่เดา
-7. **ข้อจำกัดความเข้าใจของผู้เขียนแผนนี้:** อ่าน SPEC, README, docs/index.md, commit log และหัวข้อของแผน IR แต่ไม่ได้รันเทสหรือ benchmark
-   ตัวเลขเวลาทั้งหมดมาจาก SPEC ไม่ได้วัดซ้ำ
+1. **Huge scope for one person/AI help** (language + 4 backends + JIT + OS + self-host + FFI) - finish phases 0-2 first
+   and define which workloads "faster than Python" is measured on, starting in phase 1
+2. **JIT on a fully dynamic language is hard** - without type feedback it only reaches "baseline" speed; acceptable if the target is beating CPython, not matching V8/LuaJIT
+3. **"Fully self-reliant" conflicts with "interoperates with every language":** FFI through the C ABI needs a dynamic loader - without libc it must be written from scratch
+4. **Byte-exact equality with interp** is this project's strength (differential testing) but means semantic changes (e.g. Int 64-bit) must change interp first
+5. **Old tests could not see bugs** (v0.6.30 found 5) -> add fuzz/differential testing as a staple of every phase, not just hand-written cases
+6. **A new language + AI-first:** models have never seen hs in training data; quality depends entirely on docs/examples/errors, so measure (phase 8), do not guess
+7. **Limits of this planner's understanding:** read SPEC, README, docs/index.md, commit log and the IR plan headings but did not run tests or benchmarks;
+   all time numbers come from the SPEC and were not re-measured
 
-## สมมติฐานที่ต้องยืนยัน
+## Assumptions to confirm
 
-- เป้าหมายความเร็ว (กี่เท่าของ CPython, ในงานแบบไหน) — เจ้าของยังไม่ได้ระบุตัวเลข
-- license ที่ต้องการ
-- ต้องการให้ OS รันบนเครื่องจริงหรือแค่ QEMU
-- ยอมให้ Python เป็น stage0 ของ bootstrap ถาวร (แค่ครั้งแรก) หรือไม่
-- ลำดับความสำคัญระหว่างเฟส 4 (JIT) กับเฟส 5 (self-host) กับเฟส 7 (OS)
+- Speed targets (how many times CPython, on which workloads) - the owner has not given numbers
+- Preferred license (currently Apache License 2.0)
+- Whether the OS should run on real hardware or QEMU only
+- Whether Python may remain the permanent stage0 of the bootstrap (first time only) or not
+- Priority order among phase 4 (JIT), phase 5 (self-host) and phase 7 (OS)
+  (owner answered 2026-10-18: self-reliance wins - the JIT emitter is written in hs itself)
 
 ## B-path compiler port checkpoints (2026-10-14)
 

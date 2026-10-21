@@ -1,86 +1,87 @@
-# for agents — เขียน `.holy` ให้เร็วและไม่พัง
+# for agents - write `.holy` fast and unbroken
 
-กฎฉบับเต็มอยู่ที่ `../AGENTS.md` (อ่านก่อนเขียนโค้ด) หน้านี้คือ
-ทางลัด + เครื่องมือที่ agent เรียกใช้ได้ทันที
+The full rules live in `../AGENTS.md` (read before writing code). This page is
+the shortcut plus the tools an agent can call right away.
 
-## ขั้นตอนเขียนโปรแกรม (ไม่เดา)
+## Writing a program (no guessing)
 
 ```sh
-python3 hs.py check prog.holy    # 1. syntax + scope เร็ว (ไม่รัน)
-python3 hs.py run prog.holy      # 2. build ด้วย gcc แล้วรัน
-python3 interp.py prog.holy     # 3. พฤติกรรมอ้างอิง (ช้ากว่า แต่คือความจริง)
-python3 tests/test.py          # 4. เทสทั้งชุด
+python3 hs.py check prog.holy    # 1. fast syntax + scope (does not run)
+python3 hs.py run prog.holy      # 2. build with gcc then run
+python3 interp.py prog.holy     # 3. reference behavior (slower, but the truth)
+python3 tests/test.py          # 4. the whole suite
 ```
 
-ทั้ง 4 คำสั่งรองรับ `--json` → error เป็น
-`{"file":...,"line":...,"message":...}` บน stderr ให้แก้ตรงบรรทัด:
+All 4 commands accept `--json` -> errors become
+`{"file":...,"line":...,"message":...}` on stderr so you can fix the exact line:
 
 ```sh
 python3 hs.py --json check prog.holy
 ```
 
-## เพิ่มเคสใหม่ในเทส
+## Adding a new test case
 
-เขียน `tests/<name>.holy` + `tests/<name>.expected` (stdout ที่ถูกต้อง)
-หรือ `tests/<name>.fail` (บรรทัด error ที่คาด) ถ้าเคสนั้นควรพัง
-เพิ่ม `tests/<name>.args` / `.stdin` / `.env` ถ้าต้องการ แล้วรัน:
+Write `tests/<name>.holy` + `tests/<name>.expected` (correct stdout)
+or `tests/<name>.fail` (expected error line) if the case should fail.
+Add `tests/<name>.args` / `.stdin` / `.env` as needed, then run:
 
 ```sh
-python3 tests/test.py          # interp (35)
-python3 tests/test_native.py   # native + fmt + docs (38)
-python3 tests/test_x64.py      # x64 subset (25)
-python3 tests/test_xkernel.py  # QEMU boot จริง (58)
-python3 tests/test_lsp.py      # LSP protocol (11)
+python3 tests/test.py          # interp (85)
+python3 tests/test_native.py   # native binary, must match interp
+python3 tests/test_x64.py      # direct x86-64 backend (143)
+python3 tests/test_xkernel.py  # real QEMU boot (needs qemu-system-x86_64)
+python3 tests/test_lsp.py      # LSP protocol (25)
 ```
 
-`.holy` ที่มี `import` ถูกข้ามใน x64 ถ้าโมดูลอยู่นอก subset — เทสจะบอก
+A `.holy` with `import` is skipped on x64 when the module is outside the
+subset - the test will tell you.
 
-## เครื่องมือช่วยตัวเอง (LSP แบบคำสั่งเดียว)
+## Self-help tools (one-shot LSP)
 
 ```sh
 python3 scripts/lsp_client.py --diag prog.holy          # error + line
-python3 scripts/lsp_client.py --symbols prog.holy       # def/ตัวแปรทั้งไฟล์
-python3 scripts/lsp_client.py --hover prog.holy 3 5     # builtin/keyword/ตัวแปร
-python3 scripts/lsp_client.py --def prog.holy 2 10      # ไปที่จุดที่นิยาม
-python3 scripts/lsp_client.py --complete prog.holy 1 4  # keyword+builtin+ชื่อในไฟล์
-python3 scripts/lsp_client.py --refs prog.holy 2 10     # ทุกจุดที่เรียก (ข้ามไฟล์)
-python3 scripts/lsp_client.py --sig prog.holy 4 9       # signature ของที่กำลังเรียก
-python3 scripts/lsp_client.py --wsym prog.holy name    # ค้นชื่อทั้งโปรเจกต์
-python3 scripts/lsp_client.py --format prog.holy --write  # เขียนกลับ canonical
+python3 scripts/lsp_client.py --symbols prog.holy       # def/vars in the file
+python3 scripts/lsp_client.py --hover prog.holy 3 5     # builtin/keyword/var
+python3 scripts/lsp_client.py --def prog.holy 2 10      # jump to definition
+python3 scripts/lsp_client.py --complete prog.holy 1 4  # keyword+builtin+file names
+python3 scripts/lsp_client.py --refs prog.holy 2 10     # every call site (cross-file)
+python3 scripts/lsp_client.py --sig prog.holy 4 9       # signature of the call here
+python3 scripts/lsp_client.py --wsym prog.holy name    # search a name project-wide
+python3 scripts/lsp_client.py --format prog.holy --write  # rewrite canonical
 ```
 
-(line/col เริ่มที่ 1 — human-friendly)
+(line/col start at 1 - human-friendly)
 
-## ข้อมูลชิ้นเดียวกันสำหรับโปรแกรมอ่าน
+## The same data for programs to read
 
 ```sh
-python3 scripts/gen_api.py     # เขียน docs/api.json + docs/builtins.md ใหม่
-python3 scripts/gen_errors.py  # เขียน docs/errors.md ใหม่ (ดึงจาก source)
+python3 scripts/gen_api.py     # rewrites docs/api.json + docs/builtins.md
+python3 scripts/gen_errors.py  # rewrites docs/errors.md (from source)
 ```
 
-`docs/api.json` = keywords + builtin (sig/desc/backend ที่รองรับ)
-`docs/errors.md` = ข้อความ error ทุกข้อความในภาษา + ตาราง error ที่เจอบ่อย
-`scripts/lang_data.py` = แหล่งกลางที่ LSP กับเทสใช้ร่วมกัน
+`docs/api.json` = keywords + builtins (sig/desc/supported backends)
+`docs/errors.md` = every error message in the language + a table of common ones
+`scripts/lang_data.py` = the shared source used by the LSP and the tests
 
-## กับดักที่ทำให้เทสพังบ่อย
+## Traps that break tests most often
 
-1. `//` เป็นคอมเมนต์เสมอ — หารไม่มี (ใช้ `/`)
-2. `;` `{` `}` ไม่มีในภาษา
-3. `for i in 0..5` ไม่มี — ใช้ `range(5)`
-4. `print (1+2)*3` พัง — เขียน `print ((1+2)*3)`
-5. ไม่รู้ว่า error แปลว่าอะไร → grep ใน `docs/errors.md` (มีครบทุกข้อความ)
-6. error ทุกอันหน้าตาเป็น `error: <msg> at line N` (stderr, exit 1)
-7. `print x, y` เว้นวรรค + newline ท้าย — ไม่ใช่ separator แบบ print ของ Python
-8. เทสที่ต้องเขียนไฟล์/argv/stdin ต้องมี `.args`/`.stdin` ด้วย
-   และอย่าใช้ path แบบ absolute
+1. `//` is always a comment - there is no `//` division (use `/`)
+2. No `;` `{` `}` in the language
+3. `for i in 0..5` does not exist - use `range(5)`
+4. `print (1+2)*3` breaks - write `print ((1+2)*3)`
+5. Unsure what an error means -> grep `docs/errors.md` (it has every message)
+6. Every error looks like `error: <msg> at line N` (stderr, exit 1)
+7. `print x, y` is space-separated + trailing newline - not Python print separators
+8. Tests that need files/argv/stdin need `.args`/`.stdin` too,
+   and never use absolute paths
 
-## เขียนโค้ดชิ้นไหนได้บ้าง
+## What code can go where
 
-| งาน | ทำได้ที่ |
+| Work | Where |
 |---|---|
-| สคริปต์ทั่วไป / stdlib ใหม่ (`std/*.holy`) | interp + native (ทุกฟีเจอร์) |
-| ต้องรันโดยไม่มี gcc | x64 subset (`hs.py xbuild`) |
+| General scripts / new stdlib (`std/*.holy`) | interp + native (all features) |
+| Must run without gcc | x64 subset (`hs.py xbuild`) |
 | kernel / OS | x64 subset + `unsafe:` + `xkernel` |
-| ต่อ C / ภาษาอื่น | `extern:` (hosted เท่านั้น) |
+| Call C / other languages | `extern:` (hosted only) |
 
-ดูขอบเขตแบบละเอียดที่ `x64-subset.md` และ `../AGENTS.md`
+See the detailed scope in `x64-subset.md` and `../AGENTS.md`

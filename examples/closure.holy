@@ -1,4 +1,4 @@
-# tour: closure — factory จำค่าไว้ (native ก็อปค่าตอน def)
+# tour: closure - a factory that remembers values (native copies at def time)
 def mul(a):
   def by(x):
     return a * x

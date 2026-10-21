@@ -16,12 +16,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # file -> (section title, note)
 SOURCES = [
-    ("interp.py", "interp.py — ตัวตีความ + parse (ทุก error ของภาษา)"),
-    ("hs.py", "hs.py — native backend ผ่าน gcc"),
-    ("x64gen.py", "x64gen.py — backend x86-64 ตรง (xbuild/xkernel)"),
+    ("interp.py", "interp.py - interpreter + parser (every language error)"),
+    ("hs.py", "hs.py - native backend via gcc"),
+    ("x64gen.py", "x64gen.py - direct x86-64 backend (xbuild/xkernel)"),
     ("fmt.py", "fmt.py — formatter"),
-    ("ir.py", "ir.py — IR กลาง (build/verify/exec)"),
-    ("irx64.py", "irx64.py — IR ลง x86-64"),
+    ("ir.py", "ir.py - middle IR (build/verify/exec)"),
+    ("irx64.py", "irx64.py - IR to x86-64"),
 ]
 
 # lines that are internal plumbing rather than user-facing advice
@@ -77,33 +77,33 @@ def _fstring_text(node):
 def main():
     lines = ["# error catalog (generated — do not edit by hand)",
              "",
-             "> จาก `scripts/gen_errors.py` โดยอ่าน `HSErr(...)` ทุกตัวใน",
+             "> From `scripts/gen_errors.py`, reading every `HSErr(...)` in",
              "> `interp.py`, `hs.py`, `x64gen.py`, `fmt.py`, `ir.py`, `irx64.py`",
-             "> (regen: `python3 scripts/gen_errors.py`, เทสตรวจด้วย `tests/test_docs.py`)",
+             "> (regen: `python3 scripts/gen_errors.py`, checked by `tests/test_docs.py`)",
              "",
-             "ทุก error เป็น Str `\"<message> at line N\"` — ไม่มี exception object,",
-             "จับได้ด้วย `try/except as e`, ไม่จับ = พิมพ์ `error: <msg> at line N`",
-             "ที่ stderr แล้ว exit 1. `{...}` ในตารางคือค่าที่แทนที่ตอนรัน",
+             "Every error is a Str `\"<message> at line N\"` - no exception object,",
+             "catchable with `try/except as e`; uncaught = prints `error: <msg> at line N`",
+             "to stderr and exits 1. `{...}` in the table is a value substituted at runtime",
              "",
-             "หา error ของตัวเอง: `python3 scripts/lsp_client.py --diag prog.holy`",
-             "(0-based line) หรือ `python3 hs.py --json check prog.holy`",
+             "Find your error: `python3 scripts/lsp_client.py --diag prog.holy`",
+             "(0-based line) or `python3 hs.py --json check prog.holy`",
              "",
-             "## error ที่เจอบ่อยที่สุด",
+             "## Most common errors",
              "",
-             "| รหัส | ข้อความ | แปลว่า | แก้ยังไง |",
+             "| Code | Message | Meaning | Fix |",
              "|---|---|---|---|",
-             "| `E001` | `cannot add Int and Str` | ผสมชนิดใน `+` | แปลงเอง: `str(x) + str(y)` |",
-             "| `E002` | `index out of range` | `a[i]` นอกช่วง | เช็ค `len(a)` ก่อน |",
-             "| `E003` | `key '<k>' not found` | อ่าน Dict key ที่ไม่มี | ใช้ `exists`-like logic หรือ default |",
-             "| `E004` | `unknown variable '<n>'` | ยังไม่เคย assign | สร้างก่อนใช้ (โดยเฉพาะฝั่ง x64) |",
-             "| `E005` | `not callable: <t>` | เรียกค่าที่ไม่ใช่ฟังก์ชัน | ตรวจชนิดก่อนเรียก |",
-             "| `E006` | `expression expected` | syntax ขาด/ผิดบรรทัด | ดูเลขบรรทัดใน error |",
-             "| `E007` | `expected ':' then an indented block` | ลืม `:` ท้ายบรรทัด | เติม `:` + indent |",
-             "| `E008` | `unexpected indent` | มีช่องว่างนำหน้าเกิน | จัดรูปด้วย `hs fmt` |",
-             "| `E009` | `assertion failed at line N` | เงื่อนไขใน `unsafe:` ไม่ผ่าน | เช็คชนิดใน `unsafe:` |",
-             "| `E010` | `extern handled elsewhere or not in x64 subset` | ใช้ `extern:` ฝั่ง x64 | ดู `x64-subset.md` |",
-             "| `E011` | `json_parse not in x64 subset` | ใช้ `json_*` ฝั่ง x64 | ดู `x64-subset.md` |",
-             "| `E012` | `cannot find module '<m>'` | `import` หาไฟล์ไม่เจอ | ตั้ง `HSPATH` ให้ชี้โฟลเดอร์ที่มีโมดูล |",
+             "| `E001` | `cannot add Int and Str` | mixed types in `+` | convert explicitly: `str(x) + str(y)` |",
+             "| `E002` | `index out of range` | `a[i]` out of range | check `len(a)` first |",
+             "| `E003` | `key '<k>' not found` | reading a missing Dict key | use exists-like logic or a default |",
+             "| `E004` | `unknown variable '<n>'` | never assigned | create before use (especially on x64) |",
+             "| `E005` | `not callable: <t>` | calling a non-function value | check the type before calling |",
+             "| `E006` | `expression expected` | missing/wrong syntax on the line | see the line number in the error |",
+             "| `E007` | `expected ':' then an indented block` | forgot `:` at end of line | add `:` + indent |",
+             "| `E008` | `unexpected indent` | extra leading whitespace | reformat with `hs fmt` |",
+             "| `E009` | `assertion failed at line N` | a condition in `unsafe:` failed | check types in `unsafe:` |",
+             "| `E010` | `extern handled elsewhere or not in x64 subset` | using `extern:` on the x64 side | see `x64-subset.md` |",
+             "| `E011` | `json_parse not in x64 subset` | using `json_*` on the x64 side | see `x64-subset.md` |",
+             "| `E012` | `cannot find module '<m>'` | `import` cannot find the file | set `HSPATH` to point at the module's directory |",
              ""]
     total = 0
     for path, title in SOURCES:
@@ -114,7 +114,7 @@ def main():
         for m in msgs:
             lines.append(f"- `{m}`")
         lines.append("")
-    lines.append(f"รวม {total} ข้อความ — ข้อความซ้ำข้ามไฟล์ถูกนับทีเดียวต่อไฟล์")
+    lines.append(f"{total} messages total - duplicates across files are counted once per file")
     docs = os.path.join(ROOT, "docs")
     with open(os.path.join(docs, "errors.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
