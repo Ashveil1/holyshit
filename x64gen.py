@@ -1020,6 +1020,21 @@ class Gen:
             self.ev(e["r"], sc, mod)
             a.mov_rr("rcx", "rax")
             a.pop_r("rax")
+            lab_ii, lab_iidone = self.new_tmp("ii"), self.new_tmp("ii")
+            # Int/Int compares inline, before the float/str dispatch below
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("ne", lab_ii)
+            a.mov_rr("r11", "rcx")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("ne", lab_ii)
+            a.cmp_rr("rax", "rcx")
+            a.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
+            self.box_bool_al()
+            a.jmp(lab_iidone)
+            a.label(lab_ii)
             # Int/Int or Str/Str go to x_cmp; anything else raises with
             # operand type names (matches interp's cannot compare).
             lab_cmpno, lab_cmperr, lab_cmpok = (self.new_tmp("co"), self.new_tmp("co"),
@@ -1076,6 +1091,7 @@ class Gen:
             a.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
             self.box_bool_al()
             a.label(lab_cdone)
+            a.label(lab_iidone)
             return
         if op == "+":
             self.ev(e["l"], sc, mod)

@@ -890,6 +890,23 @@ class Gen:
       self.ev(e["r"], sc, mod)
       asm.mov_rr("rcx", "rax")
       asm.pop_r("rax")
+      _tii = [self.new_tmp("ii"), self.new_tmp("ii")]
+      lab_ii = _tii[0]
+      lab_iidone = _tii[1]
+      # Int/Int compares inline, before the float/str dispatch below
+      asm.mov_rr("r11", "rax")
+      asm.and_ri32("r11", 3)
+      asm.cmp_ri32("r11", Gen_TAG_INT)
+      asm.jcc("ne", lab_ii)
+      asm.mov_rr("r11", "rcx")
+      asm.and_ri32("r11", 3)
+      asm.cmp_ri32("r11", Gen_TAG_INT)
+      asm.jcc("ne", lab_ii)
+      asm.cmp_rr("rax", "rcx")
+      asm.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
+      self.box_bool_al()
+      asm.jmp(lab_iidone)
+      asm.label(lab_ii)
       _t771 = [self.new_tmp("co"), self.new_tmp("co"), self.new_tmp("co")]
       lab_cmpno = _t771[0]
       lab_cmperr = _t771[1]
@@ -946,6 +963,7 @@ class Gen:
       asm.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
       self.box_bool_al()
       asm.label(lab_cdone)
+      asm.label(lab_iidone)
       return null
     if op == "+":
       self.ev(e["l"], sc, mod)
@@ -11504,6 +11522,23 @@ class GenIR(Gen):
         pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 131, 240, 8]))
       return null
     if op in ["<", ">", "<=", ">="]:
+      _tii = [self.new_tmp("ii"), self.new_tmp("ii")]
+      lab_ii = _tii[0]
+      lab_iidone = _tii[1]
+      # Int/Int compares inline, before the float/str dispatch below
+      asm.mov_rr("r11", "rax")
+      asm.and_ri32("r11", 3)
+      asm.cmp_ri32("r11", Gen_TAG_INT)
+      asm.jcc("ne", lab_ii)
+      asm.mov_rr("r11", "rcx")
+      asm.and_ri32("r11", 3)
+      asm.cmp_ri32("r11", Gen_TAG_INT)
+      asm.jcc("ne", lab_ii)
+      asm.cmp_rr("rax", "rcx")
+      asm.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
+      self.box_bool_al()
+      asm.jmp(lab_iidone)
+      asm.label(lab_ii)
       _t10913 = [self.new_tmp("co"), self.new_tmp("co"), self.new_tmp("co")]
       lab_cmpno = _t10913[0]
       lab_cmperr = _t10913[1]
@@ -11560,6 +11595,7 @@ class GenIR(Gen):
       asm.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
       self.box_bool_al()
       asm.label(lab_cdone)
+      asm.label(lab_iidone)
       return null
     if op in ["<<", ">>", "&", "|", "^"]:
       self._bitop(op, ln)
