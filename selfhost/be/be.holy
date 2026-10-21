@@ -832,9 +832,54 @@ class Gen:
       self.ev(e["r"], sc, mod)
       asm.mov_rr("rcx", "rax")
       asm.pop_r("rax")
+      _teqf = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
+      lab_eq_ne = _teqf[0]
+      lab_eq_slow = _teqf[1]
+      lab_eq_done = _teqf[2]
+      lab_eq_noteq = _teqf[3]
+      # Fast paths before the generic helper:
+      #  - identical immediate words are equal; identical heap
+      #    pointers must still go through x_eq (NaN != NaN even
+      #    for the same boxed Float)
+      #  - Str/Str compares inline: len, then repe cmpsb
+      asm.cmp_rr("rax", "rcx")
+      asm.jcc("ne", lab_eq_ne)
+      asm.mov_rr("r11", "rax")
+      asm.and_ri32("r11", 3)
+      asm.jcc("e", lab_eq_slow)
+      asm.mov_ri32("rax", 1)
+      asm.jmp(lab_eq_done)
+      asm.label(lab_eq_ne)
+      asm.mov_rr("r11", "rax")
+      asm.and_ri32("r11", 3)
+      asm.jcc("ne", lab_eq_slow)
+      asm.mov_rm("r11", "rax", 0)
+      asm.cmp_ri32("r11", Gen_K_STR)
+      asm.jcc("ne", lab_eq_slow)
+      asm.mov_rr("r11", "rcx")
+      asm.and_ri32("r11", 3)
+      asm.jcc("ne", lab_eq_slow)
+      asm.mov_rm("r11", "rcx", 0)
+      asm.cmp_ri32("r11", Gen_K_STR)
+      asm.jcc("ne", lab_eq_slow)
+      asm.mov_rm("rdx", "rax", 8)
+      asm.mov_rm("r11", "rcx", 8)
+      asm.cmp_rr("rdx", "r11")
+      asm.jcc("ne", lab_eq_noteq)
+      asm.lea_m("rdi", "rax", 16)
+      asm.lea_m("rsi", "rcx", 16)
+      asm.mov_rr("rcx", "rdx")
+      pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([243, 166]))
+      asm.setcc_al("e")
+      asm.jmp(lab_eq_done)
+      asm.label(lab_eq_noteq)
+      asm.xor_rr("rax", "rax")
+      asm.jmp(lab_eq_done)
+      asm.label(lab_eq_slow)
       asm.mov_rr("rdi", "rax")
       asm.mov_rr("rsi", "rcx")
       asm.call("x_eq")
+      asm.label(lab_eq_done)
       self.box_bool_al()
       if op == "!=":
         pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 131, 240, 8]))
@@ -11399,9 +11444,54 @@ class GenIR(Gen):
       self.emit_add(ln)
       return null
     if op in ["==", "!="]:
+      _teqf = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
+      lab_eq_ne = _teqf[0]
+      lab_eq_slow = _teqf[1]
+      lab_eq_done = _teqf[2]
+      lab_eq_noteq = _teqf[3]
+      # Fast paths before the generic helper:
+      #  - identical immediate words are equal; identical heap
+      #    pointers must still go through x_eq (NaN != NaN even
+      #    for the same boxed Float)
+      #  - Str/Str compares inline: len, then repe cmpsb
+      asm.cmp_rr("rax", "rcx")
+      asm.jcc("ne", lab_eq_ne)
+      asm.mov_rr("r11", "rax")
+      asm.and_ri32("r11", 3)
+      asm.jcc("e", lab_eq_slow)
+      asm.mov_ri32("rax", 1)
+      asm.jmp(lab_eq_done)
+      asm.label(lab_eq_ne)
+      asm.mov_rr("r11", "rax")
+      asm.and_ri32("r11", 3)
+      asm.jcc("ne", lab_eq_slow)
+      asm.mov_rm("r11", "rax", 0)
+      asm.cmp_ri32("r11", Gen_K_STR)
+      asm.jcc("ne", lab_eq_slow)
+      asm.mov_rr("r11", "rcx")
+      asm.and_ri32("r11", 3)
+      asm.jcc("ne", lab_eq_slow)
+      asm.mov_rm("r11", "rcx", 0)
+      asm.cmp_ri32("r11", Gen_K_STR)
+      asm.jcc("ne", lab_eq_slow)
+      asm.mov_rm("rdx", "rax", 8)
+      asm.mov_rm("r11", "rcx", 8)
+      asm.cmp_rr("rdx", "r11")
+      asm.jcc("ne", lab_eq_noteq)
+      asm.lea_m("rdi", "rax", 16)
+      asm.lea_m("rsi", "rcx", 16)
+      asm.mov_rr("rcx", "rdx")
+      pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([243, 166]))
+      asm.setcc_al("e")
+      asm.jmp(lab_eq_done)
+      asm.label(lab_eq_noteq)
+      asm.xor_rr("rax", "rax")
+      asm.jmp(lab_eq_done)
+      asm.label(lab_eq_slow)
       asm.mov_rr("rdi", "rax")
       asm.mov_rr("rsi", "rcx")
       asm.call("x_eq")
+      asm.label(lab_eq_done)
       self.box_bool_al()
       if op == "!=":
         pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 131, 240, 8]))
