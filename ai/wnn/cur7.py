@@ -68,11 +68,10 @@ def mine_macros(progs):
     from collections import Counter
     c = Counter()
     for t, (init, spec, post) in progs.items():
-        cond, base, s0, s1, comb = spec; c[(str(s0), str(s1))] += 1
-    MACROS[:] = [eval(k0) for (k0, k1), n in []] or []
+        cond, base, s0, s1, comb = spec; c[(s0, s1)] += 1
     out = []
     for (k, n) in c.items():
-        if n >= 2: out.append(eval(k))
+        if n >= 2: out.append(k)
     MACROS[:] = out
     return out
 def search(train, abl, tag=''):
