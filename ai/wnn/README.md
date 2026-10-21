@@ -462,3 +462,10 @@ The search still takes the first program that fits 25 training examples, but now
 - Failed first attempt: the first run validated at scale 4 and killed mul (mul by repeated addition exceeds the recursion cap in search), so the search never finished; I restarted with scales 1-2.
 - Search cost: square took 2.6 to 3.1 hours CPU (4.3M programs); the library search is unchanged.
 Caveats: 2 seeds, hand-given schema/grammar, the validation examples come from the same oracle that labels the training data.
+
+## P21: three-step sentences, zero-shot (text2prog5.py)
+Model: the P16 TwoStep model trained ONLY on 1- and 2-step sentences (n=300/1000), no 3-step training sentence. The solver chains it: it tries every pair of cut points, reads the left clause with the op learner, and each later clause with the right-clause learner applied to the previous result, scoring with the learned boundary model.
+Answer accuracy on 3-step sentences ("<op> ... then <op2 c> then <op3 c>"), 5 seeds, 200 test sentences each, mean [min-max]:
+- same phrasing: n=300 .35 [.20-.58], n=1000 .53 [.46-.62] (the same model reads 2-step sentences at .64 and .82)
+- new connectors and frames: .13 and .15
+So a model that only saw up to two steps solves about half of the 3-step sentences with the same wording, which is roughly what chaining its 2-step reading accuracy would predict. It does not transfer to new wording. Hand-given: the clause grammar (left clause plus right-clause templates), the op library, the sentence templates (my own synthetic text), whitespace tokens. Answers are exact numbers, so chance is low, but I did not measure a baseline for 3-step. No 'it' references yet. Real free text is not covered.
