@@ -193,7 +193,7 @@ def rstr(addr, off, n):
   if ln < 0 or ln > n + STR_BYTES - off - 8:
     raise "jitcache: bad string"
   return [read_mem(addr + off + 8, ln), off + 8 + ln]
-def load(srcpath):
+def load_raw(srcpath):
   cpath = cache_path(srcpath)
   if not exists(cpath):
     return null
@@ -316,6 +316,22 @@ def load(srcpath):
     if r > 16777216 or off + r != n + STR_BYTES:
       return null
     data_str = read_mem(addr + off, r)
+    return [libs, syms, owners, labels, dlabels, fixups, code_str, data_str]
+  except as e:
+    return null
+def load(srcpath):
+  raw = load_raw(srcpath)
+  if raw == null:
+    return null
+  libs = raw[0]
+  syms = raw[1]
+  owners = raw[2]
+  labels = raw[3]
+  dlabels = raw[4]
+  fixups = raw[5]
+  code_str = raw[6]
+  data_str = raw[7]
+  try:
     # Materialize the assembler state lists.
     st = asm.state()
     st["labels"] = labels
