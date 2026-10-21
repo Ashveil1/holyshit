@@ -1701,6 +1701,8 @@ def _jit_driver():
     unavailable; HS_JIT=off disables the driver."""
     if os.environ.get("HS_JIT") == "off":
         return None
+    if os.environ.get("HS_RUN_CACHE") == "off":
+        return None
     seed, sha = _jit_seed()
     if seed is None:
         return None
@@ -1765,6 +1767,8 @@ def _run_jit_auto(driver, sha, prog, rest):
                 re.search(r"\b" + w + r"\b", src) for w in _SIDE_EFFECT_WORDS)
             if not risky:
                 return None
+            err += (b"hint: run with HS_BACKEND=native or HS_BACKEND=interp "
+                    b"for 64-bit Int\n")
         os.write(2, err)
         return code
 
