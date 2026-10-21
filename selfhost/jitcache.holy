@@ -27,7 +27,7 @@ STR_BYTES = 16
 HASH_MASK = 36028797018963967
 HASH_SEED_A = 5381
 HASH_SEED_B = 146959810
-FORMAT = 2
+FORMAT = 3
 def fnv(s, h):
   unsafe:
     Ptr q = as_ptr(s)
@@ -111,7 +111,8 @@ def save(srcpath, g):
     libs = g.ffi_libs
     syms = g.ffi_syms
     owners = g.ffi_owners
-    total = 4 + 8 + 8
+    stamp = env("HS_JIT_STAMP")
+    total = 4 + 8 + str_size(stamp) + 8
     for inp in inputs:
       total = total + str_size(inp[0]) + str_size(inp[1])
     total = total + 8
@@ -134,6 +135,7 @@ def save(srcpath, g):
       store8(as_ptr(bufaddr) + 2, 67)
       store8(as_ptr(bufaddr) + 3, 49)
     off = w64(bufaddr, 4, FORMAT)
+    off = wstr(bufaddr, off, stamp)
     entry_off = st["labels"]["_start"]
     got_plus = 0
     if "ffi_got_" in st["data_labels"]:
@@ -232,7 +234,11 @@ def load_raw(srcpath):
     fmt = r64(addr, base + 4)
     if fmt != FORMAT:
       return null
-    off = base + 12
+    sp = rstr(addr, base + 12, n)
+    if sp[0] != env("HS_JIT_STAMP"):
+      # Built by a different compiler generation: recompile.
+      return null
+    off = sp[1]
     entry_off = r64(addr, off)
     off = off + 8
     got_plus = r64(addr, off)

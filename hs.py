@@ -1666,6 +1666,109 @@ def _run_cache_path(src):
     return os.path.join(root, h.hexdigest()[:32])
 
 
+def _jit_seed():
+    """Path and cheap content id (mtime + size) of the verified bootstrap
+    seed that builds the JIT driver, or (None, None) when this checkout has
+    no seed. The id changes whenever the seed is regenerated, which is
+    exactly when cached driver/caches must be rebuilt."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    seed = os.path.join(here, "bootstrap", "hs-hosted-x86_64")
+    try:
+        st = os.stat(seed)
+    except OSError:
+        return None, None
+    return seed, "%x.%x" % (st.st_mtime_ns, st.st_size)
+
+
+def _jit_env(sha, fallback):
+    here = os.path.dirname(os.path.abspath(__file__))
+    env = dict(os.environ)
+    env["HSROOT"] = here
+    env["HSPATH"] = os.pathsep.join(
+        [os.path.join(here, "selfhost"), os.path.join(here, "selfhost", "be")]
+        + ([os.environ["HSPATH"]] if os.environ.get("HSPATH") else []))
+    env["HS_JIT_STAMP"] = sha
+    if fallback:
+        # Compile-time failures exit 98 so the auto path can tell "the
+        # program never ran" apart from a runtime failure and fall back.
+        env["HS_JIT_FALLBACK_RC"] = "98"
+    return env
+
+
+def _jit_driver():
+    """Cached native binary of the eager JIT driver, built with the verified
+    bootstrap seed on first use (about a minute, once). None when
+    unavailable; HS_JIT=off disables the driver."""
+    if os.environ.get("HS_JIT") == "off":
+        return None
+    seed, sha = _jit_seed()
+    if seed is None:
+        return None
+    here = os.path.dirname(os.path.abspath(__file__))
+    root = os.environ.get("HS_RUN_CACHE_DIR") or os.path.join(
+        os.environ.get("XDG_CACHE_HOME") or
+        os.path.join(os.path.expanduser("~"), ".cache"), "hs", "jit")
+    path = os.path.join(root, "hs-jit-" + sha)
+    if os.path.isfile(path):
+        return path, sha
+    try:
+        os.makedirs(root, exist_ok=True)
+        tmp = path + ".%d.tmp" % os.getpid()
+        print("hs: building the JIT driver (one-time, about a minute)...",
+              file=sys.stderr)
+        r = subprocess.run(
+            [seed, os.path.join(here, "selfhost", "be", "jit_run.holy"), tmp],
+            env=_jit_env(sha, False), stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE, timeout=900)
+        if r.returncode != 0 or not os.path.isfile(tmp):
+            sys.stderr.write(r.stderr.decode(errors="replace")[-400:])
+            return None
+        os.chmod(tmp, 0o755)
+        os.replace(tmp, path)
+    except OSError:
+        return None
+    return path, sha
+
+
+def _run_jit_auto(driver, sha, prog, rest):
+    """Run prog through the eager JIT driver. Returns the exit code, or None
+    when the driver never ran the program (compile failure, or a 62-bit Int
+    trap before any output or side effect) and the caller should fall back
+    to a slower backend."""
+    import re
+    try:
+        with open(prog, encoding="utf-8") as f:
+            src = f.read()
+    except OSError:
+        return None
+    with tempfile.TemporaryDirectory() as d:
+        errf = os.path.join(d, "stderr")
+        with open(errf, "w+b") as ef:
+            sys.stdout.flush()
+            p = subprocess.Popen([driver, prog] + rest,
+                                 env=_jit_env(sha, True),
+                                 stdout=subprocess.PIPE, stderr=ef)
+            nbytes = 0
+            while True:
+                chunk = os.read(p.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                nbytes += len(chunk)
+                os.write(1, chunk)
+            code = p.wait()
+            ef.seek(0)
+            err = ef.read()
+        if code == 98:
+            return None  # compile-time failure: the program never ran
+        if code == 97 and b"62-bit" in err:
+            risky = nbytes > 0 or any(
+                re.search(r"\b" + w + r"\b", src) for w in _SIDE_EFFECT_WORDS)
+            if not risky:
+                return None
+        os.write(2, err)
+        return code
+
+
 def _run_auto(prog, rest):
     """Default `hs run`: build with the x64 backend (no C compiler, ~0.1s).
     Returns the exit code, or None when the caller should use the slower
@@ -2175,10 +2278,19 @@ def main(argv):
     rest = argv[3:]
     if len(argv) > 3 and argv[3] == "--backend" and len(argv) > 4:
         backend, rest = argv[4], argv[5:]
-    if backend not in ("auto", "x64", "native", "interp"):
-        print("error: backend must be auto, x64, native or interp",
+    if backend not in ("auto", "jit", "x64", "native", "interp"):
+        print("error: backend must be auto, jit, x64, native or interp",
               file=sys.stderr)
         return 2
+    if backend == "jit":
+        got = _jit_driver()
+        if got is None:
+            print("error: JIT driver unavailable (no bootstrap seed, or "
+                  "HS_JIT=off)", file=sys.stderr)
+            return 2
+        driver, sha = got
+        return subprocess.call([driver, prog] + rest,
+                               env=_jit_env(sha, False))
     if backend == "x64":
         return main([argv[0], "xrun", prog] + rest)
     if backend == "interp":
@@ -2186,6 +2298,12 @@ def main(argv):
             os.path.dirname(os.path.abspath(__file__)), "interp.py"),
             prog] + rest).returncode
     if backend == "auto":
+        got = _jit_driver()
+        if got is not None:
+            driver, sha = got
+            rc = _run_jit_auto(driver, sha, prog, rest)
+            if rc is not None:
+                return rc
         rc = _run_auto(prog, rest)
         if rc is not None:
             return rc
