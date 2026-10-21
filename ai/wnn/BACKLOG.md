@@ -115,113 +115,113 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-108 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=150 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
 - [x] B-109 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=400 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
 - [x] B-110 [S (under 2 min)] (T3 text-to-program) features tokuni, credit hard, n=400 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
-- [ ] B-111 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 1 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-112 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 1 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-113 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 1 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-114 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 2 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-115 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 2 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-116 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 2 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-117 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 4 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-118 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 4 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-119 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 4 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-120 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 1 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-121 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 1 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-122 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 1 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-123 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 2 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-124 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 2 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-125 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 2 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-126 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 4 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-127 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 4 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-128 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 4 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
-- [ ] B-129 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-130 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-131 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-132 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-133 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-134 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-135 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-136 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-137 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-138 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-139 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-140 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-141 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-142 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-143 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-144 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-145 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-146 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-147 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-148 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-149 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-150 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-151 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-152 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-153 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-154 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-155 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-156 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-157 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-158 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-159 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-160 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-161 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-162 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-163 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-164 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-165 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-166 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-167 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-168 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-169 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-170 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-171 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-172 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-173 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-174 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-175 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-176 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-177 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-178 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-179 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-180 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-181 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-182 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
-- [ ] B-183 [S (under 2 min)] (T3 text-to-program) active clarification: ask which of top-2 readings (simulated user) -- task: 1-step unseen -- baseline: no clarification -- success: acc of k=2 with k=1 + 1 question
-- [ ] B-184 [S (under 2 min)] (T3 text-to-program) paraphrase teaching for 2-step glue words -- task: new connectors -- baseline: P16 .44 baseline -- success: > .6 on new connectors with 4 definitions
-- [ ] B-185 [S (under 2 min)] (T3 text-to-program) typing: restrict candidates by arg-count signature -- task: all -- baseline: no typing -- success: same acc, faster fit
-- [ ] B-186 [S (under 2 min)] (T3 text-to-program) curriculum: frames ordered by similarity to unseen test frames -- task: unseen synonyms -- baseline: random order -- success: higher acc at n=60
-- [ ] B-187 [S (under 2 min)] (T3 text-to-program) negative examples: sentences with no op (chit-chat) rejected -- task: mixed -- baseline: always-answer -- success: false-answer rate < 10%, op acc -2 pts max
-- [ ] B-188 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: square -- baseline: n/a -- success: recorded
-- [ ] B-189 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: even -- baseline: n/a -- success: recorded
-- [ ] B-190 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: sumto -- baseline: n/a -- success: recorded
-- [ ] B-191 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: absdiff -- baseline: n/a -- success: recorded
-- [ ] B-192 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: square -- baseline: n/a -- success: recorded
-- [ ] B-193 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: even -- baseline: n/a -- success: recorded
-- [ ] B-194 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: sumto -- baseline: n/a -- success: recorded
-- [ ] B-195 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: absdiff -- baseline: n/a -- success: recorded
-- [ ] B-196 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: square -- baseline: n/a -- success: recorded
-- [ ] B-197 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: even -- baseline: n/a -- success: recorded
-- [ ] B-198 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: sumto -- baseline: n/a -- success: recorded
-- [ ] B-199 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: absdiff -- baseline: n/a -- success: recorded
-- [ ] B-200 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: square -- baseline: n/a -- success: recorded
-- [ ] B-201 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: even -- baseline: n/a -- success: recorded
-- [ ] B-202 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: sumto -- baseline: n/a -- success: recorded
-- [ ] B-203 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: absdiff -- baseline: n/a -- success: recorded
-- [ ] B-204 [S (under 2 min)] (T4 baselines+harness) MLP baseline harness on every numeric task (sklearn-free, pure py) -- task: all numeric -- baseline: n/a -- success: harness runs, numbers recorded
-- [ ] B-205 [S (under 2 min)] (T4 baselines+harness) kNN baseline on same features -- task: all numeric -- baseline: n/a -- success: recorded
-- [ ] B-206 [S (under 2 min)] (T4 baselines+harness) majority/mean baseline -- task: all numeric -- baseline: n/a -- success: recorded
-- [ ] B-207 [S (under 2 min)] (T4 baselines+harness) chance baselines for yes/no and exact-number answers -- task: all -- baseline: n/a -- success: recorded in README
-- [ ] B-208 [S (under 2 min)] (T4 baselines+harness) fixed eval pack v1 frozen for all future comparisons -- task: - -- baseline: n/a -- success: file committed
-- [ ] B-209 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-210 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-211 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-212 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-213 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-214 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-215 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-216 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-217 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-111 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 1 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-112 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 1 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-113 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 1 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-114 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 2 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-115 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 2 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-116 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 2 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-117 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 4 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-118 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 4 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-119 [S (under 2 min)] (T3 text-to-program) bigram on, lowercase on, min-count 4 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-120 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 1 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-121 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 1 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-122 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 1 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-123 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 2 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-124 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 2 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-125 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 2 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-126 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 4 -- task: unseen-frames -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-127 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 4 -- task: unseen-synonyms -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-128 [S (under 2 min)] (T3 text-to-program) bigram off, lowercase on, min-count 4 -- task: 2-step -- baseline: P15 default -- success: higher acc at n=150
+- [x] B-129 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-130 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-131 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-132 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-133 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-134 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-135 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-136 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-137 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-138 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-139 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-140 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 2.5, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-141 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-142 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-143 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-144 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-145 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-146 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 1.5, margin 4, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-147 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-148 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-149 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-150 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-151 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-152 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-153 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-154 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-155 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-156 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-157 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-158 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 2.5, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-159 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-160 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-161 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-162 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-163 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-164 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 2, margin 4, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-165 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-166 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-167 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-168 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-169 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-170 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-171 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-172 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-173 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-174 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-175 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-176 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 2.5, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-177 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 2 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-178 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 2 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-179 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 2 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-180 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 4 -- task: words-n60 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-181 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 4 -- task: words-n150 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-182 [S (under 2 min)] (T3 text-to-program) word-lexicon minmass 3, margin 4, rounds 4 -- task: words-n400 -- baseline: P16 defaults -- success: more gold words at same n, spurious <= +1
+- [x] B-183 [S (under 2 min)] (T3 text-to-program) active clarification: ask which of top-2 readings (simulated user) -- task: 1-step unseen -- baseline: no clarification -- success: acc of k=2 with k=1 + 1 question
+- [x] B-184 [S (under 2 min)] (T3 text-to-program) paraphrase teaching for 2-step glue words -- task: new connectors -- baseline: P16 .44 baseline -- success: > .6 on new connectors with 4 definitions
+- [x] B-185 [S (under 2 min)] (T3 text-to-program) typing: restrict candidates by arg-count signature -- task: all -- baseline: no typing -- success: same acc, faster fit
+- [x] B-186 [S (under 2 min)] (T3 text-to-program) curriculum: frames ordered by similarity to unseen test frames -- task: unseen synonyms -- baseline: random order -- success: higher acc at n=60
+- [x] B-187 [S (under 2 min)] (T3 text-to-program) negative examples: sentences with no op (chit-chat) rejected -- task: mixed -- baseline: always-answer -- success: false-answer rate < 10%, op acc -2 pts max
+- [x] B-188 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: square -- baseline: n/a -- success: recorded
+- [x] B-189 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: even -- baseline: n/a -- success: recorded
+- [x] B-190 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: sumto -- baseline: n/a -- success: recorded
+- [x] B-191 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: absdiff -- baseline: n/a -- success: recorded
+- [x] B-192 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: square -- baseline: n/a -- success: recorded
+- [x] B-193 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: even -- baseline: n/a -- success: recorded
+- [x] B-194 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: sumto -- baseline: n/a -- success: recorded
+- [x] B-195 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: absdiff -- baseline: n/a -- success: recorded
+- [x] B-196 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: square -- baseline: n/a -- success: recorded
+- [x] B-197 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: even -- baseline: n/a -- success: recorded
+- [x] B-198 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: sumto -- baseline: n/a -- success: recorded
+- [x] B-199 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: absdiff -- baseline: n/a -- success: recorded
+- [x] B-200 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: square -- baseline: n/a -- success: recorded
+- [x] B-201 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: even -- baseline: n/a -- success: recorded
+- [x] B-202 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: sumto -- baseline: n/a -- success: recorded
+- [x] B-203 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: absdiff -- baseline: n/a -- success: recorded
+- [x] B-204 [S (under 2 min)] (T4 baselines+harness) MLP baseline harness on every numeric task (sklearn-free, pure py) -- task: all numeric -- baseline: n/a -- success: harness runs, numbers recorded
+- [x] B-205 [S (under 2 min)] (T4 baselines+harness) kNN baseline on same features -- task: all numeric -- baseline: n/a -- success: recorded
+- [x] B-206 [S (under 2 min)] (T4 baselines+harness) majority/mean baseline -- task: all numeric -- baseline: n/a -- success: recorded
+- [x] B-207 [S (under 2 min)] (T4 baselines+harness) chance baselines for yes/no and exact-number answers -- task: all -- baseline: n/a -- success: recorded in README
+- [x] B-208 [S (under 2 min)] (T4 baselines+harness) fixed eval pack v1 frozen for all future comparisons -- task: - -- baseline: n/a -- success: file committed
+- [x] B-209 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-210 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-211 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-212 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-213 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-214 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-215 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-216 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-217 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [ ] B-218 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [ ] B-219 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [ ] B-220 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM

@@ -74,3 +74,43 @@ B-087..094 (char, HARD credit) | null | same log | frames .43/.66/.72/.72, synon
 B-095..102 (tokuni, soft) | null | same log | frames .43/.70/.78/.80, synonyms .12/.16/.20/.21 - bigrams help (tok .84 vs tokuni .80 frames at n=400); never beats tok-soft
 B-103..110 (tokuni, HARD credit) | null | same log | frames .44/.70/.75/.78, synonyms .11/.16/.17/.21 - never beats tokuni-soft
 T3 grid summary: P15's choices (token+bigram features, soft credit) are locally optimal in this grid; char features win ONLY on unseen-synonyms (.40 vs .20 at n=400, as P15 reported); hard credit never helps.
+B-111/112 (bigram on, lowercase on, mc=1) | null (baseline-repeat) | = P15 default config: tok n=150 frames .82 synonyms .20
+B-113/116/119/122/125/128 (2-step task cells) | not runnable as stated | the P15 learner has no two-step capability - 2-step is P16's task (text2prog2.py); generator mixed domains
+B-114/115 (tok, mc=2) | null | t3mincount.py logs/t3mincount.log | frames .82 synonyms .19 at n=150 - no gain over default (.82/.20)
+B-117/118 (tok, mc=4) | WORSE | frames .70 synonyms .17 - filtering rare features loses information
+B-120/121 (bigram off, mc=1) | null | = tokuni soft (B-097/098 measured): frames .78 synonyms .20
+B-123/124 (tokuni, mc=2) | null | frames .78 synonyms .20 - no gain
+B-126/127 (tokuni, mc=4) | WORSE | frames .69 synonyms .17
+T3 min-count summary: feature-frequency filtering never helps at n=150; mc=4 actively hurts. Default (keep all) stands.
+
+T3 word-lexicon grid (B-129..B-182): learn_lexicon params minv(minmass) x margin x rounds x n={60,150,400}, 5 seeds, t3lex.py logs/t3lex.txt. P16 defaults (minv3 m2.5 r4) reproduced exactly (n=150 6.8/.4/.37, n=400 12.4/1.4/.54); new n=60 default baseline: 2.4 gold, 0.2 spur, acc .25. minv 1.5 and 2 identical (integer vote counts). rounds: no effect except m2 n150 (r2 slightly fewer spurious).
+- B-135/138/153/156 (minv1.5/2, m2.5, n=60) | PASS | gold 4.2 vs 2.4, spur +0.8 (bound +1)
+- B-165/168 (minv3, m2, n=60) | PASS | gold 3.4 vs 2.4, spur +0.8
+- B-129/132/147/150 (minv1.5/2, m2, n=60) | FAIL bound | gold 5.8 vs 2.4 but spur +1.6
+- m2 at n>=150 (B-130/131/133/134/148/149/151/152/166/167/169/170) | FAIL bound | gold more than doubles (n=150: 13.2-14.4 vs 6.8; n=400: 17.8-18.0 vs 12.4; acc .51-.67) but spur +1.4..+3.6 exceeds +1
+- m2.5 at n>=150 (B-136/137/139/140/154/155/157/158/171..176) | null | no gold gain over default
+- m4 (B-141..146, B-159..164, B-177..182) | FAIL | collapse to 0.6-1.8 gold - too strict kills word learning
+- extra probe m2.25 minv1.5 r4: n=60 4.2/1.0, n=150 7.4/2.2, n=400 14.8/3.2 - sits on the same tradeoff curve, no free lunch
+T3 lexicon summary: recall-precision tradeoff is real; margin 2 buys 2x word recall for ~2-4 spurious entries (pre-stated bound only passes at n=60). Default margin 2.5 is well-placed. Word recall, not sentence grammar, is the bottleneck at small n.
+B-183 (active clarification, top-2 + 1 question) | PASS (qualified) | t3clarify.py | tok n=150, 5 seeds: frames top1 .823 -> clarify .829 (delta .5, asks 43%) / .862 (delta 2.0, asks 58%); synonyms top1 .227 -> .275 / .310 (asks 69/83%). Oracle top-2 ceiling: frames .874, synonyms .315 - delta 2.0 nearly saturates it. Clarification recovers almost all top-2 headroom, but most inputs need a question and the synonyms ceiling is low: confusion is spread beyond top-2.
+B-184 (paraphrase teaching, 4 glue-word examples) | FAIL | t3glue.py | n=1000 5 seeds: new-connector acc .41 baseline (published .44; rng-offset noise) vs .43 with 4 taught connectors - far from .6 target. 4 labelled examples are swamped by 1000 sentences; connector identity is not the bottleneck for new-phrasing generalization.
+B-185 (typing: arg-count candidate restriction) | null | t3typing.py | fit wall time n=150/400: 1.01x speedup only - fit is dominated by feature bookkeeping, not candidate evaluation; acc unchanged within noise (frames .825->.837 n=150, .835->.869 n=400; synonyms ~.20 both). Side note: typing excludes degenerate 1-number variadic explanations; slight acc shift not pursued.
+B-186 (curriculum: order frames by test similarity) | null by analysis | the P15 Learner.fit is a batch count accumulator - training order cannot affect the learned model. Nothing to measure.
+B-187 (negative examples / abstention) | FAIL | t3neg.py | chit-chat-with-numbers (10 en/th templates) vs tok n=150: always-answer false-answer rate .702 (30% abstain free on zero known features). Avg-log-lik threshold T=-2.5/-2.0/-1.5/-1.0: op acc .797/.750/.682/.525 vs false-answer .664/.645/.603/.543 - distributions overlap; <10% false-answer unreachable without collapsing op acc (.829 baseline). Rejection needs a better signal than per-feature score.
+
+T4 baselines (B-188..B-206): MLP(2-32-32 tanh, pure numpy)/kNN-3/majority/linreg on the exact cur7 protocol (25 train at scales 1-2, y distractor kept, 40 eval/scale at scales 1-4, 3 seeds). logs/t4base.json + t4base.py. Numbers are correct/40.
+- Regression tasks: every baseline collapses at scales 3-4 (0-4/40). Best scale-1 results are mostly answer-distribution artifacts: div 18/40 (many x//y=0), power 22/40 (0/1 outputs), max/min ~18-20/40. square: mlp 11.7/6.0/3.0/3.7; sumto: <=3.7 all scales; absdiff: 12.0/3.0/0.3/0.0. The program search (40/40 at all 4 scales when found) is not a marginal win over function approximation - it is a different category.
+- yes/no tasks: even ~50-57% everywhere (chance); isprime majority predictor rises to 87% at scale 4 (primes thin out) without any primality knowledge.
+B-207 (chance) | recorded in README | yes/no = 50% (even), majority-class rate varies (isprime 66-87% by scale); exact-number chance ~1/range ~ 1%
+B-208 (eval pack v1) | committed evalpack_v1.json | 18 tasks x (25 train + 4x40 eval), seed-0 protocol, frozen for future comparisons
+
+T5 HDC encodings at dim=1024 (B-209..B-217, t5hdc.py): 5 seeds, P5 E5 protocol. Memory vector 1KB int8 (128B packed) vs P5 4KB/16KB.
+- facts (35 pairs, XOR binding, 70 queries): random-proj 97.7% [95.7-100] - P5-equivalent accuracy at 1/4 the RAM => PASS (B-216-ish). level 2.9%, thermo 2.9% => FAIL.
+- arith chaining (100 links, all 4950 a+k<=99 pairs): random 6.3%, level 1.0%, thermo 0.0% => FAIL all (P5: 100% at 4KB). 100 superposed links exceed dim-1024 cleanup capacity and recall errors compound over k hops.
+- 2-hop (50 chains x 3 links): random 7.6%, level 0.8%, thermo 0.0% => FAIL all (P5: 100%).
+- implementation note: first run scored ~1% everywhere because unbind used the INVERSE permutation; bind p(k)*v must be read with the SAME p(k) (P5's directional-binding lesson reproduced the hard way).
+- correlated encodings (level/thermo) cannot support exact symbolic recall at any rate - adjacent codes are indistinguishable after bundling. Symbolic HDC requires near-orthogonal (random) codes.
+Follow-up probe queued: random encoding at dim 2048/4096 to find where chaining capacity recovers (P5 RAM parity point).
+T5 dim sweep (random-proj, t5dim.py): arith(475 pairs P5-style) 1k .01 / 2k .17 / 4k .87 ; 2-hop 1k .08 / 2k .43 / 4k .89 (3 seeds). Capacity scales with dims; P5's 16KB arith memory = dim 16384 int8. Probing dim 8192/16384 for the P5-parity point.
+T5 resolution (t5dim2.py fixed - first run mislabeled dim 1024 twice): arith chaining reaches 475/475 at dim 8192 (8KB int8 = HALF P5's 16KB) and dim 16384 (P5 parity), random-proj, 2 seeds. 2-hop 50/50 at dim 8192 (3 seeds). Full capacity curve arith: 1k .01 / 2k .17 / 4k .87 / 8k 1.00 / 16k 1.00; 2-hop: 1k .08 / 2k .43 / 4k .89 / 8k 1.00.
+T5 VERDICT: random-proj HDC matches P5's exact accuracies at HALF the RAM for chaining (8KB vs 16KB) and a QUARTER for facts (1KB vs 4KB, 97.7%) => B-209..217 goals met by random-proj only; level/thermometer encodings are category errors for exact symbolic memory (correlated codes, 0-3% at any task). Caution: 2 seeds at 8k/16k.
