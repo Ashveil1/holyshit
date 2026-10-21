@@ -116,6 +116,7 @@ def search(train, abl, tag='', tried_cap=6_000_000):
     inits = ('y', 'zero') if 'inity0' in abl else (('one', 'zero') if 'init10' in abl else ('y', 'one', 'zero', 'two'))
     posts = {'id': POST['id']} if 'postid' in abl else POST
     t0 = time.time(); tried = 0
+    PROF = {'r0fail': 0, 'earlyfail': 0, 'deepfail': 0, 'evals': 0}
     x0, y0, r0 = train[0]
     def nodes(e): return 1 if isinstance(e, str) else 1 + sum(nodes(t) for t in e[1:])
     if 'simp' in abl:  # B-052: prefer smaller programs - order combs and steps by node count
@@ -140,16 +141,21 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                         except Fail: continue
                         except (KeyError, ZeroDivisionError, RecursionError, OverflowError): continue
                         pm = [pn for pn, pf in posts.items() if pf(v0) == r0]
-                        if not pm: continue
+                        if not pm:
+                            PROF['r0fail'] += 1; PROF['evals'] += 1; continue
                         for pn in pm:
                             ok = True
                             stages = (train[1:6], train[6:]) if 'sub' in abl else (train[1:],)
+                            ndone = 0
                             for stage in stages:
                                 if not ok: break
                                 for x, y, r in stage:
+                                    ndone += 1; PROF['evals'] += 1
                                     try:
                                         if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
                                     except (Fail, KeyError, RecursionError, OverflowError): ok = False; break
+                            if not ok:
+                                PROF['earlyfail' if ndone <= 5 else 'deepfail'] += 1
                             if ok and VALID:
                                 for x, y, r in VALID:
                                     try:
@@ -162,6 +168,7 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                                     except (Fail, KeyError, RecursionError, OverflowError, ZeroDivisionError): ok = False; break
                             if ok: return (init, spec, pn), tried, time.time() - t0
         ev.cache_clear() if len(ev.cache_info()) and ev.cache_info().currsize > 3_000_000 else None
+    if 'prof' in abl: print(f'   PROF {PROF}', flush=True)
     return None, tried, time.time() - t0
 def show_e(e): return e if isinstance(e, str) else '(' + ' '.join(show_e(t) for t in e) + ')'
 def show_prog(p):
