@@ -1,0 +1,3 @@
+   comb 0/1973 None tried 0 0s
+   PROF {'r0fail': 1699163, 'earlyfail': 0, 'deepfail': 0, 'evals': 1699187}
+seed0 init10,baselib,prof choose2: FOUND init b=one; if (nlt b a) -> zero; else step (a,(add b one)); comb=('add', 'b', 0); post=id tried 2597867 191s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
