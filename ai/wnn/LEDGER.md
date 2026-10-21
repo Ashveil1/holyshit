@@ -74,3 +74,11 @@ B-087..094 (char, HARD credit) | null | same log | frames .43/.66/.72/.72, synon
 B-095..102 (tokuni, soft) | null | same log | frames .43/.70/.78/.80, synonyms .12/.16/.20/.21 - bigrams help (tok .84 vs tokuni .80 frames at n=400); never beats tok-soft
 B-103..110 (tokuni, HARD credit) | null | same log | frames .44/.70/.75/.78, synonyms .11/.16/.17/.21 - never beats tokuni-soft
 T3 grid summary: P15's choices (token+bigram features, soft credit) are locally optimal in this grid; char features win ONLY on unseen-synonyms (.40 vs .20 at n=400, as P15 reported); hard credit never helps.
+B-111/112 (bigram on, lowercase on, mc=1) | null (baseline-repeat) | = P15 default config: tok n=150 frames .82 synonyms .20
+B-113/116/119/122/125/128 (2-step task cells) | not runnable as stated | the P15 learner has no two-step capability - 2-step is P16's task (text2prog2.py); generator mixed domains
+B-114/115 (tok, mc=2) | null | t3mincount.py logs/t3mincount.log | frames .82 synonyms .19 at n=150 - no gain over default (.82/.20)
+B-117/118 (tok, mc=4) | WORSE | frames .70 synonyms .17 - filtering rare features loses information
+B-120/121 (bigram off, mc=1) | null | = tokuni soft (B-097/098 measured): frames .78 synonyms .20
+B-123/124 (tokuni, mc=2) | null | frames .78 synonyms .20 - no gain
+B-126/127 (tokuni, mc=4) | WORSE | frames .69 synonyms .17
+T3 min-count summary: feature-frequency filtering never helps at n=150; mc=4 actively hurts. Default (keep all) stands.
