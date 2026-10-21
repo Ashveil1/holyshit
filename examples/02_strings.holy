@@ -1,15 +1,15 @@
-# tour 02: Str — ตัด ต่อ หา แยก ชิ้น
-# รัน: python3 interp.py examples/02_strings.holy
+# tour 02: Str - cut, join, find, split
+# run: python3 interp.py examples/02_strings.holy
 
 s = "  hello, holyshit  "
 print "[" + s + "]"
 print len(s)
 
-# Str อินเดกซ์คือ byte — a[i] ได้ตัวอักษร 1 ตัว
+# Str indexes are bytes - a[i] gives one character
 print s[2]
 print s[0] + s[1]
 
-# แยก/ต่อ
+# split/join
 clean = "a,b,c,d"
 parts = split(clean, ",")
 print len(parts)
@@ -19,18 +19,18 @@ print join("-", ["x", "y", "z"])
 print find("hello", "ll")
 print find("hello", "zz")
 
-# slicing: [a:b] เหมือน Python (ปล่อยข้างไว้ได้)
+# slicing: [a:b] like Python (either side optional)
 print "hello"[1:4]
 print "hello"[0:1] + "..."
 print "abcdef"[4:]
 print "abcdef"[:-2]
 
-# str() แปลงค่าใด ๆ
+# str() converts any value
 print str(123) + "!"
 print str(7 * 6)
 print str([1, 2, 3])
 print str(true)
 
-# ต่อได้เฉพาะ Str + Str — ต้องแปลงเอง ไม่มี implicit
+# only Str + Str can concatenate - convert explicitly, no implicit coercion
 n = 7
 print "n=" + str(n)

@@ -1,6 +1,6 @@
-# Helix — holyshit
+# Helix - holyshit
 
-Helix เป็น LSP client อยู่แล้ว จึงแค่ชี้ language server:
+Helix is already an LSP client, so just point it at the language server:
 
 ```sh
 # ~/.config/helix/languages.toml
@@ -17,11 +17,11 @@ indent = { increment = "  " }
 language-servers = ["holyshit"]
 ```
 
-เสร็จแล้ว: `:language-server restart`, hover (`h`), completion (`ctrl-x`),
-goto (`gd`), format (`=` ถ้าเซิร์ฟเวอร์รองรับ), diagnostics ใต้บรรทัด
+Done: `:language-server restart`, hover (`h`), completion (`ctrl-x`),
+goto (`gd`), format (`=` if the server supports it), diagnostics under the line
 
-ถ้าอยากมี syntax สีตามชัด ใส่ไฟล์ queries ของภาษาอื่น (Rust/Python)
-แล้ว map `source.holyshit` ไปที่มัน:
+For real colored syntax, add queries from another language (Rust/Python)
+and map `source.holyshit` to it:
 
 ```toml
 [[grammar]]

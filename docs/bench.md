@@ -1,42 +1,44 @@
-# bench — hs เทียบ CPython
+# bench - hs vs CPython
 
-รัน: `python3 bench/run.py [ชื่อ ...] [--timeout วินาที]`
-แต่ละเคสมีคู่ `bench/<name>.holy` + `bench/<name>.py` ที่พิมพ์ผลเหมือนกัน (สคริปต์เช็คให้)
-เทียบ `hs.py xbuild` (ELF ตรง ไม่ใช้ gcc) กับ CPython; CI รันทุกคืนแล้วเก็บผลเป็น artifact
+Run: `python3 bench/run.py [name ...] [--timeout seconds]`
+Each case is a `bench/<name>.holy` + `bench/<name>.py` pair printing identical
+output (the script checks this). It compares `hs.py xbuild` (direct ELF, no
+gcc) against CPython; CI runs it nightly and keeps the results as an artifact.
 
-## Baseline ที่ v0.6.30 (วัดเมื่อ 2026-10-12)
+## Baseline at v0.6.30 (measured 2026-10-12)
 
-เครื่อง: sandbox 2 core, CPython 3.10.12 (ตัวเลขสัมบูรณ์ต่างกันตามเครื่อง ดูอัตราส่วนเป็นหลัก)
+Machine: 2-core sandbox, CPython 3.10.12 (absolute numbers vary by machine; read the ratios)
 
-| เคส | CPython | hs xbuild | เร็วกว่า | MB py | MB hs | หมายเหตุ |
+| Case | CPython | hs xbuild | Faster by | MB py | MB hs | Notes |
 |---|---|---|---|---|---|---|
-| fib(32) | 0.35 s | 0.07 s | 5.2x | 9 | 9 | เรียกฟังก์ชันซ้ำ |
-| loop 20M (บวก/mod) | 1.38 s | 0.22 s | 6.4x | 9 | 9 | int ล้วน |
+| fib(32) | 0.35 s | 0.07 s | 5.2x | 9 | 9 | repeated function calls |
+| loop 20M (add/mod) | 1.38 s | 0.22 s | 6.4x | 9 | 9 | pure int |
 | strings (3M append+join+split) | 0.74 s | 0.36 s | 2.1x | 444 | 406 | |
-| alloc (5M `"abc"+str(i)`) | 1.05 s | 0.60 s | 1.7x | 9 | **687** | ไม่มี free ใน x64 — หน่วยความจำโตไม่หยุด |
-| dict (200k insert + วน) | 0.10 s | **>20 s (timeout)** | **ช้ากว่า ~1000x** | - | - | ค้น key แบบ linear scan (`emit_dict_helpers`) |
+| alloc (5M `"abc"+str(i)`) | 1.05 s | 0.60 s | 1.7x | 9 | **687** | no free on x64 - memory grows forever |
+| dict (200k insert + iterate) | 0.10 s | **>20 s (timeout)** | **~1000x slower** | - | - | linear-scan key lookup (`emit_dict_helpers`) |
 
-ที่วัดไว้ครั้งแรก (ไม่อยู่ใน `bench/`): dict 200k insert = 117.5 s เทียบ CPython 0.096 s
+First-ever measurement (not in `bench/`): dict 200k insert = 117.5 s vs CPython 0.096 s
 
-## ข้อสรุป
+## Conclusions
 
-- งาน int/เรียกฟังก์ชัน เร็วกว่า CPython ~5-6x แล้ว
-- สองจุดที่ต้องแก้ก่อนจะอ้างว่า "เร็วกว่า Python": dict แบบ hash จริง และตัวจัดสรรหน่วยความจำที่ free ได้ (ดู `ROADMAP.md` เฟส 1)
-- ตัวเลข interp.py (tree-walk): fib(22) 436 ms เทียบ CPython 15 ms — ใช้เป็นข้อกำหนดพฤติกรรม ไม่ใช่ทางที่เร็ว
+- int/function-call work is already ~5-6x faster than CPython
+- The two spots to fix before claiming "faster than Python": a real hash dict and an allocator that can free (see `ROADMAP.md` phase 1)
+- interp.py (tree-walk) numbers: fib(22) 436 ms vs CPython 15 ms - it is the behavior reference, not the fast path
 
-## หลังเพิ่ม GC (P1, branch p1-gc)
+## After adding GC (P1, branch p1-gc)
 
-conservative mark-sweep บน IR→x64 (`gcrt.py`): เก็บเฉพาะที่ safe point (ทางเข้าฟังก์ชัน / หัวลูป)
-roots = stack + data segment + บล็อก `unsafe alloc` (pinned). `x64`/kernel runtime ไม่เปลี่ยน.
+Conservative mark-sweep on IR->x64 (`gcrt.py`): collects only at safe points
+(function entries / loop heads). roots = stack + data segment + `unsafe alloc` blocks (pinned). The `x64`/kernel runtime is unchanged.
 
-| bench | ก่อน | หลัง |
+| bench | before | after |
 |---|---|---|
 | alloc (5M strings) | 0.60 s, 687 MB | 0.45 s, 9-16 MB |
-| fib / loop / dict | - | ไม่ต่างจากเดิมอย่างมีนัย |
-| strings (3M live strs) | 0.32 s | 0.66 s (header 16B + bitmap + GC scan) |
+| fib / loop / dict | - | no significant change |
+| strings (3M live strs) | 0.32 s | 0.66 s (16B header + bitmap + GC scan) |
 
-ทดสอบ: `tests/x64/gc_stress.holy` (diff กับ interp), `gc bound` ใน test_x64 (alloc bench < 50 MB),
-และรัน suites ทั้งหมดด้วย GC ทุก 4 KB ผ่าน (ใช้ตอนพัฒนา).
+Tests: `tests/x64/gc_stress.holy` (diffed against interp), `gc bound` in
+test_x64 (alloc bench < 50 MB), and running all suites with a GC every 4 KB
+passing (used during development).
 
 ## Compact immutable strings (2026-10-14)
 

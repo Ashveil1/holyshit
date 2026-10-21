@@ -1,9 +1,9 @@
-# holyshit tutorial (10 นาที)
+# holyshit tutorial (10 minutes)
 
-ทุกบล็อก ```hs ในไฟล์นี้ถูกรันจริงโดย `tests/test_docs.py` —
-`# =>` คือ stdout ที่ต้องตรง (รันรวมกันทั้งไฟล์ตามลำดับ)
+Every ```hs block in this file is actually run by `tests/test_docs.py` -
+`# =>` is the stdout that must match (all blocks run together in order)
 
-## 1. print กับค่า
+## 1. print and values
 
 ```hs
 print "hello"
@@ -14,7 +14,7 @@ print true, false, null
 # => true false null
 ```
 
-## 2. ตัวแปร ฟังก์ชัน ขอบเขต
+## 2. Variables, functions, scope
 
 ```hs
 x = 10
@@ -24,8 +24,8 @@ print add(x, 5)
 # => 15
 ```
 
-มีแค่ `def` ที่สร้าง scope ใหม่ — `if`/`while`/`for` ไม่สร้าง
-(เหมือน Python). เขียน global จากในฟังก์ชันด้วย `global`:
+Only `def` creates a new scope - `if`/`while`/`for` do not
+(like Python). Write a global from inside a function with `global`:
 
 ```hs
 n = 0
@@ -62,7 +62,7 @@ print d["a"] + d["b"]
 # => 3
 ```
 
-## 4. เงื่อนไข ลูป
+## 4. Conditions and loops
 
 ```hs
 for i in range(3):
@@ -82,8 +82,8 @@ print i
 # => 2
 ```
 
-`and`/`or` คืน operand (ไม่ใช่ Bool): `0 or 12` ได้ `12`,
-`[] and 7` ได้ `[]`:
+`and`/`or` return an operand (not a Bool): `0 or 12` gives `12`,
+`[] and 7` gives `[]`:
 
 ```hs
 print 0 or 12
@@ -94,7 +94,7 @@ print not ""
 # => true
 ```
 
-bitwise ใช้ได้กับ Int เท่านั้น (Bool ไม่นับ):
+bitwise works on Int only (Bool does not count):
 
 ```hs
 mask = 0xFF
@@ -107,7 +107,7 @@ print 1 << 10
 print 1024 >> 3
 ```
 
-## 5. error กับ try
+## 5. Errors and try
 
 ```hs
 try:
@@ -123,32 +123,32 @@ finally:
 # => fin
 ```
 
-bare `raise` นอก `try` ทำให้โปรแกรมจบด้วย error ทาง stderr
-(บล็อก `hs-norun` แบบนี้ไม่ถูกรันในเทส):
+A bare `raise` outside `try` ends the program with an error on stderr
+(an `hs-norun` block like this is not run in the test):
 
 ```hs-norun
 raise "boom"
 ```
 
-## 6. module
+## 6. Modules
 
 ```hs-norun
 import std.str
 print std.str.trim("  hi  ")
 ```
 
-`import` หาไฟล์จาก: โฟลเดอร์ของโปรแกรม → `HSPATH` → cwd (คั่นด้วย `:`)
-`std/` อยู่ในโฟลเดอร์ repo จึงต้องชี้ `HSPATH` ที่ตัว repo:
+`import` searches: the program's directory -> `HSPATH` -> cwd (colon-separated).
+`std/` lives in the repo directory, so point `HSPATH` at the repo:
 
 ```sh
 HSPATH=/path/to/holyshit python3 interp.py prog.holy
 ```
 
-โค้ดบล็อกนี้ถูกรันจริงในเทส (`HSPATH` ชี้ที่ repo)
+(This code block really runs in the test with `HSPATH` pointing at the repo.)
 
-## 7. ต่อไป
+## 7. Next steps
 
-- อยากเรียก C: อ่าน `../AGENTS.md` หัวข้อ `extern`
-- อยากแตะ hardware ตรง: หัวข้อ `unsafe:`
-- อยากได้ binary ไม่พึ่ง gcc / บูตเครื่องจริง: `x64-subset.md`, `kernel.md`
-- อยากให้ editor ช่วย: `lsp.md`
+- Want to call C: read `../AGENTS.md` under `extern`
+- Want to touch hardware directly: the `unsafe:` section
+- Want a gcc-free binary / boot real hardware: `x64-subset.md`, `kernel.md`
+- Want editor help: `lsp.md`

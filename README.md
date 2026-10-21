@@ -1,7 +1,8 @@
 # holyshit (hs) — v0.6.30
 
-ภาษา dynamic เขียนง่ายแบบ Python, รันได้ 4 โหมด, ต่อ C ได้, ลง bare metal ได้,
-มี language server ให้ editor และ AI agent
+A dynamic language that is as easy to write as Python, runs in 4 modes, calls
+C, boots on bare metal, self-hosts its own compiler, and ships a language
+server for editors and AI agents.
 
 ## Install and run (Linux x86-64)
 
@@ -31,6 +32,20 @@ test, REPL, LSP or kernel commands. `run` compiles eagerly in memory, not on
 first call or in tiers. The installed prebuilt driver is not rebuilt per run.
 See [native install details](docs/native-install.md).
 
+## Experimental in-memory JIT (Linux x86-64)
+
+An eager in-process JIT driver, with the emitter written in holyshit itself
+(no LLVM, no external libraries), is available for experiments:
+
+```sh
+scripts/run-jit-native.sh tests/fib.holy
+```
+
+It compiles source to machine code, relocates it into owned RX mappings and
+executes it in the same process, with a persistent compiled-code cache.
+There is no first-call compilation, tiering, type feedback or deopt yet.
+See [docs/jit.md](docs/jit.md).
+
 ## Development and reference tools (Python)
 
 These remain available for independent semantic checks, diagnostics, editor
@@ -38,25 +53,25 @@ support and development. They are not required by the installed run/build
 route. Their backend behavior differs from the native launcher:
 
 ```sh
-python3 interp.py prog.holy [args...]   # รันทันที (tree-walk)
-python3 hs.py check prog.holy           # ตรวจ syntax/scope อย่างเดียว
-python3 hs.py build prog.holy [-o prog] # เป็น native binary (gcc + Boehm GC)
-python3 hs.py run prog.holy [args...]   # build ลง temp แล้วรันทันที (ค่าเริ่มต้น: x64 ไม่ใช้ gcc, fallback เอง)
-HS_BACKEND=auto|x64|native|interp     # เลือก backend ของ run (หรือ run prog.holy --backend X)
-python3 hs.py fmt prog.holy [-w|--check] # จัดรูป canonical (2-space, ตัดคอมเมนต์)
-python3 hs.py test file_or_dir...      # รันทุก `def test_*()` (assert = เทส); --json สำหรับเอเจนต์, exit 1 ถ้ามีที่ fail
-python3 hs.py repl                       # REPL: state ค้างข้ามบรรทัด, นิพจน์เปล่าพิมพ์ค่า, error ไม่ทำให้หลุด
-python3 hs.py run selfhost/cc.holy prog.holy out   # คอมไพเลอร์ที่เขียนด้วย hs เอง: Int/def/while/print → ELF x86-64 (ดู tests/test_cc.py)
-python3 hs.py xbuild prog.holy [-o prog] # machine code ตรง ไม่ใช้ gcc (subset)
-python3 hs.py xkernel prog.holy -o k.elf # kernel freestanding ไม่ใช้ gcc/as/ld
-python3 hs.py lsp                     # language server (stdio, ไม่มี dependency)
+python3 interp.py prog.holy [args...]   # run immediately (tree-walk)
+python3 hs.py check prog.holy           # syntax/scope check only
+python3 hs.py build prog.holy [-o prog] # native binary (gcc + Boehm GC)
+python3 hs.py run prog.holy [args...]   # build to temp then run (default: x64, no gcc, own fallback)
+HS_BACKEND=auto|x64|native|interp     # pick the run backend (or run prog.holy --backend X)
+python3 hs.py fmt prog.holy [-w|--check] # canonical format (2-space, strips comments)
+python3 hs.py test file_or_dir...      # run every `def test_*()` (assert = test); --json for agents, exit 1 on failure
+python3 hs.py repl                       # REPL: state persists across lines, bare expressions print, errors don't quit
+python3 hs.py run selfhost/cc.holy prog.holy out   # the compiler written in hs itself: Int/def/while/print -> ELF x86-64 (see tests/test_cc.py)
+python3 hs.py xbuild prog.holy [-o prog] # direct machine code, no gcc (subset)
+python3 hs.py xkernel prog.holy -o k.elf # freestanding kernel, no gcc/as/ld
+python3 hs.py lsp                     # language server (stdio, no dependencies)
 python3 hs.py --version
 ```
 
-เริ่มอ่านที่ **[`docs/index.md`](docs/index.md)** — cheatsheet, tutorial, ตัวอย่าง
-ที่รันได้จริง, stdlib, x64 subset, kernel, LSP, คู่มือสำหรับ AI agent
+Start reading at **[`docs/index.md`](docs/index.md)** - cheatsheet, tutorial,
+runnable examples, stdlib, x64 subset, kernel, LSP, and a guide for AI agents.
 
-## ตัวอย่าง 30 วินาที
+## 30-second example
 
 ```
 def fib(n):
@@ -72,77 +87,85 @@ extern from "m":
 print sin(0.0)
 ```
 
-## โครงโปรเจกต์
+## Project layout
 
-| ส่วน | ไฟล์ |
+| Part | File |
 |---|---|
-| เอกสารทั้งหมด (เริ่มตรงนี้) | `docs/index.md` |
-| กฎสำหรับ AI agent | `AGENTS.md` |
-| สเปกภาษา + เหตุผลออกแบบ | `SPEC-v1.md` |
-| มีส่วนร่วม | `CONTRIBUTING.md` |
-| interpreter (พฤติกรรมอ้างอิง) | `interp.py` |
-| native backend (AST→C→gcc) + CLI | `hs.py` + `native/rt.{h,c}` |
-| x86-64 backend ตรง (subset, ไม่ใช้ gcc, ค่าแบบ tagged) | `x64.py` + `x64gen.py` |
+| All documentation (start here) | `docs/index.md` |
+| Rules for AI agents | `AGENTS.md` |
+| Language spec + design rationale | `SPEC-v1.md` |
+| Contributing | `CONTRIBUTING.md` |
+| interpreter (reference behavior) | `interp.py` |
+| native backend (AST->C->gcc) + CLI | `hs.py` + `native/rt.{h,c}` |
+| direct x86-64 backend (subset, no gcc, tagged values) | `x64.py` + `x64gen.py` |
+| self-hosted compiler (written in hs) | `selfhost/` (entry: `selfhost/be/compile.holy`) |
+| pinned bootstrap seed (compiles itself, fixed point) | `bootstrap/` |
+| experimental in-memory JIT driver | `selfhost/be/jit_run.holy` + `docs/jit.md` |
 | kernel runtime (freestanding) | `kernel/` |
-| ไลบรารีมาตรฐาน (เขียนด้วย hs) | `std/` |
+| standard library (written in hs) | `std/` |
 | language server (diagnostics/hover/goto/format) | `lsp.py` + `editors/` |
-| ข้อมูลภาษาแบบเครื่องอ่านได้ | `docs/api.json`, `docs/errors.md`, `scripts/lang_data.py` |
-| ตัวอย่างตามหัวข้อ | `examples/` |
-| เทส | `tests/` |
-| ของเก่า v0.3 (WASM) | `legacy/` |
+| machine-readable language data | `docs/api.json`, `docs/errors.md`, `scripts/lang_data.py` |
+| topic examples | `examples/` |
+| benchmarks (hs vs CPython) | `bench/` + `docs/bench.md` |
+| tests | `tests/` |
+| old v0.3 (WASM) | `legacy/` |
 
-## หัวข้อหลักในภาษา
+## Language highlights
 
-ดู `SPEC-v1.md` ฉบับเต็ม — ไล่จากง่ายไปยาก:
-`examples/hello.holy` → `fib.holy` → `closure.holy` → `ffi.holy`
+See `SPEC-v1.md` for the full story - easiest to hardest:
+`examples/hello.holy` -> `fib.holy` -> `closure.holy` -> `ffi.holy`
 
 - dynamic types: Int Float Str Bool Null List Dict Func (+ first-class)
-- `def if/while/for try/except import` — syntax indent แบบ Python
-  (`import std.str` แบบ dotted ได้, std อยู่ใน `std/`)
-- `unsafe:` — I64/U64/Ptr + `asm` ตรง (static subset ในภาษาเดียวกัน)
-- `extern [from ...]:` — เรียก C/.so/ภาษาไหนก็ได้ผ่าน C ABI
-- closure (copy semantics), JSON, socket/HTTP client, argv/env/system
-- มี x64 subset ที่รันได้โดยไม่ต้องมี gcc เลย (รวมถึง kernel) — มีครบ
-  Int/Float/Str/List/Dict/Bool/Null, `- * / %` เทียบ float และ
-  `print`/`float()` แบบ shortest round-trip ตรงกับ Python โดยไม่ใช้ libc,
-  `json_parse`/`json_str` (คอมไพล์จาก `runtime/json.holy` เข้าไปใน image)
+- `def if/while/for try/except import` - Python-style indentation
+  (dotted `import std.str` works, std lives in `std/`)
+- `unsafe:` - I64/U64/Ptr + inline `asm` (a static subset in the same language)
+- `extern [from ...]:` - call C/.so/anything through the C ABI
+- closures (copy semantics), JSON, socket/HTTP client, argv/env/system
+- an x64 subset that runs with no gcc at all (including the kernel) - full
+  Int/Float/Str/List/Dict/Bool/Null, `- * / %` float arithmetic and
+  `print`/`float()` with shortest round-trip matching Python without libc,
+  `json_parse`/`json_str` (compiled from `runtime/json.holy` into the image)
 
-## เทส
+## Tests
 
 ```sh
-python3 tests/run_all.py         # ทุกชุด (ข้าม kernel ด้วย --quick)
-python3 tests/test.py          # interpreter (49 ชุด)
-python3 tests/test_native.py   # native binary (49 ชุด, ผลต้องตรง interp)
-python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec+ทั้ง repo)
-python3 tests/test_x64.py      # backend x86-64 ตรง (x64/ + ทั้งคอร์ปัส interp, 98, static ELF)
-python3 tests/test_ir.py       # IR กลาง: build/verify/exec ตรง interp ทุกไบต์ (139)
-python3 tests/test_irx64.py    # IR->x64 เทียบกับ path เก่า (42, ELF ชน ELF)
-python3 tests/test_xkernel.py  # kernel freestanding บูตจริงบน QEMU (291 เคส)
-python3 tests/test_examples.py # ตัวอย่างทุกไฟล์ยังรันได้จริง (17)
-python3 tests/test_lsp.py      # language server ผ่าน stdio (25 เคส)
-python3 tests/test_docs.py     # เอกสาร: โค้ดใน tutorial รันจริง + ลิงก์ + api.json (41)
+python3 tests/run_all.py         # everything (skip kernel with --quick)
+python3 tests/test.py          # interpreter (85 cases)
+python3 tests/test_native.py   # native binary (results must match interp)
+python3 tests/test_fmt.py      # formatter (canonical+idempotent+exec+whole repo)
+python3 tests/test_x64.py      # direct x86-64 backend (143, static ELF)
+python3 tests/test_ir.py       # middle IR: build/verify/exec matches interp byte for byte (179)
+python3 tests/test_irx64.py    # IR->x64 vs the old path (73, ELF vs ELF)
+python3 tests/test_be.py       # hs-written backend vs Python emitter, byte-identical (65)
+python3 tests/test_jit_corpus.py # JIT corpus parity (85)
+python3 tests/test_hosted_seed.py # pinned bootstrap seed checks
+python3 tests/test_xkernel.py  # freestanding kernel, real QEMU boots (291 cases)
+python3 tests/test_examples.py # every example file still runs
+python3 tests/test_lsp.py      # language server over stdio (25 cases)
+python3 tests/test_docs.py     # docs: tutorial code really runs + links + api.json (85)
 ```
 
-กติกาเทส: `tests/<name>.holy` + `.expected` (stdout), `.stdin` (input),
-`.args` (argv ทีละบรรทัด), `.env` (KEY=VAL ต่อบรรทัด), `.fail` (error ที่คาด,
-เทียบ stderr), `mod_*` = helper (ไม่รันตรง), `.nativeonly` = ข้ามฝั่ง interp
+Test rules: `tests/<name>.holy` + `.expected` (stdout), `.stdin` (input),
+`.args` (argv line by line), `.env` (KEY=VAL per line), `.fail` (expected
+error, matched against stderr), `mod_*` = helper (not run directly),
+`.nativeonly` = skip the interp side.
 
 ## editor
 
-language server เป็น stdio ล้วน ไม่ต้องลงอะไรเพิ่ม — ชี้ editor ไปที่
-`python3 <repo>/lsp.py` ได้เลย (VS Code / Neovim / Helix / Zed มีตัวอย่างใน
+The language server is pure stdio with nothing to install - point your editor
+at `python3 <repo>/lsp.py` (VS Code / Neovim / Helix / Zed examples in
 `editors/`)
 
 ```sh
 python3 hs.py lsp                                  # server
-python3 scripts/lsp_client.py --diag prog.holy       # คำสั่งเดียวจบ (สำหรับ agent)
+python3 scripts/lsp_client.py --diag prog.holy       # one-shot command (for agents)
 ```
 
-## สำหรับ AI agent
+## for AI agents
 
-อ่าน `AGENTS.md` ก่อนเขียน `.holy` เสมอ — reference กระชับครบกฎทั้งหมด
-รวม gotchas และ fix loop (`check` → `interp` → `build`, error มี `--json`)
-สั้นกว่านั้นดู `docs/for-agents.md`
+Read `AGENTS.md` before writing `.holy` - a compact reference with all the
+rules, gotchas and the fix loop (`check` -> `interp` -> `build`, errors with
+`--json`). A shorter version is `docs/for-agents.md`.
 
 ## License
 

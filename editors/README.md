@@ -1,13 +1,13 @@
 # editor support
 
-ทุกตัวชี้ไปที่ `lsp.py` เดียวกัน (stdio, ไม่มี dependency)
+All editors point at the same `lsp.py` (stdio, no dependencies)
 
-| editor | โฟลเดอร์ | วิธีติดตั้ง |
+| editor | folder | how to install |
 |---|---|---|
-| VS Code | `vscode/` | เปิดโฟลเดอร์นี้ในโค้ด → F5 |
+| VS Code | `vscode/` | open this folder in VS Code -> F5 |
 | Neovim | `neovim/` | `runtimepath:append(...)` + `require('holyshit').setup{}` |
-| Helix | `helix/` | เพิ่ม `[language-server.holyshit]` ใน `languages.toml` |
-| Zed | `zed/` | `[language_servers."holyshit-lsp"]` ใน `settings.json` |
+| Helix | `helix/` | add `[language-server.holyshit]` to `languages.toml` |
+| Zed | `zed/` | `[language_servers."holyshit-lsp"]` in `settings.json` |
 
-ฟีเจอร์ที่ได้ทั้งหมด: diagnostics, hover, completion,
-goto definition (ข้ามไฟล์ได้), document symbols, formatting
+Features you get everywhere: diagnostics, hover, completion,
+goto definition (cross-file), document symbols, formatting

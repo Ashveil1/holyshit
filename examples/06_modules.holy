@@ -1,8 +1,8 @@
 # tour 06: module + stdlib
-# รัน: HSPATH=$PWD python3 interp.py examples/06_modules.holy
+# run: HSPATH=$PWD python3 interp.py examples/06_modules.holy
 #
-# import หาไฟล์จาก: โฟลเดอร์โปรแกรม -> HSPATH -> cwd
-# std/ อยู่ในโฟลเดอร์ repo จึงต้องชี้ HSPATH ที่ตัว repo
+# import searches: program directory -> HSPATH -> cwd
+# std/ lives in the repo directory, so point HSPATH at the repo
 
 import std.str
 import std.list
@@ -29,7 +29,7 @@ print std.list.filter(is_even, xs)
 print std.list.any(inc, [0, 0, 1])
 print std.list.all(inc, [1, 2, 3])
 
-# closure ผ่านเข้า stdlib ได้
+# closures can be passed into stdlib
 def adder(n):
   def add_n(x):
     return x + n

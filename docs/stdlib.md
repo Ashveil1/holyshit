@@ -1,15 +1,15 @@
-# stdlib — `std/` (เขียนด้วย hs ล้วน)
+# stdlib - `std/` (written in pure hs)
 
-`import std.str` ต้องการ `std/` ให้มองเห็นเป็นโฟลเดอร์ ของ `HSPATH`
-(โฟลเดอร์โปรแกรมก่อนเสมอ แล้วค่อย `HSPATH` ต่อด้วย `:`):
+`import std.str` needs `std/` visible as a directory on `HSPATH`
+(the program's own directory always comes first, then `HSPATH`, colon-separated):
 
 ```sh
-# จากโฟลเดอร์ repo: ชี้ HSPATH ที่ตัว repo (มี std/ อยู่ข้างใน)
+# from the repo directory: point HSPATH at the repo (which contains std/)
 HSPATH=/path/to/holyshit python3 interp.py prog.holy
-# หรือก๊อป std/ ไปไว้ข้างโปรแกรมแล้ว import ตรง ๆ ไม่ต้องตั้งอะไร
+# or copy std/ next to your program and import directly with nothing set
 ```
 
-ตัวอย่างที่รันจริงในเทส:
+An example that really runs in the tests:
 
 ```hs
 import std.str
@@ -26,58 +26,59 @@ print std.str.starts_with("holyshit", "holy")
 # => true
 ```
 
-## std.str — ข้อความ
+## std.str - text
 
-| ฟังก์ชัน | ทำอะไร |
+| Function | What it does |
 |---|---|
-| `trim(s)` | ตัด space หัวท้าย (`" \t\n\r`) |
-| `pad_left(s, w)` / `pad_right(s, w)` | เติม space ให้ยาว `w` |
-| `starts_with(s, pre)` / `ends_with(s, suf)` | ตรวจ prefix/suffix |
-| `lines(s)` | แยกบรรทัดเป็น List (`split(s, "\n")`) |
+| `trim(s)` | strip surrounding whitespace (`" \t\n\r`) |
+| `pad_left(s, w)` / `pad_right(s, w)` | pad with spaces to width `w` |
+| `starts_with(s, pre)` / `ends_with(s, suf)` | prefix/suffix check |
+| `lines(s)` | split into a List of lines (`split(s, "\n")`) |
 
-รันบน x64 ได้ (xbuild/xkernel) — ใช้แค่ slice/index/while/len.
+Runs on x64 (xbuild/xkernel) - uses only slice/index/while/len.
 
-## std.list — ลิสต์เชิงฟังก์ชัน
+## std.list - functional list helpers
 
-| ฟังก์ชัน | ทำอะไร |
+| Function | What it does |
 |---|---|
-| `map(f, xs)` | List ใหม่จาก `f(x)` ทุกตัว |
-| `filter(f, xs)` | เฉพาะตัวที่ `f(x)` เป็นจริง |
-| `fold(f, acc, xs)` | สะสม `acc = f(acc, x)` |
-| `any(f, xs)` / `all(f, xs)` | มี/ทุกตัวเป็นจริงไหม |
+| `map(f, xs)` | new List of `f(x)` for each element |
+| `filter(f, xs)` | only elements where `f(x)` is true |
+| `fold(f, acc, xs)` | accumulate `acc = f(acc, x)` |
+| `any(f, xs)` / `all(f, xs)` | whether any/every element is true |
 
-รันบน x64 ได้ (โชว์ closure ด้วย)
+Runs on x64 (demonstrates closures too)
 
-## std.bitmap — bit set บน byte (สำหรับ frame allocator, GDT/IDT slot)
+## std.bitmap - bit set over bytes (for frame allocators, GDT/IDT slots)
 
-bit `i` อยู่ที่ byte `i / 8` mask `1 << (i % 8)` — ทุกฟังก์ชันรับ base เป็น
-Int address (จาก `alloc()`) และใช้แค่ `load8/store8` จึงรันได้ทุก backend
+bit `i` lives at byte `i / 8` mask `1 << (i % 8)` - every function takes the
+base as an Int address (from `alloc()`) and uses only `load8/store8`, so it
+runs on every backend
 
-| ฟังก์ชัน | ทำอะไร |
+| Function | What it does |
 |---|---|
-| `bit_get/set/clear/toggle(base, i)` | อ่าน/เขียน/สลับบิตเดียว |
-| `bit_reserve(base, start, count)` / `bit_release(...)` | ทำเครื่องหมายช่วงบิต |
-| `bit_count_used(base, nbits)` | นับบิตที่ใช้ |
-| `bit_find(base, nbits)` / `bit_find_from(..., start)` | บิตว่างแรก, `-1` ถ้าเต็ม |
-| `bit_run_free(base, start, want)` | จำนวนบิตว่างติดกันจาก `start` |
-| `bit_alloc_run(base, nbits, want, start)` | หาช่วงว่าง `want` ติดกัน, `-1` ถ้าไม่พอ |
-| `bit_take(base, nbits, start, want)` | `alloc_run` + ทำเครื่องหมายทันที |
-| `bitmap_bytes(nbits)` | จำนวน byte ที่ต้องใช้ |
+| `bit_get/set/clear/toggle(base, i)` | read/write/flip a single bit |
+| `bit_reserve(base, start, count)` / `bit_release(...)` | mark a bit range |
+| `bit_count_used(base, nbits)` | count used bits |
+| `bit_find(base, nbits)` / `bit_find_from(..., start)` | first free bit, `-1` when full |
+| `bit_run_free(base, start, want)` | number of consecutive free bits from `start` |
+| `bit_alloc_run(base, nbits, want, start)` | find a free run of `want`, `-1` when short |
+| `bit_take(base, nbits, start, want)` | `alloc_run` + mark immediately |
+| `bitmap_bytes(nbits)` | number of bytes needed |
 
-> หมายเหตุ x64: ชื่อระดับโมดูลถูก resolve แบบ static — **ต้องนิยามฟังก์ชันที่ถูกเรียก
-> ก่อนตัวที่เรียกมัน** (เรียงลำดับในไฟล์ให้ถูก)
+> x64 note: module-level names are resolved statically - **a called function
+> must be defined before its caller** (order the file accordingly)
 
-## std.heap — malloc/free บน unsafe (สไตล์ K&R)
+## std.heap - malloc/free over unsafe (K&R style)
 
-| ฟังก์ชัน | ทำอะไร |
+| Function | What it does |
 |---|---|
-| `heap_init(nbytes)` | เตรียม region (เรียกครั้งเดียว) |
-| `malloc(nbytes)` | จอง → address (Int), `0` ถ้าเต็ม |
-| `free(p)` | คืน (รวมบล็อกข้างเคียง) |
-| `heap_free()` / `heap_nblocks()` | ที่ว่าง / จำนวนบล็อก |
+| `heap_init(nbytes)` | prepare the region (call once) |
+| `malloc(nbytes)` | allocate -> address (Int), `0` when full |
+| `free(p)` | release (coalesces neighbors) |
+| `heap_free()` / `heap_nblocks()` | free space / block count |
 
-ที่อยู่เป็น Int ธรรมดา (`as_int`/`as_ptr` ข้ามฝั่ง), single-thread.
-ใช้บน x64 ได้ถ้าโปรแกรมอยู่ใน subset ของ `unsafe:` ทั้งหมด
+Addresses are plain Ints (`as_int`/`as_ptr` cross the boundary), single-threaded.
+Usable on x64 when the whole program stays inside the `unsafe:` subset.
 
 ## Software graphics: std.gfx
 

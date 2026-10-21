@@ -1,8 +1,8 @@
-# tour 08: unsafe — ชนิดคงที่, struct, pointer ตรง
-# รัน: python3 interp.py examples/08_unsafe.holy
+# tour 08: unsafe - static types, structs, raw pointers
+# run: python3 interp.py examples/08_unsafe.holy
 #
-# ใน unsafe: ชนิดคงที่ (I64/U64/Ptr + struct pointer) ทุกช่อง 8 bytes
-# ไม่มี padding, ไม่มี def/for/try/Str/List, และ / ตัดทศนิยมแบบ C
+# inside unsafe: static types (I64/U64/Ptr + struct pointers), every field 8 bytes
+# no padding, no def/for/try/Str/List, and / truncates like C
 
 unsafe:
   struct Point:
@@ -14,19 +14,19 @@ unsafe:
     Point* origin
     I64 entries[4]
 
-  # ประกาศแบบมีชนิดเสมอ: I64/U64/Ptr หรือชื่อ struct ตามด้วย *
+  # always declare with a type: I64/U64/Ptr or a struct name followed by *
   Point* p = alloc(sizeof(Point) * 2)
   p.x = 3
   p.y = 4
   print p.x + p.y
 
-  # เลื่อน pointer ได้ (หน่วยคือ sizeof ของชนิดปลายทาง = 16) และลบกันได้
+  # pointers can be stepped (in units of the pointee's sizeof = 16) and subtracted
   Point* q = p + 1
   q.x = 10
   q.y = 20
   print q.x, q.y, q - p
 
-  # array field ใน struct
+  # array field in a struct
   Desc* d = alloc(sizeof(Desc))
   d.kind = 2
   d.entries[0] = 11
@@ -34,11 +34,11 @@ unsafe:
   print d.kind, d.entries[0] + d.entries[3]
   print sizeof(Desc), sizeof(Point)
 
-  # struct pointer ซ้อน struct pointer ได้
+  # struct pointers can nest
   d.origin = p
   print d.origin.x
 
-  # ตัวดำเนินการของภาษาใน unsafe ได้
+  # language operators work inside unsafe
   print 7 / 2
   print 7 % 2
   print 1 and 2
@@ -51,5 +51,5 @@ unsafe:
   print load32(buf)
   print load8(buf)
 
-  # ค่า dynamic ข้ามเข้า unsafe ได้ด้วย as_int (และกลับด้วย as_ptr)
+  # dynamic values cross into unsafe with as_int (and back with as_ptr)
   print as_int(as_ptr(p))

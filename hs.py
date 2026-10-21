@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""holyshit native backend (เฟส 3a) — AST (from interp.py) -> C -> gcc binary.
+"""holyshit native backend (phase 3a) - AST (from interp.py) -> C -> gcc binary.
 usage:
   python3 hs.py build prog.holy [-o prog]   # compile to native binary
   python3 hs.py run prog.holy               # build to temp + execute (JIT-like)

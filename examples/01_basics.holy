@@ -1,5 +1,5 @@
-# tour 01: ค่า ตัวแปร และฟังก์ชัน
-# รัน: python3 interp.py examples/01_basics.holy
+# tour 01: values, variables and functions
+# run: python3 interp.py examples/01_basics.holy
 
 print "holyshit"
 print 1 + 2, 7 / 2, 7 % 3
@@ -15,7 +15,7 @@ def greet(who, greeting):
 
 print greet(name, "hi")
 
-# def เป็นตัวเดียวที่สร้าง scope ใหม่ — if/while/for ไม่สร้าง
+# def is the only thing that creates a new scope - if/while/for do not
 total = 0
 for i in range(5):
   total = total + i
@@ -26,7 +26,7 @@ while i < 3:
   i = i + 1
 print i
 
-# and/or คืน operand ไม่ใช่ Bool
+# and/or return an operand, not a Bool
 print 0 or "fallback"
 print "kept" and 7
 print not ""
