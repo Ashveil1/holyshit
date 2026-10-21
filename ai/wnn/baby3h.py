@@ -9,7 +9,7 @@ import random, json, os, sys
 from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from baby3 import SIT, SIT_EN, Baby, parse_lines
-PER_DAY, CHUNK, DAYS = 60, 20, 5
+PER_DAY, CHUNK, DAYS = 60, 60, 5
 def gen_day(seed, d):
     rng = random.Random(seed * 1000 + d)
     out = []
