@@ -1,0 +1,4 @@
+   comb 0/1973 None tried 0 0s
+seed0 baselib,adv sumto: FOUND init b=zero; if (lt a one) -> b; else step ((sub a one),(add a b)); comb=None; post=id tried 2707098 264s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/1973 None tried 0 0s
+seed0 baselib,adv even: FOUND init b=y; if (lt a one) -> b; else step ((sub a one),(power zero b)); comb=None; post=nz tried 123619 13s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 26}
