@@ -75,6 +75,17 @@ def mine_macros(progs):
     MACROS[:] = out
     return out
 def search(train, abl, tag='', tried_cap=6_000_000):
+    if 'baselib' in abl and not getattr(search, '_baselib_done', False):  # pin LIB to the default arm's grown library
+        import json as _json, os as _os
+        sv0 = '/tmp/c7_prog_0_base.json'
+        if _os.path.exists(sv0):
+            saved0 = _json.load(open(sv0))
+            def tup0(e): return tuple(tup0(t) for t in e) if isinstance(e, list) else e
+            for t0 in ('mod', 'mul', 'div', 'power', 'gcd', 'max', 'min'):
+                if t0 in saved0:
+                    f0 = make_fn(tup0(saved0[t0]))
+                    LIB[t0] = (lambda ff: (lambda a, b: ff(a, b)))(f0)
+        search._baselib_done = True
     ops = [o for o in LIB if not (abl == 'nolib' and o not in ('add', 'sub'))]
     E1 = list(LEAVES) + [(o, p, q) for o in ops for p in LEAVES for q in LEAVES if p != q or o in ('add',)]
     conds = conds_list(); bases = list(LEAVES)
