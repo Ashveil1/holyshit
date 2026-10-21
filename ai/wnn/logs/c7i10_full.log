@@ -1,0 +1,66 @@
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 19s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 27s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 36s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 44s
+seed0 init10 mod: NOT FOUND tried 1376256 51s
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 20s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 29s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 37s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 46s
+seed0 init10 mul: NOT FOUND tried 1376256 53s
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 20s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 29s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 38s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 47s
+seed0 init10 div: NOT FOUND tried 1376256 54s
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 21s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 30s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 39s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 47s
+seed0 init10 power: NOT FOUND tried 1376256 55s
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 21s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 30s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 39s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 48s
+seed0 init10 gcd: NOT FOUND tried 1376256 55s
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 25s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 36s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 47s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 57s
+seed0 init10 fact: NOT FOUND tried 1376256 66s
+   comb 0/97 None tried 0 0s
+seed0 init10 sumto: FOUND init b=zero; if (lt a one) -> b; else step ((sub a one),(add a b)); comb=None; post=id tried 108198 9s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 20s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 29s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 38s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 47s
+seed0 init10 max: NOT FOUND tried 1376256 54s
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 22s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 31s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 40s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 49s
+seed0 init10 min: NOT FOUND tried 1376256 56s
+   comb 0/97 None tried 0 0s
+seed0 init10 square: FOUND init b=one; if (lt a b) -> zero; else step (a,(add b one)); comb=('add', 'a', 0); post=id tried 196843 14s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/97 None tried 0 0s
+seed0 init10 choose2: FOUND init b=one; if (nlt b a) -> zero; else step (a,(add b one)); comb=('add', 'b', 0); post=id tried 210923 12s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 19s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 27s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 35s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 43s
+seed0 init10 sumsq: NOT FOUND tried 1376256 50s
+   comb 0/97 None tried 0 0s
+   comb 20/97 ('add', ('add', 'b', 'zero'), 0) tried 430080 21s
+   comb 40/97 ('add', ('sub', 'zero', 'one'), 0) tried 675840 30s
+   comb 60/97 ('sub', ('sub', 'b', 'a'), 0) tried 921600 38s
+   comb 80/97 ('sub', ('add', 'one', 'zero'), 1) tried 1167360 47s
+seed0 init10 dblfact: NOT FOUND tried 1376256 54s

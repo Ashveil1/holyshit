@@ -1,0 +1,34 @@
+   comb 0/1973 None tried 0 0s
+seed0 init10,baselib square: FOUND init b=one; if (nlt one a) -> b; else step ((div a b),(mul a b)); comb=None; post=id tried 719709 63s unseen/40 by scale {1: 38, 2: 37, 3: 38, 4: 40}
+   comb 0/1973 None tried 0 0s
+seed0 init10,baselib choose2: FOUND init b=one; if (nlt b a) -> zero; else step (a,(add b one)); comb=('add', 'b', 0); post=id tried 2597867 194s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/1973 None tried 0 0s
+   comb 20/1973 ('div', 'zero', 0) tried 2817024 204s
+   comb 40/1973 ('sub', 'zero', 1) tried 3062784 213s
+   comb 60/1973 ('gcd', 'zero', 1) tried 3308544 223s
+   comb 80/1973 ('add', ('add', 'one', 'zero'), 0) tried 3554304 232s
+   comb 100/1973 ('add', ('mod', 'b', 'a'), 0) tried 3800064 241s
+   comb 120/1973 ('add', ('mul', 'zero', 'one'), 0) tried 4045824 250s
+   comb 140/1973 ('add', ('power', 'one', 'b'), 0) tried 4291584 259s
+   comb 160/1973 ('add', ('max', 'b', 'a'), 0) tried 4537344 268s
+   comb 180/1973 ('add', ('min', 'zero', 'one'), 0) tried 4783104 277s
+   comb 200/1973 ('sub', ('sub', 'b', 'a'), 0) tried 5028864 285s
+   comb 220/1973 ('sub', ('mod', 'zero', 'one'), 0) tried 5274624 295s
+   comb 240/1973 ('sub', ('div', 'one', 'b'), 0) tried 5520384 305s
+   comb 260/1973 ('sub', ('gcd', 'b', 'a'), 0) tried 5766144 314s
+seed0 init10,baselib sumsq: NOT FOUND tried 6005760 322s
+   comb 0/1973 None tried 0 0s
+   comb 20/1973 ('div', 'zero', 0) tried 2817024 204s
+   comb 40/1973 ('sub', 'zero', 1) tried 3062784 213s
+   comb 60/1973 ('gcd', 'zero', 1) tried 3308544 223s
+   comb 80/1973 ('add', ('add', 'one', 'zero'), 0) tried 3554304 232s
+   comb 100/1973 ('add', ('mod', 'b', 'a'), 0) tried 3800064 241s
+   comb 120/1973 ('add', ('mul', 'zero', 'one'), 0) tried 4045824 251s
+   comb 140/1973 ('add', ('power', 'one', 'b'), 0) tried 4291584 261s
+   comb 160/1973 ('add', ('max', 'b', 'a'), 0) tried 4537344 270s
+   comb 180/1973 ('add', ('min', 'zero', 'one'), 0) tried 4783104 279s
+   comb 200/1973 ('sub', ('sub', 'b', 'a'), 0) tried 5028864 288s
+   comb 220/1973 ('sub', ('mod', 'zero', 'one'), 0) tried 5274624 298s
+   comb 240/1973 ('sub', ('div', 'one', 'b'), 0) tried 5520384 308s
+   comb 260/1973 ('sub', ('gcd', 'b', 'a'), 0) tried 5766144 317s
+seed0 init10,baselib dblfact: NOT FOUND tried 6005760 326s
