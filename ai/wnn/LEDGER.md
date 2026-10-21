@@ -35,3 +35,12 @@ B-037 (init {y,zero}, choose2) | PROMISING | inity0 arm | FOUND 2604011 = 50% of
 B-038 (init {y,zero}, sumsq) | null | inity0 arm | NOT FOUND (also fails default)
 B-039 (init {y,zero}, dblfact) | failed | inity0 arm | NOT FOUND - task LOST (default solution needs init two); init restriction trades coverage for speed
 inity0 side-effect | caveat | inity0 arm | fact got a different program: fits train, unseen 40/40/32/34 vs default 40/40/40/40 - smaller prior set silently picked a worse-generalizing program
+B-032 (post id-only, square) | null | postid arm /tmp/c7pid.log | FOUND 4313812 = 100% of default 4313812, same program (uses post=id) - no reduction
+B-033 (post id-only, choose2) | null | postid arm | FOUND 5199851 = 100% of default, same program
+B-034 (post id-only, sumsq) | null | postid arm | NOT FOUND at 6M cap = default
+B-035 (post id-only, dblfact) | null | postid arm | FOUND 5480597 = 100% of default, same partial program (unseen 40/40/29/33)
+B-040 (inity0+postid, square) | derived | = B-036: inity0 solution uses post=id, candidate order unchanged, so identical result 2591723 (60% of default) - no additional reduction from post restriction
+B-041 (inity0+postid, choose2) | derived | = B-037: 2604011 (50% of default), same reasoning
+B-042 (inity0+postid, sumsq) | derived | NOT FOUND (= B-038): any post=id solution within cap would have been found by the full-post run
+B-043 (inity0+postid, dblfact) | derived | NOT FOUND (= B-039): task lost under init {y,zero} regardless of post set
+P27h controls (blind-pool dialogue, same scenes/seeds as llmrew) | measured | baby3c.py pool mode, logs/baby3c_s{0,1}.log | overhear (no reward, baby never speaks): FIRST WORD DAY 1 both seeds, all6 .91/.89 day1 -> .91/.86 day5. rewonly (reward, non-contingent dialogue): FIRST WORD DAY 1 both seeds, all6 .91/.90 day1 -> .92/.89 day5. Controls MATCH llmrew day-1 (all6 .91/.89): first-word grounding comes from scene-word co-occurrence in the dialogue, NOT from the reward channel or caregiver contingency. llmrew days 2-5 not run (controls null per pre-stated rule).

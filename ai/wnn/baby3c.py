@@ -6,8 +6,8 @@ import json, sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from baby3 import SIT, Baby
 from baby3h import gen_day, evaluate
-def run(arm, seed, lines, pool=None, pool_rng=None):
-    b = Baby(); n = 0; out = []
+def run(arm, seed, lines, pool=None, pool_rng=None, full=False):
+    b = Baby(); n = 0; out = []; first = None
     from baby3h import SIT_EN
     for d in range(1, 6):
         day = gen_day(seed, d)
@@ -26,18 +26,22 @@ def run(arm, seed, lines, pool=None, pool_rng=None):
                     b.spoke += 1; b.reward(w, present, w == SIT[s])
         mae, non, hit = evaluate(b, seed)
         out.append(f'{arm} seed{seed} day {d}: mae {mae:.2f} non {non:.2f} all6 {hit:.2f} spoke {b.spoke} heard {b.heard}')
-        if mae >= 0.8 and non <= 0.2:
+        if mae >= 0.8 and non <= 0.2 and not full:
             out.append(f'{arm} seed{seed}: FIRST WORD DAY {d}'); break
+        elif mae >= 0.8 and non <= 0.2 and first is None:
+            first = d
+    if full and first is not None:
+        out.append(f'{arm} seed{seed}: FIRST WORD DAY {first}')
     return out
 if __name__ == '__main__':
-    seed = int(sys.argv[1])
+    seed = int(sys.argv[1]); full = len(sys.argv) > 2 and sys.argv[2] == 'full'
     data = json.load(sys.stdin)
     if isinstance(data, dict):  # pool mode: {type: [lines]}
         import random
         for arm in ('overhear', 'rewonly'):
             rng = random.Random(7000 + seed)  # same sampling order for both arms
-            for l in run(arm, seed, None, pool=data, pool_rng=rng): print(l, flush=True)
+            for l in run(arm, seed, None, pool=data, pool_rng=rng, full=full): print(l, flush=True)
     else:
         print(f'{len(data)} dialogue lines')
         for arm in ('overhear', 'rewonly'):
-            for l in run(arm, seed, data): print(l, flush=True)
+            for l in run(arm, seed, data, full=full): print(l, flush=True)
