@@ -483,3 +483,28 @@ Tried to close the k=1 gap of paraphrase teaching (.75 vs .83 with a true answer
 - Alignment weight transfer (new side's unseen content tokens inherit the op-weights of the known side's distinctive tokens): k=1 .79 (tokens, +.04), no change for char n-grams, no change at k=2. Not enough to matter.
 - Confidence gating (skip the definition when the known-side reading is ambiguous, margin < 2): HURTS, k=1 .68, k=2 .73 - gating throws away too many of the few definitions.
 Conclusion: with 1-2 examples the P22 paraphrase recipe is about as good as this learner gets; the remaining k=1 gap is mostly the 9% pseudo-label noise. Zero-shot on unseen wordings is unchanged (.18 tokens / .41 char).
+
+## Priors/experience audit (F-7, Chollet-style; applies to all sections above)
+Format: result | priors handed in | experience consumed
+- P7-P14 induction (mod..sumto) | recursion schema, cond forms, depth-1 expression grammar, add/sub primitives, post set, curriculum order, I/O format | 25 examples per skill
+- P15 text commands | op library, hypothesis space (op x order), digit regex, whitespace tokens, sentence templates (own synthetic text) | 24-400 sentences
+- P16 number words + 2-step | above + value range 1..10, clause templates, connectors | 150-1000 (words), 100-1000 (2-step) sentences
+- P20 validation acceptance | above + 32 extra labelled validation examples | 57 examples per skill
+- P21 3-step zero-shot | above + chaining solver (cut-pair search) | 0 three-step sentences
+- P22 paraphrase teaching | the definition split at "means" (hand-split), known-side templates | 1-8 definitions per wording
+Claim rule going forward (from Chollet 2019): every new result states its priors and experience in this form, and uses EVALPACK.md v1 unless stated.
+
+## P25 (F-5, text2prog8.py): soft Occam / 2^-ops weighting on two-step sentences
+P16 drops every 2-step explanation of a training sentence when a single-op explanation exists (categorical Occam). F-5 (Solomonoff-flavored) keeps all explanations and weights each by 2^-(number of ops). Same EVALPACK protocol as P16(b), 5 seeds.
+- n=100: same phrasing .68 vs P16 .46; new connectors/frames .42 vs .25
+- n=300: .77 vs .64; .46 vs .36
+- n=1000: .73 vs .82 (WORSE); .41 vs .44 (worse)
+Mixed result: soft Occam is much better with little data (roughly matches P16's n=1000 performance using 300 sentences) but the categorical rule wins at n=1000, where accumulated soft credit for spurious 2-step readings hurts. A schedule (soft early, categorical late) is an untested option. Priors/experience as in P16.
+
+## P26 (baby2.py): caregiver-baby first-word experiment (Ash's design)
+World: 6 Thai situation types (แม่ พ่อ นม ลูกบอล แมว หมา), one primary + 30% noise co-present object per scene, 100 scenes/day. Two scripted caregivers talk to EACH OTHER about the scene (2-4 word lines, echo replies, correct word 70% of the time); the baby overhears. Baby: from-scratch Hebbian word<->situation association counts, no pretrained anything. Once the baby produces a word, caregivers reply as they reply to each other (echo line; plus association boost/penalty = Turing 1948 pleasure-pain channel). FIRST-WORD criterion (pre-stated): >=80% of 200 held-out mother scenes get แม่ and <=20% of other scenes. 5 seeds.
+Results:
+- Informative words (any feedback mode): first word day 1-4 in 28/30 runs; all-6-word held-out accuracy .84-.88 (chance ~0.17). Dialogue (overheard 2-person speech) works as well as single-word utterances.
+- SHUFFLED words (word stream carries no information) + contingent correct/wrong feedback: a first word STILL emerges (day 1-10 in 7/10 runs, all-word acc .74-.76). The correctness feedback is itself an information channel - this is exactly Turing's 1948 P-type mechanism (tentative entries fixed by pleasure, cancelled by pain) working as he intended, and it means "first word emerges" alone does not prove word learning.
+- Shuffled words + random feedback: nothing learned (acc .13-.22, criterion never met). True negative control passes.
+Honest scope: this is cross-situational associative grounding (Smith & Yu 2008 style), not understanding, grammar, or conversation. Joint attention is given for free (the scene is perfectly shared); babbling is modeled only as early production. 24h expectation set in the report to main; nothing beyond single-word grounding should be expected from this learner without new machinery (segmentation, word order, reference to absent things).
