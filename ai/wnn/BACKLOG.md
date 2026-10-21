@@ -246,7 +246,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-239 [S (under 2 min)] (T5 weightless/HDC learners) DWSA/thermometer encoding for numbers in HDC -- task: arith -- baseline: level encoding -- success: better interpolation on unseen operands
 - [ ] B-240 [S (under 2 min)] (T6 connectome variants (low priority, P5 was negative)) subsampled connectome (sensory->interneuron core) speed test -- task: mnist -- baseline: full -- success: <50% time, <-2 pts acc
 - [ ] B-241 [S (under 2 min)] (T7 continual/few-shot) one-shot per class sweep 1/5/20 examples -- task: mnist -- baseline: MLP -- success: gap at 1 shot
-- [ ] B-242 [S (under 2 min)] (T7 continual/few-shot) episodic recall of named facts after 1000 distractors -- task: facts -- baseline: no distractors -- success: recall unchanged
+- [x] B-242 [S (under 2 min)] (T7 continual/few-shot) episodic recall of named facts after 1000 distractors -- task: facts -- baseline: no distractors -- success: recall unchanged
 - [ ] B-243 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [ ] B-244 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [ ] B-245 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
