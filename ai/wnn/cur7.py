@@ -17,6 +17,7 @@ CAPF = [400]
 PROG = False
 VALID = []
 ADV = []
+EXCL = set()
 def boundary(task):
     t = {'square': [(0, 7, 0), (1, 7, 1), (2, 7, 4), (3, 7, 9), (30, 7, 900)],
          'choose2': [(0, 7, 0), (1, 7, 0), (2, 7, 1), (3, 7, 3), (60, 7, 1770)],
@@ -90,7 +91,7 @@ def search(train, abl, tag='', tried_cap=6_000_000):
             saved0 = _json.load(open(sv0))
             def tup0(e): return tuple(tup0(t) for t in e) if isinstance(e, list) else e
             for t0 in ('mod', 'mul', 'div', 'power', 'gcd', 'max', 'min'):
-                if t0 in saved0:
+                if t0 in saved0 and t0 not in EXCL:
                     f0 = make_fn(tup0(saved0[t0]))
                     LIB[t0] = (lambda ff: (lambda a, b: ff(a, b)))(f0)
         search._baselib_done = True
@@ -213,6 +214,7 @@ if __name__ == '__main__':
     seed = int(sys.argv[1]); abl = sys.argv[2] if len(sys.argv) > 2 else ''
     NEW = ['absdiff', 'max', 'min', 'square', 'cube', 'even', 'choose2', 'sumsq', 'dblfact', 'lcm']
     only = sys.argv[3].split(',') if len(sys.argv) > 3 else CURR
+    EXCL.update(only)  # relearned tasks must not be in the pinned library (honest forget-and-relearn)
     CURR = CURR + NEW
     import json, os
     FOUNDPROG = {}
