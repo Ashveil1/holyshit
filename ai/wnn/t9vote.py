@@ -7,7 +7,7 @@ import cur7
 from cur7 import gen, search, make_fn, boundary, LIB, ADV, EXCL, CAPF, Fail, ev
 TASKS = sys.argv[1].split(',') if len(sys.argv) > 1 else ['square', 'even', 'sumto']
 ABL = 'init10,baselib,simp,adv'
-CAPS = {'square': 3_000_000, 'choose2': 3_000_000, 'sumsq': 3_000_000}
+CAPS = {'square': 3_000_000, 'choose2': 3_000_000, 'sumsq': 3_000_000, 'sumto': 3_000_000}
 def _cap(task): return CAPS.get(task, 1_000_000)
 CAPS = {t: _cap(t) for t in ('square','even','sumto','choose2','sumsq')}
 def one(task, train, cap):
