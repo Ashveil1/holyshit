@@ -988,13 +988,57 @@ class GenIR(Gen):
             self.emit_add(ln)
             return
         if op in ("==", "!="):
+            lab_eq_ne, lab_eq_slow, lab_eq_done, lab_eq_noteq = (
+                self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"),
+                self.new_tmp("eqf"))
+            # Fast paths before the generic helper:
+            #  - identical immediate words are equal; identical heap
+            #    pointers must still go through x_eq (NaN != NaN even
+            #    for the same boxed Float)
+            #  - Str/Str compares inline: len, then repe cmpsb
+            a.cmp_rr("rax", "rcx")
+            a.jcc("ne", lab_eq_ne)
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.jcc("e", lab_eq_slow)
+            a.mov_ri32("rax", 1)
+            a.jmp(lab_eq_done)
+            a.label(lab_eq_ne)
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.jcc("ne", lab_eq_slow)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("ne", lab_eq_slow)
+            a.mov_rr("r11", "rcx")
+            a.and_ri32("r11", 3)
+            a.jcc("ne", lab_eq_slow)
+            a.mov_rm("r11", "rcx", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("ne", lab_eq_slow)
+            a.mov_rm("rdx", "rax", 8)
+            a.mov_rm("r11", "rcx", 8)
+            a.cmp_rr("rdx", "r11")
+            a.jcc("ne", lab_eq_noteq)
+            a.lea_m("rdi", "rax", 16)
+            a.lea_m("rsi", "rcx", 16)
+            a.mov_rr("rcx", "rdx")
+            a.code += bytes([0xF3, 0xA6])  # repe cmpsb
+            a.setcc_al("e")
+            a.jmp(lab_eq_done)
+            a.label(lab_eq_noteq)
+            a.xor_rr("rax", "rax")
+            a.jmp(lab_eq_done)
+            a.label(lab_eq_slow)
             a.mov_rr("rdi", "rax")
             a.mov_rr("rsi", "rcx")
             a.call("x_eq")
+            a.label(lab_eq_done)
             self.box_bool_al()
             if op == "!=":
                 a.code += bytes([0x48, 0x83, 0xF0, 0x08])  # xor rax, 8
             return
+
         if op in ("<", ">", "<=", ">="):
             lab_cmpno, lab_cmperr, lab_cmpok = (self.new_tmp("co"),
                                                self.new_tmp("co"),
