@@ -30,3 +30,8 @@ B-023 (cap 6M, combleaf, choose2) | null | combleaf arm | FOUND 5199851 = defaul
 B-024 (cap 6M, combleaf, sumsq) | null | combleaf arm | NOT FOUND = default
 B-028/029/030/031 (init full, post full) | null | = P24 base arm | baseline-repeat degenerate items; tried ratio 100% > 70% by construction
 combleaf dblfact (extra data) | null | combleaf arm /tmp/c7l6.log | FOUND 5480597 = default exactly, same partial 40/40/29/33
+B-036 (init {y,zero}, square) | PROMISING | inity0 arm /tmp/c7iy0.log | FOUND 2591723 = 60% of default 4313812, 40/40 all scales, DIFFERENT program (repeated addition, no power op) - meets <=70% criterion
+B-037 (init {y,zero}, choose2) | PROMISING | inity0 arm | FOUND 2604011 = 50% of default 5199851, 40/40 all scales - meets criterion
+B-038 (init {y,zero}, sumsq) | null | inity0 arm | NOT FOUND (also fails default)
+B-039 (init {y,zero}, dblfact) | failed | inity0 arm | NOT FOUND - task LOST (default solution needs init two); init restriction trades coverage for speed
+inity0 side-effect | caveat | inity0 arm | fact got a different program: fits train, unseen 40/40/32/34 vs default 40/40/40/40 - smaller prior set silently picked a worse-generalizing program
