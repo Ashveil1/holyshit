@@ -28,3 +28,4 @@ B-018 (cap 3M, freq combs, sumsq) | null | cap3m,oops arm | NOT FOUND at 3M
 B-022 (cap 6M, combleaf, square) | null | combleaf arm /tmp/c7l6.log | FOUND 4313812 = default exactly (None phase untouched); tried ratio 100% > 60% criterion
 B-023 (cap 6M, combleaf, choose2) | null | combleaf arm | FOUND 5199851 = default exactly; leaf combs already front-loaded in default ordering
 B-024 (cap 6M, combleaf, sumsq) | null | combleaf arm | NOT FOUND = default
+B-028/029/030/031 (init full, post full) | null | = P24 base arm | baseline-repeat degenerate items; tried ratio 100% > 70% by construction
