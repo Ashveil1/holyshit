@@ -222,6 +222,7 @@ if __name__ == '__main__':
     for task in [t for t in ['mod','mul','div','power','gcd','isprime','fact','sumto','max','min','square','choose2','sumsq','dblfact','absdiff','lcm','even'] if t in only]:
         if task not in only: continue
         train = [gen(task, rng, rng.choice([1, 2])) for _ in range(25)]
+        if 'tr3' in abl: train = train[:3]  # B-061: forget-and-relearn from 3 examples
         if task in saved: p = tup(saved[task]); tried = dt = 0
         else:
             VALID[:] = []; ADV[:] = boundary(task) if 'adv' in abl else []

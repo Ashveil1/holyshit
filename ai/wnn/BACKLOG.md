@@ -63,7 +63,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-056 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: even -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
 - [x] B-057 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: sumto -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
 - [x] B-058 [S (under 2 min)] (T1 induction-search) prune combs that type-fail on first example -- task: choose2 -- baseline: no prune -- success: same result, <80% time
-- [ ] B-059 [S (under 2 min)] (T2 library-learning) add learned fn as leaf only after 40/40 validation (P20 gate) -- task: new skills -- baseline: add-if-36/40 -- success: no skill poisoned by a wrong library entry
+- [x] B-059 [S (under 2 min)] (T2 library-learning) add learned fn as leaf only after 40/40 validation (P20 gate) -- task: new skills -- baseline: add-if-36/40 -- success: no skill poisoned by a wrong library entry
 - [ ] B-060 [S (under 2 min)] (T2 library-learning) compress: shortest re-derivation of each learned skill via library -- task: curriculum8 -- baseline: P14 programs -- success: total description length drops
 - [ ] B-061 [S (under 2 min)] (T2 library-learning) forget-and-relearn: relearn a skill from library+3 examples -- task: mod -- baseline: from-scratch 25 examples -- success: found with <=3 examples
 - [ ] B-062 [S (under 2 min)] (T2 library-learning) forget-and-relearn: relearn a skill from library+3 examples -- task: gcd -- baseline: from-scratch 25 examples -- success: found with <=3 examples
