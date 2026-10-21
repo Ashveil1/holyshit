@@ -192,27 +192,27 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-185 [S (under 2 min)] (T3 text-to-program) typing: restrict candidates by arg-count signature -- task: all -- baseline: no typing -- success: same acc, faster fit
 - [x] B-186 [S (under 2 min)] (T3 text-to-program) curriculum: frames ordered by similarity to unseen test frames -- task: unseen synonyms -- baseline: random order -- success: higher acc at n=60
 - [x] B-187 [S (under 2 min)] (T3 text-to-program) negative examples: sentences with no op (chit-chat) rejected -- task: mixed -- baseline: always-answer -- success: false-answer rate < 10%, op acc -2 pts max
-- [ ] B-188 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: square -- baseline: n/a -- success: recorded
-- [ ] B-189 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: even -- baseline: n/a -- success: recorded
-- [ ] B-190 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: sumto -- baseline: n/a -- success: recorded
-- [ ] B-191 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: absdiff -- baseline: n/a -- success: recorded
-- [ ] B-192 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: square -- baseline: n/a -- success: recorded
-- [ ] B-193 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: even -- baseline: n/a -- success: recorded
-- [ ] B-194 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: sumto -- baseline: n/a -- success: recorded
-- [ ] B-195 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: absdiff -- baseline: n/a -- success: recorded
-- [ ] B-196 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: square -- baseline: n/a -- success: recorded
-- [ ] B-197 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: even -- baseline: n/a -- success: recorded
-- [ ] B-198 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: sumto -- baseline: n/a -- success: recorded
-- [ ] B-199 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: absdiff -- baseline: n/a -- success: recorded
-- [ ] B-200 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: square -- baseline: n/a -- success: recorded
-- [ ] B-201 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: even -- baseline: n/a -- success: recorded
-- [ ] B-202 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: sumto -- baseline: n/a -- success: recorded
-- [ ] B-203 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: absdiff -- baseline: n/a -- success: recorded
-- [ ] B-204 [S (under 2 min)] (T4 baselines+harness) MLP baseline harness on every numeric task (sklearn-free, pure py) -- task: all numeric -- baseline: n/a -- success: harness runs, numbers recorded
-- [ ] B-205 [S (under 2 min)] (T4 baselines+harness) kNN baseline on same features -- task: all numeric -- baseline: n/a -- success: recorded
-- [ ] B-206 [S (under 2 min)] (T4 baselines+harness) majority/mean baseline -- task: all numeric -- baseline: n/a -- success: recorded
-- [ ] B-207 [S (under 2 min)] (T4 baselines+harness) chance baselines for yes/no and exact-number answers -- task: all -- baseline: n/a -- success: recorded in README
-- [ ] B-208 [S (under 2 min)] (T4 baselines+harness) fixed eval pack v1 frozen for all future comparisons -- task: - -- baseline: n/a -- success: file committed
+- [x] B-188 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: square -- baseline: n/a -- success: recorded
+- [x] B-189 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: even -- baseline: n/a -- success: recorded
+- [x] B-190 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: sumto -- baseline: n/a -- success: recorded
+- [x] B-191 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: absdiff -- baseline: n/a -- success: recorded
+- [x] B-192 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: square -- baseline: n/a -- success: recorded
+- [x] B-193 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: even -- baseline: n/a -- success: recorded
+- [x] B-194 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: sumto -- baseline: n/a -- success: recorded
+- [x] B-195 [S (under 2 min)] (T4 baselines+harness) baseline knn -- task: absdiff -- baseline: n/a -- success: recorded
+- [x] B-196 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: square -- baseline: n/a -- success: recorded
+- [x] B-197 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: even -- baseline: n/a -- success: recorded
+- [x] B-198 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: sumto -- baseline: n/a -- success: recorded
+- [x] B-199 [S (under 2 min)] (T4 baselines+harness) baseline majority -- task: absdiff -- baseline: n/a -- success: recorded
+- [x] B-200 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: square -- baseline: n/a -- success: recorded
+- [x] B-201 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: even -- baseline: n/a -- success: recorded
+- [x] B-202 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: sumto -- baseline: n/a -- success: recorded
+- [x] B-203 [S (under 2 min)] (T4 baselines+harness) baseline linreg -- task: absdiff -- baseline: n/a -- success: recorded
+- [x] B-204 [S (under 2 min)] (T4 baselines+harness) MLP baseline harness on every numeric task (sklearn-free, pure py) -- task: all numeric -- baseline: n/a -- success: harness runs, numbers recorded
+- [x] B-205 [S (under 2 min)] (T4 baselines+harness) kNN baseline on same features -- task: all numeric -- baseline: n/a -- success: recorded
+- [x] B-206 [S (under 2 min)] (T4 baselines+harness) majority/mean baseline -- task: all numeric -- baseline: n/a -- success: recorded
+- [x] B-207 [S (under 2 min)] (T4 baselines+harness) chance baselines for yes/no and exact-number answers -- task: all -- baseline: n/a -- success: recorded in README
+- [x] B-208 [S (under 2 min)] (T4 baselines+harness) fixed eval pack v1 frozen for all future comparisons -- task: - -- baseline: n/a -- success: file committed
 - [ ] B-209 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [ ] B-210 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [ ] B-211 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
