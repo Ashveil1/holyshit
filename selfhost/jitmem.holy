@@ -175,7 +175,17 @@ def publish_resolved(code, data, relocate):
     munmap(ptr, size)
     raise e
   return {"ptr": ptr, "size": size, "length": n, "live": true, "data": ptr + code_size, "data_size": data_size}
-def publish_raw(code_str, pro_code, data_str, pro_data, labels, dlabels, fixups):
+def apply_fixups(ptr, code_size, pos, toff, flag):
+  base = ptr
+  if flag == 1:
+    base = ptr + code_size
+  target = base + toff
+  delta = target - (ptr + pos + 4)
+  if delta < -2147483648 or delta > 2147483647:
+    raise "jitmem: relative address out of range"
+  unsafe:
+    store32(as_ptr(ptr) + pos, delta & 4294967295)
+def publish_raw(code_str, pro_code, data_str, pro_data, fixups_str, fixup_count, pro_fixups):
   # Cache-hit fast path: code/data arrive as strings straight from the cache
   # image (no int-list materialization); pro_* are the small driver-emitted
   # prologue lists. Fixups are stored into the image after the bulk copies.
@@ -231,20 +241,22 @@ def publish_raw(code_str, pro_code, data_str, pro_data, labels, dlabels, fixups)
       unsafe:
         store8(p + code_size + nds + i, b)
       i = i + 1
-    for f in fixups:
-      name = f[1]
-      if name in labels:
-        target = ptr + labels[name]
-      elif name in dlabels:
-        target = ptr + code_size + dlabels[name]
-      else:
-        raise "jitmem: undefined label " + name
-      pos = f[0]
-      delta = target - (ptr + pos + 4)
-      if delta < -2147483648 or delta > 2147483647:
-        raise "jitmem: relative address out of range"
+    # Cache fixups: raw (pos, target_off, is_data) triples read straight
+    # from the blob - no dictionaries, no list materialization. Triple
+    # values are small offsets, safe for load64 (no 62-bit fault).
+    unsafe:
+      Ptr fq = as_ptr(fixups_str)
+    i = 0
+    while i < fixup_count:
       unsafe:
-        store32(p + pos, delta & 4294967295)
+        pos = load64(fq + 16 + i * 24)
+        toff = load64(fq + 16 + i * 24 + 8)
+        flag = load64(fq + 16 + i * 24 + 16)
+      apply_fixups(ptr, code_size, pos, toff, flag)
+      i = i + 1
+    # Driver prologue fixups: already resolved to the same triple shape.
+    for f in pro_fixups:
+      apply_fixups(ptr, code_size, f[0], f[1], f[2])
     if mprotect(ptr, code_size, 5) != 0:
       raise "jitmem: mprotect failed"
   except as e:

@@ -101,25 +101,34 @@ def prepare():
     entry = emit_prologue()
     image = jitimage.publish()
     return image["ptr"] + entry
-  # Cache-hit fast path: no assembler-state reconstruction. The prologue is
-  # emitted into the fresh assembler state, then the cached sections are
-  # bulk-copied and the prologue fixups/labels are merged with offsets.
-  labels = raw[3]
-  dlabels = raw[4]
-  fixups = raw[5]
-  code_str = raw[6]
-  data_str = raw[7]
+  # Cache-hit fast path: no assembler-state reconstruction, no label
+  # dictionaries - cache fixups are pre-resolved triples (FORMAT 2). The
+  # prologue is emitted into the fresh assembler state and its named fixups
+  # are resolved here to the same triple shape.
+  entry_off = raw[3]
+  got_plus = raw[4]
+  fixups_str = raw[5]
+  fixup_count = raw[6]
+  code_str = raw[7]
+  data_str = raw[8]
   entry = len(code_str)
   emit_prologue()
   pro = asm.state()
+  pro_fixups = []
   for f in pro["fixups"]:
-    append(fixups, [f[0] + entry, f[1]])
-  for k in keys(pro["data_labels"]):
-    dlabels[k] = len(data_str) + pro["data_labels"][k]
-  image = jitmem.publish_raw(code_str, pro["code"], data_str, pro["data"], labels, dlabels, fixups)
+    name = f[1]
+    if name in pro["labels"]:
+      append(pro_fixups, [f[0] + entry, entry + pro["labels"][name], 0])
+    elif name == "_start":
+      append(pro_fixups, [f[0] + entry, entry_off, 0])
+    elif name in pro["data_labels"]:
+      append(pro_fixups, [f[0] + entry, len(data_str) + pro["data_labels"][name], 1])
+    else:
+      raise "jit: undefined label " + name
+  image = jitmem.publish_raw(code_str, pro["code"], data_str, pro["data"], fixups_str, fixup_count, pro_fixups)
   got = 0
   if len(raw[1]) > 0:
-    got = dlabels["ffi_got_"]
+    got = got_plus - 1
   handles = jitbind.bind_mem(raw[0], raw[1], raw[2], basedir, image["data"], got)
   return image["ptr"] + entry
 try:

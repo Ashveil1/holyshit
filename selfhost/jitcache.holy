@@ -27,7 +27,7 @@ STR_BYTES = 16
 HASH_MASK = 36028797018963967
 HASH_SEED_A = 5381
 HASH_SEED_B = 146959810
-FORMAT = 1
+FORMAT = 2
 def fnv(s, h):
   unsafe:
     Ptr q = as_ptr(s)
@@ -120,10 +120,8 @@ def save(srcpath, g):
     total = total + 8
     for s in syms:
       total = total + str_size(s)
-    total = total + dict_str_size(owners) + dict_size(st["labels"]) + dict_size(st["data_labels"])
-    total = total + 8
-    for f in st["fixups"]:
-      total = total + 8 + str_size(f[1])
+    total = total + dict_str_size(owners) + 16
+    total = total + 8 + 24 * len(st["fixups"])
     total = total + 8 + len(st["code"]) + 8 + len(st["data"])
     bufaddr = 0
     unsafe:
@@ -136,6 +134,12 @@ def save(srcpath, g):
       store8(as_ptr(bufaddr) + 2, 67)
       store8(as_ptr(bufaddr) + 3, 49)
     off = w64(bufaddr, 4, FORMAT)
+    entry_off = st["labels"]["_start"]
+    got_plus = 0
+    if "ffi_got_" in st["data_labels"]:
+      got_plus = st["data_labels"]["ffi_got_"] + 1
+    off = w64(bufaddr, off, entry_off)
+    off = w64(bufaddr, off, got_plus)
     off = w64(bufaddr, off, len(inputs))
     for inp in inputs:
       off = wstr(bufaddr, off, inp[0])
@@ -150,18 +154,23 @@ def save(srcpath, g):
     for k in keys(owners):
       off = wstr(bufaddr, off, k)
       off = wstr(bufaddr, off, owners[k])
-    off = w64(bufaddr, off, len(keys(st["labels"])))
-    for k in keys(st["labels"]):
-      off = wstr(bufaddr, off, k)
-      off = w64(bufaddr, off, st["labels"][k])
-    off = w64(bufaddr, off, len(keys(st["data_labels"])))
-    for k in keys(st["data_labels"]):
-      off = wstr(bufaddr, off, k)
-      off = w64(bufaddr, off, st["data_labels"][k])
+    # Fixups are stored pre-resolved as (pos, target_off, is_data) triples:
+    # name resolution happens once here at save time instead of building
+    # label dictionaries on every warm start.
     off = w64(bufaddr, off, len(st["fixups"]))
     for f in st["fixups"]:
+      name = f[1]
+      if name in st["labels"]:
+        toff = st["labels"][name]
+        flag = 0
+      elif name in st["data_labels"]:
+        toff = st["data_labels"][name]
+        flag = 1
+      else:
+        raise "jitcache: undefined label " + name
       off = w64(bufaddr, off, f[0])
-      off = wstr(bufaddr, off, f[1])
+      off = w64(bufaddr, off, toff)
+      off = w64(bufaddr, off, flag)
     off = wbytes(bufaddr, off, st["code"])
     off = wbytes(bufaddr, off, st["data"])
     if off != total:
@@ -224,6 +233,10 @@ def load_raw(srcpath):
     if fmt != FORMAT:
       return null
     off = base + 12
+    entry_off = r64(addr, off)
+    off = off + 8
+    got_plus = r64(addr, off)
+    off = off + 8
     r = r64(addr, off)
     off = off + 8
     inputs = []
@@ -272,39 +285,12 @@ def load_raw(srcpath):
       owners[k] = p[0]
       off = p[1]
       i = i + 1
-    labels = {}
-    r = r64(addr, off)
+    fixup_count = r64(addr, off)
     off = off + 8
-    i = 0
-    while i < r:
-      p = rstr(addr, off, n)
-      k = p[0]
-      off = p[1]
-      labels[k] = r64(addr, off)
-      off = off + 8
-      i = i + 1
-    dlabels = {}
-    r = r64(addr, off)
-    off = off + 8
-    i = 0
-    while i < r:
-      p = rstr(addr, off, n)
-      k = p[0]
-      off = p[1]
-      dlabels[k] = r64(addr, off)
-      off = off + 8
-      i = i + 1
-    fixups = []
-    r = r64(addr, off)
-    off = off + 8
-    i = 0
-    while i < r:
-      pos = r64(addr, off)
-      off = off + 8
-      p = rstr(addr, off, n)
-      append(fixups, [pos, p[0]])
-      off = p[1]
-      i = i + 1
+    if fixup_count > 16777216 or off + fixup_count * 24 > n + STR_BYTES:
+      return null
+    fixups_str = read_mem(addr + off, fixup_count * 24)
+    off = off + fixup_count * 24
     r = r64(addr, off)
     off = off + 8
     if r < 1 or r > 16777216 or off + r > n + STR_BYTES:
@@ -316,84 +302,6 @@ def load_raw(srcpath):
     if r > 16777216 or off + r != n + STR_BYTES:
       return null
     data_str = read_mem(addr + off, r)
-    return [libs, syms, owners, labels, dlabels, fixups, code_str, data_str]
-  except as e:
-    return null
-def load(srcpath):
-  raw = load_raw(srcpath)
-  if raw == null:
-    return null
-  libs = raw[0]
-  syms = raw[1]
-  owners = raw[2]
-  labels = raw[3]
-  dlabels = raw[4]
-  fixups = raw[5]
-  code_str = raw[6]
-  data_str = raw[7]
-  try:
-    # Materialize the assembler state lists.
-    st = asm.state()
-    st["labels"] = labels
-    st["data_labels"] = dlabels
-    st["fixups"] = fixups
-    unsafe:
-      Ptr cq = as_ptr(code_str)
-      Ptr dq = as_ptr(data_str)
-    code = []
-    i = 0
-    while i + 8 <= len(code_str):
-      unsafe:
-        b0 = load8(cq + STR_BYTES + i)
-        b1 = load8(cq + STR_BYTES + i + 1)
-        b2 = load8(cq + STR_BYTES + i + 2)
-        b3 = load8(cq + STR_BYTES + i + 3)
-        b4 = load8(cq + STR_BYTES + i + 4)
-        b5 = load8(cq + STR_BYTES + i + 5)
-        b6 = load8(cq + STR_BYTES + i + 6)
-        b7 = load8(cq + STR_BYTES + i + 7)
-      append(code, b0)
-      append(code, b1)
-      append(code, b2)
-      append(code, b3)
-      append(code, b4)
-      append(code, b5)
-      append(code, b6)
-      append(code, b7)
-      i = i + 8
-    while i < len(code_str):
-      unsafe:
-        b = load8(cq + STR_BYTES + i)
-      append(code, b)
-      i = i + 1
-    data = []
-    i = 0
-    while i + 8 <= len(data_str):
-      unsafe:
-        b0 = load8(dq + STR_BYTES + i)
-        b1 = load8(dq + STR_BYTES + i + 1)
-        b2 = load8(dq + STR_BYTES + i + 2)
-        b3 = load8(dq + STR_BYTES + i + 3)
-        b4 = load8(dq + STR_BYTES + i + 4)
-        b5 = load8(dq + STR_BYTES + i + 5)
-        b6 = load8(dq + STR_BYTES + i + 6)
-        b7 = load8(dq + STR_BYTES + i + 7)
-      append(data, b0)
-      append(data, b1)
-      append(data, b2)
-      append(data, b3)
-      append(data, b4)
-      append(data, b5)
-      append(data, b6)
-      append(data, b7)
-      i = i + 8
-    while i < len(data_str):
-      unsafe:
-        b = load8(dq + STR_BYTES + i)
-      append(data, b)
-      i = i + 1
-    st["code"] = code
-    st["data"] = data
-    return [libs, syms, owners]
+    return [libs, syms, owners, entry_off, got_plus, fixups_str, fixup_count, code_str, data_str]
   except as e:
     return null
