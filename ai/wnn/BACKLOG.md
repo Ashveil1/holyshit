@@ -191,7 +191,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-184 [S (under 2 min)] (T3 text-to-program) paraphrase teaching for 2-step glue words -- task: new connectors -- baseline: P16 .44 baseline -- success: > .6 on new connectors with 4 definitions
 - [x] B-185 [S (under 2 min)] (T3 text-to-program) typing: restrict candidates by arg-count signature -- task: all -- baseline: no typing -- success: same acc, faster fit
 - [x] B-186 [S (under 2 min)] (T3 text-to-program) curriculum: frames ordered by similarity to unseen test frames -- task: unseen synonyms -- baseline: random order -- success: higher acc at n=60
-- [ ] B-187 [S (under 2 min)] (T3 text-to-program) negative examples: sentences with no op (chit-chat) rejected -- task: mixed -- baseline: always-answer -- success: false-answer rate < 10%, op acc -2 pts max
+- [x] B-187 [S (under 2 min)] (T3 text-to-program) negative examples: sentences with no op (chit-chat) rejected -- task: mixed -- baseline: always-answer -- success: false-answer rate < 10%, op acc -2 pts max
 - [ ] B-188 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: square -- baseline: n/a -- success: recorded
 - [ ] B-189 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: even -- baseline: n/a -- success: recorded
 - [ ] B-190 [S (under 2 min)] (T4 baselines+harness) baseline mlp -- task: sumto -- baseline: n/a -- success: recorded
