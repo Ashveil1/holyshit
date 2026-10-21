@@ -94,6 +94,8 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                 if st[0] == m0 and st[1] == m1: return i
             return len(MACROS)
         steps_pair = sorted(steps_pair, key=pri); steps_single = sorted(steps_single, key=pri)
+    inits = ('y', 'zero') if 'inity0' in abl else (('one', 'zero') if 'init10' in abl else ('y', 'one', 'zero', 'two'))
+    posts = {'id': POST['id']} if 'postid' in abl else POST
     t0 = time.time(); tried = 0
     x0, y0, r0 = train[0]
     comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
@@ -101,7 +103,7 @@ def search(train, abl, tag='', tried_cap=6_000_000):
         comb_list.sort(key=lambda c: -COMBHIST.get(c[0] if c else 'None', 0))
     for ci, comb in enumerate(comb_list):
         if ci % 20 == 0 and PROG: print(f'   comb {ci}/{len(comb_list)} {comb} tried {tried} {time.time()-t0:.0f}s', flush=True)
-        for init in ('y', 'one', 'zero', 'two'):
+        for init in inits:
             st = steps_pair if (comb is None and abl != 'nopair') else steps_single
             if comb is not None and abl == 'nocombe': continue
             if tried > tried_cap: return None, tried, time.time() - t0
@@ -112,7 +114,7 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                         try: v0 = run(spec, x0, inits_for(init, y0))
                         except Fail: continue
                         except (KeyError, ZeroDivisionError, RecursionError, OverflowError): continue
-                        pm = [pn for pn, pf in POST.items() if pf(v0) == r0]
+                        pm = [pn for pn, pf in posts.items() if pf(v0) == r0]
                         if not pm: continue
                         for pn in pm:
                             ok = True
