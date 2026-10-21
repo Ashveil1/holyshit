@@ -1040,6 +1040,21 @@ class GenIR(Gen):
             return
 
         if op in ("<", ">", "<=", ">="):
+            lab_ii, lab_iidone = self.new_tmp("ii"), self.new_tmp("ii")
+            # Int/Int compares inline, before the float/str dispatch below
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("ne", lab_ii)
+            a.mov_rr("r11", "rcx")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("ne", lab_ii)
+            a.cmp_rr("rax", "rcx")
+            a.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
+            self.box_bool_al()
+            a.jmp(lab_iidone)
+            a.label(lab_ii)
             lab_cmpno, lab_cmperr, lab_cmpok = (self.new_tmp("co"),
                                                self.new_tmp("co"),
                                                self.new_tmp("co"))
@@ -1093,6 +1108,7 @@ class GenIR(Gen):
             a.setcc_al({"<": "l", ">": "g", "<=": "le", ">=": "ge"}[op])
             self.box_bool_al()
             a.label(lab_cdone)
+            a.label(lab_iidone)
             return
         if op in ("<<", ">>", "&", "|", "^"):
             self._bitop(op, ln)
