@@ -8,6 +8,7 @@ import be
 import pyrt
 import asm
 import jitimage
+import jitmem
 import jitbind
 import jitcache
 extern:
@@ -49,19 +50,7 @@ def error_exit(e):
   write(f, "error: " + msg + "\n")
   close(f)
   exit(1)
-def prepare():
-  parselib.P["wide_literals"] = true
-  srcpath = argv()[0]
-  basedir = pyrt.py_os_path_dirname(srcpath)
-  ffi = jitcache.load(srcpath)
-  if ffi == null:
-    m = irbuild.build_module(normalize.parse(read_text(srcpath)), "")
-    verify.verify_module(m)
-    g = be.GenIR(m, basedir, false)
-    sections = g.build_ir_extern_sections()
-    ffi = [g.ffi_libs, g.ffi_syms, g.ffi_owners]
-    jitcache.save(srcpath, g)
-  handles = jitbind.bind(ffi[0], ffi[1], ffi[2], basedir)
+def emit_prologue():
   # Forward arguments and the Linux process environment through an initial
   # stack frame. Addresses are formed at runtime, after RIP-relative relocation.
   args = argv()
@@ -96,9 +85,43 @@ def prepare():
   if len(entries) == argc:
     asm.mov_mr("rsp", "rax", (position + 1) * 8)
   asm.jmp("_start")
-  image = jitimage.publish()
-  pointer = image["ptr"] + entry
-  return pointer
+  return entry
+def prepare():
+  parselib.P["wide_literals"] = true
+  srcpath = argv()[0]
+  basedir = pyrt.py_os_path_dirname(srcpath)
+  raw = jitcache.load_raw(srcpath)
+  if raw == null:
+    m = irbuild.build_module(normalize.parse(read_text(srcpath)), "")
+    verify.verify_module(m)
+    g = be.GenIR(m, basedir, false)
+    sections = g.build_ir_extern_sections()
+    jitcache.save(srcpath, g)
+    handles = jitbind.bind(g.ffi_libs, g.ffi_syms, g.ffi_owners, basedir)
+    entry = emit_prologue()
+    image = jitimage.publish()
+    return image["ptr"] + entry
+  # Cache-hit fast path: no assembler-state reconstruction. The prologue is
+  # emitted into the fresh assembler state, then the cached sections are
+  # bulk-copied and the prologue fixups/labels are merged with offsets.
+  labels = raw[3]
+  dlabels = raw[4]
+  fixups = raw[5]
+  code_str = raw[6]
+  data_str = raw[7]
+  entry = len(code_str)
+  emit_prologue()
+  pro = asm.state()
+  for f in pro["fixups"]:
+    append(fixups, [f[0] + entry, f[1]])
+  for k in keys(pro["data_labels"]):
+    dlabels[k] = len(data_str) + pro["data_labels"][k]
+  image = jitmem.publish_raw(code_str, pro["code"], data_str, pro["data"], labels, dlabels, fixups)
+  got = 0
+  if len(raw[1]) > 0:
+    got = dlabels["ffi_got_"]
+  handles = jitbind.bind_mem(raw[0], raw[1], raw[2], basedir, image["data"], got)
+  return image["ptr"] + entry
 try:
   pointer = prepare()
 except as e:

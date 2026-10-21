@@ -175,6 +175,82 @@ def publish_resolved(code, data, relocate):
     munmap(ptr, size)
     raise e
   return {"ptr": ptr, "size": size, "length": n, "live": true, "data": ptr + code_size, "data_size": data_size}
+def publish_raw(code_str, pro_code, data_str, pro_data, labels, dlabels, fixups):
+  # Cache-hit fast path: code/data arrive as strings straight from the cache
+  # image (no int-list materialization); pro_* are the small driver-emitted
+  # prologue lists. Fixups are stored into the image after the bulk copies.
+  ncs = len(code_str)
+  npc = len(pro_code)
+  nc = ncs + npc
+  if nc < 1:
+    raise "jitmem: empty code section"
+  code_size = (nc + 4095) & -4096
+  nds = len(data_str)
+  npd = len(pro_data)
+  data_size = (nds + npd + 4095) & -4096
+  size = code_size + data_size
+  ptr = mmap(0, size, 3, 34, -1, 0)
+  if ptr == -1 or ptr == 0:
+    raise "jitmem: mmap failed"
+  try:
+    unsafe:
+      Ptr p = as_ptr(ptr)
+      Ptr cq = as_ptr(code_str)
+      Ptr dq = as_ptr(data_str)
+    i = 0
+    while i + 4 <= ncs:
+      unsafe:
+        w = load32(cq + 16 + i)
+        store32(p + i, w)
+      i = i + 4
+    while i < ncs:
+      unsafe:
+        b = load8(cq + 16 + i)
+        store8(p + i, b)
+      i = i + 1
+    i = 0
+    while i < npc:
+      b = pro_code[i]
+      unsafe:
+        store8(p + ncs + i, b)
+      i = i + 1
+    i = 0
+    while i + 4 <= nds:
+      unsafe:
+        w = load32(dq + 16 + i)
+        store32(p + code_size + i, w)
+      i = i + 4
+    while i < nds:
+      unsafe:
+        b = load8(dq + 16 + i)
+        store8(p + code_size + i, b)
+      i = i + 1
+    i = 0
+    while i < npd:
+      b = pro_data[i]
+      unsafe:
+        store8(p + code_size + nds + i, b)
+      i = i + 1
+    for f in fixups:
+      name = f[1]
+      if name in labels:
+        target = ptr + labels[name]
+      elif name in dlabels:
+        target = ptr + code_size + dlabels[name]
+      else:
+        raise "jitmem: undefined label " + name
+      pos = f[0]
+      delta = target - (ptr + pos + 4)
+      if delta < -2147483648 or delta > 2147483647:
+        raise "jitmem: relative address out of range"
+      unsafe:
+        store32(p + pos, delta & 4294967295)
+    if mprotect(ptr, code_size, 5) != 0:
+      raise "jitmem: mprotect failed"
+  except as e:
+    munmap(ptr, size)
+    raise e
+  return {"ptr": ptr, "size": size, "length": nc, "live": true, "data": ptr + code_size, "data_size": data_size}
 def release(image):
   if not image["live"]:
     raise "jitmem: image already released"

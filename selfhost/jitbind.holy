@@ -28,3 +28,33 @@ def bind(libraries, symbols, owners, basedir):
       asm.state()["data"][offset + i] = (pointer >> (8 * i)) & 255
     offset = offset + 8
   return handles
+
+def bind_mem(libraries, symbols, owners, basedir, data_base, got_offset):
+  # Cache-hit fast path: patch the GOT inside the published image instead of
+  # the assembler data list.
+  handles = []
+  if len(symbols) == 0:
+    return handles
+  bypath = {}
+  for path in ["libc.so.6"] + libraries:
+    resolved = path
+    if "/" in path and path[0:1] != "/":
+      resolved = basedir + "/" + path
+    handle = dlopen(resolved, 258)
+    if handle == 0:
+      raise "jit: cannot load library " + path
+    append(handles, handle)
+    bypath[path] = handle
+  offset = got_offset
+  for name in symbols:
+    owner = owners[name] if name in owners else "libc.so.6"
+    pointer = dlsym(bypath[owner], name)
+    if pointer == 0:
+      raise "jit: unknown extern symbol " + name
+    i = 0
+    while i < 8:
+      unsafe:
+        store8(as_ptr(data_base + offset + i), (pointer >> (8 * i)) & 255)
+      i = i + 1
+    offset = offset + 8
+  return handles
