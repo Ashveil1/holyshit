@@ -93,6 +93,9 @@ GRIDS = [
  ('T10 data efficiency', 10, 'selection {sel}, n={n}', {'sel': ['random','maxdisagree','boundary','covering'], 'n': ['5','10','15','25']}, ['mod','mul','square','even'], 'S', 'random 25', 'same success fewer examples'),
  ('T4 baselines+harness', 4, 'baseline {bl}', {'bl': ['mlp','knn','majority','linreg']}, ['square','even','sumto','absdiff'], 'S', 'n/a', 'recorded'),
  ('T8 neurosymbolic-exact', 8, 'HDC chain depth {d}, facts {f}', {'d': ['2','5','10'], 'f': ['70','300','1000']}, ['logic','arith'], 'S', 'P5 numbers', 'exact at larger scale or honest limit'),
+ ('T1 induction-search', 1, 'init set {init}, post set {post}', {'init': ['full','{y,zero}','{one,zero}'], 'post': ['full','id-only']}, ['square','choose2','sumsq','dblfact'], 'S', 'full sets', 'same success, <=70% tried'),
+ ('T6 connectome variants (low priority, P5 was negative)', 6, 'readout {ro}, size {sz}', {'ro': ['1nn','centroid','ridge'], 'sz': ['full','sensory-core','half']}, ['mnist-1shot','pmnist','snips'], 'M', 'raw-pixels same readout', 'beat raw or honest null'),
+ ('T3 text-to-program', 3, 'word-lexicon minmass {mm}, margin {mg}, rounds {r}', {'mm': ['1.5','2','3'], 'mg': ['2','2.5','4'], 'r': ['2','4']}, ['words-n60','words-n150','words-n400'], 'S', 'P16 defaults', 'more gold words at same n, spurious <= +1'),
 ]
 rows = []
 n = 0
