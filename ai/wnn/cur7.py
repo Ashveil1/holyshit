@@ -137,10 +137,13 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                         if not pm: continue
                         for pn in pm:
                             ok = True
-                            for x, y, r in train[1:]:
-                                try:
-                                    if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
-                                except (Fail, KeyError, RecursionError, OverflowError): ok = False; break
+                            stages = (train[1:6], train[6:]) if 'sub' in abl else (train[1:],)
+                            for stage in stages:
+                                if not ok: break
+                                for x, y, r in stage:
+                                    try:
+                                        if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
+                                    except (Fail, KeyError, RecursionError, OverflowError): ok = False; break
                             if ok and VALID:
                                 for x, y, r in VALID:
                                     try:
