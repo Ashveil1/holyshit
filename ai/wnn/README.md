@@ -508,3 +508,12 @@ Results:
 - SHUFFLED words (word stream carries no information) + contingent correct/wrong feedback: a first word STILL emerges (day 1-10 in 7/10 runs, all-word acc .74-.76). The correctness feedback is itself an information channel - this is exactly Turing's 1948 P-type mechanism (tentative entries fixed by pleasure, cancelled by pain) working as he intended, and it means "first word emerges" alone does not prove word learning.
 - Shuffled words + random feedback: nothing learned (acc .13-.22, criterion never met). True negative control passes.
 Honest scope: this is cross-situational associative grounding (Smith & Yu 2008 style), not understanding, grammar, or conversation. Joint attention is given for free (the scene is perfectly shared); babbling is modeled only as early production. 24h expectation set in the report to main; nothing beyond single-word grounding should be expected from this learner without new machinery (segmentation, word order, reference to absent things).
+
+## P24 (cur7.py, seed 0): library learning via mined step-pair macros - NULL
+Hypothesis: step pairs shared by >=2 learned skills (mined after sumto) are useful macros; trying them first on held-out tasks should cut search cost. Training set: mod,mul,div,power,gcd,fact,sumto,max,min (isprime NOT FOUND at 6M cap in both arms, recorded, excluded from restart). Held out: square, choose2, sumsq, dblfact. Mined macros: ((sub a b), b) and (a, (sub b one)) - the repeated-subtract and countdown pairs. Macro arm reorders only the comb=None step-pair phase.
+- square: macro 4313812 tried = base 4313812 (same program, 40/40 all scales)
+- choose2: macro 5199852 vs base 5199851 (same program, 40/40)
+- sumsq: both NOT FOUND at 6M cap
+- dblfact: macro 5480577 vs base 5480597 (same program; unseen 40/40/29/33 in BOTH arms - partial generalization is a property of the found program, not the arm)
+Verdict: null. Differences of +1/-20 candidates in 4-6M are noise. The mined pairs do not occur in the held-out solutions, so reordering changes nothing; and the macro bias only touches one search phase. Next variants (backlog): apply macro bias to the comb phase, mine from >=3 tasks, mine pairs including the comb template, or grow the training set first so mined structure is richer. Fixed en route: mine_macros crashed on bare-variable steps (eval of str keys); keys are hashable, no eval needed.
+Priors/experience: as in P7-P14 audit line; mined macros are experience-derived (from the run's own found programs), not hand-given.
