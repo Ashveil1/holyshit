@@ -1,0 +1,17 @@
+   comb 0/1561 None tried 0 0s
+seed0 baselib mod: FOUND init b=y; if (lt a b) -> a; else step ((sub a b),b); comb=None; post=id tried 2082 1s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/1561 None tried 0 0s
+seed0 baselib mul: FOUND init b=y; if (lt b one) -> b; else step (a,(sub b one)); comb=('add', 'a', 0); post=id tried 4155513 212s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/1561 None tried 0 0s
+seed0 baselib div: FOUND init b=y; if (lt a b) -> zero; else step ((sub a b),b); comb=('add', 'one', 0); post=id tried 4202709 429s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/1561 None tried 0 0s
+seed0 baselib power: FOUND init b=y; if (lt b one) -> one; else step (a,(sub b one)); comb=('mul', 'a', 0); post=id tried 4450489 375s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/1561 None tried 0 0s
+seed0 baselib gcd: FOUND init b=y; if (lt a one) -> b; else step ((mod b a),a); comb=None; post=id tried 100985 7s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/1973 None tried 0 0s
+   comb 20/1973 ('div', 'zero', 0) tried 5634048 486s
+seed0 baselib isprime: NOT FOUND tried 6002688 502s
+   comb 0/1973 None tried 0 0s
+seed0 baselib fact: FOUND init b=one; if (lt a one) -> b; else step ((sub a one),(mul b a)); comb=None; post=id tried 1415364 142s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
+   comb 0/1973 None tried 0 0s
+seed0 baselib sumto: FOUND init b=zero; if (lt a one) -> b; else step ((sub a one),(add a b)); comb=None; post=id tried 2707098 256s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
