@@ -1,0 +1,2 @@
+dim 2048: arith(475 pairs) 0.167 | 2-hop 0.427
+dim 4096: arith(475 pairs) 0.865 | 2-hop 0.887

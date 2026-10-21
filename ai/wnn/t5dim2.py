@@ -12,6 +12,7 @@ def arith_sampled(C, rng):
         ok += np.array_equal(v, C[a + k])
     return ok / 475
 for D in (8192, 16384):
+    t5hdc.D = D
     accs = []
     for sd in range(2):
         accs.append(arith_sampled(codebook(101, 'random', np.random.default_rng(sd)), random.Random(sd)))
