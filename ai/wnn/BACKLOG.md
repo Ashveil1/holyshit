@@ -251,8 +251,8 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-244 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [x] B-245 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [x] B-246 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-247 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-248 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-247 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-248 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [ ] B-249 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [ ] B-250 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [ ] B-251 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
