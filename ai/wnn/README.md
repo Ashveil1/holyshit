@@ -483,3 +483,13 @@ Tried to close the k=1 gap of paraphrase teaching (.75 vs .83 with a true answer
 - Alignment weight transfer (new side's unseen content tokens inherit the op-weights of the known side's distinctive tokens): k=1 .79 (tokens, +.04), no change for char n-grams, no change at k=2. Not enough to matter.
 - Confidence gating (skip the definition when the known-side reading is ambiguous, margin < 2): HURTS, k=1 .68, k=2 .73 - gating throws away too many of the few definitions.
 Conclusion: with 1-2 examples the P22 paraphrase recipe is about as good as this learner gets; the remaining k=1 gap is mostly the 9% pseudo-label noise. Zero-shot on unseen wordings is unchanged (.18 tokens / .41 char).
+
+## Priors/experience audit (F-7, Chollet-style; applies to all sections above)
+Format: result | priors handed in | experience consumed
+- P7-P14 induction (mod..sumto) | recursion schema, cond forms, depth-1 expression grammar, add/sub primitives, post set, curriculum order, I/O format | 25 examples per skill
+- P15 text commands | op library, hypothesis space (op x order), digit regex, whitespace tokens, sentence templates (own synthetic text) | 24-400 sentences
+- P16 number words + 2-step | above + value range 1..10, clause templates, connectors | 150-1000 (words), 100-1000 (2-step) sentences
+- P20 validation acceptance | above + 32 extra labelled validation examples | 57 examples per skill
+- P21 3-step zero-shot | above + chaining solver (cut-pair search) | 0 three-step sentences
+- P22 paraphrase teaching | the definition split at "means" (hand-split), known-side templates | 1-8 definitions per wording
+Claim rule going forward (from Chollet 2019): every new result states its priors and experience in this form, and uses EVALPACK.md v1 unless stated.
