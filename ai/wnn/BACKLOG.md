@@ -66,7 +66,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-059 [S (under 2 min)] (T2 library-learning) add learned fn as leaf only after 40/40 validation (P20 gate) -- task: new skills -- baseline: add-if-36/40 -- success: no skill poisoned by a wrong library entry
 - [x] B-060 [S (under 2 min)] (T2 library-learning) compress: shortest re-derivation of each learned skill via library -- task: curriculum8 -- baseline: P14 programs -- success: total description length drops
 - [x] B-061 [S (under 2 min)] (T2 library-learning) forget-and-relearn: relearn a skill from library+3 examples -- task: mod -- baseline: from-scratch 25 examples -- success: found with <=3 examples
-- [ ] B-062 [S (under 2 min)] (T2 library-learning) forget-and-relearn: relearn a skill from library+3 examples -- task: gcd -- baseline: from-scratch 25 examples -- success: found with <=3 examples
+- [x] B-062 [S (under 2 min)] (T2 library-learning) forget-and-relearn: relearn a skill from library+3 examples -- task: gcd -- baseline: from-scratch 25 examples -- success: found with <=3 examples
 - [ ] B-063 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=24 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
 - [ ] B-064 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=24 -- task: unseen-synonyms -- baseline: P15 tok-soft numbers -- success: higher acc at same n
 - [ ] B-065 [S (under 2 min)] (T3 text-to-program) features tok, credit soft, n=60 -- task: unseen-frames -- baseline: P15 tok-soft numbers -- success: higher acc at same n
