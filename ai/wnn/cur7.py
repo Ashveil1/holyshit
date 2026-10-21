@@ -117,7 +117,13 @@ def search(train, abl, tag='', tried_cap=6_000_000):
     posts = {'id': POST['id']} if 'postid' in abl else POST
     t0 = time.time(); tried = 0
     x0, y0, r0 = train[0]
-    comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
+    def nodes(e): return 1 if isinstance(e, str) else 1 + sum(nodes(t) for t in e[1:])
+    if 'simp' in abl:  # B-052: prefer smaller programs - order combs and steps by node count
+        comb_list.sort(key=lambda c: -1 if c is None else nodes(c[1]))
+        steps_pair.sort(key=lambda st: nodes(st[0]) + nodes(st[1]))
+        steps_single.sort(key=lambda st: nodes(st[0]) + nodes(st[1]))
+    else:
+        comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
     if 'oops' in abl:  # F-6: order comb generators by past success frequency (OOPS-inspired, not full OOPS)
         comb_list.sort(key=lambda c: -COMBHIST.get(c[0] if c else 'None', 0))
     for ci, comb in enumerate(comb_list):
