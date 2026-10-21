@@ -519,5 +519,5 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-513 [M] F-4 means-ends composition induction -- baseline: P13 flat 6/10 -- success: 8/10 at <= half tried
 - [ ] B-514 [S] F-5 shortest-on-tie + 2^-len hypothesis weighting -- baseline: B-001/P15 -- success: equal acc, shorter programs
 - [ ] B-515 [S] F-6 OOPS doubling scheduler -- baseline: P14 ordering -- success: same found, <=50% CPU
-- [ ] B-516 [S] F-7 priors/experience audit + eval pack v1 -- baseline: none -- success: README columns added, pack frozen
+- [ ] B-516 [S] DONE -> README priors audit + EVALPACK.md | F-7 priors/experience audit + eval pack v1 -- baseline: none -- success: README columns added, pack frozen
 - [ ] B-517 [M] F-8 one-shot gap table vs MLP -- baseline: MLP -- success: complete honest table
