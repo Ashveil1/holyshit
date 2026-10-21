@@ -26,3 +26,5 @@ B-016 (cap 3M, freq combs, square) | null | cap3m,oops arm /tmp/c7c3o.log | NOT 
 B-017 (cap 3M, freq combs, choose2) | null | cap3m,oops arm | NOT FOUND at 3M (needs 5.2M)
 B-018 (cap 3M, freq combs, sumsq) | null | cap3m,oops arm | NOT FOUND at 3M
 B-022 (cap 6M, combleaf, square) | null | combleaf arm /tmp/c7l6.log | FOUND 4313812 = default exactly (None phase untouched); tried ratio 100% > 60% criterion
+B-023 (cap 6M, combleaf, choose2) | null | combleaf arm | FOUND 5199851 = default exactly; leaf combs already front-loaded in default ordering
+B-024 (cap 6M, combleaf, sumsq) | null | combleaf arm | NOT FOUND = default
