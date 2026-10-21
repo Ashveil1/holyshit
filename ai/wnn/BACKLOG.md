@@ -511,3 +511,13 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-504 [L (under 2 h)] (T4 baselines+harness) tiny transformer in pure numpy as reference point -- task: synonym task -- baseline: n/a -- success: runs CPU in <2h, acc recorded
 - [ ] B-505 [L (under 2 h)] (T6 connectome variants (low priority, P5 was negative)) STDP on tap circuit with reward gate -- task: tap -- baseline: no reward -- success: learned association > Hebbian P3
 - [ ] B-506 [L (under 2 h)] (T8 neurosymbolic-exact) grid transforms: learn 3 ARC-like ops by induction -- task: mini-arc -- baseline: random search -- success: finds 3/3, honest scope note
+
+## Foundations-derived (F) candidates (from FOUNDATIONS.md; same rules)
+- [ ] B-510 [S] F-1 contradiction correction / unlearning with status -- baseline: current store behavior -- success: latest fact wins 100% on probe set
+- [ ] B-511 [S] F-2 declarative advice as hypothesis constraints -- baseline: P15 n=24/60 -- success: same acc, fewer examples
+- [ ] B-512 [M] F-3 subgoal selection on compositions -- baseline: P13 6/10 -- success: 8/10 same seeds
+- [ ] B-513 [M] F-4 means-ends composition induction -- baseline: P13 flat 6/10 -- success: 8/10 at <= half tried
+- [ ] B-514 [S] F-5 shortest-on-tie + 2^-len hypothesis weighting -- baseline: B-001/P15 -- success: equal acc, shorter programs
+- [ ] B-515 [S] F-6 OOPS doubling scheduler -- baseline: P14 ordering -- success: same found, <=50% CPU
+- [ ] B-516 [S] F-7 priors/experience audit + eval pack v1 -- baseline: none -- success: README columns added, pack frozen
+- [ ] B-517 [M] F-8 one-shot gap table vs MLP -- baseline: MLP -- success: complete honest table
