@@ -36,18 +36,18 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-029 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
 - [ ] B-030 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
 - [ ] B-031 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-032 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: square -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-033 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-034 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-035 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-032 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: square -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-033 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-034 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-035 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
 - [ ] B-036 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: square -- baseline: full sets -- success: same success, <=70% tried
 - [ ] B-037 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
 - [ ] B-038 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
 - [ ] B-039 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-040 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: square -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-041 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-042 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-043 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-040 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: square -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-041 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-042 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-043 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
 - [ ] B-044 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: square -- baseline: full sets -- success: same success, <=70% tried
 - [ ] B-045 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
 - [ ] B-046 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
@@ -524,4 +524,4 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-518 [M] joint-attention variant: caregiver sometimes names the secondary object; baby must use a pointing/gaze cue -- baseline: P26 no-cue learner -- success: cue use beats no-cue on named-secondary scenes
 - [ ] B-519 [S] babbling trajectory: production volume + correct-rate per day before criterion -- baseline: none -- success: documented curve
 - [ ] B-520 [M] word segmentation: no whitespace, syllable stream, learner must find word units -- baseline: given segmentation (P26) -- success: >=70% of P26 accuracy
-- [ ] B-521 [L] two-word production ("แม่ มา") with order learned from dialogue statistics -- baseline: bag-of-words production -- success: order correct > chance on held-out scenes
+- [x] B-521 [L] two-word production ("แม่ มา") with order learned from dialogue statistics -- baseline: bag-of-words production -- success: order correct > chance on held-out scenes

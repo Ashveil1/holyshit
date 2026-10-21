@@ -1,0 +1,120 @@
+d1c0 scene=pho heard=พ่อ มา แล้ว นะ อืม ลูก อยู่ นี่ จ้ะ
+  baby said พ่อ (true พ่อ)
+d1c0 scene=mae heard=แม่ นั่ง กับ แมว อยู่ แมว มา นอน ข้าง แม่ เลย
+  baby said แม่ (true แม่)
+d1c0 scene=ball heard=ลูกบอล กลิ้ง มา แล้ว สี สด ใส จัง
+  baby said ลูกบอล (true ลูกบอล)
+d1c0 scene=ball heard=ลูกบอล อยู่ ตรง นี้ นะ เดี๋ยว มัน ก็ กลิ้ง ไป อีก
+  baby said ลูกบอล (true ลูกบอล)
+d1c0 scene=mae heard=แม่ นั่ง พัก แป๊บ นะ ได้ เลย เดี๋ยว พ่อ ดู ลูก
+  baby said แม่ (true แม่)
+d1c0 scene=ball heard=ลูกบอล กลิ้ง ไป โน่น แล้ว อ๋อ อยู่ ข้าง โต๊ะ นั่น เอง
+  baby said ลูกบอล (true ลูกบอล)
+d1c0 scene=mae heard=แม่ อยู่ ตรง นี้ จ้ะ ลูก มอง แม่ อยู่ พอดี
+  baby said แม่ (true แม่)
+d1c0 scene=nom heard=ขวด นม วาง อยู่ นี่ เดี๋ยว ค่อย หยิบ ให้ ลูก นะ
+  baby said นม (true นม)
+d1c0 scene=pho heard=พ่อ กลับ มา แล้ว ลูก หัน มา ดู พ่อ เลย
+  baby said พ่อ (true พ่อ)
+d1c0 scene=mae heard=แม่ อยู่ ข้าง ลูก นะ วันนี้ ลูก ดู อารมณ์ ดี จัง
+  baby said แม่ (true แม่)
+d1c0 scene=mae heard=หมา มา หา แม่ แล้ว มัน เดิน ดม อยู่ รอบ ๆ เลย
+  baby said แม่ (true แม่)
+d1c0 scene=mae heard=แม่ นั่ง ใกล้ หน้าต่าง ลม เย็น ดี เนอะ
+  baby said แม่ (true แม่)
+d1c0 scene=ball heard=ลูกบอล อยู่ ใต้ เก้าอี้ กลิ้ง เข้า ไป ไกล เลย
+  baby said ลูกบอล (true ลูกบอล)
+d1c0 scene=ball heard=ลูกบอล มา อีก ลูก แล้ว วาง ไว้ ตรง พื้น นี่ แหละ
+  baby said ลูกบอล (true ลูกบอล)
+d1c0 scene=cat heard=แมว นอน ข้าง ลูกบอล มัน ดู สบายใจ จัง
+  baby said ลูกบอล (true แมว)
+d1c0 scene=ball heard=ลูกบอล อยู่ ข้าง ลูก นะ เดี๋ยว พ่อ เก็บ ให้
+  baby said ลูกบอล (true ลูกบอล)
+d1c0 scene=nom heard=พ่อ ถือ ขวด นม มา แล้ว ลูก คง หิว แล้ว ล่ะ
+  baby said พ่อ (true นม)
+d1c0 scene=ball heard=ลูกบอล กลิ้ง ไป ทาง ประตู พ่อ ไป หยิบ กลับ มา นะ
+  baby said ลูกบอล (true ลูกบอล)
+d1c0 scene=mae heard=แม่ นั่ง ยิ้ม อยู่ นี่ ลูก ก็ ยิ้ม ตาม เลย
+  baby said แม่ (true แม่)
+d1c0 scene=cat heard=แมว นั่ง เงียบ ๆ อยู่ มัน จ้อง มอง ลูก อยู่นะ
+  baby said แมว (true แมว)
+d1c20 scene=mae heard=แม่ นั่ง ข้าง ลูกบอล อยู่ นะ ลูก เรียก ลูกบอล ตอน เห็น แมว เหรอ จ๊ะ
+  baby said ลูกบอล (true แม่)
+d1c20 scene=mae heard=แม่ อยู่ ใกล้ ๆ ลูก นะ เมื่อกี้ ลูก พูด ลูกบอล ตอน เห็น บอล ใช่ ไหม
+  baby said แม่ (true แม่)
+d1c20 scene=dog heard=หมา เดิน มา หา เรา แล้ว มัน ดู อยาก เล่น ด้วย นะ
+  baby said หมา (true หมา)
+d1c20 scene=cat heard=แมว เดิน มา แล้ว ลูก เรียก ลูกบอล แต่ นี่ แมว นะ จ๊ะ
+  baby said แมว (true แมว)
+d1c20 scene=ball heard=ลูกบอล อยู่ ตรง หน้า ลูก ใช่ ลูก พูด ลูกบอล ได้ แล้ว
+  baby said ลูกบอล (true ลูกบอล)
+d1c20 scene=dog heard=หมา อยู่ ข้าง ขวด นม เมื่อกี้ ลูก พูด พ่อ ตอน เห็น ขวด นม เหรอ นี่ ขวด นม จ้ะ
+  baby said นม (true หมา)
+d1c20 scene=cat heard=แมว นั่ง เงียบ ๆ มัน มอง มา ทาง เรา ด้วย
+  baby said แมว (true แมว)
+d1c20 scene=ball heard=ลูกบอล กลิ้ง ไป ทาง ประตู เดี๋ยว พ่อ ไป หยิบ มา ให้
+  baby said ลูกบอล (true ลูกบอล)
+d1c20 scene=cat heard=แมว ขด ตัว นอน อยู่ ลูก เรียก แมว ถูก แล้ว จ้ะ
+  baby said แมว (true แมว)
+d1c20 scene=mae heard=แม่ กำลัง มอง ลูก อยู่ ลูก พูด แม่ ได้ ชัด เลย นะ
+  baby said แม่ (true แม่)
+d1c20 scene=dog heard=หมา เดิน วน อยู่ แถว นี้ มัน หา ที่ นอน อยู่ หรือ เปล่า
+  baby said หมา (true หมา)
+d1c20 scene=ball heard=ลูกบอล อยู่ ใต้ โต๊ะ กลิ้ง ไป ซ่อน อีก แล้ว
+  baby said ลูกบอล (true ลูกบอล)
+d1c20 scene=nom heard=ขวด นม วาง อยู่ ตรง นี้ เดี๋ยว แม่ หยิบ ให้ ลูก นะ
+  baby said นม (true นม)
+d1c20 scene=dog heard=หมา นั่ง เฝ้า อยู่ มัน รอ เรา อยู่ แน่ เลย
+  baby said หมา (true หมา)
+d1c20 scene=dog heard=หมา หัน มา มอง หาง มัน แกว่ง ด้วย นะ
+  baby said หมา (true หมา)
+d1c20 scene=ball heard=ลูกบอล กลิ้ง ไป ไกล แล้ว พ่อ ไป เก็บ ให้ นะ
+  baby said ลูกบอล (true ลูกบอล)
+d1c20 scene=mae heard=แม่ นั่ง อยู่ ข้าง ลูก ลูก ดู สบายใจ จัง
+  baby said แม่ (true แม่)
+d1c20 scene=cat heard=แมว เดิน ผ่าน มา ช้า ๆ มัน ไม่ รีบ ไป ไหน เลย
+  baby said แมว (true แมว)
+d1c20 scene=nom heard=ขวด นม อยู่ บน โต๊ะ เอา ไว้ ให้ ลูก กิน นะ
+  baby said นม (true นม)
+d1c20 scene=mae heard=แม่ ยิ้ม ให้ ลูก วันนี้ ลูก อารมณ์ ดี จัง
+  baby said แม่ (true แม่)
+d1c40 scene=nom heard=ขวด นม อยู่ บน โต๊ะ นะ ลูก พูด หมา แต่ ตรง นี้ เป็น ขวด นม จ้ะ
+  baby said นม (true นม)
+d1c40 scene=cat heard=แมว มา นอน ตรง นี้ แล้ว ลูก พูด ลูกบอล เมื่อกี้ แต่ นี่ แมว นะ
+  baby said แมว (true แมว)
+d1c40 scene=ball heard=ลูกบอล กลิ้ง มา หา เรา ลูก พูด แม่ เหรอ ลูก นี่ ลูกบอล จ้ะ
+  baby said ลูกบอล (true ลูกบอล)
+d1c40 scene=pho heard=พ่อ เดิน มา แล้ว นะ ลูก เรียก แมว แต่ นี่ พ่อ จ้ะ
+  baby said พ่อ (true พ่อ)
+d1c40 scene=mae heard=แม่ นั่ง ข้าง ลูก อยู่ ลูก พูด นม เหรอ นี่ แม่ นะ
+  baby said แม่ (true แม่)
+d1c40 scene=cat heard=แมว นั่ง มอง เรา อยู่ ลูก เรียก แม่ แต่ นี่ แมว จ้ะ
+  baby said แมว (true แมว)
+d1c40 scene=cat heard=แมว กับ หมา อยู่ ด้วย กัน ดู เหมือน มัน กำลัง ดม กัน อยู่
+  baby said แมว (true แมว)
+d1c40 scene=nom heard=ขวด นม วาง อยู่ นี่ เดี๋ยว พ่อ หยิบ ให้ ลูก นะ
+  baby said นม (true นม)
+d1c40 scene=cat heard=แมว เดิน ผ่าน มา ช้า ๆ มัน ดู สงบ ดี เนอะ
+  baby said แมว (true แมว)
+d1c40 scene=nom heard=ขวด นม อยู่ ตรง นี้ เก็บ ไว้ ให้ ลูก ก่อน นะ
+  baby said นม (true นม)
+d1c40 scene=cat heard=แมว ขด ตัว นอน แล้ว มัน ดู อุ่น สบาย จัง
+  baby said แมว (true แมว)
+d1c40 scene=mae heard=แม่ อยู่ ข้าง ลูก นะ ลูก มอง แม่ อยู่ พอดี
+  baby said แม่ (true แม่)
+d1c40 scene=dog heard=หมา เดิน มา ใกล้ แล้ว หาง มัน แกว่ง ไป มา
+  baby said หมา (true หมา)
+d1c40 scene=pho heard=พ่อ นั่ง ลง ตรง นี้ ลูก หัน มา มอง พ่อ เลย
+  baby said พ่อ (true พ่อ)
+d1c40 scene=cat heard=แมว มา นั่ง ข้าง แม่ แม่ ลูบ หลัง มัน เบา ๆ
+  baby said แม่ (true แมว)
+d1c40 scene=ball heard=ลูกบอล กลิ้ง ไป ใต้ โต๊ะ เดี๋ยว พ่อ ไป หยิบ มา นะ
+  baby said ลูกบอล (true ลูกบอล)
+d1c40 scene=cat heard=แมว กำลัง นอน อยู่ อย่า เพิ่ง ปลุก มัน เลย
+  baby said แมว (true แมว)
+d1c40 scene=cat heard=แมว จ้อง มอง ลูก อยู่ มัน คง สงสัย ว่า ลูก ทำ อะไร
+  baby said แมว (true แมว)
+d1c40 scene=nom heard=ขวด นม วาง ข้าง เตียง พร้อม ให้ ลูก กิน แล้ว
+  baby said นม (true นม)
+d1c40 scene=mae heard=แม่ ยิ้ม ให้ ลูก ลูก ยิ้ม กลับ ด้วย นะ
+  baby said แม่ (true แม่)

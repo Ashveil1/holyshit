@@ -1,0 +1,12 @@
+overhear seed1 day 1: mae 1.00 non 0.02 all6 0.89 spoke 0 heard 626
+overhear seed1 day 2: mae 0.96 non 0.01 all6 0.88 spoke 0 heard 1257
+overhear seed1 day 3: mae 0.85 non 0.00 all6 0.88 spoke 0 heard 1895
+overhear seed1 day 4: mae 0.88 non 0.01 all6 0.88 spoke 0 heard 2523
+overhear seed1 day 5: mae 0.81 non 0.00 all6 0.86 spoke 0 heard 3152
+overhear seed1: FIRST WORD DAY 1
+rewonly seed1 day 1: mae 1.00 non 0.02 all6 0.90 spoke 60 heard 626
+rewonly seed1 day 2: mae 1.00 non 0.02 all6 0.87 spoke 120 heard 1257
+rewonly seed1 day 3: mae 0.96 non 0.01 all6 0.88 spoke 180 heard 1895
+rewonly seed1 day 4: mae 0.96 non 0.01 all6 0.89 spoke 240 heard 2523
+rewonly seed1 day 5: mae 0.85 non 0.00 all6 0.89 spoke 300 heard 3152
+rewonly seed1: FIRST WORD DAY 1
