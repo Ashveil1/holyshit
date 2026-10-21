@@ -266,7 +266,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-259 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [x] B-260 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [x] B-261 [S (under 2 min)] (T8 neurosymbolic-exact) store-and-derive: transitivity chains depth 10 -- task: logic -- baseline: P5 depth2 -- success: depth 10 exact
-- [ ] B-262 [S (under 2 min)] (T8 neurosymbolic-exact) mixed radix and negative numbers in HDC arithmetic -- task: arith -- baseline: positive only -- success: exact
+- [x] B-262 [S (under 2 min)] (T8 neurosymbolic-exact) mixed radix and negative numbers in HDC arithmetic -- task: arith -- baseline: positive only -- success: exact
 - [ ] B-263 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
 - [ ] B-264 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
 - [ ] B-265 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
