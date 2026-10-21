@@ -6,6 +6,7 @@ Usage:
 State: /tmp/baby3h_{arm}_{seed}.json (regenerate scenes deterministically from seed if lost). Log: baby3h_{arm}_{seed}.log here.
 """
 import random, json, os, sys
+from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from baby3 import SIT, SIT_EN, Baby, parse_lines
 PER_DAY, CHUNK, DAYS = 60, 20, 5
