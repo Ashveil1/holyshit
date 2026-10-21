@@ -8,6 +8,53 @@ import irbuild
 import iropt
 import verify
 SUBSET_ERR = "x64 backend subset"
+def ffi_find_soname(name):
+  # First /etc/ld.so.cache entry whose key starts with "lib"+name+".so";
+  # matches the ldconfig pass of ctypes.util.find_library on glibc Linux.
+  # Cache format 1.1: 48-byte header, then nlibs 24-byte entries whose
+  # key/value offsets are file-relative; key = soname, value = path.
+  # Returns the soname (cache key), or null when absent/unparseable.
+  try:
+    if not exists("/etc/ld.so.cache"):
+      return null
+    f = open("/etc/ld.so.cache", "r")
+    blob = read(f)
+    close(f)
+    n = len(blob)
+    if n < 48:
+      return null
+    addr = 0
+    unsafe:
+      addr = as_int(as_ptr(blob)) + 16  # string data sits past the 16-byte header
+    if read_mem(addr, 20) != "glibc-ld.so.cache1.1":
+      return null
+    nlibs = 0
+    unsafe:
+      nlibs = load32(as_ptr(addr) + 20)
+    if nlibs < 1 or 48 + nlibs * 24 > n:
+      return null
+    prefix = "lib" + name + ".so"
+    plen = len(prefix)
+    i = 0
+    while i < nlibs:
+      keyoff = 0
+      unsafe:
+        keyoff = load32(as_ptr(addr) + 48 + i * 24 + 4)
+      kaddr = addr + keyoff
+      if kaddr >= addr and kaddr + plen <= addr + n:
+        if read_mem(kaddr, plen) == prefix:
+          k = 0
+          while kaddr + k < addr + n:
+            unsafe:
+              b = load8(as_ptr(kaddr) + k)
+            if b == 0:
+              break
+            k = k + 1
+          return read_mem(kaddr, k)
+      i = i + 1
+    return null
+  except as e:
+    return null
 class Gen:
   def __init__(self, prog, main_path, freestanding):
     self.prog = prog
@@ -13120,7 +13167,7 @@ class GenIR(Gen):
     elif "/" in lib or pyrt.py_endswith(lib, ".so") or ".so." in lib:
       so = lib
     else:
-      so = _cu.find_library(lib)
+      so = ffi_find_soname(lib)
       if so == null:
         raise pyrt.py_err("cannot find ffi library '" + str(lib) + "'", ln)
     if not (so in self.ffi_libs):
