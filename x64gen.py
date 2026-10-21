@@ -1556,8 +1556,15 @@ class Gen:
                 a.label(lab_lck)
                 self.raise_unop(0, ln)
                 a.label(lab_lok)
-            a.mov_rr("rdi", "rax")
-            a.call("x_str" if fn["name"] == "str" else "x_len")
+            if fn["name"] == "len":
+                # kind already guarded above (Str/List/Dict): inline the
+                # tagged length load instead of calling x_len
+                a.mov_rm("rax", "rax", 8)
+                a.shl_ri8("rax", 2)
+                a.or_ri8("rax", 1)
+            else:
+                a.mov_rr("rdi", "rax")
+                a.call("x_str")
             return
         if fn["t"] == "var" and fn["name"] == "as_int" and e["args"]:
             # dynamic as_int yields a real Int (tagged); inside unsafe it stays

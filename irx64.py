@@ -2439,8 +2439,15 @@ class GenIR(Gen):
             a.label(lab_lck)
             self.raise_unop(0, ln)
             a.label(lab_lok)
-        a.mov_rr("rdi", "rax")
-        a.call("x_str" if name == "str" else "x_len")
+        if name == "len":
+            # kind already guarded above (Str/List/Dict): length is the
+            # qword at +8, boxed as a tagged Int inline (same as x_len)
+            a.mov_rm("rax", "rax", 8)
+            a.shl_ri8("rax", 2)
+            a.or_ri8("rax", 1)
+        else:
+            a.mov_rr("rdi", "rax")
+            a.call("x_str")
         a.mov_mr("rbp", "rax", fr["slots"][dest])
 
     def _inline_int(self, fr, dest, args, ln):
