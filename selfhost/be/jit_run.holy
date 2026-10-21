@@ -86,6 +86,84 @@ def emit_prologue():
     asm.mov_mr("rsp", "rax", (position + 1) * 8)
   asm.jmp("_start")
   return entry
+def ple32(code, v):
+  append(code, v & 255)
+  append(code, v >> 8 & 255)
+  append(code, v >> 16 & 255)
+  append(code, v >> 24 & 255)
+def pmov_ri32(code, imm):
+  # mov rax, imm32: 48 C7 C0 le32
+  append(code, 72)
+  append(code, 199)
+  append(code, 192)
+  ple32(code, imm)
+def pmov_mr_rsp(code, disp):
+  # mov [rsp+disp], rax: 48 89 modrm 24 [disp]
+  append(code, 72)
+  append(code, 137)
+  if disp == 0:
+    append(code, 4)
+    append(code, 36)
+  elif disp <= 127:
+    append(code, 68)
+    append(code, 36)
+    append(code, disp)
+  else:
+    append(code, 132)
+    append(code, 36)
+    ple32(code, disp)
+def emit_prologue_fast(entry, entry_off, data_base):
+  # Byte-identical instruction/data layout to emit_prologue(), but emitted
+  # as raw bytes with fixups resolved to (pos, target_off, is_data) triples
+  # in merged-image offsets - no assembler label/fixup dictionaries. This
+  # is the flat ~1.3ms of assembler overhead on every warm start.
+  args = argv()
+  entries = ["hs-jit"] + args[1:len(args)]
+  argc = len(entries)
+  rawenv = read_text("/proc/self/environ")
+  for value in split(rawenv, "\0"):
+    if len(value) > 0:
+      append(entries, value)
+  slots = len(entries) + 3
+  if slots % 2 == 0:
+    slots = slots + 1
+  code = []
+  data = []
+  fixups = []
+  # sub rsp, slots*8: 48 81 EC le32
+  append(code, 72)
+  append(code, 129)
+  append(code, 236)
+  ple32(code, slots * 8)
+  pmov_ri32(code, argc)
+  pmov_mr_rsp(code, 0)
+  position = 1
+  for i in range(len(entries)):
+    if i == argc:
+      pmov_ri32(code, 0)
+      pmov_mr_rsp(code, position * 8)
+      position = position + 1
+    doff = len(data)
+    for b in pyrt.py_encode(entries[i], "utf-8"):
+      append(data, b & 255)
+    append(data, 0)
+    # lea rax, [rip+rel32] -> jit_arg_i in the data section
+    append(code, 72)
+    append(code, 141)
+    append(code, 5)
+    append(fixups, [entry + len(code), data_base + doff, 1])
+    ple32(code, 0)
+    pmov_mr_rsp(code, position * 8)
+    position = position + 1
+  pmov_ri32(code, 0)
+  pmov_mr_rsp(code, position * 8)
+  if len(entries) == argc:
+    pmov_mr_rsp(code, (position + 1) * 8)
+  # jmp _start (rel32 into the cached code section)
+  append(code, 233)
+  append(fixups, [entry + len(code), entry_off, 0])
+  ple32(code, 0)
+  return [code, data, fixups]
 def prepare():
   parselib.P["wide_literals"] = true
   srcpath = argv()[0]
@@ -112,20 +190,8 @@ def prepare():
   code_str = raw[7]
   data_str = raw[8]
   entry = len(code_str)
-  emit_prologue()
-  pro = asm.state()
-  pro_fixups = []
-  for f in pro["fixups"]:
-    name = f[1]
-    if name in pro["labels"]:
-      append(pro_fixups, [f[0] + entry, entry + pro["labels"][name], 0])
-    elif name == "_start":
-      append(pro_fixups, [f[0] + entry, entry_off, 0])
-    elif name in pro["data_labels"]:
-      append(pro_fixups, [f[0] + entry, len(data_str) + pro["data_labels"][name], 1])
-    else:
-      raise "jit: undefined label " + name
-  image = jitmem.publish_raw(code_str, pro["code"], data_str, pro["data"], fixups_str, fixup_count, pro_fixups)
+  pp = emit_prologue_fast(entry, entry_off, len(data_str))
+  image = jitmem.publish_raw(code_str, pp[0], data_str, pp[1], fixups_str, fixup_count, pp[2])
   got = 0
   if len(raw[1]) > 0:
     got = got_plus - 1
