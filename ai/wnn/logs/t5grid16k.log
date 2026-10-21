@@ -1,0 +1,3 @@
+dim16384 level  : arith 0.006 | facts 0.029 | 2-hop 0.000
+dim16384 thermo : arith 0.000 | facts 0.029 | 2-hop 0.000
+dim16384 random : arith 1.000 | facts 1.000 | 2-hop 1.000
