@@ -5,63 +5,63 @@ Every candidate carries its baseline and pre-stated success criterion. Results (
 
 Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its baseline on the stated metric at the stated tolerance; a win over transformers must name the transformer-class baseline actually run (or a published number with the same data/protocol, cited).
 
-- [ ] B-001 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set full -- task: square -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-002 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set full -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-003 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set full -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-004 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set leaf-only -- task: square -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-005 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set leaf-only -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-006 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set leaf-only -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-007 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set freq-ranked -- task: square -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-008 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set freq-ranked -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-009 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set freq-ranked -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-010 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set full -- task: square -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-011 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set full -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-012 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set full -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-013 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set leaf-only -- task: square -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-014 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set leaf-only -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-015 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set leaf-only -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-016 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set freq-ranked -- task: square -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-017 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set freq-ranked -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-018 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set freq-ranked -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-019 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set full -- task: square -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-020 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set full -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-021 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set full -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-022 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set leaf-only -- task: square -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-023 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set leaf-only -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-024 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set leaf-only -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-025 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set freq-ranked -- task: square -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-026 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set freq-ranked -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-027 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set freq-ranked -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
-- [ ] B-028 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: square -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-029 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-030 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-031 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-001 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set full -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-002 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set full -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-003 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set full -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-004 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set leaf-only -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-005 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set leaf-only -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-006 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set leaf-only -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-007 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set freq-ranked -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-008 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set freq-ranked -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-009 [S (under 2 min)] (T1 induction-search) search cap 1M tried, comb set freq-ranked -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-010 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set full -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-011 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set full -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-012 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set full -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-013 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set leaf-only -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-014 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set leaf-only -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-015 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set leaf-only -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-016 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set freq-ranked -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-017 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set freq-ranked -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-018 [S (under 2 min)] (T1 induction-search) search cap 3M tried, comb set freq-ranked -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-019 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set full -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-020 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set full -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-021 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set full -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-022 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set leaf-only -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-023 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set leaf-only -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-024 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set leaf-only -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-025 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set freq-ranked -- task: square -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-026 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set freq-ranked -- task: choose2 -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-027 [S (under 2 min)] (T1 induction-search) search cap 6M tried, comb set freq-ranked -- task: sumsq -- baseline: P14 default -- success: same success, <=60% tried
+- [x] B-028 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: square -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-029 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-030 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-031 [S (under 2 min)] (T1 induction-search) init set full, post set full -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-032 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: square -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-033 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-034 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-035 [S (under 2 min)] (T1 induction-search) init set full, post set id-only -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-036 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: square -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-037 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-038 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-039 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-036 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: square -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-037 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-038 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-039 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set full -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-040 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: square -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-041 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-042 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
 - [x] B-043 [S (under 2 min)] (T1 induction-search) init set {y,zero}, post set id-only -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-044 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: square -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-045 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-046 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-047 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-048 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: square -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-049 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-050 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-051 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
-- [ ] B-052 [S (under 2 min)] (T1 induction-search) simplify-first: prefer programs with fewer nodes on tie -- task: all new -- baseline: first-found -- success: equal accuracy, shorter program, no time loss >10%
-- [ ] B-053 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: square -- baseline: full-set check every candidate -- success: same found programs, <70% time
-- [ ] B-054 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: choose2 -- baseline: full-set check every candidate -- success: same found programs, <70% time
-- [ ] B-055 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: square -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
-- [ ] B-056 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: even -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
-- [ ] B-057 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: sumto -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
+- [x] B-044 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: square -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-045 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-046 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-047 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set full -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-048 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: square -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-049 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: choose2 -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-050 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: sumsq -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-051 [S (under 2 min)] (T1 induction-search) init set {one,zero}, post set id-only -- task: dblfact -- baseline: full sets -- success: same success, <=70% tried
+- [x] B-052 [S (under 2 min)] (T1 induction-search) simplify-first: prefer programs with fewer nodes on tie -- task: all new -- baseline: first-found -- success: equal accuracy, shorter program, no time loss >10%
+- [x] B-053 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: square -- baseline: full-set check every candidate -- success: same found programs, <70% time
+- [x] B-054 [S (under 2 min)] (T1 induction-search) example subsampling during search then full check -- task: choose2 -- baseline: full-set check every candidate -- success: same found programs, <70% time
+- [x] B-055 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: square -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
+- [x] B-056 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: even -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
+- [x] B-057 [S (under 2 min)] (T1 induction-search) adversarial example generation for acceptance (boundary x=0,1,large) -- task: sumto -- baseline: 25 random examples (P19b) -- success: kills wrong-short programs without extra hand labels
 - [ ] B-058 [S (under 2 min)] (T1 induction-search) prune combs that type-fail on first example -- task: choose2 -- baseline: no prune -- success: same result, <80% time
 - [ ] B-059 [S (under 2 min)] (T2 library-learning) add learned fn as leaf only after 40/40 validation (P20 gate) -- task: new skills -- baseline: add-if-36/40 -- success: no skill poisoned by a wrong library entry
 - [ ] B-060 [S (under 2 min)] (T2 library-learning) compress: shortest re-derivation of each learned skill via library -- task: curriculum8 -- baseline: P14 programs -- success: total description length drops

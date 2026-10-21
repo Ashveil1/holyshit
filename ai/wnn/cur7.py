@@ -16,6 +16,14 @@ CAP = [400]
 CAPF = [400]
 PROG = False
 VALID = []
+ADV = []
+def boundary(task):
+    t = {'square': [(0, 7, 0), (1, 7, 1), (2, 7, 4), (3, 7, 9), (30, 7, 900)],
+         'choose2': [(0, 7, 0), (1, 7, 0), (2, 7, 1), (3, 7, 3), (60, 7, 1770)],
+         'sumsq': [(0, 7, 0), (1, 7, 1), (2, 7, 5), (3, 7, 14), (40, 7, 22140)],
+         'even': [(0, 7, 1), (1, 7, 0), (2, 7, 1), (3, 7, 0)],
+         'sumto': [(0, 7, 0), (1, 7, 1), (2, 7, 3), (3, 7, 6), (100, 7, 5050)]}
+    return t.get(task, [])
 class Fail(Exception): pass
 def p_add(a, b): return a + b
 def p_sub(a, b):
@@ -75,6 +83,17 @@ def mine_macros(progs):
     MACROS[:] = out
     return out
 def search(train, abl, tag='', tried_cap=6_000_000):
+    if 'baselib' in abl and not getattr(search, '_baselib_done', False):  # pin LIB to the default arm's grown library
+        import json as _json, os as _os
+        sv0 = '/tmp/c7_prog_0_base.json'
+        if _os.path.exists(sv0):
+            saved0 = _json.load(open(sv0))
+            def tup0(e): return tuple(tup0(t) for t in e) if isinstance(e, list) else e
+            for t0 in ('mod', 'mul', 'div', 'power', 'gcd', 'max', 'min'):
+                if t0 in saved0:
+                    f0 = make_fn(tup0(saved0[t0]))
+                    LIB[t0] = (lambda ff: (lambda a, b: ff(a, b)))(f0)
+        search._baselib_done = True
     ops = [o for o in LIB if not (abl == 'nolib' and o not in ('add', 'sub'))]
     E1 = list(LEAVES) + [(o, p, q) for o in ops for p in LEAVES for q in LEAVES if p != q or o in ('add',)]
     conds = conds_list(); bases = list(LEAVES)
@@ -98,7 +117,13 @@ def search(train, abl, tag='', tried_cap=6_000_000):
     posts = {'id': POST['id']} if 'postid' in abl else POST
     t0 = time.time(); tried = 0
     x0, y0, r0 = train[0]
-    comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
+    def nodes(e): return 1 if isinstance(e, str) else 1 + sum(nodes(t) for t in e[1:])
+    if 'simp' in abl:  # B-052: prefer smaller programs - order combs and steps by node count
+        comb_list.sort(key=lambda c: -1 if c is None else nodes(c[1]))
+        steps_pair.sort(key=lambda st: nodes(st[0]) + nodes(st[1]))
+        steps_single.sort(key=lambda st: nodes(st[0]) + nodes(st[1]))
+    else:
+        comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
     if 'oops' in abl:  # F-6: order comb generators by past success frequency (OOPS-inspired, not full OOPS)
         comb_list.sort(key=lambda c: -COMBHIST.get(c[0] if c else 'None', 0))
     for ci, comb in enumerate(comb_list):
@@ -118,12 +143,20 @@ def search(train, abl, tag='', tried_cap=6_000_000):
                         if not pm: continue
                         for pn in pm:
                             ok = True
-                            for x, y, r in train[1:]:
-                                try:
-                                    if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
-                                except (Fail, KeyError, RecursionError, OverflowError): ok = False; break
+                            stages = (train[1:6], train[6:]) if 'sub' in abl else (train[1:],)
+                            for stage in stages:
+                                if not ok: break
+                                for x, y, r in stage:
+                                    try:
+                                        if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
+                                    except (Fail, KeyError, RecursionError, OverflowError): ok = False; break
                             if ok and VALID:
                                 for x, y, r in VALID:
+                                    try:
+                                        if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
+                                    except (Fail, KeyError, RecursionError, OverflowError, ZeroDivisionError): ok = False; break
+                            if ok and ADV:
+                                for x, y, r in ADV:
                                     try:
                                         if POST[pn](run(spec, x, inits_for(init, y))) != r: ok = False; break
                                     except (Fail, KeyError, RecursionError, OverflowError, ZeroDivisionError): ok = False; break
@@ -175,12 +208,12 @@ if __name__ == '__main__':
     sv = f'/tmp/c7_prog_{seed}_{abl}.json'; saved = json.load(open(sv)) if os.path.exists(sv) else {}
     def tup(e): return tuple(tup(t) for t in e) if isinstance(e, list) else e
     rng = random.Random(seed); found = 0
-    for task in [t for t in ['mod','mul','div','power','gcd','isprime','fact','sumto','max','min','square','choose2','sumsq','dblfact','absdiff','lcm'] if t in only]:
+    for task in [t for t in ['mod','mul','div','power','gcd','isprime','fact','sumto','max','min','square','choose2','sumsq','dblfact','absdiff','lcm','even'] if t in only]:
         if task not in only: continue
         train = [gen(task, rng, rng.choice([1, 2])) for _ in range(25)]
         if task in saved: p = tup(saved[task]); tried = dt = 0
         else:
-            VALID[:] = []
+            VALID[:] = []; ADV[:] = boundary(task) if 'adv' in abl else []
             if 'val' in abl:
                 vr = random.Random(5000 + seed); VALID[:] = [gen(task, vr, sc) for sc in (1, 2) for _ in range(16)]
             cap = 6_000_000

@@ -1,0 +1,4 @@
+   comb 0/1973 None tried 0 0s
+seed0 init10,baselib,sub square: FOUND init b=one; if (nlt one a) -> b; else step ((div a b),(mul a b)); comb=None; post=id tried 719709 63s unseen/40 by scale {1: 38, 2: 37, 3: 38, 4: 40}
+   comb 0/1973 None tried 0 0s
+seed0 init10,baselib,sub choose2: FOUND init b=one; if (nlt b a) -> zero; else step (a,(add b one)); comb=('add', 'b', 0); post=id tried 2597867 191s unseen/40 by scale {1: 40, 2: 40, 3: 40, 4: 40}
