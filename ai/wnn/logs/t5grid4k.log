@@ -1,0 +1,3 @@
+dim4096 level  : arith 0.008 | facts 0.029 | 2-hop 0.000
+dim4096 thermo : arith 0.000 | facts 0.029 | 2-hop 0.000
+dim4096 random : arith 0.865 | facts 1.000 | 2-hop 0.887

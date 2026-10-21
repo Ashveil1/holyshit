@@ -1,0 +1,3 @@
+links   70: logic-2hop 1.000 | arith-chain 1.000
+links  300: logic-2hop 0.996 | arith-chain 0.945
+links 1000: logic-2hop 0.284 | arith-chain 0.038

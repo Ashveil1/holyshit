@@ -222,51 +222,51 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-215 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [x] B-216 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
 - [x] B-217 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 1k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-218 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-219 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-220 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-221 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-222 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-223 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-224 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-225 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-226 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-227 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-228 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-229 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-230 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-231 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-232 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-233 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-234 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-235 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
-- [ ] B-236 [S (under 2 min)] (T5 weightless/HDC learners) bloom WiSARD memory scaling -- task: mnist -- baseline: WiSARD -- success: same acc <= half RAM
-- [ ] B-237 [S (under 2 min)] (T5 weightless/HDC learners) HDC binding for 2-hop inference at 10x facts -- task: facts -- baseline: P5 T2 numbers -- success: >= P5 accuracy at 700 facts
-- [ ] B-238 [S (under 2 min)] (T5 weightless/HDC learners) HDC + program library: recall program by task description -- task: 12 ops -- baseline: random recall -- success: >90% top-1
-- [ ] B-239 [S (under 2 min)] (T5 weightless/HDC learners) DWSA/thermometer encoding for numbers in HDC -- task: arith -- baseline: level encoding -- success: better interpolation on unseen operands
+- [x] B-218 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-219 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-220 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-221 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-222 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-223 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-224 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-225 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-226 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 4k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-227 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding level -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-228 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding level -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-229 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding level -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-230 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding thermo -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-231 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding thermo -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-232 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding thermo -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-233 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding random-proj -- task: arith -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-234 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding random-proj -- task: facts -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-235 [S (under 2 min)] (T5 weightless/HDC learners) HDC dim 16k, encoding random-proj -- task: 2-hop -- baseline: P5 4KB config -- success: same acc less RAM or better acc same RAM
+- [x] B-236 [S (under 2 min)] (T5 weightless/HDC learners) bloom WiSARD memory scaling -- task: mnist -- baseline: WiSARD -- success: same acc <= half RAM
+- [x] B-237 [S (under 2 min)] (T5 weightless/HDC learners) HDC binding for 2-hop inference at 10x facts -- task: facts -- baseline: P5 T2 numbers -- success: >= P5 accuracy at 700 facts
+- [x] B-238 [S (under 2 min)] (T5 weightless/HDC learners) HDC + program library: recall program by task description -- task: 12 ops -- baseline: random recall -- success: >90% top-1
+- [x] B-239 [S (under 2 min)] (T5 weightless/HDC learners) DWSA/thermometer encoding for numbers in HDC -- task: arith -- baseline: level encoding -- success: better interpolation on unseen operands
 - [ ] B-240 [S (under 2 min)] (T6 connectome variants (low priority, P5 was negative)) subsampled connectome (sensory->interneuron core) speed test -- task: mnist -- baseline: full -- success: <50% time, <-2 pts acc
-- [ ] B-241 [S (under 2 min)] (T7 continual/few-shot) one-shot per class sweep 1/5/20 examples -- task: mnist -- baseline: MLP -- success: gap at 1 shot
-- [ ] B-242 [S (under 2 min)] (T7 continual/few-shot) episodic recall of named facts after 1000 distractors -- task: facts -- baseline: no distractors -- success: recall unchanged
-- [ ] B-243 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-244 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-245 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-246 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-247 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-248 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-249 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-250 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-251 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-252 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-253 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-254 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-255 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-256 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-257 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-258 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-259 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-260 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
-- [ ] B-261 [S (under 2 min)] (T8 neurosymbolic-exact) store-and-derive: transitivity chains depth 10 -- task: logic -- baseline: P5 depth2 -- success: depth 10 exact
-- [ ] B-262 [S (under 2 min)] (T8 neurosymbolic-exact) mixed radix and negative numbers in HDC arithmetic -- task: arith -- baseline: positive only -- success: exact
+- [x] B-241 [S (under 2 min)] (T7 continual/few-shot) one-shot per class sweep 1/5/20 examples -- task: mnist -- baseline: MLP -- success: gap at 1 shot
+- [x] B-242 [S (under 2 min)] (T7 continual/few-shot) episodic recall of named facts after 1000 distractors -- task: facts -- baseline: no distractors -- success: recall unchanged
+- [x] B-243 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-244 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-245 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-246 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-247 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-248 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 2, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-249 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-250 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-251 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-252 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-253 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-254 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 5, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-255 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 70 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-256 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 70 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-257 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 300 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-258 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 300 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-259 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 1000 -- task: logic -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-260 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
+- [x] B-261 [S (under 2 min)] (T8 neurosymbolic-exact) store-and-derive: transitivity chains depth 10 -- task: logic -- baseline: P5 depth2 -- success: depth 10 exact
+- [x] B-262 [S (under 2 min)] (T8 neurosymbolic-exact) mixed radix and negative numbers in HDC arithmetic -- task: arith -- baseline: positive only -- success: exact
 - [ ] B-263 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
 - [ ] B-264 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
 - [ ] B-265 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
