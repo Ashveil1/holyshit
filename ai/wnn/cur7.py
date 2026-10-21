@@ -74,7 +74,7 @@ def mine_macros(progs):
         if n >= 2: out.append(k)
     MACROS[:] = out
     return out
-def search(train, abl, tag=''):
+def search(train, abl, tag='', tried_cap=6_000_000):
     ops = [o for o in LIB if not (abl == 'nolib' and o not in ('add', 'sub'))]
     E1 = list(LEAVES) + [(o, p, q) for o in ops for p in LEAVES for q in LEAVES if p != q or o in ('add',)]
     conds = conds_list(); bases = list(LEAVES)
@@ -85,6 +85,9 @@ def search(train, abl, tag=''):
     steps_pair = [(s0, s1) for s0 in E1 for s1 in E1]
     E1p = [e for e in E1 if isinstance(e, str) or e[0] in ('add', 'sub')]
     steps_single = [(s, 'b') for s in E1p] + [('a', s) for s in E1p]
+    if 'combleaf' in abl:  # B-004/B-005: comb expressions restricted to leaves only
+        comb_list = [None] + [(o, e, 0) for o in ops for e in LEAVES] + [(o, e, 1) for o in ops if o not in ('add',) for e in LEAVES]
+
     if abl == 'macro' and MACROS:
         def pri(st):
             for i, (m0, m1) in enumerate(MACROS):
@@ -101,7 +104,7 @@ def search(train, abl, tag=''):
         for init in ('y', 'one', 'zero', 'two'):
             st = steps_pair if (comb is None and abl != 'nopair') else steps_single
             if comb is not None and abl == 'nocombe': continue
-            if tried > 6_000_000: return None, tried, time.time() - t0
+            if tried > tried_cap: return None, tried, time.time() - t0
             for cond in conds:
                 for base in bases:
                     for (s0, s1) in st:
@@ -178,7 +181,11 @@ if __name__ == '__main__':
             VALID[:] = []
             if 'val' in abl:
                 vr = random.Random(5000 + seed); VALID[:] = [gen(task, vr, sc) for sc in (1, 2) for _ in range(16)]
-            p, tried, dt = search(train, abl)
+            cap = 6_000_000
+            if task in ('square', 'choose2', 'sumsq'):
+                if 'cap1m' in abl: cap = 1_000_000
+                elif 'cap3m' in abl: cap = 3_000_000
+            p, tried, dt = search(train, abl, tried_cap=cap)
         if p and task not in saved: saved[task] = p; json.dump(saved, open(sv, 'w'))
         if p:
             FOUNDPROG[task] = p
