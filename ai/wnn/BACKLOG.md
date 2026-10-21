@@ -291,190 +291,223 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-284 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
 - [ ] B-285 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
 - [ ] B-286 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-287 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: square -- baseline: single run -- success: kills overfit programs
-- [ ] B-288 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: even -- baseline: single run -- success: kills overfit programs
-- [ ] B-289 [S (under 2 min)] (T9 test-time-compute analogs) verify-then-accept: learned program must pass fresh random tests -- task: all skills -- baseline: P20 gate -- success: wrong-program rate to ~0
-- [ ] B-290 [S (under 2 min)] (T9 test-time-compute analogs) search budget as function of example count (adaptive) -- task: mod..sumto -- baseline: fixed cap -- success: same acc less CPU
-- [ ] B-291 [S (under 2 min)] (T9 test-time-compute analogs) ensemble of learner hypotheses with execution agreement -- task: text2prog -- baseline: top-1 -- success: +3 pts unseen frames
-- [ ] B-292 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-293 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-294 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-295 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-296 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-297 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-298 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-299 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-300 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-301 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-302 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-303 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-304 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-305 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-306 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-307 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-308 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-309 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-310 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-311 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-312 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-313 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-314 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-315 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-316 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-317 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-318 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-319 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-320 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-321 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-322 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-323 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-324 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-325 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-326 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-327 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-328 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-329 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-330 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-331 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-332 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-333 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-334 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-335 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-336 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-337 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-338 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-339 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-340 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-341 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-342 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-343 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-344 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-345 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-346 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-347 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-348 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-349 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-350 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-351 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-352 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-353 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-354 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-355 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
-- [ ] B-356 [S (under 2 min)] (T10 data efficiency) choose training examples to maximize hypothesis pruning -- task: mod -- baseline: random 25 -- success: same success with <=15 examples
-- [ ] B-357 [S (under 2 min)] (T10 data efficiency) choose training examples to maximize hypothesis pruning -- task: mul -- baseline: random 25 -- success: same success with <=15 examples
-- [ ] B-358 [S (under 2 min)] (T10 data efficiency) near-miss examples (answers off by one) value -- task: square -- baseline: random -- success: faster acceptance of correct program
-- [ ] B-359 [S (under 2 min)] (T10 data efficiency) duplicate/ambiguous example detection and removal -- task: all -- baseline: keep all -- success: no acc loss, fewer examples
-- [ ] B-360 [S (under 2 min)] (T10 data efficiency) cross-seed example-set transfer: do good sets generalize -- task: square -- baseline: fresh random -- success: chosen set helps new seed
-- [ ] B-361 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: square -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
-- [ ] B-362 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: choose2 -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
-- [ ] B-363 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: sumsq -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
-- [ ] B-364 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: dblfact -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
-- [ ] B-365 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: square -- baseline: P14 ordering -- success: same as above
-- [ ] B-366 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: choose2 -- baseline: P14 ordering -- success: same as above
-- [ ] B-367 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: sumsq -- baseline: P14 ordering -- success: same as above
-- [ ] B-368 [M (under 15 min)] (T1 induction-search) beam over combs ranked by frequency in learned programs -- task: square -- baseline: uniform order -- success: <50% tried
-- [ ] B-369 [M (under 15 min)] (T1 induction-search) beam over combs ranked by frequency in learned programs -- task: choose2 -- baseline: uniform order -- success: <50% tried
-- [ ] B-370 [M (under 15 min)] (T1 induction-search) seed-parallel racing (3 seeds, first hit wins) -- task: square -- baseline: single seed same CPU-min -- success: finds with less wall CPU per success
-- [ ] B-371 [M (under 15 min)] (T1 induction-search) seed-parallel racing (3 seeds, first hit wins) -- task: absdiff -- baseline: single seed same CPU-min -- success: finds with less wall CPU per success
-- [ ] B-372 [M (under 15 min)] (T1 induction-search) cache run() traces across candidate programs -- task: square -- baseline: no cache -- success: >2x throughput, same result
-- [ ] B-373 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: square -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-374 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-375 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-376 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-377 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: square -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-378 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-379 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-380 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-381 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: square -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-382 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-383 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-384 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-385 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: square -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-386 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-387 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-388 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-389 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: square -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-390 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-391 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-392 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-393 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: square -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-394 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-395 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-396 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
-- [ ] B-397 [M (under 15 min)] (T2 library-learning) anti-unify pairs of learned programs into partial schemas -- task: curriculum8 -- baseline: no schemas -- success: a schema reused by >=2 held-out tasks cuts tried >50%
-- [ ] B-398 [M (under 15 min)] (T3 text-to-program) it-references: "add 3 and 5 then double it" -- task: 2-step -- baseline: explicit number version -- success: acc within 5 pts of explicit
-- [ ] B-399 [M (under 15 min)] (T3 text-to-program) 3-step with mixed connectors en/th -- task: 3-step -- baseline: P21 same-conn -- success: no more than 5 pts below same-conn
-- [ ] B-400 [M (under 15 min)] (T3 text-to-program) Thai no-space char model for 2-step -- task: 2-step th -- baseline: spaced Thai -- success: >=.8 of spaced accuracy
-- [ ] B-401 [M (under 15 min)] (T3 text-to-program) digit-free numbers: learn from word-only training -- task: words -- baseline: P16 mixed -- success: report honest acc
-- [ ] B-402 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD on MNIST 1-pass vs MLP 1-pass -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, and no forgetting where MLP forgets
-- [ ] B-403 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size full -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-404 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size full -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-405 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size full -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-406 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size sensory-core -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-407 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size sensory-core -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-408 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size sensory-core -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-409 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size half -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-410 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size half -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-411 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size half -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-412 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size full -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-413 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size full -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-414 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size full -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-415 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size sensory-core -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-416 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size sensory-core -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-417 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size sensory-core -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-418 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size half -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-419 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size half -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-420 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size half -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-421 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size full -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-422 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size full -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-423 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size full -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-424 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size sensory-core -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-425 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size sensory-core -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-426 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size sensory-core -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-427 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size half -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-428 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size half -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-429 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size half -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
-- [ ] B-430 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) connectome reservoir with trained linear readout (ridge, pure py) -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beats raw or honest null
-- [ ] B-431 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) degree/spectral features of wiring as static embeddings -- task: mnist -- baseline: raw -- success: honest null or win
-- [ ] B-432 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) signed-synapse hand annotation from literature (AIY/AVA signs) -- task: tap -- baseline: unsigned -- success: 4/4 neurobiology checks
-- [ ] B-433 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-434 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-435 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-436 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-437 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-438 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-439 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-440 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-441 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-442 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-443 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-444 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-445 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-446 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-447 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-448 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-449 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-450 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-451 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-452 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-453 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-454 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-455 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-456 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-457 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-458 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-459 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-460 [M (under 15 min)] (T7 continual/few-shot) class-incremental MNIST 10-class full run, ours vs MLP -- task: mnist -- baseline: MLP -- success: retain >50 pts gap
-- [ ] B-461 [M (under 15 min)] (T7 continual/few-shot) permuted MNIST x5 tasks retention -- task: pmnist -- baseline: MLP -- success: retention gap
-- [ ] B-462 [M (under 15 min)] (T7 continual/few-shot) few-shot on text intents (SNIPS) vs NB baseline -- task: snips -- baseline: NB -- success: win at <=5 shots
-- [ ] B-463 [M (under 15 min)] (T8 neurosymbolic-exact) exact chained arithmetic 10x longer than P5 (4750 ops) -- task: arith -- baseline: P5 475 -- success: same 100% at 16KB? honest RAM report
-- [ ] B-464 [M (under 15 min)] (T8 neurosymbolic-exact) symbolic unit conversion word problems (template) -- task: word problems -- baseline: MLP text baseline -- success: exact where MLP fails
-- [ ] B-465 [M (under 15 min)] (T9 test-time-compute analogs) repair: on test failure, resume search from best partial -- task: square -- baseline: from scratch -- success: recovers in <30% extra time
-- [ ] B-466 [M (under 15 min)] (T10 data efficiency) fewest-examples curve for each curriculum skill -- task: 8 skills -- baseline: 25-example baseline -- success: curve in README
-- [ ] B-467 [L (under 2 h)] (T1 induction-search) iterative deepening on expression depth (allow depth-2, cost-ordered) -- task: absdiff -- baseline: depth-1 6M cap -- success: finds a correct program baseline misses
-- [ ] B-468 [L (under 2 h)] (T1 induction-search) iterative deepening on expression depth (allow depth-2, cost-ordered) -- task: lcm -- baseline: depth-1 6M cap -- success: finds a correct program baseline misses
-- [ ] B-469 [L (under 2 h)] (T2 library-learning) fragment = depth-2 expression mined from pairs of used depth-1 exprs -- task: absdiff -- baseline: depth-1 -- success: absdiff found or honest expressivity proof
-- [ ] B-470 [L (under 2 h)] (T3 text-to-program) learn number words jointly with 2-step (combined stage B) -- task: words+2step -- baseline: separate stages P16 -- success: no loss vs separate
-- [ ] B-471 [L (under 2 h)] (T4 baselines+harness) tiny transformer in pure numpy as reference point -- task: synonym task -- baseline: n/a -- success: runs CPU in <2h, acc recorded
-- [ ] B-472 [L (under 2 h)] (T6 connectome variants (low priority, P5 was negative)) STDP on tap circuit with reward gate -- task: tap -- baseline: no reward -- success: learned association > Hebbian P3
-- [ ] B-473 [L (under 2 h)] (T8 neurosymbolic-exact) grid transforms: learn 3 ARC-like ops by induction -- task: mini-arc -- baseline: random search -- success: finds 3/3, honest scope note
+- [ ] B-287 [S (under 2 min)] (T9 test-time-compute analogs) tie-break shorter -- task: square -- baseline: first-found -- success: fewer wrong programs
+- [ ] B-288 [S (under 2 min)] (T9 test-time-compute analogs) tie-break shorter -- task: even -- baseline: first-found -- success: fewer wrong programs
+- [ ] B-289 [S (under 2 min)] (T9 test-time-compute analogs) tie-break shorter -- task: choose2 -- baseline: first-found -- success: fewer wrong programs
+- [ ] B-290 [S (under 2 min)] (T9 test-time-compute analogs) tie-break first -- task: square -- baseline: first-found -- success: fewer wrong programs
+- [ ] B-291 [S (under 2 min)] (T9 test-time-compute analogs) tie-break first -- task: even -- baseline: first-found -- success: fewer wrong programs
+- [ ] B-292 [S (under 2 min)] (T9 test-time-compute analogs) tie-break first -- task: choose2 -- baseline: first-found -- success: fewer wrong programs
+- [ ] B-293 [S (under 2 min)] (T9 test-time-compute analogs) tie-break vote-margin -- task: square -- baseline: first-found -- success: fewer wrong programs
+- [ ] B-294 [S (under 2 min)] (T9 test-time-compute analogs) tie-break vote-margin -- task: even -- baseline: first-found -- success: fewer wrong programs
+- [ ] B-295 [S (under 2 min)] (T9 test-time-compute analogs) tie-break vote-margin -- task: choose2 -- baseline: first-found -- success: fewer wrong programs
+- [ ] B-296 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: square -- baseline: single run -- success: kills overfit programs
+- [ ] B-297 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: even -- baseline: single run -- success: kills overfit programs
+- [ ] B-298 [S (under 2 min)] (T9 test-time-compute analogs) verify-then-accept: learned program must pass fresh random tests -- task: all skills -- baseline: P20 gate -- success: wrong-program rate to ~0
+- [ ] B-299 [S (under 2 min)] (T9 test-time-compute analogs) search budget as function of example count (adaptive) -- task: mod..sumto -- baseline: fixed cap -- success: same acc less CPU
+- [ ] B-300 [S (under 2 min)] (T9 test-time-compute analogs) ensemble of learner hypotheses with execution agreement -- task: text2prog -- baseline: top-1 -- success: +3 pts unseen frames
+- [ ] B-301 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-302 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-303 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-304 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-305 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-306 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-307 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-308 [S (under 2 min)] (T10 data efficiency) selection random, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-309 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-310 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-311 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-312 [S (under 2 min)] (T10 data efficiency) selection random, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-313 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-314 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-315 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-316 [S (under 2 min)] (T10 data efficiency) selection random, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-317 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-318 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-319 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-320 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-321 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-322 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-323 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-324 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-325 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-326 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-327 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-328 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-329 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-330 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-331 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-332 [S (under 2 min)] (T10 data efficiency) selection maxdisagree, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-333 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-334 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-335 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-336 [S (under 2 min)] (T10 data efficiency) selection boundary, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-337 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-338 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-339 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-340 [S (under 2 min)] (T10 data efficiency) selection boundary, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-341 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-342 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-343 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-344 [S (under 2 min)] (T10 data efficiency) selection boundary, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-345 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-346 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-347 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-348 [S (under 2 min)] (T10 data efficiency) selection boundary, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-349 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-350 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-351 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-352 [S (under 2 min)] (T10 data efficiency) selection covering, n=5 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-353 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-354 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-355 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-356 [S (under 2 min)] (T10 data efficiency) selection covering, n=10 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-357 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-358 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-359 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-360 [S (under 2 min)] (T10 data efficiency) selection covering, n=15 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-361 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: mod -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-362 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: mul -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-363 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: square -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-364 [S (under 2 min)] (T10 data efficiency) selection covering, n=25 -- task: even -- baseline: random 25 -- success: same success fewer examples
+- [ ] B-365 [S (under 2 min)] (T10 data efficiency) choose training examples to maximize hypothesis pruning -- task: mod -- baseline: random 25 -- success: same success with <=15 examples
+- [ ] B-366 [S (under 2 min)] (T10 data efficiency) choose training examples to maximize hypothesis pruning -- task: mul -- baseline: random 25 -- success: same success with <=15 examples
+- [ ] B-367 [S (under 2 min)] (T10 data efficiency) near-miss examples (answers off by one) value -- task: square -- baseline: random -- success: faster acceptance of correct program
+- [ ] B-368 [S (under 2 min)] (T10 data efficiency) duplicate/ambiguous example detection and removal -- task: all -- baseline: keep all -- success: no acc loss, fewer examples
+- [ ] B-369 [S (under 2 min)] (T10 data efficiency) cross-seed example-set transfer: do good sets generalize -- task: square -- baseline: fresh random -- success: chosen set helps new seed
+- [ ] B-370 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: square -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
+- [ ] B-371 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: choose2 -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
+- [ ] B-372 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: sumsq -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
+- [ ] B-373 [M (under 15 min)] (T1 induction-search) macro-first ordering from mined step patterns -- task: dblfact -- baseline: P14 ordering, same seed/cap -- success: finds same program in <50% tried, or finds one baseline missed
+- [ ] B-374 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: square -- baseline: P14 ordering -- success: same as above
+- [ ] B-375 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: choose2 -- baseline: P14 ordering -- success: same as above
+- [ ] B-376 [M (under 15 min)] (T1 induction-search) mine cond+step macros (not just steps) -- task: sumsq -- baseline: P14 ordering -- success: same as above
+- [ ] B-377 [M (under 15 min)] (T1 induction-search) beam over combs ranked by frequency in learned programs -- task: square -- baseline: uniform order -- success: <50% tried
+- [ ] B-378 [M (under 15 min)] (T1 induction-search) beam over combs ranked by frequency in learned programs -- task: choose2 -- baseline: uniform order -- success: <50% tried
+- [ ] B-379 [M (under 15 min)] (T1 induction-search) seed-parallel racing (3 seeds, first hit wins) -- task: square -- baseline: single seed same CPU-min -- success: finds with less wall CPU per success
+- [ ] B-380 [M (under 15 min)] (T1 induction-search) seed-parallel racing (3 seeds, first hit wins) -- task: absdiff -- baseline: single seed same CPU-min -- success: finds with less wall CPU per success
+- [ ] B-381 [M (under 15 min)] (T1 induction-search) cache run() traces across candidate programs -- task: square -- baseline: no cache -- success: >2x throughput, same result
+- [ ] B-382 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-383 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-384 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-385 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-first -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-386 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-387 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-388 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-389 [M (under 15 min)] (T2 library-learning) macro min-count 2, order mine-only -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-390 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-391 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-392 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-393 [M (under 15 min)] (T2 library-learning) macro min-count 2, order interleave -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-394 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-395 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-396 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-397 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-first -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-398 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-399 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-400 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-401 [M (under 15 min)] (T2 library-learning) macro min-count 3, order mine-only -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-402 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: square -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-403 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: choose2 -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-404 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: sumsq -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-405 [M (under 15 min)] (T2 library-learning) macro min-count 3, order interleave -- task: dblfact -- baseline: P14 ordering -- success: <50% tried same success
+- [ ] B-406 [M (under 15 min)] (T2 library-learning) anti-unify pairs of learned programs into partial schemas -- task: curriculum8 -- baseline: no schemas -- success: a schema reused by >=2 held-out tasks cuts tried >50%
+- [ ] B-407 [M (under 15 min)] (T3 text-to-program) it-references: "add 3 and 5 then double it" -- task: 2-step -- baseline: explicit number version -- success: acc within 5 pts of explicit
+- [ ] B-408 [M (under 15 min)] (T3 text-to-program) 3-step with mixed connectors en/th -- task: 3-step -- baseline: P21 same-conn -- success: no more than 5 pts below same-conn
+- [ ] B-409 [M (under 15 min)] (T3 text-to-program) Thai no-space char model for 2-step -- task: 2-step th -- baseline: spaced Thai -- success: >=.8 of spaced accuracy
+- [ ] B-410 [M (under 15 min)] (T3 text-to-program) digit-free numbers: learn from word-only training -- task: words -- baseline: P16 mixed -- success: report honest acc
+- [ ] B-411 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 8, bleach off -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-412 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 8, bleach off -- task: pmnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-413 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 8, bleach off -- task: snips -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-414 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 8, bleach on -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-415 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 8, bleach on -- task: pmnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-416 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 8, bleach on -- task: snips -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-417 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 16, bleach off -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-418 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 16, bleach off -- task: pmnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-419 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 16, bleach off -- task: snips -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-420 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 16, bleach on -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-421 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 16, bleach on -- task: pmnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-422 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 16, bleach on -- task: snips -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-423 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 32, bleach off -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-424 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 32, bleach off -- task: pmnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-425 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 32, bleach off -- task: snips -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-426 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 32, bleach on -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-427 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 32, bleach on -- task: pmnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-428 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 32, bleach on -- task: snips -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-429 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 64, bleach off -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-430 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 64, bleach off -- task: pmnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-431 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 64, bleach off -- task: snips -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-432 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 64, bleach on -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-433 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 64, bleach on -- task: pmnist -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-434 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD tuple 64, bleach on -- task: snips -- baseline: MLP baseline -- success: within 3 pts, retention gap
+- [ ] B-435 [M (under 15 min)] (T5 weightless/HDC learners) WiSARD on MNIST 1-pass vs MLP 1-pass -- task: mnist -- baseline: MLP baseline -- success: within 3 pts, and no forgetting where MLP forgets
+- [ ] B-436 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size full -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-437 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size full -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-438 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size full -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-439 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size sensory-core -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-440 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size sensory-core -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-441 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size sensory-core -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-442 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size half -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-443 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size half -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-444 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout 1nn, size half -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-445 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size full -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-446 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size full -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-447 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size full -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-448 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size sensory-core -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-449 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size sensory-core -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-450 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size sensory-core -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-451 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size half -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-452 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size half -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-453 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout centroid, size half -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-454 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size full -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-455 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size full -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-456 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size full -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-457 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size sensory-core -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-458 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size sensory-core -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-459 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size sensory-core -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-460 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size half -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-461 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size half -- task: pmnist -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-462 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) readout ridge, size half -- task: snips -- baseline: raw-pixels same readout -- success: beat raw or honest null
+- [ ] B-463 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) connectome reservoir with trained linear readout (ridge, pure py) -- task: mnist-1shot -- baseline: raw-pixels same readout -- success: beats raw or honest null
+- [ ] B-464 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) degree/spectral features of wiring as static embeddings -- task: mnist -- baseline: raw -- success: honest null or win
+- [ ] B-465 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) signed-synapse hand annotation from literature (AIY/AVA signs) -- task: tap -- baseline: unsigned -- success: 4/4 neurobiology checks
+- [ ] B-466 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-467 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-468 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-469 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-470 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-471 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-472 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-473 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-474 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-475 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-476 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-477 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-478 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-479 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-480 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-481 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-482 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-483 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-484 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-485 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-486 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-487 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-488 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-489 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-490 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-491 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-492 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [ ] B-493 [M (under 15 min)] (T7 continual/few-shot) class-incremental MNIST 10-class full run, ours vs MLP -- task: mnist -- baseline: MLP -- success: retain >50 pts gap
+- [ ] B-494 [M (under 15 min)] (T7 continual/few-shot) permuted MNIST x5 tasks retention -- task: pmnist -- baseline: MLP -- success: retention gap
+- [ ] B-495 [M (under 15 min)] (T7 continual/few-shot) few-shot on text intents (SNIPS) vs NB baseline -- task: snips -- baseline: NB -- success: win at <=5 shots
+- [ ] B-496 [M (under 15 min)] (T8 neurosymbolic-exact) exact chained arithmetic 10x longer than P5 (4750 ops) -- task: arith -- baseline: P5 475 -- success: same 100% at 16KB? honest RAM report
+- [ ] B-497 [M (under 15 min)] (T8 neurosymbolic-exact) symbolic unit conversion word problems (template) -- task: word problems -- baseline: MLP text baseline -- success: exact where MLP fails
+- [ ] B-498 [M (under 15 min)] (T9 test-time-compute analogs) repair: on test failure, resume search from best partial -- task: square -- baseline: from scratch -- success: recovers in <30% extra time
+- [ ] B-499 [M (under 15 min)] (T10 data efficiency) fewest-examples curve for each curriculum skill -- task: 8 skills -- baseline: 25-example baseline -- success: curve in README
+- [ ] B-500 [L (under 2 h)] (T1 induction-search) iterative deepening on expression depth (allow depth-2, cost-ordered) -- task: absdiff -- baseline: depth-1 6M cap -- success: finds a correct program baseline misses
+- [ ] B-501 [L (under 2 h)] (T1 induction-search) iterative deepening on expression depth (allow depth-2, cost-ordered) -- task: lcm -- baseline: depth-1 6M cap -- success: finds a correct program baseline misses
+- [ ] B-502 [L (under 2 h)] (T2 library-learning) fragment = depth-2 expression mined from pairs of used depth-1 exprs -- task: absdiff -- baseline: depth-1 -- success: absdiff found or honest expressivity proof
+- [ ] B-503 [L (under 2 h)] (T3 text-to-program) learn number words jointly with 2-step (combined stage B) -- task: words+2step -- baseline: separate stages P16 -- success: no loss vs separate
+- [ ] B-504 [L (under 2 h)] (T4 baselines+harness) tiny transformer in pure numpy as reference point -- task: synonym task -- baseline: n/a -- success: runs CPU in <2h, acc recorded
+- [ ] B-505 [L (under 2 h)] (T6 connectome variants (low priority, P5 was negative)) STDP on tap circuit with reward gate -- task: tap -- baseline: no reward -- success: learned association > Hebbian P3
+- [ ] B-506 [L (under 2 h)] (T8 neurosymbolic-exact) grid transforms: learn 3 ARC-like ops by induction -- task: mini-arc -- baseline: random search -- success: finds 3/3, honest scope note
