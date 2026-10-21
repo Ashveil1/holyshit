@@ -267,42 +267,42 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-260 [S (under 2 min)] (T8 neurosymbolic-exact) HDC chain depth 10, facts 1000 -- task: arith -- baseline: P5 numbers -- success: exact at larger scale or honest limit
 - [x] B-261 [S (under 2 min)] (T8 neurosymbolic-exact) store-and-derive: transitivity chains depth 10 -- task: logic -- baseline: P5 depth2 -- success: depth 10 exact
 - [x] B-262 [S (under 2 min)] (T8 neurosymbolic-exact) mixed radix and negative numbers in HDC arithmetic -- task: arith -- baseline: positive only -- success: exact
-- [x] B-263 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
-- [x] B-264 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
-- [x] B-265 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
-- [x] B-266 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
-- [x] B-267 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
-- [x] B-268 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
-- [x] B-269 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
-- [x] B-270 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-271 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-272 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-273 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-274 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-275 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-276 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-277 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-278 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-279 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-280 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-281 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-282 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-283 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: square -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-284 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-285 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-286 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same
-- [ ] B-287 [S (under 2 min)] (T9 test-time-compute analogs) tie-break shorter -- task: square -- baseline: first-found -- success: fewer wrong programs
-- [ ] B-288 [S (under 2 min)] (T9 test-time-compute analogs) tie-break shorter -- task: even -- baseline: first-found -- success: fewer wrong programs
-- [ ] B-289 [S (under 2 min)] (T9 test-time-compute analogs) tie-break shorter -- task: choose2 -- baseline: first-found -- success: fewer wrong programs
-- [ ] B-290 [S (under 2 min)] (T9 test-time-compute analogs) tie-break first -- task: square -- baseline: first-found -- success: fewer wrong programs
-- [ ] B-291 [S (under 2 min)] (T9 test-time-compute analogs) tie-break first -- task: even -- baseline: first-found -- success: fewer wrong programs
-- [ ] B-292 [S (under 2 min)] (T9 test-time-compute analogs) tie-break first -- task: choose2 -- baseline: first-found -- success: fewer wrong programs
-- [ ] B-293 [S (under 2 min)] (T9 test-time-compute analogs) tie-break vote-margin -- task: square -- baseline: first-found -- success: fewer wrong programs
-- [ ] B-294 [S (under 2 min)] (T9 test-time-compute analogs) tie-break vote-margin -- task: even -- baseline: first-found -- success: fewer wrong programs
-- [ ] B-295 [S (under 2 min)] (T9 test-time-compute analogs) tie-break vote-margin -- task: choose2 -- baseline: first-found -- success: fewer wrong programs
-- [ ] B-296 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: square -- baseline: single run -- success: kills overfit programs
-- [ ] B-297 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: even -- baseline: single run -- success: kills overfit programs
-- [ ] B-298 [S (under 2 min)] (T9 test-time-compute analogs) verify-then-accept: learned program must pass fresh random tests -- task: all skills -- baseline: P20 gate -- success: wrong-program rate to ~0
+- [x] B-263 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-264 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-265 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-266 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.5 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-267 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: square -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-268 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-269 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-270 [S (under 2 min)] (T9 test-time-compute analogs) vote k=3, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-271 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-272 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-273 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-274 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.5 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-275 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: square -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-276 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-277 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-278 [S (under 2 min)] (T9 test-time-compute analogs) vote k=5, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-279 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: square -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-280 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: even -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-281 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-282 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.5 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-283 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: square -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-284 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: even -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-285 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: sumto -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-286 [S (under 2 min)] (T9 test-time-compute analogs) vote k=9, subset 0.8 -- task: choose2 -- baseline: single run -- success: wrong-program rate down, success same -- NULL BY ANALYSIS (LEDGER B-271..278: unanimous by construction, rate already 0)
+- [x] B-287 [S (under 2 min)] (T9 test-time-compute analogs) tie-break shorter -- task: square -- baseline: first-found -- success: fewer wrong programs
+- [x] B-288 [S (under 2 min)] (T9 test-time-compute analogs) tie-break shorter -- task: even -- baseline: first-found -- success: fewer wrong programs
+- [x] B-289 [S (under 2 min)] (T9 test-time-compute analogs) tie-break shorter -- task: choose2 -- baseline: first-found -- success: fewer wrong programs
+- [x] B-290 [S (under 2 min)] (T9 test-time-compute analogs) tie-break first -- task: square -- baseline: first-found -- success: fewer wrong programs
+- [x] B-291 [S (under 2 min)] (T9 test-time-compute analogs) tie-break first -- task: even -- baseline: first-found -- success: fewer wrong programs
+- [x] B-292 [S (under 2 min)] (T9 test-time-compute analogs) tie-break first -- task: choose2 -- baseline: first-found -- success: fewer wrong programs
+- [x] B-293 [S (under 2 min)] (T9 test-time-compute analogs) tie-break vote-margin -- task: square -- baseline: first-found -- success: fewer wrong programs
+- [x] B-294 [S (under 2 min)] (T9 test-time-compute analogs) tie-break vote-margin -- task: even -- baseline: first-found -- success: fewer wrong programs
+- [x] B-295 [S (under 2 min)] (T9 test-time-compute analogs) tie-break vote-margin -- task: choose2 -- baseline: first-found -- success: fewer wrong programs
+- [x] B-296 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: square -- baseline: single run -- success: kills overfit programs
+- [x] B-297 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: even -- baseline: single run -- success: kills overfit programs
+- [x] B-298 [S (under 2 min)] (T9 test-time-compute analogs) verify-then-accept: learned program must pass fresh random tests -- task: all skills -- baseline: P20 gate -- success: wrong-program rate to ~0
 - [ ] B-299 [S (under 2 min)] (T9 test-time-compute analogs) search budget as function of example count (adaptive) -- task: mod..sumto -- baseline: fixed cap -- success: same acc less CPU
 - [ ] B-300 [S (under 2 min)] (T9 test-time-compute analogs) ensemble of learner hypotheses with execution agreement -- task: text2prog -- baseline: top-1 -- success: +3 pts unseen frames
 - [ ] B-301 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
