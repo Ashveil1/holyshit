@@ -469,3 +469,11 @@ Answer accuracy on 3-step sentences ("<op> ... then <op2 c> then <op3 c>"), 5 se
 - same phrasing: n=300 .35 [.20-.58], n=1000 .53 [.46-.62] (the same model reads 2-step sentences at .64 and .82)
 - new connectors and frames: .13 and .15
 So a model that only saw up to two steps solves about half of the 3-step sentences with the same wording, which is roughly what chaining its 2-step reading accuracy would predict. It does not transfer to new wording. Hand-given: the clause grammar (left clause plus right-clause templates), the op library, the sentence templates (my own synthetic text), whitespace tokens. Answers are exact numbers, so chance is low, but I did not measure a baseline for 3-step. No 'it' references yet. Real free text is not covered.
+
+## P22: teaching a new wording by paraphrase (text2prog6.py)
+Zero-shot on new wordings stays weak (P15: .18 tokens, .41 char n-grams on unseen synonyms; P21: .15 for 3 steps), so this tests the cheapest teaching signal: a definition "NEW sentence means KNOWN sentence" (same numbers, no answer given). The learner answers the known side with what it already knows and fits the new side to that pseudo label. Compared with P15 fast mapping (the true answer is given). 3 seeds, 14 unseen-synonym templates, 40 unseen-number test sentences each.
+Accuracy on the new wording after k definitions / k labelled answers:
+- tokens: k=1 .75 / .83, k=2 .96 / .97, k=4 .96 / .97, k=8 .99 / .99 (k=0: .18)
+- char n-grams: k=1 .76 / .83, k=2 .92 / .94, k=4 .93 / .96, k=8 .97 / .99 (k=0: .41)
+The pseudo label (the learner's own reading of the known side) was right 91-95% of the time, which is why paraphrase teaching is a little behind answer teaching at k=1 and almost equal at k>=2.
+Not shown: any zero-shot gain. A new wording still needs 1-2 examples (by answer or by paraphrase). Hand-given: the split of a definition at 'means' (the learner does not learn that construction), the known-side templates, the synthetic text. The known side must already be in a wording the learner reads well.
