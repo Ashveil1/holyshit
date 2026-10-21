@@ -303,7 +303,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-296 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: square -- baseline: single run -- success: kills overfit programs
 - [x] B-297 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: even -- baseline: single run -- success: kills overfit programs
 - [x] B-298 [S (under 2 min)] (T9 test-time-compute analogs) verify-then-accept: learned program must pass fresh random tests -- task: all skills -- baseline: P20 gate -- success: wrong-program rate to ~0
-- [ ] B-299 [S (under 2 min)] (T9 test-time-compute analogs) search budget as function of example count (adaptive) -- task: mod..sumto -- baseline: fixed cap -- success: same acc less CPU
+- [x] B-299 [S (under 2 min)] (T9 test-time-compute analogs) search budget as function of example count (adaptive) -- task: mod..sumto -- baseline: fixed cap -- success: same acc less CPU -- NEGATIVE (LEDGER B-299: tried flat in n; adv boundary decides acceptance, no saving along n axis)
 - [ ] B-300 [S (under 2 min)] (T9 test-time-compute analogs) ensemble of learner hypotheses with execution agreement -- task: text2prog -- baseline: top-1 -- success: +3 pts unseen frames
 - [ ] B-301 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
 - [ ] B-302 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
@@ -525,3 +525,4 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-519 [S] babbling trajectory: production volume + correct-rate per day before criterion -- baseline: none -- success: documented curve
 - [ ] B-520 [M] word segmentation: no whitespace, syllable stream, learner must find word units -- baseline: given segmentation (P26) -- success: >=70% of P26 accuracy
 - [x] B-521 [L] two-word production ("แม่ มา") with order learned from dialogue statistics -- baseline: bag-of-words production -- success: order correct > chance on held-out scenes
+- [ ] B-522 [M] fix search-time CAP artifact: scale the CAP=400 search-step cap for boundary/adv evaluation of loop programs (mirror of the B-265 eval-time CAPF fix), then retest CURR skills (mod/mul/div/gcd/isprime/fact) under adv -- baseline: mod NOT FOUND at all n (B-299 interim) -- success: mod found and clean under adv at some n
