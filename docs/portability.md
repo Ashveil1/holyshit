@@ -11,7 +11,7 @@ Status of each tier. "Verified" names the evidence.
 | C native backend (`native/rt.c`) | CI | fails to build: `hs_segv` reads `REG_RSP` from `ucontext` (x86 only) |
 | Kernel | QEMU x86 | not planned yet |
 
-Verified under qemu-aarch64 emulation only: hs programs compiled by the IR backend to arm64. Not verified: the same on real arm64 hardware (the CI arm64 lane does not run it yet), JIT, the hosted compiler seed, ffi/dynamic images, the kernel.
+Verified on real arm64 hardware (GitHub ubuntu-24.04-arm, dispatch run 39831774715) and under qemu-aarch64: hs programs compiled by the IR backend to arm64, same result both ways (69 byte-identical to interp, 2 documented divergences, 14 refusals). Not verified: JIT, the hosted compiler seed, ffi/dynamic images, the kernel.
 
 The arm64 job in `ci.yml` is informational (`continue-on-error`, dispatch/schedule only) and lists
 which suites pass on real arm64. Known failures are the x86-only items in the table above.
