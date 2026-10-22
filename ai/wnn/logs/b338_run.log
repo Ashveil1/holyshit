@@ -1,0 +1,2 @@
+{"task": "mul", "cond": "R5", "seed": 0, "found": true, "tried": 4155513, "dt": 214.6, "wrong40": 0, "prog": "init b=y; if (lt b one) -> b; else step (a,(sub b one)); comb=('add', 'a', 0); post=id"}
+{"task": "mul", "cond": "B5", "seed": 0, "found": true, "tried": 4155513, "dt": 326.5, "wrong40": 0, "prog": "init b=y; if (lt b one) -> b; else step (a,(sub b one)); comb=('add', 'a', 0); post=id"}
