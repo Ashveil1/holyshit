@@ -22,3 +22,8 @@
 {"task": "square", "cond": "R5", "seed": 0, "found": true, "tried": 1305289, "dt": 1750.2, "wrong40": 8}
 {"task": "square", "cond": "R25", "seed": 0, "found": true, "tried": 2011721, "dt": 3679.2, "wrong40": 4}
 {"task": "square", "cond": "R5", "seed": 1, "found": false, "tried": 3875328, "dt": 7251.5, "wrong40": null}
+{"task": "square", "cond": "R25", "seed": 1, "found": false, "tried": 3875328, "dt": 7280.6, "wrong40": null}
+{"task": "square", "cond": "R5", "seed": 2, "found": true, "tried": 2011721, "dt": 5465.7, "wrong40": 3}
+{"task": "square", "cond": "R25", "seed": 2, "found": false, "tried": 3875328, "dt": 9103.5, "wrong40": null}
+{"task": "square", "cond": "B5", "seed": 0, "found": false, "tried": 3875328, "dt": 3655.2, "wrong40": null}
+{"task": "square", "cond": "B5t", "found": false, "tried": 3875328, "dt": 7269.4, "wrong40": null}

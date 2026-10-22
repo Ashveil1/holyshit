@@ -99,7 +99,9 @@ def search(train, abl, tag='', tried_cap=6_000_000):
             saved0 = _json.load(open(sv0))
             def tup0(e): return tuple(tup0(t) for t in e) if isinstance(e, list) else e
             for t0 in ('mod', 'mul', 'div', 'power', 'gcd', 'max', 'min'):
-                if t0 in saved0 and t0 not in EXCL:
+                if t0 in EXCL:
+                    LIB.pop(t0, None)  # B-523-H1: target task must NEVER resolve through the pinned library
+                elif t0 in saved0:
                     f0 = make_fn(tup0(saved0[t0]))
                     LIB[t0] = (lambda ff: (lambda a, b: ff(a, b)))(f0)
         search._baselib_done = True
