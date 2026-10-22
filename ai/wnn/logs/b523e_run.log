@@ -1,0 +1,3 @@
+{"task": "div", "seed": 1, "n": 3, "found": true, "tried": 4202713, "dt": 1842.9, "wrong": false, "gen": {"1": 40, "2": 40, "3": 40, "4": 40}, "prog": "init b=y; if (lt a b) -> zero; else step ((sub a b),b); comb=('add', 'one', 0); post=id", "note": "b523e clean re-verification (B-523-H1)"}
+{"task": "mul", "seed": 0, "n": 3, "found": true, "tried": 4155513, "dt": 221.4, "wrong": false, "gen": {"1": 40, "2": 40, "3": 40, "4": 40}, "prog": "init b=y; if (lt b one) -> b; else step (a,(sub b one)); comb=('add', 'a', 0); post=id", "note": "b523e clean re-verification (B-523-H1)"}
+DONE
