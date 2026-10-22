@@ -106,6 +106,45 @@ def call_builtin(name, args, ln):
       return keys(args[0])
     if name == "values":
       return values(args[0])
+    if name == "read_text":
+      return read_text(args[0])
+    if name == "write_text":
+      return write_text(args[0], args[1])
+    if name == "append_text":
+      return append_text(args[0], args[1])
+    if name == "exists":
+      return exists(args[0])
+    if name == "ls":
+      return ls(args[0])
+    if name == "mkdir":
+      return mkdir(args[0])
+    if name == "env":
+      return env(args[0])
+    if name == "argv":
+      av = argv()
+      return av[1:len(av)]
+    if name == "input":
+      if n == 0:
+        return input()
+      return input(args[0])
+    if name == "json_parse":
+      return json_parse(args[0])
+    if name == "json_str":
+      return json_str(args[0])
+    if name == "json_load":
+      return json_load(args[0])
+    if name == "json_save":
+      return json_save(args[0], args[1])
+    if name == "open":
+      return open(args[0], args[1])
+    if name == "read":
+      return read(args[0])
+    if name == "write":
+      return write(args[0], args[1])
+    if name == "close":
+      return close(args[0])
+    if name == "system":
+      return system(args[0])
   except as e:
     raise conv(e, ln)
   fail("IR: builtin '" + name + "' not in subset", ln)
@@ -398,8 +437,8 @@ def run_fn(st, key, fdef, frame):
         lab = tgt[1]
         prev = null
 SUPPORTED = ["const", "load", "stvar", "stglobal", "mkfunc", "bin", "un", "call", "print", "build_list", "build_dict", "index", "slice", "setindex", "iterseq", "copy", "phi", "try_push", "try_pop", "exc_str", "exc_pop", "unbind", "reraise"]
-BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find", "join", "has", "contains", "keys", "values"]
-OTHER_BUILTINS = ["alloc", "append_text", "argv", "as_int", "as_ptr", "close", "env", "exists", "http_get", "input", "json_load", "json_parse", "json_save", "json_str", "load32", "load64", "load8", "ls", "meminfo", "mkdir", "open", "pmm_alloc", "pmm_free", "pmm_total", "read", "read_mem", "read_text", "readkey", "readkey_code", "store32", "store64", "store8", "system", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "write", "write_bytes", "write_text"]
+BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find", "join", "has", "contains", "keys", "values", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "env", "argv", "input", "json_parse", "json_str", "json_load", "json_save", "open", "read", "write", "close", "system"]
+OTHER_BUILTINS = ["alloc", "as_int", "as_ptr", "http_get", "load32", "load64", "load8", "meminfo", "pmm_alloc", "pmm_free", "pmm_total", "read_mem", "readkey", "readkey_code", "store32", "store64", "store8", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "write_bytes"]
 def preflight(irmod):
   # Returns null when every instruction is supported, else a refusal message.
   # Builtins outside the supported subset are refused when the program loads
