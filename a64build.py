@@ -18,8 +18,14 @@ def _pack_a64(code, data, start_off, lo):
     return bytes(img)
 
 
+def _no_dyn(*a, **k):
+    from interp import HSErr
+    raise HSErr("arm64: dynamically linked extern libraries are not supported yet", 1)
+
+
 def build(prog, out):
     import irx64
+    x64.pack_dyn = _no_dyn
     x64gen.Asm = a64shim.Asm
     x64.pack = _pack_a64
     return irx64.build_irx64(prog, out)

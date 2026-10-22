@@ -371,9 +371,38 @@ class Asm:
         self.mov_x(9, T0)
 
     def div_r(self, r):
-        self.alu_rrr(0x9AC00800, T0, 9, R(r))      # udiv
-        self.w(0x9B008000 | (R(r) << 16) | (9 << 10) | (T0 << 5) | 2)
+        """rdx:rax / r -> rax quotient, rdx remainder (128/64, rdx < r)."""
+        d = R(r)
+        assert d not in (9, 2, 15, 16, 17)
+        fast, done, loop, take, nxt = (self.tmp(k) for k in ("df", "dd", "dl", "dt", "dn"))
+        self.fixups.append((len(self.code), fast, "cbz19"))
+        self.w(0xB4000000 | 2)                                   # cbz rdx, fast
+        self.movimm(T0, 64)
+        self.labels[loop] = len(self.code)
+        self.w(0xD340FC00 | (63 << 16) | (2 << 5) | T1)          # lsr x17,x2,#63
+        self.w(0xD3400000 | (63 << 16) | (62 << 10) | (2 << 5) | 2)   # lsl x2,x2,#1
+        self.w(0xD340FC00 | (63 << 16) | (9 << 5) | 15)          # lsr x15,x9,#63
+        self.w(0xAA000000 | (15 << 16) | (2 << 5) | 2)           # orr x2,x2,x15
+        self.w(0xD3400000 | (63 << 16) | (62 << 10) | (9 << 5) | 9)   # lsl x9,x9,#1
+        self.alu_rrr(0xEB000000, XZR, 2, d)                      # cmp x2,d
+        self.bc(2, take)                                         # b.hs take
+        self.fixups.append((len(self.code), take, "cbnz19"))
+        self.w(0xB5000000 | T1)                                  # cbnz x17, take
+        self.fixups.append((len(self.code), nxt, "b26"))
+        self.w(0x14000000)
+        self.labels[take] = len(self.code)
+        self.alu_rrr(0xCB000000, 2, 2, d)                        # sub x2,x2,d
+        self.w(0x91000400 | (9 << 5) | 9)                        # add x9,x9,#1
+        self.labels[nxt] = len(self.code)
+        self.w(0xF1000400 | (T0 << 5) | T0)                      # subs x16,x16,#1
+        self.bc(1, loop)                                         # b.ne loop
+        self.fixups.append((len(self.code), done, "b26"))
+        self.w(0x14000000)
+        self.labels[fast] = len(self.code)
+        self.alu_rrr(0x9AC00800, T0, 9, d)                       # udiv x16
+        self.w(0x9B008000 | (d << 16) | (9 << 10) | (T0 << 5) | 2)
         self.mov_x(9, T0)
+        self.labels[done] = len(self.code)
 
     def bsr_rr(self, d, s):
         self.w(0xDAC01000 | (R(s) << 5) | T0)      # clz x16
@@ -391,12 +420,18 @@ class Asm:
 
     def shl_ri8(self, d, n):
         self.w(0xD3400000 | (((-n) % 64) << 16) | ((63 - n) << 10) | (R(d) << 5) | R(d))
+        self.cmpz(R(d))
+        self.kind = "sub"
 
     def shr_ri8(self, d, n):
         self.w(0xD340FC00 | (n << 16) | (R(d) << 5) | R(d))
+        self.cmpz(R(d))
+        self.kind = "sub"
 
     def sar_ri8(self, d, n):
         self.w(0x9340FC00 | (n << 16) | (R(d) << 5) | R(d))
+        self.cmpz(R(d))
+        self.kind = "sub"
 
     def shl_cl(self, d):
         self.alu_rrr(0x9AC02000, R(d), R(d), 10)
@@ -600,6 +635,13 @@ class Asm:
                 self.fixups.append((len(self.code), "__a64_sysdo", "b26"))
                 self.w(0x14000000)
             for x86, a in sorted(self.SYS.items()):
+                if x86 == 257:       # O_DIRECTORY differs: x86 0x10000, arm64 0x4000
+                    entry(x86, [0xD2800000 | (a << 5) | 8,
+                                0xD3400000 | (16 << 16) | (16 << 10) | (2 << 5) | T0,
+                                0xD2800000 | (0xC000 << 5) | T1,
+                                0x9B007C00 | (T1 << 16) | (T0 << 5) | T1,
+                                0xCB000000 | (T1 << 16) | (2 << 5) | 2])
+                    continue
                 entry(x86, [0xD2800000 | (a << 5) | 8])
             for x86, a in sorted(self.SYS_AT.items()):
                 entry(x86, [0xD2800000 | (a << 5) | 8,
@@ -652,7 +694,7 @@ class Asm:
             elif kind == "tbz":
                 off = (tgt - pc) >> 2
                 struct.pack_into("<I", out, pos, (w & 0xFFF8001F) | ((off & 0x3FFF) << 5))
-            elif kind == "cbz19":
+            elif kind in ("cbz19", "cbnz19"):
                 off = (tgt - pc) >> 2
                 struct.pack_into("<I", out, pos, (w & 0xFF00001F) | ((off & 0x7FFFF) << 5))
             elif kind.startswith("bcond19"):
