@@ -304,3 +304,14 @@ All 35 items are parameter or task variants of two mechanisms already measured o
 - B-411, B-414 (WiSARD tuple 8, MNIST): FAIL by direct measurement. B-236's first attempt with 8-bit tuples saturated at .30 accuracy (classic node saturation) vs the MLP baseline near .9; the "within 3 pts" criterion is decisively failed at this grain. Bleaching is a decision-time tie-break and cannot recover a saturated node. The demonstrated-right grain is 28-bit tuples (B-236 PASS, .9115).
 - B-436..B-462 (27 connectome readout x size variants): BLOCKED by the measured runtime wall, not by science. B-240 measured the same harness family at >2.4 s/sample (cost driver: per-sample state_hex encoding + 784-pixel pmap in the hosted runtime); phase A alone is 2-3 CPU-hours, so no variant fits its M (<15 min) box. All 27 ticked as blocked-by-B-240; they reopen only after the bit-vector state encoding the B-240 verdict calls for.
 - Remaining T5/T6 grid cells (WiSARD tuple 16/32/64, pmnist/snips, B-463..465) stay OPEN: no direct measurement transfers honestly (snips is a different encoding; the saturation edge between tuple 8 and 28 is unmapped). Queued behind higher-value work.
+
+## B-381P pre-registration (2026-10-22) - cross-candidate evaluation caching (B-381)
+
+Question: does caching run()/ev() traces ACROSS candidates give >2x search throughput with identical results?
+Prior facts: B-058 profiled choose2 - every candidate is decided by exactly one r0 evaluation (no multi-example redundancy). cur7.ev already carries an lru_cache(maxsize=300000); whole-run traces are never shared (each candidate spec is unique).
+Analysis pre-run: sharing exists mainly at loop iteration 0 (same train r0 inputs across the ~E1-sized s1 block for a fixed s0, and vice versa); after iteration 1 the (a,b) trajectory depends on both steps, so trajectories diverge. Expected honest outcome: no 2x available from bigger caching; the interesting sub-question is whether the 300K LRU's miss bookkeeping actually COSTS time vs no cache.
+Design (b381.py, one process, clean config: baselib pin, EXCL={square}, no adv, square R5 seed-0 train, tried_cap=400000, cap 6M ordering identical):
+- Arm A: current ev lru_cache(maxsize=300000) (baseline)
+- Arm B: ev lru_cache(maxsize=2000000)
+- Arm C: ev unwrapped (no cache)
+Success criterion (from the backlog item): any arm >2x throughput vs baseline with IDENTICAL decisions (same tried count at cap, same PROF evals, same NOT FOUND / same program). Wall time measured per arm; ev.cache_clear() between arms.
