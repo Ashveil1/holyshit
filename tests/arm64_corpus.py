@@ -15,7 +15,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 QEMU = os.environ.get("QEMU_AARCH64") or shutil.which("qemu-aarch64") or \
     shutil.which("qemu-aarch64-static") or "/tmp/qemu-user/usr/bin/qemu-aarch64-static"
-if not os.path.exists(QEMU):
+import platform
+NATIVE = platform.machine() in ("aarch64", "arm64")   # real arm64 host: no emulator
+if NATIVE:
+    QEMU = None
+elif not os.path.exists(QEMU):
     print("ok   skip arm64 corpus: qemu-aarch64 unavailable")
     sys.exit(0)
 env0 = dict(os.environ)
@@ -70,7 +74,7 @@ with tempfile.TemporaryDirectory(prefix="hs-a64.") as d:
             msg = (b.stdout + b.stderr).decode("utf-8", "replace").strip().splitlines()
             print(f"build {name}: {msg[-1][:120] if msg else b.returncode}")
             continue
-        got = run([QEMU, out] + pargs, stdin, env)
+        got = run(([] if NATIVE else [QEMU]) + [out] + pargs, stdin, env)
         if got == ref:
             ok += 1
             print(f"ok   {name}")
