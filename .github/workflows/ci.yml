@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: native backend deps (gcc + Boehm GC)
-        run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev
+        run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-user
       - name: tests write scratch files under /tmp/opencode
         run: mkdir -p /tmp/opencode
       - name: all suites except the QEMU kernel suite
@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-system-x86
+      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-system-x86 qemu-user
       - run: mkdir -p /tmp/opencode
       - name: every suite including xkernel on QEMU
         run: python3 tests/run_all.py
