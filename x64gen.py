@@ -998,7 +998,7 @@ class Gen:
             a.lea_m("rdi", "rax", 16)
             a.lea_m("rsi", "rcx", 16)
             a.mov_rr("rcx", "rdx")
-            a.code += bytes([0xF3, 0xA6])  # repe cmpsb
+            a.repe_cmpsb()
             a.setcc_al("e")
             a.jmp(lab_eq_done)
             a.label(lab_eq_noteq)
@@ -1011,7 +1011,7 @@ class Gen:
             a.label(lab_eq_done)
             self.box_bool_al()
             if op == "!=":
-                a.code += bytes([0x48, 0x83, 0xF0, 0x08])  # xor rax, 8
+                a.xor_rax_8()
             return
 
         if op in ("<", ">", "<=", ">="):
@@ -3252,13 +3252,13 @@ class Gen:
             self.sev(args[0], sc, mod)
             if name == "load8":
                 # movzx rax, byte [rax]
-                a.code += bytes([0x48, 0x0F, 0xB6, 0x00])
+                a.ld8_rax()
             elif name == "load32":
                 # mov eax, [rax] (zero-extends)
-                a.code += bytes([0x8B, 0x00])
+                a.ld32_rax()
             else:
                 # mov rax, [rax] -- raw 64-bit, no tagging
-                a.code += bytes([0x48, 0x8B, 0x00])
+                a.ld64_rax()
             return
         if name in ("store8", "store32", "store64"):
             if len(args) != 2:
@@ -3268,11 +3268,11 @@ class Gen:
             self.sev(args[0], sc, mod)
             a.pop_r("rcx")
             if name == "store8":
-                a.code += bytes([0x88, 0x08])  # mov [rax], cl
+                a.st8_rax_cl()  # mov [rax], cl
             elif name == "store32":
-                a.code += bytes([0x89, 0x08])  # mov [rax], ecx
+                a.st32_rax_ecx()  # mov [rax], ecx
             else:
-                a.code += bytes([0x48, 0x89, 0x08])  # mov [rax], rcx
+                a.st64_rax_rcx()  # mov [rax], rcx
             a.mov_rr("rax", "rcx")
             return
         if name in ("as_ptr", "as_int"):
@@ -6976,22 +6976,7 @@ class Gen:
         a.sub_ri32("rsp", 48)
         a.mov_mr("rbp", "rdi", -8)      # a bits
         a.mov_mr("rbp", "rsi", -16)     # b bits
-        a.mov_rr("rax", "rbp")
-        a.sub_ri32("rax", 16)
-        a.fld_m64("rax", 0)             # st0 = b
-        a.mov_rr("rax", "rbp")
-        a.sub_ri32("rax", 8)
-        a.fld_m64("rax", 0)             # st0 = a, st1 = b
-        lab_fp = self.new_tmp("fm")
-        a.label(lab_fp)
-        a.fprem()
-        a.fnstsw_ax()
-        a.sahf()
-        a.jcc("p", lab_fp)              # C2 still set -> partial, repeat
-        a.fstp_st1()                    # drop st1, keep the remainder
-        a.mov_rr("rax", "rbp")
-        a.sub_ri32("rax", 24)
-        a.fstp_m64("rax", 0)            # [rbp-24] = C remainder, FPU empty
+        a.fmod_trunc_m24()              # [rbp-24] = C remainder of [rbp-8] by [rbp-16]
         a.mov_rm("rax", "rbp", -24)     # rem bits
         a.mov_rr("r11", "rax")
         a.shl_ri8("r11", 1)
@@ -10275,12 +10260,12 @@ class Gen:
         a.jcc("ae", lab_prefix)
         a.movzx_eax_mx("r10", "rcx", 1, 16)
         a.movzx_edx_mx("r11", "rcx", 1, 16)
-        a.code += bytes([0x38, 0xD0])  # cmp al, dl
+        a.cmp_al_dl()  # cmp al, dl
         a.jcc("ne", lab_diff)
         a.add_ri32("rcx", 1)
         a.jmp(lab_loop)
         a.label(lab_diff)
-        a.code += bytes([0x38, 0xD0])  # cmp al, dl (flags again)
+        a.cmp_al_dl()  # cmp al, dl (flags again)
         a.mov_ri32("rax", 1)
         a.jcc("g", lab_fin)           # al > dl -> 1
         a.mov_ri32("rax", -1)
@@ -11097,7 +11082,7 @@ class Gen:
         a.jcc("ae", lab_sp2_mt)
         a.movzx_eax_mx("r8", "rcx", 1, 0)
         a.movzx_edx_mx("r9", "rcx", 1, 0)
-        a.code += bytes([0x38, 0xD0])  # cmp al, dl
+        a.cmp_al_dl()  # cmp al, dl
         lab_sp2_nm = self.new_tmp("sp")
         a.jcc("ne", lab_sp2_nm)
         a.add_ri32("rcx", 1)
@@ -11176,7 +11161,7 @@ class Gen:
         a.jcc("ae", lab_fn_mt)
         a.movzx_eax_mx("rdi", "rcx", 1, 0)
         a.movzx_edx_mx("r9", "rcx", 1, 0)
-        a.code += bytes([0x38, 0xD0])  # cmp al, dl
+        a.cmp_al_dl()  # cmp al, dl
         a.jcc("ne", lab_fn_nm)
         a.add_ri32("rcx", 1)
         a.jmp(lab_fn_in)

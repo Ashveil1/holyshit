@@ -755,6 +755,55 @@ class Asm:
     def movzx_eax_al(self):
         self.code += bytes([0x0F, 0xB6, 0xC0])
 
+    def fmod_trunc_m24(self):
+        """[rbp-24] = fmod([rbp-8], [rbp-16]) via x87 fprem (rax clobbered)."""
+        self.mov_rr("rax", "rbp")
+        self.sub_ri32("rax", 16)
+        self.fld_m64("rax", 0)             # st0 = b
+        self.mov_rr("rax", "rbp")
+        self.sub_ri32("rax", 8)
+        self.fld_m64("rax", 0)             # st0 = a, st1 = b
+        self._fm = getattr(self, "_fm", 0) + 1
+        lab = f"fm_fprem_{self._fm}"
+        self.label(lab)
+        self.fprem()
+        self.fnstsw_ax()
+        self.sahf()
+        self.jcc("p", lab)                 # C2 still set -> partial, repeat
+        self.fstp_st1()                    # drop st1, keep the remainder
+        self.mov_rr("rax", "rbp")
+        self.sub_ri32("rax", 24)
+        self.fstp_m64("rax", 0)
+
+    # -- fixed byte forms (named so other targets can implement them) --
+    def repe_cmpsb(self):
+        self.code += bytes([0xF3, 0xA6])
+
+    def xor_rax_8(self):
+        self.code += bytes([0x48, 0x83, 0xF0, 0x08])
+
+    def ld8_rax(self):
+        self.code += bytes([0x48, 0x0F, 0xB6, 0x00])    # movzx rax, byte [rax]
+
+    def ld32_rax(self):
+        self.code += bytes([0x8B, 0x00])                # mov eax, [rax]
+
+    def ld64_rax(self):
+        self.code += bytes([0x48, 0x8B, 0x00])          # mov rax, [rax]
+
+    def st8_rax_cl(self):
+        self.code += bytes([0x88, 0x08])
+
+    def st32_rax_ecx(self):
+        self.code += bytes([0x89, 0x08])
+
+    def st64_rax_rcx(self):
+        self.code += bytes([0x48, 0x89, 0x08])
+
+    def cmp_al_dl(self):
+        self.code += bytes([0x38, 0xD0])
+
+
     # -- resolve --
     def resolve(self, text_vaddr, data_vaddr):
         out = bytearray(self.code)
