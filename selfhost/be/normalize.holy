@@ -34,17 +34,24 @@ def defaults_fill(x, table):
     for v in x:
       defaults_fill(v, table)
 def strip_defaults(x):
+  # Mutate in place; only defs carrying a "defaults" key get rebuilt.
+  # Output is content-identical to the old full rebuild (matches
+  # interp.py's strip, which also mutates), and nothing downstream
+  # depends on node identity.
   if pyrt.py_type(x) == "dict":
-    out = {}
+    if has(x, "defaults"):
+      out = {}
+      for k in keys(x):
+        if k != "defaults":
+          out[k] = strip_defaults(x[k])
+      return out
     for k in keys(x):
-      if k != "defaults":
-        out[k] = strip_defaults(x[k])
-    return out
+      x[k] = strip_defaults(x[k])
+    return x
   if pyrt.py_islist(x):
-    out = []
-    for v in x:
-      append(out, strip_defaults(v))
-    return out
+    for i in range(len(x)):
+      x[i] = strip_defaults(x[i])
+    return x
   return x
 def stamp(x, ln):
   if pyrt.py_type(x) == "dict":
@@ -112,7 +119,26 @@ def prelude_add(nm, need):
   for dep in prelude_data.PRELUDE[nm][1]:
     prelude_add(dep, need)
   append(need, nm)
+def prelude_maybe(src):
+  # Cheap textual prescan: a USER call node can only exist when the
+  # source holds "name(" at a word boundary. False positives (comments,
+  # strings) just take the full path; a miss exactly matches the old
+  # walk finding no calls, which returned body unchanged.
+  for nm in prelude_data.USER:
+    pat = nm + "("
+    off = 0
+    while true:
+      i = find(src[off:len(src)], pat)
+      if i < 0:
+        break
+      i = i + off
+      if i == 0 or not (src[i - 1] in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789"):
+        return true
+      off = i + len(pat)
+  return false
 def inject_prelude(body, src):
+  if not prelude_maybe(src):
+    return body
   calls = []
   defs = {}
   prelude_walk(body, calls, defs)
@@ -147,8 +173,10 @@ def parse(src):
   body = parselib.parse(src)
   table = {}
   defaults_find(body, table)
-  defaults_fill(body, table)
-  defaults_fill(body, table)
-  body = strip_defaults(body)
+  if len(keys(table)) > 0:
+    defaults_fill(body, table)
+    # second pass: filled args may themselves hold calls with defaults
+    defaults_fill(body, table)
+    body = strip_defaults(body)
   body = steps(body, [0])
   return inject_prelude(body, src)
