@@ -896,26 +896,93 @@ def _verify_func(fn, funcs):
         reach.add(l)
         stack.extend(succs[l])
 
-    dom = {l: set(labels) for l in labels}
-    dom[fn["entry"]] = {fn["entry"]}
-    changed = True
-    while changed:
-        changed = False
-        for l in labels:
-            if l == fn["entry"]:
-                continue
-            ps = preds[l]
-            new = set.intersection(*(dom[p] for p in ps)) | {l} if ps \
-                else {l}
-            if new != dom[l]:
-                dom[l] = new
-                changed = True
+    # Dominance. Fast path: reverse-postorder immediate dominators
+    # (Cooper-Harvey-Kennedy) over reachable blocks, mirroring
+    # selfhost/be/verify.holy so both verifiers accept/reject identical
+    # IR. The iterative full-set fixpoint is kept as the exact fallback
+    # for the one case where its all-labels init leaks into reachable
+    # verdicts: a reachable block with an unreachable predecessor (which
+    # irbuild never emits).
+    need_naive = any(
+        p not in reach for l in reach for p in preds[l])
+    dom = None
+    idom = None
+    if need_naive:
+        dom = {l: set(labels) for l in labels}
+        dom[fn["entry"]] = {fn["entry"]}
+        changed = True
+        while changed:
+            changed = False
+            for l in labels:
+                if l == fn["entry"]:
+                    continue
+                ps = preds[l]
+                new = set.intersection(*(dom[p] for p in ps)) | {l} if ps \
+                    else {l}
+                if new != dom[l]:
+                    dom[l] = new
+                    changed = True
+    else:
+        order = []
+        stack = [[fn["entry"], 0]]
+        seen = {fn["entry"]}
+        while stack:
+            top = stack[-1]
+            sl = succs[top[0]]
+            if top[1] < len(sl):
+                w = sl[top[1]]
+                top[1] += 1
+                if w not in seen:
+                    seen.add(w)
+                    stack.append([w, 0])
+            else:
+                order.append(top[0])
+                stack.pop()
+        rpo = order[::-1]
+        rpo_num = {l: i for i, l in enumerate(rpo)}
+        idom = {fn["entry"]: fn["entry"]}
+        changed = True
+        while changed:
+            changed = False
+            for b in rpo:
+                if b == fn["entry"]:
+                    continue
+                ni = None
+                for p in preds[b]:
+                    if p not in idom:
+                        continue
+                    if ni is None:
+                        ni = p
+                    else:
+                        b1, b2 = p, ni
+                        while b1 != b2:
+                            while rpo_num[b1] > rpo_num[b2]:
+                                b1 = idom[b1]
+                            while rpo_num[b2] > rpo_num[b1]:
+                                b2 = idom[b2]
+                        ni = b1
+                if ni is not None and idom.get(b) != ni:
+                    idom[b] = ni
+                    changed = True
 
     def _use(t, at, ln):
         if t not in defs:
             raise HSErr(f"IR: undefined temp '{t}'", ln)
-        if at in reach and defs[t] not in dom[at]:
-            raise HSErr(f"IR: temp '{t}' does not dominate use", ln)
+        if at in reach:
+            if dom is not None:
+                ok = defs[t] in dom[at]
+            else:
+                ok = False
+                b = at
+                while True:
+                    if b == defs[t]:
+                        ok = True
+                        break
+                    if b == fn["entry"]:
+                        break
+                    b = idom[b]
+            if not ok:
+                raise HSErr(f"IR: temp '{t}' does not dominate use", ln)
 
     for b in fn["blocks"]:
         tm = b["term"]
