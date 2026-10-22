@@ -1,0 +1,1 @@
+{"task": "power", "cond": "R5", "seed": 0, "found": true, "tried": 4450489, "dt": 362.9, "wrong40": 0, "prog": "init b=y; if (lt b one) -> one; else step (a,(sub b one)); comb=('mul', 'a', 0); post=id"}
