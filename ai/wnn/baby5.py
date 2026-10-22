@@ -102,11 +102,14 @@ class Baby5P(Baby5):
         super().__init__()
         s.cooc = defaultdict(lambda: defaultdict(float))  # word-word line co-occurrence
         s.oc = defaultdict(int)                            # class-bigram order counts (inferred classes)
+        s.bg = defaultdict(int)                            # ordered adjacent word bigrams (class-free)
     def hear(s, words, present, wcls=None):
         super().hear(words, present)
         for w1 in words:
             for w2 in words:
                 if w1 != w2: s.cooc[w1][w2] += 1.0
+        for w1, w2 in zip(words, words[1:]):
+            s.bg[(w1, w2)] += 1
         if wcls:
             for w1, w2 in zip(words, words[1:]):
                 c1, c2 = wcls.get(w1), wcls.get(w2)
@@ -231,3 +234,73 @@ if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'p29a':
             ok, tot = run_llm(seed, f, pa, pb, covered)
             accs.append(ok / tot)
         print(f'f={f}: grounding {sum(accs)/len(accs):.2f} (per-seed {["%.2f"%a for a in accs]}, n={tot})', flush=True)
+
+# --- chunk 4: P29b (NMI, k=4 pre-stated; k=8 supplementary) + P29c (comprehension argmax, production order) ---
+def run3(seed, f, pool_a, pool_b, covered, days=5, scenes_per_day=100):
+    rng = random.Random(2000 + seed); w = WorldC(rng, covered); b = Baby5P()
+    for day in range(days):
+        for _ in range(scenes_per_day):
+            sc = w.scene(); pres = w.tokens(sc)
+            for _ in range(rng.choice((2, 3, 4))):
+                b.hear(pool_a(rng, sc) if rng.random() < f else pool_b(rng), pres)
+    true_cls = {}
+    for wd in b.assoc:
+        if wd in WE.values(): true_cls[wd] = 'E'
+        elif wd in WA.values(): true_cls[wd] = 'A'
+        elif wd in WL.values(): true_cls[wd] = 'L'
+        elif wd in FILL: true_cls[wd] = 'P'
+        else: true_cls[wd] = 'F'
+    heard = [wd for wd in b.assoc if sum(b.cooc[wd].values()) >= 5]
+    res = {}
+    for k in (4, 8):
+        clusters = cluster_words(b, heard, k=k)
+        pred = {}
+        for ci, cl in enumerate(clusters):
+            for wd in cl: pred[wd] = ci
+        res[f'nmi{k}'] = nmi([true_cls[wd] for wd in heard], [pred[wd] for wd in heard])
+        if k == 4:
+            wcls = label_clusters(b, clusters); cl4 = clusters
+    # order pass: 1 fresh day counting inferred-class bigrams
+    for _ in range(scenes_per_day):
+        sc = w.scene(); pres = w.tokens(sc)
+        for _ in range(rng.choice((2, 3, 4))):
+            b.hear(pool_a(rng, sc) if rng.random() < f else pool_b(rng), pres, wcls)
+    fwd, rev = b.oc.get(('E', 'A'), 0), b.oc.get(('A', 'E'), 0)
+    # production: say2 for 20 random covered pairs, E-first correct
+    def say2(e_th, a_th):
+        cE, cA = wcls.get(e_th), wcls.get(a_th)
+        if not cE or not cA: return None
+        f_, r_ = b.oc.get((cE, cA), 0), b.oc.get((cA, cE), 0)
+        if f_ + r_ == 0: return None  # no order evidence: honest failure, not a tie-break win
+        return f_ > r_  # True = E-first
+    prod_ok, prod_n = 0, 20
+    prng = random.Random(77); prng2 = random.Random(77)
+    for _ in range(prod_n):
+        e, a = prng.choice(covered)
+        r = say2(WE[e], WA[a])
+        if r: prod_ok += 1
+    # comprehension: 200 random A-lines, argmax assoc token of entity/action word == true token
+    comp_ok, comp_n = 0, 0
+    crng = random.Random(88)
+    for _ in range(200):
+        e, a = crng.choice(covered)
+        for wd, true_tok in ((WE[e], TOK[('E', e)]), (WA[a], TOK[('A', a)])):
+            av = b.assoc.get(wd, {})
+            if av:
+                comp_n += 1
+                comp_ok += max(av.items(), key=lambda kv: kv[1])[0] == true_tok
+    bg_ok = 0
+    for _ in range(prod_n):
+        e, a = prng2.choice(covered)
+        bf, br = b.bg.get((WE[e], WA[a]), 0), b.bg.get((WA[a], WE[e]), 0)
+        if bf > br: bg_ok += 1
+    res.update(words=len(heard), ea_fwd=fwd, ea_rev=rev, prod=f'{prod_ok}/{prod_n}', prod_bg=f'{bg_ok}/{prod_n}',
+               comp=comp_ok / comp_n if comp_n else None, comp_n=comp_n,
+               clusters=[sorted(true_cls[wd] for wd in cl) for cl in cl4])
+    return res
+if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'p29bc':
+    pa, pb, covered = load_llm_pools(sys.argv[2])
+    for f in (1.0, 0.5, 0.2):
+        for seed in range(3):
+            r = run3(seed, f, pa, pb, covered)
+            print(f"f={f} seed{seed}: nmi4={r['nmi4']:.2f} nmi8={r['nmi8']:.2f} prod_cls={r['prod']} prod_bg={r['prod_bg']} comp={r['comp']:.2f}(n={r['comp_n']}) EA fwd/rev={r['ea_fwd']}/{r['ea_rev']}", flush=True)

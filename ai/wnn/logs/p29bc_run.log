@@ -1,0 +1,20 @@
+f=1.0: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.5: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.2: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.0: grounding 0.00 (per-seed ['0.00', '0.00', '0.00', '0.00', '0.00'], n=14)
+f=1.0 seed0: nmi4=0.08 nmi8=0.09 prod=20/20 comp=0.98(n=400) EA fwd/rev=17/18 clusters=[['A', 'A', 'A', 'A', 'E', 'E', 'E', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'], ['A', 'A', 'E', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F'], ['E', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F'], ['F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F']]
+f=1.0 seed1: nmi4=0.07 nmi8=0.12 prod=20/20 comp=0.98(n=400) EA fwd/rev=0/0 clusters=[['A', 'A', 'E', 'E', 'E', 'E', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'P', 'P', 'P', 'P', 'P', 'P', 'P'], ['A', 'A', 'E', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F'], ['A', 'A', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'P'], ['F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F']]
+f=1.0 seed2: nmi4=0.06 nmi8=0.11 prod=20/20 comp=0.98(n=400) EA fwd/rev=18/18 clusters=[['A', 'A', 'A', 'A', 'E', 'E', 'E', 'E', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'P', 'P', 'P', 'P', 'P', 'P', 'P'], ['A', 'A', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F'], ['F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F'], ['E', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'P']]
+f=1.0: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.5: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.2: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.0: grounding 0.00 (per-seed ['0.00', '0.00', '0.00', '0.00', '0.00'], n=14)
+f=1.0 seed0: nmi4=0.08 nmi8=0.09 prod_cls=0/20 prod_bg=20/20 comp=0.98(n=400) EA fwd/rev=17/18
+f=1.0 seed1: nmi4=0.07 nmi8=0.12 prod_cls=0/20 prod_bg=20/20 comp=0.98(n=400) EA fwd/rev=0/0
+f=1.0 seed2: nmi4=0.06 nmi8=0.11 prod_cls=0/20 prod_bg=20/20 comp=0.98(n=400) EA fwd/rev=18/18
+f=0.5 seed0: nmi4=0.05 nmi8=0.04 prod_cls=10/20 prod_bg=20/20 comp=0.98(n=400) EA fwd/rev=35/16
+f=0.5 seed1: nmi4=0.04 nmi8=0.08 prod_cls=0/20 prod_bg=20/20 comp=0.92(n=400) EA fwd/rev=0/0
+f=0.5 seed2: nmi4=0.06 nmi8=0.06 prod_cls=3/20 prod_bg=20/20 comp=0.92(n=400) EA fwd/rev=0/0
+f=0.2 seed0: nmi4=0.06 nmi8=0.06 prod_cls=2/20 prod_bg=20/20 comp=0.88(n=400) EA fwd/rev=0/0
+f=0.2 seed1: nmi4=0.05 nmi8=0.06 prod_cls=8/20 prod_bg=20/20 comp=0.88(n=400) EA fwd/rev=0/0
+f=0.2 seed2: nmi4=0.07 nmi8=0.07 prod_cls=9/20 prod_bg=20/20 comp=0.88(n=400) EA fwd/rev=0/0
