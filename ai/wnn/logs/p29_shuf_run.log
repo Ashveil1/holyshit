@@ -1,0 +1,6 @@
+SHUFFLED f=1.0 seed0: prod_bg=8/20 comp=0.98
+SHUFFLED f=1.0 seed1: prod_bg=2/20 comp=0.98
+SHUFFLED f=1.0 seed2: prod_bg=12/20 comp=0.98
+SHUFFLED f=0.5 seed0: prod_bg=11/20 comp=0.98
+SHUFFLED f=0.5 seed1: prod_bg=12/20 comp=0.92
+SHUFFLED f=0.5 seed2: prod_bg=9/20 comp=0.98
