@@ -1,2 +1,7 @@
 {"task": "div", "cond": "R5", "seed": 0, "found": true, "tried": 4202713, "dt": 331.9, "wrong40": 0, "prog": "init b=y; if (lt a b) -> zero; else step ((sub a b),b); comb=('add', 'one', 0); post=id"}
 {"task": "div", "cond": "B5", "seed": 0, "found": true, "tried": 4202713, "dt": 474.2, "wrong40": 0, "prog": "init b=y; if (lt a b) -> zero; else step ((sub a b),b); comb=('add', 'one', 0); post=id"}
+{"task": "div", "cond": "R25", "seed": 0, "found": true, "tried": 4202713, "dt": 454.6, "wrong40": 0, "prog": "init b=y; if (lt a b) -> zero; else step ((sub a b),b); comb=('add', 'one', 0); post=id"}
+{"task": "div", "cond": "R5", "seed": 1, "found": true, "tried": 4202713, "dt": 351.8, "wrong40": 0, "prog": "init b=y; if (lt a b) -> zero; else step ((sub a b),b); comb=('add', 'one', 0); post=id"}
+{"task": "div", "cond": "B5", "seed": 1, "found": true, "tried": 4202713, "dt": 452.8, "wrong40": 0, "prog": "init b=y; if (lt a b) -> zero; else step ((sub a b),b); comb=('add', 'one', 0); post=id"}
+{"task": "div", "cond": "R25", "seed": 1, "found": true, "tried": 4202713, "dt": 345.7, "wrong40": 0, "prog": "init b=y; if (lt a b) -> zero; else step ((sub a b),b); comb=('add', 'one', 0); post=id"}
+DONE
