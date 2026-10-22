@@ -19,3 +19,4 @@
 {"task": "div", "cond": "R5", "seed": 2, "found": true, "tried": 673, "dt": 0.1, "wrong40": 9}
 {"task": "div", "cond": "R25", "seed": 2, "found": true, "tried": 431268, "dt": 1619.3, "wrong40": 0}
 {"task": "div", "cond": "B5", "seed": 0, "found": true, "tried": 431268, "dt": 54.9, "wrong40": 0}
+{"task": "square", "cond": "R5", "seed": 0, "found": true, "tried": 1305289, "dt": 1750.2, "wrong40": 8}
