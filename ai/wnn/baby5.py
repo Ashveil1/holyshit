@@ -304,3 +304,88 @@ if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'p29bc':
         for seed in range(3):
             r = run3(seed, f, pa, pb, covered)
             print(f"f={f} seed{seed}: nmi4={r['nmi4']:.2f} nmi8={r['nmi8']:.2f} prod_cls={r['prod']} prod_bg={r['prod_bg']} comp={r['comp']:.2f}(n={r['comp_n']}) EA fwd/rev={r['ea_fwd']}/{r['ea_rev']}", flush=True)
+
+# --- chunk 5: P29d - token-class discovery from situation-stream mutual exclusivity ---
+class Baby5D(Baby5P):
+    def __init__(s):
+        super().__init__()
+        s.tokcooc = defaultdict(lambda: defaultdict(float))  # token-token scene co-occurrence
+    def hear(s, words, present, wcls=None):
+        super().hear(words, present, wcls)
+        pl = list(present)
+        for t1 in pl:
+            for t2 in pl:
+                if t1 != t2: s.tokcooc[t1][t2] += 1.0
+def cluster_tokens(baby, k=4):
+    import math
+    toks = list(TOKA.keys())
+    def cos(a, b):
+        dot = sum(v * b.get(t, 0.0) for t, v in a.items())
+        na, nb = math.sqrt(sum(v * v for v in a.values())), math.sqrt(sum(v * v for v in b.values()))
+        return dot / (na * nb) if na and nb else 0.0
+    clusters = [[t] for t in toks]
+    while len(clusters) > k:
+        bi, bj, bs = -1, -1, -2.0
+        for i in range(len(clusters)):
+            for j in range(i + 1, len(clusters)):
+                sim = sum(cos(baby.tokcooc[a], baby.tokcooc[b]) for a in clusters[i] for b in clusters[j]) / (len(clusters[i]) * len(clusters[j]))
+                if sim > bs: bi, bj, bs = i, j, sim
+        clusters[bi] += clusters[bj]; del clusters[bj]
+    tcls = {}
+    for ci, cl in enumerate(clusters):
+        for t in cl: tcls[t] = ci
+    return clusters, tcls
+def run4(seed, f, pool_a, pool_b, covered, days=5, scenes_per_day=100):
+    rng = random.Random(2000 + seed); w = WorldC(rng, covered); b = Baby5D()
+    for day in range(days):
+        for _ in range(scenes_per_day):
+            sc = w.scene(); pres = w.tokens(sc)
+            for _ in range(rng.choice((2, 3, 4))):
+                b.hear(pool_a(rng, sc) if rng.random() < f else pool_b(rng), pres)
+    # D1: token NMI vs true classes
+    toks = list(TOKA.keys())
+    tcl, tcls = cluster_tokens(b, k=4)
+    d1 = nmi([TOKA[t][0] for t in toks], [tcls[t] for t in toks])
+    # map discovered cluster id -> majority true class (harness labeling for scoring)
+    cl_lab = {}
+    for cl in tcl:
+        votes = defaultdict(int)
+        for t in cl: votes[TOKA[t][0]] += 1
+        cl_lab[next(iter(cl))] = max(votes, key=votes.get)
+    def wclass(wd):
+        av = b.assoc.get(wd, {})
+        if not av: return None
+        t = max(av.items(), key=lambda kv: kv[1])[0]
+        return cl_lab.get(next(iter([c for c in tcl if t in c][0]))) if any(t in c for c in tcl) else None
+    # D2: word labels via grounded token class
+    d2_ok, d2_n = 0, 0
+    for e in ENT:
+        d2_n += 1; d2_ok += wclass(WE[e]) == 'E'
+    for a in ACT:
+        d2_n += 1; d2_ok += wclass(WA[a]) == 'A'
+    # earned-class bigrams: order pass with wcls from token classes
+    wcls = {wd: wclass(wd) for wd in list(WE.values()) + list(WA.values())}
+    for _ in range(scenes_per_day):
+        sc = w.scene(); pres = w.tokens(sc)
+        for _ in range(rng.choice((2, 3, 4))):
+            b.hear(pool_a(rng, sc) if rng.random() < f else pool_b(rng), pres, wcls)
+    fwd, rev = b.oc.get(('E', 'A'), 0), b.oc.get(('A', 'E'), 0)
+    def order_ok(e, a):
+        cE, cA = wcls.get(WE[e]), wcls.get(WA[a])
+        if not cE or not cA: return None
+        f_, r_ = b.oc.get((cE, cA), 0), b.oc.get((cA, cE), 0)
+        if f_ + r_ == 0: return None
+        return f_ > r_
+    prng = random.Random(77)
+    heard_ok = sum(1 for _ in range(20) if order_ok(*prng.choice(covered)))
+    unheard = [(e, a) for (e, a) in VALID if (e, a) not in covered]
+    urng = random.Random(55)
+    unheard_ok = sum(1 for _ in range(20) if order_ok(*urng.choice(unheard)))
+    return dict(d1=d1, d2=f'{d2_ok}/{d2_n}', heard=f'{heard_ok}/20', unheard=f'{unheard_ok}/20',
+                ea=f'{fwd}/{rev}', tok_clusters=[sorted(TOKA[t][0] for t in cl) for cl in tcl])
+if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'p29d':
+    pa, pb, covered = load_llm_pools(sys.argv[2])
+    for f in (1.0, 0.5, 0.2):
+        for seed in range(3):
+            r = run4(seed, f, pa, pb, covered)
+            print(f"f={f} seed{seed}: D1 tokNMI={r['d1']:.2f} D2 labels={r['d2']} D3 heard={r['heard']} unheard={r['unheard']} EA={r['ea']} tokcl={r['tok_clusters']}", flush=True)

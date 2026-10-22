@@ -168,3 +168,10 @@ Design pre-registered with owner: opaque-token situation stream (no scene slots 
 - Honest limits: pools cover 16 of 36 valid (entity, action) pairs (2 per entity) - no novel-pair composition test possible; location/time tokens never named in pools (ungrounded by design); B pool is 50 topics x 8 particle variants (structured repetition, realistic but note).
 Verdict: grounding + comprehension + pair-wise production order emerge from overhearing diluted free conversation with no slots, no feedback, no order supervision in the association channel. Word-CLASS discovery from distributional statistics FAILS at this scale/design - recorded negative. Next: shuffled-order control (order must vanish), more scene types per entity (writer relay if needed), cluster-method alternatives only as new pre-stated experiments.
 - P29 shuffled-order control (A-line words shuffled, all else equal): prod_bg collapses 20/20 -> 2-12/20 (mean ~8.7); comprehension unchanged (.92-.98). Control PASS: production order comes from HEARD ORDER, not from association. P29 pre-registered control set complete.
+
+## P29d (2026-10-22) - class discovery via situation-stream mutual exclusivity (pre-registered)
+Mechanism: cluster the 19 situation TOKENS by token-token scene co-occurrence (agglomerative cosine, k=4); words inherit class from grounded token; order via earned-class bigrams.
+- D1 token NMI: 0.67-0.79 vs pre-stated >=.8: **FAIL** (E and L tokens merge; one A token splits singleton; seed2 misplaces an E token into the A cluster).
+- D2 word labels: 13,13,12/14 at f=1.0 (pass >=12), 10-11/14 at f=0.2 (fail).
+- D3 production order via EARNED classes: heard 15-20/20, UNHEARD (composition) 15-20/20 vs >=18: pass at f>=0.5 mostly, mixed at f=0.2. EA bigrams strongly directional (278/4, 135/2, 41/1) - earned classes carry real order signal, unlike P29b's parity noise.
+Qualitative keep: class-mediated order GENERALIZES to unheard pairs (composition) - pair-bigram channel cannot do this. Bottleneck is token-clustering quality (E/L merge under raw co-occurrence cosine).
