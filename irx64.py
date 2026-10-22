@@ -977,7 +977,7 @@ class GenIR(Gen):
                 a.setcc_al("e")
                 self.box_bool_al()
                 if op == "!=":
-                    a.code += bytes((72, 131, 240, 8))
+                    a.xor_rax_8()
                 return
         self._load(fr, l, ln)
         a.push_r("rax")
@@ -1023,7 +1023,7 @@ class GenIR(Gen):
             a.lea_m("rdi", "rax", 16)
             a.lea_m("rsi", "rcx", 16)
             a.mov_rr("rcx", "rdx")
-            a.code += bytes([0xF3, 0xA6])  # repe cmpsb
+            a.repe_cmpsb()
             a.setcc_al("e")
             a.jmp(lab_eq_done)
             a.label(lab_eq_noteq)
@@ -1036,7 +1036,7 @@ class GenIR(Gen):
             a.label(lab_eq_done)
             self.box_bool_al()
             if op == "!=":
-                a.code += bytes([0x48, 0x83, 0xF0, 0x08])  # xor rax, 8
+                a.xor_rax_8()
             return
 
         if op in ("<", ">", "<=", ">="):
@@ -1668,11 +1668,11 @@ class GenIR(Gen):
                 raise HSErr(f"{name} wants {name}(p)", ln)
             self._load(fr, args[0], ln)
             if name == "load8":
-                a.code += bytes([0x48, 0x0F, 0xB6, 0x00])
+                a.ld8_rax()
             elif name == "load32":
-                a.code += bytes([0x8B, 0x00])
+                a.ld32_rax()
             else:
-                a.code += bytes([0x48, 0x8B, 0x00])
+                a.ld64_rax()
         elif name in ("store8", "store32", "store64"):
             if len(args) != 2:
                 raise HSErr(f"{name} wants {name}(p, v)", ln)
@@ -1681,11 +1681,11 @@ class GenIR(Gen):
             self._load(fr, args[0], ln)
             a.pop_r("rcx")
             if name == "store8":
-                a.code += bytes([0x88, 0x08])
+                a.st8_rax_cl()
             elif name == "store32":
-                a.code += bytes([0x89, 0x08])
+                a.st32_rax_ecx()
             else:
-                a.code += bytes([0x48, 0x89, 0x08])
+                a.st64_rax_rcx()
             a.mov_rr("rax", "rcx")
         elif name in ("as_ptr", "as_int"):
             if len(args) != 1:
