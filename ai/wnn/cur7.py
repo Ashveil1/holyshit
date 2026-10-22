@@ -23,7 +23,15 @@ def boundary(task):
          'choose2': [(0, 7, 0), (1, 7, 0), (2, 7, 1), (3, 7, 3), (60, 7, 1770)],
          'sumsq': [(0, 7, 0), (1, 7, 1), (2, 7, 5), (3, 7, 14), (40, 7, 22140)],
          'even': [(0, 7, 1), (1, 7, 0), (2, 7, 1), (3, 7, 0)],
-         'sumto': [(0, 7, 0), (1, 7, 1), (2, 7, 3), (3, 7, 6), (100, 7, 5050)]}
+         'sumto': [(0, 7, 0), (1, 7, 1), (2, 7, 3), (3, 7, 6), (100, 7, 5050)],
+         # B-523: CURR coverage (values verified against gen formulas)
+         'mod': [(0, 7, 0), (1, 7, 1), (5, 3, 2), (30, 7, 2), (10007, 97, 16)],
+         'mul': [(0, 7, 0), (1, 7, 7), (2, 7, 14), (3, 7, 21), (30, 17, 510)],
+         'div': [(0, 7, 0), (1, 7, 0), (5, 3, 1), (30, 7, 4), (10007, 97, 103)],
+         'power': [(0, 7, 0), (1, 7, 1), (2, 3, 8), (3, 3, 27), (2, 5, 32)],  # B-523rev: (11,4) exceeded loop-cost cap for comb-mul (repeated addition) - boundary cases must respect the canonical program's step cost at search-time CAP
+         'gcd': [(6, 3, 3), (12, 8, 4), (17, 5, 1), (270, 192, 6), (1071, 462, 21)],
+         'isprime': [(2, 7, 1), (4, 7, 0), (9, 7, 0), (25, 7, 0), (97, 7, 1), (91, 7, 0)],  # B-523rev: dropped (899,7) - subtraction-mod cost ~450+ steps > search CAP 400
+         'fact': [(0, 7, 1), (1, 7, 1), (2, 7, 2), (3, 7, 6), (5, 7, 120)]}  # B-523rev: dropped (10,7) - comb-mul cost O(product) blows search CAP
     return t.get(task, [])
 class Fail(Exception): pass
 def p_add(a, b): return a + b

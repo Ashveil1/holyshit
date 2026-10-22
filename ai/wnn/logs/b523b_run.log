@@ -1,0 +1,3 @@
+{"task": "power", "seed": 0, "n": 3, "found": true, "tried": 4450489, "dt": 1265.1, "wrong": false, "gen": {"1": 40, "2": 40, "3": 40, "4": 40}}
+{"task": "power", "seed": 0, "n": 5, "found": true, "tried": 4450489, "dt": 372.9, "wrong": false, "gen": {"1": 40, "2": 40, "3": 40, "4": 40}}
+{"task": "power", "seed": 0, "n": 10, "found": true, "tried": 4450489, "dt": 1992.7, "wrong": false, "gen": {"1": 40, "2": 40, "3": 40, "4": 40}}

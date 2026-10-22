@@ -1,0 +1,367 @@
+[
+ {
+  "task": "gcd",
+  "seed": 1,
+  "n": 3,
+  "found": true,
+  "tried": 97885,
+  "dt": 6.7,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "isprime",
+  "seed": 0,
+  "n": 3,
+  "found": true,
+  "tried": 5,
+  "dt": 0.0,
+  "wrong": true,
+  "gen": {
+   "1": 29,
+   "2": 25,
+   "3": 34,
+   "4": 35
+  }
+ },
+ {
+  "task": "isprime",
+  "seed": 0,
+  "n": 5,
+  "found": true,
+  "tried": 5,
+  "dt": 0.0,
+  "wrong": true,
+  "gen": {
+   "1": 29,
+   "2": 25,
+   "3": 34,
+   "4": 35
+  }
+ },
+ {
+  "task": "isprime",
+  "seed": 0,
+  "n": 10,
+  "found": true,
+  "tried": 659821,
+  "dt": 89.0,
+  "wrong": true,
+  "gen": {
+   "1": 32,
+   "2": 33,
+   "3": 30,
+   "4": 36
+  }
+ },
+ {
+  "task": "isprime",
+  "seed": 0,
+  "n": 25,
+  "found": false,
+  "tried": 6002688,
+  "dt": 539.3,
+  "wrong": false,
+  "gen": null
+ },
+ {
+  "task": "isprime",
+  "seed": 1,
+  "n": 3,
+  "found": true,
+  "tried": 5,
+  "dt": 0.0,
+  "wrong": true,
+  "gen": {
+   "1": 27,
+   "2": 33,
+   "3": 34,
+   "4": 34
+  }
+ },
+ {
+  "task": "isprime",
+  "seed": 1,
+  "n": 5,
+  "found": true,
+  "tried": 99935,
+  "dt": 14.2,
+  "wrong": true,
+  "gen": {
+   "1": 32,
+   "2": 23,
+   "3": 24,
+   "4": 20
+  }
+ },
+ {
+  "task": "isprime",
+  "seed": 1,
+  "n": 10,
+  "found": true,
+  "tried": 99935,
+  "dt": 14.1,
+  "wrong": true,
+  "gen": {
+   "1": 32,
+   "2": 23,
+   "3": 24,
+   "4": 20
+  }
+ },
+ {
+  "task": "isprime",
+  "seed": 1,
+  "n": 25,
+  "found": false,
+  "tried": 6002688,
+  "dt": 491.2,
+  "wrong": false,
+  "gen": null
+ },
+ {
+  "task": "fact",
+  "seed": 0,
+  "n": 3,
+  "found": true,
+  "tried": 1138240,
+  "dt": 109.4,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "fact",
+  "seed": 0,
+  "n": 5,
+  "found": true,
+  "tried": 1138240,
+  "dt": 111.6,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "fact",
+  "seed": 0,
+  "n": 10,
+  "found": true,
+  "tried": 1138240,
+  "dt": 106.8,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "fact",
+  "seed": 0,
+  "n": 25,
+  "found": true,
+  "tried": 1138240,
+  "dt": 108.1,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "fact",
+  "seed": 1,
+  "n": 3,
+  "found": true,
+  "tried": 1138240,
+  "dt": 111.3,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "fact",
+  "seed": 1,
+  "n": 5,
+  "found": true,
+  "tried": 1138240,
+  "dt": 118.4,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "fact",
+  "seed": 1,
+  "n": 10,
+  "found": true,
+  "tried": 1138240,
+  "dt": 115.7,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "fact",
+  "seed": 1,
+  "n": 25,
+  "found": true,
+  "tried": 1138240,
+  "dt": 114.6,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 0,
+  "n": 3,
+  "found": true,
+  "tried": 2176534,
+  "dt": 208.6,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 0,
+  "n": 5,
+  "found": true,
+  "tried": 2176534,
+  "dt": 212.5,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 0,
+  "n": 10,
+  "found": true,
+  "tried": 2176534,
+  "dt": 210.2,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 0,
+  "n": 25,
+  "found": true,
+  "tried": 2176534,
+  "dt": 209.4,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 1,
+  "n": 3,
+  "found": true,
+  "tried": 2176534,
+  "dt": 186.2,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 1,
+  "n": 5,
+  "found": true,
+  "tried": 2176534,
+  "dt": 190.1,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 1,
+  "n": 10,
+  "found": true,
+  "tried": 2176534,
+  "dt": 190.1,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ },
+ {
+  "task": "sumto",
+  "seed": 1,
+  "n": 25,
+  "found": true,
+  "tried": 2176534,
+  "dt": 188.9,
+  "wrong": false,
+  "gen": {
+   "1": 40,
+   "2": 40,
+   "3": 40,
+   "4": 40
+  }
+ }
+]

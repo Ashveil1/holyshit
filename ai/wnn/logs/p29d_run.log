@@ -1,0 +1,13 @@
+f=1.0: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.5: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.2: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.0: grounding 0.00 (per-seed ['0.00', '0.00', '0.00', '0.00', '0.00'], n=14)
+f=1.0 seed0: D1 tokNMI=0.79 D2 labels=13/14 D3 heard=18/20 unheard=18/20 EA=278/4 tokcl=[['E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'L', 'L', 'L'], ['A', 'A', 'A', 'A', 'A'], ['A'], ['T', 'T']]
+f=1.0 seed1: D1 tokNMI=0.79 D2 labels=13/14 D3 heard=18/20 unheard=18/20 EA=282/6 tokcl=[['E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'L', 'L', 'L'], ['A', 'A', 'A', 'A', 'A'], ['A'], ['T', 'T']]
+f=1.0 seed2: D1 tokNMI=0.67 D2 labels=12/14 D3 heard=15/20 unheard=15/20 EA=252/3 tokcl=[['E', 'E', 'E', 'E', 'E', 'E', 'E', 'L', 'L', 'L'], ['A', 'A', 'A', 'A', 'A', 'E'], ['A'], ['T', 'T']]
+f=0.5 seed0: D1 tokNMI=0.79 D2 labels=13/14 D3 heard=18/20 unheard=18/20 EA=135/2 tokcl=[['E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'L', 'L', 'L'], ['A', 'A', 'A', 'A', 'A'], ['A'], ['T', 'T']]
+f=0.5 seed1: D1 tokNMI=0.79 D2 labels=12/14 D3 heard=20/20 unheard=20/20 EA=120/0 tokcl=[['E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'L', 'L', 'L'], ['A', 'A', 'A', 'A', 'A'], ['A'], ['T', 'T']]
+f=0.5 seed2: D1 tokNMI=0.67 D2 labels=12/14 D3 heard=17/20 unheard=17/20 EA=126/0 tokcl=[['E', 'E', 'E', 'E', 'E', 'E', 'E', 'L', 'L', 'L'], ['A', 'A', 'A', 'A', 'A', 'E'], ['A'], ['T', 'T']]
+f=0.2 seed0: D1 tokNMI=0.79 D2 labels=11/14 D3 heard=18/20 unheard=18/20 EA=41/1 tokcl=[['E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'L', 'L', 'L'], ['A', 'A', 'A', 'A', 'A'], ['A'], ['T', 'T']]
+f=0.2 seed1: D1 tokNMI=0.79 D2 labels=11/14 D3 heard=20/20 unheard=20/20 EA=37/0 tokcl=[['E', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'L', 'L', 'L'], ['A', 'A', 'A', 'A', 'A'], ['A'], ['T', 'T']]
+f=0.2 seed2: D1 tokNMI=0.67 D2 labels=10/14 D3 heard=17/20 unheard=16/20 EA=49/0 tokcl=[['E', 'E', 'E', 'E', 'E', 'E', 'E', 'L', 'L', 'L'], ['A', 'A', 'A', 'A', 'A', 'E'], ['A'], ['T', 'T']]
