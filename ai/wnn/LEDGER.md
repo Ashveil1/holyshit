@@ -353,3 +353,18 @@ Interpretation: zero-operand anaphora is easier than explicit constants in this 
 ## B-408 triage (2026-10-22): already measured by construction - P21's "same-conn" condition IS mixed en/th
 
 Source inspection (text2prog5.py three_step + text2prog2.py two_step): connectors are sampled independently PER CLAUSE from CONN[0] = ["then", "and then", "แล้ว", "จากนั้น"], and clause frames from C1/C2 train lists that also mix English and Thai. So P21's same-connector 3-step measurement (.35 at n=300, .53 at n=1000, 5 seeds) was already taken over mixed en/th sentences - the mixed-connector condition B-408 asks to compare against the P21 baseline is identical to that baseline. No run needed; the item rests on a wrong premise that P21 was English-only.
+
+## B-409P pre-registration (2026-10-22) - Thai no-space 2-step via char-boundary scan
+
+Question (B-409): Thai has no spaces between words; can a char-level model segment AND solve 2-step Thai commands, at >= .8 of the spaced-Thai token model's accuracy?
+Design (b409.py): Thai-only generation (frames/connectors filtered to Thai by unicode block). Baseline arm: P16 TwoStep (tok learners) on spaced Thai. Test arm: same learner class but Learner('char') and clause cuts scanned over CHARACTER positions of the space-stripped string (no segmentation given - fit() credits whichever char-cut yields the supervising answer, so segmentation is learned, not handed). Boundary model keys become char pairs. numbers_of is digits-only, unaffected by despaceing.
+Protocol: n=300 training (30% singles, Thai-only), 5 seeds, 200-item 2-step-plus-single test per arm.
+Criteria: (1) char-nospace acc >= .8 * tok-spaced acc; (2) CONTROL: the tok-spaced model evaluated on no-space text must collapse (tokens unseen) - proves the char model carries the segmentation; (3) record both arms' single-op accuracy separately (singles should stay high in both).
+
+## B-409 verdict (2026-10-22): FAIL - char-boundary scan does not learn Thai segmentation at n=300
+
+b409.py, pre-registered criteria, 5 seeds, n=300 Thai-only mixed training, 200-item test:
+- tok_spaced (baseline): .80/.765/.785/.835/.745 = mean .786
+- char_nospace: .365/.205/.23/.235/.32 = mean .271 - criterion >= .8 x .786 = .629 decisively FAILED (34% of baseline)
+- CONTROL (tok model on despaced text): .245/.14/.175/.235/.17 = mean .193 - collapses as predicted but not to zero: fallback single-op hypotheses on extracted digits still land some answers
+Diagnosis: the char model beats the no-segmentation control by only ~8 pts, so segmentation itself is what failed, not op grounding. Two measured causes: (1) credit dilution - at char granularity many cuts are explanation-consistent with the supervising answer, so w=1/|E| spreads credit over spurious boundaries; (2) boundary statistics over char PAIRS are sparse relative to word pairs. Word-level segmentation is not free: it must be either given (whitespace languages), learned with a sharper objective than answer-consistent credit, or bought with much more data. Follow-up candidates (not run): n=1000+, discriminative boundary training, or digit/connector-anchored cut proposals (which hands partial segmentation - note it as such if tried).

@@ -1,0 +1,16 @@
+{"seed": 0, "arm": "tok_spaced", "acc": 0.8}
+{"seed": 0, "arm": "char_nospace", "acc": 0.365}
+{"seed": 0, "arm": "ctl_tok_nospace", "acc": 0.245}
+{"seed": 1, "arm": "tok_spaced", "acc": 0.765}
+{"seed": 1, "arm": "char_nospace", "acc": 0.205}
+{"seed": 1, "arm": "ctl_tok_nospace", "acc": 0.14}
+{"seed": 2, "arm": "tok_spaced", "acc": 0.785}
+{"seed": 2, "arm": "char_nospace", "acc": 0.23}
+{"seed": 2, "arm": "ctl_tok_nospace", "acc": 0.175}
+{"seed": 3, "arm": "tok_spaced", "acc": 0.835}
+{"seed": 3, "arm": "char_nospace", "acc": 0.235}
+{"seed": 3, "arm": "ctl_tok_nospace", "acc": 0.235}
+{"seed": 4, "arm": "tok_spaced", "acc": 0.745}
+{"seed": 4, "arm": "char_nospace", "acc": 0.32}
+{"seed": 4, "arm": "ctl_tok_nospace", "acc": 0.17}
+DONE
