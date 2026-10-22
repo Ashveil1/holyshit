@@ -315,3 +315,11 @@ Design (b381.py, one process, clean config: baselib pin, EXCL={square}, no adv, 
 - Arm B: ev lru_cache(maxsize=2000000)
 - Arm C: ev unwrapped (no cache)
 Success criterion (from the backlog item): any arm >2x throughput vs baseline with IDENTICAL decisions (same tried count at cap, same PROF evals, same NOT FOUND / same program). Wall time measured per arm; ev.cache_clear() between arms.
+
+## B-381 verdict (2026-10-22): NULL as a new idea - the cache already exists and is worth 4.4x; the 300K->2M increment is 1.59x, below the >2x criterion
+
+b381.py, clean config (baselib pin, EXCL={square}, square R5 seed 0, identical 1291776-candidate prefix), decisions verified IDENTICAL across arms (same tried, same NOT FOUND):
+- A lru300k (baseline): 122.5s (713.9M hits, 21.3M misses - 97% hit rate; the pre-existing ev lru_cache already does the cross-candidate sharing the item proposed)
+- B lru2m: 76.9s = 1.59x vs A (misses 21.3M -> 0.79M; 300K was thrashing)
+- C nocache: 541.2s = 4.42x SLOWER than A; B beats C by 7.04x
+Verdict: the item's >2x is met only by cache-vs-no-cache, i.e. the premise was already implemented. No NEW >2x available from bigger caching (1.59x < 2x criterion). ADOPTED: ev lru_cache maxsize 300000 -> 2000000 in cur7.py (semantics-preserving: ev is pure; decisions identical in b381) - ~1.6x on all future searches. Whole-run trace caching remains provably share-free (each candidate spec is unique and evaluated once, B-058).
