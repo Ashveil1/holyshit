@@ -229,7 +229,7 @@ with tempfile.TemporaryDirectory() as d:
     cd = os.path.join(d, "cache")
     pp = os.path.join(d, "p.holy")
     open(pp, "w").write("print 6 * 7\n")
-    env = dict(os.environ, HS_RUN_CACHE_DIR=cd)
+    env = dict(os.environ, HS_RUN_CACHE_DIR=cd, HS_JIT="off")
     env.pop("HS_BACKEND", None)
     r1 = subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env)
     n1 = len(os.listdir(cd)) if os.path.isdir(cd) else 0
@@ -247,5 +247,31 @@ with tempfile.TemporaryDirectory() as d:
     open(pp, "w").write("import math\nprint 1\n")
     subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env)
     check("run cache: programs with import/extern are never cached", len(os.listdir(cd)) == 2, os.listdir(cd))
+
+# ---- jit run cache: one driver build, stale source never served ----
+with tempfile.TemporaryDirectory() as d:
+    cd = os.path.join(d, "cache")
+    pp = os.path.join(d, "p.holy")
+    open(pp, "w").write("print 6 * 7\n")
+    env = dict(os.environ, HS_RUN_CACHE_DIR=cd)
+    env.pop("HS_BACKEND", None)
+    env.pop("HS_JIT", None)
+    r1 = subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env, timeout=900)
+    r2 = subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env)
+    names = os.listdir(cd) if os.path.isdir(cd) else []
+    check("jit run cache: driver built once, reused",
+          r1.stdout == r2.stdout == "42\n" and len(names) == 1,
+          (r1.stdout, r2.stdout, names))
+    open(pp, "w").write("print 6 * 8\n")
+    r3 = subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env)
+    check("jit run cache: changed source recompiles, never stale",
+          r3.stdout == "48\n" and len(os.listdir(cd)) == 1,
+          (r3.stdout, os.listdir(cd)))
+    open(os.path.join(d, "helper.holy"), "w").write("def seven():\n  return 7\n")
+    open(pp, "w").write("import helper\nprint helper.seven()\n")
+    r4 = subprocess.run([sys.executable, HS, "run", pp], capture_output=True, text=True, env=env)
+    check("jit run cache: import programs run, cache dir untouched",
+          r4.stdout == "7\n" and len(os.listdir(cd)) == 1,
+          (r4.stdout, r4.stderr[-200:], os.listdir(cd)))
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
