@@ -1,0 +1,4 @@
+{"task": "mod", "seed": 0, "n": 25, "found": true, "tried": 482, "dt": 0.1, "wrong": false, "bad40": 0}
+{"task": "div", "seed": 0, "n": 25, "found": true, "tried": 346692, "dt": 25.1, "wrong": false, "bad40": 0}
+{"task": "fact", "seed": 0, "n": 25, "found": true, "tried": 1138228, "dt": 1831.2, "wrong": false, "bad40": 0}
+{"task": "sumto", "seed": 0, "n": 25, "found": true, "tried": 2176534, "dt": 188.5, "wrong": false, "bad40": 0}
