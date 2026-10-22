@@ -1,0 +1,44 @@
+# Experimental self-hosted full IR interpreter driver: irinterp_run.holy SOURCE
+import normalize
+import irbuild
+import irinterp
+import pyrt
+extern:
+  U0 exit(I64 status)
+def die(msg, code):
+  f = open("/dev/stderr", "w")
+  write(f, "error: " + msg + "\n")
+  close(f)
+  exit(code)
+args = argv()
+if len(args) < 1:
+  die("irinterp wants SOURCE", 2)
+irmod = null
+try:
+  irmod = irbuild.build_module(normalize.parse(read_text(args[0])), "")
+except as e:
+  # compile-time errors carry the source line, then the host driver line
+  once = irinterp.trailing_line(e)
+  msg = e
+  if find(e, pyrt.EMARK) >= 0:
+    msg = irinterp.ir_emsg(e)
+    if irinterp.ir_eline(e) != null:
+      msg = msg + " at line " + str(irinterp.ir_eline(e))
+  elif once[1] != null and irinterp.trailing_line(once[0])[1] != null:
+    msg = once[0]
+  die(msg, 1)
+refusal = irinterp.preflight(irmod)
+if refusal != null:
+  die(refusal, 3)
+state = irinterp.create(irmod)
+try:
+  irinterp.run(state)
+except as e:
+  msg = irinterp.ir_emsg(e)
+  line = irinterp.ir_eline(e)
+  if irinterp.ir_eline(e) == null and find(e, pyrt.EMARK) < 0:
+    msg = irinterp.strip_lines(e)
+    line = null
+  if line != null:
+    msg = msg + " at line " + str(line)
+  die(msg, 1)

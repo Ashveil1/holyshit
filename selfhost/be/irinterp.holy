@@ -1,0 +1,441 @@
+# Full-semantics IR interpreter tier, written in holyshit. Values are plain hs
+# values; the structure mirrors the Python reference executor (ir.py _exec).
+# Unsupported ops (unsafe s*, ffi, import/attr/setattr) are refused up front by
+# preflight so no program output happens before a refusal.
+import pyrt
+UNB = "u0004IRUNBOUNDu0004"
+JUMP = "u0001IRJUMPu0001"
+def trailing_line(s):
+  n = len(s)
+  k = n
+  while k > 0 and find("0123456789", s[k - 1]) >= 0:
+    k = k - 1
+  if k == n or k < 9:
+    return [s, null]
+  if s[k - 9:k] != " at line ":
+    return [s, null]
+  return [s[0:k - 9], s[k:n]]
+def strip_lines(e):
+  s = e
+  one = trailing_line(s)
+  while one[1] != null:
+    s = one[0]
+    one = trailing_line(s)
+  return s
+def ir_eline(e):
+  i = find(e, pyrt.EMARK)
+  if i < 0:
+    return null
+  rest = e[i + len(pyrt.EMARK):len(e)]
+  j = find(rest, "u0002")
+  r = rest[j + 5:len(rest)]
+  k = 0
+  while k < len(r) and find("0123456789", r[k]) >= 0:
+    k = k + 1
+  if k == 0:
+    return null
+  return int(r[0:k])
+def ir_emsg(e):
+  i = find(e, pyrt.EMARK)
+  if i < 0:
+    return e
+  rest = e[i + len(pyrt.EMARK):len(e)]
+  return rest[0:find(rest, "u0002")]
+def conv(e, ln):
+  # Normalise a caught host error into an IR error carrier at line ln.
+  if find(e, pyrt.EMARK) >= 0 or find(e, JUMP) >= 0:
+    return e
+  return pyrt.py_err(strip_lines(e), ln)
+def fail(msg, ln):
+  raise pyrt.py_err(msg, ln)
+def new_frame(st, parent, root, gnames):
+  st["nid"] = st["nid"] + 1
+  return {"id": st["nid"], "vars": {}, "parent": parent, "root": root, "globals": gnames}
+def frame_get(frame, name, ln):
+  f = frame
+  while f != null:
+    vs = f["vars"]
+    if name in vs and vs[name] != UNB:
+      return vs[name]
+    f = f["parent"]
+  fail("unknown variable '" + name + "'", ln)
+def frame_set(frame, name, val):
+  if name in frame["globals"]:
+    frame["root"]["vars"][name] = val
+  else:
+    frame["vars"][name] = val
+def owns(hframe, frame):
+  f = frame
+  while f != null:
+    if f["id"] == hframe["id"]:
+      return true
+    f = f["parent"]
+  return false
+def is_callable_rec(v, tag):
+  return pyrt.py_type(v) == "dict" and tag in v
+def call_builtin(name, args, ln):
+  n = len(args)
+  try:
+    if name == "len":
+      return len(args[0])
+    if name == "str":
+      return str(args[0])
+    if name == "int":
+      return int(args[0])
+    if name == "float":
+      return float(args[0])
+    if name == "range":
+      if n == 1:
+        return range(args[0])
+      return range(args[0], args[1])
+    if name == "append":
+      return append(args[0], args[1])
+    if name == "split":
+      if n == 1:
+        return split(args[0])
+      return split(args[0], args[1])
+    if name == "find":
+      return find(args[0], args[1])
+    if name == "join":
+      return join(args[0], args[1])
+    if name == "has":
+      return has(args[0], args[1])
+    if name == "contains":
+      return contains(args[0], args[1])
+    if name == "keys":
+      return keys(args[0])
+    if name == "values":
+      return values(args[0])
+  except as e:
+    raise conv(e, ln)
+  fail("IR: builtin '" + name + "' not in subset", ln)
+def call_value(st, fn, args, ln):
+  if is_callable_rec(fn, "hs_ir_builtin"):
+    return call_builtin(fn["hs_ir_builtin"], args, ln)
+  if is_callable_rec(fn, "hs_ir_fn"):
+    key = fn["hs_ir_fn"]
+    fdef = st["funcs"][key]
+    if len(args) != len(fdef["params"]):
+      fail(fdef["dispname"] + " wants " + str(len(fdef["params"])) + " args, got " + str(len(args)), ln)
+    fr = new_frame(st, fn["closure"], fn["closure"]["root"], fdef["globals"])
+    i = 0
+    while i < len(args):
+      fr["vars"][fdef["params"][i]] = args[i]
+      i = i + 1
+    return run_fn(st, key, fdef, fr)
+  fail("not callable: " + type_name(fn), ln)
+def type_name(v):
+  t = pyrt.py_type(v)
+  if t == "null":
+    return "Null"
+  if t == "bool":
+    return "Bool"
+  if t == "int":
+    return "Int"
+  if t == "float":
+    return "Float"
+  if t == "str":
+    return "Str"
+  if t == "list":
+    return "List"
+  if t == "dict":
+    if "hs_ir_fn" in v:
+      return "Func"
+    if "hs_ir_builtin" in v:
+      return "Builtin"
+    return "Dict"
+  return "?"
+def do_binop(op, l, r, ln):
+  try:
+    if op == "+":
+      return l + r
+    if op == "-":
+      return l - r
+    if op == "*":
+      return l * r
+    if op == "/":
+      return l / r
+    if op == "%":
+      return l % r
+    if op == "<<":
+      return l << r
+    if op == ">>":
+      return l >> r
+    if op == "&":
+      return l & r
+    if op == "|":
+      return l | r
+    if op == "^":
+      return l ^ r
+    if op == "==":
+      return l == r
+    if op == "!=":
+      return l != r
+    if op == "<":
+      return l < r
+    if op == ">":
+      return l > r
+    if op == "<=":
+      return l <= r
+    if op == ">=":
+      return l >= r
+  except as e:
+    raise conv(e, ln)
+  fail("IR: bad binop '" + op + "'", ln)
+def do_unop(op, v, ln):
+  try:
+    if op == "neg":
+      return -v
+    if op == "unot":
+      return ~v
+    if op == "not":
+      return not v
+  except as e:
+    raise conv(e, ln)
+  fail("IR: bad unop '" + op + "'", ln)
+def do_slice(obj, lo, hi, ln):
+  try:
+    if lo == null and hi == null:
+      return obj[0:len(obj)]
+    if lo == null:
+      return obj[0:hi]
+    if hi == null:
+      return obj[lo:len(obj)]
+    return obj[lo:hi]
+  except as e:
+    raise conv(e, ln)
+def step(st, ins, temps, frame, prev):
+  op = ins["op"]
+  ln = ins["line"]
+  if op == "const":
+    temps[ins["dest"]] = ins["val"]
+  elif op == "load":
+    temps[ins["dest"]] = frame_get(frame, ins["name"], ln)
+  elif op == "stvar":
+    frame_set(frame, ins["name"], temps[ins["src"]])
+  elif op == "stglobal":
+    frame["root"]["vars"][ins["name"]] = temps[ins["src"]]
+  elif op == "mkfunc":
+    temps[ins["dest"]] = {"hs_ir_fn": ins["func"], "closure": frame}
+  elif op == "bin":
+    temps[ins["dest"]] = do_binop(ins["binop"], temps[ins["l"]], temps[ins["r"]], ln)
+  elif op == "un":
+    temps[ins["dest"]] = do_unop(ins["unop"], temps[ins["v"]], ln)
+  elif op == "call":
+    args = []
+    for a in ins["args"]:
+      append(args, temps[a])
+    temps[ins["dest"]] = call_value(st, temps[ins["fn"]], args, ln)
+  elif op == "print":
+    line = ""
+    first = true
+    for a in ins["args"]:
+      v = temps[a]
+      if not first:
+        line = line + " "
+      first = false
+      if pyrt.py_type(v) == "str":
+        line = line + v
+      else:
+        line = line + str(v)
+    print line
+  elif op == "build_list":
+    items = []
+    for x in ins["items"]:
+      append(items, temps[x])
+    temps[ins["dest"]] = items
+  elif op == "build_dict":
+    d = {}
+    for pair in ins["pairs"]:
+      try:
+        d[temps[pair[0]]] = temps[pair[1]]
+      except as e:
+        raise conv(e, ln)
+    temps[ins["dest"]] = d
+  elif op == "index":
+    try:
+      temps[ins["dest"]] = temps[ins["obj"]][temps[ins["idx"]]]
+    except as e:
+      raise conv(e, ln)
+  elif op == "slice":
+    lo = null
+    hi = null
+    if ins["start"] != null:
+      lo = temps[ins["start"]]
+    if ins["stop"] != null:
+      hi = temps[ins["stop"]]
+    temps[ins["dest"]] = do_slice(temps[ins["obj"]], lo, hi, ln)
+  elif op == "setindex":
+    try:
+      temps[ins["obj"]][temps[ins["idx"]]] = temps[ins["val"]]
+    except as e:
+      raise conv(e, ln)
+  elif op == "iterseq":
+    v = temps[ins["src"]]
+    t = pyrt.py_type(v)
+    if t == "dict":
+      temps[ins["dest"]] = keys(v)
+    elif t == "list" or t == "str":
+      temps[ins["dest"]] = v
+    else:
+      fail("not iterable: " + type_name(v), ln)
+  elif op == "copy":
+    temps[ins["dest"]] = temps[ins["src"]]
+  elif op == "phi":
+    found = false
+    for arm in ins["arms"]:
+      if not found and arm[0] == prev:
+        temps[ins["dest"]] = temps[arm[1]]
+        found = true
+    if not found:
+      fail("IR: no phi arm for entry", ln)
+  elif op == "try_push":
+    append(st["handlers"], [frame, ins["handler"]])
+  elif op == "try_pop":
+    if len(st["handlers"]) > 0 and st["handlers"][len(st["handlers"]) - 1][0]["id"] == frame["id"]:
+      pop_handler(st)
+  elif op == "exc_str":
+    act = st["active"]
+    if len(act) == 0:
+      fail("raise without active exception", ln)
+    top = act[len(act) - 1]
+    s = top[0]
+    if top[1] != null:
+      s = s + " at line " + str(top[1])
+    temps[ins["dest"]] = s
+  elif op == "exc_pop":
+    if len(st["active"]) > 0:
+      pop_active(st)
+  elif op == "unbind":
+    frame["vars"][ins["name"]] = UNB
+  elif op == "reraise":
+    act = st["active"]
+    if len(act) == 0:
+      fail("raise without active exception", ln)
+    top = act[len(act) - 1]
+    raise pyrt.py_err(top[0], top[1])
+  else:
+    fail("IR: bad op '" + op + "'", ln)
+def pop_handler(st):
+  n = len(st["handlers"])
+  st["handlers"] = st["handlers"][0:n - 1]
+def pop_active(st):
+  n = len(st["active"])
+  st["active"] = st["active"][0:n - 1]
+def unwind(st, frame):
+  while len(st["handlers"]) > 0 and not owns(st["handlers"][len(st["handlers"]) - 1][0], frame):
+    pop_handler(st)
+  if len(st["handlers"]) == 0:
+    return null
+  top = st["handlers"][len(st["handlers"]) - 1]
+  pop_handler(st)
+  return top
+def do_raise(st, tm, temps):
+  ln = tm["line"]
+  if tm["src"] == null:
+    act = st["active"]
+    if len(act) == 0:
+      fail("raise without active exception", ln)
+    top = act[len(act) - 1]
+    raise pyrt.py_err(top[0], top[1])
+  v = temps[tm["src"]]
+  if pyrt.py_type(v) != "str":
+    fail("raise wants Str", ln)
+  fail(v, ln)
+def run_fn(st, key, fdef, frame):
+  by = st["by"][key]
+  temps = {}
+  lab = fdef["entry"]
+  prev = null
+  while true:
+    b = by[lab]
+    caught = null
+    try:
+      for ins in b["instrs"]:
+        step(st, ins, temps, frame, prev)
+      tm = b["term"]
+      t = tm["term"]
+      if t == "jmp":
+        prev = lab
+        lab = tm["to"]
+      elif t == "br":
+        prev = lab
+        if temps[tm["cond"]]:
+          lab = tm["then"]
+        else:
+          lab = tm["els"]
+      elif t == "ret":
+        if tm["val"] != null:
+          return temps[tm["val"]]
+        return null
+      elif t == "raise":
+        do_raise(st, tm, temps)
+      else:
+        fail("IR: bad terminator", tm["line"])
+    except as e:
+      caught = e
+    if caught != null:
+      err = caught
+      if find(err, JUMP) >= 0:
+        j = st["jump"]
+        if j[0] != frame["id"]:
+          raise err
+        append(st["active"], [j[2], j[3]])
+        lab = j[1]
+        prev = null
+      else:
+        if find(err, pyrt.EMARK) < 0:
+          err = pyrt.py_err(strip_lines(err), null)
+        msg = ir_emsg(err)
+        eline = ir_eline(err)
+        tgt = unwind(st, frame)
+        if tgt == null:
+          raise err
+        if tgt[0]["id"] != frame["id"]:
+          st["jump"] = [tgt[0]["id"], tgt[1], msg, eline]
+          raise JUMP
+        append(st["active"], [msg, eline])
+        lab = tgt[1]
+        prev = null
+SUPPORTED = ["const", "load", "stvar", "stglobal", "mkfunc", "bin", "un", "call", "print", "build_list", "build_dict", "index", "slice", "setindex", "iterseq", "copy", "phi", "try_push", "try_pop", "exc_str", "exc_pop", "unbind", "reraise"]
+BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find", "join", "has", "contains", "keys", "values"]
+OTHER_BUILTINS = ["alloc", "append_text", "argv", "as_int", "as_ptr", "close", "env", "exists", "http_get", "input", "json_load", "json_parse", "json_save", "json_str", "load32", "load64", "load8", "ls", "meminfo", "mkdir", "open", "pmm_alloc", "pmm_free", "pmm_total", "read", "read_mem", "read_text", "readkey", "readkey_code", "store32", "store64", "store8", "system", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "write", "write_bytes", "write_text"]
+def preflight(irmod):
+  # Returns null when every instruction is supported, else a refusal message.
+  # Builtins outside the supported subset are refused when the program loads
+  # such a name without ever binding it itself.
+  assigned = {}
+  for key in irmod["order"]:
+    fn = irmod["funcs"][key]
+    for p in fn["params"]:
+      assigned[p] = true
+    for block in fn["blocks"]:
+      for ins in block["instrs"]:
+        if ins["op"] == "stvar" or ins["op"] == "stglobal":
+          assigned[ins["name"]] = true
+  for key in irmod["order"]:
+    fn = irmod["funcs"][key]
+    for block in fn["blocks"]:
+      for ins in block["instrs"]:
+        if ins["op"] not in SUPPORTED:
+          return "irinterp: unsupported instruction " + ins["op"]
+        if ins["op"] == "load" and ins["name"] in OTHER_BUILTINS and ins["name"] not in assigned:
+          return "irinterp: unsupported builtin " + ins["name"]
+  return null
+def create(irmod):
+  st = {"funcs": irmod["funcs"], "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"]}
+  for key in irmod["order"]:
+    by = {}
+    for block in irmod["funcs"][key]["blocks"]:
+      by[block["label"]] = block
+    st["by"][key] = by
+  return st
+def run(st):
+  root = new_frame(st, null, null, [])
+  root["root"] = root
+  for name in BUILTIN_NAMES:
+    root["vars"][name] = {"hs_ir_builtin": name}
+  main = st["funcs"][st["entry"]]
+  frame = new_frame(st, root, root, main["globals"])
+  frame["root"] = frame
+  run_fn(st, st["entry"], main, frame)
