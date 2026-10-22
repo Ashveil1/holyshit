@@ -28,7 +28,7 @@ ROOT = os.path.dirname(HERE)
 
 
 
-REFUSED = set(['err_fficall', 'err_ffitype', 'err_json', 'err_structfield', 'err_umix', 'file', 'print_input', 't_bitmap', 't_bits', 't_circ', 't_ffi', 't_ffimod', 't_ffistruct', 't_ffivariadic', 't_fs', 't_heap', 't_import', 't_json', 't_jsonload', 't_pkg', 't_proc', 't_readmem', 't_sock', 't_std', 't_strorder', 't_struct', 't_vfs', 'uasm', 'ufunc', 'unsafe'])
+REFUSED = set(['err_fficall', 'err_ffitype', 'err_structfield', 'err_umix', 't_bitmap', 't_bits', 't_circ', 't_ffi', 't_ffimod', 't_ffistruct', 't_ffivariadic', 't_heap', 't_import', 't_pkg', 't_readmem', 't_sock', 't_std', 't_struct', 't_vfs', 'uasm', 'ufunc', 'unsafe'])
 DIVERGENCE = {
     "t_load64": "hosted Int is 62-bit; interp.py is 64-bit (roadmap 3.4)",
 }
