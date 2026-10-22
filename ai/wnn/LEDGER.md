@@ -333,3 +333,19 @@ Verdict: the item's >2x is met only by cache-vs-no-cache, i.e. the premise was a
 ## B-496 verdict (2026-10-22): PASS - exact chained arithmetic at 10x P5's length is chain-length-invariant for exact tables
 
 b496.py: P5's T1 successor table (100 entries, x->x+1 mod 100, UNCHANGED) queried over chains of 4750 links (10x P5's 475): 100/100 starts arrive exactly (475000 lookups, 0.031s wall). The mechanism argument is now measured: exact key-value recall has no error compounding and no capacity growth with chain length - the same table serves any chain. Contrast with the HDC superposition side (B-237: 2-hop chains FAIL at 500 chains/1500 links even at 16KB; multi-hop RAM must grow with link count). Exact tables trade flexibility for this invariance; superposition trades exactness for fixed-size storage. This is the strongest form of the T8 claim: chain length is FREE for exact memory.
+
+## B-407P pre-registration (2026-10-22) - anaphoric zero-operand steps ("then double it")
+
+Question (B-407): can the P16 TwoStep learner handle 2-step commands whose second step references the first result via "it" and carries an IMPLICIT constant in a word (double/triple/halve/increment/decrement), with accuracy within 5 pts of the explicit-number version?
+Prior fact: zero-operand anaphora already exists for fact/isprime ("take the factorial", "check if it is prime") - those carry no constant. The new content: words that secretly bind BOTH an op and a constant, learnable only from (text, answer) supervision.
+Design (b407.py): extend H2 with 5 zero-operand ops (double/triple/halve/inc/dec; require len(numbers_of(right))==0). Generator mirrors two_step; 35% of 2-step items replace the right clause with an anaphoric phrase ("then double it" etc., no digits - numbers_of is digits-only, verified). Train n=300 mixed (anaphoric + explicit + singles), 5 seeds. Eval arms: (a) anaphoric-only test, (b) explicit-only test, same model.
+Criteria: (1) anaphoric acc within 5 pts of explicit acc; (2) CONTROL: a model trained with 0% anaphoric data must score near zero on the anaphoric test (proves the phrases are LEARNED, not leaked by the hypothesis extension); (3) explicit-arm accuracy must not drop >5 pts vs the no-anaphora model's explicit accuracy (no interference).
+
+## B-407 verdict (2026-10-22): PASS - anaphoric zero-operand steps are learnable and EASIER than explicit ones
+
+b407.py, pre-registered criteria, 5 seeds, n=300 mixed training, matched 2-step-only eval:
+- anaphoric test ("then double/triple/halve/increment/decrement it"): .85/.86/.93/.86/.91 = mean .882
+- explicit-number test, same model: .52/.53/.62/.51/.59 = mean .554 - criterion (1) "within 5 pts of explicit" met: anaphoric is +32.8 pts BETTER, not worse
+- CONTROL (0% anaphora in training): .03/.00/.02/.02/.00 = mean .014 on the anaphoric test - criterion (2) met: the phrases are LEARNED from supervision, not leaked by the H2 extension
+- interference check: explicit accuracy .554 with anaphora mixed in vs .536 without - criterion (3) met (+1.8 pts, no drop)
+Interpretation: zero-operand anaphora is easier than explicit constants in this learner - no number to extract, short right clauses, only 5 phrases to ground. The epistemic status is unchanged from P16: the hypothesis space (now including 5 implicit-constant ops) is given; the phrase->hypothesis mapping is learned from (text, answer) pairs. Note the explicit 2-step accuracy itself (~.55 at n=300, 2-step-only) is the known P16-level difficulty - the anaphora result does not improve it, it adds a new learnable phrasing class.
