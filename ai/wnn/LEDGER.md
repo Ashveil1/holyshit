@@ -323,3 +323,13 @@ b381.py, clean config (baselib pin, EXCL={square}, square R5 seed 0, identical 1
 - B lru2m: 76.9s = 1.59x vs A (misses 21.3M -> 0.79M; 300K was thrashing)
 - C nocache: 541.2s = 4.42x SLOWER than A; B beats C by 7.04x
 Verdict: the item's >2x is met only by cache-vs-no-cache, i.e. the premise was already implemented. No NEW >2x available from bigger caching (1.59x < 2x criterion). ADOPTED: ev lru_cache maxsize 300000 -> 2000000 in cur7.py (semantics-preserving: ev is pure; decisions identical in b381) - ~1.6x on all future searches. Whole-run trace caching remains provably share-free (each candidate spec is unique and evaluated once, B-058).
+
+## B-435/B-484/B-487/B-490/B-498 triage (2026-10-22) - answered by B-241/B-055/B-058 measurements
+
+- B-435 (WiSARD 1-pass vs MLP 1-pass, MNIST): accuracy half = B-241 exactly (same harness, WiSARD beats 1-pass MLP 2-3x at every k) - better than the "within 3 pts" criterion. Forgetting half folds into B-493 (class-incremental run, still open); WNN table retention regardless of load already measured (P5 E4: 255/256).
+- B-484/B-487/B-490 (wiSARD readout, shots 1/5/20, MNIST): = B-241's exact cells (.340/.470/.647). Direct measurement.
+- B-498 (repair: resume search from best partial on test failure, square): = B-055's mechanism, measured PASS. The boundary gate IS repair-by-resume: wrong-short program rejected at 719709, search continues to the clean program at 2583787. B-058's profile shows candidates are binary-decided (one r0 evaluation), so "best partial" has no separate existence to resume from; the only resume point is rejection-then-continue, which the gate already implements.
+
+## B-496 verdict (2026-10-22): PASS - exact chained arithmetic at 10x P5's length is chain-length-invariant for exact tables
+
+b496.py: P5's T1 successor table (100 entries, x->x+1 mod 100, UNCHANGED) queried over chains of 4750 links (10x P5's 475): 100/100 starts arrive exactly (475000 lookups, 0.031s wall). The mechanism argument is now measured: exact key-value recall has no error compounding and no capacity growth with chain length - the same table serves any chain. Contrast with the HDC superposition side (B-237: 2-hop chains FAIL at 500 chains/1500 links even at 16KB; multi-hop RAM must grow with link count). Exact tables trade flexibility for this invariance; superposition trades exactness for fixed-size storage. This is the strongest form of the T8 claim: chain length is FREE for exact memory.
