@@ -23,3 +23,4 @@
 {"task": "square", "cond": "R25", "seed": 0, "found": true, "tried": 2011721, "dt": 3679.2, "wrong40": 4}
 {"task": "square", "cond": "R5", "seed": 1, "found": false, "tried": 3875328, "dt": 7251.5, "wrong40": null}
 {"task": "square", "cond": "R25", "seed": 1, "found": false, "tried": 3875328, "dt": 7280.6, "wrong40": null}
+{"task": "square", "cond": "R5", "seed": 2, "found": true, "tried": 2011721, "dt": 5465.7, "wrong40": 3}
