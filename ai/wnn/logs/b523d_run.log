@@ -1,0 +1,3 @@
+{"task": "div", "seed": 0, "n": 3, "found": true, "tried": 4202713, "dt": 3583.1, "wrong": false, "gen": {"1": 40, "2": 40, "3": 40, "4": 40}, "note": "b523d re-verification"}
+{"task": "mul", "seed": 0, "n": 3, "found": true, "tried": 346692, "dt": 1767.2, "wrong": true, "gen": {"1": 38, "2": 39, "3": 40, "4": 40}, "note": "b523d re-verification"}
+DONE
