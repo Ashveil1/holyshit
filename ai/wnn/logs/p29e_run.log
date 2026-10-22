@@ -1,0 +1,10 @@
+f=1.0: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.5: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.2: grounding 1.00 (per-seed ['1.00', '1.00', '1.00', '1.00', '1.00'], n=14)
+f=0.0: grounding 0.00 (per-seed ['0.00', '0.00', '0.00', '0.00', '0.00'], n=14)
+f=1.0 seed0: D1 tokNMI=0.72 D2 labels=8/14 D3 heard=0/20 unheard=0/20 EA=0/0 tokcl=[['A', 'A', 'A', 'A', 'A', 'A', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'], ['L', 'L', 'L'], ['T'], ['T']]
+f=1.0 seed1: D1 tokNMI=0.72 D2 labels=8/14 D3 heard=0/20 unheard=0/20 EA=0/0 tokcl=[['A', 'A', 'A', 'A', 'A', 'A', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'], ['L', 'L', 'L'], ['T'], ['T']]
+f=1.0 seed2: D1 tokNMI=0.72 D2 labels=8/14 D3 heard=0/20 unheard=0/20 EA=0/0 tokcl=[['A', 'A', 'A', 'A', 'A', 'A', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'], ['L', 'L', 'L'], ['T'], ['T']]
+f=0.2 seed0: D1 tokNMI=0.72 D2 labels=6/14 D3 heard=3/20 unheard=6/20 EA=0/0 tokcl=[['A', 'A', 'A', 'A', 'A', 'A', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'], ['L', 'L', 'L'], ['T'], ['T']]
+f=0.2 seed1: D1 tokNMI=0.72 D2 labels=6/14 D3 heard=3/20 unheard=6/20 EA=0/0 tokcl=[['A', 'A', 'A', 'A', 'A', 'A', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'], ['L', 'L', 'L'], ['T'], ['T']]
+f=0.2 seed2: D1 tokNMI=0.72 D2 labels=6/14 D3 heard=3/20 unheard=6/20 EA=0/0 tokcl=[['A', 'A', 'A', 'A', 'A', 'A', 'E', 'E', 'E', 'E', 'E', 'E', 'E', 'E'], ['L', 'L', 'L'], ['T'], ['T']]

@@ -175,3 +175,9 @@ Mechanism: cluster the 19 situation TOKENS by token-token scene co-occurrence (a
 - D2 word labels: 13,13,12/14 at f=1.0 (pass >=12), 10-11/14 at f=0.2 (fail).
 - D3 production order via EARNED classes: heard 15-20/20, UNHEARD (composition) 15-20/20 vs >=18: pass at f>=0.5 mostly, mixed at f=0.2. EA bigrams strongly directional (278/4, 135/2, 41/1) - earned classes carry real order signal, unlike P29b's parity noise.
 Qualitative keep: class-mediated order GENERALIZES to unheard pairs (composition) - pair-bigram channel cannot do this. Bottleneck is token-clustering quality (E/L merge under raw co-occurrence cosine).
+
+## P29e (2026-10-22) - class discovery variant: INCOMPATIBILITY profiles (pre-registered, same gates)
+Mechanism: cluster tokens on binary "never co-occurs in 500 scenes" profiles.
+- D1 token NMI = 0.72 (all seeds, f-independent as expected): **FAIL** (<.8). Failure mode complementary to P29d: E and A tokens MERGE (their incompatibility vectors overlap: E is incompatible with E-tokens + its uncovered A-tokens; A with A-tokens + unpaired E-tokens), T splits into singletons.
+- D2 8/14 at f=1.0, 6/14 at f=0.2: FAIL. D3 collapses with the labels (0-6/20, EA 0/0 - merged E/A class yields no (E,A) bigram counts).
+Verdict: class discovery DOUBLE NEGATIVE (P29b word-level NMI .04-.12; P29d token co-occurrence .67-.79; P29e incompatibility .72). Partial structure is real (E/L/T separated in P29d, L/T cleanly split in P29e) but no simple statistic recovers all four classes at this scale. Line CLOSED per pre-commitment; what survives: grounding, comprehension, pair-bigram order (P29a-c), and earned-class order WITH composition given good labels (P29d D3) - i.e. IF classes are (somehow) obtained, order+composition follow; obtaining them from raw distributional statistics at baby scale is the open hard part.
