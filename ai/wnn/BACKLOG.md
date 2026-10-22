@@ -304,7 +304,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-297 [S (under 2 min)] (T9 test-time-compute analogs) self-consistency: run induction on 5 example subsets, vote -- task: even -- baseline: single run -- success: kills overfit programs
 - [x] B-298 [S (under 2 min)] (T9 test-time-compute analogs) verify-then-accept: learned program must pass fresh random tests -- task: all skills -- baseline: P20 gate -- success: wrong-program rate to ~0
 - [x] B-299 [S (under 2 min)] (T9 test-time-compute analogs) search budget as function of example count (adaptive) -- task: mod..sumto -- baseline: fixed cap -- success: same acc less CPU -- NEGATIVE (LEDGER B-299: tried flat in n; adv boundary decides acceptance, no saving along n axis)
-- [ ] B-300 [S (under 2 min)] (T9 test-time-compute analogs) ensemble of learner hypotheses with execution agreement -- task: text2prog -- baseline: top-1 -- success: +3 pts unseen frames
+- [x] B-300 [S (under 2 min)] (T9 test-time-compute analogs) ensemble of learner hypotheses with execution agreement -- task: text2prog -- baseline: top-1 -- success: +3 pts unseen frames
 - [x] B-301 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mod -- baseline: random 25 -- success: same success fewer examples
 - [x] B-302 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: mul -- baseline: random 25 -- success: same success fewer examples
 - [x] B-303 [S (under 2 min)] (T10 data efficiency) selection random, n=5 -- task: square -- baseline: random 25 -- success: same success fewer examples
