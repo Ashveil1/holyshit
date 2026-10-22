@@ -13559,9 +13559,9 @@ class GenIR(Gen):
             pyrt.py_add(heads, t)
       c[k] = [by, heads]
     return c[k][1]
-  def _emit_block(self, fr, key, blk, by):
+  def _emit_block(self, fr, key, blk, by, heads):
     asm.label(self._blabel(key, blk["label"]))
-    if blk["label"] in self._gc_heads(by):
+    if blk["label"] in heads:
       self._gc_point()
     for ins in blk["instrs"]:
       op = ins["op"]
@@ -13578,7 +13578,7 @@ class GenIR(Gen):
           asm.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
         elif ins["dest"] in pyrt.py_get(fr, "deadloads", []):
           pass
-        elif self._alias_visible(fr, ins["name"]) != null and pyrt.py_get(fr["uses"], ins["dest"], []) and pyrt.py_all([u in pyrt.py_set([["attr", "obj"], ["print", "arg"], ["setattr", "obj"], ["stvar", "src"], ["stglobal", "src"]]) for u in fr["uses"][ins["dest"]]]):
+        elif self._alias_visible(fr, ins["name"]) != null and pyrt.py_get(fr["uses"], ins["dest"], []) and pyrt.py_all([u in GenIR_LOAD_SKIP_USES for u in fr["uses"][ins["dest"]]]):
           pass
         elif pyrt.py_getattr(self, "_rawabi_emit", false) and ins["dest"] in pyrt.py_get(fr, "rawskips", pyrt.py_set(null)):
           pass
@@ -13855,8 +13855,9 @@ class GenIR(Gen):
       asm.sub_ri32("rsp", 8 * fr["nloc"])
     self.frame_init_unbound(fr["nloc"])
     by = pyrt.py_dict([[b["label"], b] for b in fdef["blocks"]])
+    heads = self._gc_heads(by)
     for blk in fdef["blocks"]:
-      self._emit_block(fr, ekey, blk, by)
+      self._emit_block(fr, ekey, blk, by, heads)
     asm.label(lab_done)
     asm.ret()
   def _emit_ifunc(self, key):
@@ -13891,8 +13892,9 @@ class GenIR(Gen):
       asm.mov_mr("rbp", "r10", fr["slots"]["%cline"])
     self._gc_point()
     by = pyrt.py_dict([[b["label"], b] for b in fdef["blocks"]])
+    heads = self._gc_heads(by)
     for blk in fdef["blocks"]:
-      self._emit_block(fr, key, blk, by)
+      self._emit_block(fr, key, blk, by, heads)
   def sev(self, e, sc, mod):
     if pyrt.py_get(e, "t", null) == "irtemp":
       self._load(self._kernel_frame, e["ref"], e["line"])
@@ -14073,6 +14075,7 @@ class GenIR(Gen):
     self.allow_extern_sections = true
     return self.build_ir_sections()
 GenIR_JSON_CALLS = pyrt.py_set(["json_parse", "json_str", "json_load", "json_save"])
+GenIR_LOAD_SKIP_USES = pyrt.py_set([["attr", "obj"], ["print", "arg"], ["setattr", "obj"], ["stvar", "src"], ["stglobal", "src"]])
 GenIR_SRAW_OPS = pyrt.py_set(["sconst", "sbin", "sun", "scall", "sderef", "sfield", "sload", "sraw"])
 GenIR_INT_BINOPS = pyrt.py_set(["+", "-", "*", "%", "<<", ">>", "&", "|", "^"])
 def build_irx64(prog_path, out_path):
