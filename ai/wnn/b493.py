@@ -38,6 +38,7 @@ def run_seed(sd):
     W1 = r2.normal(0, .1, (784, 64)); b1 = np.zeros(64); W2 = r2.normal(0, .1, (64, 10)); b2 = np.zeros(10)
     MU, SD = Xtr.mean(0), Xtr.std(0) + 1e-9  # fixed once from full train; shared by all fits/evals
     def fit(X, Y, eps):
+        nonlocal W1, b1, W2, b2
         Xs = (X - MU) / SD; T = np.eye(10)[Y]
         for ep in range(eps):
             a1 = np.tanh(Xs @ W1 + b1); z = a1 @ W2 + b2
