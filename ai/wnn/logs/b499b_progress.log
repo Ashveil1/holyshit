@@ -5,3 +5,4 @@
 {"done_cell": ["power", 25], "tried": 4450489, "dt": 7301.9}
 {"done_cell": ["gcd", 2], "tried": 100985, "dt": 6.5}
 {"done_cell": ["gcd", 25], "tried": 100985, "dt": 6.5}
+{"done_cell": ["isprime", 2], "tried": 6002688, "dt": 12702.0}
