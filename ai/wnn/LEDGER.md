@@ -498,3 +498,9 @@ logs/b466_stdout.log (5 seeds/k, mean): k=1: 1nn .4287 = centroid .4287 (identic
 All 6 cells WIN vs the B-241 OVR MLP at the same shots (gaps +33 to +53 pt). MLP is near-chance at k=1 (.093) and still poor at k=20 (.351) - the B-241 few-shot MLP weakness replicates under seeded sampling (B-241's .106/.148/.322 was first-k sampling; same ordering).
 Ordering within this harness: centroid >= 1nn >> MLP at every k (centroid's averaging denoises at k>=5).
 Caveat: B-241's WiSARD row (.340/.470/.647) used first-k deterministic sampling, so a WiSARD-vs-1nn/centroid claim needs WiSARD re-run in THIS seeded harness - pre-registered follow-up required before any such claim. NOT claimed here.
+
+## B-241R pre-registration (2026-10-23) - seeded MNIST few-shot: WiSARD vs 1nn/centroid/MLP in ONE harness
+
+Question: B-241's WiSARD few-shot numbers (.340/.470/.647 at k=1/5/20) used first-k deterministic sampling; B-466..481 measured 1nn/centroid under seeded sampling. Does the WiSARD readout beat the simple centroid readout under identical seeded conditions?
+Design (b466w.py): EXACTLY b466.py (same seeds 200..204, same sampled subsets, same OVR MLP) PLUS the B-241 WiSARD readout (28-bit tuples, rng(0) layout, per-class tuple-value sets) on the same subsets. k in {1,5,20}, 5 seeds.
+Criterion (pre-stated): report all four readouts; the readout-ordering claim applies only within this harness. WiSARD WINS a k-cell if its mean exceeds centroid's by >1 pt; LOSES if below by >1 pt; else TIE. No claim beyond MNIST few-shot in this harness.
