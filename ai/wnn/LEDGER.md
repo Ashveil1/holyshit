@@ -510,3 +510,9 @@ Criterion (pre-stated): report all four readouts; the readout-ordering claim app
 logs/b466w_stdout.log (same 5 seeds and subsets for all four readouts): k=1: WiSARD .3053, centroid .4287, 1nn .4287, MLP .0927; k=5: WiSARD .4741, centroid .6523, 1nn .6185, MLP .1249; k=20: WiSARD .6689, centroid .7570, 1nn .7559, MLP .3513.
 WiSARD loses to centroid by 12.3/17.8/8.8 pt at k=1/5/20 (LOSES all 3 cells per the pre-stated 1-pt margin). B-241's "WiSARD beats MLP few-shot" survives (+21 to +38 pt) and replicates under seeded sampling (seeded .305/.474/.669 vs first-k .340/.470/.647 - consistent). What does NOT survive: any implication that the WiSARD tuple readout is a strong few-shot readout on MNIST - plain class-mean on raw binarized pixels beats it by up to 18 pt.
 Updated honest picture (this harness only): centroid ~= 1nn > WiSARD >> MLP on MNIST few-shot; NB > WiSARD on SNIPS few-shot (B-495). The tuple-set readout's demonstrated advantages are one-pass learning and continual retention (B-493/B-494), NOT few-shot accuracy. Any future few-shot-accuracy claim for WiSARD must beat the centroid row in this seeded harness first.
+
+## B-468/471/474/477/480/483P pre-registration (2026-10-23) - SNIPS few-shot readout grid slice
+
+Question (6 T7 cells): on SNIPS intents, at k in {1,5,20} shots, 1nn and centroid readouts vs MLP at the same shots. Complements B-495 (WiSARD vs NB) with the two missing readouts on the SAME features.
+Design (b468.py): EXACTLY the b495 pipeline (4096 hashed uni+bigram presence bits, same data files); readouts: 1nn (L2 on bit vectors), centroid (class mean, L2), MLP = OVR tanh 4096-32-1, 800 epochs, lr .05 (same recipe as B-241/b466, input dim swapped). 10 seeds, seed set 100..109 IDENTICAL to B-495 (paired with the NB/WiSARD numbers).
+Criterion per cell: readout WINS / LOSES / TIES (1 pt) vs MLP at same k. Report all numbers; honest nulls fine. CANNOT claim: anything beyond this SNIPS split, these features, this MLP.
