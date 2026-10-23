@@ -599,3 +599,40 @@ Follow-up to B-501's diagnosis. Hypothesis (verified on 8 examples before pre-re
 Design (b501d.py): same as b500 deep arm, plus a depth-3 block RESTRICTED to (op, leaf, d2small) and (op, d2small, leaf) where d2small = depth-2 forms having at least one leaf arg (8064 forms) - full depth-3 inner args would be 8.7M bases (~1GB, memory-infeasible): pre-stated limitation. Order: depth1 < depth2 < depth3, cap 6M, abl 'baselib val', dummy-step zero-loop arm. Baseline: B-501's depth-2 result (NOT FOUND), not re-run.
 Criterion: PASS = lcm found AND gen >=36/40 at scale 2. FAIL = not found in cap. Estimated target position ~1.3M tried if the hypothesis form is the first fitting program.
 CAN claim: this lcm form is reachable by cost-ordered deepening to depth-3 under the stated restriction. CANNOT claim: full depth-3 search feasibility, or that search would find lcm without the restriction steering the space.
+
+## B-501D verdict (2026-10-23) - PASS (lcm found at depth-3)
+
+logs/b501d_stdout.log (valid run, after the unpinned-list harness bug was caught and discarded - n_bases 701,684 confirms the pinned 9-op space): FOUND at 2,423,862 tried (261s): init b=y; if (nlt a one) -> (mul,a,(div,b,(gcd,a,b))); post id - the cap-respecting form (divide a factor first, then multiply), generalization 40/40 at ALL scales 1-4. Criterion PASS (found + gen 40/40 >= 36/40 bar).
+Tried position 2.42M vs pre-registered estimate ~1.3M - same order; the delta: the found program's cond is (nlt a one) (4th cond, lcm args >= 1) not the assumed (nlt a zero) (6th), and the exact base position differed slightly. Estimate was order-of-magnitude right.
+B-406 wall status after today: absdiff SOLVED (B-500, depth-2), lcm SOLVED (B-501D, restricted depth-3) - both were expression-depth/composition-capacity limits, NOT fundamental schema limits. Remaining wall cells: isprime, cube (both likely need REAL iteration - not zero-loop - so the dummy-step arm cannot reach them; honest open question).
+Scope retained: restricted depth-3 inner forms only (leaf-containing d2); full depth-3 infeasible (memory); zero-loop arm; the recursion schema is inert in these solutions.
+
+## B-501E pre-registration (2026-10-23) - isprime via mul-fold of remainders (predicted just over the 6M cap)
+
+Analysis before running (falsifiable): isprime IS expressible in the schema as init two; cond (nlt b a); base one; steps (a,(add,b,one)); comb (mul,(mod,a,b),0); post nz - the fold multiplies x%d over d=2..x-1; prime iff product != 0; nz gives exactly isp. Predicted tried position ~7.9M (comb index ~384 x inits x conds x bases x steps_single) - JUST over the historical 6M cap, which would explain the B-406 isprime wall as a CAP ARTIFACT, not expressivity. Predictions: (1) with cap raised to 12M, FOUND near ~7.9M tried (accept wide error bars: 4M..12M); (2) the found program generalizes at scales 1-2 (x<=60) but FAILS at scale 3 (x up to 1000) because the loop needs ~x iterations > the 400 cap - the same hidden iteration-capacity limit as B-501's div, this time in the FOUND program itself; (3) therefore isprime does NOT enter LIB (bar is scale-2 >= 36/40 - it may PASS that; the scale-3 failure is recorded honestly either way).
+Design (b501e.py): cur7.search(train, 'baselib val', tried_cap=12M), task isprime seed 0, VALID per main()'s protocol; then gen test scales 1-4. No list overrides - the STOCK enumeration, just a higher cap.
+Criterion: PASS = found within 12M AND matches the predicted mechanism (mul-fold of mod + nz) up to step/cond index noise; PARTIAL = found but different mechanism; FAIL = not found in 12M (prediction falsified - isprime wall is NOT a cap artifact).
+
+## B-501E verdict (2026-10-23) - FAIL (prediction falsified; refined mechanism found post-hoc)
+
+logs/b501e_stdout.log: NOT FOUND in 12M (12,005,376 tried, 632s). Pre-registered prediction (mul-fold findable ~7.9M) FALSIFIED - the isprime wall is NOT a simple 6M-cap artifact.
+Post-hoc diagnosis (verified directly, logs in this session):
+- The predicted order-0 fold (mul(remainder, accumulator)) works for small x but Fail('deep') from x=29 up: the LEARNED mul loops on its SECOND argument = the exploding product (up to ~30^57) - the same hidden iteration-capacity trap as B-501's div, now inside the candidate program itself. The order-0 form is silently rejected on larger train examples.
+- The order-1 fold (mul(accumulator, remainder)) is CORRECT for all tested primes/composites (29, 47, 59, 12) - learned mul loops on the small remainder only. But order-1 combs enumerate AFTER all 1,054 order-0 combs: position ~27M tried > 12M cap. isprime IS expressible in the schema (order1 mul-fold + nz post, verified by direct evaluation) but unreachable at 12M under the stock ordering.
+Wall anatomy (updated): isprime = expressible but at ~4.5x the historical cap AND behind a capacity trap in the earlier order. All four B-406 wall cells now diagnosed: absdiff (depth-2, SOLVED B-500), lcm (depth-3 + capacity, SOLVED B-501D), isprime (order-position x capacity, expressible-but-unreached), cube (open).
+
+## B-500C pre-registration (2026-10-23) - cube at depth-2 (last B-406 wall cell)
+
+Analysis before running (disclosed): cube is solvable by the B-500 depth-2 deep arm as init two; (nlt a zero); base (mul,a,(power,a,b)); zero-loop; post id - x * x^2 via the pinned learned power. Capacity check (pre-stated): learned mul loops on its 2nd arg = x^2; gen cube ranges are x<8 (scales 1-2) and x<15 (scales 3-4) -> x^2 <= 225 < 400 cap for the ENTIRE gen distribution, so unlike isprime/lcm the capacity trap does NOT bite here. Predicted tried position ~80K (init 'two' is the 4th init; inits y/one/zero burn ~60K first and cannot fit: they give x*x^y, x^2, x).
+Criterion: PASS = found AND generalizes (>=36/40 scale 2). If a SPURIOUS earlier program passes train+valid first, the found program is recorded and gen-tested honestly (B-500P protocol). FAIL = not found in 6M or found-but-spurious.
+If PASS, all four B-406 wall cells are closed: absdiff (B-500), lcm (B-501D), isprime (B-501E: expressible but position x capacity walled), cube (this).
+
+## B-500C verdict (2026-10-23) - PASS (cube) - and the search out-designed the prediction
+
+logs/b500c_stdout.log: FOUND at 3,825,745 tried (378s), gen 40/40 at ALL scales 1-4. But NOT the pre-registered form: instead of init two + (mul,a,(power,a,b)), the search found init b=y; (nlt a zero) -> (mul,a,(mul,(add,a,zero),a)) - it routes around the missing (mul,a,a) E1 exclusion with the ADD-ZERO IDENTITY: x * ((x+0) * x) = x^3. The prediction's FOUND+generalizes half was right (capacity safe, x^2<=225<400); the specific predicted form was wrong - the search's own route sits earlier in the enumeration. Recorded honestly: form prediction wrong, outcome prediction right.
+B-406 coverage wall - ALL FOUR CELLS NOW CLOSED:
+- absdiff: SOLVED (B-500, depth-2, (sub,(max,a,b),(min,a,b)))
+- lcm: SOLVED (B-501D, restricted depth-3, (mul,a,(div,b,(gcd,a,b))))
+- isprime: DIAGNOSED (B-501E: expressible as order-1 mul-fold + nz, verified directly, but ~27M tried position x order-0 capacity trap - unreached by search)
+- cube: SOLVED (B-500C, depth-3 path, x*((x+0)*x))
+The wall was NEVER a fundamental schema limit: it decomposes into expression depth (fixable by cost-ordered deepening) + learned-program iteration capacity (the 400-cap bites compositions with growing intermediates) + enumeration position.
