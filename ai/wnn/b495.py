@@ -63,8 +63,8 @@ def nb_fit(X, Y):
         lc.append(np.log((Xc.sum(0) + 1) / (Xc.sum() + V)))
     return np.log(pc), lc
 def nb_acc(model, X, Y):
-    pc, lc = model
-    S = np.stack([np.log(pc[c]) + X @ lc[c] for c in range(NC)], 1)
+    lpc, lc = model
+    S = np.stack([lpc[c] + X @ lc[c] for c in range(NC)], 1)
     return (S.argmax(1) == Y).mean()
 
 res = {}
