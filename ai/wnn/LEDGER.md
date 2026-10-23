@@ -419,3 +419,17 @@ Design (b494.py, same encoding as B-493; permutation pi applied to pixels per ta
 - WiSARD-per-task arm: separate node set per task, task id given at test (the pure-storage reference - retention must be perfect, else a bug).
 - MLP arm: shared-hidden softmax 784-64-10, 300 epochs per task sequentially. Prediction: each new task collapses the previous (B-493 pattern).
 3 seeds. Metrics: task-1 accuracy after each task k=1..5, per arm; final all-task mean for WiSARD arms (per-task arm scores each task with its own nodes). Criteria: report honest curves; WiSARD-shared claim = task-1 retention after 5 tasks >= .8.
+
+## B-494 verdict (2026-10-23) - PASS
+
+logs/b494_stdout.log (3 seeds, criteria pre-registered above).
+WiSARD-shared task-1 curve after k tasks:
+- seed 0: .9115 .9101 .9077 .9059 .9040 (-0.75 pt)
+- seed 1: .9028 .8998 .8977 .8972 .8955 (-0.73 pt)
+- seed 2: .8982 .8965 .8941 .8922 .8913 (-0.69 pt)
+Claim (shared-arm task-1 >= .8 after 5 tasks) PASS on all 3 seeds (min .8913).
+Per-task arm FLAT (.9115/.9028/.8982 at every k) - storage retention is perfect; the shared-arm drop is decision competition only (new entries add rival discriminators; nothing is removed), NOT lost information.
+Shared-arm final all-task mean: .8967/.8938/.8993 (mean .8966).
+MLP (naive sequential SGD, 300 epochs/task, no replay/EWC/any mitigation): task-1 collapses to .0894/.1644/.0771 after 5 tasks.
+Scope: contrast is this encoding + this protocol + a naive baseline; per-task flatness establishes storage retention, not unchanged behavioral recall under a shared readout - the measured -0.7..-0.8 pt shared-arm drop is real behavioral degradation and is preserved.
+Commit: see git log (b494 verdict).
