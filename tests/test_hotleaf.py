@@ -30,6 +30,20 @@ cases=[
 ('six','def f(a,b,c,d,e,f):\n  return a+b+c+d+e+f\nprint f(1,2,3,4,5,6)\n',1,1,1,0),
 ('uncaught','def f(n):\n  return n + 1\nprint f(2)\nraise "after native"\n',1,1,1,0),
 ]
+cases.extend([
+ ('absolute','def f(n):\n  if n < 0:\n    return -n\n  return n\nprint f(-3)\nprint f(0)\nprint f(5)\n',1,1,3,0),
+ ('nested','def f(a,b):\n  if a < b:\n    if a == 0:\n      return b + 1\n    return b - a\n  return a * 2\nprint f(0,3)\nprint f(2,4)\nprint f(5,1)\n',1,1,3,0),
+ ('truth','def f(n):\n  if n:\n    return n + 1\n  return 7\nprint f(0)\nprint f(-2)\n',1,1,2,0),
+ ('branch-overflow','def f(n):\n  if n < 0:\n    return -n\n  return n * n\nprint f(536870911)\nprint f(-536870912)\nprint f(3)\n',1,1,1,2),
+ ('bool-return','def f(n):\n  return n < 3\nprint f(2)\nprint f(4)\n',1,0,0,0),
+ ('bool-arithmetic','def f(n):\n  return (n < 3) + 1\ntry:\n  print f(2)\nexcept:\n  print "caught"\n',1,0,0,0),
+ ('loop-rejected','def f(n):\n  while n > 0:\n    n = n - 1\n  return n\nprint f(3)\n',1,0,0,0),
+ ('branch-effects','def f(n):\n  if n < 0:\n    print "effect"\n    return -n\n  return n\nprint f(-3)\nprint f(4)\n',1,0,0,0),
+])
+for op in ('<','<=','>','>=','==','!='):
+ source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'
+ source+=''.join(f'print f({a},{b})\n' for a,b in [(-2,3),(3,-2),(4,4)])
+ cases.append(('compare-'+op,source,1,1,3,0))
 # Eligible IR can exceed the native code-page budget. Optimization refusal
 # must preserve execution and release the partially allocated mapping.
 long_expr = ' + '.join(['n'] * 50)

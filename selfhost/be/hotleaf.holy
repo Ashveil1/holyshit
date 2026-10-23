@@ -11,40 +11,113 @@ def small(v):
     return false
   return v >= (0 - 536870912) and v <= 536870911
 def plan(fn):
-  if len(fn["blocks"]) != 1 or len(fn["params"]) > 6:
+  if len(fn["blocks"]) < 1 or len(fn["blocks"]) > 16 or len(fn["params"]) > 6 or len(fn["globals"]) != 0:
     return null
-  if len(fn["globals"]) != 0:
+  by = {}
+  preds = {}
+  remaining = {}
+  for b in fn["blocks"]:
+    lab = b["label"]
+    if lab in by:
+      return null
+    by[lab] = b
+    preds[lab] = []
+    remaining[lab] = 0
+  if fn["entry"] not in by:
     return null
-  b = fn["blocks"][0]
-  if b["label"] != fn["entry"] or b["term"]["term"] != "ret" or b["term"]["val"] == null:
+  for b in fn["blocks"]:
+    tm = b["term"]
+    targets = []
+    if tm["term"] == "jmp":
+      targets = [tm["to"]]
+    elif tm["term"] == "br":
+      targets = [tm["then"], tm["els"]]
+    elif tm["term"] != "ret" or tm["val"] == null:
+      return null
+    for target in targets:
+      if target not in by:
+        return null
+      append(preds[target], b["label"])
+      remaining[target] = remaining[target] + 1
+  if remaining[fn["entry"]] != 0:
     return null
-  if len(b["instrs"]) < 1 or len(b["instrs"]) > 128:
-    return null
+  queue = [fn["entry"]]
+  order = []
+  available = {}
   slots = {}
-  for ins in b["instrs"]:
-    op = ins["op"]
-    if op == "load":
-      if ins["name"] not in fn["params"]:
+  types = {}
+  count = 0
+  qi = 0
+  while qi < len(queue):
+    lab = queue[qi]
+    qi = qi + 1
+    b = by[lab]
+    have = {}
+    if len(preds[lab]) > 0:
+      first = available[preds[lab][0]]
+      for temp in first:
+        common = true
+        for parent in preds[lab]:
+          if temp not in available[parent]:
+            common = false
+        if common:
+          have[temp] = true
+    for ins in b["instrs"]:
+      count = count + 1
+      if count > 128:
         return null
-    elif op == "const":
-      if not small(ins["val"]):
+      op = ins["op"]
+      ty = "Int"
+      if op == "load":
+        if ins["name"] not in fn["params"]:
+          return null
+      elif op == "const":
+        if not small(ins["val"]):
+          return null
+      elif op == "bin":
+        if ins["l"] not in have or ins["r"] not in have:
+          return null
+        if types[ins["l"]] != "Int" or types[ins["r"]] != "Int":
+          return null
+        if ins["binop"] in ["<", "<=", ">", ">=", "==", "!="]:
+          ty = "Bool"
+        elif ins["binop"] not in ["+", "-", "*"]:
+          return null
+      elif op == "un":
+        if ins["unop"] != "neg" or ins["v"] not in have:
+          return null
+        if types[ins["v"]] != "Int":
+          return null
+      else:
         return null
-    elif op == "bin":
-      if ins["binop"] not in ["+", "-", "*"]:
+      if ins["dest"] in slots:
         return null
-      if ins["l"] not in slots or ins["r"] not in slots:
+      slots[ins["dest"]] = (len(slots) + 1) * 8
+      types[ins["dest"]] = ty
+      have[ins["dest"]] = true
+    tm = b["term"]
+    targets = []
+    if tm["term"] == "ret":
+      if tm["val"] not in have:
         return null
-    elif op == "un":
-      if ins["unop"] != "neg" or ins["v"] not in slots:
+      if types[tm["val"]] != "Int":
         return null
+    elif tm["term"] == "jmp":
+      targets = [tm["to"]]
     else:
-      return null
-    if ins["dest"] in slots:
-      return null
-    slots[ins["dest"]] = (len(slots) + 1) * 8
-  if b["term"]["val"] not in slots:
+      if tm["cond"] not in have:
+        return null
+      targets = [tm["then"], tm["els"]]
+    available[lab] = have
+    append(order, b)
+    for target in targets:
+      remaining[target] = remaining[target] - 1
+      if remaining[target] == 0:
+        append(queue, target)
+  # A cycle or an unreachable block cannot enter this topological walk.
+  if len(order) != len(fn["blocks"]):
     return null
-  return [b, slots]
+  return [order, slots, types]
 def guard():
   asm.cmp_ri32("rax", 0 - 536870912)
   asm.jcc("l", "fallback")
@@ -61,31 +134,47 @@ def compile_leaf(fn, p):
     asm.mov_rr("rbp", "rsp")
     asm.sub_ri32("rsp", (len(p[1]) * 8 + 15) & (0 - 16))
     asm.mov_ri64("rdi", ptr + 4096)
-    for ins in p[0]["instrs"]:
-      op = ins["op"]
-      if op == "load":
-        idx = 0
-        while fn["params"][idx] != ins["name"]:
-          idx = idx + 1
-        asm.mov_rm("rax", "rdi", idx * 8)
-      elif op == "const":
-        asm.mov_ri64("rax", ins["val"])
-      elif op == "un":
-        asm.mov_rm("rax", "rbp", 0 - p[1][ins["v"]])
-        asm.neg_r("rax")
-      else:
-        asm.mov_rm("rax", "rbp", 0 - p[1][ins["l"]])
-        asm.mov_rm("rcx", "rbp", 0 - p[1][ins["r"]])
-        if ins["binop"] == "+":
-          asm.add_rr("rax", "rcx")
-        elif ins["binop"] == "-":
-          asm.sub_rr("rax", "rcx")
+    for block in p[0]:
+      asm.label("block_" + block["label"])
+      for ins in block["instrs"]:
+        op = ins["op"]
+        if op == "load":
+          idx = 0
+          while fn["params"][idx] != ins["name"]:
+            idx = idx + 1
+          asm.mov_rm("rax", "rdi", idx * 8)
+        elif op == "const":
+          asm.mov_ri64("rax", ins["val"])
+        elif op == "un":
+          asm.mov_rm("rax", "rbp", 0 - p[1][ins["v"]])
+          asm.neg_r("rax")
         else:
-          asm.imul_rr("rax", "rcx")
-      guard()
-      asm.mov_mr("rbp", "rax", 0 - p[1][ins["dest"]])
-    asm.mov_rm("rax", "rbp", 0 - p[1][p[0]["term"]["val"]])
-    asm.jmp("done")
+          asm.mov_rm("rax", "rbp", 0 - p[1][ins["l"]])
+          asm.mov_rm("rcx", "rbp", 0 - p[1][ins["r"]])
+          if ins["binop"] == "+":
+            asm.add_rr("rax", "rcx")
+          elif ins["binop"] == "-":
+            asm.sub_rr("rax", "rcx")
+          elif ins["binop"] == "*":
+            asm.imul_rr("rax", "rcx")
+          else:
+            asm.cmp_rr("rax", "rcx")
+            cc = {"<": "l", "<=": "le", ">": "g", ">=": "ge", "==": "e", "!=": "ne"}
+            asm.setcc_al(cc[ins["binop"]])
+            asm.movzx_eax_al()
+        guard()
+        asm.mov_mr("rbp", "rax", 0 - p[1][ins["dest"]])
+      tm = block["term"]
+      if tm["term"] == "ret":
+        asm.mov_rm("rax", "rbp", 0 - p[1][tm["val"]])
+        asm.jmp("done")
+      elif tm["term"] == "jmp":
+        asm.jmp("block_" + tm["to"])
+      else:
+        asm.mov_rm("rax", "rbp", 0 - p[1][tm["cond"]])
+        asm.cmp_ri32("rax", 0)
+        asm.jcc("ne", "block_" + tm["then"])
+        asm.jmp("block_" + tm["els"])
     asm.label("fallback")
     asm.mov_ri32("rax", 1073741824)
     asm.label("done")
