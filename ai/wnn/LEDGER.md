@@ -410,3 +410,12 @@ b493.py, pre-registered, 3 seeds, class-incremental MNIST (train classes 0-4, th
 - MLP: A accuracy .974 -> .059 after B (-91.5 pts, total collapse to chance); B .946; all-classes .490
 Pre-registered prediction was WiSARD drop <= 1 pt; measured -3.1. Correction recorded: the drop is NOT memory interference (old class tables are byte-untouched by construction) but decision-level competition - a 10-way argmax confuses some A samples with newly added B-class nodes. The memory-vs-decision distinction is the honest framing: nothing is forgotten; discrimination gets harder as classes accumulate.
 The MLP tradeoff is real and recorded: it fits the NEW classes better (.946 vs .862) but destroys the old ones. WiSARD keeps everything at a modest discrimination cost. This closes the forgetting half left open by B-435 and strengthens B-241's few-shot claim into the continual-learning setting.
+
+## B-494P pre-registration (2026-10-23) - permuted MNIST x5 sequential retention
+
+Question (B-494): the standard continual-learning benchmark - 5 permuted-MNIST tasks learned in sequence; what is task-1 accuracy after tasks 2..5?
+Design (b494.py, same encoding as B-493; permutation pi applied to pixels per task; SAME 28-bit tuple layout positions for all tasks):
+- WiSARD-shared arm: one node set; each task ADDS its entries (union). Old entries never removed. Prediction: task-1 retention degrades only via decision competition; report honest curve.
+- WiSARD-per-task arm: separate node set per task, task id given at test (the pure-storage reference - retention must be perfect, else a bug).
+- MLP arm: shared-hidden softmax 784-64-10, 300 epochs per task sequentially. Prediction: each new task collapses the previous (B-493 pattern).
+3 seeds. Metrics: task-1 accuracy after each task k=1..5, per arm; final all-task mean for WiSARD arms (per-task arm scores each task with its own nodes). Criteria: report honest curves; WiSARD-shared claim = task-1 retention after 5 tasks >= .8.
