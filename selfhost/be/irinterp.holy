@@ -1,7 +1,14 @@
 # Full-semantics IR interpreter tier, written in holyshit. Values are plain hs
 # values; the structure mirrors the Python reference executor (ir.py _exec).
-# Unsupported ops (unsafe s*, ffi, import/attr/setattr) are refused up front by
-# preflight so no program output happens before a refusal.
+# Unsafe s* ops, ffi and builtins outside the subset are refused up front by
+# preflight so no program output happens before a refusal. import/attr/setattr
+# are supported: preflight_imports statically walks the import graph (parse +
+# irbuild only, no execution) so unsupported ops inside modules are also
+# refused up front; find/parse failures are left to the runtime path, which
+# reproduces interp.py's rc-1 errors.
+import normalize
+import irbuild
+import verify
 import pyrt
 UNB = "u0004IRUNBOUNDu0004"
 JUMP = "u0001IRJUMPu0001"
@@ -50,7 +57,7 @@ def fail(msg, ln):
   raise pyrt.py_err(msg, ln)
 def new_frame(st, parent, root, gnames):
   st["nid"] = st["nid"] + 1
-  return {"id": st["nid"], "vars": {}, "parent": parent, "root": root, "globals": gnames}
+  return {"id": st["nid"], "vars": {}, "parent": parent, "root": root, "globals": gnames, "basedir": null}
 def frame_get(frame, name, ln):
   f = frame
   while f != null:
@@ -64,6 +71,13 @@ def frame_set(frame, name, val):
     frame["root"]["vars"][name] = val
   else:
     frame["vars"][name] = val
+def frame_basedir(frame):
+  f = frame
+  while f != null:
+    if f["basedir"] != null:
+      return f["basedir"]
+    f = f["parent"]
+  return null
 def owns(hframe, frame):
   f = frame
   while f != null:
@@ -79,6 +93,8 @@ def call_builtin(name, args, ln):
     if name == "len":
       return len(args[0])
     if name == "str":
+      if is_mod(args[0]):
+        return "<module " + args[0]["hs_ir_mod"] + ">"
       return str(args[0])
     if name == "int":
       return int(args[0])
@@ -163,6 +179,107 @@ def call_value(st, fn, args, ln):
       i = i + 1
     return run_fn(st, key, fdef, fr)
   fail("not callable: " + type_name(fn), ln)
+MODS = {}
+SHELLS = {}
+PARS = {}
+def is_mod(v):
+  return pyrt.py_type(v) == "dict" and "hs_ir_mod" in v
+def mod_find(name, basedir, ln):
+  rel = pyrt.py_replace(name, ".", "/")
+  hspath = [d for d in pyrt.py_split(pyrt.py_hspath(), ":") if d]
+  for d in [basedir] + hspath + [pyrt.py_os_getcwd()]:
+    if not d:
+      continue
+    p = pyrt.py_os_path_join(d, rel + ".holy")
+    if not pyrt.py_os_path_isfile(p):
+      p = pyrt.py_os_path_join(d, rel + ".hs")
+    if pyrt.py_os_path_isfile(p):
+      return pyrt.py_os_path_abspath(p)
+  fail("cannot find module '" + name + "'", ln)
+def mod_wrap(name, e, ln):
+  if find(e, pyrt.EMARK) >= 0:
+    return pyrt.py_err("in module '" + name + "': " + ir_emsg(e), ir_eline(e))
+  return pyrt.py_err("in module '" + name + "': " + strip_lines(e), ln)
+def mod_build(name, path):
+  src = read_text(path)
+  prog = normalize.parse(src)
+  sub = irbuild.build_module(prog, name + ".")
+  verify.verify_module(sub)
+  return sub
+def mod_exec(st, name, path, ln):
+  if path in MODS:
+    ent = MODS[path]
+    if ent["state"] == "done":
+      return ent["mod"]
+    if ent["state"] == "busy":
+      fail("circular import '" + name + "'", ln)
+  sub = null
+  if path in PARS:
+    sub = PARS[path]
+  else:
+    try:
+      sub = mod_build(name, path)
+    except as e:
+      raise mod_wrap(name, e, ln)
+    PARS[path] = sub
+  mod = {"hs_ir_mod": name, "basedir": pyrt.py_os_path_dirname(path)}
+  fr = new_frame(st, st["broot"], null, sub["funcs"][sub["entry"]]["globals"])
+  fr["root"] = fr
+  fr["basedir"] = mod["basedir"]
+  mod["frame"] = fr
+  MODS[path] = {"state": "busy", "mod": mod}
+  for key in sub["order"]:
+    st["funcs"][key] = sub["funcs"][key]
+    by = {}
+    for block in sub["funcs"][key]["blocks"]:
+      by[block["label"]] = block
+    st["by"][key] = by
+  try:
+    run_fn(st, sub["entry"], sub["funcs"][sub["entry"]], fr)
+  except as e:
+    MODS[path] = {"state": "failed"}
+    if find(e, JUMP) >= 0:
+      raise e
+    raise mod_wrap(name, e, ln)
+  MODS[path]["state"] = "done"
+  return mod
+def mod_shell(st, name):
+  if name in SHELLS:
+    return SHELLS[name]
+  fr = new_frame(st, st["broot"], null, [])
+  fr["root"] = fr
+  fr["basedir"] = ""
+  m = {"hs_ir_mod": name, "frame": fr, "basedir": ""}
+  SHELLS[name] = m
+  return m
+def mod_import(st, name, frame, ln):
+  if find(name, ".") >= 0:
+    parts = pyrt.py_split(name, ".")
+    leaf = parts[len(parts) - 1]
+    parent = name[0:len(name) - len(leaf) - 1]
+    pmod = null
+    try:
+      pmod = mod_import(st, parent, frame, ln)[0]
+    except as e:
+      if find(e, "cannot find module '" + parent + "'") < 0:
+        raise e
+      pmod = mod_shell(st, parent)
+    path = mod_find(name, frame_basedir(frame), ln)
+    leafmod = mod_exec(st, name, path, ln)
+    pmod["frame"]["vars"][leaf] = leafmod
+    topname = parts[0]
+    topmod = null
+    try:
+      topmod = mod_import(st, topname, frame, ln)[0]
+    except as e:
+      topmod = mod_shell(st, topname)
+    return [leafmod, topmod, topname]
+  if name in SHELLS:
+    m = SHELLS[name]
+    return [m, m, name]
+  path = mod_find(name, frame_basedir(frame), ln)
+  m = mod_exec(st, name, path, ln)
+  return [m, m, name]
 def type_name(v):
   t = pyrt.py_type(v)
   if t == "null":
@@ -182,6 +299,8 @@ def type_name(v):
       return "Func"
     if "hs_ir_builtin" in v:
       return "Builtin"
+    if "hs_ir_mod" in v:
+      return "Module"
     return "Dict"
   return "?"
 def do_binop(op, l, r, ln):
@@ -276,7 +395,10 @@ def step(st, ins, temps, frame, prev):
       if pyrt.py_type(v) == "str":
         line = line + v
       else:
-        line = line + str(v)
+        if is_mod(v):
+          line = line + "<module " + v["hs_ir_mod"] + ">"
+        else:
+          line = line + str(v)
     print line
   elif op == "build_list":
     items = []
@@ -353,6 +475,23 @@ def step(st, ins, temps, frame, prev):
       fail("raise without active exception", ln)
     top = act[len(act) - 1]
     raise pyrt.py_err(top[0], top[1])
+  elif op == "import":
+    r = mod_import(st, ins["name"], frame, ln)
+    frame_set(frame, r[2], r[1])
+  elif op == "attr":
+    obj = temps[ins["obj"]]
+    if not is_mod(obj):
+      fail("only modules have attributes", ln)
+    nm = ins["name"]
+    mvs = obj["frame"]["vars"]
+    if nm not in mvs:
+      fail("module '" + obj["hs_ir_mod"] + "' has no attribute '" + nm + "'", ln)
+    temps[ins["dest"]] = mvs[nm]
+  elif op == "setattr":
+    obj = temps[ins["obj"]]
+    if not is_mod(obj):
+      fail("only modules have attributes", ln)
+    obj["frame"]["vars"][ins["name"]] = temps[ins["val"]]
   else:
     fail("IR: bad op '" + op + "'", ln)
 def pop_handler(st):
@@ -436,7 +575,7 @@ def run_fn(st, key, fdef, frame):
         append(st["active"], [msg, eline])
         lab = tgt[1]
         prev = null
-SUPPORTED = ["const", "load", "stvar", "stglobal", "mkfunc", "bin", "un", "call", "print", "build_list", "build_dict", "index", "slice", "setindex", "iterseq", "copy", "phi", "try_push", "try_pop", "exc_str", "exc_pop", "unbind", "reraise"]
+SUPPORTED = ["const", "load", "stvar", "stglobal", "mkfunc", "bin", "un", "call", "print", "build_list", "build_dict", "index", "slice", "setindex", "iterseq", "copy", "phi", "try_push", "try_pop", "exc_str", "exc_pop", "unbind", "reraise", "import", "attr", "setattr"]
 BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find", "join", "has", "contains", "keys", "values", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "env", "argv", "input", "json_parse", "json_str", "json_load", "json_save", "open", "read", "write", "close", "system"]
 OTHER_BUILTINS = ["alloc", "as_int", "as_ptr", "http_get", "load32", "load64", "load8", "meminfo", "pmm_alloc", "pmm_free", "pmm_total", "read_mem", "readkey", "readkey_code", "store32", "store64", "store8", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "write_bytes"]
 def preflight(irmod):
@@ -461,8 +600,50 @@ def preflight(irmod):
         if ins["op"] == "load" and ins["name"] in OTHER_BUILTINS and ins["name"] not in assigned:
           return "irinterp: unsupported builtin " + ins["name"]
   return null
-def create(irmod):
-  st = {"funcs": irmod["funcs"], "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"]}
+def preflight_imports(irmod, basedir):
+  # Statically walk the import graph (parse + irbuild only, no execution) so
+  # unsupported ops inside reachable modules are refused up front, like the
+  # root module's. Modules that fail to find or build are skipped: the
+  # runtime path then reproduces interp.py's rc-1 errors. Parsed modules are
+  # cached in PARS so execution does not rebuild them.
+  queue = [[irmod, basedir]]
+  seen = {}
+  while len(queue) > 0:
+    cur = queue[0]
+    queue = queue[1:len(queue)]
+    irm = cur[0]
+    bdir = cur[1]
+    for key in irm["order"]:
+      fn = irm["funcs"][key]
+      for block in fn["blocks"]:
+        for ins in block["instrs"]:
+          if ins["op"] == "import":
+            name = ins["name"]
+            path = null
+            try:
+              path = mod_find(name, bdir, null)
+            except as e:
+              path = null
+            if path == null:
+              continue
+            if path in seen:
+              continue
+            seen[path] = true
+            sub = null
+            try:
+              sub = mod_build(name, path)
+            except as e:
+              sub = null
+            if sub == null:
+              continue
+            PARS[path] = sub
+            r = preflight(sub)
+            if r != null:
+              return r
+            append(queue, [sub, pyrt.py_os_path_dirname(path)])
+  return null
+def create(irmod, basedir):
+  st = {"funcs": irmod["funcs"], "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"], "basedir": basedir, "broot": null}
   for key in irmod["order"]:
     by = {}
     for block in irmod["funcs"][key]["blocks"]:
@@ -472,9 +653,12 @@ def create(irmod):
 def run(st):
   root = new_frame(st, null, null, [])
   root["root"] = root
+  root["basedir"] = st["basedir"]
+  st["broot"] = root
   for name in BUILTIN_NAMES:
     root["vars"][name] = {"hs_ir_builtin": name}
   main = st["funcs"][st["entry"]]
   frame = new_frame(st, root, root, main["globals"])
   frame["root"] = frame
+  frame["basedir"] = st["basedir"]
   run_fn(st, st["entry"], main, frame)
