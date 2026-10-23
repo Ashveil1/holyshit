@@ -1,0 +1,21 @@
+{"n": 150, "seed": 0, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1000, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 150, "seed": 1, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1001, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 150, "seed": 2, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1002, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 150, "seed": 3, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1003, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 150, "seed": 4, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1004, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 0, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1000, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 1, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1001, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 2, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1002, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 3, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1003, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 4, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1004, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+DONE

@@ -1,0 +1,21 @@
+{"seed": 0, "arm": "mix_anaph", "acc": 0.85}
+{"seed": 0, "arm": "mix_expl", "acc": 0.52}
+{"seed": 0, "arm": "ctl_anaph", "acc": 0.03}
+{"seed": 0, "arm": "ctl_expl", "acc": 0.53}
+{"seed": 1, "arm": "mix_anaph", "acc": 0.86}
+{"seed": 1, "arm": "mix_expl", "acc": 0.53}
+{"seed": 1, "arm": "ctl_anaph", "acc": 0.0}
+{"seed": 1, "arm": "ctl_expl", "acc": 0.58}
+{"seed": 2, "arm": "mix_anaph", "acc": 0.93}
+{"seed": 2, "arm": "mix_expl", "acc": 0.62}
+{"seed": 2, "arm": "ctl_anaph", "acc": 0.02}
+{"seed": 2, "arm": "ctl_expl", "acc": 0.54}
+{"seed": 3, "arm": "mix_anaph", "acc": 0.86}
+{"seed": 3, "arm": "mix_expl", "acc": 0.51}
+{"seed": 3, "arm": "ctl_anaph", "acc": 0.02}
+{"seed": 3, "arm": "ctl_expl", "acc": 0.55}
+{"seed": 4, "arm": "mix_anaph", "acc": 0.91}
+{"seed": 4, "arm": "mix_expl", "acc": 0.59}
+{"seed": 4, "arm": "ctl_anaph", "acc": 0.0}
+{"seed": 4, "arm": "ctl_expl", "acc": 0.48}
+DONE

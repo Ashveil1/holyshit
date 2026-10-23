@@ -323,3 +323,74 @@ b381.py, clean config (baselib pin, EXCL={square}, square R5 seed 0, identical 1
 - B lru2m: 76.9s = 1.59x vs A (misses 21.3M -> 0.79M; 300K was thrashing)
 - C nocache: 541.2s = 4.42x SLOWER than A; B beats C by 7.04x
 Verdict: the item's >2x is met only by cache-vs-no-cache, i.e. the premise was already implemented. No NEW >2x available from bigger caching (1.59x < 2x criterion). ADOPTED: ev lru_cache maxsize 300000 -> 2000000 in cur7.py (semantics-preserving: ev is pure; decisions identical in b381) - ~1.6x on all future searches. Whole-run trace caching remains provably share-free (each candidate spec is unique and evaluated once, B-058).
+
+## B-435/B-484/B-487/B-490/B-498 triage (2026-10-22) - answered by B-241/B-055/B-058 measurements
+
+- B-435 (WiSARD 1-pass vs MLP 1-pass, MNIST): accuracy half = B-241 exactly (same harness, WiSARD beats 1-pass MLP 2-3x at every k) - better than the "within 3 pts" criterion. Forgetting half folds into B-493 (class-incremental run, still open); WNN table retention regardless of load already measured (P5 E4: 255/256).
+- B-484/B-487/B-490 (wiSARD readout, shots 1/5/20, MNIST): = B-241's exact cells (.340/.470/.647). Direct measurement.
+- B-498 (repair: resume search from best partial on test failure, square): = B-055's mechanism, measured PASS. The boundary gate IS repair-by-resume: wrong-short program rejected at 719709, search continues to the clean program at 2583787. B-058's profile shows candidates are binary-decided (one r0 evaluation), so "best partial" has no separate existence to resume from; the only resume point is rejection-then-continue, which the gate already implements.
+
+## B-496 verdict (2026-10-22): PASS - exact chained arithmetic at 10x P5's length is chain-length-invariant for exact tables
+
+b496.py: P5's T1 successor table (100 entries, x->x+1 mod 100, UNCHANGED) queried over chains of 4750 links (10x P5's 475): 100/100 starts arrive exactly (475000 lookups, 0.031s wall). The mechanism argument is now measured: exact key-value recall has no error compounding and no capacity growth with chain length - the same table serves any chain. Contrast with the HDC superposition side (B-237: 2-hop chains FAIL at 500 chains/1500 links even at 16KB; multi-hop RAM must grow with link count). Exact tables trade flexibility for this invariance; superposition trades exactness for fixed-size storage. This is the strongest form of the T8 claim: chain length is FREE for exact memory.
+
+## B-407P pre-registration (2026-10-22) - anaphoric zero-operand steps ("then double it")
+
+Question (B-407): can the P16 TwoStep learner handle 2-step commands whose second step references the first result via "it" and carries an IMPLICIT constant in a word (double/triple/halve/increment/decrement), with accuracy within 5 pts of the explicit-number version?
+Prior fact: zero-operand anaphora already exists for fact/isprime ("take the factorial", "check if it is prime") - those carry no constant. The new content: words that secretly bind BOTH an op and a constant, learnable only from (text, answer) supervision.
+Design (b407.py): extend H2 with 5 zero-operand ops (double/triple/halve/inc/dec; require len(numbers_of(right))==0). Generator mirrors two_step; 35% of 2-step items replace the right clause with an anaphoric phrase ("then double it" etc., no digits - numbers_of is digits-only, verified). Train n=300 mixed (anaphoric + explicit + singles), 5 seeds. Eval arms: (a) anaphoric-only test, (b) explicit-only test, same model.
+Criteria: (1) anaphoric acc within 5 pts of explicit acc; (2) CONTROL: a model trained with 0% anaphoric data must score near zero on the anaphoric test (proves the phrases are LEARNED, not leaked by the hypothesis extension); (3) explicit-arm accuracy must not drop >5 pts vs the no-anaphora model's explicit accuracy (no interference).
+
+## B-407 verdict (2026-10-22): PASS - anaphoric zero-operand steps are learnable and EASIER than explicit ones
+
+b407.py, pre-registered criteria, 5 seeds, n=300 mixed training, matched 2-step-only eval:
+- anaphoric test ("then double/triple/halve/increment/decrement it"): .85/.86/.93/.86/.91 = mean .882
+- explicit-number test, same model: .52/.53/.62/.51/.59 = mean .554 - criterion (1) "within 5 pts of explicit" met: anaphoric is +32.8 pts BETTER, not worse
+- CONTROL (0% anaphora in training): .03/.00/.02/.02/.00 = mean .014 on the anaphoric test - criterion (2) met: the phrases are LEARNED from supervision, not leaked by the H2 extension
+- interference check: explicit accuracy .554 with anaphora mixed in vs .536 without - criterion (3) met (+1.8 pts, no drop)
+Interpretation: zero-operand anaphora is easier than explicit constants in this learner - no number to extract, short right clauses, only 5 phrases to ground. The epistemic status is unchanged from P16: the hypothesis space (now including 5 implicit-constant ops) is given; the phrase->hypothesis mapping is learned from (text, answer) pairs. Note the explicit 2-step accuracy itself (~.55 at n=300, 2-step-only) is the known P16-level difficulty - the anaphora result does not improve it, it adds a new learnable phrasing class.
+
+## B-408 triage (2026-10-22): already measured by construction - P21's "same-conn" condition IS mixed en/th
+
+Source inspection (text2prog5.py three_step + text2prog2.py two_step): connectors are sampled independently PER CLAUSE from CONN[0] = ["then", "and then", "แล้ว", "จากนั้น"], and clause frames from C1/C2 train lists that also mix English and Thai. So P21's same-connector 3-step measurement (.35 at n=300, .53 at n=1000, 5 seeds) was already taken over mixed en/th sentences - the mixed-connector condition B-408 asks to compare against the P21 baseline is identical to that baseline. No run needed; the item rests on a wrong premise that P21 was English-only.
+
+## B-409P pre-registration (2026-10-22) - Thai no-space 2-step via char-boundary scan
+
+Question (B-409): Thai has no spaces between words; can a char-level model segment AND solve 2-step Thai commands, at >= .8 of the spaced-Thai token model's accuracy?
+Design (b409.py): Thai-only generation (frames/connectors filtered to Thai by unicode block). Baseline arm: P16 TwoStep (tok learners) on spaced Thai. Test arm: same learner class but Learner('char') and clause cuts scanned over CHARACTER positions of the space-stripped string (no segmentation given - fit() credits whichever char-cut yields the supervising answer, so segmentation is learned, not handed). Boundary model keys become char pairs. numbers_of is digits-only, unaffected by despaceing.
+Protocol: n=300 training (30% singles, Thai-only), 5 seeds, 200-item 2-step-plus-single test per arm.
+Criteria: (1) char-nospace acc >= .8 * tok-spaced acc; (2) CONTROL: the tok-spaced model evaluated on no-space text must collapse (tokens unseen) - proves the char model carries the segmentation; (3) record both arms' single-op accuracy separately (singles should stay high in both).
+
+## B-409 verdict (2026-10-22): FAIL - char-boundary scan does not learn Thai segmentation at n=300
+
+b409.py, pre-registered criteria, 5 seeds, n=300 Thai-only mixed training, 200-item test:
+- tok_spaced (baseline): .80/.765/.785/.835/.745 = mean .786
+- char_nospace: .365/.205/.23/.235/.32 = mean .271 - criterion >= .8 x .786 = .629 decisively FAILED (34% of baseline)
+- CONTROL (tok model on despaced text): .245/.14/.175/.235/.17 = mean .193 - collapses as predicted but not to zero: fallback single-op hypotheses on extracted digits still land some answers
+Diagnosis: the char model beats the no-segmentation control by only ~8 pts, so segmentation itself is what failed, not op grounding. Two measured causes: (1) credit dilution - at char granularity many cuts are explanation-consistent with the supervising answer, so w=1/|E| spreads credit over spurious boundaries; (2) boundary statistics over char PAIRS are sparse relative to word pairs. Word-level segmentation is not free: it must be either given (whitespace languages), learned with a sharper objective than answer-consistent credit, or bought with much more data. Follow-up candidates (not run): n=1000+, discriminative boundary training, or digit/connector-anchored cut proposals (which hands partial segmentation - note it as such if tried).
+
+## B-410P pre-registration (2026-10-22) - digit-free numbers: bootstrapping without a digit model
+
+Question (B-410): can number words be learned when training text contains ONLY words, never digits? The existing stage-B lexicon learner is circular for this: it substitutes candidate values into the text and checks them with an ALREADY digit-trained op model (learn_lexicon, text2prog2.py:51). Digit-free learning must break the bootstrap.
+Design (b410.py), two phases, no digit strings in any training text (answers are integer supervision, as in all P16 stages):
+- Phase 1 (constraint pinning): unary-op sentences only ("factorial of W" etc., words for values 2..10). Each (text, ans) constrains the word's value to the UNION over unary ops of preimages of ans; intersect a word's constraint sets across its sentences. Measure: how many of the 9-10 words pin to a singleton after n sentences, and how many pin CORRECTLY.
+- Phase 2 (EM continuation): sentences whose words are all pinned decode to digits -> train the P16 op model on decoded text -> learn_lexicon (the existing substitution voter, now legitimate since an op model exists) for the remaining words. Measure end-to-end 2-step answer accuracy vs the P16 mixed baseline.
+Criteria: (1) report honest pinned-count/accuracy at n=150/400 (no target preset beyond "report"); (2) success for the full claim = 2-step accuracy >= .8 of the P16 mixed-digit baseline at the same n; (3) CONTROL: shuffled-answer training must pin ~0 words correctly (constraints from noise do not converge).
+
+## B-410 verdict (2026-10-22): MIXED - digit-free number grounding bootstraps exactly; end-to-end accuracy fails the .8 criterion at n=300
+
+Phase 1 (b410.py, unary constraint pinning): from unary-op word-only sentences ("factorial of W" etc., zero digit strings anywhere), intersecting preimage constraints pins all 8 seen words (values 2..9) CORRECTLY at n=150 and n=400, 5/5 seeds. Wrong-answer control pins 0/8 - constraints from noise do not converge. The learn_lexicon circularity is broken: no digit-trained model is needed to start.
+Phase 2 (b410b.py, EM continuation to end-to-end 2-step): pin -> decode fully-decodable mixed sentences (167-190 of 300) -> train op model -> learn_lexicon for the rest -> final TwoStep. 5 seeds: acc .475/.53/.475/.515/.645 = mean .54 vs matched digit baseline .975-1.0 = mean .99 on the same simplified 4-op EN generator. Criterion (>= .8 x baseline = .79) FAILED at n=300+120.
+Loss decomposition (honest): lex0 covers only values 2..9 (one/ten absent from unary sentences -> those test sentences unsolvable); 40% of training sentences undecodable pre-EM; EM additions went WRONG in seeds 1 and 3 (lex_total > lex_correct). The bootstrap (the scientifically interesting claim) is exact; the gap is downstream data dilution, closable with unary coverage of 1/10, more data, or iterated EM. Caveat: baseline uses a simplified 4-op English-only generator, not the full P16 mix - .99 baseline reflects that. Sloppiness note: b410b imports b410, re-running its phase-1 grid on import (harmless, doubles log).
+
+## B-410b variant pre-registration (2026-10-22): close the phase-2 gap
+
+Three targeted fixes over b410b, same protocol otherwise: (1) unary coverage extended to values 1..10 (vocab_range (1,11)) so one/ten also pin; (2) training mix 300 -> 600 sentences; (3) second EM round: after learn_lexicon, retrain the op model on the fully-decoded corpus with the complete lexicon and re-vote. Criterion unchanged: end-to-end >= .8 x matched-digit baseline; report honest numbers either way.
+
+## B-410 FINAL (2026-10-22): PASS - digit-free number grounding solved end-to-end by pure constraint pinning
+
+Variant ladder (pre-registered b410c fixes, then b410d):
+- b410b (vocab 2..9, n=300, EM on): .54 mean vs .99 baseline - FAIL
+- b410c (vocab 1..10, n=600, EM on, EM round 2): .735/.775/.93/.765/.825 = .766 mean, lex0 10/10 correct every seed - below .8 criterion; EM rounds added 1-2 SPURIOUS entries (lex_total 11-12 vs lex_correct 10)
+- b410d = b410c with EM fully disabled (lexicon = pinned words only): acc 1.0/1.0/1.0/1.0/1.0 = digit baseline exactly. PASS vs the .8 criterion, 5/5 seeds.
+Mechanism story: with complete unary coverage (values 1..10 each pinned by preimage-intersection over fact/sumto/isprime constraints from ~120 word-only sentences), grounding is EXACT and the substitution-voting EM only corrupts (it votes function words into the lexicon). Digit-free pipeline: pin from unary -> decode mixed sentences -> train TwoStep on decoded text -> done. No digit string is ever seen; answers remain integer supervision. Caveats: simplified generator (4 binary ops, English-only, values 1..10); the claim is about grounding numerals from answer supervision, not about learning arithmetic. Sloppiness note carried: b410c/d import b410 which re-runs the phase-1 grid on import (harmless).

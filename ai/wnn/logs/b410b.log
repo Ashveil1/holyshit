@@ -1,0 +1,27 @@
+{"n": 150, "seed": 0, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1000, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 150, "seed": 1, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1001, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 150, "seed": 2, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1002, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 150, "seed": 3, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1003, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 150, "seed": 4, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 150, "seed": 1004, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 0, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1000, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 1, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1001, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 2, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1002, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 3, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1003, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+{"n": 400, "seed": 4, "wrong": false, "seen": 8, "pinned": 8, "correct": 8}
+{"n": 400, "seed": 1004, "wrong": true, "seen": 8, "pinned": 0, "correct": 0}
+DONE
+{"seed": 0, "lex0": 8, "lex_total": 8, "lex_correct": 8, "decoded": 180, "acc": 0.56, "base": 0.985}
+{"seed": 1, "lex0": 8, "lex_total": 9, "lex_correct": 8, "decoded": 167, "acc": 0.53, "base": 1.0}
+{"seed": 2, "lex0": 8, "lex_total": 8, "lex_correct": 8, "decoded": 179, "acc": 0.475, "base": 1.0}
+{"seed": 3, "lex0": 8, "lex_total": 10, "lex_correct": 8, "decoded": 190, "acc": 0.515, "base": 0.995}
+{"seed": 4, "lex0": 8, "lex_total": 8, "lex_correct": 8, "decoded": 184, "acc": 0.645, "base": 0.975}
+DONE
