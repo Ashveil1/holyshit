@@ -548,3 +548,15 @@ Shared vs per-task (storage reference) arms:
 - centroid: shared LOSES to per-task by 2.4/8.8/7.2 pt at k=1/5/20 - the pre-stated permutation-mush expectation confirmed: averaging permuted variants of a class into one mean destroys what storage keeps. (Mechanism demonstration, not a bug.)
 - WiSARD: shared below per-task by 1.3/2.0/1.6 pt - small consistent decision-competition drop, consistent with B-494's full-data pattern.
 WiSARD is again the weakest non-MLP readout in few-shot accuracy (consistent with B-241R on plain MNIST); its demonstrated strengths remain one-pass learning and retention vs naive MLP.
+
+## B-497P pre-registration (2026-10-23) - symbolic unit conversion vs MLP text baseline
+
+Question (B-497): template-generated unit-conversion word problems; does an exact symbolic converter stay exact where a text MLP fails? EXPECTED OUTCOME IS KNOWN IN ADVANCE (symbolic wins on unseen numbers) - the value is the MEASURED FAILURE BOUNDARY (which splits break the MLP), not the win. Pre-stated to keep the comparison honest and non-triumphalist.
+Design (b497.py):
+- Templates: "convert <x> <u> to <v>", "how many <v> in <x> <u>", "<x> <u> in <v>" with x in a numeric range, (u,v) unit pairs within length (mm,cm,m,km), mass (mg,g,kg), time (s,min,h). x sampled with 1 decimal (e.g. 3.5) or integer. Answer = x * factor(u,v), exact decimal.
+- Splits: TRAIN on a fixed set of (x value, unit pair) combos; TEST-seen = same combos new surface template; TEST-unseen-x = same unit pairs, NEW x values; TEST-unseen-pair = NEW unit pairs (e.g. train km->m, test m->cm reversed factors). 
+- Symbolic arm: template parser (number, u, v) + exact factor table + decimal arithmetic. Upper bound of the approach by construction.
+- MLP arm: bag-of-hashed-word/bits -> MLP (same OVR-style recipe, hidden 64) trained as CLASSIFIER over the training answer set (closed set); on test, can only output training answers - pre-stated: unseen-x is structurally impossible for a closed-set classifier; ALSO report a regression variant? No - keep closed-set (pre-stated); the boundary is the point.
+- 3 seeds for MLP. Metrics: exact-match accuracy per split.
+Criterion (pre-stated): PASS = symbolic 100% exact on ALL splits AND MLP accuracy on unseen-x < 50% of its seen-split accuracy (the measured boundary). If MLP generalizes to unseen-x (it cannot as a closed-set classifier - if it does, a bug), investigate.
+CAN claim: on this template task, exact symbolic arithmetic is exact where a closed-set text classifier cannot be. CANNOT claim: anything about LLMs, neural arithmetic generally, or non-template language.
