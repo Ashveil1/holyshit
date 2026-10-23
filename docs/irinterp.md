@@ -22,9 +22,21 @@ unsafe/`s*` ops, `ffi`, and builtins outside the
 subset when the program uses one without binding it. These are the next steps.
 
 `tests/test_irinterp.py` runs every `tests/*.holy` through `interp.py` and the
-driver and compares exit code, stdout and stderr byte for byte (68 programs
-match; 16 are pinned as refused; `t_load64` is a documented 62-bit vs 64-bit
+driver and compares exit code, stdout and stderr byte for byte (67 programs
+match; 17 are pinned as refused; `t_load64` is a documented 62-bit vs 64-bit
 Int divergence).
 
 Known limits: the callable records (`hs_ir_fn`, `hs_ir_builtin`) are dicts, so a
 user dict with those reserved keys would be mistaken for a callable.
+
+On arm64, the test builds a native driver with `a64build.py` as stage0,
+then executes each program in the hs interpreter. The driver uses the shared
+Linux syscall exit path, with no dynamic libc dependency. On x86-64, test the
+same AArch64 path explicitly with:
+
+```sh
+python3 tests/test_irinterp.py --arm64-qemu /path/to/qemu-aarch64
+```
+
+Both paths must preserve all 85 corpus classifications (including refusals and
+the documented Int-width divergence). Neither route introduces a JIT.

@@ -3,13 +3,12 @@ import normalize
 import irbuild
 import irinterp
 import pyrt
-extern:
-  U0 exit(I64 status)
 def die(msg, code):
   f = open("/dev/stderr", "w")
   write(f, "error: " + msg + "\n")
   close(f)
-  exit(code)
+  # Linux exit through the shared syscall shim (x64 60 -> A64 93).
+  scall(60, code, 0, 0, 0, 0, 0)
 args = argv()
 if len(args) < 1:
   die("irinterp wants SOURCE", 2)

@@ -7,15 +7,17 @@ comparing (exit code, stdout, stderr) byte for byte.
 
 - parity:     must match interp.py byte for byte
 - refused:    the driver refuses up front (rc 3, "error: irinterp: unsupported
-              ...") before running anything: unsafe/ffi/import/attr ops and
+              ...") before running anything: unsafe/ffi ops and
               builtins outside the supported subset. Pinned so adding support
               forces a move into parity.
 - divergence: documented difference, asserted NOT byte-equal
 """
+import argparse
 import functools
 import glob
 import http.server
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -24,6 +26,12 @@ import threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--arm64-qemu", metavar="PATH",
+                    help="build an AArch64 driver and execute it with this QEMU")
+OPTIONS = parser.parse_args()
+ARM64 = bool(OPTIONS.arm64_qemu) or platform.machine() in ("aarch64", "arm64")
 
 
 
@@ -80,7 +88,12 @@ fails = 0
 total = 0
 with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
     driver = os.path.join(d, "irinterp")
-    r = subprocess.run([os.path.join(ROOT, "bootstrap", "hs-hosted-x86_64"),
+    # The pinned seed is x86-64. On arm64 use the reference A64 stage0
+    # to build a native hs interpreter; program execution itself is in hs.
+    builder = ([sys.executable, os.path.join(ROOT, "a64build.py")]
+               if ARM64 else
+               [os.path.join(ROOT, "bootstrap", "hs-hosted-x86_64")])
+    r = subprocess.run(builder + [
                         os.path.join(ROOT, "selfhost", "be", "irinterp_run.holy"),
                         driver],
                        capture_output=True, timeout=600, env=_BASE_ENV)
@@ -112,7 +125,8 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             fails += 1
             continue
         try:
-            got = _run([driver, prog] + pargs, stdin, env)
+            got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                       [driver, prog] + pargs, stdin, env)
         except subprocess.TimeoutExpired:
             print(f"FAIL {name}: irinterp timeout")
             fails += 1

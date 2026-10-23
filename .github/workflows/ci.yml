@@ -37,6 +37,8 @@ jobs:
       - name: native backend deps (gcc + Boehm GC)
         run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev
       - run: mkdir -p /tmp/opencode && uname -m
+      - name: hs interpreter tier native arm64 parity
+        run: python3 tests/test_irinterp.py
       - name: quick suites on arm64 (informational)
         run: python3 tests/run_all.py --quick
 
