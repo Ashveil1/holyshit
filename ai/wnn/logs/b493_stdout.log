@@ -1,0 +1,4 @@
+{"seed": 0, "wisard": {"A_after_A": 0.9751, "A_after_B": 0.9449, "B": 0.8762, "all": 0.9115}, "mlp": {"A_after_A": 0.9724, "A_after_B": 0.0545, "B": 0.9463, "all": 0.488}}
+{"seed": 1, "wisard": {"A_after_A": 0.9766, "A_after_B": 0.9471, "B": 0.856, "all": 0.9028}, "mlp": {"A_after_A": 0.9747, "A_after_B": 0.0574, "B": 0.9451, "all": 0.4889}}
+{"seed": 2, "wisard": {"A_after_A": 0.9726, "A_after_B": 0.9393, "B": 0.8548, "all": 0.8982}, "mlp": {"A_after_A": 0.9745, "A_after_B": 0.0654, "B": 0.9461, "all": 0.4935}}
+DONE

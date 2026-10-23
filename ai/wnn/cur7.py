@@ -80,6 +80,7 @@ def conds_list():
     return cs
 MACROS = []
 COMBHIST = {}
+LIST_OVERRIDE = None; LIST_CAPTURE = None; SKIP_SET = None  # B-406 schema hooks (inert unless set)
 def mine_macros(progs):
     """progs: {task: (init,(cond,base,s0,s1,comb),post)}. Macro = step pair (s0,s1) shared by >=2 tasks."""
     from collections import Counter
@@ -138,6 +139,13 @@ def search(train, abl, tag='', tried_cap=6_000_000):
         comb_list.sort(key=lambda c: 0 if c is None else (1 if isinstance(c[1], str) else 2))
     if 'oops' in abl:  # F-6: order comb generators by past success frequency (OOPS-inspired, not full OOPS)
         comb_list.sort(key=lambda c: -COMBHIST.get(c[0] if c else 'None', 0))
+    if LIST_CAPTURE is not None:  # B-406: capture this arm's enumeration lists
+        LIST_CAPTURE.update(combs=comb_list, inits=inits, conds=conds, bases=bases, steps_pair=steps_pair, steps_single=steps_single, posts=posts)
+    if LIST_OVERRIDE:  # B-406: replace enumeration lists (schema-filtered)
+        comb_list = LIST_OVERRIDE.get('combs', comb_list); inits = LIST_OVERRIDE.get('inits', inits)
+        conds = LIST_OVERRIDE.get('conds', conds); bases = LIST_OVERRIDE.get('bases', bases)
+        steps_pair = LIST_OVERRIDE.get('steps_pair', steps_pair); steps_single = LIST_OVERRIDE.get('steps_single', steps_single)
+        posts = LIST_OVERRIDE.get('posts', posts)
     for ci, comb in enumerate(comb_list):
         if ci % 20 == 0 and PROG: print(f'   comb {ci}/{len(comb_list)} {comb} tried {tried} {time.time()-t0:.0f}s', flush=True)
         for init in inits:
@@ -149,6 +157,7 @@ def search(train, abl, tag='', tried_cap=6_000_000):
             for cond in conds:
                 for base in bases:
                     for (s0, s1) in st:
+                        if SKIP_SET is not None and (init, cond, base, s0, s1, comb) in SKIP_SET: continue
                         tried += 1; spec = (cond, base, s0, s1, comb)
                         try: v0 = run(spec, x0, inits_for(init, y0))
                         except Fail: continue
