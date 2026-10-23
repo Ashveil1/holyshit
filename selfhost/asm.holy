@@ -549,3 +549,38 @@ def mov_tagged_int(d, v):
     bs[i] = n & 255
     carry = n >> 8
   mov_ri64_bytes(d, bs)
+def repe_cmpsb():
+  bn([243, 166])
+def xor_rax_8():
+  bn([72, 131, 240, 8])
+def ld8_rax():
+  bn([72, 15, 182, 0])
+def ld32_rax():
+  bn([139, 0])
+def ld64_rax():
+  bn([72, 139, 0])
+def st8_rax_cl():
+  bn([136, 8])
+def st32_rax_ecx():
+  bn([137, 8])
+def st64_rax_rcx():
+  bn([72, 137, 8])
+def cmp_al_dl():
+  bn([56, 208])
+def fmod_trunc_m24(lab):
+  # [rbp-24] = fmod([rbp-8], [rbp-16]) via x87 fprem (rax clobbered)
+  mov_rr("rax", "rbp")
+  sub_ri32("rax", 16)
+  fld_m64("rax", 0)
+  mov_rr("rax", "rbp")
+  sub_ri32("rax", 8)
+  fld_m64("rax", 0)
+  label(lab)
+  fprem()
+  fnstsw_ax()
+  sahf()
+  jcc("p", lab)
+  fstp_st1()
+  mov_rr("rax", "rbp")
+  sub_ri32("rax", 24)
+  fstp_m64("rax", 0)

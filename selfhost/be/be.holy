@@ -869,7 +869,7 @@ class Gen:
       asm.lea_m("rdi", "rax", 16)
       asm.lea_m("rsi", "rcx", 16)
       asm.mov_rr("rcx", "rdx")
-      pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([243, 166]))
+      asm.repe_cmpsb()
       asm.setcc_al("e")
       asm.jmp(lab_eq_done)
       asm.label(lab_eq_noteq)
@@ -882,7 +882,7 @@ class Gen:
       asm.label(lab_eq_done)
       self.box_bool_al()
       if op == "!=":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 131, 240, 8]))
+        asm.xor_rax_8()
       return null
     if op in ["<", ">", "<=", ">="]:
       self.ev(e["l"], sc, mod)
@@ -2917,11 +2917,11 @@ class Gen:
         raise pyrt.py_err(str(name) + " wants " + str(name) + "(p)", ln)
       self.sev(args[0], sc, mod)
       if name == "load8":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 15, 182, 0]))
+        asm.ld8_rax()
       elif name == "load32":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([139, 0]))
+        asm.ld32_rax()
       else:
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 139, 0]))
+        asm.ld64_rax()
       return null
     if name in ["store8", "store32", "store64"]:
       if len(args) != 2:
@@ -2931,11 +2931,11 @@ class Gen:
       self.sev(args[0], sc, mod)
       asm.pop_r("rcx")
       if name == "store8":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([136, 8]))
+        asm.st8_rax_cl()
       elif name == "store32":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([137, 8]))
+        asm.st32_rax_ecx()
       else:
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 137, 8]))
+        asm.st64_rax_rcx()
       asm.mov_rr("rax", "rcx")
       return null
     if name in ["as_ptr", "as_int"]:
@@ -6213,22 +6213,7 @@ class Gen:
     asm.sub_ri32("rsp", 48)
     asm.mov_mr("rbp", "rdi", 0 - 8)
     asm.mov_mr("rbp", "rsi", 0 - 16)
-    asm.mov_rr("rax", "rbp")
-    asm.sub_ri32("rax", 16)
-    asm.fld_m64("rax", 0)
-    asm.mov_rr("rax", "rbp")
-    asm.sub_ri32("rax", 8)
-    asm.fld_m64("rax", 0)
-    lab_fp = self.new_tmp("fm")
-    asm.label(lab_fp)
-    asm.fprem()
-    asm.fnstsw_ax()
-    asm.sahf()
-    asm.jcc("p", lab_fp)
-    asm.fstp_st1()
-    asm.mov_rr("rax", "rbp")
-    asm.sub_ri32("rax", 24)
-    asm.fstp_m64("rax", 0)
+    asm.fmod_trunc_m24(self.new_tmp("fm"))
     asm.mov_rm("rax", "rbp", 0 - 24)
     asm.mov_rr("r11", "rax")
     asm.shl_ri8("r11", 1)
@@ -9350,12 +9335,12 @@ class Gen:
     asm.jcc("ae", lab_prefix)
     asm.movzx_eax_mx("r10", "rcx", 1, 16)
     asm.movzx_edx_mx("r11", "rcx", 1, 16)
-    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([56, 208]))
+    asm.cmp_al_dl()
     asm.jcc("ne", lab_diff)
     asm.add_ri32("rcx", 1)
     asm.jmp(lab_loop)
     asm.label(lab_diff)
-    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([56, 208]))
+    asm.cmp_al_dl()
     asm.mov_ri32("rax", 1)
     asm.jcc("g", lab_fin)
     asm.mov_ri32("rax", 0 - 1)
@@ -10152,7 +10137,7 @@ class Gen:
     asm.jcc("ae", lab_sp2_mt)
     asm.movzx_eax_mx("r8", "rcx", 1, 0)
     asm.movzx_edx_mx("r9", "rcx", 1, 0)
-    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([56, 208]))
+    asm.cmp_al_dl()
     lab_sp2_nm = self.new_tmp("sp")
     asm.jcc("ne", lab_sp2_nm)
     asm.add_ri32("rcx", 1)
@@ -10232,7 +10217,7 @@ class Gen:
     asm.jcc("ae", lab_fn_mt)
     asm.movzx_eax_mx("rdi", "rcx", 1, 0)
     asm.movzx_edx_mx("r9", "rcx", 1, 0)
-    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([56, 208]))
+    asm.cmp_al_dl()
     asm.jcc("ne", lab_fn_nm)
     asm.add_ri32("rcx", 1)
     asm.jmp(lab_fn_in)
@@ -11458,7 +11443,7 @@ class GenIR(Gen):
         asm.setcc_al("e")
         self.box_bool_al()
         if op == "!=":
-          pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 131, 240, 8]))
+          asm.xor_rax_8()
         return null
     self._load(fr, l, ln)
     asm.push_r("rax")
@@ -11506,7 +11491,7 @@ class GenIR(Gen):
       asm.lea_m("rdi", "rax", 16)
       asm.lea_m("rsi", "rcx", 16)
       asm.mov_rr("rcx", "rdx")
-      pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([243, 166]))
+      asm.repe_cmpsb()
       asm.setcc_al("e")
       asm.jmp(lab_eq_done)
       asm.label(lab_eq_noteq)
@@ -11519,7 +11504,7 @@ class GenIR(Gen):
       asm.label(lab_eq_done)
       self.box_bool_al()
       if op == "!=":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 131, 240, 8]))
+        asm.xor_rax_8()
       return null
     if op in ["<", ">", "<=", ">="]:
       _tii = [self.new_tmp("ii"), self.new_tmp("ii")]
@@ -12097,11 +12082,11 @@ class GenIR(Gen):
         raise pyrt.py_err(str(name) + " wants " + str(name) + "(p)", ln)
       self._load(fr, args[0], ln)
       if name == "load8":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 15, 182, 0]))
+        asm.ld8_rax()
       elif name == "load32":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([139, 0]))
+        asm.ld32_rax()
       else:
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 139, 0]))
+        asm.ld64_rax()
     elif name in ["store8", "store32", "store64"]:
       if len(args) != 2:
         raise pyrt.py_err(str(name) + " wants " + str(name) + "(p, v)", ln)
@@ -12110,11 +12095,11 @@ class GenIR(Gen):
       self._load(fr, args[0], ln)
       asm.pop_r("rcx")
       if name == "store8":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([136, 8]))
+        asm.st8_rax_cl()
       elif name == "store32":
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([137, 8]))
+        asm.st32_rax_ecx()
       else:
-        pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([72, 137, 8]))
+        asm.st64_rax_rcx()
       asm.mov_rr("rax", "rcx")
     elif name in ["as_ptr", "as_int"]:
       if len(args) != 1:
