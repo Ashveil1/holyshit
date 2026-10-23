@@ -5,3 +5,4 @@
 {"task": "mod", "n": 25, "found": true, "tried": 2082, "dt": 0.6, "prog": "init b=y; if (lt a b) -> a; else step ((sub a b),b); comb=None; post=id", "gen": {"1": 40, "2": 40, "3": 40, "4": 40}}
 {"task": "mul", "n": 2, "found": true, "tried": 4155513, "dt": 1802.1, "prog": "init b=y; if (lt b one) -> b; else step (a,(sub b one)); comb=('add', 'a', 0); post=id", "gen": {"1": 40, "2": 40, "3": 40, "4": 40}}
 {"task": "mul", "n": 25, "found": true, "tried": 4155513, "dt": 1854.8, "prog": "init b=y; if (lt b one) -> b; else step (a,(sub b one)); comb=('add', 'a', 0); post=id", "gen": {"1": 40, "2": 40, "3": 40, "4": 40}, "arm": "b499b-endpoint"}
+{"task": "div", "n": 2, "found": true, "tried": 4202709, "dt": 1903.0, "prog": "init b=y; if (lt a b) -> zero; else step ((sub a b),b); comb=('add', 'one', 0); post=id", "gen": {"1": 40, "2": 40, "3": 40, "4": 40}, "arm": "b499b-endpoint"}
