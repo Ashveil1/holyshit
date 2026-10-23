@@ -36,9 +36,9 @@ def run_seed(sd):
     # MLP arm: shared hidden 784-64-10 softmax, sequential phases
     r2 = np.random.default_rng(100 + sd)
     W1 = r2.normal(0, .1, (784, 64)); b1 = np.zeros(64); W2 = r2.normal(0, .1, (64, 10)); b2 = np.zeros(10)
+    MU, SD = Xtr.mean(0), Xtr.std(0) + 1e-9  # fixed once from full train; shared by all fits/evals
     def fit(X, Y, eps):
-        mu, sd_ = X.mean(0), X.std(0) + 1e-9
-        Xs = (X - mu) / sd_; T = np.eye(10)[Y]
+        Xs = (X - MU) / SD; T = np.eye(10)[Y]
         for ep in range(eps):
             a1 = np.tanh(Xs @ W1 + b1); z = a1 @ W2 + b2
             p = np.exp(z - z.max(1, keepdims=True)); p /= p.sum(1, keepdims=True)
@@ -46,8 +46,7 @@ def run_seed(sd):
             dW2 = a1.T @ d; db2 = d.sum(0); d1 = (d @ W2.T) * (1 - a1 ** 2)
             W1 -= .5 * (Xs.T @ d1); b1 -= .5 * d1.sum(0); W2 -= .5 * dW2; b2 -= .5 * db2
     def pred(X):
-        mu, sd_ = X.mean(0), X.std(0) + 1e-9
-        return np.argmax(np.tanh(((X - mu) / sd_) @ W1 + b1) @ W2 + b2, 1)
+        return np.argmax(np.tanh(((X - MU) / SD) @ W1 + b1) @ W2 + b2, 1)
     fit(Xtr[A_tr], Ytr[A_tr], 300)
     m_A1 = (pred(Xte[A_te]) == Yte[A_te]).mean()
     fit(Xtr[B_tr], Ytr[B_tr], 300)
