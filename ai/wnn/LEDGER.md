@@ -462,3 +462,15 @@ Held-out results (1M baseline cap; 4 of 5 tasks NOT FOUND in baseline -> exclude
 Criterion (ONE schema consistent with >=2 held-out solutions AND mean cut >50%) NOT MET: only 1 held-out task was solvable within cap, so cross-task reuse cannot be demonstrated. FAIL as pre-registered.
 Honest partial signal: on the single solvable held-out task the schema ordering cut tried by 93.5% and steered to a simpler program - the mechanism works when a matching schema exists; the premise failure is COVERAGE (4/5 held-out tasks unreachable in 1M from the pinned library), not schema quality. The NOT-FOUND wall itself is data: absdiff/lcm/isprime/cube are not reachable in this space/order/budget with the pinned library.
 Caveats: found programs fit 25 staged train examples only; this harness runs no generalization test (out of scope for the ordering question). Schema arm tried counts are honest (phase-1 + double-counted baseline on misses).
+
+## B-495P pre-registration (2026-10-23) - few-shot SNIPS intent classification vs NB
+
+Question (B-495): does WiSARD beat a naive-Bayes text baseline at <=5-shot intent classification on SNIPS?
+Data: SNIPS nlu-benchmark 2017-06 custom-intent-engines split (CC0; github.com/sonos/nlu-benchmark, downloaded 2026-10-23), converted by prepare_snips.py: 2100 train / 700 test utterances, 7 intents (AddToPlaylist, BookRestaurant, GetWeather, PlayMusic, RateBook, SearchCreativeWork, SearchScreeningEvent), lowercase alnum+space normalized.
+Design (b495.py):
+- Vocabulary: all word tokens in the FULL train file (both models see the same vocabulary; k-shot subsampling picks examples, not vocab - pre-stated; this is the standard transductive few-shot protocol and favors neither model's mechanism).
+- WiSARD arm: features = presence bits of word unigrams + bigrams hashed into 4096 bits; fixed rng(0) tuple layout of 28-bit tuples (146 tuples); per-class per-node tuple-value sets; argmax score.
+- NB arm: multinomial naive Bayes, word unigram+bigram counts, alpha=1.0 (standard strong text baseline, honest not rigged).
+- Protocol: k in {1, 5, 20} shots per intent, sampled without replacement from the 300-per-intent train pool; 10 seeds per k; score = accuracy on all 700 test utterances.
+Criterion (pre-stated): PASS = WiSARD mean accuracy > NB mean accuracy at k=1 AND k=5 (both). Win at 20 only = partial. Either k=1 or k=5 not won = FAIL as registered; report all numbers regardless.
+CAN claim if PASS: WiSARD tuple-sets beat multinomial NB on this SNIPS split at <=5 shots under this encoding. CANNOT claim: superiority over NB generally, over neural few-shot methods, or on other text tasks; encoding choice is ours and shared.
