@@ -18,8 +18,8 @@ def run_task(task, seed, cap=6_000_000):
     train = [cur7.gen(task, rng, rng.choice([1, 2])) for _ in range(25)]
     vr = random.Random(5000 + seed)
     cur7.VALID[:] = [cur7.gen(task, vr, sc) for sc in (1, 2) for _ in range(16)]
-    # baseline arm: default bases (leaves only)
-    t0 = time.time(); pb, tried_b, _ = cur7.search(train, 'baselib val', tried_cap=cap); dt_b = time.time() - t0
+    # baseline NOT re-run (pre-registered: = B-501's NOT FOUND at 6M)
+    pb, tried_b, dt_b = None, 0, 0.0
     # deepened arm: capture ops after pinning, build cost-ordered depth<=2 bases
     ops = [o for o in cur7.LIB]
     L = list(cur7.LEAVES)
