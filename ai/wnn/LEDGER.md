@@ -522,3 +522,12 @@ Criterion per cell: readout WINS / LOSES / TIES (1 pt) vs MLP at same k. Report 
 logs/b468_stdout.log (10 seeds paired with B-495): k=1: 1nn .362 = centroid .362, MLP .148; k=5: 1nn .594, centroid .807, MLP .145; k=20: 1nn .794, centroid .905, MLP .150. All 6 cells WIN vs MLP (+21 to +75 pt). The few-shot OVR MLP is stuck near chance (~.15, chance .143) at every k on these sparse bit features.
 Full SNIPS few-shot ordering (all paired on seeds 100..109, same features): NB .604/.858/.942 > centroid .362/.807/.905 > WiSARD .347/.831/.894 > 1nn .362/.594/.794 >> MLP ~.15. Centroid nearly matches NB at k=20 (.905 vs .942) but lags at k=1 (.362 vs .604 - NB's count/log-odds prior transfers across classes, centroid has nothing to average).
 Consistency: k=1 1nn==centroid identity holds again (both readouts equivalent at 1 shot).
+
+## Correction (2026-10-23) - SNIPS ordering is per-k, not uniform; retention scope qualifier
+
+The B-468..483 verdict's blanket ordering "NB > centroid > WiSARD > 1nn >> MLP" is WRONG at k=1 and k=5 (caught in review). Correct paired-seed per-k orderings:
+- k=1: NB .604 > centroid .362 = 1nn .362 > WiSARD .347 >> MLP .148
+- k=5: NB .858 > WiSARD .831 > centroid .807 > 1nn .594 >> MLP .145
+- k=20: NB .942 > centroid .905 > WiSARD .894 > 1nn .794 >> MLP .150
+Uniform claims that DO hold: NB first and MLP last at every k. The middle three swap: WiSARD beats centroid only at k=5 (.831 vs .807); centroid beats WiSARD at k=1 (.362 vs .347) and k=20 (.905 vs .894); 1nn beats WiSARD at k=1 only.
+Scope qualifier retained everywhere: the B-493/B-494 retention advantage is demonstrated against NAIVE SEQUENTIAL MLP only (no replay/EWC) - not against these simple readouts (1nn/centroid/NB), which were never run under the continual protocol, and not against mitigated gradient methods.
