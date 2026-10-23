@@ -30,6 +30,10 @@ cases=[
 ('six','def f(a,b,c,d,e,f):\n  return a+b+c+d+e+f\nprint f(1,2,3,4,5,6)\n',1,1,1,0),
 ('uncaught','def f(n):\n  return n + 1\nprint f(2)\nraise "after native"\n',1,1,1,0),
 ]
+# Eligible IR can exceed the native code-page budget. Optimization refusal
+# must preserve execution and release the partially allocated mapping.
+long_expr = ' + '.join(['n'] * 50)
+cases.append(('code-budget', f'def f(n):\n  return {long_expr}\nprint f(1)\nprint f(2)\n',1,0,0,0))
 with tempfile.TemporaryDirectory(prefix='hs-hotleaf.') as d:
  d=Path(d);exe=d/'runner'
  r=run([ROOT/'bootstrap/hs-hosted-x86_64',ROOT/'selfhost/be/hotleaf_run.holy',exe]);assert r.returncode==0,r.stderr
