@@ -29,7 +29,7 @@ def run_cell(task, n, seed, cap=6_000_000):
     return {'task': task, 'n': n, 'found': p is not None, 'tried': tried, 'dt': round(dt, 1),
             'prog': cur7.show_prog(p) if p else None, 'gen': gen, 'arm': 'b499b-endpoint'}
 
-cells = [('mul', 25)] + [(t, n) for t in ('div', 'power', 'gcd', 'isprime', 'fact', 'sumto') for n in (2, 25)]
+cells = [(t, n) for t in ('div', 'power', 'gcd', 'isprime', 'fact', 'sumto') for n in (2, 25)]  # splice 07:45: mul 25 already checkpointed (f9cca93); skipped after container restart
 out = open('logs/b499_stdout.log', 'a', buffering=1)
 for task, n in cells:
     r = run_cell(task, n, 0)
