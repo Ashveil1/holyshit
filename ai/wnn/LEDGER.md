@@ -474,3 +474,13 @@ Design (b495.py):
 - Protocol: k in {1, 5, 20} shots per intent, sampled without replacement from the 300-per-intent train pool; 10 seeds per k; score = accuracy on all 700 test utterances.
 Criterion (pre-stated): PASS = WiSARD mean accuracy > NB mean accuracy at k=1 AND k=5 (both). Win at 20 only = partial. Either k=1 or k=5 not won = FAIL as registered; report all numbers regardless.
 CAN claim if PASS: WiSARD tuple-sets beat multinomial NB on this SNIPS split at <=5 shots under this encoding. CANNOT claim: superiority over NB generally, over neural few-shot methods, or on other text tasks; encoding choice is ours and shared.
+
+## B-495 verdict (2026-10-23) - FAIL (WiSARD loses to NB at every k)
+
+logs/b495_stdout.log (10 seeds per k; NB double-log bug caught and fixed BEFORE verdict - the chance-level flat 0.1429 NB was an artifact; numbers below are the fixed, honest baseline).
+- k=1: WiSARD .3471 vs NB .6044 - WiSARD loses by 25.7 pt
+- k=5: WiSARD .8307 vs NB .8580 - loses by 2.7 pt
+- k=20: WiSARD .8936 vs NB .9423 - loses by 4.9 pt
+Criterion (WiSARD wins BOTH k=1 and k=5) FAIL at every k. Multinomial NB on uni+bigram counts is simply strong on this split - 1-shot NB (.60) already beats 5-shot WiSARD (.83)? No: 5-shot WiSARD .83 > 1-shot NB .60, but at equal shots NB wins throughout. The count information NB exploits (token multiplicities, per-token log-odds) is exactly what presence-bit tuple sets discard; at k=1 the hashed-bit collisions + absent bigram coverage hurt WiSARD hardest.
+Scope: this SNIPS split, this encoding (4096 hashed presence bits, 146x28-bit tuples), multinomial NB alpha=1. NOT a claim about WiSARD on text generally - a different encoding (e.g. count-aware or thermometer coding) is a separate pre-registered experiment.
+Note: MNIST few-shot (B-241) and SNIPS few-shot (B-495) now bracket where tuple-set few-shot shines (spatial binary structure) vs where it does not (sparse count-heavy text vs a count-aware baseline).
