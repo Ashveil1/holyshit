@@ -472,22 +472,22 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-465 [M (under 15 min)] (T6 connectome variants (low priority, P5 was negative)) signed-synapse hand annotation from literature (AIY/AVA signs) -- task: tap -- baseline: unsigned -- success: 4/4 neurobiology checks
 - [x] B-466 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
 - [ ] B-467 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-468 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [x] B-468 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
 - [x] B-469 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
 - [ ] B-470 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-471 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [x] B-471 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
 - [x] B-472 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
 - [ ] B-473 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-474 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [x] B-474 [M (under 15 min)] (T7 continual/few-shot) readout 1nn, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
 - [x] B-475 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
 - [ ] B-476 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-477 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [x] B-477 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
 - [x] B-478 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
 - [ ] B-479 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-480 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [x] B-480 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 5 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
 - [x] B-481 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap
 - [ ] B-482 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
-- [ ] B-483 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
+- [x] B-483 [M (under 15 min)] (T7 continual/few-shot) readout centroid, shots 20 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap
 - [x] B-484 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: mnist -- baseline: MLP same shots -- success: retention/acc gap -- TRIAGED 2026-10-22: = B-241 k=1 cell, measured .340 (WiSARD one-pass, same harness)
 - [ ] B-485 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: pmnist -- baseline: MLP same shots -- success: retention/acc gap
 - [ ] B-486 [M (under 15 min)] (T7 continual/few-shot) readout wiSARD, shots 1 -- task: snips -- baseline: MLP same shots -- success: retention/acc gap

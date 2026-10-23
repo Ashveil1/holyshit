@@ -516,3 +516,9 @@ Updated honest picture (this harness only): centroid ~= 1nn > WiSARD >> MLP on M
 Question (6 T7 cells): on SNIPS intents, at k in {1,5,20} shots, 1nn and centroid readouts vs MLP at the same shots. Complements B-495 (WiSARD vs NB) with the two missing readouts on the SAME features.
 Design (b468.py): EXACTLY the b495 pipeline (4096 hashed uni+bigram presence bits, same data files); readouts: 1nn (L2 on bit vectors), centroid (class mean, L2), MLP = OVR tanh 4096-32-1, 800 epochs, lr .05 (same recipe as B-241/b466, input dim swapped). 10 seeds, seed set 100..109 IDENTICAL to B-495 (paired with the NB/WiSARD numbers).
 Criterion per cell: readout WINS / LOSES / TIES (1 pt) vs MLP at same k. Report all numbers; honest nulls fine. CANNOT claim: anything beyond this SNIPS split, these features, this MLP.
+
+## B-468/471/474/477/480/483 verdicts (2026-10-23) - PASS (6 cells)
+
+logs/b468_stdout.log (10 seeds paired with B-495): k=1: 1nn .362 = centroid .362, MLP .148; k=5: 1nn .594, centroid .807, MLP .145; k=20: 1nn .794, centroid .905, MLP .150. All 6 cells WIN vs MLP (+21 to +75 pt). The few-shot OVR MLP is stuck near chance (~.15, chance .143) at every k on these sparse bit features.
+Full SNIPS few-shot ordering (all paired on seeds 100..109, same features): NB .604/.858/.942 > centroid .362/.807/.905 > WiSARD .347/.831/.894 > 1nn .362/.594/.794 >> MLP ~.15. Centroid nearly matches NB at k=20 (.905 vs .942) but lags at k=1 (.362 vs .604 - NB's count/log-odds prior transfers across classes, centroid has nothing to average).
+Consistency: k=1 1nn==centroid identity holds again (both readouts equivalent at 1 shot).
