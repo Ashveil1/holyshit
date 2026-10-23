@@ -626,3 +626,13 @@ Wall anatomy (updated): isprime = expressible but at ~4.5x the historical cap AN
 Analysis before running (disclosed): cube is solvable by the B-500 depth-2 deep arm as init two; (nlt a zero); base (mul,a,(power,a,b)); zero-loop; post id - x * x^2 via the pinned learned power. Capacity check (pre-stated): learned mul loops on its 2nd arg = x^2; gen cube ranges are x<8 (scales 1-2) and x<15 (scales 3-4) -> x^2 <= 225 < 400 cap for the ENTIRE gen distribution, so unlike isprime/lcm the capacity trap does NOT bite here. Predicted tried position ~80K (init 'two' is the 4th init; inits y/one/zero burn ~60K first and cannot fit: they give x*x^y, x^2, x).
 Criterion: PASS = found AND generalizes (>=36/40 scale 2). If a SPURIOUS earlier program passes train+valid first, the found program is recorded and gen-tested honestly (B-500P protocol). FAIL = not found in 6M or found-but-spurious.
 If PASS, all four B-406 wall cells are closed: absdiff (B-500), lcm (B-501D), isprime (B-501E: expressible but position x capacity walled), cube (this).
+
+## B-500C verdict (2026-10-23) - PASS (cube) - and the search out-designed the prediction
+
+logs/b500c_stdout.log: FOUND at 3,825,745 tried (378s), gen 40/40 at ALL scales 1-4. But NOT the pre-registered form: instead of init two + (mul,a,(power,a,b)), the search found init b=y; (nlt a zero) -> (mul,a,(mul,(add,a,zero),a)) - it routes around the missing (mul,a,a) E1 exclusion with the ADD-ZERO IDENTITY: x * ((x+0) * x) = x^3. The prediction's FOUND+generalizes half was right (capacity safe, x^2<=225<400); the specific predicted form was wrong - the search's own route sits earlier in the enumeration. Recorded honestly: form prediction wrong, outcome prediction right.
+B-406 coverage wall - ALL FOUR CELLS NOW CLOSED:
+- absdiff: SOLVED (B-500, depth-2, (sub,(max,a,b),(min,a,b)))
+- lcm: SOLVED (B-501D, restricted depth-3, (mul,a,(div,b,(gcd,a,b))))
+- isprime: DIAGNOSED (B-501E: expressible as order-1 mul-fold + nz, verified directly, but ~27M tried position x order-0 capacity trap - unreached by search)
+- cube: SOLVED (B-500C, depth-3 path, x*((x+0)*x))
+The wall was NEVER a fundamental schema limit: it decomposes into expression depth (fixable by cost-ordered deepening) + learned-program iteration capacity (the 400-cap bites compositions with growing intermediates) + enumeration position.
