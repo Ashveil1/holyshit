@@ -38,10 +38,12 @@ test_unp = gen_problems(np.random.default_rng(4), unseen_pairs, train_xs, 0)
 import re
 def solve(q):
     toks = q.split()
-    nums = [t for t in toks if re.fullmatch(r'\d+(\.\d+)?', t)]
+    ni = [i for i, t in enumerate(toks) if re.fullmatch(r'\d+(\.\d+)?', t)]
     us = [t for t in toks if t in UNITS]
-    if len(nums) != 1 or len(us) != 2: return None
-    x = Fraction(nums[0]); u, v = us
+    if len(ni) != 1 or len(us) != 2 or ni[0] + 1 >= len(toks): return None
+    x = Fraction(toks[ni[0]]); u = toks[ni[0] + 1]  # the unit the number quantifies = source
+    if u not in UNITS: return None
+    v = us[1] if us[0] == u else us[0]
     if UNITS[u][0] != UNITS[v][0]: return None
     return fmt_ans(x * UNITS[u][1] / UNITS[v][1])
 
