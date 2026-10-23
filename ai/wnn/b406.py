@@ -83,7 +83,8 @@ def reset_lib():
     cur7.VALID[:] = []; cur7.ADV[:] = []
 
 def clear_caches():
-    cur7.ev.cache_clear(); cur7.cev.cache_clear()
+    cur7.ev.cache_clear()
+    if hasattr(cur7.cev, "cache_clear"): cur7.cev.cache_clear()
 
 def main():
     base = {t: tup(p) for t, p in json.load(open('/tmp/c7_prog_0_base.json')).items()}
