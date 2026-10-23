@@ -45,3 +45,13 @@ to `readkey_code()`, eliminating the32-byte input Str and unsafe payload read.
 This supersedes the readkey-per-byte limitation above only for this new demo.
 Logging/static string initialization and general bump-heap limits remain; no
 total interactive allocation or indefinite lifetime guarantee is inferred.
+
+The fixed demo now draws an eight-by-two-pixel underline after the active input
+text. It is steady, not blinking, and moves with accepted edits, backspace and
+submission reset. The final 42-character position fits inside the cleared input
+strip. It does not add navigation, selection, focus switching or command
+execution. Raw fill calls keep the measured render loop's 16-byte marker gap
+unchanged over 1000 submissions. The graphical boot gate checks the cursor
+pixels after G and absence of a stale underline at the old position. The
+640x480 guest screenshot was visually inspected with the four retained lines
+and G followed by the underline.
