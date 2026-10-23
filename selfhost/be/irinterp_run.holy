@@ -28,9 +28,11 @@ except as e:
     msg = once[0]
   die(msg, 1)
 refusal = irinterp.preflight(irmod)
+if refusal == null:
+  refusal = irinterp.preflight_imports(irmod, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(args[0])))
 if refusal != null:
   die(refusal, 3)
-state = irinterp.create(irmod)
+state = irinterp.create(irmod, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(args[0])))
 try:
   irinterp.run(state)
 except as e:
