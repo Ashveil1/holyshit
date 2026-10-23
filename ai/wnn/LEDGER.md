@@ -548,3 +548,54 @@ Shared vs per-task (storage reference) arms:
 - centroid: shared LOSES to per-task by 2.4/8.8/7.2 pt at k=1/5/20 - the pre-stated permutation-mush expectation confirmed: averaging permuted variants of a class into one mean destroys what storage keeps. (Mechanism demonstration, not a bug.)
 - WiSARD: shared below per-task by 1.3/2.0/1.6 pt - small consistent decision-competition drop, consistent with B-494's full-data pattern.
 WiSARD is again the weakest non-MLP readout in few-shot accuracy (consistent with B-241R on plain MNIST); its demonstrated strengths remain one-pass learning and retention vs naive MLP.
+
+## B-497P pre-registration (2026-10-23) - symbolic unit conversion vs MLP text baseline
+
+Question (B-497): template-generated unit-conversion word problems; does an exact symbolic converter stay exact where a text MLP fails? EXPECTED OUTCOME IS KNOWN IN ADVANCE (symbolic wins on unseen numbers) - the value is the MEASURED FAILURE BOUNDARY (which splits break the MLP), not the win. Pre-stated to keep the comparison honest and non-triumphalist.
+Design (b497.py):
+- Templates: "convert <x> <u> to <v>", "how many <v> in <x> <u>", "<x> <u> in <v>" with x in a numeric range, (u,v) unit pairs within length (mm,cm,m,km), mass (mg,g,kg), time (s,min,h). x sampled with 1 decimal (e.g. 3.5) or integer. Answer = x * factor(u,v), exact decimal.
+- Splits: TRAIN on a fixed set of (x value, unit pair) combos; TEST-seen = same combos new surface template; TEST-unseen-x = same unit pairs, NEW x values; TEST-unseen-pair = NEW unit pairs (e.g. train km->m, test m->cm reversed factors). 
+- Symbolic arm: template parser (number, u, v) + exact factor table + decimal arithmetic. Upper bound of the approach by construction.
+- MLP arm: bag-of-hashed-word/bits -> MLP (same OVR-style recipe, hidden 64) trained as CLASSIFIER over the training answer set (closed set); on test, can only output training answers - pre-stated: unseen-x is structurally impossible for a closed-set classifier; ALSO report a regression variant? No - keep closed-set (pre-stated); the boundary is the point.
+- 3 seeds for MLP. Metrics: exact-match accuracy per split.
+Criterion (pre-stated): PASS = symbolic 100% exact on ALL splits AND MLP accuracy on unseen-x < 50% of its seen-split accuracy (the measured boundary). If MLP generalizes to unseen-x (it cannot as a closed-set classifier - if it does, a bug), investigate.
+CAN claim: on this template task, exact symbolic arithmetic is exact where a closed-set text classifier cannot be. CANNOT claim: anything about LLMs, neural arithmetic generally, or non-template language.
+
+## B-497 verdict (2026-10-23) - PASS (boundary measured; outcome was pre-stated as expected)
+
+logs/b497_stdout.log (360 train problems, 66-answer closed set; symbolic direction bug caught and fixed BEFORE verdict - source unit is the one the number quantifies; numbers below are post-fix):
+- symbolic: 1.0 on ALL splits (seen, unseen-x, unseen-pair) - exact by construction, verified.
+- MLP (closed-set classifier, 3 seeds): seen 1.0 (perfect memorization of trained (x, pair, template) combos); unseen-x .1889 (only answer-set coincidences - an unseen number's answer is usually outside the closed set); unseen-pair .0035 (~zero - unseen conversion factors are unreachable).
+Criterion (symbolic 100% everywhere AND MLP unseen-x < 50% of seen) PASS: .1889 < .5.
+The measured boundary: a closed-set text classifier's exactness is bounded by its training answer set; any novel numeric value or unit pair breaks it, while the symbolic path is exact by construction. As pre-stated, this CANNOT be read as a claim about neural arithmetic generally - it is the exact-vs-closed-set boundary on this template task, documented with numbers.
+
+## B-500/501P pre-registration (2026-10-23) - iterative deepening to depth-2 bases: absdiff and lcm
+
+Question (B-500 absdiff, B-501 lcm): does cost-ordered iterative deepening of EXPRESSION DEPTH in the base position find correct programs the depth-1 6M-cap baseline misses? Motivated by B-406's coverage wall (both NOT FOUND in 1M) - and by the prior analysis that absdiff needs (sub,(max,a,b),(min,a,b)) because p_sub raises on negatives (the no-negatives discipline GUIDES search to the max-min form), and lcm needs (div,(mul,a,b),(gcd,a,b)); both are depth-2 bases with a zero-iteration loop (cond ('nlt','a','zero') always true for a>=0).
+Design (b500.py): cur7.search via the existing LIST_OVERRIDE hook; bases replaced by cost-ordered deepening: leaves (1 node) < depth-1 exprs (3) < (op,expr,leaf)/(op,leaf,expr) (5) < (op,expr,expr) (7). Everything else default. abl = 'baselib val' (pinned library mod/mul/div/power/gcd/max/min; VALID = 32 fresh examples, main()'s protocol replicated - the accepted program must fit 25 train + 32 validation, killing spurious-first-match). Cap 6M.
+Protocol per task: (1) record whether found, tried, the program; (2) post-hoc generalization test, main()'s protocol (40/scale, scales 1..4); (3) verdict.
+Criterion (pre-stated, per task): PASS = a program is found AND generalizes (>=36/40 on scale 2, the library-admission bar) AND baseline (default bases, same cap/abl) does NOT find it. If the first found program fails generalization, that failure IS the result (spurious fit recorded honestly). FAIL = not found in cap, or found-but-spurious.
+CAN claim: depth-2 base deepening finds these two programs under this search. CANNOT claim: scalability of depth-2 generally, or that the schema expresses these tasks in any deeper sense (zero-loop = the recursion schema is inert here, the win is expression depth only - pre-stated).
+
+## B-500/501P amendment (2026-10-23) - dummy-step scoping
+
+Loop-structure reality (found while implementing): cur7.search iterates bases INNER to conds but steps INNERMOST, so each wrong (cond, base) costs |steps_pair| (~12.5K) tries - deep bases would need ~10^11 tries. The deep arm therefore also overrides steps to a single dummy pair: it can ONLY find zero-iteration-loop solutions (any step content is equivalent when the loop never runs). This IS the pre-stated hypothesis (absdiff/lcm are pure depth-2-base + zero-loop computations), so the arm is the honest test of it; the cap bounds the comb!=None tail (duplicate zero-loop behavior anyway). The baseline arm keeps default bases + full steps. Nonzero-loop deep-base programs are NOT searchable by this arm - stated as a limitation, not hidden.
+
+## B-500 verdict (2026-10-23) - PASS (absdiff); B-501 (lcm) arm in flight
+
+logs/b500_stdout.log. absdiff: baseline (default leaf bases, full steps, 6M cap) NOT FOUND (6,002,688 tried, 326s). Deep arm (cost-ordered depth<=2 bases, dummy-step zero-loop hypothesis): FOUND at 636,061 tried (66s): init b=y; if (nlt a zero) -> (sub,(max,a,b),(min,a,b)); post id - the predicted max-min form (no-negatives discipline guides past the failing (max,(sub,a,b),(sub,b,a)) shape). Generalization 40/40 at ALL scales 1-4. Criterion PASS: found AND generalizes (40/40 >= 36/40 bar) AND baseline misses it.
+Honest scope (pre-stated): zero-loop = the recursion schema is inert here; the win is EXPRESSION DEPTH only, via iterative deepening; nonzero-loop deep-base programs are not searchable by this arm (dummy-step limitation). This resolves the absdiff cell of the B-406 coverage wall: the task was inexpressible at depth-1 bases, not absent from the schema's reach generally.
+
+## B-501 verdict (2026-10-23) - FAIL (lcm), with precise mechanistic diagnosis
+
+logs/b500_stdout.log. lcm: baseline NOT FOUND (6M). Deep arm NOT FOUND (8.72M tried, cap hit in the comb=None block).
+Diagnosis (verified directly): the predicted depth-2 zero-loop form (div,(mul,a,b),(gcd,a,b)) IS in the deep arm's space at tried-position ~377K (far below the cap) but is REJECTED because the pinned LEARNED div program (repeated subtraction) hits its 400-iteration cap on large dividends: div(725,1) from lcm(25,29) raises Fail('deep'). Verified: 5 train examples, only the largest-product one fails.
+So the B-406 lcm wall is NOT search-space expressivity (the form is present and early) and NOT the iteration schema - it is the learned library program's own runtime cap colliding with intermediate-value blowup (multiply before divide). The cap-respecting rearrangement (divide a factor first, then multiply) is depth-3, outside the pre-registered arm. FAIL as registered; the diagnosis is the result.
+Implication recorded: LEARNED library programs carry hidden iteration-capacity limits; intermediate-value growth through composition can silently break them even when the math is right. Any library-composition claim must account for caps (here 400 iterations).
+
+## B-501D pre-registration (2026-10-23) - lcm at depth-3 with cap-respecting composition
+
+Follow-up to B-501's diagnosis. Hypothesis (verified on 8 examples before pre-registration - disclosed): (mul,a,(div,b,(gcd,a,b))) computes lcm within the learned div's 400-iteration cap (divide a factor FIRST, then multiply). Question: does continued cost-ordered deepening FIND it?
+Design (b501d.py): same as b500 deep arm, plus a depth-3 block RESTRICTED to (op, leaf, d2small) and (op, d2small, leaf) where d2small = depth-2 forms having at least one leaf arg (8064 forms) - full depth-3 inner args would be 8.7M bases (~1GB, memory-infeasible): pre-stated limitation. Order: depth1 < depth2 < depth3, cap 6M, abl 'baselib val', dummy-step zero-loop arm. Baseline: B-501's depth-2 result (NOT FOUND), not re-run.
+Criterion: PASS = lcm found AND gen >=36/40 at scale 2. FAIL = not found in cap. Estimated target position ~1.3M tried if the hypothesis form is the first fitting program.
+CAN claim: this lcm form is reachable by cost-ordered deepening to depth-3 under the stated restriction. CANNOT claim: full depth-3 search feasibility, or that search would find lcm without the restriction steering the space.
