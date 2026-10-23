@@ -33,6 +33,29 @@ with tempfile.TemporaryDirectory() as temp:
             time.sleep(.1)
         assert serial.exists() and 'FIXED SESSION READY' in serial.read_text(errors='replace'),'no framebuffer ready serial marker'
         sock=socket.socket(socket.AF_UNIX);sock.settimeout(5);sock.connect(str(monitor));sock.recv(4096)
+        def cursor_at(column):
+            screen.unlink(missing_ok=True)
+            sock.sendall(('screendump '+str(screen)+'\n').encode())
+            # Wait for the complete monitor command before reading the file.
+            reply=b''
+            while b'(qemu)' not in reply:
+                reply+=sock.recv(4096)
+            deadline=time.monotonic()+5
+            while time.monotonic()<deadline and (not screen.exists() or screen.stat().st_size<640*480*3):time.sleep(.05)
+            with screen.open('rb') as f:
+                assert f.readline().strip()==b'P6'
+                dims=f.readline()
+                while dims.startswith(b'#'):dims=f.readline()
+                assert dims.strip()==b'640 480'
+                assert f.readline().strip()==b'255'
+                raw=f.read()
+            assert len(raw)==640*480*3
+            for y in (294,295):
+                for x in range(32,548):
+                    offset=(y*640+x)*3
+                    want=(22,50,79) if 32+column*12<=x<40+column*12 else (232,237,242)
+                    assert tuple(raw[offset:offset+3])==want,('cursor',column,x,y)
+        cursor_at(0)
         # Six submissions overflow the four-line transcript; seventh stays editable.
         keys=['a','b','backspace','c','ret','b','ret','c','ret','d','ret','e','ret','f','ret','g']
         submits=edits=0
@@ -47,6 +70,33 @@ with tempfile.TemporaryDirectory() as temp:
                 if content.count('FIXED SUBMITTED')>=submits and content.count('FIXED EDIT')>=edits:break
                 time.sleep(.1)
             else:raise AssertionError('session edit stalled '+key+' '+content[-300:])
+        cursor_at(1)
+        # Overflow typing leaves the cursor at the full-capacity position;
+        # backspace removes the old marker, and Enter resets it to column 0.
+        for key, expected in [('a',i) for i in range(2,43)]+[('a',42),('backspace',41),('ret',0)]:
+            sock.sendall(('sendkey '+key+'\n').encode())
+            reply=sock.recv(4096)
+            if key=='ret':submits+=1
+            else:edits+=1
+            deadline=time.monotonic()+15
+            while time.monotonic()<deadline:
+                content=serial.read_text(errors='replace')
+                if content.count('FIXED SUBMITTED')>=submits and content.count('FIXED EDIT')>=edits:break
+                time.sleep(.1)
+            else:raise AssertionError('cursor boundary edit stalled '+key)
+            if expected in (42,41,0):cursor_at(expected)
+        # Restore the original transcript/current-line screenshot below.
+        for key in ['c','ret','d','ret','e','ret','f','ret','g']:
+            sock.sendall(('sendkey '+key+'\n').encode());sock.recv(4096)
+            if key=='ret':submits+=1
+            else:edits+=1
+            deadline=time.monotonic()+15
+            while time.monotonic()<deadline:
+                content=serial.read_text(errors='replace')
+                if content.count('FIXED SUBMITTED')>=submits and content.count('FIXED EDIT')>=edits:break
+                time.sleep(.1)
+            else:raise AssertionError('restore edit stalled '+key)
+        cursor_at(1)
         assert 'FIXED SUBMITTED 1\n'in content,content
         assert 'FIXED SUBMITTED 6\n'in content,content
         sock.sendall(('screendump '+str(screen)+'\n').encode())
@@ -77,6 +127,6 @@ with tempfile.TemporaryDirectory() as temp:
                 assert pixel(x,y)==((22,50,79) if 44<=x<52 else (232,237,242)),(x,y)
         if os.environ.get('HS_TEST_SCREENSHOT'):
             shutil.copyfile(screen,os.environ['HS_TEST_SCREENSHOT'])
-        print('4/4 fixed-buffer console gates (native image, six submissions, bounded transcript, actual text pixels)')
+        print('5/5 fixed-buffer console gates (native image, transcript, text pixels, cursor capacity/backspace/reset boundaries)')
     finally:
         p.kill();p.wait()
