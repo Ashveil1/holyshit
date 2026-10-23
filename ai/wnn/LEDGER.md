@@ -599,3 +599,10 @@ Follow-up to B-501's diagnosis. Hypothesis (verified on 8 examples before pre-re
 Design (b501d.py): same as b500 deep arm, plus a depth-3 block RESTRICTED to (op, leaf, d2small) and (op, d2small, leaf) where d2small = depth-2 forms having at least one leaf arg (8064 forms) - full depth-3 inner args would be 8.7M bases (~1GB, memory-infeasible): pre-stated limitation. Order: depth1 < depth2 < depth3, cap 6M, abl 'baselib val', dummy-step zero-loop arm. Baseline: B-501's depth-2 result (NOT FOUND), not re-run.
 Criterion: PASS = lcm found AND gen >=36/40 at scale 2. FAIL = not found in cap. Estimated target position ~1.3M tried if the hypothesis form is the first fitting program.
 CAN claim: this lcm form is reachable by cost-ordered deepening to depth-3 under the stated restriction. CANNOT claim: full depth-3 search feasibility, or that search would find lcm without the restriction steering the space.
+
+## B-501D verdict (2026-10-23) - PASS (lcm found at depth-3)
+
+logs/b501d_stdout.log (valid run, after the unpinned-list harness bug was caught and discarded - n_bases 701,684 confirms the pinned 9-op space): FOUND at 2,423,862 tried (261s): init b=y; if (nlt a one) -> (mul,a,(div,b,(gcd,a,b))); post id - the cap-respecting form (divide a factor first, then multiply), generalization 40/40 at ALL scales 1-4. Criterion PASS (found + gen 40/40 >= 36/40 bar).
+Tried position 2.42M vs pre-registered estimate ~1.3M - same order; the delta: the found program's cond is (nlt a one) (4th cond, lcm args >= 1) not the assumed (nlt a zero) (6th), and the exact base position differed slightly. Estimate was order-of-magnitude right.
+B-406 wall status after today: absdiff SOLVED (B-500, depth-2), lcm SOLVED (B-501D, restricted depth-3) - both were expression-depth/composition-capacity limits, NOT fundamental schema limits. Remaining wall cells: isprime, cube (both likely need REAL iteration - not zero-loop - so the dummy-step arm cannot reach them; honest open question).
+Scope retained: restricted depth-3 inner forms only (leaf-containing d2); full depth-3 infeasible (memory); zero-loop arm; the recursion schema is inert in these solutions.
