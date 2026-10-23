@@ -1,0 +1,685 @@
+# a64/asm.holy - AArch64 target for the hs backend: same function names as
+# selfhost/asm.holy (x86-64), emitting A64. Port of a64shim.py (see its header
+# for the model: rsp emulated in x28, x16/x17 scratch, syscall number
+# translation stub, flag kinds). tests/test_a64asm.py compares byte for byte.
+# Select it with HSPATH=selfhost/a64:selfhost:selfhost/be (this `asm` shadows).
+REGMAP = {"rax": 9, "rcx": 10, "rdx": 2, "rbx": 19, "rsp": 28, "rbp": 29, "rsi": 1, "rdi": 0, "r8": 4, "r9": 5, "r10": 3, "r11": 11, "r12": 20, "r13": 21, "r14": 22, "r15": 23, "ax": 9, "cx": 10, "dx": 2, "bx": 19, "sp": 28, "bp": 29, "si": 1, "di": 0}
+NUM2NAME = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"]
+C_SUB = {"e": 0, "ne": 1, "b": 3, "ae": 2, "be": 9, "a": 8, "s": 4, "ns": 5, "o": 6, "no": 7, "l": 11, "ge": 10, "le": 13, "g": 12}
+C_ADD = {"e": 0, "ne": 1, "b": 2, "ae": 3, "be": 9, "a": 8, "s": 4, "ns": 5, "o": 6, "no": 7, "l": 11, "ge": 10, "le": 13, "g": 12}
+C_MUL = {"e": 0, "ne": 1, "b": 3, "ae": 2, "be": 9, "a": 8, "s": 4, "ns": 5, "o": 1, "no": 0, "l": 11, "ge": 10, "le": 13, "g": 12}
+C_FP = {"e": 0, "ne": 1, "b": 11, "ae": 10, "be": 13, "a": 12, "s": 4, "ns": 5, "o": 6, "no": 7, "l": 11, "ge": 10, "le": 13, "g": 12, "p": 6, "np": 7}
+SYS_NR = [0, 1, 3, 8, 9, 11, 12, 13, 15, 59, 60, 61, 131, 217, 231, 257]
+SYS_A = [63, 64, 57, 62, 222, 215, 214, 134, 139, 221, 93, 260, 132, 61, 94, 56]
+SYSAT_NR = [21, 83]
+SYSAT_A = [48, 34]
+T0 = 16
+T1 = 17
+XZR = 31
+SPR = 28
+S = {"code": [], "labels": {}, "fixups": [], "data": [], "data_labels": {}, "kind": "sub", "sysdone": false, "n": 0}
+def reset():
+  S["code"] = []
+  S["labels"] = {}
+  S["fixups"] = []
+  S["kind"] = "sub"
+  S["sysdone"] = false
+  S["n"] = 0
+def state():
+  return S
+def pos():
+  return len(S["code"])
+def R(r):
+  if find("0123456789", str(r)[0]) >= 0:
+    return REGMAP[NUM2NAME[r]]
+  return REGMAP[r]
+def w(word):
+  v = word & 0xFFFFFFFF
+  append(S["code"], v & 255)
+  append(S["code"], (v >> 8) & 255)
+  append(S["code"], (v >> 16) & 255)
+  append(S["code"], (v >> 24) & 255)
+def tmp(p):
+  S["n"] = S["n"] + 1
+  return "." + p + str(S["n"])
+def label(name):
+  if name in S["labels"]:
+    raise "dup label " + name
+  S["labels"][name] = len(S["code"])
+  if name == "_start":
+    w(0x910003E0 | SPR)
+def fix(lab, kind):
+  append(S["fixups"], [len(S["code"]), lab, kind])
+def mov_x(d, s):
+  w(0xAA0003E0 | (s << 16) | d)
+def movimm_hw(d, hw):
+  nz = []
+  ones = []
+  for i in range(4):
+    if hw[i] != 0:
+      append(nz, i)
+    if hw[i] != 0xFFFF:
+      append(ones, i)
+  if len(nz) == 0:
+    w(0xD2800000 | d)
+    return null
+  if len(ones) < len(nz):
+    first = 0
+    if len(ones) > 0:
+      first = ones[0]
+    w(0x92800000 | (first << 21) | (((0xFFFF - hw[first]) & 0xFFFF) << 5) | d)
+    k = 1
+    while k < len(ones):
+      i = ones[k]
+      w(0xF2800000 | (i << 21) | (hw[i] << 5) | d)
+      k = k + 1
+  else:
+    w(0xD2800000 | (nz[0] << 21) | (hw[nz[0]] << 5) | d)
+    k = 1
+    while k < len(nz):
+      i = nz[k]
+      w(0xF2800000 | (i << 21) | (hw[i] << 5) | d)
+      k = k + 1
+def movimm(d, v):
+  hw = []
+  for i in range(4):
+    append(hw, (v >> (16 * i)) & 0xFFFF)
+  movimm_hw(d, hw)
+def alu_rrr(base, d, n, m):
+  w(base | (m << 16) | (n << 5) | d)
+def addi(d, n, imm):
+  w(0x91000000 | (imm << 10) | (n << 5) | d)
+def subi(d, n, imm):
+  w(0xD1000000 | (imm << 10) | (n << 5) | d)
+def cmpz(r):
+  w(0xF1000000 | (r << 5) | XZR)
+def sh_sz(size):
+  if size == 8:
+    return 3
+  return 0
+def ldst(op, size, rt, rn, off):
+  if off >= 0 and (off & (size - 1)) == 0 and (off >> sh_sz(size)) < 4096:
+    base = 0
+    if op == "ld" and size == 8:
+      base = 0xF9400000
+    elif op == "st" and size == 8:
+      base = 0xF9000000
+    elif op == "ld":
+      base = 0x39400000
+    else:
+      base = 0x39000000
+    w(base | ((off >> sh_sz(size)) << 10) | (rn << 5) | rt)
+  elif off >= 0 - 256 and off <= 255:
+    base = 0
+    if op == "ld" and size == 8:
+      base = 0xF8400000
+    elif op == "st" and size == 8:
+      base = 0xF8000000
+    elif op == "ld":
+      base = 0x38400000
+    else:
+      base = 0x38000000
+    w(base | ((off & 0x1FF) << 12) | (rn << 5) | rt)
+  else:
+    movimm(T1, off)
+    alu_rrr(0x8B000000, T1, rn, T1)
+    ldst(op, size, rt, T1, 0)
+def sh_of(scale):
+  if scale == 2:
+    return 1
+  if scale == 4:
+    return 2
+  if scale == 8:
+    return 3
+  return 0
+def ea_reg(base, index, scale):
+  b = R(base)
+  if index == null:
+    return b
+  w(0x8B000000 | (R(index) << 16) | (sh_of(scale) << 10) | (b << 5) | T1)
+  return T1
+def mov_rr(d, s):
+  mov_x(R(d), R(s))
+def mov_ri32(d, imm):
+  movimm(R(d), imm)
+def mov_ri64(d, imm):
+  movimm(R(d), imm)
+def mov_ri16(d, imm):
+  movimm(R(d), imm)
+def mov_ri64_bytes(d, bs):
+  hw = []
+  for i in range(4):
+    append(hw, (bs[2 * i] & 255) | ((bs[2 * i + 1] & 255) << 8))
+  movimm_hw(R(d), hw)
+def mov_tagged_int(d, v):
+  bs = []
+  for i in range(8):
+    append(bs, (v >> (8 * i)) & 255)
+  carry = 1
+  for i in range(8):
+    n = bs[i] * 4 + carry
+    bs[i] = n & 255
+    carry = n >> 8
+  mov_ri64_bytes(d, bs)
+def mov_rm(d, base, disp):
+  ldst("ld", 8, R(d), ea_reg(base, null, 1), disp)
+def mov_rmx(d, base, index, scale, disp):
+  ldst("ld", 8, R(d), ea_reg(base, index, scale), disp)
+def mov_mr(base, s, disp):
+  ldst("st", 8, R(s), ea_reg(base, null, 1), disp)
+def mov_mrx(base, index, scale, disp, s):
+  ldst("st", 8, R(s), ea_reg(base, index, scale), disp)
+def mov_mr8(base, s8, disp):
+  ldst("st", 1, R(s8), ea_reg(base, null, 1), disp)
+def movzx_eax_m8(base, disp):
+  ldst("ld", 1, 9, ea_reg(base, null, 1), disp)
+def movzx_rm8x(dst, base, index, scale, disp):
+  ldst("ld", 1, R(dst), ea_reg(base, index, scale), disp)
+def movzx_eax_mx(base, index, scale, disp):
+  movzx_rm8x("rax", base, index, scale, disp)
+def movzx_edx_mx(base, index, scale, disp):
+  movzx_rm8x("rdx", base, index, scale, disp)
+def movzx_eax_al():
+  w(0xD3401C00 | (9 << 5) | 9)
+def lea_gen(d, base, disp, index, scale):
+  b = R(base)
+  dd = R(d)
+  if index != null:
+    w(0x8B000000 | (R(index) << 16) | (sh_of(scale) << 10) | (b << 5) | dd)
+    b = dd
+  if disp == 0:
+    if b != dd:
+      mov_x(dd, b)
+  elif disp > 0 and disp < 4096:
+    addi(dd, b, disp)
+  elif disp < 0 and disp > 0 - 4096:
+    subi(dd, b, 0 - disp)
+  else:
+    movimm(T0, disp)
+    alu_rrr(0x8B000000, dd, b, T0)
+def lea_m(d, base, disp):
+  lea_gen(d, base, disp, null, 1)
+def lea_mx(d, base, index, scale, disp):
+  lea_gen(d, base, disp, index, scale)
+def rip_addr(reg, lab):
+  fix(lab, "adrp")
+  w(0x90000000 | reg)
+  w(0x91000000 | (reg << 5) | reg)
+def lea_rip(d, lab):
+  rip_addr(R(d), lab)
+def mov_rm_rip(d, lab):
+  rip_addr(T0, lab)
+  ldst("ld", 8, R(d), T0, 0)
+def mov_mr_rip(lab, s):
+  rip_addr(T0, lab)
+  ldst("st", 8, R(s), T0, 0)
+def xchg_rip(d, lab):
+  rip_addr(T0, lab)
+  ldst("ld", 8, T1, T0, 0)
+  ldst("st", 8, R(d), T0, 0)
+  mov_x(R(d), T1)
+def inc_mrip(lab):
+  rip_addr(T0, lab)
+  ldst("ld", 8, T1, T0, 0)
+  w(0xB1000400 | (T1 << 5) | T1)
+  ldst("st", 8, T1, T0, 0)
+  S["kind"] = "add"
+def dec_mrip(lab):
+  rip_addr(T0, lab)
+  ldst("ld", 8, T1, T0, 0)
+  w(0xF1000400 | (T1 << 5) | T1)
+  ldst("st", 8, T1, T0, 0)
+  S["kind"] = "sub"
+def push_raw(n):
+  w(0xF8000C00 | (0x1F8 << 12) | (SPR << 5) | n)
+def push_r(r):
+  push_raw(R(r))
+def pop_r(r):
+  w(0xF8400400 | (8 << 12) | (SPR << 5) | R(r))
+def push_m(base, disp):
+  ldst("ld", 8, T0, ea_reg(base, null, 1), disp)
+  push_raw(T0)
+def rr_op(base, d, s):
+  dd = R(d)
+  alu_rrr(base, dd, dd, R(s))
+def add_rr(d, s):
+  rr_op(0xAB000000, d, s)
+  S["kind"] = "add"
+def sub_rr(d, s):
+  rr_op(0xEB000000, d, s)
+  S["kind"] = "sub"
+def cmp_rr(d, s):
+  alu_rrr(0xEB000000, XZR, R(d), R(s))
+  S["kind"] = "sub"
+def adc_rr(d, s):
+  rr_op(0xBA000000, d, s)
+  S["kind"] = "add"
+def logic_rr(base, d, s):
+  rr_op(base, d, s)
+  cmpz(R(d))
+  S["kind"] = "sub"
+def and_rr(d, s):
+  logic_rr(0x8A000000, d, s)
+def or_rr(d, s):
+  logic_rr(0xAA000000, d, s)
+def xor_rr(d, s):
+  logic_rr(0xCA000000, d, s)
+def test_rr(d, s):
+  alu_rrr(0x8A000000, T0, R(d), R(s))
+  cmpz(T0)
+  S["kind"] = "sub"
+def imm_alu(base, d, imm):
+  movimm(T0, imm)
+  alu_rrr(base, R(d), R(d), T0)
+def add_ri32(d, imm):
+  if imm >= 0 and imm < 4096:
+    w(0xB1000000 | (imm << 10) | (R(d) << 5) | R(d))
+  else:
+    imm_alu(0xAB000000, d, imm)
+  S["kind"] = "add"
+def add_ri8(d, imm):
+  add_ri32(d, imm)
+def sub_ri32(d, imm):
+  if imm >= 0 and imm < 4096:
+    w(0xF1000000 | (imm << 10) | (R(d) << 5) | R(d))
+  else:
+    imm_alu(0xEB000000, d, imm)
+  S["kind"] = "sub"
+def cmp_ri32(d, imm):
+  if imm >= 0 and imm < 4096:
+    w(0xF1000000 | (imm << 10) | (R(d) << 5) | XZR)
+  else:
+    movimm(T0, imm)
+    alu_rrr(0xEB000000, XZR, R(d), T0)
+  S["kind"] = "sub"
+def adc_ri32(d, imm):
+  movimm(T0, imm)
+  alu_rrr(0xBA000000, R(d), R(d), T0)
+  S["kind"] = "add"
+def logic_ri(base, d, imm):
+  movimm(T0, imm)
+  alu_rrr(base, R(d), R(d), T0)
+  cmpz(R(d))
+  S["kind"] = "sub"
+def and_ri32(d, imm):
+  logic_ri(0x8A000000, d, imm)
+def or_ri32(d, imm):
+  logic_ri(0xAA000000, d, imm)
+def or_ri8(d, imm):
+  logic_ri(0xAA000000, d, imm)
+def xor_ri32(d, imm):
+  logic_ri(0xCA000000, d, imm)
+def test_al_imm8(imm):
+  movimm(T0, imm & 255)
+  alu_rrr(0x8A000000, T0, 9, T0)
+  cmpz(T0)
+  S["kind"] = "sub"
+def imul_rr(d, s):
+  dd = R(d)
+  ss = R(s)
+  alu_rrr(0x9B407C00, T0, dd, ss)
+  alu_rrr(0x9B007C00, dd, dd, ss)
+  w(0xEB800000 | (dd << 16) | (63 << 10) | (T0 << 5) | XZR)
+  S["kind"] = "imul"
+def mul_r(r):
+  alu_rrr(0x9BC07C00, 2, 9, R(r))
+  alu_rrr(0x9B007C00, 9, 9, R(r))
+def cqo():
+  w(0x937FFC00 | (9 << 5) | 2)
+def idiv_r(r):
+  alu_rrr(0x9AC00C00, T0, 9, R(r))
+  w(0x9B008000 | (R(r) << 16) | (9 << 10) | (T0 << 5) | 2)
+  mov_x(9, T0)
+def bc(cond, lab):
+  fix(lab, "bcond19")
+  w(0x54000000 | cond)
+def div_r(r):
+  d = R(r)
+  fast = tmp("df")
+  done = tmp("dd")
+  loop = tmp("dl")
+  take = tmp("dt")
+  nxt = tmp("dn")
+  fix(fast, "cbz19")
+  w(0xB4000000 | 2)
+  movimm(T0, 64)
+  S["labels"][loop] = len(S["code"])
+  w(0xD340FC00 | (63 << 16) | (2 << 5) | T1)
+  w(0xD3400000 | (63 << 16) | (62 << 10) | (2 << 5) | 2)
+  w(0xD340FC00 | (63 << 16) | (9 << 5) | 15)
+  w(0xAA000000 | (15 << 16) | (2 << 5) | 2)
+  w(0xD3400000 | (63 << 16) | (62 << 10) | (9 << 5) | 9)
+  alu_rrr(0xEB000000, XZR, 2, d)
+  bc(2, take)
+  fix(take, "cbnz19")
+  w(0xB5000000 | T1)
+  fix(nxt, "b26")
+  w(0x14000000)
+  S["labels"][take] = len(S["code"])
+  alu_rrr(0xCB000000, 2, 2, d)
+  w(0x91000400 | (9 << 5) | 9)
+  S["labels"][nxt] = len(S["code"])
+  w(0xF1000400 | (T0 << 5) | T0)
+  bc(1, loop)
+  fix(done, "b26")
+  w(0x14000000)
+  S["labels"][fast] = len(S["code"])
+  alu_rrr(0x9AC00800, T0, 9, d)
+  w(0x9B008000 | (d << 16) | (9 << 10) | (T0 << 5) | 2)
+  mov_x(9, T0)
+  S["labels"][done] = len(S["code"])
+def bsr_rr(d, s):
+  w(0xDAC01000 | (R(s) << 5) | T0)
+  movimm(T1, 63)
+  alu_rrr(0xCB000000, R(d), T1, T0)
+def not_r(r):
+  w(0xAA2003E0 | (R(r) << 16) | R(r))
+def not_rr(d):
+  not_r(d)
+def neg_r(r):
+  alu_rrr(0xEB000000, R(r), XZR, R(r))
+  S["kind"] = "sub"
+def shl_ri8(d, n):
+  w(0xD3400000 | (((64 - n) & 63) << 16) | ((63 - n) << 10) | (R(d) << 5) | R(d))
+  cmpz(R(d))
+  S["kind"] = "sub"
+def shr_ri8(d, n):
+  w(0xD340FC00 | (n << 16) | (R(d) << 5) | R(d))
+  cmpz(R(d))
+  S["kind"] = "sub"
+def sar_ri8(d, n):
+  w(0x9340FC00 | (n << 16) | (R(d) << 5) | R(d))
+  cmpz(R(d))
+  S["kind"] = "sub"
+def shl_cl(d):
+  alu_rrr(0x9AC02000, R(d), R(d), 10)
+def shr_cl(d):
+  alu_rrr(0x9AC02400, R(d), R(d), 10)
+def sar_cl(d):
+  alu_rrr(0x9AC02800, R(d), R(d), 10)
+def repe_cmpsb():
+  loop = tmp("rc")
+  out = tmp("ro")
+  w(0xEB1F03FF)
+  S["labels"][loop] = len(S["code"])
+  fix(out, "cbz19")
+  w(0xB4000000 | 10)
+  w(0x38401400 | T0)
+  w(0x38401400 | (1 << 5) | T1)
+  subi(10, 10, 1)
+  w(0x6B11021F)
+  fix(loop, "bcond19")
+  w(0x54000000)
+  S["labels"][out] = len(S["code"])
+  S["kind"] = "sub"
+def xor_rax_8():
+  xor_ri32("rax", 8)
+def ld8_rax():
+  ldst("ld", 1, 9, 9, 0)
+def ld32_rax():
+  w(0xB9400000 | (9 << 5) | 9)
+def ld64_rax():
+  ldst("ld", 8, 9, 9, 0)
+def st8_rax_cl():
+  ldst("st", 1, 10, 9, 0)
+def st32_rax_ecx():
+  w(0xB9000000 | (9 << 5) | 10)
+def st64_rax_rcx():
+  ldst("st", 8, 10, 9, 0)
+def cmp_al_dl():
+  w(0xD3481C00 | (9 << 5) | T0)
+  w(0xD3481C00 | (2 << 5) | T1)
+  alu_rrr(0xEB000000, XZR, T0, T1)
+  S["kind"] = "sub"
+def ldur_d(d, off):
+  w(0xFC400000 | ((off & 0x1FF) << 12) | (29 << 5) | d)
+def fmod_trunc_m24(lab):
+  # caller-supplied label unused: the a64 port uses internal tmp labels
+  # mirroring a64shim.py (label names never appear in emitted bytes)
+  l_loop = tmp("fm")
+  l_inner = tmp("fm")
+  l_idone = tmp("fm")
+  l_done = tmp("fm")
+  l_nan = tmp("fm")
+  l_st = tmp("fm")
+  ldur_d(16, 0 - 8)
+  ldur_d(17, 0 - 16)
+  w(0x1E60C000 | (16 << 5) | 18)
+  w(0x1E60C000 | (17 << 5) | 17)
+  w(0x1E602008 | (17 << 5))
+  bc(0, l_nan)
+  w(0x1E603800 | (18 << 16) | (18 << 5) | 21)
+  w(0x1E602000 | (21 << 16) | (21 << 5))
+  bc(6, l_nan)
+  S["labels"][l_loop] = len(S["code"])
+  w(0x1E602000 | (17 << 16) | (18 << 5))
+  bc(4, l_done)
+  w(0x1E604000 | (17 << 5) | 19)
+  S["labels"][l_inner] = len(S["code"])
+  w(0x1E602800 | (19 << 16) | (19 << 5) | 20)
+  w(0x1E602000 | (18 << 16) | (20 << 5))
+  bc(12, l_idone)
+  w(0x1E604000 | (20 << 5) | 19)
+  fix(l_inner, "b26")
+  w(0x14000000)
+  S["labels"][l_idone] = len(S["code"])
+  w(0x1E603800 | (19 << 16) | (18 << 5) | 18)
+  fix(l_loop, "b26")
+  w(0x14000000)
+  S["labels"][l_nan] = len(S["code"])
+  movimm_hw(T0, [0, 0, 0, 0x7FF8])
+  w(0x9E670000 | (T0 << 5) | 18)
+  fix(l_st, "b26")
+  w(0x14000000)
+  S["labels"][l_done] = len(S["code"])
+  w(0x9E660000 | (16 << 5) | T0)
+  fix(l_st, "tbz")
+  w(0xB6F80000 | T0)
+  w(0x1E614000 | (18 << 5) | 18)
+  S["labels"][l_st] = len(S["code"])
+  w(0xFC000000 | (0x1E8 << 12) | (29 << 5) | 18)
+def jmp(lab):
+  fix(lab, "b26")
+  w(0x14000000)
+def cond_of(cc):
+  k = S["kind"]
+  if k == "add":
+    return C_ADD[cc]
+  if k == "imul":
+    return C_MUL[cc]
+  if k == "fp":
+    return C_FP[cc]
+  return C_SUB[cc]
+def jcc(cc, lab):
+  c = cond_of(cc)
+  w(0x54000040 | (c ^ 1))
+  fix(lab, "b26")
+  w(0x14000000)
+def call_via(n):
+  w(0x10000000 | (3 << 5) | T0)
+  push_raw(T0)
+  w(0xD61F0000 | (n << 5))
+def call(lab):
+  w(0x10000000 | (3 << 5) | T0)
+  push_raw(T0)
+  fix(lab, "b26")
+  w(0x14000000)
+def call_rax():
+  call_via(9)
+def call_r11():
+  call_via(11)
+def jmp_r(r):
+  w(0xD61F0000 | (R(r) << 5))
+def jmp_m(base, disp):
+  ldst("ld", 8, T0, ea_reg(base, null, 1), disp)
+  w(0xD61F0000 | (T0 << 5))
+def ret():
+  w(0xF8400400 | (8 << 12) | (SPR << 5) | T0)
+  w(0xD61F0000 | (T0 << 5))
+def nop():
+  w(0xD503201F)
+def setcc_al(cc):
+  c = cond_of(cc) ^ 1
+  w(0x9A9F07E0 | (c << 12) | 9)
+def movq_xr(x, r):
+  w(0x9E670000 | (R(r) << 5) | x)
+def movq_rx(r, x):
+  w(0x9E660000 | (x << 5) | R(r))
+def movq_xm(x, base, disp):
+  ldst("ld", 8, T0, ea_reg(base, null, 1), disp)
+  w(0x9E670000 | (T0 << 5) | x)
+def cvtsi2sd(x, r):
+  w(0x9E620000 | (R(r) << 5) | x)
+def cvttsd2si(r, x):
+  w(0x9E780000 | (x << 5) | R(r))
+def ucomisd(a, b):
+  w(0x1E602000 | (b << 16) | (a << 5))
+  S["kind"] = "fp"
+def addsd(d, s):
+  w(0x1E602800 | (s << 16) | (d << 5) | d)
+def subsd(d, s):
+  w(0x1E603800 | (s << 16) | (d << 5) | d)
+def mulsd(d, s):
+  w(0x1E600800 | (s << 16) | (d << 5) | d)
+def divsd(d, s):
+  w(0x1E601800 | (s << 16) | (d << 5) | d)
+def sys_entry(nr, body):
+  w(0xF1000000 | (nr << 10) | (9 << 5) | XZR)
+  w(0x54000001 | ((len(body) + 2) << 5))
+  for x in body:
+    w(x)
+  fix("__a64_sysdo", "b26")
+  w(0x14000000)
+def syscall():
+  if not S["sysdone"]:
+    S["sysdone"] = true
+    skip = tmp("sk")
+    jmp(skip)
+    S["labels"]["__a64_sys"] = len(S["code"])
+    for i in range(4):
+      mov_x(24 + i, i)
+    k = 0
+    while k < len(SYS_NR):
+      nr = SYS_NR[k]
+      a = SYS_A[k]
+      if nr == 257:
+        sys_entry(nr, [0xD2800000 | (a << 5) | 8, 0xD3400000 | (16 << 16) | (16 << 10) | (2 << 5) | T0, 0xD2800000 | (0xC000 << 5) | T1, 0x9B007C00 | (T1 << 16) | (T0 << 5) | T1, 0xCB000000 | (T1 << 16) | (2 << 5) | 2])
+      else:
+        sys_entry(nr, [0xD2800000 | (a << 5) | 8])
+      k = k + 1
+    k = 0
+    while k < len(SYSAT_NR):
+      nr = SYSAT_NR[k]
+      a = SYSAT_A[k]
+      sys_entry(nr, [0xD2800000 | (a << 5) | 8, 0xAA0003E0 | (25 << 16) | 2, 0xAA0003E0 | (24 << 16) | 1, 0x92800000 | (99 << 5)])
+      k = k + 1
+    sys_entry(57, [0xD2800000 | (220 << 5) | 8, 0xD2800000 | (17 << 5), 0xD2800001, 0xD2800002, 0xD2800003, 0xD2800004])
+    w(0x92800000 | (37 << 5) | 9)
+    fix("__a64_sysret", "b26")
+    w(0x14000000)
+    S["labels"]["__a64_sysdo"] = len(S["code"])
+    w(0xD4000001)
+    mov_x(9, 0)
+    S["labels"]["__a64_sysret"] = len(S["code"])
+    for i in range(4):
+      mov_x(i, 24 + i)
+    w(0xD65F03C0)
+    S["labels"][skip] = len(S["code"])
+  fix("__a64_sys", "bl26")
+  w(0x94000000)
+def data_reset():
+  S["data"] = []
+  S["data_labels"] = {}
+def data_label(name):
+  if name in S["data_labels"]:
+    raise "dup data label " + name
+  S["data_labels"][name] = len(S["data"])
+def data_qword(v):
+  i = 0
+  while i < 8:
+    append(S["data"], (v >> (8 * i)) & 255)
+    i = i + 1
+def data_bytes(xs):
+  for x in xs:
+    append(S["data"], x & 255)
+def put32(out, p, v):
+  v = v & 0xFFFFFFFF
+  out[p] = v & 255
+  out[p + 1] = (v >> 8) & 255
+  out[p + 2] = (v >> 16) & 255
+  out[p + 3] = (v >> 24) & 255
+def get32(out, p):
+  return out[p] | (out[p + 1] << 8) | (out[p + 2] << 16) | (out[p + 3] << 24)
+def resolve_at(text_vaddr, data_vaddr):
+  out = S["code"][0:len(S["code"])]
+  for f in S["fixups"]:
+    p = f[0]
+    lab = f[1]
+    kind = f[2]
+    tgt = 0
+    if lab in S["labels"]:
+      tgt = text_vaddr + S["labels"][lab]
+    elif lab in S["data_labels"]:
+      tgt = data_vaddr + S["data_labels"][lab]
+    else:
+      raise "undefined label " + lab
+    pc = text_vaddr + p
+    wd = get32(out, p)
+    if kind == "b26" or kind == "bl26":
+      off = (tgt - pc) >> 2
+      put32(out, p, (wd & 0xFC000000) | (off & 0x3FFFFFF))
+    elif kind == "adrp":
+      pg = ((tgt >> 12) - (pc >> 12)) & 0x1FFFFF
+      put32(out, p, (wd & 0x9F00001F) | ((pg & 3) << 29) | ((pg >> 2) << 5))
+      w2 = get32(out, p + 4)
+      put32(out, p + 4, (w2 & (0xFFFFFFFF - (0xFFF << 10))) | ((tgt & 0xFFF) << 10))
+    elif kind == "cbz19" or kind == "cbnz19" or kind == "bcond19":
+      off = (tgt - pc) >> 2
+      put32(out, p, (wd & 0xFF00001F) | ((off & 0x7FFFF) << 5))
+    elif kind == "tbz":
+      off = (tgt - pc) >> 2
+      put32(out, p, (wd & 0xFFF8001F) | ((off & 0x3FFF) << 5))
+  return out
+def resolve():
+  return resolve_at(0, 0)
+def b1(x):
+  append(S["code"], x & 255)
+def bn(xs):
+  for x in xs:
+    append(S["code"], x & 255)
+def xorpd(d, s):
+  w(0x2E201C00 | (s << 16) | (d << 5) | d)
+def mov_rcr64(d, c):
+  raise "arm64: mov_rcr64 (kernel-only)"
+def mov_cr64(c, s):
+  raise "arm64: mov_cr64 (kernel-only)"
+def cli():
+  raise "arm64: cli (kernel-only)"
+def sti():
+  raise "arm64: sti (kernel-only)"
+def hlt():
+  raise "arm64: hlt (kernel-only)"
+def iretq():
+  raise "arm64: iretq (kernel-only)"
+def sysret():
+  raise "arm64: sysret (kernel-only)"
+def lidt_rip(lab):
+  raise "arm64: lidt_rip (kernel-only)"
+def in_al_dx():
+  raise "arm64: in_al_dx (kernel-only)"
+def in_ax_dx():
+  raise "arm64: in_ax_dx (kernel-only)"
+def in_eax_dx():
+  raise "arm64: in_eax_dx (kernel-only)"
+def out_dx_al():
+  raise "arm64: out_dx_al (kernel-only)"
+def out_dx_ax():
+  raise "arm64: out_dx_ax (kernel-only)"
+def out_dx_eax():
+  raise "arm64: out_dx_eax (kernel-only)"
+def mov_ax_imm16(v):
+  raise "arm64: mov_ax_imm16 (kernel-only)"
+def mov_seg16(seg, r):
+  raise "arm64: mov_seg16 (kernel-only)"
+def invlpg_r(base):
+  raise "arm64: invlpg_r (kernel-only)"
