@@ -85,6 +85,7 @@ SUITES = [
     ("test_ffi_stack.py", "SysV stack arguments beyond integer and float registers"),
     ("test_ffi_registers.py", "independent SysV mixed FFI register banks"),
     ("test_call0.py", "unsafe zero-argument C ABI entry invocation"),
+    ("test_native_interp_command.py", "Python-free hs interpreter command"),
     ("test_native_jit_command.py", "Python-free eager JIT command"),
     ("test_jitsections.py", "unpacked JIT sections relink to identical ELF"),
     ("test_jitextern.py", "eager in-process dynamic symbol binding"),
