@@ -36,7 +36,7 @@ def run_task(task, seed, cap=6_000_000):
     for k in [k for k in cur7.LIB if k not in ('add', 'sub')]: del cur7.LIB[k]
     cur7.EXCL.clear(); cur7.EXCL.add(task); cur7.search._baselib_done = False
     cur7.ev.cache_clear()
-    cur7.LIST_OVERRIDE = {'bases': bases_ext}
+    cur7.LIST_OVERRIDE = {'bases': bases_ext, 'steps_pair': [('a', 'b')], 'steps_single': [('a', 'b')]}  # B-500: dummy step - zero-loop hypothesis, pre-stated
     t0 = time.time(); pd, tried_d, _ = cur7.search(train, 'baselib val', tried_cap=cap); dt_d = time.time() - t0
     cur7.LIST_OVERRIDE = None
     def gen_test(p):
