@@ -29,3 +29,12 @@ Limits: Linux static ELF only; dynamically linked extern libraries and x86
 kernel-only instructions are refused. There is no AArch64 JIT/cache-coherency
 claim. The broader runtime corpus still records two Int-width differences and
 14 build refusals. The x86-64 bootstrap seed is unchanged by target selection.
+
+## CI boundary
+
+The `arm64-port` job is a required workflow gate on PRs, master pushes and
+manual runs. It runs the compiler image oracle, interpreter parity, bounded
+profiler checks, assembler execution and pinned runtime corpus on native arm64.
+Failures are not marked continue-on-error. Repository branch-protection settings
+are separate and are not changed here. The broad `arm64` discovery sweep stays
+informational because it still contains x86-specific suites.
