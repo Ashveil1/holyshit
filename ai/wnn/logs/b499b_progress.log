@@ -1,3 +1,4 @@
 {"done_cell": ["mul", 25], "tried": 4155513, "dt": 1854.8}
 {"done_cell": ["div", 2], "tried": 4202709, "dt": 1903.0}
 {"done_cell": ["div", 25], "tried": 4202709, "dt": 7204.5}
+{"done_cell": ["power", 2], "tried": 4450489, "dt": 7251.6}
