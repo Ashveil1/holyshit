@@ -216,6 +216,26 @@ def run(op, a):
     asm.inc_mrip(a[0])
   elif op == "dec_mrip":
     asm.dec_mrip(a[0])
+  elif op == "fmod_trunc_m24":
+    asm.fmod_trunc_m24("asm_run_fmod")
+  elif op == "repe_cmpsb":
+    asm.repe_cmpsb()
+  elif op == "xor_rax_8":
+    asm.xor_rax_8()
+  elif op == "ld8_rax":
+    asm.ld8_rax()
+  elif op == "ld32_rax":
+    asm.ld32_rax()
+  elif op == "ld64_rax":
+    asm.ld64_rax()
+  elif op == "st8_rax_cl":
+    asm.st8_rax_cl()
+  elif op == "st32_rax_ecx":
+    asm.st32_rax_ecx()
+  elif op == "st64_rax_rcx":
+    asm.st64_rax_rcx()
+  elif op == "cmp_al_dl":
+    asm.cmp_al_dl()
   else:
     raise "unknown op " + op
 HEX = "0123456789abcdef"
