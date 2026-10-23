@@ -219,7 +219,7 @@ def run(op, a):
   elif op == "dec_mrip":
     asm.dec_mrip(a[0])
   elif op == "fmod_trunc_m24":
-    asm.fmod_trunc_m24()
+    asm.fmod_trunc_m24("asm_run_fmod")
   elif op == "repe_cmpsb":
     asm.repe_cmpsb()
   elif op == "xor_rax_8":
