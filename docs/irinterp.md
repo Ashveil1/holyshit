@@ -40,3 +40,16 @@ python3 tests/test_irinterp.py --arm64-qemu /path/to/qemu-aarch64
 
 Both paths must preserve all 85 corpus classifications (including refusals and
 the documented Int-width divergence). Neither route introduces a JIT.
+
+## Python-free source command
+
+On Linux x86-64, `scripts/run-interp-native.sh SOURCE [args...]` checks the
+pinned compiler seed, builds the hs interpreter in a temporary directory and
+executes the source through it. No Python/gcc is used. Source paths/arguments
+may contain spaces; imports resolve from the source directory and HSPATH.
+The command preserves stdout, program arguments, environment and exit status,
+and removes its temporary driver on controlled success/error. Unsupported
+programs refuse up front with rc 3, without switching to Python or AOT.
+This rebuilds the interpreter per launch; it is not a cached or JIT command.
+The shell launcher currently uses the x86-64 seed, while native arm64
+interpreter execution remains available through its tested stage0 build path.
