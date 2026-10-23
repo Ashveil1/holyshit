@@ -2,3 +2,6 @@
 {"done_cell": ["div", 2], "tried": 4202709, "dt": 1903.0}
 {"done_cell": ["div", 25], "tried": 4202709, "dt": 7204.5}
 {"done_cell": ["power", 2], "tried": 4450489, "dt": 7251.6}
+{"done_cell": ["power", 25], "tried": 4450489, "dt": 7301.9}
+{"done_cell": ["gcd", 2], "tried": 100985, "dt": 6.5}
+{"done_cell": ["gcd", 25], "tried": 100985, "dt": 6.5}
