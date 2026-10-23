@@ -173,6 +173,10 @@ def call_value(st, fn, args, ln):
     fdef = st["funcs"][key]
     if len(args) != len(fdef["params"]):
       fail(fdef["dispname"] + " wants " + str(len(fdef["params"])) + " args, got " + str(len(args)), ln)
+    if st["dispatch"] != null:
+      native = st["dispatch"](key, fdef, args)
+      if native[0]:
+        return native[1]
     fr = new_frame(st, fn["closure"], fn["closure"]["root"], fdef["globals"])
     i = 0
     while i < len(args):
@@ -652,7 +656,7 @@ def preflight_imports(irmod, basedir):
             append(queue, [sub, pyrt.py_os_path_dirname(path)])
   return null
 def create(irmod, basedir):
-  st = {"funcs": irmod["funcs"], "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"], "basedir": basedir, "broot": null, "profile": null}
+  st = {"funcs": irmod["funcs"], "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"], "basedir": basedir, "broot": null, "profile": null, "dispatch": null}
   for key in irmod["order"]:
     by = {}
     for block in irmod["funcs"][key]["blocks"]:

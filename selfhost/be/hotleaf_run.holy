@@ -1,0 +1,23 @@
+# Experimental x86-64 only pure-leaf hot dispatch. Explicit opt-in runner.
+import normalize
+import irbuild
+import irinterp
+import hotleaf
+import pyrt
+args = argv()
+if len(args) != 3:
+  raise "hotleaf wants SOURCE THRESHOLD DIAGNOSTICS"
+m = irbuild.build_module(normalize.parse(read_text(args[0])), "")
+r = irinterp.preflight(m)
+if r == null:
+  r = irinterp.preflight_imports(m, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(args[0])))
+if r != null:
+  raise r
+st = irinterp.create(m, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(args[0])))
+ctx = hotleaf.create(int(args[1]), 256, 32)
+st["dispatch"] = lambda key, fn, values: hotleaf.dispatch(ctx, key, fn, values)
+try:
+  irinterp.run(st)
+finally:
+  hotleaf.release(ctx)
+  json_save(args[2], {"mode": "experimental-x64-hot-pure-leaf", "compiled": ctx["compiled"], "calls": ctx["calls"], "fallbacks": ctx["fallbacks"], "rejected": ctx["rejected"], "dropped": ctx["dropped"], "live": ctx["live"]})

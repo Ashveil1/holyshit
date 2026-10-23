@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Opt-in hot pure leaves: threshold, guards, effects and native teardown."""
+from pathlib import Path
+import json
+import os
+import platform
+import subprocess
+import sys
+import tempfile
+ROOT=Path(__file__).resolve().parent.parent
+if platform.machine() not in ('x86_64','amd64'):
+    print('skip hotleaf: experimental emitter is x86-64 only')
+    sys.exit(0)
+ENV=dict(os.environ,HSPATH=f'{ROOT}/selfhost:{ROOT}/selfhost/be',HSROOT=str(ROOT))
+def run(args):
+    return subprocess.run([str(x) for x in args],env=ENV,capture_output=True,timeout=120)
+cases=[
+('threshold','def f(n):\n  return n * 2 + 1\nprint f(10)\nprint f(20)\nprint f(30)\n',2,1,2,0),
+('cold','def f(n):\n  return n + 1\nprint f(1)\n',2,0,0,0),
+('zero','def f():\n  return 7\nprint f()\nprint f()\n',1,1,2,0),
+('negative','def f(n):\n  return -n\nprint f(-10)\nprint f(22)\n',1,1,2,0),
+('width','def f(n):\n  return n * n\nprint f(3)\nprint f(536870911)\nprint f(4)\n',1,1,2,1),
+('intermediate','def f(n):\n  return (n * n) - (n * n)\nprint f(536870911)\nprint f(2)\n',1,1,1,1),
+('types','def f(n):\n  return n + n\nprint f(2)\nprint f("x")\nprint f([1])\nprint f(3)\n',1,1,2,2),
+('rebind','def f(n):\n  return n + 1\ng = f\nprint f(3)\ndef f(n):\n  return n + 2\nprint f(3)\nprint g(3)\n',1,2,3,0),
+('closure','def outer(x):\n  def f(n):\n    return x + n\n  return f\nf = outer(3)\nprint f(4)\n',1,0,0,0),
+('effects','def f(n):\n  print "effect"\n  return n + 1\nprint f(2)\nprint f(3)\n',1,0,0,0),
+('error','def f(n):\n  return n / 0\ntry:\n  print f(1)\nexcept:\n  print "caught"\nprint "done"\n',1,0,0,0),
+('finally','def f(n):\n  return n + 1\ntry:\n  print f(2)\n  raise "x"\nexcept:\n  print f(3)\nfinally:\n  print f(4)\n',1,1,3,0),
+('six','def f(a,b,c,d,e,f):\n  return a+b+c+d+e+f\nprint f(1,2,3,4,5,6)\n',1,1,1,0),
+('uncaught','def f(n):\n  return n + 1\nprint f(2)\nraise "after native"\n',1,1,1,0),
+]
+with tempfile.TemporaryDirectory(prefix='hs-hotleaf.') as d:
+ d=Path(d);exe=d/'runner'
+ r=run([ROOT/'bootstrap/hs-hosted-x86_64',ROOT/'selfhost/be/hotleaf_run.holy',exe]);assert r.returncode==0,r.stderr
+ for name,source,threshold,compiled,calls,fallbacks in cases:
+  src=d/'case.holy';dest=d/'stats.json';src.write_text(source)
+  ref=run([sys.executable,ROOT/'interp.py',src]);got=run([exe,src,threshold,dest])
+  assert (got.returncode,got.stdout)==(ref.returncode,ref.stdout),(name,got.stdout,got.stderr,ref.stdout)
+  if ref.returncode==0:assert got.stderr==ref.stderr,(name,got.stderr)
+  else:assert b'after native' in got.stderr
+  stats=json.loads(dest.read_text())
+  assert stats['compiled']==compiled,(name,stats)
+  assert stats['calls']==calls,(name,stats)
+  assert stats['fallbacks']==fallbacks,(name,stats)
+  assert stats['live'] is False,(name,stats)
+ unit=d/'ownership.holy'
+ unit.write_text('import hotleaf\nimport normalize\nimport irbuild\nm = irbuild.build_module(normalize.parse("def f(n):\\n  return n + 1\\n"), "")\nkey = m["order"][0]\nfn = m["funcs"][key]\nc = hotleaf.create(1, 1, 1)\nassert hotleaf.dispatch(c, key, fn, [2]) == [true, 3]\nassert hotleaf.dispatch(c, "other", fn, [3]) == [false, null]\nassert c["dropped"] == 1\nptr = c["images"][0]["ptr"]\nfound = false\nfor row in split(read_text("/proc/self/maps"), "\\n"):\n  words = split(row)\n  if len(words) > 1:\n    bounds = split(words[0], "-")\n    if len(bounds[0]) <= 12 and len(bounds[1]) <= 12:\n      if int("0x" + bounds[0]) <= ptr and int("0x" + bounds[1]) > ptr:\n        assert words[1] == "r-xp"\n        found = true\nassert found\nhotleaf.release(c)\nassert not c["images"][0]["live"]\nrejected = false\ntry:\n  hotleaf.dispatch(c, key, fn, [3])\nexcept:\n  rejected = true\nassert rejected\nc = hotleaf.create(1, 4, 1)\nhotleaf.dispatch(c, key, fn, [2])\nassert hotleaf.dispatch(c, "other", fn, [2]) == [false, null]\nassert c["compiled"] == 1 and c["rejected"] == 1\nhotleaf.release(c)\nprint "ok"\n')
+ r=run([ROOT/'bootstrap/hs-hosted-x86_64',unit,d/'ownership']);assert r.returncode==0,r.stderr
+ r=run([d/'ownership']);assert r.returncode==0 and r.stdout==b'ok\n',(r.stdout,r.stderr)
+ print(f'{len(cases)+1}/{len(cases)+1} hot pure-leaf parity/guard/teardown cases')
