@@ -560,3 +560,11 @@ Design (b497.py):
 - 3 seeds for MLP. Metrics: exact-match accuracy per split.
 Criterion (pre-stated): PASS = symbolic 100% exact on ALL splits AND MLP accuracy on unseen-x < 50% of its seen-split accuracy (the measured boundary). If MLP generalizes to unseen-x (it cannot as a closed-set classifier - if it does, a bug), investigate.
 CAN claim: on this template task, exact symbolic arithmetic is exact where a closed-set text classifier cannot be. CANNOT claim: anything about LLMs, neural arithmetic generally, or non-template language.
+
+## B-497 verdict (2026-10-23) - PASS (boundary measured; outcome was pre-stated as expected)
+
+logs/b497_stdout.log (360 train problems, 66-answer closed set; symbolic direction bug caught and fixed BEFORE verdict - source unit is the one the number quantifies; numbers below are post-fix):
+- symbolic: 1.0 on ALL splits (seen, unseen-x, unseen-pair) - exact by construction, verified.
+- MLP (closed-set classifier, 3 seeds): seen 1.0 (perfect memorization of trained (x, pair, template) combos); unseen-x .1889 (only answer-set coincidences - an unseen number's answer is usually outside the closed set); unseen-pair .0035 (~zero - unseen conversion factors are unreachable).
+Criterion (symbolic 100% everywhere AND MLP unseen-x < 50% of seen) PASS: .1889 < .5.
+The measured boundary: a closed-set text classifier's exactness is bounded by its training answer set; any novel numeric value or unit pair breaks it, while the symbolic path is exact by construction. As pre-stated, this CANNOT be read as a claim about neural arithmetic generally - it is the exact-vs-closed-set boundary on this template task, documented with numbers.
