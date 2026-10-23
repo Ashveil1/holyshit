@@ -1,0 +1,158 @@
+# Experimental x86-64 hot pure-scalar leaves. No shared objects or target heap.
+import asm
+import pyrt
+def create(threshold, max_sites, max_images):
+  for value in [threshold, max_sites, max_images]:
+    if pyrt.py_type(value) != "int" or value < 1 or value > 4096:
+      raise "hotleaf: limits must be Int 1..4096"
+  return {"threshold": threshold, "max_sites": max_sites, "max_images": max_images, "sites": {}, "images": [], "live": true, "compiled": 0, "calls": 0, "fallbacks": 0, "rejected": 0, "dropped": 0}
+def small(v):
+  if pyrt.py_type(v) != "int":
+    return false
+  return v >= (0 - 536870912) and v <= 536870911
+def plan(fn):
+  if len(fn["blocks"]) != 1 or len(fn["params"]) > 6:
+    return null
+  if len(fn["globals"]) != 0:
+    return null
+  b = fn["blocks"][0]
+  if b["label"] != fn["entry"] or b["term"]["term"] != "ret" or b["term"]["val"] == null:
+    return null
+  if len(b["instrs"]) < 1 or len(b["instrs"]) > 128:
+    return null
+  slots = {}
+  for ins in b["instrs"]:
+    op = ins["op"]
+    if op == "load":
+      if ins["name"] not in fn["params"]:
+        return null
+    elif op == "const":
+      if not small(ins["val"]):
+        return null
+    elif op == "bin":
+      if ins["binop"] not in ["+", "-", "*"]:
+        return null
+      if ins["l"] not in slots or ins["r"] not in slots:
+        return null
+    elif op == "un":
+      if ins["unop"] != "neg" or ins["v"] not in slots:
+        return null
+    else:
+      return null
+    if ins["dest"] in slots:
+      return null
+    slots[ins["dest"]] = (len(slots) + 1) * 8
+  if b["term"]["val"] not in slots:
+    return null
+  return [b, slots]
+def guard():
+  asm.cmp_ri32("rax", 0 - 536870912)
+  asm.jcc("l", "fallback")
+  asm.cmp_ri32("rax", 536870911)
+  asm.jcc("g", "fallback")
+def compile_leaf(fn, p):
+  # Independent RW data page and initially RW code page, then RX code only.
+  ptr = scall(9, 0, 8192, 3, 34, 0 - 1, 0)
+  if ptr < 0 or ptr == 0:
+    raise "hotleaf: mmap failed"
+  try:
+    asm.reset()
+    asm.push_r("rbp")
+    asm.mov_rr("rbp", "rsp")
+    asm.sub_ri32("rsp", (len(p[1]) * 8 + 15) & (0 - 16))
+    asm.mov_ri64("rdi", ptr + 4096)
+    for ins in p[0]["instrs"]:
+      op = ins["op"]
+      if op == "load":
+        idx = 0
+        while fn["params"][idx] != ins["name"]:
+          idx = idx + 1
+        asm.mov_rm("rax", "rdi", idx * 8)
+      elif op == "const":
+        asm.mov_ri64("rax", ins["val"])
+      elif op == "un":
+        asm.mov_rm("rax", "rbp", 0 - p[1][ins["v"]])
+        asm.neg_r("rax")
+      else:
+        asm.mov_rm("rax", "rbp", 0 - p[1][ins["l"]])
+        asm.mov_rm("rcx", "rbp", 0 - p[1][ins["r"]])
+        if ins["binop"] == "+":
+          asm.add_rr("rax", "rcx")
+        elif ins["binop"] == "-":
+          asm.sub_rr("rax", "rcx")
+        else:
+          asm.imul_rr("rax", "rcx")
+      guard()
+      asm.mov_mr("rbp", "rax", 0 - p[1][ins["dest"]])
+    asm.mov_rm("rax", "rbp", 0 - p[1][p[0]["term"]["val"]])
+    asm.jmp("done")
+    asm.label("fallback")
+    asm.mov_ri32("rax", 1073741824)
+    asm.label("done")
+    asm.mov_rr("rsp", "rbp")
+    asm.pop_r("rbp")
+    asm.ret()
+    code = asm.resolve()
+    if len(code) > 4096:
+      raise "hotleaf: code exceeds page"
+    for i in range(len(code)):
+      b = code[i]
+      unsafe:
+        store8(as_ptr(ptr) + i, b)
+    if scall(10, ptr, 4096, 5, 0, 0, 0) != 0:
+      raise "hotleaf: mprotect failed"
+  except as e:
+    scall(11, ptr, 8192, 0, 0, 0, 0)
+    raise e
+  return {"ptr": ptr, "data": ptr + 4096, "live": true}
+def dispatch(ctx, key, fn, args):
+  if not ctx["live"]:
+    raise "hotleaf: released context"
+  if key not in ctx["sites"]:
+    if len(ctx["sites"]) >= ctx["max_sites"]:
+      if ctx["dropped"] < 2147483647:
+        ctx["dropped"] = ctx["dropped"] + 1
+      return [false, null]
+    ctx["sites"][key] = {"count": 0, "image": null, "rejected": false}
+  site = ctx["sites"][key]
+  if site["count"] < 2147483647:
+    site["count"] = site["count"] + 1
+  if site["rejected"] or site["count"] < ctx["threshold"]:
+    return [false, null]
+  for value in args:
+    if not small(value):
+      ctx["fallbacks"] = ctx["fallbacks"] + 1
+      return [false, null]
+  if site["image"] == null:
+    p = plan(fn)
+    if p == null or len(ctx["images"]) >= ctx["max_images"]:
+      site["rejected"] = true
+      ctx["rejected"] = ctx["rejected"] + 1
+      return [false, null]
+    site["image"] = compile_leaf(fn, p)
+    append(ctx["images"], site["image"])
+    ctx["compiled"] = ctx["compiled"] + 1
+  image = site["image"]
+  for i in range(len(args)):
+    v = args[i]
+    address = image["data"] + i * 8
+    unsafe:
+      store64(as_ptr(address), v)
+  address = image["ptr"]
+  value = null
+  unsafe:
+    value = call0(as_ptr(address))
+  if value == 1073741824:
+    ctx["fallbacks"] = ctx["fallbacks"] + 1
+    return [false, null]
+  ctx["calls"] = ctx["calls"] + 1
+  return [true, value]
+def release(ctx):
+  if not ctx["live"]:
+    raise "hotleaf: context already released"
+  for image in ctx["images"]:
+    if image["live"]:
+      if scall(11, image["ptr"], 8192, 0, 0, 0, 0) != 0:
+        raise "hotleaf: munmap failed"
+      image["live"] = false
+  ctx["live"] = false
