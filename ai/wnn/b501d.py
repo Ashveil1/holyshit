@@ -20,6 +20,7 @@ def run_task(task, seed, cap=6_000_000):
     cur7.VALID[:] = [cur7.gen(task, vr, sc) for sc in (1, 2) for _ in range(16)]
     # baseline NOT re-run (pre-registered: = B-501's NOT FOUND at 6M)
     pb, tried_b, dt_b = None, 0, 0.0
+    cur7.search(train[:1], 'baselib val', tried_cap=1)  # force library pin BEFORE building ops/E1 (bug fix: lists were built unpinned)
     # deepened arm: capture ops after pinning, build cost-ordered depth<=2 bases
     ops = [o for o in cur7.LIB]
     L = list(cur7.LEAVES)
