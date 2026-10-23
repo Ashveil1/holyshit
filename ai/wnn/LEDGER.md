@@ -433,3 +433,19 @@ Shared-arm final all-task mean: .8967/.8938/.8993 (mean .8966).
 MLP (naive sequential SGD, 300 epochs/task, no replay/EWC/any mitigation): task-1 collapses to .0894/.1644/.0771 after 5 tasks.
 Scope: contrast is this encoding + this protocol + a naive baseline; per-task flatness establishes storage retention, not unchanged behavioral recall under a shared readout - the measured -0.7..-0.8 pt shared-arm drop is real behavioral degradation and is preserved.
 Commit: see git log (b494 verdict).
+
+## B-406P pre-registration (2026-10-23) - anti-unification schemas as search ordering
+
+Question (B-406): do partial schemas obtained by anti-unifying (least-general-generalization of) PAIRS of already-learned programs transfer as a search-ordering prior to HELD-OUT curriculum tasks? Premise flagged weak (P24/F-6: step-pair macro ordering gave little); this tests the stronger full-spec generalization.
+Design (b406.py + 3 hook lines in cur7.py, LIST_OVERRIDE/LIST_CAPTURE/SKIP_SET, inert unless set):
+- Source programs: the 12 learned programs in /tmp/c7_prog_0_base.json (choose2, dblfact, div, fact, gcd, max, min, mod, mul, power, square, sumto).
+- Anti-unify all pairs over the full spec (init, cond, base, s0, s1, comb, post); recursive LGG inside cond/steps/comb expressions; mismatches become holes. Dedup identical schemas.
+- Non-triviality filter (pre-stated): a schema must FULLY fix >=3 of the 7 top-level fields to count (all-hole schemas "match everything" and prove nothing).
+- Held-out tasks (never used to build schemas): isprime, absdiff, cube, even, lcm.
+- Library: existing honest baselib pinning (mod/mul/div/power/gcd/max/min pinned into LIB; B-523-H1 EXCL - target never resolves through pinned library; held-out targets are not pinnable anyway). Both arms identical LIB; ev/cev caches cleared before EACH arm (no warm-cache advantage).
+- Baseline arm: cur7.search(train, 'baselib', tried_cap=1M). Tasks NOT FOUND in 1M are excluded from the cut metric (recorded as excluded, not failures of the schema claim).
+- Schema arm: phase 1 = for each non-trivial schema (most-fixed-fields first), enumerate only schema-consistent candidates (per-field filtered lists preserving baseline order), skipping candidates already tried (dedup set, not re-counted); cumulative phase-1 budget 500K. Phase 2 (if phase 1 misses): full baseline space; schema-arm tried = phase-1 tried + baseline tried (double evaluations honestly double-counted).
+- Paired: identical train examples (same pre-generated list) for both arms.
+Metrics: per held-out task: found?, tried baseline vs schema arm, which schema matched the solution.
+Criteria (pre-stated): PASS iff ONE non-trivial schema is consistent with the found solutions of >=2 held-out tasks AND mean tried on those tasks is cut >50% vs baseline. Otherwise FAIL: if tight schemas match nothing held-out or matching schemas give <50% cuts, record honestly - that falsifies anti-unification transfer for this curriculum.
+CAN claim if PASS: pairwise anti-unified schemas are a useful search-ordering prior on held-out tasks of this curriculum. CANNOT claim: library-free discovery, new expressivity (schemas only reorder the same candidate space), or transfer beyond this curriculum.
