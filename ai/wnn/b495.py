@@ -26,7 +26,7 @@ def bits(fs):
             X[i, int.from_bytes(hashlib.md5(tok.encode()).digest()[:4], 'little') % B] = 1
     return X
 rng = np.random.default_rng(0); NT = B // 28
-TUP = rng.permutation(B).reshape(NT, 28)
+TUP = rng.permutation(B)[:NT * 28].reshape(NT, 28)
 POW = (1 << np.arange(28, dtype=np.int64))
 def tuples(X):
     return np.stack([X[:, TUP[j]].dot(POW) for j in range(NT)], 1)
