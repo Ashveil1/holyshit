@@ -394,3 +394,11 @@ Variant ladder (pre-registered b410c fixes, then b410d):
 - b410c (vocab 1..10, n=600, EM on, EM round 2): .735/.775/.93/.765/.825 = .766 mean, lex0 10/10 correct every seed - below .8 criterion; EM rounds added 1-2 SPURIOUS entries (lex_total 11-12 vs lex_correct 10)
 - b410d = b410c with EM fully disabled (lexicon = pinned words only): acc 1.0/1.0/1.0/1.0/1.0 = digit baseline exactly. PASS vs the .8 criterion, 5/5 seeds.
 Mechanism story: with complete unary coverage (values 1..10 each pinned by preimage-intersection over fact/sumto/isprime constraints from ~120 word-only sentences), grounding is EXACT and the substitution-voting EM only corrupts (it votes function words into the lexicon). Digit-free pipeline: pin from unary -> decode mixed sentences -> train TwoStep on decoded text -> done. No digit string is ever seen; answers remain integer supervision. Caveats: simplified generator (4 binary ops, English-only, values 1..10); the claim is about grounding numerals from answer supervision, not about learning arithmetic. Sloppiness note carried: b410c/d import b410 which re-runs the phase-1 grid on import (harmless).
+
+## B-493P pre-registration (2026-10-23) - class-incremental MNIST: WiSARD vs shared-hidden MLP
+
+Question (B-493, also closes the forgetting half left open by B-435): sequential class-incremental learning - train classes 0-4, then 5-9 - what happens to early-class accuracy?
+Design (b493.py, same data/encoding as B-236: binarized MNIST, 28-bit tuples x28 nodes):
+- WiSARD arm: train on A (classes 0-4), eval A-test; then ADD B (classes 5-9, node union), eval A/B/all-test. Prediction: zero drop - new classes only add nodes; old tables untouched (P5 E4 retention pattern).
+- MLP arm (HONEST baseline, not rigged): single softmax net 784-64-10 with a SHARED hidden layer (the textbook catastrophic-forgetting setup; the B-241 one-vs-rest heads have per-class hidden layers and CANNOT forget, so they are not a valid baseline here), 300 SGD epochs on A, eval; 300 more on B, eval A/B/all. Prediction: significant A drop (>10 pts).
+- 3 seeds (tuple permutation + net init). Criteria: report honest A-retention for both arms; WiSARD claim = drop <= 1 pt.
