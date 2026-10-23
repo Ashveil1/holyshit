@@ -449,3 +449,16 @@ Design (b406.py + 3 hook lines in cur7.py, LIST_OVERRIDE/LIST_CAPTURE/SKIP_SET, 
 Metrics: per held-out task: found?, tried baseline vs schema arm, which schema matched the solution.
 Criteria (pre-stated): PASS iff ONE non-trivial schema is consistent with the found solutions of >=2 held-out tasks AND mean tried on those tasks is cut >50% vs baseline. Otherwise FAIL: if tight schemas match nothing held-out or matching schemas give <50% cuts, record honestly - that falsifies anti-unification transfer for this curriculum.
 CAN claim if PASS: pairwise anti-unified schemas are a useful search-ordering prior on held-out tasks of this curriculum. CANNOT claim: library-free discovery, new expressivity (schemas only reorder the same candidate space), or transfer beyond this curriculum.
+
+## B-406 verdict (2026-10-23) - FAIL (criterion unmet; strong single-task signal recorded honestly)
+
+logs/b406_stdout.log. Anti-unification of the 12 learned programs yielded 45 pair-schemas, 16 non-trivial (>=3/7 fields fixed).
+Held-out results (1M baseline cap; 4 of 5 tasks NOT FOUND in baseline -> excluded from cut metric per pre-registration):
+- absdiff: NOT FOUND (both arms; full 1.29M-spec space exhausted)
+- lcm: NOT FOUND (both arms)
+- isprime: NOT FOUND (both arms)
+- cube: NOT FOUND (both arms)
+- even: FOUND both arms. Baseline tried 123619 (program: init b=y, s1=(power zero b), post nz - a power-zero parity trick). Schema arm phase-1 tried 8036 via schema #1 (fact/sumto LGG: init ?, cond (lt a one), base b, s0 (sub a one), s1 ?, comb None, post id) - a 93.5% tried cut, and a DIFFERENT, simpler solution (init one, s1=(sub one b), post id - pure parity flip). Solution consistent with schemas #1 and #7.
+Criterion (ONE schema consistent with >=2 held-out solutions AND mean cut >50%) NOT MET: only 1 held-out task was solvable within cap, so cross-task reuse cannot be demonstrated. FAIL as pre-registered.
+Honest partial signal: on the single solvable held-out task the schema ordering cut tried by 93.5% and steered to a simpler program - the mechanism works when a matching schema exists; the premise failure is COVERAGE (4/5 held-out tasks unreachable in 1M from the pinned library), not schema quality. The NOT-FOUND wall itself is data: absdiff/lcm/isprime/cube are not reachable in this space/order/budget with the pinned library.
+Caveats: found programs fit 25 staged train examples only; this harness runs no generalization test (out of scope for the ordering question). Schema arm tried counts are honest (phase-1 + double-counted baseline on misses).
