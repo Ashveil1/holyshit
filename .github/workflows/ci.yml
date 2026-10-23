@@ -22,9 +22,31 @@ jobs:
       - name: all suites except the QEMU kernel suite
         run: python3 tests/run_all.py --quick
 
+  # Supported arm64 slice is a required job on PR/push/dispatch. Keep the
+  # broad legacy/x86 sweep below informational rather than hiding failures
+  # of the now-supported compiler/interpreter gates behind continue-on-error.
+  arm64-port:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: mkdir -p /tmp/opencode && uname -m
+      - name: hs compiler AArch64 image and native execution oracle
+        run: python3 tests/test_a64compiler.py
+      - name: hs interpreter native parity
+        run: python3 tests/test_irinterp.py
+      - name: hs interpreter bounded profiling
+        run: python3 tests/test_irprofile_hs.py
+      - name: AArch64 assembler native execution
+        run: python3 tests/test_arm64_asm.py
+      - name: pinned AArch64 runtime corpus
+        run: python3 tests/arm64_corpus.py
+
   # Discovery lane for the arm64 port: which suites already pass on a real
-  # arm64 host. Informational (continue-on-error) until the arm64 backend lands
-  # and the passing set is pinned.
+  # arm64 host. Informational (continue-on-error): remaining legacy/x86-only
+  # suites are outside the required arm64-port slice above.
   arm64:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-24.04-arm
@@ -37,10 +59,6 @@ jobs:
       - name: native backend deps (gcc + Boehm GC)
         run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev
       - run: mkdir -p /tmp/opencode && uname -m
-      - name: hs interpreter tier native arm64 parity
-        run: python3 tests/test_irinterp.py
-      - name: hs compiler AArch64 target (native execution + image oracle)
-        run: python3 tests/test_a64compiler.py
       - name: quick suites on arm64 (informational)
         run: python3 tests/run_all.py --quick
 
