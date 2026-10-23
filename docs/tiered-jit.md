@@ -120,3 +120,21 @@ not automatic hot selection, native-to-cold callback, shared runtime or tiering.
 immutable strings and finite logical byte accounting. These host-executor
 values do not cross to the isolated native helper. Shared-runtime stages and
 hot selection remain unfinished.
+
+## Self-hosted interpreter instrumentation
+
+`selfhost/be/irprofile.holy` adds optional state-local function/block entry
+counters to `irinterp.holy`. Set `state["profile"]` to `irprofile.create(N)`
+before execution, or build `irprofile_run.holy` and pass SOURCE OUTPUT MAX_SITES.
+Default execution has no collector and writes no profile file. The diagnostic
+driver writes only to the explicitly supplied output path, including on errors.
+
+Counters saturate at 2^31-1, storage is limited to 1..65536 sites, and each entry
+keeps at most eight argument-type vectors without values. Snapshot structures
+are independent copies. Event counts and type vectors match the reference
+collector on recursion, closures, loops and exception/finally tests. Profiles
+are local to a module build, not persistent code-cache keys.
+
+This provides self-hosted measurement for the next hot-function experiment.
+It does not select/compile functions, replace dispatch cells, share native GC
+objects or supply deoptimization. The shared-runtime ABI remains unfinished.

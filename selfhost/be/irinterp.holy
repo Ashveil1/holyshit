@@ -10,6 +10,7 @@ import normalize
 import irbuild
 import verify
 import pyrt
+import irprofile
 UNB = "u0004IRUNBOUNDu0004"
 JUMP = "u0001IRJUMPu0001"
 def trailing_line(s):
@@ -522,11 +523,19 @@ def do_raise(st, tm, temps):
   fail(v, ln)
 def run_fn(st, key, fdef, frame):
   by = st["by"][key]
+  profile = st["profile"]
+  if profile != null:
+    types = []
+    for name in fdef["params"]:
+      append(types, type_name(frame["vars"][name]))
+    irprofile.record(profile, key, "entry", "", types)
   temps = {}
   lab = fdef["entry"]
   prev = null
   while true:
     b = by[lab]
+    if profile != null:
+      irprofile.record(profile, key, "block", lab, null)
     caught = null
     try:
       for ins in b["instrs"]:
@@ -643,7 +652,7 @@ def preflight_imports(irmod, basedir):
             append(queue, [sub, pyrt.py_os_path_dirname(path)])
   return null
 def create(irmod, basedir):
-  st = {"funcs": irmod["funcs"], "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"], "basedir": basedir, "broot": null}
+  st = {"funcs": irmod["funcs"], "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"], "basedir": basedir, "broot": null, "profile": null}
   for key in irmod["order"]:
     by = {}
     for block in irmod["funcs"][key]["blocks"]:

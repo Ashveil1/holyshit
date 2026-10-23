@@ -118,6 +118,7 @@ SUITES = [
     ("test_a64asm.py", "A64 assembler written in hs vs a64shim.py"),
     ("test_arm64_asm.py", "A64 assembler + ELF writer, run under qemu-aarch64 or natively"),
     ("arm64_corpus.py", "IR backend -> arm64 ELF under qemu-aarch64, differential vs interp (69/85, pinned)"),
+    ("test_irprofile_hs.py", "bounded opt-in hs interpreter function/block counters"),
     ("test_irinterp.py", "hs-written IR interpreter tier: byte parity vs interp.py, pinned refusals"),
     ("test_jit_startup.py", "JIT startup: <50ms driver gate + launcher verification memoization"),
     ("test_ir_unbox.py", "raw-Int unboxed arithmetic parity: outputs, errors, exit codes"),

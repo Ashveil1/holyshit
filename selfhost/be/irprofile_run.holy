@@ -1,0 +1,22 @@
+# Diagnostic source runner. Profile output goes to an explicit private path.
+import normalize
+import irbuild
+import irinterp
+import irprofile
+import pyrt
+args = argv()
+if len(args) != 3:
+  raise "irprofile wants SOURCE OUTPUT MAX_SITES"
+source = args[0]
+m = irbuild.build_module(normalize.parse(read_text(source)), "")
+r = irinterp.preflight(m)
+if r == null:
+  r = irinterp.preflight_imports(m, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(source)))
+if r != null:
+  raise r
+st = irinterp.create(m, pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(source)))
+st["profile"] = irprofile.create(int(args[2]))
+try:
+  irinterp.run(st)
+finally:
+  json_save(args[1], irprofile.snapshot(st["profile"]))

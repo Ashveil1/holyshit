@@ -1,0 +1,39 @@
+# Bounded, opt-in diagnostic hotness counters. No code generation or selection.
+import pyrt
+def create(max_sites):
+  if pyrt.py_type(max_sites) != "int":
+    raise "profile max_sites must be 1..65536"
+  if max_sites < 1 or max_sites > 65536:
+    raise "profile max_sites must be 1..65536"
+  return {"max_sites": max_sites, "sites": {}, "order": [], "dropped_events": 0}
+def increment(n):
+  if n < 2147483647:
+    return n + 1
+  return n
+def record(p, fn, kind, label, types):
+  # JSON tuple encoding prevents delimiter collisions in qualified names.
+  key = json_str([fn, kind, label])
+  if key not in p["sites"]:
+    if len(p["sites"]) >= p["max_sites"]:
+      p["dropped_events"] = increment(p["dropped_events"])
+      return null
+    site = {"function": fn, "kind": kind, "label": label, "count": 0}
+    p["sites"][key] = site
+    append(p["order"], key)
+  site = p["sites"][key]
+  site["count"] = increment(site["count"])
+  if types != null:
+    if "argument_types" not in site:
+      site["argument_types"] = []
+    if types not in site["argument_types"]:
+      if len(site["argument_types"]) < 8:
+        append(site["argument_types"], types[0:len(types)])
+      else:
+        site["megamorphic"] = true
+  return null
+def snapshot(p):
+  sites = []
+  for key in p["order"]:
+    append(sites, p["sites"][key])
+  # A JSON round-trip returns independent lists/dicts, with no retained args.
+  return json_parse(json_str({"version": 1, "mode": "hs-ir-profile-not-jit", "max_sites": p["max_sites"], "dropped_events": p["dropped_events"], "sites": sites}))
