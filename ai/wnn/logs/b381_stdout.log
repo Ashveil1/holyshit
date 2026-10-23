@@ -1,0 +1,6 @@
+{"arm": "A_lru300k", "tried": 1291776, "wall": 122.46261382102966, "found": false, "prog": null, "cache": "CacheInfo(hits=713878109, misses=21295430, maxsize=300000, currsize=300000)"}
+{"arm": "B_lru2m", "tried": 1291776, "wall": 76.91109704971313, "found": false, "prog": null, "cache": "CacheInfo(hits=546186546, misses=787084, maxsize=2000000, currsize=589980)"}
+{"arm": "C_nocache", "tried": 1291776, "wall": 541.2143456935883, "found": false, "prog": null, "cache": "none"}
+{"check": "B_lru2m", "decisions_identical": true}
+{"check": "C_nocache", "decisions_identical": true}
+DONE

@@ -298,3 +298,28 @@ All 35 items are parameter or task variants of two mechanisms already measured o
 - B-379/380 (seed-parallel racing, first hit wins): null-to-harmful by construction. Ordering is deterministic within a fixed LIB state; without underdetermination every seed finds the same program at the same position (b338/b339: 12/12 cells identical), so racing costs 3x CPU per success with zero wall win. Where first-consistent position does vary across example sets (square), the earliest hit is biased toward shortcuts (B-044 pattern: the 719709 shortcut precedes the 2583787 clean program), so first-hit-wins selects the wrong program faster. Racing does not move square's real barrier (canonical position 4313812 > 3M cap).
 - B-382..405 (macro min-count 2/3 x mine-first/mine-only/interleave): null-to-harmful by construction - all parameterizations of the same measured-null P24 macro mechanism over the same absent-from-heldout fragments. min-count 3 only shrinks the macro set; mine-only restricts coverage (a solution containing no mined macro becomes unreachable -> task lost, the F-6/dblfact failure mode); mine-first/interleave reorder within the same candidate set (+-20-class noise at 4-6M).
 - B-381 (cross-candidate run() trace cache) remains OPEN: B-058 profiling showed each candidate is decided by exactly one r0 evaluation, but library-call repetition ACROSS candidates is unmeasured; a (fn,args) memo could plausibly beat 2x throughput. Queued as a real (engineering, non-conceptual) candidate.
+
+## B-411/B-414, B-436..B-462 triage (2026-10-22) - T5 saturation evidence + T6 runtime wall
+
+- B-411, B-414 (WiSARD tuple 8, MNIST): FAIL by direct measurement. B-236's first attempt with 8-bit tuples saturated at .30 accuracy (classic node saturation) vs the MLP baseline near .9; the "within 3 pts" criterion is decisively failed at this grain. Bleaching is a decision-time tie-break and cannot recover a saturated node. The demonstrated-right grain is 28-bit tuples (B-236 PASS, .9115).
+- B-436..B-462 (27 connectome readout x size variants): BLOCKED by the measured runtime wall, not by science. B-240 measured the same harness family at >2.4 s/sample (cost driver: per-sample state_hex encoding + 784-pixel pmap in the hosted runtime); phase A alone is 2-3 CPU-hours, so no variant fits its M (<15 min) box. All 27 ticked as blocked-by-B-240; they reopen only after the bit-vector state encoding the B-240 verdict calls for.
+- Remaining T5/T6 grid cells (WiSARD tuple 16/32/64, pmnist/snips, B-463..465) stay OPEN: no direct measurement transfers honestly (snips is a different encoding; the saturation edge between tuple 8 and 28 is unmapped). Queued behind higher-value work.
+
+## B-381P pre-registration (2026-10-22) - cross-candidate evaluation caching (B-381)
+
+Question: does caching run()/ev() traces ACROSS candidates give >2x search throughput with identical results?
+Prior facts: B-058 profiled choose2 - every candidate is decided by exactly one r0 evaluation (no multi-example redundancy). cur7.ev already carries an lru_cache(maxsize=300000); whole-run traces are never shared (each candidate spec is unique).
+Analysis pre-run: sharing exists mainly at loop iteration 0 (same train r0 inputs across the ~E1-sized s1 block for a fixed s0, and vice versa); after iteration 1 the (a,b) trajectory depends on both steps, so trajectories diverge. Expected honest outcome: no 2x available from bigger caching; the interesting sub-question is whether the 300K LRU's miss bookkeeping actually COSTS time vs no cache.
+Design (b381.py, one process, clean config: baselib pin, EXCL={square}, no adv, square R5 seed-0 train, tried_cap=400000, cap 6M ordering identical):
+- Arm A: current ev lru_cache(maxsize=300000) (baseline)
+- Arm B: ev lru_cache(maxsize=2000000)
+- Arm C: ev unwrapped (no cache)
+Success criterion (from the backlog item): any arm >2x throughput vs baseline with IDENTICAL decisions (same tried count at cap, same PROF evals, same NOT FOUND / same program). Wall time measured per arm; ev.cache_clear() between arms.
+
+## B-381 verdict (2026-10-22): NULL as a new idea - the cache already exists and is worth 4.4x; the 300K->2M increment is 1.59x, below the >2x criterion
+
+b381.py, clean config (baselib pin, EXCL={square}, square R5 seed 0, identical 1291776-candidate prefix), decisions verified IDENTICAL across arms (same tried, same NOT FOUND):
+- A lru300k (baseline): 122.5s (713.9M hits, 21.3M misses - 97% hit rate; the pre-existing ev lru_cache already does the cross-candidate sharing the item proposed)
+- B lru2m: 76.9s = 1.59x vs A (misses 21.3M -> 0.79M; 300K was thrashing)
+- C nocache: 541.2s = 4.42x SLOWER than A; B beats C by 7.04x
+Verdict: the item's >2x is met only by cache-vs-no-cache, i.e. the premise was already implemented. No NEW >2x available from bigger caching (1.59x < 2x criterion). ADOPTED: ev lru_cache maxsize 300000 -> 2000000 in cur7.py (semantics-preserving: ev is pure; decisions identical in b381) - ~1.6x on all future searches. Whole-run trace caching remains provably share-free (each candidate spec is unique and evaluated once, B-058).

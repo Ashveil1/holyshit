@@ -40,7 +40,7 @@ def p_sub(a, b):
     return a - b
 LIB = {'add': p_add, 'sub': p_sub}
 LEAVES = ['a', 'b', 'one', 'zero']
-@functools.lru_cache(maxsize=300000)
+@functools.lru_cache(maxsize=2000000)  # B-381: 2M vs 300K = 1.59x throughput, decisions identical
 def ev(e, a, b):
     if e == 'a': return a
     if e == 'b': return b
