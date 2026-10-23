@@ -531,3 +531,11 @@ The B-468..483 verdict's blanket ordering "NB > centroid > WiSARD > 1nn >> MLP" 
 - k=20: NB .942 > centroid .905 > WiSARD .894 > 1nn .794 >> MLP .150
 Uniform claims that DO hold: NB first and MLP last at every k. The middle three swap: WiSARD beats centroid only at k=5 (.831 vs .807); centroid beats WiSARD at k=1 (.362 vs .347) and k=20 (.905 vs .894); 1nn beats WiSARD at k=1 only.
 Scope qualifier retained everywhere: the B-493/B-494 retention advantage is demonstrated against NAIVE SEQUENTIAL MLP only (no replay/EWC) - not against these simple readouts (1nn/centroid/NB), which were never run under the continual protocol, and not against mitigated gradient methods.
+
+## B-467/470/473/476/479/482/485/488/491P pre-registration (2026-10-23) - few-shot pmnist readout grid
+
+Question (9 T7 cells): few-shot CONTINUAL pmnist - 5 permuted-MNIST tasks learned in sequence, k shots per class PER TASK; which readouts retain? Per-cell semantics pre-stated here (the backlog lines leave them open): for each readout in {1nn, centroid, WiSARD} and k in {1,5,20}: shared arm = one accumulated structure across tasks (support set / running class mean / node union), per-task arm = separate structure per task (storage reference), MLP arm = naive sequential softmax MLP 784-64-10, 300 epochs per task on the k-shot samples only (same architecture as B-494).
+Design (b467.py): b494 permutations and tuple layout (seed-dependent); per task t and class, sample k train examples without replacement (seeded); metrics after each task: per-task test accuracy for every arm on all tasks seen so far's task-1 + final all-task mean. 2 seeds. Test = full 10K per task.
+Note on expectations (pre-stated, not criteria): shared-centroid mixes permuted variants of a class into one mean - expected to degrade badly (permutation mush); 1nn-shared should behave like WiSARD-shared (cross-permutation competition only); per-task arms are storage references and must stay flat at their k-shot level.
+Criterion per cell (pre-stated): WIN if readout's shared-arm final all-task mean beats MLP's final all-task mean by >1 pt; LOSE if below by >1 pt; else TIE. Report all arms and the honest drops. Overall: per-readout PASS = wins majority of its 3 k-cells.
+CANNOT claim: comparison vs mitigated continual methods; MLP is naive sequential SGD (same scoping as B-493/B-494).
