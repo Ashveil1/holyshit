@@ -491,3 +491,10 @@ Question (6 T7 cells, one harness): on MNIST, at k in {1,5,20} shots/class, how 
 Design (b466.py): same data/load as t5wisard (binarized MNIST >128); readouts on raw 784-bit vectors: 1nn (L2), centroid (class mean, L2). Baseline: the EXACT B-241 OVR MLP (784-32-1 tanh, 800 epochs, lr .05) at the same shots. 5 seeds per k (shot subsets sampled per seed; MLP init rng fixed per class as in B-241). Note B-241 used FIRST-k (deterministic) sampling; this slice samples per seed - cell numbers will differ from B-241's single-sample cells and supersede them only for these readouts.
 Criterion per cell (pre-stated): report means; cell = readout WINS / LOSES / TIES (within 1 pt) vs MLP at same k. Overall PASS = either readout wins a majority of its 3 k-cells. Honest nulls recorded.
 CAN claim: readout-vs-MLP few-shot ordering on MNIST under this exact harness. CANNOT claim: anything about other tasks, other MLP sizes, or tuned architectures.
+
+## B-466/469/472/475/478/481 verdicts (2026-10-23) - PASS (6 cells)
+
+logs/b466_stdout.log (5 seeds/k, mean): k=1: 1nn .4287 = centroid .4287 (identical at 1 shot - expected, centroid of one example IS the 1nn prototype; internal consistency check passes), MLP .0927; k=5: 1nn .6185, centroid .6523, MLP .1249; k=20: 1nn .7559, centroid .7570, MLP .3513.
+All 6 cells WIN vs the B-241 OVR MLP at the same shots (gaps +33 to +53 pt). MLP is near-chance at k=1 (.093) and still poor at k=20 (.351) - the B-241 few-shot MLP weakness replicates under seeded sampling (B-241's .106/.148/.322 was first-k sampling; same ordering).
+Ordering within this harness: centroid >= 1nn >> MLP at every k (centroid's averaging denoises at k>=5).
+Caveat: B-241's WiSARD row (.340/.470/.647) used first-k deterministic sampling, so a WiSARD-vs-1nn/centroid claim needs WiSARD re-run in THIS seeded harness - pre-registered follow-up required before any such claim. NOT claimed here.
