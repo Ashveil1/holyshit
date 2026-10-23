@@ -39,6 +39,8 @@ while n < 1000:
     kfont.draw_bytes(f,0,row * 16,kconsole_buffer.history_address(s,row),kconsole_buffer.history_length(s,row),0x16324f,2)
     row = row + 1
   kfont.draw_bytes(f,0,64,s[0],s[3],0x16324f,2)
+  kfont.fill(f,0,78,128,2,0xe8edf2)
+  kfont.fill(f,s[3] * 12,78,8,2,0x16324f)
   n = n + 1
 after = make(1)
 print after - before
@@ -80,5 +82,8 @@ print "CONSOLE RENDER DONE"
                         for dy in range(2):
                             for dx in range(2):
                                 offset=16+(line*16+row*2+dy)*384+(character*12+col*2+dx)*3;want[offset:offset+3]=[79,50,22]
+    for y in (78,79):
+        for x in range(8):
+            offset=16+y*384+x*3;want[offset:offset+3]=[79,50,22]
     assert actual==want,'integrated pixels/guard mismatch'
 print('3/3 integrated console render gates (native image,1000 submissions+redraws16byte marker gap,independent guarded pixels)')

@@ -71,6 +71,10 @@ with tempfile.TemporaryDirectory() as temp:
                     for dy in range(2):
                         for dx in range(2):
                             assert pixel(x+col*2+dx,y+row*2+dy)==want,(x,y,row,col)
+        # Active cursor follows G at column 1, with no stale cursor at 0.
+        for y in (294,295):
+            for x in range(32,548):
+                assert pixel(x,y)==((22,50,79) if 44<=x<52 else (232,237,242)),(x,y)
         if os.environ.get('HS_TEST_SCREENSHOT'):
             shutil.copyfile(screen,os.environ['HS_TEST_SCREENSHOT'])
         print('4/4 fixed-buffer console gates (native image, six submissions, bounded transcript, actual text pixels)')
