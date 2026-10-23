@@ -15,3 +15,4 @@
 {"task": "isprime", "n": 25, "found": false, "tried": 6002688, "dt": 10955.1, "prog": null, "gen": null, "arm": "b499b-endpoint"}
 {"task": "fact", "n": 2, "found": true, "tried": 1415364, "dt": 1835.6, "prog": "init b=one; if (lt a one) -> b; else step ((sub a one),(mul b a)); comb=None; post=id", "gen": {"1": 40, "2": 40, "3": 40, "4": 40}, "arm": "b499b-endpoint"}
 {"task": "fact", "n": 25, "found": true, "tried": 1415364, "dt": 3589.7, "prog": "init b=one; if (lt a one) -> b; else step ((sub a one),(mul b a)); comb=None; post=id", "gen": {"1": 40, "2": 40, "3": 40, "4": 40}, "arm": "b499b-endpoint"}
+{"task": "sumto", "n": 2, "found": true, "tried": 2707098, "dt": 3682.1, "prog": "init b=zero; if (lt a one) -> b; else step ((sub a one),(add a b)); comb=None; post=id", "gen": {"1": 40, "2": 40, "3": 40, "4": 40}, "arm": "b499b-endpoint"}
