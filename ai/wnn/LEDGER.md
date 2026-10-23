@@ -449,3 +449,102 @@ Design (b406.py + 3 hook lines in cur7.py, LIST_OVERRIDE/LIST_CAPTURE/SKIP_SET, 
 Metrics: per held-out task: found?, tried baseline vs schema arm, which schema matched the solution.
 Criteria (pre-stated): PASS iff ONE non-trivial schema is consistent with the found solutions of >=2 held-out tasks AND mean tried on those tasks is cut >50% vs baseline. Otherwise FAIL: if tight schemas match nothing held-out or matching schemas give <50% cuts, record honestly - that falsifies anti-unification transfer for this curriculum.
 CAN claim if PASS: pairwise anti-unified schemas are a useful search-ordering prior on held-out tasks of this curriculum. CANNOT claim: library-free discovery, new expressivity (schemas only reorder the same candidate space), or transfer beyond this curriculum.
+
+## B-406 verdict (2026-10-23) - FAIL (criterion unmet; strong single-task signal recorded honestly)
+
+logs/b406_stdout.log. Anti-unification of the 12 learned programs yielded 45 pair-schemas, 16 non-trivial (>=3/7 fields fixed).
+Held-out results (1M baseline cap; 4 of 5 tasks NOT FOUND in baseline -> excluded from cut metric per pre-registration):
+- absdiff: NOT FOUND (both arms; full 1.29M-spec space exhausted)
+- lcm: NOT FOUND (both arms)
+- isprime: NOT FOUND (both arms)
+- cube: NOT FOUND (both arms)
+- even: FOUND both arms. Baseline tried 123619 (program: init b=y, s1=(power zero b), post nz - a power-zero parity trick). Schema arm phase-1 tried 8036 via schema #1 (fact/sumto LGG: init ?, cond (lt a one), base b, s0 (sub a one), s1 ?, comb None, post id) - a 93.5% tried cut, and a DIFFERENT, simpler solution (init one, s1=(sub one b), post id - pure parity flip). Solution consistent with schemas #1 and #7.
+Criterion (ONE schema consistent with >=2 held-out solutions AND mean cut >50%) NOT MET: only 1 held-out task was solvable within cap, so cross-task reuse cannot be demonstrated. FAIL as pre-registered.
+Honest partial signal: on the single solvable held-out task the schema ordering cut tried by 93.5% and steered to a simpler program - the mechanism works when a matching schema exists; the premise failure is COVERAGE (4/5 held-out tasks unreachable in 1M from the pinned library), not schema quality. The NOT-FOUND wall itself is data: absdiff/lcm/isprime/cube are not reachable in this space/order/budget with the pinned library.
+Caveats: found programs fit 25 staged train examples only; this harness runs no generalization test (out of scope for the ordering question). Schema arm tried counts are honest (phase-1 + double-counted baseline on misses).
+
+## B-495P pre-registration (2026-10-23) - few-shot SNIPS intent classification vs NB
+
+Question (B-495): does WiSARD beat a naive-Bayes text baseline at <=5-shot intent classification on SNIPS?
+Data: SNIPS nlu-benchmark 2017-06 custom-intent-engines split (CC0; github.com/sonos/nlu-benchmark, downloaded 2026-10-23), converted by prepare_snips.py: 2100 train / 700 test utterances, 7 intents (AddToPlaylist, BookRestaurant, GetWeather, PlayMusic, RateBook, SearchCreativeWork, SearchScreeningEvent), lowercase alnum+space normalized.
+Design (b495.py):
+- Vocabulary: all word tokens in the FULL train file (both models see the same vocabulary; k-shot subsampling picks examples, not vocab - pre-stated; this is the standard transductive few-shot protocol and favors neither model's mechanism).
+- WiSARD arm: features = presence bits of word unigrams + bigrams hashed into 4096 bits; fixed rng(0) tuple layout of 28-bit tuples (146 tuples); per-class per-node tuple-value sets; argmax score.
+- NB arm: multinomial naive Bayes, word unigram+bigram counts, alpha=1.0 (standard strong text baseline, honest not rigged).
+- Protocol: k in {1, 5, 20} shots per intent, sampled without replacement from the 300-per-intent train pool; 10 seeds per k; score = accuracy on all 700 test utterances.
+Criterion (pre-stated): PASS = WiSARD mean accuracy > NB mean accuracy at k=1 AND k=5 (both). Win at 20 only = partial. Either k=1 or k=5 not won = FAIL as registered; report all numbers regardless.
+CAN claim if PASS: WiSARD tuple-sets beat multinomial NB on this SNIPS split at <=5 shots under this encoding. CANNOT claim: superiority over NB generally, over neural few-shot methods, or on other text tasks; encoding choice is ours and shared.
+
+## B-495 verdict (2026-10-23) - FAIL (WiSARD loses to NB at every k)
+
+logs/b495_stdout.log (10 seeds per k; NB double-log bug caught and fixed BEFORE verdict - the chance-level flat 0.1429 NB was an artifact; numbers below are the fixed, honest baseline).
+- k=1: WiSARD .3471 vs NB .6044 - WiSARD loses by 25.7 pt
+- k=5: WiSARD .8307 vs NB .8580 - loses by 2.7 pt
+- k=20: WiSARD .8936 vs NB .9423 - loses by 4.9 pt
+Criterion (WiSARD wins BOTH k=1 and k=5) FAIL at every k. Multinomial NB on uni+bigram counts is simply strong on this split - 1-shot NB (.60) already beats 5-shot WiSARD (.83)? No: 5-shot WiSARD .83 > 1-shot NB .60, but at equal shots NB wins throughout. The count information NB exploits (token multiplicities, per-token log-odds) is exactly what presence-bit tuple sets discard; at k=1 the hashed-bit collisions + absent bigram coverage hurt WiSARD hardest.
+Scope: this SNIPS split, this encoding (4096 hashed presence bits, 146x28-bit tuples), multinomial NB alpha=1. NOT a claim about WiSARD on text generally - a different encoding (e.g. count-aware or thermometer coding) is a separate pre-registered experiment.
+Note: MNIST few-shot (B-241) and SNIPS few-shot (B-495) now bracket where tuple-set few-shot shines (spatial binary structure) vs where it does not (sparse count-heavy text vs a count-aware baseline).
+
+## B-466/469/472/475/478/481P pre-registration (2026-10-23) - MNIST few-shot readout grid slice
+
+Question (6 T7 cells, one harness): on MNIST, at k in {1,5,20} shots/class, how do NEAREST-NEIGHBOR and CENTROID readouts compare to the B-241 MLP baseline at the same shots? (WiSARD cells already measured by B-241: .340/.470/.647 vs MLP .106/.148/.322 - this fills the two missing readout rows.)
+Design (b466.py): same data/load as t5wisard (binarized MNIST >128); readouts on raw 784-bit vectors: 1nn (L2), centroid (class mean, L2). Baseline: the EXACT B-241 OVR MLP (784-32-1 tanh, 800 epochs, lr .05) at the same shots. 5 seeds per k (shot subsets sampled per seed; MLP init rng fixed per class as in B-241). Note B-241 used FIRST-k (deterministic) sampling; this slice samples per seed - cell numbers will differ from B-241's single-sample cells and supersede them only for these readouts.
+Criterion per cell (pre-stated): report means; cell = readout WINS / LOSES / TIES (within 1 pt) vs MLP at same k. Overall PASS = either readout wins a majority of its 3 k-cells. Honest nulls recorded.
+CAN claim: readout-vs-MLP few-shot ordering on MNIST under this exact harness. CANNOT claim: anything about other tasks, other MLP sizes, or tuned architectures.
+
+## B-466/469/472/475/478/481 verdicts (2026-10-23) - PASS (6 cells)
+
+logs/b466_stdout.log (5 seeds/k, mean): k=1: 1nn .4287 = centroid .4287 (identical at 1 shot - expected, centroid of one example IS the 1nn prototype; internal consistency check passes), MLP .0927; k=5: 1nn .6185, centroid .6523, MLP .1249; k=20: 1nn .7559, centroid .7570, MLP .3513.
+All 6 cells WIN vs the B-241 OVR MLP at the same shots (gaps +33 to +53 pt). MLP is near-chance at k=1 (.093) and still poor at k=20 (.351) - the B-241 few-shot MLP weakness replicates under seeded sampling (B-241's .106/.148/.322 was first-k sampling; same ordering).
+Ordering within this harness: centroid >= 1nn >> MLP at every k (centroid's averaging denoises at k>=5).
+Caveat: B-241's WiSARD row (.340/.470/.647) used first-k deterministic sampling, so a WiSARD-vs-1nn/centroid claim needs WiSARD re-run in THIS seeded harness - pre-registered follow-up required before any such claim. NOT claimed here.
+
+## B-241R pre-registration (2026-10-23) - seeded MNIST few-shot: WiSARD vs 1nn/centroid/MLP in ONE harness
+
+Question: B-241's WiSARD few-shot numbers (.340/.470/.647 at k=1/5/20) used first-k deterministic sampling; B-466..481 measured 1nn/centroid under seeded sampling. Does the WiSARD readout beat the simple centroid readout under identical seeded conditions?
+Design (b466w.py): EXACTLY b466.py (same seeds 200..204, same sampled subsets, same OVR MLP) PLUS the B-241 WiSARD readout (28-bit tuples, rng(0) layout, per-class tuple-value sets) on the same subsets. k in {1,5,20}, 5 seeds.
+Criterion (pre-stated): report all four readouts; the readout-ordering claim applies only within this harness. WiSARD WINS a k-cell if its mean exceeds centroid's by >1 pt; LOSES if below by >1 pt; else TIE. No claim beyond MNIST few-shot in this harness.
+
+## B-241R verdict (2026-10-23) - WiSARD LOSES to centroid/1nn at every k (corrects B-241's implied readout strength)
+
+logs/b466w_stdout.log (same 5 seeds and subsets for all four readouts): k=1: WiSARD .3053, centroid .4287, 1nn .4287, MLP .0927; k=5: WiSARD .4741, centroid .6523, 1nn .6185, MLP .1249; k=20: WiSARD .6689, centroid .7570, 1nn .7559, MLP .3513.
+WiSARD loses to centroid by 12.3/17.8/8.8 pt at k=1/5/20 (LOSES all 3 cells per the pre-stated 1-pt margin). B-241's "WiSARD beats MLP few-shot" survives (+21 to +38 pt) and replicates under seeded sampling (seeded .305/.474/.669 vs first-k .340/.470/.647 - consistent). What does NOT survive: any implication that the WiSARD tuple readout is a strong few-shot readout on MNIST - plain class-mean on raw binarized pixels beats it by up to 18 pt.
+Updated honest picture (this harness only): centroid ~= 1nn > WiSARD >> MLP on MNIST few-shot; NB > WiSARD on SNIPS few-shot (B-495). The tuple-set readout's demonstrated advantages are one-pass learning and continual retention (B-493/B-494), NOT few-shot accuracy. Any future few-shot-accuracy claim for WiSARD must beat the centroid row in this seeded harness first.
+
+## B-468/471/474/477/480/483P pre-registration (2026-10-23) - SNIPS few-shot readout grid slice
+
+Question (6 T7 cells): on SNIPS intents, at k in {1,5,20} shots, 1nn and centroid readouts vs MLP at the same shots. Complements B-495 (WiSARD vs NB) with the two missing readouts on the SAME features.
+Design (b468.py): EXACTLY the b495 pipeline (4096 hashed uni+bigram presence bits, same data files); readouts: 1nn (L2 on bit vectors), centroid (class mean, L2), MLP = OVR tanh 4096-32-1, 800 epochs, lr .05 (same recipe as B-241/b466, input dim swapped). 10 seeds, seed set 100..109 IDENTICAL to B-495 (paired with the NB/WiSARD numbers).
+Criterion per cell: readout WINS / LOSES / TIES (1 pt) vs MLP at same k. Report all numbers; honest nulls fine. CANNOT claim: anything beyond this SNIPS split, these features, this MLP.
+
+## B-468/471/474/477/480/483 verdicts (2026-10-23) - PASS (6 cells)
+
+logs/b468_stdout.log (10 seeds paired with B-495): k=1: 1nn .362 = centroid .362, MLP .148; k=5: 1nn .594, centroid .807, MLP .145; k=20: 1nn .794, centroid .905, MLP .150. All 6 cells WIN vs MLP (+21 to +75 pt). The few-shot OVR MLP is stuck near chance (~.15, chance .143) at every k on these sparse bit features.
+Full SNIPS few-shot ordering (all paired on seeds 100..109, same features): NB .604/.858/.942 > centroid .362/.807/.905 > WiSARD .347/.831/.894 > 1nn .362/.594/.794 >> MLP ~.15. Centroid nearly matches NB at k=20 (.905 vs .942) but lags at k=1 (.362 vs .604 - NB's count/log-odds prior transfers across classes, centroid has nothing to average).
+Consistency: k=1 1nn==centroid identity holds again (both readouts equivalent at 1 shot).
+
+## Correction (2026-10-23) - SNIPS ordering is per-k, not uniform; retention scope qualifier
+
+The B-468..483 verdict's blanket ordering "NB > centroid > WiSARD > 1nn >> MLP" is WRONG at k=1 and k=5 (caught in review). Correct paired-seed per-k orderings:
+- k=1: NB .604 > centroid .362 = 1nn .362 > WiSARD .347 >> MLP .148
+- k=5: NB .858 > WiSARD .831 > centroid .807 > 1nn .594 >> MLP .145
+- k=20: NB .942 > centroid .905 > WiSARD .894 > 1nn .794 >> MLP .150
+Uniform claims that DO hold: NB first and MLP last at every k. The middle three swap: WiSARD beats centroid only at k=5 (.831 vs .807); centroid beats WiSARD at k=1 (.362 vs .347) and k=20 (.905 vs .894); 1nn beats WiSARD at k=1 only.
+Scope qualifier retained everywhere: the B-493/B-494 retention advantage is demonstrated against NAIVE SEQUENTIAL MLP only (no replay/EWC) - not against these simple readouts (1nn/centroid/NB), which were never run under the continual protocol, and not against mitigated gradient methods.
+
+## B-467/470/473/476/479/482/485/488/491P pre-registration (2026-10-23) - few-shot pmnist readout grid
+
+Question (9 T7 cells): few-shot CONTINUAL pmnist - 5 permuted-MNIST tasks learned in sequence, k shots per class PER TASK; which readouts retain? Per-cell semantics pre-stated here (the backlog lines leave them open): for each readout in {1nn, centroid, WiSARD} and k in {1,5,20}: shared arm = one accumulated structure across tasks (support set / running class mean / node union), per-task arm = separate structure per task (storage reference), MLP arm = naive sequential softmax MLP 784-64-10, 300 epochs per task on the k-shot samples only (same architecture as B-494).
+Design (b467.py): b494 permutations and tuple layout (seed-dependent); per task t and class, sample k train examples without replacement (seeded); metrics after each task: per-task test accuracy for every arm on all tasks seen so far's task-1 + final all-task mean. 2 seeds. Test = full 10K per task.
+Note on expectations (pre-stated, not criteria): shared-centroid mixes permuted variants of a class into one mean - expected to degrade badly (permutation mush); 1nn-shared should behave like WiSARD-shared (cross-permutation competition only); per-task arms are storage references and must stay flat at their k-shot level.
+Criterion per cell (pre-stated): WIN if readout's shared-arm final all-task mean beats MLP's final all-task mean by >1 pt; LOSE if below by >1 pt; else TIE. Report all arms and the honest drops. Overall: per-readout PASS = wins majority of its 3 k-cells.
+CANNOT claim: comparison vs mitigated continual methods; MLP is naive sequential SGD (same scoping as B-493/B-494).
+
+## B-467/470/473/476/479/482/485/488/491 verdicts (2026-10-23) - PASS (9 cells, all readouts beat MLP at every k)
+
+logs/b467_stdout.log (2 seeds; shared-arm final all-task mean, averaged over seeds): k=1: 1nn .403, centroid .380, WiSARD .277, MLP .163; k=5: 1nn .627, centroid .573, WiSARD .444, MLP .187; k=20: 1nn .756, centroid .685, WiSARD .657, MLP .175. All 9 cells WIN vs naive sequential MLP (same scoping as B-493/B-494: naive SGD, no mitigation).
+Shared vs per-task (storage reference) arms:
+- 1nn: shared ~= per-task at every k (max diff 1.0 pt, both directions) - accumulated prototypes across permuted tasks coexist nearly losslessly; cross-permutation decision competition is negligible for 1nn at these k.
+- centroid: shared LOSES to per-task by 2.4/8.8/7.2 pt at k=1/5/20 - the pre-stated permutation-mush expectation confirmed: averaging permuted variants of a class into one mean destroys what storage keeps. (Mechanism demonstration, not a bug.)
+- WiSARD: shared below per-task by 1.3/2.0/1.6 pt - small consistent decision-competition drop, consistent with B-494's full-data pattern.
+WiSARD is again the weakest non-MLP readout in few-shot accuracy (consistent with B-241R on plain MNIST); its demonstrated strengths remain one-pass learning and retention vs naive MLP.
