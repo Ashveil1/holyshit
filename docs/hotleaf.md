@@ -7,9 +7,9 @@ compiles an eligible leaf only at its threshold, calls generated machine code
 and resumes the hs interpreter. Source rebinding and aliases keep their normal
 function identities. No performance claim is made.
 
-Eligibility is deliberately narrow: one straight-line block, up to six
-parameters, constants/parameter loads, integer + - * or unary minus, and return.
-No calls, globals/captures, mutation, allocation, print, branches or exceptions
+Eligibility is deliberately narrow: an acyclic CFG of up to 16 blocks, up to six
+parameters, constants/parameter loads, integer + - * or unary minus, integer comparisons for conditions, and integer return.
+No calls, globals/captures, mutation, allocation, print, loops, phi nodes or exceptions
 are compiled. Bool, objects and values outside signed 30-bit fall back before
 native entry. Every native intermediate is range-guarded; a guard failure
 returns a private sentinel and interprets the original function. Replay is safe
@@ -29,3 +29,9 @@ external code generator. It is x86-64 only. This is a real but restricted
 interpreter-to-native-to-interpreter hot-leaf experiment, not a general method
 JIT: no shared heap objects/roots/exception ABI, recursion in native code,
 on-stack replacement, type-specialized object operations or general deopt.
+
+The CFG admission walk is topological and rejects cycles/unreachable blocks.
+Each use must be available on every incoming path; definitions are unique.
+Internal comparison values are Bool and may steer branches but cannot enter
+integer arithmetic or cross the integer-only return boundary. Integer truth
+tests are allowed. The total instruction and code-page budgets remain bounded.
