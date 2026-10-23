@@ -10,12 +10,12 @@ Xtr, Ytr = load('mnist_train_raw.txt'); Xte, Yte = load('mnist_test_raw.txt')
 NC = 10
 
 def nn_acc(Xs, Ys):
-    d = ((Xte[:, None, :] - Xs[None, :, :]) ** 2).sum(-1)  # (ntest, k*NC)
+    d = (Xte ** 2).sum(1)[:, None] + (Xs ** 2).sum(1)[None, :] - 2 * Xte @ Xs.T
     return (Ys[d.argmin(1)] == Yte).mean()
 
 def cent_acc(Xs, Ys):
     C = np.stack([Xs[Ys == c].mean(0) for c in range(NC)])
-    d = ((Xte[:, None, :] - C[None, :, :]) ** 2).sum(-1)
+    d = (Xte ** 2).sum(1)[:, None] + (C ** 2).sum(1)[None, :] - 2 * Xte @ C.T
     return (d.argmin(1) == Yte).mean()
 
 class OVR:
