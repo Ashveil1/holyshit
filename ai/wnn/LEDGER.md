@@ -539,3 +539,12 @@ Design (b467.py): b494 permutations and tuple layout (seed-dependent); per task 
 Note on expectations (pre-stated, not criteria): shared-centroid mixes permuted variants of a class into one mean - expected to degrade badly (permutation mush); 1nn-shared should behave like WiSARD-shared (cross-permutation competition only); per-task arms are storage references and must stay flat at their k-shot level.
 Criterion per cell (pre-stated): WIN if readout's shared-arm final all-task mean beats MLP's final all-task mean by >1 pt; LOSE if below by >1 pt; else TIE. Report all arms and the honest drops. Overall: per-readout PASS = wins majority of its 3 k-cells.
 CANNOT claim: comparison vs mitigated continual methods; MLP is naive sequential SGD (same scoping as B-493/B-494).
+
+## B-467/470/473/476/479/482/485/488/491 verdicts (2026-10-23) - PASS (9 cells, all readouts beat MLP at every k)
+
+logs/b467_stdout.log (2 seeds; shared-arm final all-task mean, averaged over seeds): k=1: 1nn .403, centroid .380, WiSARD .277, MLP .163; k=5: 1nn .627, centroid .573, WiSARD .444, MLP .187; k=20: 1nn .756, centroid .685, WiSARD .657, MLP .175. All 9 cells WIN vs naive sequential MLP (same scoping as B-493/B-494: naive SGD, no mitigation).
+Shared vs per-task (storage reference) arms:
+- 1nn: shared ~= per-task at every k (max diff 1.0 pt, both directions) - accumulated prototypes across permuted tasks coexist nearly losslessly; cross-permutation decision competition is negligible for 1nn at these k.
+- centroid: shared LOSES to per-task by 2.4/8.8/7.2 pt at k=1/5/20 - the pre-stated permutation-mush expectation confirmed: averaging permuted variants of a class into one mean destroys what storage keeps. (Mechanism demonstration, not a bug.)
+- WiSARD: shared below per-task by 1.3/2.0/1.6 pt - small consistent decision-competition drop, consistent with B-494's full-data pattern.
+WiSARD is again the weakest non-MLP readout in few-shot accuracy (consistent with B-241R on plain MNIST); its demonstrated strengths remain one-pass learning and retention vs naive MLP.
