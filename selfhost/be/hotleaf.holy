@@ -129,7 +129,16 @@ def dispatch(ctx, key, fn, args):
       site["rejected"] = true
       ctx["rejected"] = ctx["rejected"] + 1
       return [false, null]
-    site["image"] = compile_leaf(fn, p)
+    # Compilation/publication is optional. Its cleanup owns partial mappings;
+    # failure must not turn a valid interpreted call into a language error.
+    image = null
+    try:
+      image = compile_leaf(fn, p)
+    except:
+      site["rejected"] = true
+      ctx["rejected"] = ctx["rejected"] + 1
+      return [false, null]
+    site["image"] = image
     append(ctx["images"], site["image"])
     ctx["compiled"] = ctx["compiled"] + 1
   image = site["image"]
