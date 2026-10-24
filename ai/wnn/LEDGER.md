@@ -819,3 +819,24 @@ Literature-grounded signed annotation of the P0 tap-circuit sim vs the unsigned 
 - Signed v1 (blanket per-cell touch inhibition): check 4 fixed but BROKE check 2 (DVA posterior 0.0) - the pre-registered sign-table-suspect case. Investigation: DVA's dominant touch input is direct PLM chemical synapses (9+19 sections) and the literature describes PLM->DVA as activity-maintaining; the inhibitory prediction covers touch->antagonist-command-interneuron edges only (Chalfie et al 1985). Recorded as amendment 1.
 - Signed v2 (amendment 1: per-edge antagonist-only touch signs; RIM measured / AIY ablation-inferred blanket): 4/4 PASS. Posterior: PVC 0.0853 > AVD 0.0608; anterior: AVD 0.131 > PVC 0.0; DVA posterior/anterior = 20x. Checks byte-identical to worm.holy's.
 Reading (scope-limited): the Chalfie/Wicks-Rankin sign proposal SUFFICES for all 4 aggregate behavioral checks in this linear-threshold sim, where the unsigned model structurally could not (its divisive normalization stand-in couldn't flip posterior dominance). Evidence classes: GABA + RIM measured, touch model-inferred, AIY ablation-inferred - this is consistency with literature, not biological validation of the signs. One documented amendment round (v1 failure + mechanism + v2) is part of the record, not tuning. Effect direction sanity: anterior AVD/PVC asymmetry unchanged in kind from unsigned (gap-junction path), posterior flip driven by the antagonist-edge signs.
+
+## B-505 pre-registration (2026-10-24, before running)
+Question: does reward-GATED plasticity beat ungated Hebbian growth for tap-circuit association learning?
+
+Substrate decision (pre-stated): the GRADED plastic sim (worm_plastic.holy, P4), NOT worm_spike.holy - the spiking variant is a documented bistable dead-end (README). Naming caveat: this is graded eligibility-gated timing-dependent plasticity, not spiking STDP.
+
+Variant worm_reward.holy = worm_plastic.holy with ONE plasticity change: the Hebbian line (wpl += 0.002*apre*apost when both > 0.1) becomes two-factor - eligibility e[k] += 0.002*apre*apost on co-activation, e[k] *= 0.99 every step for every chemical edge, and wpl[k] = clamp(wpl[k] + e[k], 0.2, 3.0), e[k] = 0 ONLY on reward-flag steps. Reward is an ABSTRACT global consolidation gate (neuromodulatory stand-in; no biological routing claimed). Everything else byte-identical, including the T1 habituation phase that precedes T2.
+
+Arms (same program, argv-selected, identical T1+T2 schedule):
+(a) reward: pairing (ALM+PLM 15x, 5 on / 25 off) with reward flag on the first 5 off-steps after each pairing.
+(b) no-reward: identical pairings, reward never fires (baseline; backlog's "no reward").
+(c) reward-unpaired control: same total ALM and PLM stimulation temporally separated (PLM shifted to off-steps 15-19), same reward schedule - reward alone must not create the association.
+Metric: T2's ALM-alone -> PVC (PVCL+PVCR) response, before vs after.
+Reference: plain-Hebbian worm_plastic.holy re-measured in-harness TODAY: before 0.010011, after 0.011790 = +17.8% (matches the recorded +18%).
+
+Falsifiable predictions:
+- H1 DONE (sanity): plain Hebbian re-measures +15..+20%. Measured +17.8% - PASS.
+- H2 (internal validity): delta(a) > delta(b) AND delta(a) > delta(c).
+- H3 (backlog PASS bar): delta(a) > +17.8% relative (beats the ungated Hebbian reference).
+If H2 holds but H3 fails: partial - gating works but does not beat ungated Hebbian. If delta(a) < delta(b): reward gating HURTS - record honestly. Absolute values are tiny (~0.01); relative change is the metric throughout; note the small-signal caveat in the verdict.
+CAN show: whether a consolidation gate helps association in THIS graded sim/protocol. CANNOT: neuromodulator biology (abstract flag); other circuits; spiking-STDP claims.

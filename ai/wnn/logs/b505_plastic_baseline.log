@@ -1,0 +1,41 @@
+hs-hosted-x86_64: OK
+T1: tap habituation (30 taps: ALM+AVM 5 steps on / 25 off)
+tap 1 AVD response (2-step transient) 0.0933406962203451
+tap 2 AVD response (2-step transient) 0.08073963443114801
+tap 3 AVD response (2-step transient) 0.08111665427290976
+tap 4 AVD response (2-step transient) 0.08127464160381435
+tap 5 AVD response (2-step transient) 0.08131242487158404
+tap 6 AVD response (2-step transient) 0.08132028467000135
+tap 7 AVD response (2-step transient) 0.08132186617536212
+tap 8 AVD response (2-step transient) 0.08132217817685716
+tap 9 AVD response (2-step transient) 0.08132223542041435
+tap 10 AVD response (2-step transient) 0.08132224161832438
+tap 11 AVD response (2-step transient) 0.08132223759126846
+tap 12 AVD response (2-step transient) 0.08132223151605625
+tap 13 AVD response (2-step transient) 0.08132222503046801
+tap 14 AVD response (2-step transient) 0.08132221846253955
+tap 15 AVD response (2-step transient) 0.0813222118779736
+tap 16 AVD response (2-step transient) 0.08132220528993007
+tap 17 AVD response (2-step transient) 0.08132219870104473
+tap 18 AVD response (2-step transient) 0.08132219211184558
+tap 19 AVD response (2-step transient) 0.08132218552243833
+tap 20 AVD response (2-step transient) 0.08132217893284402
+tap 21 AVD response (2-step transient) 0.08132217234306703
+tap 22 AVD response (2-step transient) 0.08132216575310812
+tap 23 AVD response (2-step transient) 0.08132215916296752
+tap 24 AVD response (2-step transient) 0.08132215257264515
+tap 25 AVD response (2-step transient) 0.08132214598214113
+tap 26 AVD response (2-step transient) 0.08132213939145537
+tap 27 AVD response (2-step transient) 0.08132213280058793
+tap 28 AVD response (2-step transient) 0.0813221262095387
+tap 29 AVD response (2-step transient) 0.08132211961830775
+tap 30 AVD response (2-step transient) 0.08132211302689504
+rest 300 steps...
+after rest, AVD response 0.1429138216154708
+SHOCK (strong widespread sensory stimulation)
+after shock, AVD response 0.13673580789699552
+
+T2: association - pair ALM+PLM 15x, then test ALM alone
+before pairing, ALM -> PVC: 0.010010640611047141
+after pairing, ALM -> PVC: 0.011789947666720082
+(if after > before, ALM now activates the PLM pathway: association formed)
