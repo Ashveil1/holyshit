@@ -8,7 +8,7 @@ and resumes the hs interpreter. Source rebinding and aliases keep their normal
 function identities. No performance claim is made.
 
 Eligibility is deliberately narrow: an acyclic CFG of up to 16 blocks, up to six
-parameters, constants/parameter loads, integer + - * or unary minus, integer comparisons for conditions, and integer return.
+parameters, constants/parameter loads, integer + - * or unary minus, integer comparisons for conditions, and statically uniform Int or Bool return.
 No calls, globals/captures, mutation, allocation, print, loops, phi nodes or exceptions
 are compiled. Bool, objects and values outside signed 30-bit fall back before
 native entry. Every native intermediate is range-guarded; a guard failure
@@ -32,6 +32,13 @@ on-stack replacement, type-specialized object operations or general deopt.
 
 The CFG admission walk is topological and rejects cycles/unreachable blocks.
 Each use must be available on every incoming path; definitions are unique.
-Internal comparison values are Bool and may steer branches but cannot enter
-integer arithmetic or cross the integer-only return boundary. Integer truth
+Internal comparison values are Bool and may steer branches or return as a Bool,
+but cannot enter integer arithmetic. All return paths must agree on one static
+Int/Bool result kind; mixed-result functions remain interpreted. Native Bool
+results are reconstructed as guest Bool values, not exposed as integer 0/1. Integer truth
 tests are allowed. The total instruction and code-page budgets remain bounded.
+
+The scalar result gate includes all six comparison operators, branch-selected
+Bool results, printed/JSON Bool identity and arithmetic rejection after native
+return. A non-Int argument still falls back before native entry. This does not
+admit Bool parameters, shared objects or a general tagged-value ABI.

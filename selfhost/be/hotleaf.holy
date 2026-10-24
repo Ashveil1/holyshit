@@ -47,6 +47,7 @@ def plan(fn):
   slots = {}
   types = {}
   count = 0
+  result_type = null
   qi = 0
   while qi < len(queue):
     lab = queue[qi]
@@ -100,8 +101,12 @@ def plan(fn):
     if tm["term"] == "ret":
       if tm["val"] not in have:
         return null
-      if types[tm["val"]] != "Int":
+      # One statically known scalar result kind crosses the native boundary.
+      # Mixed Int/Bool returns remain interpreted, without truth coercion.
+      kind = types[tm["val"]]
+      if result_type != null and result_type != kind:
         return null
+      result_type = kind
     elif tm["term"] == "jmp":
       targets = [tm["to"]]
     else:
@@ -117,7 +122,7 @@ def plan(fn):
   # A cycle or an unreachable block cannot enter this topological walk.
   if len(order) != len(fn["blocks"]):
     return null
-  return [order, slots, types]
+  return [order, slots, types, result_type]
 def guard():
   asm.cmp_ri32("rax", 0 - 536870912)
   asm.jcc("l", "fallback")
@@ -193,7 +198,7 @@ def compile_leaf(fn, p):
   except as e:
     scall(11, ptr, 8192, 0, 0, 0, 0)
     raise e
-  return {"ptr": ptr, "data": ptr + 4096, "live": true}
+  return {"ptr": ptr, "data": ptr + 4096, "live": true, "result_type": p[3]}
 def dispatch(ctx, key, fn, args):
   if not ctx["live"]:
     raise "hotleaf: released context"
@@ -244,6 +249,8 @@ def dispatch(ctx, key, fn, args):
     ctx["fallbacks"] = ctx["fallbacks"] + 1
     return [false, null]
   ctx["calls"] = ctx["calls"] + 1
+  if image["result_type"] == "Bool":
+    return [true, value != 0]
   return [true, value]
 def release(ctx):
   if not ctx["live"]:
