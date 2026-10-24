@@ -198,8 +198,6 @@ def call_value(st, fn, args, ln):
       i = i + 1
     return run_fn(st, key, fdef, fr)
   fail("not callable: " + type_name(fn), ln)
-MODS = {}
-SHELLS = {}
 PARS = {}
 def is_mod(v):
   return pyrt.py_type(v) == "dict" and "hs_ir_mod" in v
@@ -226,8 +224,8 @@ def mod_build(name, path):
   verify.verify_module(sub)
   return sub
 def mod_exec(st, name, path, ln):
-  if path in MODS:
-    ent = MODS[path]
+  if path in st["mods"]:
+    ent = st["mods"][path]
     if ent["state"] == "done":
       return ent["mod"]
     if ent["state"] == "busy":
@@ -246,7 +244,7 @@ def mod_exec(st, name, path, ln):
   fr["root"] = fr
   fr["basedir"] = mod["basedir"]
   mod["frame"] = fr
-  MODS[path] = {"state": "busy", "mod": mod}
+  st["mods"][path] = {"state": "busy", "mod": mod}
   for key in sub["order"]:
     st["funcs"][key] = sub["funcs"][key]
     by = {}
@@ -256,20 +254,20 @@ def mod_exec(st, name, path, ln):
   try:
     run_fn(st, sub["entry"], sub["funcs"][sub["entry"]], fr)
   except as e:
-    MODS[path] = {"state": "failed"}
+    st["mods"][path] = {"state": "failed"}
     if find(e, JUMP) >= 0:
       raise e
     raise mod_wrap(name, e, ln)
-  MODS[path]["state"] = "done"
+  st["mods"][path]["state"] = "done"
   return mod
 def mod_shell(st, name):
-  if name in SHELLS:
-    return SHELLS[name]
+  if name in st["shells"]:
+    return st["shells"][name]
   fr = new_frame(st, st["broot"], null, [])
   fr["root"] = fr
   fr["basedir"] = ""
   m = {"hs_ir_mod": name, "frame": fr, "basedir": ""}
-  SHELLS[name] = m
+  st["shells"][name] = m
   return m
 def mod_import(st, name, frame, ln):
   if find(name, ".") >= 0:
@@ -293,8 +291,8 @@ def mod_import(st, name, frame, ln):
     except as e:
       topmod = mod_shell(st, topname)
     return [leafmod, topmod, topname]
-  if name in SHELLS:
-    m = SHELLS[name]
+  if name in st["shells"]:
+    m = st["shells"][name]
     return [m, m, name]
   path = mod_find(name, frame_basedir(frame), ln)
   m = mod_exec(st, name, path, ln)
@@ -670,7 +668,7 @@ def preflight_imports(irmod, basedir):
             append(queue, [sub, pyrt.py_os_path_dirname(path)])
   return null
 def create(irmod, basedir):
-  st = {"funcs": irmod["funcs"], "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"], "basedir": basedir, "broot": null, "profile": null, "dispatch": null}
+  st = {"funcs": irmod["funcs"], "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"], "basedir": basedir, "broot": null, "profile": null, "dispatch": null, "mods": {}, "shells": {}}
   for key in irmod["order"]:
     by = {}
     for block in irmod["funcs"][key]["blocks"]:
