@@ -522,7 +522,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-513 [M] F-4 means-ends composition induction -- baseline: P13 flat 6/10 -- success: 8/10 at <= half tried
 - [x] B-514 [S] F-5 shortest-on-tie + 2^-len hypothesis weighting -- baseline: B-001/P15 -- success: equal acc, shorter programs -- MEASURED 2026-10-24 (b514): FAIL - soft 2^-len weighting loses to categorical Occam on same (.733 vs .823) and same-amb (.716 vs .824), ties new and new-amb at 5 seeds (LEDGER B-514 + correction)
 - [ ] B-515 [S] F-6 OOPS doubling scheduler -- baseline: P14 ordering -- success: same found, <=50% CPU
-- [ ] B-516 [S] DONE -> README priors audit + EVALPACK.md | F-7 priors/experience audit + eval pack v1 -- baseline: none -- success: README columns added, pack frozen
+- [x] B-516 [S] DONE -> README priors audit + EVALPACK.md | F-7 priors/experience audit + eval pack v1 -- baseline: none -- success: README columns added, pack frozen -- TRIAGED 2026-10-24: already done - README 'Priors/experience audit (F-7)' section with result|priors|experience format + per-result lines, EVALPACK.md frozen Oct 21 2026, claim rule stated
 - [ ] B-517 [M] F-8 one-shot gap table vs MLP -- baseline: MLP -- success: complete honest table
 - [ ] B-518 [M] joint-attention variant: caregiver sometimes names the secondary object; baby must use a pointing/gaze cue -- baseline: P26 no-cue learner -- success: cue use beats no-cue on named-secondary scenes
 - [x] B-519 [S] babbling trajectory: production volume + correct-rate per day before criterion -- baseline: none -- success: documented curve -- DOCUMENTED 2026-10-24 (b519): vol 43->97/day by day 4, rate .48->.77 plateau, grounding front-loaded (59% day 1) (LEDGER B-519)
