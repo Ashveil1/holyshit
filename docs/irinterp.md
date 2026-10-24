@@ -66,3 +66,9 @@ The parity gate includes 124 wrong-count cases through builtin aliases,
 covering too few/too many arguments and both exception paths, in addition to
 the existing 85 corpus classifications. This is argument-count parity, not a
 claim that every builtin type/error edge case is covered.
+
+Float conversion rejects nonnumeric, nonstring guest values before entering
+the host conversion helper. Null/List/Dict/callable errors retain their guest
+type names instead of accidentally converting the host error text. Twenty
+additional alias conversion cases cover caught/uncaught failures and existing
+valid Bool/Int/Float/Str conversions, for 229 total parity classifications.

@@ -193,6 +193,29 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
                     print(f"FAIL builtin arity {name}/{count}/caught={caught}: {ref!r} != {got!r}")
     print(f"{arity_total} builtin arity cases checked (direct aliases, caught and uncaught)")
 
+
+    float_values = ["null", "[]", "{}", "len", "true", "false", "12", "2.5",
+                    '"bad"', '" 2.5 "']
+    for value in float_values:
+        for caught in (False, True):
+            source = "f = float\n"
+            expression = "print f(" + value + ")"
+            if caught:
+                source += 'try:\n  ' + expression + '\nexcept as e:\n  print e\nprint "after"\n'
+            else:
+                source += expression + '\n'
+            prog = os.path.join(d, "float.holy")
+            with open(prog, "w") as f:
+                f.write(source)
+            ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+            got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                       [driver, prog], b"", _BASE_ENV)
+            total += 1
+            if ref != got:
+                fails += 1
+                print(f"FAIL float conversion {value}/caught={caught}: {ref!r} != {got!r}")
+    print("20 float conversion cases checked (aliases, caught and uncaught)")
+
 if fails:
     print(f"{total - fails}/{total} irinterp parity")
     sys.exit(1)
