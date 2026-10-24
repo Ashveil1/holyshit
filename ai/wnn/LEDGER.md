@@ -1179,3 +1179,18 @@ Claim per pre-reg: a procedure was taught through conversation alone, with bound
 Note: the taught program generalizes behaviorally - 40/40 on unseen x in 40..2000 after only 8 dialog pairs (x <= 40 examples, confirmations x < 400); it is not a memorized table. Mechanism of the found schema not further analyzed.
 ## B-529 Correction 1 (2026-10-24, parent review) - claim scope narrowed
 B-529 establishes ONE implemented conversation-to-induction link under the stated designed frames and numeric DSL. It does NOT close "the last artificial step" and does not establish complete integration of all systems: sentence parsing, routing, the search space/primitive set, the confirmation protocol and the teacher remain designed. These boundaries persist in integration status and future audit revisions until separately measured.
+## B-530 pre-registration (2026-10-24, before running) - compositional dialog teaching: taught skills accumulate as reusable primitives
+Goal: extend Link D (B-529) from one taught skill to an ACCUMULATING library: teach 'double' then 'quad' (4n) through conversation only, and measure whether the previously taught skill makes the later teaching cheaper. This tests the OOPS/library claim at the dialog level: knowledge taught earlier is reused by later induction, not just stored.
+Grounded in: B-529 (one dialog-taught skill, 8 pairs, tried=549) and cur7's grown-library mechanics (LIB entries become callable primitives for later search; setup pins the library).
+Design (b530.py):
+- Same teaching protocol as b529 (naming/example/confirmation frames, DESIGNED and named; confirmation-round cap 3; <= 20 supervision pairs per skill; induction on parsed pairs only, no VALID/ADV).
+- Sequence: teach double (สองเท่า), then teach quad (สี่เท่า) with double present in LIB as a callable primitive. Inspect show_prog(quad) for whether double is actually called.
+- ARM (ablation): repeat quad teaching with double REMOVED from LIB (same pairs, same seeds, same cap) - assigns the tried-cost difference to the accumulated library, not to the task.
+Criteria (pre-stated):
+- C1 both skills taught through dialog only, <= 20 pairs each.
+- C2 quad accuracy >= 38/40 on unseen inputs through the sentence path (B-527 bar).
+- C3 reuse value: tried(quad | double in LIB) <= 1/2 * tried(quad | double ablated), OR the ablated arm finds nothing within cap while the with-double arm finds one. If the with-double program actually calls double, record it; if quad is found without calling double, record that honestly (reuse claim then rests on the tried delta only).
+- C4 no interference: seeded 4 skills 160/160, attribute battery exact, double still 40/40.
+- C5 garbage control on quad teaching (memoized random mapping, same budget): no skill stored.
+FAIL recording: budget/round-cap exhaustion recorded with tried counts; frame changes mid-run are an amendment.
+CAN claim if PASS: dialog-taught procedures accumulate as reusable primitives and later teaching is measurably cheaper because of earlier taught knowledge (ablation-credited). CANNOT: semantic understanding of the procedures; anything beyond designed frames + numeric DSL; complete integration (B-529 Correction 1 boundaries stand).
