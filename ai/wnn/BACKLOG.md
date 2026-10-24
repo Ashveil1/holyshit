@@ -541,8 +541,8 @@ Honest component status (as of 8778827):
 - Link A attribute memory (B-525): CONNECTED. Baby memory lookup == given lexicon, exact.
 - Trace/introspection (B-524): CONNECTED to answer path; lesions L1-L4 verify component causality.
 - Engineered hsml-connectome: EXPERIMENT ONLY, not in answer path. Ash authorizes free redesign (topology, connections, learning) with on/off evidence per component; cut what doesn't help; no biological claims post-redesign.
-- HDC one-shot backend (Link B): PLANNED. On/off vs count tables on the B-521 battery.
-- Procedure induction / program skills (b515): DISCONNECTED. Runs standalone; no path from dialog to learned procedures. Integration = a dialog-queryable skill memory that induction writes into, measured on/off.
+- HDC one-shot backend (Link B, B-526): TESTED, NO-VALUE, CUT (2026-10-24). Bind arm perfect parity but zero corruption-robustness gain; item arm fails parity. Backend interface (observe/taught) shipped with counts as default - decide() now reads through it.
+- Program-skill memory link: NEXT candidate. Procedure induction (b515) currently DISCONNECTED. Runs standalone; no path from dialog to learned procedures. Integration = a dialog-queryable skill memory that induction writes into, measured on/off.
 - OOPS scheduler (F-6): open verdict (b515 in flight).
 
 Definition of done for "unified": (1) one entry point answers using memory + abstain + trace; (2) each added component has an on/off arm on a pre-registered battery showing it helps or is removed; (3) no stub routing; (4) audit File updated to match ACTUAL connections only; (5) no complete-claim until measured.
