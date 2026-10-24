@@ -912,3 +912,24 @@ Probe B (wrong-then-right number word, text2prog learner n=300 + learn_lexicon, 
 Mechanism analysis (why status != 100% on B): the binding constraint is the ACCEPTANCE gate, not recency. isprime's binary answers make every same-parity candidate value vote-eligible (~n2/3 runner-up votes), so the 2.5x margin rule rejects the correction even at n2=20 when the isprime fraction runs high. Recency supersedes correctly whenever a mapping is accepted. Secondary honest finding: learned lexicons also carry spurious mappings for template words, so even correct-W status lexicons reach only .738 of oracle downstream accuracy (oracle arm itself = 1.0: base learner handles the unary templates perfectly).
 Honest bottom line: recency status is NECESSARY (batch .067) and sufficient for fact recall (probe A 1.0) but NOT sufficient for word-meaning correction under the current vote-margin acceptance rule. F-1 follow-up direction (not done here): confidence-aware or correction-triggered acceptance, and lexical entries that carry status individually rather than wholesale lex.update.
 Scope: these two probes, P15 learner, learn_lexicon defaults. CANNOT claim: belief revision generally.
+
+## B-514 (F-5) pre-registration (2026-10-24, before running) - soft 2^-len explanation weighting vs categorical Occam
+
+Question: text2prog8.py implements F-5 (keep ALL explanations, weight each by 2^-(#ops)) but was never run/verdicted. Does soft Occam match P16's categorical Occam (text2prog2 TwoStep drops 2-op explanations when a 1-op one exists) on accuracy, and win on AMBIGUOUS sentences (both 1-op and 2-op explanations consistent)?
+Note: the shortest-on-tie half of F-5 for program SEARCH is already measured: B-287/288/289 tie-break-shorter found no benefit over first-found (B-290/291/292 tie-break-first equivalent) - cross-referenced, not re-run.
+Design (b514.py): EXACTLY text2prog8's main protocol (n=1000 two_step train rows wh=0, 5 seeds, eval 300 rows each wh=0 same / wh=1 new, big=True), arms TwoStep vs Soft on IDENTICAL rows. Ambiguity analysis (pre-stated): an eval row is AMBIGUOUS if its text+answer admits BOTH a consistent 1-op hyp and a consistent 2-op (h1,h2,split) explanation (computed directly, not via either model); report per-arm accuracy on that subset.
+Criterion (pre-stated): equal acc = |Soft - TwoStep| <= 1pt on both same and new (5-seed means). F-5 PASS = equal acc AND Soft > TwoStep by >1pt on the ambiguous subset. Honest nulls recorded.
+CAN show: soft vs categorical Occam on this 2-step protocol. CANNOT: other weightings (this is 2^-ops with the stated 0.5/0.25 normalization), other domains.
+
+
+## B-514 (F-5) verdict (2026-10-24) - FAIL: soft 2^-len explanation weighting LOSES to categorical Occam on trained frames; wins only on unseen-frame ambiguous rows
+
+logs/b514_softoccam.log (5 seeds, n=1000 train, 300 eval rows/split, text2prog8 Soft vs text2prog2 TwoStep, identical rows):
+- same: Soft 0.7327 vs Cat 0.8227 (-9.0pt - NOT within the 1pt equal-acc bar)
+- new: Soft 0.4167 vs Cat 0.4113 (equal within 1pt)
+- same_ambiguous (both 1-op and 2-op explanations exist, n=143-179/300): Soft 0.7161 vs Cat 0.8242 (-10.8pt)
+- new_ambiguous: Soft 0.5301 vs Cat 0.5285 (+0.2pt - the only Soft win)
+Criterion FAIL: equal-acc fails on same; the ambiguous-subset win appears only on unseen frames and is swamped by the trained-frame loss.
+Mechanism (pre-stated-style analysis, recorded post hoc): rows with a 1-op explanation typically admit MANY 2-op explanations (splits x HYP x H2); weighting EACH 2-op explanation by 0.25 vs 0.5 still lets their aggregate mass dominate the counts - 2^-len per-EXPLANATION is not 2^-len per hypothesis CLASS. Categorical Occam's hard filter (drop all 2-op when a 1-op exists) is the better inductive bias on this protocol; soft weighting helps exactly where the hard filter throws away true signal (unseen-frame ambiguous rows, +0.2pt).
+Cross-reference: the shortest-on-tie half of F-5 in program SEARCH was already null (B-287..292: tie-break-shorter = tie-break-first, no benefit). F-5 as stated is 0-for-2: neither search tie-breaking nor soft explanation weighting pays off here.
+Scope: this 2-step protocol, this 0.5/0.25 normalization. A class-normalized weighting (per hypothesis class, not per explanation) is a different, unrun variant - noted, not claimed.
