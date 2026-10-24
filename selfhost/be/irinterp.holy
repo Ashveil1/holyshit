@@ -88,8 +88,21 @@ def owns(hframe, frame):
   return false
 def is_callable_rec(v, tag):
   return pyrt.py_type(v) == "dict" and tag in v
+BUILTIN_ARITY = {"append": 2, "find": 2, "join": 2, "has": 2, "contains": 2, "keys": 1, "values": 1, "read_text": 1, "write_text": 2, "append_text": 2, "exists": 1, "ls": 1, "mkdir": 1, "env": 1, "argv": 0, "input": 0, "json_parse": 1, "json_str": 1, "json_load": 1, "json_save": 2, "open": 2, "read": 1, "write": 2, "close": 1, "system": 1}
+BUILTIN_ARITY_ERROR = {"append": "append wants append(list, x)", "find": "find wants find(s, sub)", "join": "join wants join(sep, list)", "has": "has wants has(dict, key)", "contains": "contains wants contains(container, x)", "keys": "keys wants keys(dict)", "values": "values wants values(dict)", "read_text": "read_text wants read_text(path)", "write_text": "write_text wants write_text(path, str)", "append_text": "append_text wants append_text(path, str)", "exists": "exists wants exists(path)", "ls": "ls wants ls(dir)", "mkdir": "mkdir wants mkdir(path)", "env": "env wants env(name)", "argv": "argv takes no args", "input": "input takes no args", "json_parse": "json_parse wants json_parse(str)", "json_str": "json_str wants json_str(x)", "json_load": "json_load wants json_load(path)", "json_save": "json_save wants json_save(path, x)", "open": "open wants open(path, mode)", "read": "read wants read(f)", "write": "write wants write(f, str)", "close": "close wants close(f)", "system": "system wants system(cmd)"}
 def call_builtin(name, args, ln):
   n = len(args)
+  # Validate guest arity before indexing or invoking a host builtin. Otherwise
+  # extra arguments disappear and missing arguments become host index errors.
+  if name in ["len", "str", "int", "float"] and n != 1:
+    fail(name + " wants 1 arg, got " + str(n), ln)
+  if name in BUILTIN_ARITY:
+    if n != BUILTIN_ARITY[name]:
+      fail(BUILTIN_ARITY_ERROR[name], ln)
+  if name == "range" and n != 1 and n != 2:
+    fail("range wants range(n) or range(a, b) with Ints", ln)
+  if name == "split" and n != 1 and n != 2:
+    fail("split wants split(s) or split(s, sep)", ln)
   try:
     if name == "len":
       return len(args[0])
@@ -141,9 +154,7 @@ def call_builtin(name, args, ln):
       av = argv()
       return av[1:len(av)]
     if name == "input":
-      if n == 0:
-        return input()
-      return input(args[0])
+      return input()
     if name == "json_parse":
       return json_parse(args[0])
     if name == "json_str":

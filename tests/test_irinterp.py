@@ -162,6 +162,37 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             continue
         print(f"ok   {name}")
 
+
+    # Wrong arity must be rejected before indexing arguments or calling the
+    # host. Test indirect calls too: the source compiler cannot pre-check them.
+    builtin_names = ["len", "str", "int", "float", "range", "append", "split",
+                     "find", "join", "has", "contains", "keys", "values",
+                     "read_text", "write_text", "append_text", "exists", "ls",
+                     "mkdir", "env", "argv", "input", "json_parse", "json_str",
+                     "json_load", "json_save", "open", "read", "write", "close", "system"]
+    arity_total = 0
+    for name in builtin_names:
+        for count in ([1, 4] if name in ("argv", "input") else [0, 4]):
+            for caught in (False, True):
+                expression = "f(" + ", ".join(["null"] * count) + ")"
+                source = "f = " + name + "\n"
+                if caught:
+                    source += 'try:\n  ' + expression + '\nexcept as e:\n  print e\nprint "after"\n'
+                else:
+                    source += expression + '\nprint "unreachable"\n'
+                prog = os.path.join(d, "arity.holy")
+                with open(prog, "w") as f:
+                    f.write(source)
+                ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+                got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                           [driver, prog], b"", _BASE_ENV)
+                total += 1
+                arity_total += 1
+                if ref != got:
+                    fails += 1
+                    print(f"FAIL builtin arity {name}/{count}/caught={caught}: {ref!r} != {got!r}")
+    print(f"{arity_total} builtin arity cases checked (direct aliases, caught and uncaught)")
+
 if fails:
     print(f"{total - fails}/{total} irinterp parity")
     sys.exit(1)
