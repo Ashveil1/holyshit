@@ -110,6 +110,29 @@ with tempfile.TemporaryDirectory() as temp:
             if expected in (42,41,0):cursor_at(expected)
             if expected==42 and os.environ.get('HS_TEST_FULL_SCREENSHOT'):
                 shutil.copyfile(screen,os.environ['HS_TEST_FULL_SCREENSHOT'])
+        # Empty submissions must evict old visible text, not leave stale glyphs.
+        # An empty backspace must preserve cursor0 and never underflow storage.
+        for key in ['backspace'] + ['ret'] * 5:
+            sock.sendall(('sendkey '+key+'\n').encode());sock.recv(4096)
+            if key=='ret':submits+=1
+            else:edits+=1
+            deadline=time.monotonic()+15
+            while time.monotonic()<deadline:
+                content=serial.read_text(errors='replace')
+                if content.count('FIXED SUBMITTED')>=submits and content.count('FIXED EDIT')>=edits:break
+                time.sleep(.1)
+            else:raise AssertionError('empty-history edit stalled '+key)
+        cursor_at(0)
+        # cursor_at waits for the completed screendump; check full text strips.
+        with screen.open('rb') as f:
+            f.readline();f.readline();f.readline();blank=f.read()
+        for y0 in (136,160,184,208,280):
+            for y in range(y0,y0+14):
+                for x in range(32,544):
+                    offset=(y*640+x)*3
+                    assert tuple(blank[offset:offset+3])==(232,237,242),('stale empty text',x,y)
+        if os.environ.get('HS_TEST_EMPTY_SCREENSHOT'):
+            shutil.copyfile(screen,os.environ['HS_TEST_EMPTY_SCREENSHOT'])
         # Restore the original transcript/current-line screenshot below.
         for key in ['c','ret','d','ret','e','ret','f','ret','g']:
             sock.sendall(('sendkey '+key+'\n').encode());sock.recv(4096)
@@ -152,6 +175,6 @@ with tempfile.TemporaryDirectory() as temp:
                 assert pixel(x,y)==((22,50,79) if 44<=x<52 else (232,237,242)),(x,y)
         if os.environ.get('HS_TEST_SCREENSHOT'):
             shutil.copyfile(screen,os.environ['HS_TEST_SCREENSHOT'])
-        print('5/5 fixed-buffer console gates (native image, transcript, text pixels, cursor capacity/backspace/reset boundaries)')
+        print('5/5 fixed-buffer console gates (native image, transcript, text pixels, cursor capacity/backspace/reset and empty-history boundaries)')
     finally:
         p.kill();p.wait();qerrfile.close()
