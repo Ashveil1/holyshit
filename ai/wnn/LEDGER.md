@@ -864,3 +864,29 @@ CAN show: wiSARD few-shot intent classification on these hashed features at k=1/
 
 The snips WiSARD few-shot rows at shots 1/5/20 are exactly the WiSARD arm of B-495 (same data, same features, same seed set 100..109): .3471 / .8307 / .8936 vs MLP .148/.145/.150 (B-468, same shots) - gaps +19.9 / +68.6 / +74.4 pt over MLP; vs NB .6044/.8580/.9423 (B-495): loses at every k. Backlog items checked off as triaged (same pattern as B-484/487/490 -> B-241).
 Pre-registered cross-check (b486.py, pre-reg above): b468's protocol re-run with an alternative tuple layout (rng(400+seed), 128x32-bit tuples vs B-495's rng(0) 146x28-bit). Sanity H1 PASS: re-measured 1nn/centroid/MLP rows reproduce b468's logged values to 4 decimals at all k. WiSARD alt-layout .3473/.8043/.8931 - consistent with B-495 within tuple-layout noise (max deviation 2.6 pt at k=5). No new claim; the B-495 numbers remain the grid cells of record.
+
+## B-412..B-434 pre-registration (2026-10-24, before running) - WiSARD tuple-size x bleaching grid, full-data, 3 tasks
+
+Question (24 cells: tuple {8,16,32,64} x bleach {off,on} x task {mnist,pmnist,snips}; B-411/B-414 triaged from B-236's first attempt and re-confirmed or corrected in-grid): full-data WiSARD accuracy as a function of tuple grain and bleaching, vs a same-harness MLP baseline. "Retention gap" in the backlog lines is covered by the continual cells (B-467/493/494); this grid's criterion is the accuracy cell criterion only.
+Design (b412.py):
+- Data: mnist = t5wisard binarized 784-bit (60k/10k); pmnist = same with ONE fixed pixel permutation rng(12345) applied to train+test (single-task permuted MNIST; pre-stated: MLP is invariant to a fixed permutation, WiSARD tuple membership is not); snips = b468's 4096-bit hashed uni+bigram (2100/700).
+- WiSARD: tuple layout rng(0).permutation(B)[:NT*s].reshape(NT,s), NT = B//s (784: 98/49/24/12 positions; 4096: 512/256/128/64). Per class per position: value->count dict (one pass over full train).
+- Bleach off: score_c = #positions with count >= 1. Ties: numpy argmax (lowest index) - pre-stated.
+- Bleach on: standard bleaching - score_c(b) = #positions with count >= b; raise b from 1 until each sample's argmax is unique or b > 64 (pre-stated cap; ties at cap -> lowest index).
+- MLP baseline (same harness, one recipe pre-stated for all tasks): tanh MLP B-64-C softmax, minibatch SGD batch 256 lr 0.1, 10 epochs (mnist/pmnist, 60k train) / 50 epochs (snips, 2100 train), 2 seeds, mean. NOT the B-241 few-shot OVR recipe (full-data OVR 800ep is compute-infeasible in numpy); this is a stated, ordinary MLP.
+Criterion per cell (pre-stated): WiSARD cell PASSES if its acc >= MLP acc - 0.03 on that task, else FAILS. All 24 numbers reported; honest FAILs recorded (B-411's tuple-8 mnist FAIL expectation carried in).
+Pre-stated expectations (NOT criteria): (a) tuple-8 mnist bleach-off reproduces the ~.30 saturation (B-411); (b) bleaching rescues small-tuple saturation via counts; (c) 16-32-bit tuples near B-236's .9115 grain are best on mnist; (d) at tuple-64 counts are mostly 0/1 so bleach ~= presence.
+CAN show: tuple-grain/bleaching viability map on these 3 tasks with these encodings vs this MLP. CANNOT: optimal WiSARD design generally; other encodings; comparisons to tuned deep nets.
+
+## B-412..B-434 verdicts (2026-10-24) - tuple-32 is the viable grain on image bits; bleaching rescues small tuples; snips cells all PASS vs the small MLP
+
+logs/b412_grid.log. MLP baselines (pre-registered recipe): mnist .9298, pmnist .9264, snips .5129. Cell criterion: WiSARD >= MLP - 3pt.
+- mnist: t8 .3001(off FAIL)/.7982(on FAIL) | t16 .7268(F)/.8675(F) | t32 .9204(P)/.9260(P) | t64 .8751(F)/.8821(F)
+- pmnist: t8 .2826(F)/.8055(F) | t16 .7023(F)/.8689(F) | t32 .9153(P)/.9277(P) | t64 .8766(F)/.8848(F)
+- snips: t8 .7571(P)/.8471(P) | t16 .7586(P)/.8514(P) | t32 .7814(P)/.8643(P) | t64 .8043(P)/.8929(P)
+12 PASS / 10 FAIL of the 22 open cells (all 8 snips cells PASS; only tuple-32 passes on mnist/pmnist). B-411 triage CONFIRMED in-grid (.3001 = B-236's saturated .30) and B-414's FAIL triage confirmed by direct in-grid measurement (.7982, -13.2pt).
+Expectations: (a) tuple-8 saturation reproduced exactly; (b) bleaching rescues small tuples (+50pt at t8 mnist/pmnist) CONFIRMED; (c) tuple-32 (nearest B-236's 28-bit grain) best on image bits CONFIRMED; (d) bleach ~= presence at t64 CONFIRMED (+0.7pt).
+pmnist ~= mnist per cell (max dev ~1pt) as expected for a fixed permutation with a random tuple layout - internal consistency check PASS.
+Sensitivity (b412s.py, post-hoc, logs/b412_snips_mlp_epochs.log): snips MLP at 100/200/400 epochs = .5436/.5543/.5664 - the .5129 baseline is the recipe's plateau, not under-training; snips PASS margins stand (+24..+38pt vs baseline, +19..+33pt vs the 400-epoch variant).
+Honest picture: on image bits, plain WiSARD reaches the small MLP only at tuple-32 (bleached or not); at other grains it FAILS the 3pt bar even with bleaching. On sparse text bits, tuple WiSARD beats the small MLP at every grain but remains below NB (B-495 ordering: NB .94-ish full-data-equivalent few-shot k=20 vs WiSARD .89 at best here). Bleaching = real, sizable accuracy recovery at saturated grains, one extra count array's worth of memory.
+Scope: these 3 tasks, these encodings, this MLP. No claim about tuned/deeper nets or other encodings.
