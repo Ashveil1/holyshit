@@ -1169,3 +1169,11 @@ Criteria (pre-stated):
 - C5 provenance: the stored skill carries dialog provenance and is inspectable (show_prog).
 FAIL recording: budget exhaustion or confirmation-cap exhaustion is a FAIL with tried counts and rounds recorded; grammar/frame changes mid-run are an amendment, not silent repair.
 CAN claim if PASS: a procedure was taught through conversation alone and is answered through the same sentence path as pre-existing skills, with bounded supervision and noise control. CANNOT: natural-language understanding of the procedure's meaning (frames are designed); procedures beyond cur7's primitive set; human-like teaching flexibility.
+## B-529 verdict (2026-10-24) - PASS: Link D - a procedure was taught through conversation alone and answers through the same sentence path
+Pre-reg 2026-10-24 (above). Harness b529.py, log logs/b529_teach.log. Verdict json: PASS, c1-c4 all true.
+- C1 sentences-only teaching: 'double' (สองเท่า) taught in round 1 from 5 example sentences + 3 confirmation replies = 8 supervision pairs (bar <= 20); induction tried=549; stored program "init b=one; if (lt a b) -> a; else step (a,(add a a)); comb=('add','a',0); post=id" with dialog provenance. No VALID/ADV extra supervision (honest scoping: induction fit teacher pairs only).
+- C2 taught-skill accuracy: 40/40 on unseen inputs (x in 40..2000) through the sentence path (bar >= 38).
+- C3 no interference: seeded skills still 160/160 x4; B-523 battery exact (13/13 abstain, 32/32 unique, 22/22 ambig, 32/32+32/32 unknown).
+- C4 noise control: garbage teacher (memoized random mapping, same budget) -> induction exhausted at tried=700,001, NO skill stored.
+Claim per pre-reg: a procedure was taught through conversation alone, with bounded supervision and noise control, and is answered through the same path as pre-existing skills. Still CANNOT claim: understanding of the procedure's meaning (frames designed); procedures beyond cur7's primitive set; human-like teaching flexibility (scripted teacher, designed frames; teaching of multi-step conditional procedures untested).
+Note: the taught program generalizes behaviorally - 40/40 on unseen x in 40..2000 after only 8 dialog pairs (x <= 40 examples, confirmations x < 400); it is not a memorized table. Mechanism of the found schema not further analyzed.
