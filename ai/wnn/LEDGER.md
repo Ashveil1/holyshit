@@ -793,3 +793,21 @@ CAN show: whether THIS static structural embedding carries task information unde
 Static degree+spectral wiring features (233x13) as image embeddings under the B-463 injection, ridge readout vs raw ridge, identical draws.
 Measured: 1-shot (5 seeds) emb 0.139 mean (0.120-0.165) vs raw 0.342 - near the 0.1 chance floor, per H1's pre-stated expectation (<=0.25, so no accidental positional-encoding artifact to investigate). Full-pool (5000 train): emb 0.478 vs raw 0.778. H2: honest null - the 13-dim static structural embedding carries far less class information than raw pixels under this injection; no win at either scale.
 Reading (scope-limited): another T6-negative consistent result. The wiring's static structure, compressed to 13 dims and linearly read, does not substitute for pixel information on this task. One embedding construction, one injection, one task.
+
+## B-465 pre-registration (2026-10-24, before running)
+Question: does adding literature-grounded synapse SIGNS to the worm.holy tap-circuit sim fix its known check-4 MISS (posterior touch fails to make PVC dominate AVD - the unsigned model's own comment calls this "full inhibitory signatures needed")?
+
+Baseline: unsigned worm.holy as-is (all chemical excitatory except the existing GABA list; divisive normalization stand-in). Signed variant: worm_sign.holy, identical except the sign annotation below. Same steps=100, same stimuli, same 4 checks (the checks ALREADY in worm.holy, unchanged): (1) anterior touch -> AVD dominates PVC; (2) DVA posterior-selective >3x; (3) PVC/AVD ratio shifts toward PVC for posterior touch; (4) posterior touch -> PVC dominates AVD.
+
+Sign annotation (per presynaptic cell class, chemical synapses only; gap junctions stay symmetric-positive in both arms). Evidence class recorded per row:
+- GABA list (DD01-06, VD01-13, RMEL/R/D/V, AVL, RIS, DVB) -> inhibitory. ALREADY in worm.holy. Evidence: measured transmitter (unc-25 GABA; McIntire et al 1993).
+- ALML, ALMR, AVM, PLML, PLMR (touch sensory) -> inhibitory. Evidence: MODEL-INFERRED (Wicks & Rankin 1996, J Neurosci 16:4017 polarity prediction from ablation-behavior fits; Chalfie et al 1985 proposal: gap junctions to agonists, inhibitory chemical to antagonists). NOT a measured transmitter sign.
+- RIML, RIMR -> inhibitory. Evidence: MEASURED functional sign (RIM tyramine activates the LGC-55 tyramine-gated chloride channel on AVB, hyperpolarizing it; Pirri & Alkema 2011; Alkema et al 2005. WormAtlas RIM page).
+- AIYL, AIYR -> inhibitory. Evidence: ABLATION-INFERRED (AIY and AIZ ablations give opposite phenotypes, "synapses made by AIY onto AIZ may be inhibitory"; de Bono & Maricq 2005 via WormAtlas AIY page). Weakest class; note AIY is cholinergic by atlas (Pereira et al 2015), so this is a functional not transmitter claim.
+- All other chemical synapses stay excitatory, including AVA/AVB/AVD/PVC/DVA (cholinergic per WormAtlas/Pereira et al 2015; AVA's old glutamate assignment superseded per the AVA atlas page). Consistent with Wicks & Rankin 1996's excitatory predictions for AVD/PVC.
+Correction to my earlier grounding note: the AIY-dual-sign-via-GLC-3 claim was WRONG - GLC-3 acts on the INPUT side (AFD/AWC glutamate inhibits AIY through GLC-3). Corrected here with the WormAtlas AIY page as source.
+
+Falsifiable predictions:
+- H1 (sanity): unsigned baseline reproduces 3/4 (check 4 MISS). If the baseline's pattern differs, the runtime/environment is suspect - investigate first.
+- H2 (success criterion, from backlog): signed variant passes 4/4 -> PASS. If signed passes fewer than 4 but MORE than unsigned, record the partial honestly. If signed BREAKS any check unsigned passed, the sign table is suspect - investigate before concluding; a broken check is a result to record, not to tune away.
+CAN show: whether THIS coarse per-cell sign annotation suffices for the 4 behavioral checks in THIS linear-threshold sim. CANNOT: biological validation of the signs (two evidence rows are inference, not measurement); anything about other circuits; real worm behavior beyond these 4 aggregate checks.
