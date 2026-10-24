@@ -1177,3 +1177,29 @@ Pre-reg 2026-10-24 (above). Harness b529.py, log logs/b529_teach.log. Verdict js
 - C4 noise control: garbage teacher (memoized random mapping, same budget) -> induction exhausted at tried=700,001, NO skill stored.
 Claim per pre-reg: a procedure was taught through conversation alone, with bounded supervision and noise control, and is answered through the same path as pre-existing skills. Still CANNOT claim: understanding of the procedure's meaning (frames designed); procedures beyond cur7's primitive set; human-like teaching flexibility (scripted teacher, designed frames; teaching of multi-step conditional procedures untested).
 Note: the taught program generalizes behaviorally - 40/40 on unseen x in 40..2000 after only 8 dialog pairs (x <= 40 examples, confirmations x < 400); it is not a memorized table. Mechanism of the found schema not further analyzed.
+## B-529 Correction 1 (2026-10-24, parent review) - claim scope narrowed
+B-529 establishes ONE implemented conversation-to-induction link under the stated designed frames and numeric DSL. It does NOT close "the last artificial step" and does not establish complete integration of all systems: sentence parsing, routing, the search space/primitive set, the confirmation protocol and the teacher remain designed. These boundaries persist in integration status and future audit revisions until separately measured.
+## B-530 pre-registration (2026-10-24, before running) - compositional dialog teaching: taught skills accumulate as reusable primitives
+Goal: extend Link D (B-529) from one taught skill to an ACCUMULATING library: teach 'double' then 'quad' (4n) through conversation only, and measure whether the previously taught skill makes the later teaching cheaper. This tests the OOPS/library claim at the dialog level: knowledge taught earlier is reused by later induction, not just stored.
+Grounded in: B-529 (one dialog-taught skill, 8 pairs, tried=549) and cur7's grown-library mechanics (LIB entries become callable primitives for later search; setup pins the library).
+Design (b530.py):
+- Same teaching protocol as b529 (naming/example/confirmation frames, DESIGNED and named; confirmation-round cap 3; <= 20 supervision pairs per skill; induction on parsed pairs only, no VALID/ADV).
+- Sequence: teach double (สองเท่า), then teach quad (สี่เท่า) with double present in LIB as a callable primitive. Inspect show_prog(quad) for whether double is actually called.
+- ARM (ablation): repeat quad teaching with double REMOVED from LIB (same pairs, same seeds, same cap) - assigns the tried-cost difference to the accumulated library, not to the task.
+Criteria (pre-stated):
+- C1 both skills taught through dialog only, <= 20 pairs each.
+- C2 quad accuracy >= 38/40 on unseen inputs through the sentence path (B-527 bar).
+- C3 reuse value: tried(quad | double in LIB) <= 1/2 * tried(quad | double ablated), OR the ablated arm finds nothing within cap while the with-double arm finds one. If the with-double program actually calls double, record it; if quad is found without calling double, record that honestly (reuse claim then rests on the tried delta only).
+- C4 no interference: seeded 4 skills 160/160, attribute battery exact, double still 40/40.
+- C5 garbage control on quad teaching (memoized random mapping, same budget): no skill stored.
+FAIL recording: budget/round-cap exhaustion recorded with tried counts; frame changes mid-run are an amendment.
+CAN claim if PASS: dialog-taught procedures accumulate as reusable primitives and later teaching is measurably cheaper because of earlier taught knowledge (ablation-credited). CANNOT: semantic understanding of the procedures; anything beyond designed frames + numeric DSL; complete integration (B-529 Correction 1 boundaries stand).
+## B-530 verdict (2026-10-24) - FAIL on C3 (reuse bar not met); composition taught but shows no measured value at this depth
+Pre-reg 2026-10-24. Harness b530.py, log logs/b530_comp.log. Verdict json: FAIL (c1,c2,c4,c5 true; c3 false).
+- C1 both skills taught through dialog only: double (tried=549) then quad (tried=870), 8 supervision pairs each.
+- C2 quad accuracy 40/40 unseen through the sentence path.
+- C3 FAIL: tried(quad | double in LIB) = 870 == tried(quad | double ablated) = 870, and the SAME program was found in both arms ("init b=zero; if (lt a b) -> b; else step (a,(add a b)); comb=('add','a',0); post=id"), which does not call double (calls_double False). No reuse value measured.
+- C4 no interference: seeded 160/160 x4, double 40/40, attribute battery exact.
+- C5 garbage quad teacher: induction exhausted at tried=700,001, nothing stored.
+Mechanism (measurement-design lesson, pre-reg lesson #6 pattern): cur7's enumeration order places a newly added LIB primitive's candidates AFTER the base-space candidates. quad's winning program sits at position 870 in the base enumeration, before any double-involving candidate is reached, so for shallow targets the reuse arm can never show a tried saving under this protocol - the C3 bar was unreachable by construction for this target, not refuted behaviorally. The reuse hypothesis needs a target whose DIRECT search is deep (near cap), where a primitive-using candidate can win by being found earlier than the deep direct one.
+Record: compositional teaching itself WORKS (a second skill was taught through dialog on top of an accumulated library, no interference); only the measured-value claim fails at this depth.
