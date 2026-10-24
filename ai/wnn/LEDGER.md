@@ -1017,6 +1017,24 @@ Honest status: the counts (knowledge) are learned; the three-way decision rule i
 ## B-523 applied (2026-10-24, Ash: "แก้เลย") - fixed three-way lookup is now the DEFAULT in the maintained harness (b521.py)
 b521.py default lookup = decide() (UNKNOWN / NO MATCH / AMBIGUOUS-full-extension / UNIQUE over the same learned counts); `--legacy` preserves the pre-fix additive argmax. Legacy reproduction verified EXACT: all 10 B-521 rows, every metric key byte-identical (t1_uniq/t1_amb/wing_margin/t2_*/ctrl_*/bird_example). Fixed-path regression (logs/b521_bird_fixed.log): t1_uniq 1.0, t1_amb 1.0 STRENGTHENED to exact-extension equality (was top-in-ext validity), empty-probe abstention 75/75 (r=1..3) at both q, shuffled controls at chance, generation path (t2 metrics) untouched. Caveats carried unchanged: the decision rule is designed architecture over learned counts (not learned); NO MATCH = "not taught together", not world-impossibility; this fixes the animal/attribute lookup ONLY, not the broader conversational learner.
 
+## B-524 pre-registration (2026-10-24, before running) - introspection audit: trace mode + causal lesion battery (Ash 2026-10-24 13:37 UTC: expose the internals, how answers arise, whether it really thinks)
+Two measured components (the learned-vs-given inventory and the thinking-evidence matrix are assembly, in the audit File):
+- TRACE: an explain mode on the maintained attribute learner (b521.py decide/describe paths) that dumps the ACTUAL recorded state behind each answer: decision branch, per-animal coverage booleans, raw counts for demanded attributes, score table, chosen frame pattern with its corpus count, novelty verdict vs corpus. Criterion: every produced answer is accompanied by the numbers that produced it; no narrative rationalization.
+- LESIONS (causal removal, pre-stated predictions):
+  - L1 remove all teaching of one attribute of one animal (นก-ปีก): probes whose unique answer depends on it ({ปีก,จะงอยปาก}) flip unique->NO MATCH 100%; นก drops out of the {ปีก} extension; นก generation recall drops by exactly 1/4 (one of its 4 attributes).
+  - L2 remove ALL multi-attribute teaching sentences: induced frame inventory has ZERO arity-2/3 patterns; describe() returns None; gap-pair composition collapses to the copier's 0/30 (B-522 T1 re-run under lesion). Shows combination frames are learned from heard combinations, not built in.
+  - L3 remove the B-523 decision rule (legacy argmax): abstention disappears (0/75) while counts are unchanged - the RULE, not the knowledge, causes abstention.
+  - L4 shuffled-counts control: unique-ID at chance (re-runs B-521/B-523 control in this harness).
+CANNOT claim: traces show mechanism, not consciousness; lesions establish causal roles of components within this toy system only.
+
+## B-524 verdict (2026-10-24) - PASS: trace mode + all four lesion predictions confirmed exactly
+B-524 (introspection audit, measured half) | PASS | b524.py logs/b524_audit.log | TRACE mode dumps the actual recorded state behind each answer (decision branch, per-animal coverage booleans, raw counts, score table, frame pattern + corpus count, novelty flag) - no narrative. Lesions (5 seeds, all predictions exact):
+- L1 (remove นก-ปีก teaching): {ปีก,จะงอยปาก} flips unique->NO MATCH 5/5; นก leaves the {ปีก} extension 5/5; นก generation recall .75 = exactly -1/4 (5/5).
+- L2 (remove all multi-attribute sentences): induced frame inventory = arity 1 ONLY; composition collapses 0/6 = the copier's level (5/5). Combination frames are learned from heard combinations; with none heard, the learner IS the copier.
+- L3 (legacy argmax on same counts): abstention 0/75 - the B-523 RULE causes abstention, the counts alone never did.
+- L4 (shuffled counts): unique-ID .00-.19 (chance ~.167).
+Audit File (inventory + thinking-evidence matrix + integration feasibility) assembles these with existing LEDGER verdicts.
+
 ## B-521 pre-registration (2026-10-24, before running) - attribute<->concept feasibility (Ash's bird question, 2026-10-24)
 
 Ash asked (via main): if taught "a bird has wings, a tail, eyes", can the learner (1) answer "bird" when given attributes - including a MESSY UNORDERED attribute list it must reorganize itself - and (2) produce a NOVEL description (select and order learned words into a sentence it was never taught), rather than copying a taught sentence? Pre-stated honest framing (from main's reply): existing two-word composition does not establish this; ambiguous attributes require COMPETING concepts; naming-from-attributes and description-generation are DISTINCT capabilities needing distinct evidence; no claim of understanding from templates we supplied.
