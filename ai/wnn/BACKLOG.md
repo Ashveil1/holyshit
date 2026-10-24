@@ -512,7 +512,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 
 - [x] B-503 duplicate-of checked row above -- PASS 2026-10-24 (b503) - consolidated 2026-10-24
 - [x] B-504 [L (under 2 h)] (T4 baselines+harness) tiny transformer in pure numpy as reference point -- task: synonym task -- baseline: n/a -- success: runs CPU in <2h, acc recorded -- PASS 2026-10-24 (b504): 17s wall; tf 0.993/0.827/0.163 vs wnn 0.984/0.829/0.188 (numbers/frames/synonyms); both near op-prior on unseen synonyms; no superiority either direction
-- [ ] B-505 [L (under 2 h)] (T6 connectome variants (low priority, P5 was negative)) STDP on tap circuit with reward gate -- task: tap -- baseline: no reward -- success: learned association > Hebbian P3
+- [x] B-505 [L (under 2 h)] (T6 connectome variants (low priority, P5 was negative)) STDP on tap circuit with reward gate -- task: tap -- baseline: no reward -- success: learned association > Hebbian P3 -- FAIL on bar 2026-10-24 (worm_reward): gated == no-reward (+17.8% both, consolidation verified on/off); CORRECTION: the +18% T2 association is STD-mediated not Hebbian (README/FOUNDATIONS corrected)
 - [ ] B-506 [L (under 2 h)] (T8 neurosymbolic-exact) grid transforms: learn 3 ARC-like ops by induction -- task: mini-arc -- baseline: random search -- success: finds 3/3, honest scope note
 
 ## Foundations-derived (F) candidates (from FOUNDATIONS.md; same rules)

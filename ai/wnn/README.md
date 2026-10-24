@@ -135,8 +135,9 @@ cd ai/wnn && /tmp/chat    # or: printf 'hello\nquit\n' | /tmp/chat
   0.0% - catastrophic forgetting). One-shot new class: 66% from ONE
   example (MLP: 0%).
 - `worm_plastic.holy`, `worm_spike.holy`, `worm_plastic_mnist.holy` -
-  plastic wiring (Hebbian/STDP/STD/GABA signs). Hebbian association
-  forms (+18% cross-pathway); spiking variant is bistable (documented
+  plastic wiring (Hebbian/STDP/STD/GABA signs). Cross-pathway association
+  forms (+18%) - later shown STD-state-mediated, NOT Hebbian (LEDGER
+  B-505, 2026-10-24: Hebbian-off reproduces +17.8% exactly); spiking variant is bistable (documented
   dead-end); plastic vs frozen wiring head-to-head: accuracy-neutral
   statistically, +8 pts one-shot episodic recall (74%).
 - `facts.holy` - hyperdimensional (HDC) one-shot fact memory: 70 facts

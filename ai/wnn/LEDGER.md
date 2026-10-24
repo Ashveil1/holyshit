@@ -840,3 +840,16 @@ Falsifiable predictions:
 - H3 (backlog PASS bar): delta(a) > +17.8% relative (beats the ungated Hebbian reference).
 If H2 holds but H3 fails: partial - gating works but does not beat ungated Hebbian. If delta(a) < delta(b): reward gating HURTS - record honestly. Absolute values are tiny (~0.01); relative change is the metric throughout; note the small-signal caveat in the verdict.
 CAN show: whether a consolidation gate helps association in THIS graded sim/protocol. CANNOT: neuromodulator biology (abstract flag); other circuits; spiking-STDP claims.
+
+## B-505 verdict: FAIL on the backlog bar, with a load-bearing CORRECTION to the P4 record (2026-10-24, worm_reward.holy, logs/b505_arm{0,1,2}.log)
+Pre-registered 3-arm test of reward-gated eligibility consolidation vs ungated Hebbian, T2 association metric, identical T1+T2 schedule.
+
+Measured (ALM-alone -> PVC before -> after pairing):
+- plain Hebbian (worm_plastic.holy, H1 sanity): 0.010011 -> 0.011790 = +17.8% (reproduces recorded +18%)
+- (a) reward-gated: 0.010008 -> 0.011789 = +17.8%; max|wpl-1| = 0.163 (consolidation FIRED)
+- (b) no-reward gated: 0.010008 -> 0.011789 = +17.8%; max|wpl-1| = 0.0 (consolidation NEVER fired, as designed)
+- (c) reward-unpaired control: 0.010008 -> 0.007592 = -24.1%; dep trajectory differs
+H2 FAILS ((a) equals (b) to 5 decimals); H3 FAILS ((a) does not exceed the +17.8% reference).
+
+CORRECTION (recorded per failure-logging discipline): the T2 "+18% cross-pathway association" is NOT Hebbian. With Hebbian growth switched off entirely (arm b: eligibility never consolidates, wpl frozen at init), the same protocol yields the identical +17.8%. The signal is STD(dep)-state-mediated (depressed-then-recovering synapses at measurement time; the unpaired control's different dep trajectory gives -24%). Conversely, reward-gated consolidation WORKS mechanically (arm a grew wpl to +0.163 max, arm b exactly 0) but the grown weights do not move this metric at these gains. README.md and FOUNDATIONS.md lines attributing the +18% to Hebbian association are corrected to point here.
+Scope: this graded sim, this metric, these gains. It does NOT show reward gating useless generally (the consolidated 0.163 may matter at other gains/metrics), and it does not dispute that worm_plastic.holy's Hebbian line compiles and grows weights - only that the published +18% T2 number was never caused by it.
