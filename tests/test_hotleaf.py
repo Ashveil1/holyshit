@@ -35,12 +35,19 @@ cases.extend([
  ('nested','def f(a,b):\n  if a < b:\n    if a == 0:\n      return b + 1\n    return b - a\n  return a * 2\nprint f(0,3)\nprint f(2,4)\nprint f(5,1)\n',1,1,3,0),
  ('truth','def f(n):\n  if n:\n    return n + 1\n  return 7\nprint f(0)\nprint f(-2)\n',1,1,2,0),
  ('branch-overflow','def f(n):\n  if n < 0:\n    return -n\n  return n * n\nprint f(536870911)\nprint f(-536870912)\nprint f(3)\n',1,1,1,2),
- ('bool-return','def f(n):\n  return n < 3\nprint f(2)\nprint f(4)\n',1,0,0,0),
+ ('bool-return','def f(n):\n  return n < 3\nprint f(2)\nprint f(4)\n',1,1,2,0),
  ('bool-arithmetic','def f(n):\n  return (n < 3) + 1\ntry:\n  print f(2)\nexcept:\n  print "caught"\n',1,0,0,0),
  ('loop-rejected','def f(n):\n  while n > 0:\n    n = n - 1\n  return n\nprint f(3)\n',1,0,0,0),
  ('branch-effects','def f(n):\n  if n < 0:\n    print "effect"\n    return -n\n  return n\nprint f(-3)\nprint f(4)\n',1,0,0,0),
 ])
+cases.extend([
+ ('bool-observable','def f(n):\n  return n < 3\na = f(2)\nb = f(4)\nprint a, b\nprint json_str([a,b])\ntry:\n  print a + 1\nexcept as e:\n  print e\nprint f(-1)\n',1,1,3,0),
+ ('bool-branches','def f(a,b):\n  if a < 0:\n    return a < b\n  return a == b\nprint f(-2,3)\nprint f(2,2)\nprint f(2,3)\n',1,1,3,0),
+ ('mixed-results','def f(n):\n  if n < 0:\n    return n < 3\n  return n\nprint f(-2)\nprint f(2)\n',1,0,0,0),
+ ('bool-type-fallback','def f(n):\n  return n < 3\nprint f(2)\ntry:\n  print f(true)\nexcept:\n  print "caught"\nprint f(5)\n',1,1,2,1),
+])
 for op in ('<','<=','>','>=','==','!='):
+ cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
  source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'
  source+=''.join(f'print f({a},{b})\n' for a,b in [(-2,3),(3,-2),(4,4)])
  cases.append(('compare-'+op,source,1,1,3,0))
