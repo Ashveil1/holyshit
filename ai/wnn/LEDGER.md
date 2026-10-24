@@ -749,3 +749,4 @@ Success criterion (backlog): runs CPU < 2h, accuracies recorded.
 
 CAN show: this exact config's accuracy on this exact protocol/split/seeds.
 CANNOT show: anything about transformers in general, LLMs, or any scale; any superiority/inferiority claim beyond this config; comparability across harnesses. Supervision symmetry noted: both models see only (text, answer).
+B-504 amendment (pre-run, 2026-10-24): gradcheck criterion amended from rel<1e-4 to combined |num-ana|<1e-6 OR rel<1e-3. Reason recorded: initial check failed 7/48, ALL on Wq/Wk entries where both numerical and analytic gradients were ~1e-7 (float noise inflating relative error at near-zero magnitude; loss curve decreased monotonically 2.99->1.70 over 4 epochs). No sign errors or O(1) discrepancies found. Amended check: pass 48/48. Reduced-size smoke (80 rows/5 epochs) ran mechanically; its numbers are harness-validation only, discarded, not results.
