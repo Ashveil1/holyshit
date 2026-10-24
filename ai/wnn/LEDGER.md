@@ -750,3 +750,14 @@ Success criterion (backlog): runs CPU < 2h, accuracies recorded.
 CAN show: this exact config's accuracy on this exact protocol/split/seeds.
 CANNOT show: anything about transformers in general, LLMs, or any scale; any superiority/inferiority claim beyond this config; comparability across harnesses. Supervision symmetry noted: both models see only (text, answer).
 B-504 amendment (pre-run, 2026-10-24): gradcheck criterion amended from rel<1e-4 to combined |num-ana|<1e-6 OR rel<1e-3. Reason recorded: initial check failed 7/48, ALL on Wq/Wk entries where both numerical and analytic gradients were ~1e-7 (float noise inflating relative error at near-zero magnitude; loss curve decreased monotonically 2.99->1.70 over 4 epochs). No sign errors or O(1) discrepancies found. Amended check: pass 48/48. Reduced-size smoke (80 rows/5 epochs) ran mechanically; its numbers are harness-validation only, discarded, not results.
+
+## B-504 verdict: PASS (2026-10-24, b504.py, logs/b504_stdout.log)
+Tiny pure-numpy transformer (1 block, d=32, hypothesis classification over the 21 HYP labels, soft CE over consistent-hypothesis sets) on the P15 unseen-synonyms protocol, 3 seeds, vs Learner('tok') row in the same harness on the same data.
+
+Measured (wh=0 numbers / wh=1 frames / wh=2 synonyms, 300 eval rows each, big=True):
+- transformer: 0.993 / 0.827 / 0.163 means (synonyms range 0.090-0.293 across seeds)
+- wnn constraint learner: 0.984 / 0.829 / 0.188 means (synonyms range 0.163-0.220)
+H1 sanity PASS (train-protocol >= 0.90). Success criterion met: ran in 17s wall (budget <2h), accuracies recorded.
+Cross-check before verdict: wnn row reproduces P15-repro 5-seed numbers (0.987/0.835/0.204) and LEDGER B-185's "synonyms ~.20" - no harness bug indicated. Gradcheck passed 48/48 under the amended combined criterion (amendment documented above, pre-run).
+
+Reading (scope-limited): on THIS config/protocol, the gradient reference matches the constraint learner on trained templates and unseen frames, and BOTH sit near the op-prior on fully unseen synonym templates without fast-mapping examples (synonym content words are out-of-vocabulary for both; wnn's small mean edge is within the transformer's cross-seed spread - no superiority claimed in either direction). This is one architecture/config at one size; nothing shown about transformers generally, other scales, or other tasks.
