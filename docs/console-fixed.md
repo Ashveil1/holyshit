@@ -70,3 +70,11 @@ The ELF32 wrapper includes an explicit NULL section table after its loadable
 segments. Modern GRUB treats a zero section count as an extended-count marker
 and rejects the older sectionless wrapper. The hs and Python linkers retain
 identical load addresses and complete image bytes, including this metadata.
+
+The graphical demo and guarded RAM-frame allocation proof now call the same
+`kconsole_view` text/history/cursor helpers. The view is a trusted internal
+layout record created once, not a validated public widget API. Redraws read
+opaque fixed-buffer state directly without snapshots. The 1000-submission
+proof therefore measures the actual shared redraw path, retaining the same
+16-byte allocation-marker gap and independently checked pixels/outer guards.
+The real GRUB keyboard gate retains the original layout and cursor checks.

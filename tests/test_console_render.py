@@ -9,6 +9,7 @@ if not qemu:print('skip console render kernel: QEMU unavailable');sys.exit(0)
 with tempfile.TemporaryDirectory()as temp:
     d=Path(temp);source=d/'proof.holy';source.write_text('''import kfont
 import kconsole_buffer
+import kconsole_view
 def make(n):
   unsafe:
     return as_int(alloc(n))
@@ -25,6 +26,7 @@ while i < 30784:
   put(p + i,90)
   i = i + 1
 f = [p + 16,384,128,80,3,2,1,0]
+view = kconsole_view.create(f,s,0,0,16,64,124)
 before = make(1)
 n = 0
 while n < 1000:
@@ -34,13 +36,8 @@ while n < 1000:
   kconsole_buffer.feed(s,99)
   kconsole_buffer.feed(s,10)
   kfont.fill(f,0,0,128,80,0xe8edf2)
-  row = 0
-  while row < s[6]:
-    kfont.draw_bytes(f,0,row * 16,kconsole_buffer.history_address(s,row),kconsole_buffer.history_length(s,row),0x16324f,2)
-    row = row + 1
-  kfont.draw_bytes(f,0,64,s[0],s[3],0x16324f,2)
-  kfont.fill(f,0,78,128,2,0xe8edf2)
-  kfont.fill(f,s[3] * 12,78,8,2,0x16324f)
+  kconsole_view.history(view)
+  kconsole_view.active(view)
   n = n + 1
 after = make(1)
 print after - before
