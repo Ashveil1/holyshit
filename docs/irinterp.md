@@ -72,3 +72,10 @@ the host conversion helper. Null/List/Dict/callable errors retain their guest
 type names instead of accidentally converting the host error text. Twenty
 additional alias conversion cases cover caught/uncaught failures and existing
 valid Bool/Int/Float/Str conversions, for 229 total parity classifications.
+
+Executed module frames and synthetic package shells belong to each interpreter
+state. Two states importing the same module now initialize independent guest
+globals and function registrations. Imports repeated within one state still
+reuse that state's module. The regression interleaves two states and checks
+counter results 2, 2, 3. Parsed-module metadata remains a process cache; this
+change does not promise source reload, concurrent execution or a sandbox.

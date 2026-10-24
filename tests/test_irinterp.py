@@ -216,6 +216,36 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
                 print(f"FAIL float conversion {value}/caught={caught}: {ref!r} != {got!r}")
     print("20 float conversion cases checked (aliases, caught and uncaught)")
 
+
+    # Independent interpreter states must not share executed module frames.
+    # The second run used to reuse the first run's module and miss its function
+    # definitions in the new state's function table.
+    module_dir = os.path.join(d, "modules")
+    os.makedirs(module_dir)
+    with open(os.path.join(module_dir, "counter.holy"), "w") as f:
+        f.write('value = 1\ndef bump():\n  global value\n  value = value + 1\n  return value\n')
+    unit = os.path.join(d, "states.holy")
+    with open(unit, "w") as f:
+        f.write('import normalize\nimport irbuild\nimport irinterp\n')
+        f.write('source = "import counter\\nprint counter.bump()\\n"\n')
+        f.write('m = irbuild.build_module(normalize.parse(source), "")\n')
+        f.write('a = irinterp.create(m, ' + repr(module_dir).replace("'", '"') + ')\n')
+        f.write('b = irinterp.create(m, ' + repr(module_dir).replace("'", '"') + ')\n')
+        f.write('irinterp.run(a)\nassert len(keys(b["funcs"])) == len(m["order"])\nassert len(keys(m["funcs"])) == len(m["order"])\nirinterp.run(b)\nirinterp.run(a)\n')
+    unit_exe = os.path.join(d, "states")
+    r = subprocess.run(builder + [unit, unit_exe], capture_output=True, timeout=600, env=_BASE_ENV)
+    total += 1
+    if r.returncode:
+        fails += 1
+        print(f"FAIL state isolation build: {r.stderr!r}")
+    else:
+        r = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) + [unit_exe], b"", _BASE_ENV)
+        if r != (0, b"2\n2\n3\n", b""):
+            fails += 1
+            print(f"FAIL module state isolation: {r!r}")
+        else:
+            print("ok independent module states and within-state import cache")
+
 if fails:
     print(f"{total - fails}/{total} irinterp parity")
     sys.exit(1)
