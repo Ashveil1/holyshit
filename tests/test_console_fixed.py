@@ -24,7 +24,9 @@ with tempfile.TemporaryDirectory() as temp:
     (tree/'boot/grub/grub.cfg').write_text('set timeout=0\nset default=0\ninsmod all_video\nset gfxmode=640x480x32\nset gfxpayload=keep\nterminal_output gfxterm\nmenuentry hs {\n  multiboot2 /boot/kernel.elf\n  boot\n}\n')
     iso=d/'hs.iso';command=[grub]
     if os.environ.get('HS_TEST_GRUB_DIR'):command+=['-d',os.environ['HS_TEST_GRUB_DIR']]
-    subprocess.run(command+['-o',str(iso),str(tree)],check=True,capture_output=True,timeout=60)
+    rescue=subprocess.run(command+['-o',str(iso),str(tree)],capture_output=True,timeout=60)
+    if rescue.returncode:
+        raise AssertionError('grub-mkrescue failed: '+rescue.stderr.decode(errors='replace')[-4000:])
     serial=d/'serial';monitor=d/'monitor';screen=d/'screen.ppm'
     p=subprocess.Popen([qemu,'-cdrom',str(iso),'-boot','d','-m','256M','-serial','file:'+str(serial),'-display','none','-monitor','unix:'+str(monitor)+',server=on,wait=off'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     try:
