@@ -88,6 +88,62 @@ class HDCBackend:
     def mem_bytes(self):
         return len(ANIMALS) * (D // 8)
 
+
+def majority(vecs):
+    """Standard HDC bundling: per-bit majority over binary vectors (sparse accumulate)."""
+    vecs = list(vecs)
+    sums = {}
+    for v in vecs:
+        x = v
+        while x:
+            b = x & -x
+            sums[b] = sums.get(b, 0) + 1
+            x ^= b
+    half = len(vecs) / 2.0
+    out = 0
+    for b, c in sums.items():
+        if c > half:
+            out |= b
+    return out
+
+def make_tvec(seed):
+    cache = {}
+    def tvec(tg):
+        if tg not in cache:
+            cache[tg] = _rv(random.Random(zlib.crc32(tg.encode()) ^ (seed * 7919)))
+        return cache[tg]
+    return tvec
+
+class HDC2Backend:
+    """Amendment-2 arm: per-name ITEM bundle (no binding); majority-composed word vectors."""
+    name = 'hdc2'
+    def __init__(self, seed, tau):
+        self.tau = tau
+        tvec = make_tvec(seed)
+        self._wvec = {}
+        def wvec(w):
+            if w not in self._wvec:
+                pw = '#' + w + '#'
+                self._wvec[w] = majority(tvec(pw[i:i+3]) for i in range(len(pw) - 2))
+            return self._wvec[w]
+        self.wvec = wvec
+        self.attrs = {n: set() for n in ANIMALS}
+        self.bits = {}
+    def observe(self, toks):
+        for n in [t for t in toks if t in ANIMALS]:
+            for a in [t for t in toks if t in ATTRS]:
+                self.attrs[n].add(a)
+    def _bundle(self, n):
+        if n not in self.bits:
+            self.bits[n] = majority(self.wvec(a) for a in self.attrs[n])
+        return self.bits[n]
+    def sim(self, n, a):
+        return (D - (self.wvec(a) ^ self._bundle(n)).bit_count()) / D
+    def taught(self, n, a):
+        return self.sim(n, a) >= self.tau
+    def mem_bytes(self):
+        return len(ANIMALS) * (D // 8)
+
 def decide(be, probe):
     """B-523 three-way decision, evidence read ONLY through the backend."""
     known = [a for a in probe if any(be.taught(n, a) for n in ANIMALS)]
@@ -152,13 +208,13 @@ def build(backend_cls, sents, **kw):
         be.observe(s.split())
     return be
 
-def calibrate_tau():
+def calibrate_tau(cls):
     """Frozen threshold from calibration seeds only (100..104), never test seeds."""
     pos, neg = [], []
     for sd in range(100, 105):
         rng = random.Random(sd)
         sents = gen_corpus(rng, 8)
-        probe_be = HDCBackend(sd, tau=2.0)  # tau irrelevant for raw sims
+        probe_be = cls(sd, tau=2.0)  # tau irrelevant for raw sims
         for s in sents:
             probe_be.observe(s.split())
         for n in ANIMALS:
@@ -173,13 +229,14 @@ def calibrate_tau():
             best_j, best_tau = tpr - fpr, tau
     return best_tau, best_j, (min(pos), max(neg))
 
-def run_test(sd, tau):
+def run_test(sd, tau, tau2):
     rng = random.Random(sd)
     sents = gen_corpus(rng, 8)
     cb = build(CountBackend, sents)
     hb = build(HDCBackend, sents, seed=sd, tau=tau)
+    h2 = build(HDC2Backend, sents, seed=sd, tau=tau2)
     out = {'seed': sd}
-    for arm, be in (('count', cb), ('hdc', hb)):
+    for arm, be in (('count', cb), ('hdc', hb), ('hdc2', h2)):
         b = battery(be)
         c_ok, c_n, c_unk = corrupt_battery(be, random.Random(9000 + sd))
         out[arm] = {
@@ -198,7 +255,7 @@ def run_test(sd, tau):
     perm = ATTRS[:]; rngs.shuffle(perm)
     pmap = dict(zip(ATTRS, perm))
     sh_sents = [' '.join(pmap.get(t, t) for t in s.split()) for s in Cs]
-    hs = build(HDCBackend, sh_sents, seed=sd, tau=tau)
+    hs = build(HDC2Backend, sh_sents, seed=sd, tau=tau2)
     c_ok = c_n = 0
     for r in (1, 2, 3):
         for probe in combinations(ATTRS, r):
@@ -206,17 +263,19 @@ def run_test(sd, tau):
             if len(ext_true) != 1: continue
             kind, pl = decide(hs, probe)
             c_n += 1; c_ok += (kind == 'unique' and pl['answer'] == ext_true[0])
-    out['hdc_shuffled_ctrl_unique'] = round(c_ok / max(c_n, 1), 4)
+    out['hdc2_shuffled_ctrl_unique'] = round(c_ok / max(c_n, 1), 4)
     return out
 
 if __name__ == '__main__':
     if '--calibrate' in sys.argv:
-        tau, j, (pmin, nmax) = calibrate_tau()
-        print(json.dumps({'tau': tau, 'youden_j': round(j, 4),
-                          'pos_sim_min': round(pmin, 4), 'neg_sim_max': round(nmax, 4)}), flush=True)
+        for cls, tag in ((HDCBackend, 'bind'), (HDC2Backend, 'item')):
+            tau, j, (pmin, nmax) = calibrate_tau(cls)
+            print(json.dumps({'arm': tag, 'tau': tau, 'youden_j': round(j, 4),
+                              'pos_sim_min': round(pmin, 4), 'neg_sim_max': round(nmax, 4)}), flush=True)
         sys.exit(0)
     tau = float(sys.argv[sys.argv.index('--tau') + 1]) if '--tau' in sys.argv else None
-    assert tau is not None, 'run --calibrate first, then pass --tau'
+    tau2 = float(sys.argv[sys.argv.index('--tau2') + 1]) if '--tau2' in sys.argv else None
+    assert tau is not None and tau2 is not None, 'run --calibrate first, then pass --tau/--tau2'
     for sd in range(5):
-        print(json.dumps(run_test(sd, tau), ensure_ascii=False), flush=True)
+        print(json.dumps(run_test(sd, tau, tau2), ensure_ascii=False), flush=True)
     print('DONE', flush=True)
