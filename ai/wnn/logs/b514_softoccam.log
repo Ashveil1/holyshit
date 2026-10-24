@@ -1,0 +1,6 @@
+{"seed": 0, "same": {"soft": 0.7233, "cat": 0.8633}, "same_amb": {"n": 160, "soft": 0.7312, "cat": 0.9187}, "new": {"soft": 0.38, "cat": 0.4433}, "new_amb": {"n": 164, "soft": 0.4695, "cat": 0.5976}}
+{"seed": 1, "same": {"soft": 0.7467, "cat": 0.79}, "same_amb": {"n": 179, "soft": 0.743, "cat": 0.8268}, "new": {"soft": 0.4333, "cat": 0.32}, "new_amb": {"n": 170, "soft": 0.5647, "cat": 0.3941}}
+{"seed": 2, "same": {"soft": 0.7433, "cat": 0.7833}, "same_amb": {"n": 176, "soft": 0.7216, "cat": 0.7557}, "new": {"soft": 0.3933, "cat": 0.4367}, "new_amb": {"n": 157, "soft": 0.4841, "cat": 0.5605}}
+{"seed": 3, "same": {"soft": 0.7033, "cat": 0.8267}, "same_amb": {"n": 165, "soft": 0.6364, "cat": 0.7455}, "new": {"soft": 0.4367, "cat": 0.4}, "new_amb": {"n": 161, "soft": 0.5466, "cat": 0.472}}
+{"seed": 4, "same": {"soft": 0.7467, "cat": 0.85}, "same_amb": {"n": 143, "soft": 0.7483, "cat": 0.8741}, "new": {"soft": 0.44, "cat": 0.4567}, "new_amb": {"n": 152, "soft": 0.5855, "cat": 0.6184}}
+DONE

@@ -516,11 +516,11 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-506 [L (under 2 h)] (T8 neurosymbolic-exact) grid transforms: learn 3 ARC-like ops by induction -- task: mini-arc -- baseline: random search -- success: finds 3/3, honest scope note
 
 ## Foundations-derived (F) candidates (from FOUNDATIONS.md; same rules)
-- [ ] B-510 [S] F-1 contradiction correction / unlearning with status -- baseline: current store behavior -- success: latest fact wins 100% on probe set
+- [x] B-510 [S] F-1 contradiction correction / unlearning with status -- baseline: current store behavior -- success: latest fact wins 100% on probe set -- MEASURED 2026-10-24 (b510): probe A status store 1.0 vs accum .52-.58; probe B FAIL - status lex lands correction 21/45 vs batch 3/45; acceptance gate, not recency, is the binding constraint (LEDGER B-510)
 - [ ] B-511 [S] F-2 declarative advice as hypothesis constraints -- baseline: P15 n=24/60 -- success: same acc, fewer examples
 - [ ] B-512 [M] F-3 subgoal selection on compositions -- baseline: P13 6/10 -- success: 8/10 same seeds
 - [ ] B-513 [M] F-4 means-ends composition induction -- baseline: P13 flat 6/10 -- success: 8/10 at <= half tried
-- [ ] B-514 [S] F-5 shortest-on-tie + 2^-len hypothesis weighting -- baseline: B-001/P15 -- success: equal acc, shorter programs
+- [x] B-514 [S] F-5 shortest-on-tie + 2^-len hypothesis weighting -- baseline: B-001/P15 -- success: equal acc, shorter programs -- MEASURED 2026-10-24 (b514): FAIL - soft 2^-len weighting loses to categorical Occam on same (.733 vs .823) and same-amb (.716 vs .824), ties new and new-amb at 5 seeds (LEDGER B-514 + correction)
 - [ ] B-515 [S] F-6 OOPS doubling scheduler -- baseline: P14 ordering -- success: same found, <=50% CPU
 - [ ] B-516 [S] DONE -> README priors audit + EVALPACK.md | F-7 priors/experience audit + eval pack v1 -- baseline: none -- success: README columns added, pack frozen
 - [ ] B-517 [M] F-8 one-shot gap table vs MLP -- baseline: MLP -- success: complete honest table
