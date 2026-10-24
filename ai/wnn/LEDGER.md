@@ -676,3 +676,27 @@ Adjudication rules (replacing the earlier mismatched conditional): (a) found(2) 
 Established 08:16 from /proc evidence: PID 3251's /proc ctime (07:45:41, its real creation) vs ps STARTED (08:12:41) vs /proc/uptime (1102s) - the container SUSPENDS (processes frozen, wall clock advances) and the kernel boot-time reference is re-anchored on resume, so ps ELAPSED/STARTED and uptime are artifacts, not process history. Consequences:
 1. All dt (wall-clock) values recorded in B-499 logs (e.g. mul n=2 1802s, mul n=25 1854s) are SUSPENSION-CONTAMINATED: they mix compute with frozen time and overstate compute cost. tried counts are unaffected and remain the primary measure. The earlier "mul took 30 min/cell, grid needs 8-14h" estimate was therefore doubly wrong (also superseded by the endpoint amendment); real CPU per cell is unknown but likely much lower.
 2. Operational incident (correcting my earlier report to parent): at 07:45 I killed PID 2423 believing it was an auto-restarted duplicate after a container reboot. The /proc evidence shows there was NO reboot and NO auto-restart - 2423 was the original 05:15 b499b process, frozen-and-resumed, with etime artifacts from the re-anchored clock. No completed cell was lost (log intact, 7 rows) and the relaunched run is protocol-identical, but the kill discarded 2423's in-flight div n=2 progress unnecessarily. Rule going forward: establish process identity by /proc/<pid>/ creation time and log progress, NEVER by ps etime/uptime in this environment; do not kill a runner on clock evidence alone.
+
+## B-499 verdict (2026-10-24) - PASS with amended design: the fewest-examples curve is FLAT at n=2 for all 7 learnable curriculum skills; VALID is the sole binding filter
+
+This is the AMENDED experiment (endpoint-sandwich design, pre-registered amendment 2026-10-23), NOT the completed original 40-cell grid. 19 cells measured (mod at all five n; mul/div/power/gcd/isprime/fact/sumto at endpoints n=2 and n=25), 21 middle cells DETERMINED-not-run by the nested-prefix monotonicity proof (equal endpoints force equality; zero mismatches occurred, so no middle cell was triggered). Provenance: original b499 killed mid-mul-n=4 by the amendment (discarded-for-redundancy); 07:45 incident - original b499b runner killed on misread clock evidence, its in-flight div n=2 discarded, run relaunched protocol-identical (full incident record above); dt columns in the logs are suspension-contaminated wall-clock and support NO runtime conclusions; tried is the ground truth.
+
+Measured curve (tried position of the first train-n + VALID-passing program; gen = 40-example accuracy at scales 1-4):
+| task | n=2 | n=4 | n=8 | n=16 | n=25 | gen 1-4 | row |
+| mod | 2082 | 2082* | 2082* | 2082* | 2082 | 40/40 all | flat (all 5 measured) |
+| mul | 4155513 | = | = | = | 4155513 | 40/40 all | flat (endpoints) |
+| div | 4202709 | = | = | = | 4202709 | 40/40 all | flat (endpoints) |
+| power | 4450489 | = | = | = | 4450489 | 40/40 all | flat (endpoints) |
+| gcd | 100985 | = | = | = | 100985 | 40/40 all | flat (endpoints) |
+| isprime | NOT FOUND | - | - | - | NOT FOUND | - | both NF at 6M cap |
+| fact | 1415364 | = | = | = | 1415364 | 40/40 all | flat (endpoints) |
+| sumto | 2707098 | = | = | = | 2707098 | 40/40 all | flat (endpoints) |
+(* mod middles measured; all other middles determined by the sandwich proof, marked =)
+
+Hypothesis adjudication:
+- H1 (as corrected pre-verdict): the informative direction was found(2) < found(25). Measured position gap = 0 for ALL SEVEN found rows - the first VALID-passing candidate already passes every train prefix from n=2. The 32-example VALID gate, not the train count, wholly determines which program is found and where. H1's original shortcut-traffic position mechanism was refuted by proof before adjudication (recorded above).
+- H2 (gen failures, if any, only at scales 3-4 via the 400-iteration capacity cap): REFUTED - every found program generalizes 40/40 at ALL scales 1-4. The pinned library's learned programs are capacity-safe across the curriculum8 gen ranges.
+- H3 (isprime NOT FOUND at 6M for every n): CONFIRMED at both endpoints (tried 6,002,688 = full cap). Consistent with B-501E: correct form at ~27M enumeration position.
+
+Answer to the backlog question: under this enumeration + VALID protocol, the fewest-examples count is 2 (the smallest measured n) for all 7 learnable skills - 25 examples buy nothing over 2, because VALID does the real filtering. isprime remains enumeration-walled at any n.
+Scope (CAN/CANNOT, pre-stated): these are measured positions for one fixed enumeration order, one seed-0 train draw, one VALID draw. No claim about other seeds, example orderings, tasks, or general "sample complexity". Cross-harness canonical positions (mod 482, fact 1138228, sumto 2176534, div 4202713) differ from this harness's (2082, 1415364, 2707098, 4202709) because pin state changes the enumeration space - tables were never mixed; all comparisons here are within-harness.

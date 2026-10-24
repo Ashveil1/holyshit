@@ -10,3 +10,5 @@
 {"done_cell": ["fact", 2], "tried": 1415364, "dt": 1835.6}
 {"done_cell": ["fact", 25], "tried": 1415364, "dt": 3589.7}
 {"done_cell": ["sumto", 2], "tried": 2707098, "dt": 3682.1}
+{"done_cell": ["sumto", 25], "tried": 2707098, "dt": 4988.5}
+DONE
