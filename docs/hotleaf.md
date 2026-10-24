@@ -48,3 +48,9 @@ predicate leaves that return true/false or a comparison on separate branches.
 They lower to private machine 0/1 values and use the same guest-Bool result
 boundary. Bool arithmetic and mixed Bool/Int returns remain refused. Six
 additional literal/predicate/refusal cases bring the focused gate to 46.
+
+Unary `not` accepts admitted Int or Bool temporaries and produces a Bool. It
+uses scalar zero/nonzero truth tests; objects and Bool parameters still fall
+back before native entry. Nested negation, comparison negation and branch
+conditions preserve guest Bool identity. Bool arithmetic remains refused.
+Seven additional scalar-not cases bring the focused gate to 53.
