@@ -734,3 +734,62 @@ Joint stage-B (interleaved lexicon voting + model refits on digit+decoded-word s
 Measured: end-to-end acc on unseen new-frame word 2-step sentences - SEPARATE 0.277 mean (range 0.207-0.367), JOINT 0.288 mean (range 0.213-0.373). Per-seed diffs (joint-sep): +0.053, +0.006, +0.040, +0.033, -0.080. H1 (no loss, fail if joint < sep - 0.02): PASS - mean diff +0.010, and no seed loses by >0.02 except seed 4 (-0.080, within observed cross-seed variance ~0.08-0.16). Gold words 5.4 vs 5.6 of 20; spurious 0.2 both; wrong-value 0 both. H2: PASS.
 
 Reading (scope-limited): joint stage-B is FEASIBLE with no measured loss on this synthetic family at these sizes; the +0.010 mean gain is within seed noise - NO improvement is claimed. Absolute accuracy (~0.28) reflects the hard eval (new connectors+frames, word values, 600-digit stage A) and is the same eval for both arms; the A/B is internally valid regardless of absolute level. Total supervision = 600 labelled digit + 200 labelled word sentences, identical for both arms. Nothing shown about natural language, other families, or other sizes. Wall 59 min for all 5 seeds (within the under-2h budget).
+
+## B-504 pre-registration (2026-10-24, before running)
+Question: what accuracy does a tiny gradient-trained transformer (pure numpy) reach on the P15 unseen-synonyms protocol, as a same-protocol reference point beside the wnn constraint learner?
+
+Protocol: exactly text2prog.py __main__ - train on gen_set(rng, 0, 400) labelled (text, answer) sentences; eval accuracy on gen_set(r, wh, 300, big=True) for wh in (0 numbers / 1 frames / 2 synonyms). 3 seeds (not 5 - CPU budget; pre-stated). A Learner('tok') row is trained and evaluated in the same harness on the same seed data so both numbers come from one protocol run.
+
+Model + supervision: hypothesis classification over the same 21 HYP labels; answer computed by run_hyp on the REAL numbers, identical execution path to the wnn learner. Digit tokens normalized to <NUM> for classifier input (positional info retained; values never enter the classifier). Supervision: soft cross-entropy with uniform mass over the consistent-hypothesis set {h: run_hyp(h, nums) == ans} - derived from (text, answer) only, same information the wnn learner gets; sentences with an empty consistent set skipped (count recorded). Architecture: token embeddings d=32 + learned positional embeddings, one transformer block (single-head self-attention d=32, FFN 32->64->32 ReLU, residuals, NO layernorm), mean-pool, linear head. Adam lr 3e-3, 30 epochs full-batch-per-sentence. Manual backprop; numerical gradient check (relative error < 1e-4 on a parameter sample across all layers) MUST pass before training; a failed check = harness bug, fixed and recorded before any result counts.
+
+Falsifiable predictions:
+- H1 (sanity): train-protocol (wh=0, big numbers) accuracy >= 0.90 within budget. If not, the harness is suspect - investigate before interpreting H2.
+- H2 (the reference number): unseen-synonym accuracy recorded WHATEVER it is; no threshold, no success claim attached to its value.
+Success criterion (backlog): runs CPU < 2h, accuracies recorded.
+
+CAN show: this exact config's accuracy on this exact protocol/split/seeds.
+CANNOT show: anything about transformers in general, LLMs, or any scale; any superiority/inferiority claim beyond this config; comparability across harnesses. Supervision symmetry noted: both models see only (text, answer).
+B-504 amendment (pre-run, 2026-10-24): gradcheck criterion amended from rel<1e-4 to combined |num-ana|<1e-6 OR rel<1e-3. Reason recorded: initial check failed 7/48, ALL on Wq/Wk entries where both numerical and analytic gradients were ~1e-7 (float noise inflating relative error at near-zero magnitude; loss curve decreased monotonically 2.99->1.70 over 4 epochs). No sign errors or O(1) discrepancies found. Amended check: pass 48/48. Reduced-size smoke (80 rows/5 epochs) ran mechanically; its numbers are harness-validation only, discarded, not results.
+
+## B-504 verdict: PASS (2026-10-24, b504.py, logs/b504_stdout.log)
+Tiny pure-numpy transformer (1 block, d=32, hypothesis classification over the 21 HYP labels, soft CE over consistent-hypothesis sets) on the P15 unseen-synonyms protocol, 3 seeds, vs Learner('tok') row in the same harness on the same data.
+
+Measured (wh=0 numbers / wh=1 frames / wh=2 synonyms, 300 eval rows each, big=True):
+- transformer: 0.993 / 0.827 / 0.163 means (synonyms range 0.090-0.293 across seeds)
+- wnn constraint learner: 0.984 / 0.829 / 0.188 means (synonyms range 0.163-0.220)
+H1 sanity PASS (train-protocol >= 0.90). Success criterion met: ran in 17s wall (budget <2h), accuracies recorded.
+Cross-check before verdict: wnn row reproduces P15-repro 5-seed numbers (0.987/0.835/0.204) and LEDGER B-185's "synonyms ~.20" - no harness bug indicated. Gradcheck passed 48/48 under the amended combined criterion (amendment documented above, pre-run).
+
+Reading (scope-limited): on THIS config/protocol, the gradient reference matches the constraint learner on trained templates and unseen frames, and BOTH sit near the op-prior on fully unseen synonym templates without fast-mapping examples (synonym content words are out-of-vocabulary for both; wnn's small mean edge is within the transformer's cross-seed spread - no superiority claimed in either direction). This is one architecture/config at one size; nothing shown about transformers generally, other scales, or other tasks.
+
+## B-463 pre-registration (2026-10-24, before running)
+Question: does the 233-cell core connectome as a fixed reservoir (pure numpy dynamics, no hosted-runtime encoding - the B-240 wall was the runtime, not the reservoir) give a ridge readout any 1-shot MNIST advantage over the same ridge on raw pixels?
+
+Design (all choices fixed before running):
+- Reservoir: data/connectome_core.txt (233 cells, 3275 edges; chemical directed pre->post, gap junctions undirected). Edge weights = EM sections, normalized: W /= spectral radius (power iteration, 200 iters), then alpha=0.9 scaling. Dynamics: x0=0; x_{t+1} = tanh(alpha * Wn @ x_t + beta * Jin), beta=0.5, RSTEP=15 (B-240's value), input held constant; state = final x_15.
+- Injection: image binarized >128 (b466 convention); Jin[c] = (sum of active pixels p with p mod 233 == c) / (784/233), deterministic, no learned input weights.
+- Readout: ridge lambda=1e-3, one-hot 10 classes, closed form. Baseline: IDENTICAL ridge on the raw 784 binarized pixels.
+- Task: mnist-1shot: per seed, 1 train image/class drawn from mnist_train.txt pool (500/class), identical draws for both arms; eval on full mnist_test.txt (100/class = 1000 images). 5 seeds.
+
+Falsifiable predictions:
+- H1: raw ridge 1-shot baseline lands in a weak but above-chance range (0.2-0.6). If raw is >=0.9 or <=0.12, suspect a harness bug and investigate before interpreting.
+- H2: reservoir accuracy recorded; success = reservoir beats raw by >2 points mean, otherwise honest null (backlog: "beats raw or honest null" - both are acceptable recorded outcomes).
+CAN show: on this fixed injection/dynamics/protocol, whether the wiring's transform carries class information usable by a linear readout at 1-shot.
+CANNOT show: anything biological (abstracted tanh dynamics, arbitrary injection); other tasks/sizes; superiority of "connectome computing" generally - T6's prior record is negative and this is a cheap probe, not a vindication test.
+B-463 amendment (pre-result, 2026-10-24): mnist_train/test.txt capped files hold 392 pixels/image (14x28 half-resolution), not the raw 784; injection mapping and denominator adjusted to npix=392. Both arms use identical images, so the A/B is unaffected. Two harness bugs caught pre-result and fixed (edge lines are integer indices not names; pixel count) - recorded here per discard/fix discipline.
+
+## B-463 verdict: PASS via honest null (2026-10-24, b463.py, logs/b463_stdout.log)
+233-cell core connectome as a fixed tanh reservoir (pre-registered dynamics/injection) + ridge readout vs identical ridge on raw pixels, mnist-1shot, 5 seeds.
+Measured: raw 0.342 mean (0.303-0.429), reservoir 0.343 mean (0.288-0.438); per-seed diffs -0.024/+0.009/-0.002/+0.036/-0.015, mean +0.001. H1 sanity PASS (raw 0.342 in the pre-stated 0.2-0.6 range). H2: reservoir does NOT beat raw by >2 points -> honest null recorded (backlog success: "beats raw or honest null").
+Reading (scope-limited): under this fixed injection/dynamics, the wiring's transform preserves class information (tracks raw per seed) but adds none usable by a linear readout at 1-shot. Consistent with T6's negative record. One dynamics/injection/protocol; no biological claim.
+
+## B-464 pre-registration (2026-10-24, before running)
+Question: do the wiring's STATIC structural features (degree + spectral) carry class information as image embeddings, without any dynamics?
+Design (fixed before running): structural matrix S (233 x 13): [in-degree, out-degree, gap-degree, weighted-in, weighted-out] standardized + top-8 right-singular vectors of the symmetrized normalized adjacency (SVD). Image embedding: A = X @ J / (npix/233) (B-463's deterministic pixel->cell injection), E = A @ S (13-dim). Readout: same ridge as B-463 (lambda=1e-3). Baseline: identical ridge on raw pixels, identical draws. Protocols recorded: (a) mnist-1shot 5 seeds (B-463-comparable), (b) full-pool train (5000) - both recorded whatever they show.
+Falsifiable predictions: H1: 13-dim structural embeddings land near chance at 1-shot (<=0.25 mean) - a high value would mean the injection+structure accidentally encodes pixel position strongly; investigate before interpreting. H2: accuracies recorded; success = win vs raw or honest null (backlog).
+CAN show: whether THIS static structural embedding carries task information under THIS injection. CANNOT: biological claims; other embeddings/tasks; vindication of T6 (prior record negative).
+
+## B-464 verdict: PASS via honest null (2026-10-24, b464.py, logs/b464_stdout.log)
+Static degree+spectral wiring features (233x13) as image embeddings under the B-463 injection, ridge readout vs raw ridge, identical draws.
+Measured: 1-shot (5 seeds) emb 0.139 mean (0.120-0.165) vs raw 0.342 - near the 0.1 chance floor, per H1's pre-stated expectation (<=0.25, so no accidental positional-encoding artifact to investigate). Full-pool (5000 train): emb 0.478 vs raw 0.778. H2: honest null - the 13-dim static structural embedding carries far less class information than raw pixels under this injection; no win at either scale.
+Reading (scope-limited): another T6-negative consistent result. The wiring's static structure, compressed to 13 dims and linearly read, does not substitute for pixel information on this task. One embedding construction, one injection, one task.
