@@ -726,3 +726,4 @@ CAN show: mutual-bootstrapping feasibility and no-loss vs the staged pipeline on
 CANNOT show: general superiority; grounding beyond the constraint-voting signal; anything about natural language; generalization beyond templates/values tested. Endpoint numbers are per-harness, not comparable to other harnesses.
 
 Verdict rule: write H1/H2 outcomes exactly as measured; any harness bug found by cross-checks discards the run (commit message notes the discard).
+B-503 sizes fixed before run (b503.py, commit e01a2e7): N_DIGIT=600 stage-A digit 2-step sentences, N_WORD=200 word-substituted train sentences (pword 0.6 train / 0.7 eval, EN+TH words, values 1..10 window per P16 render), ROUNDS=4 P16-default voting rounds, N_EVAL=300 unseen new-frame sentences, 5 seeds. Probe-timing at reduced size showed 0 gold words learned (expected at n=50) and equal arms; full-size results pending.
