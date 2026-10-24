@@ -43,14 +43,15 @@ class OVR:
         Xs = (X - s.mu) / s.sd
         return (np.argmax([np.tanh(Xs @ W1 + b1) @ W2 + b2 for W1, b1, W2, b2 in s.W], 0).ravel() == Y).mean()
 
-for k in (1, 5, 20):
-    r_nn, r_ct, r_mlp = [], [], []
-    for seed in range(10):
-        r = np.random.default_rng(100 + seed)
-        idx = np.concatenate([r.choice(np.where(Ytr == c)[0], k, replace=False) for c in range(NC)])
-        Xs, Ys = Xtr[idx], Ytr[idx]
-        r_nn.append(nn_acc(Xs, Ys)); r_ct.append(cent_acc(Xs, Ys))
-        m = OVR(); m.fit(Xs, Ys); r_mlp.append(m.acc(Xte, Yte))
-    print(json.dumps({'k': k, 'nn': round(float(np.mean(r_nn)), 4), 'centroid': round(float(np.mean(r_ct)), 4),
-                      'mlp': round(float(np.mean(r_mlp)), 4)}), flush=True)
-print('DONE', flush=True)
+if __name__ == '__main__':
+    for k in (1, 5, 20):
+        r_nn, r_ct, r_mlp = [], [], []
+        for seed in range(10):
+            r = np.random.default_rng(100 + seed)
+            idx = np.concatenate([r.choice(np.where(Ytr == c)[0], k, replace=False) for c in range(NC)])
+            Xs, Ys = Xtr[idx], Ytr[idx]
+            r_nn.append(nn_acc(Xs, Ys)); r_ct.append(cent_acc(Xs, Ys))
+            m = OVR(); m.fit(Xs, Ys); r_mlp.append(m.acc(Xte, Yte))
+        print(json.dumps({'k': k, 'nn': round(float(np.mean(r_nn)), 4), 'centroid': round(float(np.mean(r_ct)), 4),
+                          'mlp': round(float(np.mean(r_mlp)), 4)}), flush=True)
+    print('DONE', flush=True)
