@@ -1,0 +1,36 @@
+hs-hosted-x86_64: OK
+load data/connectome.txt
+cells 473 connections 5914
+edges loaded 6949 (gap junctions doubled)
+
+experiment 1: anterior touch (ALML ALMR AVM) -> expect AVD (reversal)
+AVDL 0.09527298405979
+AVDR 0.04401139049728892
+PVCL 0.0
+PVCR 0.0
+AVAL 0.004494509588250383
+AVAR 0.0047108567975248
+AVBL 0.0
+AVBR 0.0
+DVA 0.0016650598195845614
+
+experiment 2: posterior touch (PLML PLMR) -> expect PVC (forward)
+AVDL 0.03204856555205086
+AVDR 0.03749049073371062
+PVCL 0.03783915774761182
+PVCR 0.051184674163078515
+AVAL 0.02279310126363251
+AVAR 0.018733559986713902
+AVBL 0.0063080216242963096
+AVBR 0.0062298978503809894
+DVA 0.0
+
+anterior touch: AVD 0.13928437455707893 PVC 0.0
+posterior touch: AVD 0.06953905628576149 PVC 0.08902383191069033
+DVA: anterior 0.0016650598195845614 posterior 0.0
+
+RESULTS (honest):
+  PASS anterior touch -> AVD dominates PVC (known fast reversal path via AVM-AVD gap junctions)
+  FAIL DVA posterior selectivity
+  PASS PVC/AVD ratio shifts toward PVC for posterior touch
+  PASS posterior touch -> PVC dominates
