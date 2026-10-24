@@ -1,0 +1,19 @@
+ARM with-double
+  teach round 1: inducing on 5 pairs...
+  teach round 1: tried=549 found=True
+  double taught=True {'round': 1, 'tried': 549, 'pairs': 8, 'confirmations': 3, 'prog': "init b=one; if (lt a b) -> a; else step (a,(add a a)); comb=('add', 'a', 0); post=id"}
+  teach round 1: inducing on 5 pairs...
+  teach round 1: tried=870 found=True
+  quad taught=True (with_double=True) {'round': 1, 'tried': 870, 'pairs': 8, 'confirmations': 3, 'prog': "init b=zero; if (lt a b) -> b; else step (a,(add a b)); comb=('add', 'a', 0); post=id"}
+C2 40/40 calls_double False
+ARM ablated
+  teach round 1: inducing on 5 pairs...
+  teach round 1: tried=549 found=True
+  double taught=True {'round': 1, 'tried': 549, 'pairs': 8, 'confirmations': 3, 'prog': "init b=one; if (lt a b) -> a; else step (a,(add a a)); comb=('add', 'a', 0); post=id"}
+  teach round 1: inducing on 5 pairs...
+  teach round 1: tried=870 found=True
+  quad taught=True (with_double=False) {'round': 1, 'tried': 870, 'pairs': 8, 'confirmations': 3, 'prog': "init b=zero; if (lt a b) -> b; else step (a,(add a b)); comb=('add', 'a', 0); post=id"}
+C4 {'even': '160/160', 'sumto': '160/160', 'square': '160/160', 'choose2': '160/160', 'double': '40/40'}
+  teach round 1: inducing on 5 pairs...
+  teach round 1: tried=549 found=True
+  teach round 1: inducing on 5 pairs...
