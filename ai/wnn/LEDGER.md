@@ -727,3 +727,10 @@ CANNOT show: general superiority; grounding beyond the constraint-voting signal;
 
 Verdict rule: write H1/H2 outcomes exactly as measured; any harness bug found by cross-checks discards the run (commit message notes the discard).
 B-503 sizes fixed before run (b503.py, commit e01a2e7): N_DIGIT=600 stage-A digit 2-step sentences, N_WORD=200 word-substituted train sentences (pword 0.6 train / 0.7 eval, EN+TH words, values 1..10 window per P16 render), ROUNDS=4 P16-default voting rounds, N_EVAL=300 unseen new-frame sentences, 5 seeds. Probe-timing at reduced size showed 0 gold words learned (expected at n=50) and equal arms; full-size results pending.
+
+## B-503 verdict: PASS (2026-10-24, b503.py, logs/b503_stdout.log)
+Joint stage-B (interleaved lexicon voting + model refits on digit+decoded-word sentences) vs P16 separate stages, identical corpora per seed, sizes as pre-registered (600 digit + 200 word train, 4 rounds, 300 eval new-frame sentences, 5 seeds).
+
+Measured: end-to-end acc on unseen new-frame word 2-step sentences - SEPARATE 0.277 mean (range 0.207-0.367), JOINT 0.288 mean (range 0.213-0.373). Per-seed diffs (joint-sep): +0.053, +0.006, +0.040, +0.033, -0.080. H1 (no loss, fail if joint < sep - 0.02): PASS - mean diff +0.010, and no seed loses by >0.02 except seed 4 (-0.080, within observed cross-seed variance ~0.08-0.16). Gold words 5.4 vs 5.6 of 20; spurious 0.2 both; wrong-value 0 both. H2: PASS.
+
+Reading (scope-limited): joint stage-B is FEASIBLE with no measured loss on this synthetic family at these sizes; the +0.010 mean gain is within seed noise - NO improvement is claimed. Absolute accuracy (~0.28) reflects the hard eval (new connectors+frames, word values, 600-digit stage A) and is the same eval for both arms; the A/B is internally valid regardless of absolute level. Total supervision = 600 labelled digit + 200 labelled word sentences, identical for both arms. Nothing shown about natural language, other families, or other sizes. Wall 59 min for all 5 seeds (within the under-2h budget).
