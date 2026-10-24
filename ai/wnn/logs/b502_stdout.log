@@ -1,0 +1,2 @@
+{"setup": {"ops": ["add", "sub", "mod", "mul", "div", "power", "gcd", "max", "min"], "n_E1": 112, "U": [["add", "a", "b"], ["add", "a", "one"], ["add", "b", "one"], ["mod", "b", "a"], ["mul", "b", "a"], ["power", "a", "b"], ["sub", "a", "b"], ["sub", "a", "one"], ["sub", "b", "one"]], "n_mined": 729, "n_deep": 120960, "absdiff_fragment_in_mined": false}}
+{"task": "absdiff", "seed": 0, "arm": "A_mined_only", "found": false, "tried": 6002880, "dt": 10893.7, "prog": null, "gen": null, "n_bases": 845}
