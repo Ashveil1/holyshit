@@ -28,14 +28,30 @@ with tempfile.TemporaryDirectory() as temp:
     if rescue.returncode:
         raise AssertionError('grub-mkrescue failed: '+rescue.stderr.decode(errors='replace')[-4000:])
     serial=d/'serial';monitor=d/'monitor';screen=d/'screen.ppm'
-    p=subprocess.Popen([qemu,'-cdrom',str(iso),'-boot','d','-m','256M','-serial','file:'+str(serial),'-display','none','-monitor','unix:'+str(monitor)+',server=on,wait=off'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    qerr=d/'qemu.stderr'
+    qerrfile=qerr.open('wb')
+    p=subprocess.Popen([qemu,'-cdrom',str(iso),'-boot','d','-m','256M','-serial','file:'+str(serial),'-display','none','-monitor','unix:'+str(monitor)+',server=on,wait=off'],stdout=subprocess.DEVNULL,stderr=qerrfile)
     try:
         deadline=time.monotonic()+45
         while time.monotonic()<deadline:
             if serial.exists() and 'FIXED SESSION READY' in serial.read_text(errors='replace'):break
             if p.poll() is not None:raise AssertionError('QEMU exited before framebuffer ready')
             time.sleep(.1)
-        assert serial.exists() and 'FIXED SESSION READY' in serial.read_text(errors='replace'),'no framebuffer ready serial marker'
+        if not serial.exists() or 'FIXED SESSION READY' not in serial.read_text(errors='replace'):
+            evidence=os.environ.get('HS_GUI_EVIDENCE')
+            if evidence:
+                evidence=Path(evidence);evidence.mkdir(parents=True,exist_ok=True)
+                if serial.exists():shutil.copyfile(serial,evidence/'serial.txt')
+                shutil.copyfile(qerr,evidence/'qemu.stderr')
+                try:
+                    diagnostic=socket.socket(socket.AF_UNIX);diagnostic.settimeout(5)
+                    diagnostic.connect(str(monitor));diagnostic.recv(4096)
+                    diagnostic.sendall(('screendump '+str(evidence/'boot-failure.ppm')+'\n').encode())
+                    time.sleep(1);diagnostic.close()
+                except OSError as error:print('boot screenshot unavailable:',error)
+            raise AssertionError('no framebuffer ready serial marker; serial='+
+                                 (serial.read_text(errors='replace')[-2000:] if serial.exists() else '<absent>')+
+                                 '; qemu='+qerr.read_text(errors='replace')[-2000:])
         sock=socket.socket(socket.AF_UNIX);sock.settimeout(5);sock.connect(str(monitor));sock.recv(4096)
         def cursor_at(column):
             screen.unlink(missing_ok=True)
@@ -133,4 +149,4 @@ with tempfile.TemporaryDirectory() as temp:
             shutil.copyfile(screen,os.environ['HS_TEST_SCREENSHOT'])
         print('5/5 fixed-buffer console gates (native image, transcript, text pixels, cursor capacity/backspace/reset boundaries)')
     finally:
-        p.kill();p.wait()
+        p.kill();p.wait();qerrfile.close()
