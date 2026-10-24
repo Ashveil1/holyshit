@@ -41,9 +41,18 @@ with tempfile.TemporaryDirectory() as temp:
         time.sleep(3)
         boot.sendall(b'sendkey ret\n');boot.recv(4096);boot.close()
         deadline=time.monotonic()+45
+        next_boot_select=time.monotonic()+5
         while time.monotonic()<deadline:
             if serial.exists() and 'FIXED SESSION READY' in serial.read_text(errors='replace'):break
             if p.poll() is not None:raise AssertionError('QEMU exited before framebuffer ready')
+            if time.monotonic() >= next_boot_select:
+                # Slow runners can still be in firmware at the first Enter.
+                # Retry only before any kernel serial output, at most 9 times.
+                if not serial.exists() or serial.stat().st_size == 0:
+                    select=socket.socket(socket.AF_UNIX);select.settimeout(5)
+                    select.connect(str(monitor));select.recv(4096)
+                    select.sendall(b'sendkey ret\n');select.recv(4096);select.close()
+                next_boot_select=time.monotonic()+5
             time.sleep(.1)
         if not serial.exists() or 'FIXED SESSION READY' not in serial.read_text(errors='replace'):
             evidence=os.environ.get('HS_GUI_EVIDENCE')
