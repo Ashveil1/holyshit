@@ -107,5 +107,5 @@ def link(p, stack_patch):
   text = text + zero(gdt_off - 116 - len(text)) + gdt + gdt_ptr
   text = text + zero(pay_off - 116 - len(text)) + code
   file_data = data + zero(tbl_off - dat_off - len(data)) + tables
-  header = [127, 69, 76, 70, 1, 1, 1] + zero(9) + elf.u16(2) + elf.u16(3) + elf.u32(1) + elf.u32(BASE + boot_off) + elf.u32(52) + elf.u32(0) + elf.u32(0) + elf.u16(52) + elf.u16(32) + elf.u16(2) + zero(6)
-  return header + ph(0, dat_off, 5) + ph(dat_off, len(file_data), 6) + text + file_data
+  header = [127, 69, 76, 70, 1, 1, 1] + zero(9) + elf.u16(2) + elf.u16(3) + elf.u32(1) + elf.u32(BASE + boot_off) + elf.u32(52) + elf.u32(dat_off + len(file_data)) + elf.u32(0) + elf.u16(52) + elf.u16(32) + elf.u16(2) + elf.u16(40) + elf.u16(1) + elf.u16(0)
+  return header + ph(0, dat_off, 5) + ph(dat_off, len(file_data), 6) + text + file_data + zero(40)

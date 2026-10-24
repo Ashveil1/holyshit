@@ -65,3 +65,8 @@ Full CI installs GRUB/xorriso and runs the fixed-console boot regression with
 `HS_REQUIRE_GUI=1` before the full suite. Missing tools fail that required step
 instead of silently skipping. Local runs without the flag still skip when
 optional dependencies are absent. This changes CI coverage, not hardware support.
+
+The ELF32 wrapper includes an explicit NULL section table after its loadable
+segments. Modern GRUB treats a zero section count as an extended-count marker
+and rejects the older sectionless wrapper. The hs and Python linkers retain
+identical load addresses and complete image bytes, including this metadata.
