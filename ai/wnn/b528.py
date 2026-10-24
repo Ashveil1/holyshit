@@ -28,15 +28,17 @@ def learn_pairs(sents):
 
 def select(C, P, name, r, gate, sham_rng=None):
     cands = list(combinations(ATTRS, r))
-    if gate == 'sham':
+    if gate in ('gc', 'gc_sham'):  # Amendment 1: supported-only candidates first
+        cands = [c for c in cands if all(C[name][a] > 0 for a in c)]
+    if gate in ('sham', 'gc_sham'):
         t = sum(1 for c in cands if P[name].get(c, 0) > 0)
         depressed = set(sham_rng.sample(cands, min(t, len(cands))))
     best, bestsc = None, -1
     for c in cands:
         strength = sum(C[name][a] for a in c)
-        if gate == 'on':
+        if gate in ('on', 'gc'):
             sc = strength / (1 + BETA * P[name].get(c, 0))
-        elif gate == 'sham':
+        elif gate in ('sham', 'gc_sham'):
             sc = strength / (1 + BETA * (1 if c in depressed else 0))
         else:
             sc = strength
@@ -49,8 +51,8 @@ def run(sd, q=8):
     corpus = set(sents)
     C, P = learn_pairs(sents)
     out = {'seed': sd}
-    for gate in ('off', 'on', 'sham'):
-        sham_rng = random.Random(7000 + sd) if gate == 'sham' else None
+    for gate in ('off', 'on', 'sham', 'gc', 'gc_sham'):
+        sham_rng = random.Random(7000 + sd) if gate in ('sham', 'gc_sham') else None
         P3 = R3 = nov = 0
         for name, true_attrs in ANIMALS.items():
             top2 = select(C, P, name, 2, gate, sham_rng)
