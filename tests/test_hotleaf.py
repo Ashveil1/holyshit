@@ -54,6 +54,15 @@ cases.extend([
  ('bool-literal-arithmetic','def f(n):\n  return n + true\ntry:\n  print f(2)\nexcept:\n  print "caught"\n',1,0,0,0),
  ('bool-literal-mixed-return','def f(n):\n  if n < 0:\n    return false\n  return 0\nprint f(-1)\nprint f(1)\n',1,0,0,0),
 ])
+cases.extend([
+ ('not-int','def f(n):\n  return not n\nprint f(0)\nprint f(1)\nprint f(-2)\nprint f(-536870912)\n',1,1,4,0),
+ ('not-comparison','def f(n):\n  return not (n < 3)\nprint f(2)\nprint f(3)\n',1,1,2,0),
+ ('not-double','def f(n):\n  return not not n\nprint json_str([f(0), f(-2)])\n',1,1,2,0),
+ ('not-constant','def f():\n  return not true\nprint f()\n',1,1,1,0),
+ ('not-branch','def f(n):\n  if not n:\n    return 7\n  return n\nprint f(0)\nprint f(2)\n',1,1,2,0),
+ ('not-type-fallback','def f(n):\n  return not n\nprint f(0)\nprint f("")\nprint f([])\nprint f(true)\nprint f(2)\n',1,1,2,3),
+ ('not-arithmetic-rejected','def f(n):\n  return (not n) + 1\ntry:\n  print f(0)\nexcept:\n  print "caught"\n',1,0,0,0),
+])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
  source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'

@@ -87,9 +87,11 @@ def plan(fn):
         elif ins["binop"] not in ["+", "-", "*"]:
           return null
       elif op == "un":
-        if ins["unop"] != "neg" or ins["v"] not in have:
+        if ins["v"] not in have:
           return null
-        if types[ins["v"]] != "Int":
+        if ins["unop"] == "not":
+          ty = "Bool"
+        elif ins["unop"] != "neg" or types[ins["v"]] != "Int":
           return null
       else:
         return null
@@ -154,7 +156,12 @@ def compile_leaf(fn, p):
           asm.mov_ri64("rax", int(ins["val"]))
         elif op == "un":
           asm.mov_rm("rax", "rbp", 0 - p[1][ins["v"]])
-          asm.neg_r("rax")
+          if ins["unop"] == "not":
+            asm.cmp_ri32("rax", 0)
+            asm.setcc_al("e")
+            asm.movzx_eax_al()
+          else:
+            asm.neg_r("rax")
         else:
           asm.mov_rm("rax", "rbp", 0 - p[1][ins["l"]])
           asm.mov_rm("rcx", "rbp", 0 - p[1][ins["r"]])
