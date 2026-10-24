@@ -1194,3 +1194,12 @@ Criteria (pre-stated):
 - C5 garbage control on quad teaching (memoized random mapping, same budget): no skill stored.
 FAIL recording: budget/round-cap exhaustion recorded with tried counts; frame changes mid-run are an amendment.
 CAN claim if PASS: dialog-taught procedures accumulate as reusable primitives and later teaching is measurably cheaper because of earlier taught knowledge (ablation-credited). CANNOT: semantic understanding of the procedures; anything beyond designed frames + numeric DSL; complete integration (B-529 Correction 1 boundaries stand).
+## B-530 verdict (2026-10-24) - FAIL on C3 (reuse bar not met); composition taught but shows no measured value at this depth
+Pre-reg 2026-10-24. Harness b530.py, log logs/b530_comp.log. Verdict json: FAIL (c1,c2,c4,c5 true; c3 false).
+- C1 both skills taught through dialog only: double (tried=549) then quad (tried=870), 8 supervision pairs each.
+- C2 quad accuracy 40/40 unseen through the sentence path.
+- C3 FAIL: tried(quad | double in LIB) = 870 == tried(quad | double ablated) = 870, and the SAME program was found in both arms ("init b=zero; if (lt a b) -> b; else step (a,(add a b)); comb=('add','a',0); post=id"), which does not call double (calls_double False). No reuse value measured.
+- C4 no interference: seeded 160/160 x4, double 40/40, attribute battery exact.
+- C5 garbage quad teacher: induction exhausted at tried=700,001, nothing stored.
+Mechanism (measurement-design lesson, pre-reg lesson #6 pattern): cur7's enumeration order places a newly added LIB primitive's candidates AFTER the base-space candidates. quad's winning program sits at position 870 in the base enumeration, before any double-involving candidate is reached, so for shallow targets the reuse arm can never show a tried saving under this protocol - the C3 bar was unreachable by construction for this target, not refuted behaviorally. The reuse hypothesis needs a target whose DIRECT search is deep (near cap), where a primitive-using candidate can win by being found earlier than the deep direct one.
+Record: compositional teaching itself WORKS (a second skill was taught through dialog on top of an accumulated library, no interference); only the measured-value claim fails at this depth.

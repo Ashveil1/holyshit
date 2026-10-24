@@ -17,3 +17,7 @@ C4 {'even': '160/160', 'sumto': '160/160', 'square': '160/160', 'choose2': '160/
   teach round 1: inducing on 5 pairs...
   teach round 1: tried=549 found=True
   teach round 1: inducing on 5 pairs...
+  teach round 1: tried=700001 found=False
+C5 False {'fail': 'induction exhausted', 'round': 1, 'tried': 700001, 'pairs': 5, 'confirmations': 0}
+{"verdict": "FAIL", "c1": true, "c2": true, "c3": false, "c4": true, "c5": true, "c1_double": {"round": 1, "tried": 549, "pairs": 8, "confirmations": 3, "prog": "init b=one; if (lt a b) -> a; else step (a,(add a a)); comb=('add', 'a', 0); post=id"}, "c1_quad": {"round": 1, "tried": 870, "pairs": 8, "confirmations": 3, "prog": "init b=zero; if (lt a b) -> b; else step (a,(add a b)); comb=('add', 'a', 0); post=id"}, "c2_quad_accuracy": "40/40", "quad_prog": "init b=zero; if (lt a b) -> b; else step (a,(add a b)); comb=('add', 'a', 0); post=id", "quad_calls_double": false, "c3_ablated_quad": {"ok": true, "round": 1, "tried": 870, "pairs": 8, "confirmations": 3, "prog": "init b=zero; if (lt a b) -> b; else step (a,(add a b)); comb=('add', 'a', 0); post=id"}, "c3_tried": {"with_double": 870, "ablated": 870}, "c4_seeded": {"even": "160/160", "sumto": "160/160", "square": "160/160", "choose2": "160/160", "double": "40/40"}, "c4_attr_battery": {"abstain": "13/13", "unique": "32/32", "ambig": "22/22", "unk_flag": "32/32", "unk_valid": "32/32"}, "c5_garbage_quad": {"stored": false, "fail": "induction exhausted", "round": 1, "tried": 700001, "pairs": 5, "confirmations": 0}}
+DONE
