@@ -231,7 +231,7 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
         f.write('m = irbuild.build_module(normalize.parse(source), "")\n')
         f.write('a = irinterp.create(m, ' + repr(module_dir).replace("'", '"') + ')\n')
         f.write('b = irinterp.create(m, ' + repr(module_dir).replace("'", '"') + ')\n')
-        f.write('irinterp.run(a)\nirinterp.run(b)\nirinterp.run(a)\n')
+        f.write('irinterp.run(a)\nassert len(keys(b["funcs"])) == len(m["order"])\nassert len(keys(m["funcs"])) == len(m["order"])\nirinterp.run(b)\nirinterp.run(a)\n')
     unit_exe = os.path.join(d, "states")
     r = subprocess.run(builder + [unit, unit_exe], capture_output=True, timeout=600, env=_BASE_ENV)
     total += 1
