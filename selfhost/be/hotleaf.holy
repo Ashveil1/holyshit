@@ -73,7 +73,9 @@ def plan(fn):
         if ins["name"] not in fn["params"]:
           return null
       elif op == "const":
-        if not small(ins["val"]):
+        if pyrt.py_type(ins["val"]) == "bool":
+          ty = "Bool"
+        elif not small(ins["val"]):
           return null
       elif op == "bin":
         if ins["l"] not in have or ins["r"] not in have:
@@ -149,7 +151,7 @@ def compile_leaf(fn, p):
             idx = idx + 1
           asm.mov_rm("rax", "rdi", idx * 8)
         elif op == "const":
-          asm.mov_ri64("rax", ins["val"])
+          asm.mov_ri64("rax", int(ins["val"]))
         elif op == "un":
           asm.mov_rm("rax", "rbp", 0 - p[1][ins["v"]])
           asm.neg_r("rax")
