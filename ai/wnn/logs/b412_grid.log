@@ -1,0 +1,16 @@
+{"task": "mnist", "mlp": 0.9298}
+{"task": "mnist", "tuple": 8, "bleach_off": 0.3001, "bleach_on": 0.7982, "sec": 6.2}
+{"task": "mnist", "tuple": 16, "bleach_off": 0.7268, "bleach_on": 0.8675, "sec": 3.3}
+{"task": "mnist", "tuple": 32, "bleach_off": 0.9204, "bleach_on": 0.926, "sec": 1.9}
+{"task": "mnist", "tuple": 64, "bleach_off": 0.8751, "bleach_on": 0.8821, "sec": 1.7}
+{"task": "pmnist", "mlp": 0.9264}
+{"task": "pmnist", "tuple": 8, "bleach_off": 0.2826, "bleach_on": 0.8055, "sec": 5.5}
+{"task": "pmnist", "tuple": 16, "bleach_off": 0.7023, "bleach_on": 0.8689, "sec": 2.9}
+{"task": "pmnist", "tuple": 32, "bleach_off": 0.9153, "bleach_on": 0.9277, "sec": 1.3}
+{"task": "pmnist", "tuple": 64, "bleach_off": 0.8766, "bleach_on": 0.8848, "sec": 1.0}
+{"task": "snips", "mlp": 0.5129}
+{"task": "snips", "tuple": 8, "bleach_off": 0.7571, "bleach_on": 0.8471, "sec": 1.3}
+{"task": "snips", "tuple": 16, "bleach_off": 0.7586, "bleach_on": 0.8514, "sec": 0.7}
+{"task": "snips", "tuple": 32, "bleach_off": 0.7814, "bleach_on": 0.8643, "sec": 0.4}
+{"task": "snips", "tuple": 64, "bleach_off": 0.8043, "bleach_on": 0.8929, "sec": 0.3}
+DONE

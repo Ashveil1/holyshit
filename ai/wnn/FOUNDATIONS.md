@@ -65,7 +65,7 @@ https://arxiv.org/abs/1604.00289 (DOI: https://doi.org/10.1017/S0140525X16001837
 ## Hebb 1949, Hinton (distributed representations)
 https://princetonuniversity.github.io/NEU-PSY-502/_static/pdf/Class%203/Hebb1949.pdf
 - [fact] Correlation-based strengthening; assemblies as representation units. Hinton: representation in distributed patterns.
-- [interp] Are we a partial instance? P3 Hebbian association (+18% cross-pathway) and HDC vectors are direct instances. No new proposal; the connectome line stays low-priority after P5's honest negative.
+- [interp] Are we a partial instance? P3/P4 cross-pathway association (+18%; later shown STD-mediated not Hebbian - LEDGER B-505) and HDC vectors are direct instances. No new proposal; the connectome line stays low-priority after P5's honest negative.
 
 # Top concrete proposals (ranked by evidence x cheapness)
 1. F-7 priors/experience audit + frozen eval pack (S, process; makes every future claim Chollet-proof)

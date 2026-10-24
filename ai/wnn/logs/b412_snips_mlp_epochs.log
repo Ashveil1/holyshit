@@ -1,0 +1,4 @@
+{"snips_mlp_epochs": 100, "acc": 0.5436}
+{"snips_mlp_epochs": 200, "acc": 0.5543}
+{"snips_mlp_epochs": 400, "acc": 0.5664}
+DONE

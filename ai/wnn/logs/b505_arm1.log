@@ -1,0 +1,43 @@
+hs-hosted-x86_64: OK
+mode 1 (0 no-reward, 1 reward, 2 reward-unpaired)
+T1: tap habituation (30 taps: ALM+AVM 5 steps on / 25 off)
+tap 1 AVD response (2-step transient) 0.0933406962203451
+tap 2 AVD response (2-step transient) 0.08074031850305029
+tap 3 AVD response (2-step transient) 0.08111703938209273
+tap 4 AVD response (2-step transient) 0.08127484545310473
+tap 5 AVD response (2-step transient) 0.08131258782588618
+tap 6 AVD response (2-step transient) 0.0813204437598441
+tap 7 AVD response (2-step transient) 0.08132202962796342
+tap 8 AVD response (2-step transient) 0.08132234774761941
+tap 9 AVD response (2-step transient) 0.08132241148014369
+tap 10 AVD response (2-step transient) 0.08132242424515271
+tap 11 AVD response (2-step transient) 0.08132242680173055
+tap 12 AVD response (2-step transient) 0.08132242731375706
+tap 13 AVD response (2-step transient) 0.08132242741630454
+tap 14 AVD response (2-step transient) 0.08132242743684248
+tap 15 AVD response (2-step transient) 0.08132242744095583
+tap 16 AVD response (2-step transient) 0.08132242744177957
+tap 17 AVD response (2-step transient) 0.0813224274419446
+tap 18 AVD response (2-step transient) 0.08132242744197762
+tap 19 AVD response (2-step transient) 0.08132242744198424
+tap 20 AVD response (2-step transient) 0.0813224274419856
+tap 21 AVD response (2-step transient) 0.08132242744198588
+tap 22 AVD response (2-step transient) 0.08132242744198592
+tap 23 AVD response (2-step transient) 0.0813224274419859
+tap 24 AVD response (2-step transient) 0.0813224274419859
+tap 25 AVD response (2-step transient) 0.0813224274419859
+tap 26 AVD response (2-step transient) 0.0813224274419859
+tap 27 AVD response (2-step transient) 0.0813224274419859
+tap 28 AVD response (2-step transient) 0.0813224274419859
+tap 29 AVD response (2-step transient) 0.0813224274419859
+tap 30 AVD response (2-step transient) 0.0813224274419859
+rest 300 steps...
+after rest, AVD response 0.14294946367556688
+SHOCK (strong widespread sensory stimulation)
+after shock, AVD response 0.13677916494506304
+
+T2: association - pair ALM+PLM 15x, then test ALM alone
+before pairing, ALM -> PVC: 0.010007971046793698
+diag: max|wpl-1| 0.16339070497277408  min dep 0.15183292504263107
+after pairing, ALM -> PVC: 0.011789021186477153
+(if after > before, ALM now activates the PLM pathway: association formed)

@@ -819,3 +819,74 @@ Literature-grounded signed annotation of the P0 tap-circuit sim vs the unsigned 
 - Signed v1 (blanket per-cell touch inhibition): check 4 fixed but BROKE check 2 (DVA posterior 0.0) - the pre-registered sign-table-suspect case. Investigation: DVA's dominant touch input is direct PLM chemical synapses (9+19 sections) and the literature describes PLM->DVA as activity-maintaining; the inhibitory prediction covers touch->antagonist-command-interneuron edges only (Chalfie et al 1985). Recorded as amendment 1.
 - Signed v2 (amendment 1: per-edge antagonist-only touch signs; RIM measured / AIY ablation-inferred blanket): 4/4 PASS. Posterior: PVC 0.0853 > AVD 0.0608; anterior: AVD 0.131 > PVC 0.0; DVA posterior/anterior = 20x. Checks byte-identical to worm.holy's.
 Reading (scope-limited): the Chalfie/Wicks-Rankin sign proposal SUFFICES for all 4 aggregate behavioral checks in this linear-threshold sim, where the unsigned model structurally could not (its divisive normalization stand-in couldn't flip posterior dominance). Evidence classes: GABA + RIM measured, touch model-inferred, AIY ablation-inferred - this is consistency with literature, not biological validation of the signs. One documented amendment round (v1 failure + mechanism + v2) is part of the record, not tuning. Effect direction sanity: anterior AVD/PVC asymmetry unchanged in kind from unsigned (gap-junction path), posterior flip driven by the antagonist-edge signs.
+
+## B-505 pre-registration (2026-10-24, before running)
+Question: does reward-GATED plasticity beat ungated Hebbian growth for tap-circuit association learning?
+
+Substrate decision (pre-stated): the GRADED plastic sim (worm_plastic.holy, P4), NOT worm_spike.holy - the spiking variant is a documented bistable dead-end (README). Naming caveat: this is graded eligibility-gated timing-dependent plasticity, not spiking STDP.
+
+Variant worm_reward.holy = worm_plastic.holy with ONE plasticity change: the Hebbian line (wpl += 0.002*apre*apost when both > 0.1) becomes two-factor - eligibility e[k] += 0.002*apre*apost on co-activation, e[k] *= 0.99 every step for every chemical edge, and wpl[k] = clamp(wpl[k] + e[k], 0.2, 3.0), e[k] = 0 ONLY on reward-flag steps. Reward is an ABSTRACT global consolidation gate (neuromodulatory stand-in; no biological routing claimed). Everything else byte-identical, including the T1 habituation phase that precedes T2.
+
+Arms (same program, argv-selected, identical T1+T2 schedule):
+(a) reward: pairing (ALM+PLM 15x, 5 on / 25 off) with reward flag on the first 5 off-steps after each pairing.
+(b) no-reward: identical pairings, reward never fires (baseline; backlog's "no reward").
+(c) reward-unpaired control: same total ALM and PLM stimulation temporally separated (PLM shifted to off-steps 15-19), same reward schedule - reward alone must not create the association.
+Metric: T2's ALM-alone -> PVC (PVCL+PVCR) response, before vs after.
+Reference: plain-Hebbian worm_plastic.holy re-measured in-harness TODAY: before 0.010011, after 0.011790 = +17.8% (matches the recorded +18%).
+
+Falsifiable predictions:
+- H1 DONE (sanity): plain Hebbian re-measures +15..+20%. Measured +17.8% - PASS.
+- H2 (internal validity): delta(a) > delta(b) AND delta(a) > delta(c).
+- H3 (backlog PASS bar): delta(a) > +17.8% relative (beats the ungated Hebbian reference).
+If H2 holds but H3 fails: partial - gating works but does not beat ungated Hebbian. If delta(a) < delta(b): reward gating HURTS - record honestly. Absolute values are tiny (~0.01); relative change is the metric throughout; note the small-signal caveat in the verdict.
+CAN show: whether a consolidation gate helps association in THIS graded sim/protocol. CANNOT: neuromodulator biology (abstract flag); other circuits; spiking-STDP claims.
+
+## B-505 verdict: FAIL on the backlog bar, with a load-bearing CORRECTION to the P4 record (2026-10-24, worm_reward.holy, logs/b505_arm{0,1,2}.log)
+Pre-registered 3-arm test of reward-gated eligibility consolidation vs ungated Hebbian, T2 association metric, identical T1+T2 schedule.
+
+Measured (ALM-alone -> PVC before -> after pairing):
+- plain Hebbian (worm_plastic.holy, H1 sanity): 0.010011 -> 0.011790 = +17.8% (reproduces recorded +18%)
+- (a) reward-gated: 0.010008 -> 0.011789 = +17.8%; max|wpl-1| = 0.163 (consolidation FIRED)
+- (b) no-reward gated: 0.010008 -> 0.011789 = +17.8%; max|wpl-1| = 0.0 (consolidation NEVER fired, as designed)
+- (c) reward-unpaired control: 0.010008 -> 0.007592 = -24.1%; dep trajectory differs
+H2 FAILS ((a) equals (b) to 5 decimals); H3 FAILS ((a) does not exceed the +17.8% reference).
+
+CORRECTION (recorded per failure-logging discipline): the T2 "+18% cross-pathway association" is NOT Hebbian. With Hebbian growth switched off entirely (arm b: eligibility never consolidates, wpl frozen at init), the same protocol yields the identical +17.8%. The signal is STD(dep)-state-mediated (depressed-then-recovering synapses at measurement time; the unpaired control's different dep trajectory gives -24%). Conversely, reward-gated consolidation WORKS mechanically (arm a grew wpl to +0.163 max, arm b exactly 0) but the grown weights do not move this metric at these gains. README.md and FOUNDATIONS.md lines attributing the +18% to Hebbian association are corrected to point here.
+Scope: this graded sim, this metric, these gains. It does NOT show reward gating useless generally (the consolidated 0.163 may matter at other gains/metrics), and it does not dispute that worm_plastic.holy's Hebbian line compiles and grows weights - only that the published +18% T2 number was never caused by it.
+
+## B-486/489/492 pre-registration (2026-10-24, before running)
+Question: complete the snips few-shot grid rows for the wiSARD readout (shots 1/5/20) - the only missing readout x task cells in the B-466..B-492 family (mnist/pmnist wiSARD rows triaged to B-241 cells or measured in b467).
+Design: EXACTLY b468.py's snips protocol (4096-bit hashed unigram+bigram features, k shots/intent drawn with rng 100+seed, 10 seeds, 7 intents, full test set) with one added arm: wiSARD over the same bit vectors - fixed per-seed random permutation of the 4096 bits reshaped to 128 tuples of 32 bits (int64 dot with 1<<arange(32), no collisions below 2^32), per-class per-position observed-value sets, score = tuple-membership count, argmax. Baseline: b468's OVR MLP (same shots), already measured - re-measured in the same harness for paired comparison.
+Falsifiable predictions: H1 (sanity): re-measured nn/centroid/mlp rows match b468's logged values within seed noise (same code path; mismatch = harness bug). H2: wiSARD accuracies recorded whatever they are; success per backlog = retention/acc gap recorded.
+CAN show: wiSARD few-shot intent classification on these hashed features at k=1/5/20 vs the same-shots MLP. CANNOT: other featureings/tupleings; NLP claims.
+
+## B-486/489/492 triage (2026-10-24) - cells already measured by B-495; cross-check run confirms
+
+The snips WiSARD few-shot rows at shots 1/5/20 are exactly the WiSARD arm of B-495 (same data, same features, same seed set 100..109): .3471 / .8307 / .8936 vs MLP .148/.145/.150 (B-468, same shots) - gaps +19.9 / +68.6 / +74.4 pt over MLP; vs NB .6044/.8580/.9423 (B-495): loses at every k. Backlog items checked off as triaged (same pattern as B-484/487/490 -> B-241).
+Pre-registered cross-check (b486.py, pre-reg above): b468's protocol re-run with an alternative tuple layout (rng(400+seed), 128x32-bit tuples vs B-495's rng(0) 146x28-bit). Sanity H1 PASS: re-measured 1nn/centroid/MLP rows reproduce b468's logged values to 4 decimals at all k. WiSARD alt-layout .3473/.8043/.8931 - consistent with B-495 within tuple-layout noise (max deviation 2.6 pt at k=5). No new claim; the B-495 numbers remain the grid cells of record.
+
+## B-412..B-434 pre-registration (2026-10-24, before running) - WiSARD tuple-size x bleaching grid, full-data, 3 tasks
+
+Question (24 cells: tuple {8,16,32,64} x bleach {off,on} x task {mnist,pmnist,snips}; B-411/B-414 triaged from B-236's first attempt and re-confirmed or corrected in-grid): full-data WiSARD accuracy as a function of tuple grain and bleaching, vs a same-harness MLP baseline. "Retention gap" in the backlog lines is covered by the continual cells (B-467/493/494); this grid's criterion is the accuracy cell criterion only.
+Design (b412.py):
+- Data: mnist = t5wisard binarized 784-bit (60k/10k); pmnist = same with ONE fixed pixel permutation rng(12345) applied to train+test (single-task permuted MNIST; pre-stated: MLP is invariant to a fixed permutation, WiSARD tuple membership is not); snips = b468's 4096-bit hashed uni+bigram (2100/700).
+- WiSARD: tuple layout rng(0).permutation(B)[:NT*s].reshape(NT,s), NT = B//s (784: 98/49/24/12 positions; 4096: 512/256/128/64). Per class per position: value->count dict (one pass over full train).
+- Bleach off: score_c = #positions with count >= 1. Ties: numpy argmax (lowest index) - pre-stated.
+- Bleach on: standard bleaching - score_c(b) = #positions with count >= b; raise b from 1 until each sample's argmax is unique or b > 64 (pre-stated cap; ties at cap -> lowest index).
+- MLP baseline (same harness, one recipe pre-stated for all tasks): tanh MLP B-64-C softmax, minibatch SGD batch 256 lr 0.1, 10 epochs (mnist/pmnist, 60k train) / 50 epochs (snips, 2100 train), 2 seeds, mean. NOT the B-241 few-shot OVR recipe (full-data OVR 800ep is compute-infeasible in numpy); this is a stated, ordinary MLP.
+Criterion per cell (pre-stated): WiSARD cell PASSES if its acc >= MLP acc - 0.03 on that task, else FAILS. All 24 numbers reported; honest FAILs recorded (B-411's tuple-8 mnist FAIL expectation carried in).
+Pre-stated expectations (NOT criteria): (a) tuple-8 mnist bleach-off reproduces the ~.30 saturation (B-411); (b) bleaching rescues small-tuple saturation via counts; (c) 16-32-bit tuples near B-236's .9115 grain are best on mnist; (d) at tuple-64 counts are mostly 0/1 so bleach ~= presence.
+CAN show: tuple-grain/bleaching viability map on these 3 tasks with these encodings vs this MLP. CANNOT: optimal WiSARD design generally; other encodings; comparisons to tuned deep nets.
+
+## B-412..B-434 verdicts (2026-10-24) - tuple-32 is the viable grain on image bits; bleaching rescues small tuples; snips cells all PASS vs the small MLP
+
+logs/b412_grid.log. MLP baselines (pre-registered recipe): mnist .9298, pmnist .9264, snips .5129. Cell criterion: WiSARD >= MLP - 3pt.
+- mnist: t8 .3001(off FAIL)/.7982(on FAIL) | t16 .7268(F)/.8675(F) | t32 .9204(P)/.9260(P) | t64 .8751(F)/.8821(F)
+- pmnist: t8 .2826(F)/.8055(F) | t16 .7023(F)/.8689(F) | t32 .9153(P)/.9277(P) | t64 .8766(F)/.8848(F)
+- snips: t8 .7571(P)/.8471(P) | t16 .7586(P)/.8514(P) | t32 .7814(P)/.8643(P) | t64 .8043(P)/.8929(P)
+12 PASS / 10 FAIL of the 22 open cells (all 8 snips cells PASS; only tuple-32 passes on mnist/pmnist). B-411 triage CONFIRMED in-grid (.3001 = B-236's saturated .30) and B-414's FAIL triage confirmed by direct in-grid measurement (.7982, -13.2pt).
+Expectations: (a) tuple-8 saturation reproduced exactly; (b) bleaching rescues small tuples (+50pt at t8 mnist/pmnist) CONFIRMED; (c) tuple-32 (nearest B-236's 28-bit grain) best on image bits CONFIRMED; (d) bleach ~= presence at t64 CONFIRMED (+0.7pt).
+pmnist ~= mnist per cell (max dev ~1pt) as expected for a fixed permutation with a random tuple layout - internal consistency check PASS.
+Sensitivity (b412s.py, post-hoc, logs/b412_snips_mlp_epochs.log): snips MLP at 100/200/400 epochs = .5436/.5543/.5664 - the .5129 baseline is the recipe's plateau, not under-training; snips PASS margins stand (+24..+38pt vs baseline, +19..+33pt vs the 400-epoch variant).
+Honest picture: on image bits, plain WiSARD reaches the small MLP only at tuple-32 (bleached or not); at other grains it FAILS the 3pt bar even with bleaching. On sparse text bits, tuple WiSARD beats the small MLP at every grain but remains below NB (B-495 ordering: NB .94-ish full-data-equivalent few-shot k=20 vs WiSARD .89 at best here). Bleaching = real, sizable accuracy recovery at saturated grains, one extra count array's worth of memory.
+Scope: these 3 tasks, these encodings, this MLP. No claim about tuned/deeper nets or other encodings.
