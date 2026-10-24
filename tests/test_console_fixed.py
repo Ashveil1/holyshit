@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory() as temp:
     subprocess.run(build,env=local,check=True,capture_output=True,timeout=240)
     subprocess.run([str(driver),str(source),str(native)],env=local,check=True,capture_output=True,timeout=90)
     assert native.read_bytes()==image.read_bytes(),'native kernel complete image differs'
-    (tree/'boot/grub/grub.cfg').write_text('set timeout=0\nset default=0\ninsmod all_video\nset gfxmode=640x480x32\nset gfxpayload=keep\nterminal_output gfxterm\nmenuentry hs {\n  multiboot2 /boot/kernel.elf\n  boot\n}\n')
+    (tree/'boot/grub/grub.cfg').write_text('set timeout=0\nset default=0\ninsmod all_video\nset gfxmode=640x480x32\nset gfxpayload=keep\nterminal_output gfxterm\nmultiboot2 /boot/kernel.elf\nboot\n')
     iso=d/'hs.iso';command=[grub]
     if os.environ.get('HS_TEST_GRUB_DIR'):command+=['-d',os.environ['HS_TEST_GRUB_DIR']]
     rescue=subprocess.run(command+['-o',str(iso),str(tree)],capture_output=True,timeout=60)
@@ -32,27 +32,12 @@ with tempfile.TemporaryDirectory() as temp:
     qerrfile=qerr.open('wb')
     p=subprocess.Popen([qemu,'-cdrom',str(iso),'-boot','d','-m','256M','-serial','file:'+str(serial),'-display','none','-monitor','unix:'+str(monitor)+',server=on,wait=off'],stdout=subprocess.DEVNULL,stderr=qerrfile)
     try:
-        # Select the only GRUB entry explicitly. Some GRUB builds leave the
-        # menu visible despite timeout=0 (for example after graphics setup).
-        deadline=time.monotonic()+15
-        while time.monotonic()<deadline and not monitor.exists():time.sleep(.1)
-        boot=socket.socket(socket.AF_UNIX);boot.settimeout(5)
-        boot.connect(str(monitor));boot.recv(4096)
-        time.sleep(3)
-        boot.sendall(b'sendkey ret\n');boot.recv(4096);boot.close()
+        # This fixture boots the kernel directly from GRUB config, with no
+        # menu or injected boot keys. Keyboard injection starts only in hs.
         deadline=time.monotonic()+45
-        next_boot_select=time.monotonic()+5
         while time.monotonic()<deadline:
             if serial.exists() and 'FIXED SESSION READY' in serial.read_text(errors='replace'):break
             if p.poll() is not None:raise AssertionError('QEMU exited before framebuffer ready')
-            if time.monotonic() >= next_boot_select:
-                # Slow runners can still be in firmware at the first Enter.
-                # Retry only before any kernel serial output, at most 9 times.
-                if not serial.exists() or serial.stat().st_size == 0:
-                    select=socket.socket(socket.AF_UNIX);select.settimeout(5)
-                    select.connect(str(monitor));select.recv(4096)
-                    select.sendall(b'sendkey ret\n');select.recv(4096);select.close()
-                next_boot_select=time.monotonic()+5
             time.sleep(.1)
         if not serial.exists() or 'FIXED SESSION READY' not in serial.read_text(errors='replace'):
             evidence=os.environ.get('HS_GUI_EVIDENCE')
