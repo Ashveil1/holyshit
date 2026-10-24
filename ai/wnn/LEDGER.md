@@ -761,3 +761,18 @@ H1 sanity PASS (train-protocol >= 0.90). Success criterion met: ran in 17s wall 
 Cross-check before verdict: wnn row reproduces P15-repro 5-seed numbers (0.987/0.835/0.204) and LEDGER B-185's "synonyms ~.20" - no harness bug indicated. Gradcheck passed 48/48 under the amended combined criterion (amendment documented above, pre-run).
 
 Reading (scope-limited): on THIS config/protocol, the gradient reference matches the constraint learner on trained templates and unseen frames, and BOTH sit near the op-prior on fully unseen synonym templates without fast-mapping examples (synonym content words are out-of-vocabulary for both; wnn's small mean edge is within the transformer's cross-seed spread - no superiority claimed in either direction). This is one architecture/config at one size; nothing shown about transformers generally, other scales, or other tasks.
+
+## B-463 pre-registration (2026-10-24, before running)
+Question: does the 233-cell core connectome as a fixed reservoir (pure numpy dynamics, no hosted-runtime encoding - the B-240 wall was the runtime, not the reservoir) give a ridge readout any 1-shot MNIST advantage over the same ridge on raw pixels?
+
+Design (all choices fixed before running):
+- Reservoir: data/connectome_core.txt (233 cells, 3275 edges; chemical directed pre->post, gap junctions undirected). Edge weights = EM sections, normalized: W /= spectral radius (power iteration, 200 iters), then alpha=0.9 scaling. Dynamics: x0=0; x_{t+1} = tanh(alpha * Wn @ x_t + beta * Jin), beta=0.5, RSTEP=15 (B-240's value), input held constant; state = final x_15.
+- Injection: image binarized >128 (b466 convention); Jin[c] = (sum of active pixels p with p mod 233 == c) / (784/233), deterministic, no learned input weights.
+- Readout: ridge lambda=1e-3, one-hot 10 classes, closed form. Baseline: IDENTICAL ridge on the raw 784 binarized pixels.
+- Task: mnist-1shot: per seed, 1 train image/class drawn from mnist_train.txt pool (500/class), identical draws for both arms; eval on full mnist_test.txt (100/class = 1000 images). 5 seeds.
+
+Falsifiable predictions:
+- H1: raw ridge 1-shot baseline lands in a weak but above-chance range (0.2-0.6). If raw is >=0.9 or <=0.12, suspect a harness bug and investigate before interpreting.
+- H2: reservoir accuracy recorded; success = reservoir beats raw by >2 points mean, otherwise honest null (backlog: "beats raw or honest null" - both are acceptable recorded outcomes).
+CAN show: on this fixed injection/dynamics/protocol, whether the wiring's transform carries class information usable by a linear readout at 1-shot.
+CANNOT show: anything biological (abstracted tanh dynamics, arbitrary injection); other tasks/sizes; superiority of "connectome computing" generally - T6's prior record is negative and this is a cheap probe, not a vindication test.
