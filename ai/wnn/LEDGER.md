@@ -782,3 +782,14 @@ B-463 amendment (pre-result, 2026-10-24): mnist_train/test.txt capped files hold
 233-cell core connectome as a fixed tanh reservoir (pre-registered dynamics/injection) + ridge readout vs identical ridge on raw pixels, mnist-1shot, 5 seeds.
 Measured: raw 0.342 mean (0.303-0.429), reservoir 0.343 mean (0.288-0.438); per-seed diffs -0.024/+0.009/-0.002/+0.036/-0.015, mean +0.001. H1 sanity PASS (raw 0.342 in the pre-stated 0.2-0.6 range). H2: reservoir does NOT beat raw by >2 points -> honest null recorded (backlog success: "beats raw or honest null").
 Reading (scope-limited): under this fixed injection/dynamics, the wiring's transform preserves class information (tracks raw per seed) but adds none usable by a linear readout at 1-shot. Consistent with T6's negative record. One dynamics/injection/protocol; no biological claim.
+
+## B-464 pre-registration (2026-10-24, before running)
+Question: do the wiring's STATIC structural features (degree + spectral) carry class information as image embeddings, without any dynamics?
+Design (fixed before running): structural matrix S (233 x 13): [in-degree, out-degree, gap-degree, weighted-in, weighted-out] standardized + top-8 right-singular vectors of the symmetrized normalized adjacency (SVD). Image embedding: A = X @ J / (npix/233) (B-463's deterministic pixel->cell injection), E = A @ S (13-dim). Readout: same ridge as B-463 (lambda=1e-3). Baseline: identical ridge on raw pixels, identical draws. Protocols recorded: (a) mnist-1shot 5 seeds (B-463-comparable), (b) full-pool train (5000) - both recorded whatever they show.
+Falsifiable predictions: H1: 13-dim structural embeddings land near chance at 1-shot (<=0.25 mean) - a high value would mean the injection+structure accidentally encodes pixel position strongly; investigate before interpreting. H2: accuracies recorded; success = win vs raw or honest null (backlog).
+CAN show: whether THIS static structural embedding carries task information under THIS injection. CANNOT: biological claims; other embeddings/tasks; vindication of T6 (prior record negative).
+
+## B-464 verdict: PASS via honest null (2026-10-24, b464.py, logs/b464_stdout.log)
+Static degree+spectral wiring features (233x13) as image embeddings under the B-463 injection, ridge readout vs raw ridge, identical draws.
+Measured: 1-shot (5 seeds) emb 0.139 mean (0.120-0.165) vs raw 0.342 - near the 0.1 chance floor, per H1's pre-stated expectation (<=0.25, so no accidental positional-encoding artifact to investigate). Full-pool (5000 train): emb 0.478 vs raw 0.778. H2: honest null - the 13-dim static structural embedding carries far less class information than raw pixels under this injection; no win at either scale.
+Reading (scope-limited): another T6-negative consistent result. The wiring's static structure, compressed to 13 dims and linearly read, does not substitute for pixel information on this task. One embedding construction, one injection, one task.
