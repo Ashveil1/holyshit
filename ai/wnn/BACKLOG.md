@@ -525,7 +525,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-516 [S] DONE -> README priors audit + EVALPACK.md | F-7 priors/experience audit + eval pack v1 -- baseline: none -- success: README columns added, pack frozen
 - [ ] B-517 [M] F-8 one-shot gap table vs MLP -- baseline: MLP -- success: complete honest table
 - [ ] B-518 [M] joint-attention variant: caregiver sometimes names the secondary object; baby must use a pointing/gaze cue -- baseline: P26 no-cue learner -- success: cue use beats no-cue on named-secondary scenes
-- [ ] B-519 [S] babbling trajectory: production volume + correct-rate per day before criterion -- baseline: none -- success: documented curve
+- [x] B-519 [S] babbling trajectory: production volume + correct-rate per day before criterion -- baseline: none -- success: documented curve -- DOCUMENTED 2026-10-24 (b519): vol 43->97/day by day 4, rate .48->.77 plateau, grounding front-loaded (59% day 1) (LEDGER B-519)
 - [ ] B-520 [M] word segmentation: no whitespace, syllable stream, learner must find word units -- baseline: given segmentation (P26) -- success: >=70% of P26 accuracy
 - [x] B-521 [L] two-word production ("แม่ มา") with order learned from dialogue statistics -- baseline: bag-of-words production -- success: order correct > chance on held-out scenes
 - [x] B-522 [M] fix search-time CAP artifact: scale the CAP=400 search-step cap for boundary/adv evaluation of loop programs (mirror of the B-265 eval-time CAPF fix), then retest CURR skills (mod/mul/div/gcd/isprime/fact) under adv -- baseline: mod NOT FOUND at all n (B-299 interim) -- success: mod found and clean under adv at some n -- DONE (LEDGER: cause was init10 dropping init=y, not CAP; mod tried=482 clean with full inits)

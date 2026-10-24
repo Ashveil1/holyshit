@@ -935,3 +935,32 @@ Cross-reference: the shortest-on-tie half of F-5 in program SEARCH was already n
 Scope: this 2-step protocol, this 0.5/0.25 normalization. A class-normalized weighting (per hypothesis class, not per explanation) is a different, unrun variant - noted, not claimed.
 
 Correction (2026-10-24, B-514): the commit message and backlog line said "+4.7pt on new-ambiguous" - that was a 3-seed interim figure seen before the run finished. The 5-seed figure is +0.2pt (Soft .5301 vs Cat .5285), i.e. a TIE, not a win: Soft wins big on seeds 1/3, loses on 0/2/4. Corrected bottom line: Soft ties on new and new-ambiguous, and loses on same (-9.0pt) and same-ambiguous (-10.8pt). The criterion FAIL is unchanged; the "only Soft win" phrasing in the verdict above is withdrawn - there is no subset where Soft wins by >1pt at 5 seeds.
+
+## B-515 (F-6) pre-registration (2026-10-24, before running) - OOPS-style doubling scheduler over generators
+
+Question: cur7's search exhausts comb-generator g1 fully before g2 (P14 ordering) - a program that is shallow in a LATE generator pays for all of every earlier generator. OOPS (Schmidhuber) interleaves generators with doubling per-generator budgets, bounded near-optimally by ~2-4x the best generator's own discovery depth. Does a doubling scheduler find the same programs at <=50% of the tried count?
+Design (b515.py): recipe 'init10,baselib,simp,adv' (T9 standard; baselib pinned per B-523-H1 with EXCL={task}); tasks square, even, sumto, choose2; cap 6M; 1 run per cell (deterministic under the pinned library - verified by the sanity check below). Enumeration lists captured verbatim from cur7.search via LIST_CAPTURE (tried_cap=0) so both arms use IDENTICAL candidate lists and orderings; only the generator SCHEDULE differs.
+Arms: (a) baseline = cur7.search unmodified (P14 ordering); (b) oopsdbl = generators g=(comb,init) enumerated by per-generator iterators; cumulative per-generator tried cap doubles 256, 512, 1024, ... ; round-robin phases until found or global cap. Same test body copied verbatim (r0 screen, staged train check, ADV boundary checks).
+Sanity check (pre-stated, must pass before verdict): oopsdbl with a single phase whose per-generator cap exceeds the whole search degenerates to the baseline ORDER exactly - tried counts on even and sumto must EQUAL cur7.search's exactly; any mismatch = harness bug, fix before reading results.
+Criterion (pre-stated): PASS = same success set (both arms find the same tasks' programs) AND oopsdbl mean tried over the 4 tasks <= 50% of baseline mean tried. tried is ground truth; dt reported but suspension-contaminated.
+Predictions (not criteria): large win on square/choose2 (deep solutions in single generators); near-1x on tasks the baseline finds immediately (even).
+CAN show: scheduler effect on this enumeration, these tasks, this recipe. CANNOT: full OOPS (no Levin-search probability re-estimation, no program-probability updates - this is budget doubling over a FIXED per-generator order).
+
+## B-519 pre-registration (2026-10-24, before running) - babbling trajectory: production volume + correct-rate per day
+
+Question: in baby7's NORMAL arm (P31 turn-taking dialogue), what does the pre-criterion babbling trajectory look like: how much does the baby produce per day, and what fraction is appropriate, per day? "Before criterion" = the grounding criterion already defined in baby7 (grounded(): top-2 association mass, top >= 1.5x runner-up).
+Design (b519.py): baby7 run_d EXACTLY (NORMAL arm, feedback on, not shuffled; pools logs/baby3c_pool.json, f from the P31 protocol's main), 5 seeds, days=5, eps_per_day=100. Instrumentation added WITHOUT changing dynamics: per-day production count (episodes where the baby actually says a word), per-day appropriate-rate (existing day_approp), and for each distinct produced word the first day it met grounded() (checked passively, no effect on learning).
+Metrics: 5-seed mean/min-max volume per day, appropriate-rate per day (d1..d5 - d1/d5 already in the P31 protocol), distribution of first-grounded day across produced words.
+Success (pre-stated, documentation item): the curve is recorded in the LEDGER with all three metrics. No baseline arm; honest shape whatever it is (declining volume, rising rate, late grounding - all fine).
+CAN show: production trajectory in THIS baby7 protocol. CANNOT: real-child babbling claims.
+Amendment 1 (pre-run): f=1.0 (pure caregiver pool) chosen as the B-519 primary arm; f=0.2 is the P31 protocol's other arm, not this item's focus.
+Amendment 2 (pre-run): pool path corrected to ai/wnn/pools.json (the committed P29 LLM pool file, 838 lines) - logs/baby3c_pool.json is the different P27h pool format and errored on load.
+
+## B-519 verdict (2026-10-24) - documented (babbling trajectory, baby7 NORMAL f=1.0, 5 seeds)
+
+logs/b519_babbling.log. Curve (5-seed mean [min-max]):
+- Production volume/day: 43.0 [21-62] -> 85.2 -> 94.0 -> 97.0 -> 97.2 (reward-shaped speak-propensity saturates by day 3-4 at ~97/100 episodes).
+- Appropriate-rate/day: .482 [.333-.639] -> .764 -> .731 -> .775 -> .773. The big jump is day1->day2 (+.28); afterwards a PLATEAU at ~.77, not a climb to 1.0 - residual inappropriate productions persist at steady state under the P31 reward rule.
+- First-grounded day across produced words (132 grounded words, mean 26.4/seed): day1 78 (59%), day2 42 (32%), day3 8, day4 2, day5 2. Grounding is overwhelmingly EARLY - consistent with P27h's control finding that first-word grounding comes from scene-word co-occurrence on day 1, not reward.
+Honest shape: fast volume ramp (babble-to-talkative in 2 days), rate plateaus below ceiling, grounding front-loaded. No baseline arm (documentation item, per pre-reg).
+Scope: baby7 P31 protocol, pools.json, f=1.0, 5 seeds, grounded() as defined in baby7. CANNOT: real-child babbling claims.
