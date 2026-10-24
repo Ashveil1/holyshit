@@ -711,3 +711,18 @@ logs/b502_stdout.log. Setup (in-harness verification): 9 pinned ops, 112 E1, |U|
 - Arm A (mined-only depth-2: bases = L + E1 + 729 mined, 845 total): NOT FOUND in 6M (tried 6,002,880 = full cap). With the by-construction absence, this is the pre-registered honest expressivity proof: fragments mined from PAIRS OF USED depth-1 exprs cannot express absdiff, because absdiff requires pairing max and min - two library operators that no learned program has ever USED together. Usage mining compresses rediscovery of used combinations; it cannot invent an unused pairing.
 - Arm B (mined-first + full deep list, 121,805 bases): FOUND the exact B-500 program at tried 640,435, gen 40/40 all scales 1-4. Position cost of mining-first ordering vs B-500's 636K: ~+4.4K (~0.7%) - inserting mined fragments ahead of the full space is nearly free when the full space follows.
 Net: the backlog's "absdiff found OR honest expressivity proof" is satisfied by the proof branch. B-500's cost-ordered deepening remains the mechanism that discovers novel operator pairings; usage-mining would only help tasks whose solutions recombine already-co-used operators. dt columns suspension-contaminated as usual; tried is ground truth.
+
+## B-503 pre-registration (2026-10-24, before running)
+Question: can number-word grounding and op-model learning run JOINTLY (mutual bootstrap) without loss vs P16's separate stages?
+
+Design. Corpus family b410d-style: digit sentences + word sentences from the same op/2-step templates (1..10 values, words with prob). SEPARATE arm (P16 baseline): stage A learner fit on digit sentences only, frozen; learn_lexicon (constraint voting, a token whose value works in >=80% of its sentences becomes a number word) against the frozen learner; answer via apply_lex. JOINT arm: interleaved rounds - each lexicon round is followed by refitting the op learner on the union of digit sentences and lexicon-decoded word sentences, so word-sentence evidence also shapes the op model; final eval identical for both arms.
+Data: nA digit train + nB word train + mixed 2-step eval, 5 seeds, 300 eval rows/seed, sizes fixed in b503.py and reported with the result.
+
+Falsifiable predictions:
+- H1 (success criterion): JOINT end-to-end accuracy on unseen word 2-step sentences >= SEPARATE (no loss). If mean JOINT < mean SEPARATE by >2 points -> FAIL.
+- H2 (secondary): JOINT learns >= as many gold words with spurious entries <= separate + 1.
+
+CAN show: mutual-bootstrapping feasibility and no-loss vs the staged pipeline on THIS synthetic family at THESE sizes/seeds.
+CANNOT show: general superiority; grounding beyond the constraint-voting signal; anything about natural language; generalization beyond templates/values tested. Endpoint numbers are per-harness, not comparable to other harnesses.
+
+Verdict rule: write H1/H2 outcomes exactly as measured; any harness bug found by cross-checks discards the run (commit message notes the discard).
