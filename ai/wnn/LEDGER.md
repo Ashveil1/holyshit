@@ -734,3 +734,18 @@ Joint stage-B (interleaved lexicon voting + model refits on digit+decoded-word s
 Measured: end-to-end acc on unseen new-frame word 2-step sentences - SEPARATE 0.277 mean (range 0.207-0.367), JOINT 0.288 mean (range 0.213-0.373). Per-seed diffs (joint-sep): +0.053, +0.006, +0.040, +0.033, -0.080. H1 (no loss, fail if joint < sep - 0.02): PASS - mean diff +0.010, and no seed loses by >0.02 except seed 4 (-0.080, within observed cross-seed variance ~0.08-0.16). Gold words 5.4 vs 5.6 of 20; spurious 0.2 both; wrong-value 0 both. H2: PASS.
 
 Reading (scope-limited): joint stage-B is FEASIBLE with no measured loss on this synthetic family at these sizes; the +0.010 mean gain is within seed noise - NO improvement is claimed. Absolute accuracy (~0.28) reflects the hard eval (new connectors+frames, word values, 600-digit stage A) and is the same eval for both arms; the A/B is internally valid regardless of absolute level. Total supervision = 600 labelled digit + 200 labelled word sentences, identical for both arms. Nothing shown about natural language, other families, or other sizes. Wall 59 min for all 5 seeds (within the under-2h budget).
+
+## B-504 pre-registration (2026-10-24, before running)
+Question: what accuracy does a tiny gradient-trained transformer (pure numpy) reach on the P15 unseen-synonyms protocol, as a same-protocol reference point beside the wnn constraint learner?
+
+Protocol: exactly text2prog.py __main__ - train on gen_set(rng, 0, 400) labelled (text, answer) sentences; eval accuracy on gen_set(r, wh, 300, big=True) for wh in (0 numbers / 1 frames / 2 synonyms). 3 seeds (not 5 - CPU budget; pre-stated). A Learner('tok') row is trained and evaluated in the same harness on the same seed data so both numbers come from one protocol run.
+
+Model + supervision: hypothesis classification over the same 21 HYP labels; answer computed by run_hyp on the REAL numbers, identical execution path to the wnn learner. Digit tokens normalized to <NUM> for classifier input (positional info retained; values never enter the classifier). Supervision: soft cross-entropy with uniform mass over the consistent-hypothesis set {h: run_hyp(h, nums) == ans} - derived from (text, answer) only, same information the wnn learner gets; sentences with an empty consistent set skipped (count recorded). Architecture: token embeddings d=32 + learned positional embeddings, one transformer block (single-head self-attention d=32, FFN 32->64->32 ReLU, residuals, NO layernorm), mean-pool, linear head. Adam lr 3e-3, 30 epochs full-batch-per-sentence. Manual backprop; numerical gradient check (relative error < 1e-4 on a parameter sample across all layers) MUST pass before training; a failed check = harness bug, fixed and recorded before any result counts.
+
+Falsifiable predictions:
+- H1 (sanity): train-protocol (wh=0, big numbers) accuracy >= 0.90 within budget. If not, the harness is suspect - investigate before interpreting H2.
+- H2 (the reference number): unseen-synonym accuracy recorded WHATEVER it is; no threshold, no success claim attached to its value.
+Success criterion (backlog): runs CPU < 2h, accuracies recorded.
+
+CAN show: this exact config's accuracy on this exact protocol/split/seeds.
+CANNOT show: anything about transformers in general, LLMs, or any scale; any superiority/inferiority claim beyond this config; comparability across harnesses. Supervision symmetry noted: both models see only (text, answer).
