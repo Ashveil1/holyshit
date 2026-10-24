@@ -70,8 +70,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-system-x86 qemu-user
+      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-system-x86 qemu-user grub-pc-bin grub-common xorriso
       - run: mkdir -p /tmp/opencode
+      - name: fixed framebuffer console boot and cursor boundaries (required)
+        run: HS_REQUIRE_GUI=1 python3 tests/test_console_fixed.py
       - name: every suite including xkernel on QEMU
         run: python3 tests/run_all.py
       - name: benchmarks vs CPython

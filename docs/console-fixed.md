@@ -60,3 +60,8 @@ The boot regression also checks the cursor at empty input, all 42 characters,
 one ignored over-capacity character, backspace to 41 and Enter reset to zero.
 Each check reads the full cleared cursor strip so stale markers are detected.
 The original C/D/E/F transcript and G input are then restored and checked.
+
+Full CI installs GRUB/xorriso and runs the fixed-console boot regression with
+`HS_REQUIRE_GUI=1` before the full suite. Missing tools fail that required step
+instead of silently skipping. Local runs without the flag still skip when
+optional dependencies are absent. This changes CI coverage, not hardware support.

@@ -6,6 +6,8 @@ ROOT=Path(__file__).resolve().parent.parent
 qemu=os.environ.get('HS_TEST_QEMU') or shutil.which('qemu-system-x86_64')
 grub=shutil.which('grub-mkrescue')
 if not qemu or not grub or not shutil.which('xorriso'):
+    if os.environ.get('HS_REQUIRE_GUI') == '1':
+        print('FAIL required framebuffer boot: QEMU/GRUB/xorriso unavailable');sys.exit(1)
     print('skip framebuffer boot (QEMU/GRUB/xorriso unavailable; optional local dependencies)');sys.exit(0)
 env=dict(os.environ,HSPATH=str(ROOT)+':'+str(ROOT/'kernel'),HSROOT=str(ROOT))
 with tempfile.TemporaryDirectory() as temp:
