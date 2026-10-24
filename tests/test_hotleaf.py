@@ -46,6 +46,14 @@ cases.extend([
  ('mixed-results','def f(n):\n  if n < 0:\n    return n < 3\n  return n\nprint f(-2)\nprint f(2)\n',1,0,0,0),
  ('bool-type-fallback','def f(n):\n  return n < 3\nprint f(2)\ntry:\n  print f(true)\nexcept:\n  print "caught"\nprint f(5)\n',1,1,2,1),
 ])
+cases.extend([
+ ('bool-literal-true','def f():\n  return true\nprint f()\nprint json_str(f())\n',1,1,2,0),
+ ('bool-literal-false','def f():\n  return false\nprint f()\nprint json_str(f())\n',1,1,2,0),
+ ('bool-predicate','def f(n):\n  if n < 0:\n    return true\n  return false\nprint f(-2)\nprint f(0)\nprint f(3)\n',1,1,3,0),
+ ('bool-mixed-predicate','def f(n):\n  if n < 0:\n    return false\n  return n < 3\nprint f(-2)\nprint f(0)\nprint f(3)\n',1,1,3,0),
+ ('bool-literal-arithmetic','def f(n):\n  return n + true\ntry:\n  print f(2)\nexcept:\n  print "caught"\n',1,0,0,0),
+ ('bool-literal-mixed-return','def f(n):\n  if n < 0:\n    return false\n  return 0\nprint f(-1)\nprint f(1)\n',1,0,0,0),
+])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
  source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'

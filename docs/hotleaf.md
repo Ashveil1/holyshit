@@ -42,3 +42,9 @@ The scalar result gate includes all six comparison operators, branch-selected
 Bool results, printed/JSON Bool identity and arithmetic rejection after native
 return. A non-Int argument still falls back before native entry. This does not
 admit Bool parameters, shared objects or a general tagged-value ABI.
+
+Bool constants are admitted as Bool-typed scalar values, enabling pure
+predicate leaves that return true/false or a comparison on separate branches.
+They lower to private machine 0/1 values and use the same guest-Bool result
+boundary. Bool arithmetic and mixed Bool/Int returns remain refused. Six
+additional literal/predicate/refusal cases bring the focused gate to 46.
