@@ -53,3 +53,16 @@ programs refuse up front with rc 3, without switching to Python or AOT.
 This rebuilds the interpreter per launch; it is not a cached or JIT command.
 The shell launcher currently uses the x86-64 seed, while native arm64
 interpreter execution remains available through its tested stage0 build path.
+
+## Builtin argument counts
+
+The hs interpreter checks all 31 supported builtin argument counts before
+indexing the guest argument list or invoking a host builtin. It no longer
+ignores extra arguments, reports host index errors for missing arguments, or
+accepts a prompt for the no-argument `input()` builtin. Errors retain the
+source call line and match the reference for caught and uncaught calls.
+
+The parity gate includes 124 wrong-count cases through builtin aliases,
+covering too few/too many arguments and both exception paths, in addition to
+the existing 85 corpus classifications. This is argument-count parity, not a
+claim that every builtin type/error edge case is covered.
