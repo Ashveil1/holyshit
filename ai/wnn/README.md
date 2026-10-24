@@ -485,6 +485,41 @@ Tried to close the k=1 gap of paraphrase teaching (.75 vs .83 with a true answer
 - Confidence gating (skip the definition when the known-side reading is ambiguous, margin < 2): HURTS, k=1 .68, k=2 .73 - gating throws away too many of the few definitions.
 Conclusion: with 1-2 examples the P22 paraphrase recipe is about as good as this learner gets; the remaining k=1 gap is mostly the 9% pseudo-label noise. Zero-shot on unseen wordings is unchanged (.18 tokens / .41 char).
 
+## F-8 (B-517): few-shot gap table - all measured readouts vs MLP, honest and complete (2026-10-24)
+
+Assembled from existing measured cells only (B-241/B-241R, B-468..483, B-467..491, B-495); no new runs. Accuracy = mean test accuracy at k shots/class. MLP = small OVR tanh MLP (B-241 recipe, 784-32-1, 800 epochs) - a deliberately ordinary baseline: the GAP is the claim, never the absolute numbers.
+
+Single-task MNIST (B-241R, seeded sampling, 5 seeds; supersedes B-241's first-k cells):
+
+| k | WiSARD | centroid | 1nn | MLP |
+|---|--------|----------|-----|-----|
+| 1  | .305 | .429 | .429 | .093 |
+| 5  | .474 | .652 | .619 | .125 |
+| 20 | .669 | .757 | .756 | .351 |
+
+Single-task SNIPS intents (B-495 + B-468..483, paired seeds 100..109, 4096-bit hashed uni+bigram):
+
+| k | NB | centroid | WiSARD | 1nn | MLP |
+|---|----|----------|--------|-----|-----|
+| 1  | .604 | .362 | .347 | .362 | .148 |
+| 5  | .858 | .807 | .831 | .594 | .145 |
+| 20 | .942 | .905 | .894 | .794 | .150 |
+
+Few-shot continual PMNIST (B-467..491; 5 permuted tasks in sequence, shared-arm final all-task mean, 2 seeds):
+
+| k | 1nn | centroid | WiSARD | MLP (naive sequential) |
+|---|-----|----------|--------|------------------------|
+| 1  | .403 | .380 | .277 | .163 |
+| 5  | .627 | .573 | .444 | .187 |
+| 20 | .756 | .685 | .657 | .175 |
+
+What the table supports (scoped):
+- Every non-MLP readout beats the few-shot MLP at every measured k on all three datasets (+12 to +75 pt). MLP stays near chance at k=1 on MNIST (.093) and SNIPS (.148).
+- Per-k orderings only (Correction 2026-10-23): on SNIPS, NB is first at every k and MLP last; the middle three swap per k (WiSARD beats centroid only at k=5). On MNIST, centroid ~= 1nn > WiSARD at every k. At k=1, 1nn == centroid exactly (same readout at one prototype).
+- The WiSARD tuple readout is NOT a strong few-shot readout: it loses to class-mean on raw pixels (MNIST, up to -18 pt) and to NB on SNIPS. Its demonstrated strengths are one-pass learning and retention vs naive sequential MLP (B-493/B-494), not few-shot accuracy.
+
+Declared gaps (unmeasured cells; no claim): NB on MNIST; any readout besides MLP under the continual protocol on MNIST/SNIPS; single-task (non-continual) PMNIST few-shot; any mitigated gradient baseline (replay/EWC) anywhere; larger/stronger MLP baselines. The retention contrast (B-493/B-494, PMNIST table above) is scoped to NAIVE sequential SGD with no continual-learning mitigation.
+
 ## Priors/experience audit (F-7, Chollet-style; applies to all sections above)
 Format: result | priors handed in | experience consumed
 - P7-P14 induction (mod..sumto) | recursion schema, cond forms, depth-1 expression grammar, add/sub primitives, post set, curriculum order, I/O format | 25 examples per skill

@@ -1,0 +1,16 @@
+{"n": 24, "seed": 0, "full": {"numbers": 0.4267, "frames": 0.34, "synonyms": 0.1267}, "advised": {"numbers": 0.4267, "frames": 0.3233, "synonyms": 0.1267}}
+{"n": 24, "seed": 1, "full": {"numbers": 0.4367, "frames": 0.4467, "synonyms": 0.0967}, "advised": {"numbers": 0.4367, "frames": 0.4467, "synonyms": 0.0967}}
+{"n": 24, "seed": 2, "full": {"numbers": 0.47, "frames": 0.4433, "synonyms": 0.1233}, "advised": {"numbers": 0.47, "frames": 0.4667, "synonyms": 0.1233}}
+{"n": 24, "seed": 3, "full": {"numbers": 0.3733, "frames": 0.4, "synonyms": 0.11}, "advised": {"numbers": 0.3733, "frames": 0.4, "synonyms": 0.1133}}
+{"n": 24, "seed": 4, "full": {"numbers": 0.4033, "frames": 0.53, "synonyms": 0.1233}, "advised": {"numbers": 0.4033, "frames": 0.53, "synonyms": 0.1167}}
+{"n": 60, "seed": 0, "full": {"numbers": 0.73, "frames": 0.63, "synonyms": 0.1567}, "advised": {"numbers": 0.73, "frames": 0.63, "synonyms": 0.1167}}
+{"n": 60, "seed": 1, "full": {"numbers": 0.77, "frames": 0.7633, "synonyms": 0.1267}, "advised": {"numbers": 0.77, "frames": 0.7633, "synonyms": 0.18}}
+{"n": 60, "seed": 2, "full": {"numbers": 0.79, "frames": 0.7233, "synonyms": 0.2033}, "advised": {"numbers": 0.79, "frames": 0.7, "synonyms": 0.2033}}
+{"n": 60, "seed": 3, "full": {"numbers": 0.8667, "frames": 0.8067, "synonyms": 0.15}, "advised": {"numbers": 0.8667, "frames": 0.74, "synonyms": 0.15}}
+{"n": 60, "seed": 4, "full": {"numbers": 0.7267, "frames": 0.74, "synonyms": 0.1267}, "advised": {"numbers": 0.72, "frames": 0.7433, "synonyms": 0.1267}}
+{"n": 150, "seed": 0, "full": {"numbers": 0.93, "frames": 0.75, "synonyms": 0.18}, "advised": {"numbers": 0.91, "frames": 0.7133, "synonyms": 0.13}}
+{"n": 150, "seed": 1, "full": {"numbers": 0.89, "frames": 0.7967, "synonyms": 0.2267}, "advised": {"numbers": 0.89, "frames": 0.7967, "synonyms": 0.2167}}
+{"n": 150, "seed": 2, "full": {"numbers": 0.9767, "frames": 0.8933, "synonyms": 0.1533}, "advised": {"numbers": 0.9767, "frames": 0.83, "synonyms": 0.1533}}
+{"n": 150, "seed": 3, "full": {"numbers": 0.9667, "frames": 0.8133, "synonyms": 0.22}, "advised": {"numbers": 0.9667, "frames": 0.7967, "synonyms": 0.22}}
+{"n": 150, "seed": 4, "full": {"numbers": 0.92, "frames": 0.87, "synonyms": 0.2167}, "advised": {"numbers": 0.92, "frames": 0.87, "synonyms": 0.2}}
+DONE

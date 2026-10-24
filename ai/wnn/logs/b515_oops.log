@@ -1,0 +1,4 @@
+{"mode": "sanity", "task": "sumto", "found": true, "tried": 1415698, "dt": 1603.1}
+{"mode": "baseline", "task": "sumto", "found": true, "tried": 1415698, "dt": 1827.4}
+{"mode": "oops", "task": "even", "found": true, "tried": 611365, "dt": 61.2}
+{"mode": "oops", "task": "sumto", "found": true, "tried": 537, "dt": 0.2}
