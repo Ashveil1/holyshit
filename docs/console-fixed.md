@@ -93,3 +93,15 @@ submissions after visible text, checks every text-row pixel for stale glyphs,
 and verifies an empty backspace leaves the cursor at zero. The blank guest
 screen was visually inspected; the original C/D/E/F/G layout is then restored
 and checked again. This adds regression coverage without changing behavior.
+
+A test-only instrumented copy of the real demo now measures the first 16
+actual PS/2 events (ten edits and six submissions) across dequeue, fixed
+storage, shared redraw and serial diagnostics. The required graphical gate
+pins a 576-byte bump-pointer gap, including the ready diagnostic and marker
+alignment. Native and reference compilers must produce the same complete
+instrumented kernel. The final guest pixels were visually inspected.
+
+This is deliberately not the renderer-only 16-byte proof: freestanding string
+constants in diagnostics allocate through `x_str_at`. The whole interactive
+session is not allocation-free. The measured finite budget is not a bound on
+all event sequences, an indefinite-lifetime guarantee or a new heap/GC policy.

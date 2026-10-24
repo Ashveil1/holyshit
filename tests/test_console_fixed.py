@@ -12,7 +12,18 @@ if not qemu or not grub or not shutil.which('xorriso'):
 env=dict(os.environ,HSPATH=str(ROOT)+':'+str(ROOT/'kernel'),HSROOT=str(ROOT))
 with tempfile.TemporaryDirectory() as temp:
     d=Path(temp);tree=d/'iso';(tree/'boot/grub').mkdir(parents=True)
-    source=ROOT/'kernel/kconsole_fixed.holy';image=tree/'boot/kernel.elf'
+    # Test-only markers surround real PS/2 dequeue, storage, redraw and serial
+    # diagnostics for the first16 events. Both compilers see this same source.
+    source=d/'session.holy';image=tree/'boot/kernel.elf'
+    instrumented=(ROOT/'kernel/kconsole_fixed.holy').read_text()
+    instrumented=instrumented.replace('print "FIXED SESSION READY"',
+        'def mark():\n  unsafe:\n    return as_int(alloc(1))\n'
+        'session_before = mark()\nsession_events = 0\nprint "FIXED SESSION READY"')
+    instrumented += ('    session_events = session_events + 1\n'
+                     '    if session_events == 16:\n'
+                     '      session_after = mark()\n'
+                     '      print "FIXED SESSION GAP", session_after - session_before\n')
+    source.write_text(instrumented)
     subprocess.run([sys.executable,str(ROOT/'hs.py'),'xkernel',str(source),'-o',str(image)],env=env,check=True,capture_output=True,timeout=90)
     # Native hs kernel linker must produce the complete same image.
     driver=d/'compiler';native=d/'native.elf'
@@ -93,6 +104,15 @@ with tempfile.TemporaryDirectory() as temp:
                 if content.count('FIXED SUBMITTED')>=submits and content.count('FIXED EDIT')>=edits:break
                 time.sleep(.1)
             else:raise AssertionError('session edit stalled '+key+' '+content[-300:])
+        deadline=time.monotonic()+5
+        while time.monotonic()<deadline:
+            content=serial.read_text(errors='replace')
+            if 'FIXED SESSION GAP ' in content:break
+            time.sleep(.1)
+        # Finite end-to-end budget, not the renderer-only allocation proof:
+        # includes READY and per-event freestanding string diagnostics, plus
+        # marker alignment. Instrumentation itself uses only scalar counters.
+        assert 'FIXED SESSION GAP 576\n' in content,content[-1000:]
         cursor_at(1)
         # Overflow typing leaves the cursor at the full-capacity position;
         # backspace removes the old marker, and Enter resets it to column 0.
