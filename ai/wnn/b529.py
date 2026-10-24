@@ -48,8 +48,10 @@ def teach(mem, teacher, skill_key, rounds=3, ex0=5, cap=CAP7, seed=0):
         pairs.append((int(m.group(1)), int(m.group(2))))
     tried_tot = 0; confs = 0
     for rnd in range(1, rounds + 1):
+        print(f'  teach round {rnd}: inducing on {len(pairs)} pairs...', flush=True)
         p, tried = induce(pairs, cap)
         tried_tot += tried
+        print(f'  teach round {rnd}: tried={tried} found={p is not None}', flush=True)
         if p is None:
             return False, {'fail': 'induction exhausted', 'round': rnd, 'tried': tried_tot,
                            'pairs': len(pairs), 'confirmations': confs}
@@ -83,6 +85,7 @@ def run_battery():
     ok, log = teach(mem, Teacher(lambda x: 2 * x), 'double')
     out['c1_teaching'] = {'ok': ok, **log,
                           'supervision': (log['pairs'] + 0)}
+    print('C1 done', ok, log, flush=True)
     # ---- C2: taught skill on 40 unseen inputs through the sentence path ----
     if ok:
         te = random.Random(1000); okc = n = 0; fails = []
@@ -95,6 +98,7 @@ def run_battery():
             if not good and len(fails) < 3: fails.append({'x': x, 'ans': ans})
         out['c2_taught_accuracy'] = f'{okc}/{n}'
         if fails: out['c2_fails'] = fails
+        print('C2 done', out['c2_taught_accuracy'], flush=True)
     # ---- C3: no interference - seeded skills 160/160 + B-523 battery ----
     from cur7 import gen as cgen
     c3 = {}
@@ -113,6 +117,7 @@ def run_battery():
     b = battery(mem.attrs)
     out['c3_seeded'] = c3
     out['c3_attr_battery'] = {k: f'{v[0]}/{v[1]}' for k, v in b.items()}
+    print('C3 done', c3, flush=True)
     # ---- C4: garbage teacher ends with NO new skill ----
     mem2 = HSMLMemory(); mem2.skills = derive_skills(load_logged())
     grng = random.Random(555); memo = {}
@@ -121,6 +126,7 @@ def run_battery():
         return memo[x]
     gok, glog = teach(mem2, Teacher(gtruth), 'double')
     out['c4_garbage_teacher'] = {'stored': gok, **glog, 'prog': glog.get('prog', None)}
+    print('C4 done', gok, glog, flush=True)
     return out
 
 if __name__ == '__main__':
