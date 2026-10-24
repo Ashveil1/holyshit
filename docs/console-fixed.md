@@ -87,3 +87,9 @@ The real graphical gate checks exact full/backspace/reset pixels, and the
 shared RAM-frame proof exercises full/redraw/backspace/reset on every one of
 1000 cycles with unchanged 16-byte marker gap. The full-input guest screenshot
 was visually inspected. The underline is still steady, not a blinking cursor.
+
+The required graphical gate also fills the retained history with empty
+submissions after visible text, checks every text-row pixel for stale glyphs,
+and verifies an empty backspace leaves the cursor at zero. The blank guest
+screen was visually inspected; the original C/D/E/F/G layout is then restored
+and checked again. This adds regression coverage without changing behavior.
