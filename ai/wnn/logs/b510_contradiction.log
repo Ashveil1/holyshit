@@ -1,0 +1,51 @@
+{"probe": "A", "seed": 0, "accum": 0.52, "dict": 1.0, "status": 1.0}
+{"probe": "A", "seed": 1, "accum": 0.575, "dict": 1.0, "status": 1.0}
+{"probe": "A", "seed": 2, "accum": 0.56, "dict": 1.0, "status": 1.0}
+{"probe": "A", "seed": 3, "accum": 0.52, "dict": 1.0, "status": 1.0}
+{"probe": "A", "seed": 4, "accum": 0.545, "dict": 1.0, "status": 1.0}
+{"probe": "B", "seed": 0, "n1": 5, "n2": 5, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 1.0, "oracle": 1.0}
+{"probe": "B", "seed": 0, "n1": 5, "n2": 10, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 1.0, "oracle": 1.0}
+{"probe": "B", "seed": 0, "n1": 5, "n2": 20, "batch_hit": 1, "status_hit": 1, "batch_rel": 0.8, "status_rel": 0.75, "oracle": 1.0}
+{"probe": "B", "seed": 0, "n1": 10, "n2": 5, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 1.0, "oracle": 1.0}
+{"probe": "B", "seed": 0, "n1": 10, "n2": 10, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 0.75, "oracle": 1.0}
+{"probe": "B", "seed": 0, "n1": 10, "n2": 20, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.05, "status_rel": 0.55, "oracle": 1.0}
+{"probe": "B", "seed": 0, "n1": 20, "n2": 5, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 0.65, "oracle": 1.0}
+{"probe": "B", "seed": 0, "n1": 20, "n2": 10, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 0.75, "oracle": 1.0}
+{"probe": "B", "seed": 0, "n1": 20, "n2": 20, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 0.55, "oracle": 1.0}
+{"probe": "B", "seed": 1, "n1": 5, "n2": 5, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 1, "n1": 5, "n2": 10, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.05, "status_rel": 0.05, "oracle": 1.0}
+{"probe": "B", "seed": 1, "n1": 5, "n2": 20, "batch_hit": 1, "status_hit": 1, "batch_rel": 0.7, "status_rel": 0.7, "oracle": 1.0}
+{"probe": "B", "seed": 1, "n1": 10, "n2": 5, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 1, "n1": 10, "n2": 10, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 1, "n1": 10, "n2": 20, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.4, "status_rel": 0.75, "oracle": 1.0}
+{"probe": "B", "seed": 1, "n1": 20, "n2": 5, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 1, "n1": 20, "n2": 10, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.1, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 1, "n1": 20, "n2": 20, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.05, "status_rel": 0.5, "oracle": 1.0}
+{"probe": "B", "seed": 2, "n1": 5, "n2": 5, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 2, "n1": 5, "n2": 10, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.05, "status_rel": 0.05, "oracle": 1.0}
+{"probe": "B", "seed": 2, "n1": 5, "n2": 20, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 2, "n1": 10, "n2": 5, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 2, "n1": 10, "n2": 10, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.1, "oracle": 1.0}
+{"probe": "B", "seed": 2, "n1": 10, "n2": 20, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.05, "status_rel": 0.05, "oracle": 1.0}
+{"probe": "B", "seed": 2, "n1": 20, "n2": 5, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.3, "oracle": 1.0}
+{"probe": "B", "seed": 2, "n1": 20, "n2": 10, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.2, "oracle": 1.0}
+{"probe": "B", "seed": 2, "n1": 20, "n2": 20, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.1, "status_rel": 0.1, "oracle": 1.0}
+{"probe": "B", "seed": 3, "n1": 5, "n2": 5, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.1, "status_rel": 1.0, "oracle": 1.0}
+{"probe": "B", "seed": 3, "n1": 5, "n2": 10, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.2, "status_rel": 0.85, "oracle": 1.0}
+{"probe": "B", "seed": 3, "n1": 5, "n2": 20, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.45, "status_rel": 0.45, "oracle": 1.0}
+{"probe": "B", "seed": 3, "n1": 10, "n2": 5, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 0.55, "oracle": 1.0}
+{"probe": "B", "seed": 3, "n1": 10, "n2": 10, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.25, "status_rel": 0.8, "oracle": 1.0}
+{"probe": "B", "seed": 3, "n1": 10, "n2": 20, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.7, "oracle": 1.0}
+{"probe": "B", "seed": 3, "n1": 20, "n2": 5, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 0.6, "oracle": 1.0}
+{"probe": "B", "seed": 3, "n1": 20, "n2": 10, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.1, "status_rel": 0.5, "oracle": 1.0}
+{"probe": "B", "seed": 3, "n1": 20, "n2": 20, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.05, "status_rel": 0.55, "oracle": 1.0}
+{"probe": "B", "seed": 4, "n1": 5, "n2": 5, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 4, "n1": 5, "n2": 10, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.15, "status_rel": 0.15, "oracle": 1.0}
+{"probe": "B", "seed": 4, "n1": 5, "n2": 20, "batch_hit": 1, "status_hit": 1, "batch_rel": 0.75, "status_rel": 0.75, "oracle": 1.0}
+{"probe": "B", "seed": 4, "n1": 10, "n2": 5, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 4, "n1": 10, "n2": 10, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.35, "oracle": 1.0}
+{"probe": "B", "seed": 4, "n1": 10, "n2": 20, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 0.9, "oracle": 1.0}
+{"probe": "B", "seed": 4, "n1": 20, "n2": 5, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.0, "oracle": 1.0}
+{"probe": "B", "seed": 4, "n1": 20, "n2": 10, "batch_hit": 0, "status_hit": 0, "batch_rel": 0.0, "status_rel": 0.15, "oracle": 1.0}
+{"probe": "B", "seed": 4, "n1": 20, "n2": 20, "batch_hit": 0, "status_hit": 1, "batch_rel": 0.0, "status_rel": 0.6, "oracle": 1.0}
+DONE

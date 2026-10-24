@@ -516,7 +516,7 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [ ] B-506 [L (under 2 h)] (T8 neurosymbolic-exact) grid transforms: learn 3 ARC-like ops by induction -- task: mini-arc -- baseline: random search -- success: finds 3/3, honest scope note
 
 ## Foundations-derived (F) candidates (from FOUNDATIONS.md; same rules)
-- [ ] B-510 [S] F-1 contradiction correction / unlearning with status -- baseline: current store behavior -- success: latest fact wins 100% on probe set
+- [x] B-510 [S] F-1 contradiction correction / unlearning with status -- baseline: current store behavior -- success: latest fact wins 100% on probe set -- MEASURED 2026-10-24 (b510): probe A status store 1.0 vs accum .52-.58; probe B FAIL - status lex lands correction 21/45 vs batch 3/45; acceptance gate, not recency, is the binding constraint (LEDGER B-510)
 - [ ] B-511 [S] F-2 declarative advice as hypothesis constraints -- baseline: P15 n=24/60 -- success: same acc, fewer examples
 - [ ] B-512 [M] F-3 subgoal selection on compositions -- baseline: P13 6/10 -- success: 8/10 same seeds
 - [ ] B-513 [M] F-4 means-ends composition induction -- baseline: P13 flat 6/10 -- success: 8/10 at <= half tried
