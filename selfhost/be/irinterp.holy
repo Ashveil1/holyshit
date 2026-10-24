@@ -113,6 +113,9 @@ def call_builtin(name, args, ln):
     if name == "int":
       return int(args[0])
     if name == "float":
+      kind = type_name(args[0])
+      if kind not in ["Bool", "Int", "Float", "Str"]:
+        fail("cannot convert " + kind + " to Float", ln)
       return float(args[0])
     if name == "range":
       if n == 1:
