@@ -776,3 +776,9 @@ Falsifiable predictions:
 - H2: reservoir accuracy recorded; success = reservoir beats raw by >2 points mean, otherwise honest null (backlog: "beats raw or honest null" - both are acceptable recorded outcomes).
 CAN show: on this fixed injection/dynamics/protocol, whether the wiring's transform carries class information usable by a linear readout at 1-shot.
 CANNOT show: anything biological (abstracted tanh dynamics, arbitrary injection); other tasks/sizes; superiority of "connectome computing" generally - T6's prior record is negative and this is a cheap probe, not a vindication test.
+B-463 amendment (pre-result, 2026-10-24): mnist_train/test.txt capped files hold 392 pixels/image (14x28 half-resolution), not the raw 784; injection mapping and denominator adjusted to npix=392. Both arms use identical images, so the A/B is unaffected. Two harness bugs caught pre-result and fixed (edge lines are integer indices not names; pixel count) - recorded here per discard/fix discipline.
+
+## B-463 verdict: PASS via honest null (2026-10-24, b463.py, logs/b463_stdout.log)
+233-cell core connectome as a fixed tanh reservoir (pre-registered dynamics/injection) + ridge readout vs identical ridge on raw pixels, mnist-1shot, 5 seeds.
+Measured: raw 0.342 mean (0.303-0.429), reservoir 0.343 mean (0.288-0.438); per-seed diffs -0.024/+0.009/-0.002/+0.036/-0.015, mean +0.001. H1 sanity PASS (raw 0.342 in the pre-stated 0.2-0.6 range). H2: reservoir does NOT beat raw by >2 points -> honest null recorded (backlog success: "beats raw or honest null").
+Reading (scope-limited): under this fixed injection/dynamics, the wiring's transform preserves class information (tracks raw per seed) but adds none usable by a linear readout at 1-shot. Consistent with T6's negative record. One dynamics/injection/protocol; no biological claim.

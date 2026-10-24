@@ -1,0 +1,9 @@
+train 5000 test 1000
+computing reservoir states...
+states done wall_s=1
+{"seed": 0, "raw": 0.317, "reservoir": 0.293}
+{"seed": 1, "raw": 0.429, "reservoir": 0.438}
+{"seed": 2, "raw": 0.322, "reservoir": 0.32}
+{"seed": 3, "raw": 0.341, "reservoir": 0.377}
+{"seed": 4, "raw": 0.303, "reservoir": 0.288}
+DONE wall_s=1
