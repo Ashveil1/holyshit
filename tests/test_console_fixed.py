@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory() as temp:
     subprocess.run(build,env=local,check=True,capture_output=True,timeout=240)
     subprocess.run([str(driver),str(source),str(native)],env=local,check=True,capture_output=True,timeout=90)
     assert native.read_bytes()==image.read_bytes(),'native kernel complete image differs'
-    (tree/'boot/grub/grub.cfg').write_text('set timeout=0\nset default=0\ninsmod all_video\nset gfxmode=640x480x32\nset gfxpayload=keep\nterminal_output gfxterm\nmultiboot2 /boot/kernel.elf\nboot\n')
+    (tree/'boot/grub/grub.cfg').write_text('serial --unit=0 --speed=38400\nterminal_output console serial\necho HS_GRUB_CONFIG_START\nset timeout=0\nset default=0\ninsmod all_video\nset gfxmode=640x480x32\nset gfxpayload=keep\nterminal_output gfxterm serial\necho HS_GRUB_LOADING_KERNEL\nmultiboot2 /boot/kernel.elf\necho HS_GRUB_LOAD_STATUS=$?\nboot\necho HS_GRUB_BOOT_RETURNED=$?\n')
     iso=d/'hs.iso';command=[grub]
     if os.environ.get('HS_TEST_GRUB_DIR'):command+=['-d',os.environ['HS_TEST_GRUB_DIR']]
     rescue=subprocess.run(command+['-o',str(iso),str(tree)],capture_output=True,timeout=60)
