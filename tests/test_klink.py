@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import struct
 import sys
 import tempfile
 ROOT=Path(__file__).resolve().parent.parent
@@ -40,6 +41,11 @@ with tempfile.TemporaryDirectory() as d:
         if rc: raise SystemExit('FAIL reference build '+name)
         fixture=d/'payload.json';fixture.write_text(json.dumps(capture))
         want=(d/'want').read_bytes()
+        # Explicit one-entry section table, outside all loadable segments.
+        shoff=struct.unpack_from('<I',want,32)[0]
+        assert struct.unpack_from('<HHH',want,46)==(40,1,0)
+        assert shoff+40==len(want) and want[shoff:]==bytes(40)
+
         for mode,cmd in [('interp',[sys.executable,str(ROOT/'hs.py'),'run',str(driver),'--backend','interp',str(fixture)]),('x64',[str(d/'link'),str(fixture)])]:
             r=subprocess.run(cmd,env=env,capture_output=True,text=True,timeout=120)
             try: got=bytes.fromhex(''.join(r.stdout.split()))

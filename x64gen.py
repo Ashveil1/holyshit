@@ -11793,7 +11793,7 @@ def build_xkernel(prog_path, out_path, ir_backend=True):
     t_filesz = 116 + len(text)
     d_off = t_filesz
     eh = _st.pack("<16sHHIIIIIHHHHHH", b"\x7fELF\x01\x01\x01" + b"\0" * 9,
-                  2, 3, 1, KBASE + boot_off, 52, 0, 0, 52, 32, 2, 0, 0, 0)
+                  2, 3, 1, KBASE + boot_off, 52, dat_off + len(file_data), 0, 52, 32, 2, 40, 1, 0)
     ph1 = _st.pack("<IIIIIIII", 1, 0, KBASE, KBASE,
                    t_filesz, t_filesz, 5, 0x1000)
     ph2 = _st.pack("<IIIIIIII", 1, d_off, KBASE + d_off, KBASE + d_off,
@@ -11801,7 +11801,8 @@ def build_xkernel(prog_path, out_path, ir_backend=True):
     img = bytearray()
     img += eh + ph1 + ph2
     assert len(img) == 116
-    img += text + file_data
+    # Explicit SHT_NULL avoids extended-count interpretation in GRUB 2.12.
+    img += text + file_data + bytes(40)
     with open(out_path, "wb") as f:
         f.write(bytes(img))
     print(f"ok: xkernel -> {out_path} ({len(img)} bytes, no gcc/as/ld)")
