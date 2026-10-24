@@ -1005,6 +1005,9 @@ Pre-stated criteria (q=8, 5 seeds, same world as B-521/B-522):
 - T5 control: shuffled-counts control world -> unique-ID accuracy near chance (the rule reads LEARNED counts; it is not a hard-coded table).
 CANNOT claim: the learner still has no negative evidence (absent teaching != taught impossibility); the three-way rule is designed architecture, not learned behavior; "no match" means "not taught together" only.
 
+### B-525 Amendment 1 (2026-10-24) - name/attribute role discriminator
+First run FAILED C2/C3 (grounding 6/6 but uniq .22, abstain 0/75). Root cause (measured): the grounded vocabulary (10-13 words) admits attribute and function words (e.g. จะงอยปาก grounds to นก); summing their co-occurrence rows into the animal tables corrupts coverage. Data-driven fix (pre-stated before re-run): name-ness = assoc[w][animal] / (sentences with that animal primary); a NAME appears in ~every sentence about its animal (~0.9), an attribute in only a fraction (~0.3). Threshold >= 0.5 selects name rows; only name rows feed the animal-attribute table. Designed rule over learned counts, same status as decide().
+
 ## B-523 verdict (2026-10-24) - PASS: root cause verified by measurement, three-way decision rule fixes abstention/ambiguity/unknown without touching learned knowledge
 B-523 (impossible-combination fix) | PASS | b523.py logs/b523_abstain.log | ROOT CAUSE (measured, not asserted): 13/13 empty-extension pairs, the old additive lookup's top animal covers exactly 1 of 2 demanded attributes - the score sums per-attribute co-occurrence credit and has no conjunctive-coverage requirement, so half-matches stay clearly positive (the B-522 T2 .52-.57 ratio). FIX: three-way decision over the SAME learned counts - UNKNOWN (word never taught with any animal, reported and excluded), NO MATCH (no taught animal covers all known probe attributes; semantics = "not taught together", NOT world-impossibility), AMBIGUOUS (extension >1, full extension returned ranked), UNIQUE. q=8, 5 seeds.
 - T1 abstention: 13/13 empty pairs -> NO MATCH, all 5 seeds (criterion 100%).
@@ -1034,6 +1037,20 @@ B-524 (introspection audit, measured half) | PASS | b524.py logs/b524_audit.log 
 - L3 (legacy argmax on same counts): abstention 0/75 - the B-523 RULE causes abstention, the counts alone never did.
 - L4 (shuffled counts): unique-ID .00-.19 (chance ~.167).
 Audit File (inventory + thinking-evidence matrix + integration feasibility) assembles these with existing LEDGER verdicts.
+
+## B-525 pre-registration (2026-10-24, before running) - Link A integration test: P26 grounding feeds the B-521 lookup (Ash 13:39: can the systems be combined?)
+Question: can the baby line (P26 Hebbian grounding from overheard speech + co-present scenes) replace the GIVEN animal-name lexicon in the attribute learner, with no loss on the B-521 battery? Same-corpus arms:
+- ARM GIVEN: B-521 as-is (name lexicon handed to the learner).
+- ARM GROUNDED: no name lexicon given. Scenes have a primary animal present (+30% noise co-present, P26-style); the baby builds (a) word->animal Hebbian associations (+1 co-present / -0.25 absent) and (b) word->attribute co-occurrence counts from the same overheard sentences. Grounded name vocabulary = words with best assoc >= 3 and best >= 2x runner-up (pre-stated threshold, filters function words). decide()/describe() then run on the grounded rows only.
+Attribute words stay given (they are the QUESTIONER's vocabulary); the animal truth table is eval-only in both arms.
+Criteria (5 seeds, q=8, 3 corpus rounds ~800 sentences):
+- C1 grounding: top-associated word = correct name for >= 5/6 animals per seed.
+- C2 on/off: grounded-arm unique-ID accuracy >= .90 (given arm = 1.0 in B-521).
+- C3 fixed-rule behavior preserved: grounded arm abstains on empty pairs 13/13 and returns exact ambiguity extensions.
+CANNOT claim: this links grounding to lookup only; it is not a general system merger (Links B/C deferred); co-present scenes are still given for free (P26's joint-attention caveat).
+
+## B-525 verdict (2026-10-24) - PASS (after Amendment 1): first implemented cross-system link - grounded vocabulary feeds the fixed lookup at given-lexicon level
+B-525 (Link A: P26 grounding -> B-521/B-523 lookup) | PASS | b525.py logs/b525_linka.log | baby overhears the B-521 corpus with co-present animal scenes (30% noise co-presence), grounds word->animal associations, discovers the name vocabulary WITHOUT a given lexicon; decide() then runs on the baby's own memory. First attempt FAILED (uniq .22, abstain 0/75): grounded vocab admitted attribute/function words, corrupting coverage tables. Amendment 1 (pre-stated before re-run): name-ness = assoc/primary-scene rate (names ~0.9, attributes ~0.3, threshold 0.5). Result 5/5 seeds: grounding 6/6 names; discovered vocabulary = EXACTLY the 6 true names (function words and attributes both rejected by the margin + name-ness filters); unique-ID 1.0; ambiguity extensions exact 1.0; abstention 75/75. Criteria C1 (>=5/6), C2 (>=.90), C3 (13/13 + exact extensions) all PASS. On/off: grounded memory == given lexicon on every B-521 metric. Caveats: co-present scenes given for free (P26 joint-attention caveat); attribute words remain the questioner's vocabulary; name-ness rule is designed over learned counts; this is ONE link, not a merged system (Links B/C planned).
 
 ## B-521 pre-registration (2026-10-24, before running) - attribute<->concept feasibility (Ash's bird question, 2026-10-24)
 
