@@ -541,6 +541,7 @@ Honest component status (as of 8778827):
 - Link A attribute memory (B-525): CONNECTED. Baby memory lookup == given lexicon, exact.
 - Trace/introspection (B-524): CONNECTED to answer path; lesions L1-L4 verify component causality.
 - Engineered hsml-connectome: EXPERIMENT ONLY, not in answer path. Ash authorizes free redesign (topology, connections, learning) with on/off evidence per component; cut what doesn't help; no biological claims post-redesign.
+  - Arm 1 (B-528): STD-INSPIRED depletion heuristic (engineered, not the connectome graph). GATED-CONSTRAINED arm passes with content exact (prec 1.0/rec .767) and novelty .875 sham-separated (+.34). Status: EXPERIMENTAL evidence only; OFF accurate baseline remains the default generation path. Costs retained: unconstrained ON arm traded precision 1.0->.944 for novelty 1.0 (LEDGER Correction 1).
 - HDC one-shot backend (Link B, B-526): TESTED, NO-VALUE, CUT (2026-10-24). Bind arm perfect parity but zero corruption-robustness gain; item arm fails parity. Backend interface (observe/taught) shipped with counts as default - decide() now reads through it.
 - Program-skill memory link: NEXT candidate. Procedure induction (b515) currently DISCONNECTED. Runs standalone; no path from dialog to learned procedures. Integration = a dialog-queryable skill memory that induction writes into, measured on/off.
 - OOPS scheduler (F-6): open verdict (b515 in flight).
