@@ -53,18 +53,49 @@ def learn(sents, shuffle_attrs=False, rng=None):
 def score(C, tot, probe):
     return {n: sum(C[n][a] for a in probe) / max(tot[n], 1e-9) for n in ANIMALS}
 
-def t1(C, tot):
+
+def decide(C, probe):
+    """B-523 fixed lookup: three-way decision over the learned counts.
+    UNKNOWN words (never taught with any animal) are reported and excluded;
+    NO MATCH when no taught animal covers all known probe attributes (semantics:
+    'not taught together', not world-impossibility); AMBIGUOUS returns the full
+    extension; UNIQUE answers. The counts are learned; this rule is designed
+    architecture (same status as the old argmax) - not learned behavior."""
+    taught_anywhere = {a for n in ANIMALS for a in C[n] if C[n][a] > 0}
+    known = [a for a in probe if a in taught_anywhere]
+    unknown = [a for a in probe if a not in taught_anywhere]
+    if not known:
+        return 'unknown_all', {'unknown': unknown}
+    ext = sorted(n for n in ANIMALS if all(C[n][a] > 0 for a in known))
+    if not ext:
+        return 'no_match', {'unknown': unknown}
+    if len(ext) > 1:
+        return 'ambiguous', {'ext': ext, 'unknown': unknown}
+    return 'unique', {'answer': ext[0], 'unknown': unknown}
+
+def t1(C, tot, legacy=False):
     uniq_ok = uniq_n = amb_ok = amb_n = 0
+    abstain_ok = abstain_n = 0
     wing_sc = score(C, tot, {'ปีก'}); sw = sorted(wing_sc.values(), reverse=True)
     wing_margin = (sw[0] - sw[1]) / max(sw[0], 1e-9)
     for r in (1, 2, 3):
         for probe in combinations(ATTRS, r):
             ext = {n for n, s in ANIMALS.items() if set(probe) <= s}
-            if not ext: continue
-            sc = score(C, tot, probe); top = max(sc, key=sc.get)
-            if len(ext) == 1: uniq_n += 1; uniq_ok += top in ext
-            else: amb_n += 1; amb_ok += top in ext
-    return uniq_ok / max(uniq_n, 1), amb_ok / max(amb_n, 1), wing_margin
+            if legacy:
+                if not ext: continue
+                sc = score(C, tot, probe); top = max(sc, key=sc.get)
+                if len(ext) == 1: uniq_n += 1; uniq_ok += top in ext
+                else: amb_n += 1; amb_ok += top in ext
+            else:
+                # B-523 fixed path. amb metric STRENGTHENED: exact extension, not top-in-ext.
+                if not ext:
+                    kind, _ = decide(C, probe)
+                    abstain_n += 1; abstain_ok += kind == 'no_match'
+                    continue
+                kind, pl = decide(C, probe)
+                if len(ext) == 1: uniq_n += 1; uniq_ok += (kind == 'unique' and pl['answer'] in ext)
+                else: amb_n += 1; amb_ok += (kind == 'ambiguous' and set(pl['ext']) == ext)
+    return uniq_ok / max(uniq_n, 1), amb_ok / max(amb_n, 1), wing_margin, abstain_ok, abstain_n
 
 def t2(C, tot, sents):
     corpus = set(sents); P = R = nov = 0; produced_ex = []
@@ -78,19 +109,24 @@ def t2(C, tot, sents):
         if name == 'นก': produced_ex = [s2, s3]
     return P / 6, R / 6, nov / 6, produced_ex
 
-def run(sd, q):
+def run(sd, q, legacy=False):
     rng = random.Random(sd)
     sents = gen_corpus(rng, q)
     C, tot = learn(sents)
-    u, a, wm = t1(C, tot); p, r, nv, ex = t2(C, tot, sents)
+    u, a, wm, ab_ok, ab_n = t1(C, tot, legacy=legacy); p, r, nv, ex = t2(C, tot, sents)
     Cs, _ = learn(sents, shuffle_attrs=True, rng=random.Random(100 + sd))
-    us, as_, _ = t1(Cs, tot)
-    return {'seed': sd, 'q': q, 't1_uniq': round(u, 4), 't1_amb': round(a, 4), 'wing_margin': round(wm, 3),
-            't2_prec': round(p, 4), 't2_rec': round(r, 4), 't2_novelty': round(nv, 4),
-            'ctrl_uniq': round(us, 4), 'ctrl_amb': round(as_, 4), 'bird_example': ex}
+    us, as_, _, _, _ = t1(Cs, tot, legacy=legacy)
+    d = {'seed': sd, 'q': q, 't1_uniq': round(u, 4), 't1_amb': round(a, 4), 'wing_margin': round(wm, 3),
+         't2_prec': round(p, 4), 't2_rec': round(r, 4), 't2_novelty': round(nv, 4),
+         'ctrl_uniq': round(us, 4), 'ctrl_amb': round(as_, 4), 'bird_example': ex,
+         'lookup': 'legacy' if legacy else 'decide_b523'}
+    if not legacy: d['t1_abstain_empty'] = f'{ab_ok}/{ab_n}'
+    return d
 
 if __name__ == '__main__':
+    import sys
+    legacy = '--legacy' in sys.argv  # reproduces the pre-B-523 additive-argmax lookup
     for q in (3, 8):
         for sd in range(5):
-            print(json.dumps(run(sd, q), ensure_ascii=False), flush=True)
+            print(json.dumps(run(sd, q, legacy=legacy), ensure_ascii=False), flush=True)
     print('DONE', flush=True)
