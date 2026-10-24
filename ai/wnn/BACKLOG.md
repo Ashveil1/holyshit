@@ -531,3 +531,18 @@ Pre-stated global rules: 3+ seeds where stochastic; "promising" = beats its base
 - [x] B-521 [L] two-word production ("แม่ มา") with order learned from dialogue statistics -- baseline: bag-of-words production -- success: order correct > chance on held-out scenes
 - [x] B-522 [M] fix search-time CAP artifact: scale the CAP=400 search-step cap for boundary/adv evaluation of loop programs (mirror of the B-265 eval-time CAPF fix), then retest CURR skills (mod/mul/div/gcd/isprime/fact) under adv -- baseline: mod NOT FOUND at all n (B-299 interim) -- success: mod found and clean under adv at some n -- DONE (LEDGER: cause was init10 dropping init=y, not CAP; mod tried=482 clean with full inits)
 - [x] B-523 [S] add boundary() entries for CURR skills (mod/mul/div/power/gcd/isprime/fact) using scale-straddling cases like the T9 entries, then rerun the B-299-CURR grid cells that were wrong (mul all-n, div/power small-n, isprime n<=10) -- baseline: B-299-CURR wrong counts (mul 8/8, div 6/8, power 5/7, isprime 6/6 wrong or NOT FOUND) -- success: wrong rate to 0 with tried no worse than the clean-cliff positions (div 346692, power 4352185)
+
+## hsml unified integration plan (Ash 2026-10-24: "รวมทุกอย่างเข้าด้วยกันและพัฒนาเลย", "ทำให้ทุกอย่างรวมเป็นหนึ่งอย่างสมบูรณ์")
+
+Target: ONE hsml program with real data flow end-to-end, not an inventory of demos. Integration != intelligence; a merged shell that only routes to isolated modules is NOT done.
+
+Honest component status (as of 8778827):
+- Dialog answer path (b521 decide(), B-523 applied): CONNECTED. Lookup, ambiguity, abstain over learned counts.
+- Link A attribute memory (B-525): CONNECTED. Baby memory lookup == given lexicon, exact.
+- Trace/introspection (B-524): CONNECTED to answer path; lesions L1-L4 verify component causality.
+- Engineered hsml-connectome: EXPERIMENT ONLY, not in answer path. Ash authorizes free redesign (topology, connections, learning) with on/off evidence per component; cut what doesn't help; no biological claims post-redesign.
+- HDC one-shot backend (Link B): PLANNED. On/off vs count tables on the B-521 battery.
+- Procedure induction / program skills (b515): DISCONNECTED. Runs standalone; no path from dialog to learned procedures. Integration = a dialog-queryable skill memory that induction writes into, measured on/off.
+- OOPS scheduler (F-6): open verdict (b515 in flight).
+
+Definition of done for "unified": (1) one entry point answers using memory + abstain + trace; (2) each added component has an on/off arm on a pre-registered battery showing it helps or is removed; (3) no stub routing; (4) audit File updated to match ACTUAL connections only; (5) no complete-claim until measured.
