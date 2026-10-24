@@ -1,0 +1,14 @@
+{"done_cell": ["mul", 25], "tried": 4155513, "dt": 1854.8}
+{"done_cell": ["div", 2], "tried": 4202709, "dt": 1903.0}
+{"done_cell": ["div", 25], "tried": 4202709, "dt": 7204.5}
+{"done_cell": ["power", 2], "tried": 4450489, "dt": 7251.6}
+{"done_cell": ["power", 25], "tried": 4450489, "dt": 7301.9}
+{"done_cell": ["gcd", 2], "tried": 100985, "dt": 6.5}
+{"done_cell": ["gcd", 25], "tried": 100985, "dt": 6.5}
+{"done_cell": ["isprime", 2], "tried": 6002688, "dt": 12702.0}
+{"done_cell": ["isprime", 25], "tried": 6002688, "dt": 10955.1}
+{"done_cell": ["fact", 2], "tried": 1415364, "dt": 1835.6}
+{"done_cell": ["fact", 25], "tried": 1415364, "dt": 3589.7}
+{"done_cell": ["sumto", 2], "tried": 2707098, "dt": 3682.1}
+{"done_cell": ["sumto", 25], "tried": 2707098, "dt": 4988.5}
+DONE
