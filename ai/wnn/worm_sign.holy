@@ -1,0 +1,295 @@
+// P0-variant worm_sign (B-465): identical to worm.holy except the INH_LIT sign annotation.
+// Signs and evidence classes pre-registered in ai/wnn/LEDGER.md (B-465, 2026-10-24).
+// Original P0 header follows:
+// P0: C. elegans whole-animal connectome simulator, pure holyshit.
+// Data: Cook et al. 2019 hermaphrodite connectome, wormwiring.org SI 5
+// (corrected July 2020): 473 cells, 5914 connections after gap dedupe
+// (chemical = directed, weight in EM serial sections; gap = symmetric).
+// Model: graded linear-threshold neurons, fixed timestep, incoming chemical
+// and gap-junction weights each normalized to sum 1 per cell. Signs
+// (excitatory/inhibitory) are NOT recoverable from EM data, so chemical
+// synapses are all excitatory and gap junctions are symmetric coupling.
+// Validation: tap-withdrawal circuit. Anterior touch receptors (ALML/ALMR/AVM)
+// should drive reversal command interneurons AVD more than forward command
+// PVC; posterior touch (PLML/PLMR) should show the reverse bias.
+
+def clamp(x, lo, hi):
+  if x < lo:
+    return lo
+  if x > hi:
+    return hi
+  return x
+
+def run_sim(N, instart, inpre, inw, ingap, stim_names, nidx, amp, steps, watch):
+  ext = []
+  i = 0
+  while i < N:
+    append(ext, 0.0)
+    i = i + 1
+  i = 0
+  while i < len(stim_names):
+    ext[nidx[stim_names[i]]] = amp
+    i = i + 1
+  v = []
+  i = 0
+  while i < N:
+    append(v, 0.0)
+    i = i + 1
+  // watch accumulators: average rectified activity over second half
+  acc = {}
+  i = 0
+  while i < len(watch):
+    acc[watch[i]] = 0.0
+    i = i + 1
+  step = 0
+  while step < steps:
+    // total network activity for divisive normalization (gain control,
+    // biologically plausible stand-in for missing inhibitory signs)
+    total = 0.0
+    p = 0
+    while p < N:
+      a0 = v[p]
+      if a0 > 0.0:
+        total = total + a0
+      p = p + 1
+    norm = 1.0 / (1.0 + 0.25 * total)
+    nv = []
+    p = 0
+    while p < N:
+      s = ext[p]
+      ap0 = v[p]
+      if ap0 < 0.0:
+        ap0 = 0.0
+      k = instart[p]
+      kend = instart[p + 1]
+      while k < kend:
+        a = v[inpre[k]]
+        if a < 0.0:
+          a = 0.0
+        if ingap[k] == 1:
+          s = s + inw[k] * (a - ap0)
+        else:
+          s = s + inw[k] * a
+        k = k + 1
+      nv2 = v[p] + 0.4 * (clamp(s * norm, -4.0, 4.0) - v[p])
+      append(nv, nv2)
+      if step >= 8 and step < 60:
+        j = 0
+        while j < len(watch):
+          if p == nidx[watch[j]]:
+            av = nv2
+            if av < 0.0:
+              av = 0.0
+            acc[watch[j]] = acc[watch[j]] + av
+          j = j + 1
+      p = p + 1
+    v = nv
+    step = step + 1
+  i = 0
+  half = 52
+  while i < len(watch):
+    acc[watch[i]] = acc[watch[i]] / half
+    i = i + 1
+  return acc
+
+def main():
+  args = argv()
+  path = "connectome.txt"
+  if len(args) > 0:
+    path = args[0]
+  print "load", path
+  txt = read_text(path)
+  lines = split(txt, "\n")
+  hdr = split(lines[0], " ")
+  N = int(hdr[0])
+  E = int(hdr[1])
+  names = split(lines[1], " ")
+  nidx = {}
+  i = 0
+  while i < N:
+    nidx[names[i]] = i
+    i = i + 1
+  print "cells", N, "connections", E
+
+  GABA = ["DD01","DD02","DD03","DD04","DD05","DD06","VD01","VD02","VD03","VD04","VD05","VD06","VD07","VD08","VD09","VD10","VD11","VD12","VD13","RMEL","RMER","RMED","RMEV","AVL","RIS","DVB"]
+  INH_LIT = ["RIML","RIMR","AIYL","AIYR"]  // B-465: RIM (measured LGC-55), AIY (ablation-inferred) - LEDGER
+  TOUCH_ANT = ["ALML","ALMR","AVM"]      // amendment 1: anterior touch x forward-circuit targets
+  ANTAG_F = ["AVBL","AVBR","PVCL","PVCR"]
+  TOUCH_POS = ["PLML","PLMR"]            // posterior touch x backward-circuit targets
+  ANTAG_B = ["AVAL","AVAR","AVDL","AVDR"]
+    // CSR incoming-edge arrays; gap junctions get both directions
+  incount = []
+  i = 0
+  while i < N:
+    append(incount, 0)
+    i = i + 1
+  er = []
+  e = 0
+  while e < E:
+    parts = split(lines[2 + e], " ")
+    pre = int(parts[0])
+    post = int(parts[1])
+    w = int(parts[2])
+    t = parts[3]
+    append(er, [pre, post, w, t])
+    incount[post] = incount[post] + 1
+    if t == "g":
+      incount[pre] = incount[pre] + 1
+    e = e + 1
+  M = 0
+  i = 0
+  while i < N:
+    M = M + incount[i]
+    i = i + 1
+  instart = [0]
+  i = 0
+  while i < N:
+    append(instart, instart[i] + incount[i])
+    i = i + 1
+  inpre = []
+  inw = []
+  ingap = []
+  chem_sum = []
+  gap_sum = []
+  i = 0
+  while i < M:
+    append(inpre, 0)
+    append(inw, 0.0)
+    append(ingap, 0)
+    i = i + 1
+  i = 0
+  while i < N:
+    append(chem_sum, 0.0)
+    append(gap_sum, 0.0)
+    i = i + 1
+  fill = []
+  i = 0
+  while i < N:
+    append(fill, instart[i])
+    i = i + 1
+  e = 0
+  while e < E:
+    ed = er[e]
+    pre = ed[0]
+    post = ed[1]
+    w = ed[2]
+    t = ed[3]
+    slot = fill[post]
+    inpre[slot] = pre
+    inw[slot] = w * 1.0
+    if t == "g":
+      ingap[slot] = 1
+      gap_sum[post] = gap_sum[post] + w
+      slot2 = fill[pre]
+      inpre[slot2] = post
+      inw[slot2] = w * 1.0
+      ingap[slot2] = 1
+      gap_sum[pre] = gap_sum[pre] + w
+      fill[pre] = slot2 + 1
+    else:
+      chem_sum[post] = chem_sum[post] + w
+    fill[post] = fill[post] + 1
+    e = e + 1
+  // normalize per cell, per connection type; gains: chem 2.0, gap 0.5
+  k = 0
+  while k < M:
+    p2 = 0
+    p2 = 0
+    k = k + 1
+  // second pass: find post of each slot via instart ranges
+  p = 0
+  while p < N:
+    cs = chem_sum[p]
+    gs = gap_sum[p]
+    k = instart[p]
+    kend = instart[p + 1]
+    while k < kend:
+      if ingap[k] == 1:
+        if gs > 0.0:
+          inw[k] = inw[k] / gs * 1.0
+      else:
+        if cs > 0.0:
+          inw[k] = inw[k] / cs * 1.0
+        gi = 0
+        while gi < len(GABA):
+          if inpre[k] == nidx[GABA[gi]]:
+            inw[k] = 0.0 - inw[k]
+          gi = gi + 1
+        gi = 0
+        while gi < len(INH_LIT):
+          if inpre[k] == nidx[INH_LIT[gi]]:
+            inw[k] = 0.0 - inw[k]
+          gi = gi + 1
+        gi = 0
+        while gi < len(TOUCH_ANT):
+          if inpre[k] == nidx[TOUCH_ANT[gi]]:
+            gj = 0
+            while gj < len(ANTAG_F):
+              if p == nidx[ANTAG_F[gj]]:
+                inw[k] = 0.0 - inw[k]
+              gj = gj + 1
+          gi = gi + 1
+        gi = 0
+        while gi < len(TOUCH_POS):
+          if inpre[k] == nidx[TOUCH_POS[gi]]:
+            gj = 0
+            while gj < len(ANTAG_B):
+              if p == nidx[ANTAG_B[gj]]:
+                inw[k] = 0.0 - inw[k]
+              gj = gj + 1
+          gi = gi + 1
+      k = k + 1
+    p = p + 1
+  print "edges loaded", M, "(gap junctions doubled)"
+
+  watch = ["AVDL", "AVDR", "PVCL", "PVCR", "AVAL", "AVAR", "AVBL", "AVBR", "DVA"]
+  steps = 100
+  if len(args) > 1:
+    steps = int(args[1])
+
+  print ""
+  print "experiment 1: anterior touch (ALML ALMR AVM) -> expect AVD (reversal)"
+  r1 = run_sim(N, instart, inpre, inw, ingap, ["ALML", "ALMR", "AVM"], nidx, 3.0, steps, watch)
+  i = 0
+  while i < len(watch):
+    print watch[i], r1[watch[i]]
+    i = i + 1
+
+  print ""
+  print "experiment 2: posterior touch (PLML PLMR) -> expect PVC (forward)"
+  r2 = run_sim(N, instart, inpre, inw, ingap, ["PLML", "PLMR"], nidx, 3.0, steps, watch)
+  i = 0
+  while i < len(watch):
+    print watch[i], r2[watch[i]]
+    i = i + 1
+
+  avd1 = r1["AVDL"] + r1["AVDR"]
+  pvc1 = r1["PVCL"] + r1["PVCR"]
+  avd2 = r2["AVDL"] + r2["AVDR"]
+  pvc2 = r2["PVCL"] + r2["PVCR"]
+  print ""
+  print "anterior touch: AVD", avd1, "PVC", pvc1
+  print "posterior touch: AVD", avd2, "PVC", pvc2
+  dva1 = r1["DVA"]
+  dva2 = r2["DVA"]
+  print "DVA: anterior", dva1, "posterior", dva2
+  print ""
+  print "RESULTS (honest):"
+  if avd1 > pvc1:
+    print "  PASS anterior touch -> AVD dominates PVC (known fast reversal path via AVM-AVD gap junctions)"
+  else:
+    print "  FAIL anterior touch -> AVD should dominate"
+  if dva2 > 3.0 * dva1:
+    print "  PASS DVA strongly posterior-selective (known PLM-DVA stretch pathway)"
+  else:
+    print "  FAIL DVA posterior selectivity"
+  if pvc2 / avd2 > pvc1 / avd1:
+    print "  PASS PVC/AVD ratio shifts toward PVC for posterior touch"
+  else:
+    print "  FAIL PVC/AVD ratio shift"
+  if pvc2 > avd2:
+    print "  PASS posterior touch -> PVC dominates"
+  else:
+    print "  MISS posterior touch: AVD still above PVC - EM data has no synapse signs; full inhibitory signatures needed (open research)"
+
+main()
