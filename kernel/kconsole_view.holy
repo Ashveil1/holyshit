@@ -12,7 +12,10 @@ def active(view):
   textrow(view, session[0], session[3], view[5])
   # Clear the complete cursor strip, including the full-capacity position.
   kfont.fill(view[0], view[2], view[5] + 14, view[6] + 4, 2, 0xe8edf2)
-  kfont.fill(view[0], view[2] + session[3] * 12, view[5] + 14, 8, 2, 0x16324f)
+  color = 0x16324f
+  if session[3] == session[1]:
+    color = 0xb42318
+  kfont.fill(view[0], view[2] + session[3] * 12, view[5] + 14, 8, 2, color)
 def history(view):
   session = view[1]
   index = 0
