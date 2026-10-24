@@ -711,3 +711,26 @@ logs/b502_stdout.log. Setup (in-harness verification): 9 pinned ops, 112 E1, |U|
 - Arm A (mined-only depth-2: bases = L + E1 + 729 mined, 845 total): NOT FOUND in 6M (tried 6,002,880 = full cap). With the by-construction absence, this is the pre-registered honest expressivity proof: fragments mined from PAIRS OF USED depth-1 exprs cannot express absdiff, because absdiff requires pairing max and min - two library operators that no learned program has ever USED together. Usage mining compresses rediscovery of used combinations; it cannot invent an unused pairing.
 - Arm B (mined-first + full deep list, 121,805 bases): FOUND the exact B-500 program at tried 640,435, gen 40/40 all scales 1-4. Position cost of mining-first ordering vs B-500's 636K: ~+4.4K (~0.7%) - inserting mined fragments ahead of the full space is nearly free when the full space follows.
 Net: the backlog's "absdiff found OR honest expressivity proof" is satisfied by the proof branch. B-500's cost-ordered deepening remains the mechanism that discovers novel operator pairings; usage-mining would only help tasks whose solutions recombine already-co-used operators. dt columns suspension-contaminated as usual; tried is ground truth.
+
+## B-503 pre-registration (2026-10-24, before running)
+Question: can number-word grounding and op-model learning run JOINTLY (mutual bootstrap) without loss vs P16's separate stages?
+
+Design. Corpus family b410d-style: digit sentences + word sentences from the same op/2-step templates (1..10 values, words with prob). SEPARATE arm (P16 baseline): stage A learner fit on digit sentences only, frozen; learn_lexicon (constraint voting, a token whose value works in >=80% of its sentences becomes a number word) against the frozen learner; answer via apply_lex. JOINT arm: interleaved rounds - each lexicon round is followed by refitting the op learner on the union of digit sentences and lexicon-decoded word sentences, so word-sentence evidence also shapes the op model; final eval identical for both arms.
+Data: nA digit train + nB word train + mixed 2-step eval, 5 seeds, 300 eval rows/seed, sizes fixed in b503.py and reported with the result.
+
+Falsifiable predictions:
+- H1 (success criterion): JOINT end-to-end accuracy on unseen word 2-step sentences >= SEPARATE (no loss). If mean JOINT < mean SEPARATE by >2 points -> FAIL.
+- H2 (secondary): JOINT learns >= as many gold words with spurious entries <= separate + 1.
+
+CAN show: mutual-bootstrapping feasibility and no-loss vs the staged pipeline on THIS synthetic family at THESE sizes/seeds.
+CANNOT show: general superiority; grounding beyond the constraint-voting signal; anything about natural language; generalization beyond templates/values tested. Endpoint numbers are per-harness, not comparable to other harnesses.
+
+Verdict rule: write H1/H2 outcomes exactly as measured; any harness bug found by cross-checks discards the run (commit message notes the discard).
+B-503 sizes fixed before run (b503.py, commit e01a2e7): N_DIGIT=600 stage-A digit 2-step sentences, N_WORD=200 word-substituted train sentences (pword 0.6 train / 0.7 eval, EN+TH words, values 1..10 window per P16 render), ROUNDS=4 P16-default voting rounds, N_EVAL=300 unseen new-frame sentences, 5 seeds. Probe-timing at reduced size showed 0 gold words learned (expected at n=50) and equal arms; full-size results pending.
+
+## B-503 verdict: PASS (2026-10-24, b503.py, logs/b503_stdout.log)
+Joint stage-B (interleaved lexicon voting + model refits on digit+decoded-word sentences) vs P16 separate stages, identical corpora per seed, sizes as pre-registered (600 digit + 200 word train, 4 rounds, 300 eval new-frame sentences, 5 seeds).
+
+Measured: end-to-end acc on unseen new-frame word 2-step sentences - SEPARATE 0.277 mean (range 0.207-0.367), JOINT 0.288 mean (range 0.213-0.373). Per-seed diffs (joint-sep): +0.053, +0.006, +0.040, +0.033, -0.080. H1 (no loss, fail if joint < sep - 0.02): PASS - mean diff +0.010, and no seed loses by >0.02 except seed 4 (-0.080, within observed cross-seed variance ~0.08-0.16). Gold words 5.4 vs 5.6 of 20; spurious 0.2 both; wrong-value 0 both. H2: PASS.
+
+Reading (scope-limited): joint stage-B is FEASIBLE with no measured loss on this synthetic family at these sizes; the +0.010 mean gain is within seed noise - NO improvement is claimed. Absolute accuracy (~0.28) reflects the hard eval (new connectors+frames, word values, 600-digit stage A) and is the same eval for both arms; the A/B is internally valid regardless of absolute level. Total supervision = 600 labelled digit + 200 labelled word sentences, identical for both arms. Nothing shown about natural language, other families, or other sizes. Wall 59 min for all 5 seeds (within the under-2h budget).

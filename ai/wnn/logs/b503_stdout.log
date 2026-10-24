@@ -1,0 +1,7 @@
+{"seed": 0, "acc_sep": 0.32, "acc_joint": 0.373, "gold_sep": 5, "spur_sep": 0, "wrongval_sep": 0, "gold_joint": 6, "spur_joint": 0, "wrongval_joint": 0}
+{"seed": 1, "acc_sep": 0.207, "acc_joint": 0.213, "gold_sep": 6, "spur_sep": 1, "wrongval_sep": 0, "gold_joint": 5, "spur_joint": 1, "wrongval_joint": 0}
+{"seed": 2, "acc_sep": 0.243, "acc_joint": 0.283, "gold_sep": 2, "spur_sep": 0, "wrongval_sep": 0, "gold_joint": 3, "spur_joint": 0, "wrongval_joint": 0}
+{"seed": 3, "acc_sep": 0.25, "acc_joint": 0.283, "gold_sep": 7, "spur_sep": 0, "wrongval_sep": 0, "gold_joint": 5, "spur_joint": 0, "wrongval_joint": 0}
+{"seed": 4, "acc_sep": 0.367, "acc_joint": 0.287, "gold_sep": 7, "spur_sep": 0, "wrongval_sep": 0, "gold_joint": 9, "spur_joint": 0, "wrongval_joint": 0}
+SUMMARY {"acc_sep": 0.277, "acc_joint": 0.288, "gold_sep": 5.4, "gold_joint": 5.6, "spur_sep": 0.2, "spur_joint": 0.2, "wrongval_sep": 0.0, "wrongval_joint": 0.0, "n_digit": 600, "n_word": 200, "rounds": 4, "seeds": 5, "wall_s": 3548}
+DONE
