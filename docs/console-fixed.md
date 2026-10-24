@@ -55,3 +55,8 @@ unchanged over 1000 submissions. The graphical boot gate checks the cursor
 pixels after G and absence of a stale underline at the old position. The
 640x480 guest screenshot was visually inspected with the four retained lines
 and G followed by the underline.
+
+The boot regression also checks the cursor at empty input, all 42 characters,
+one ignored over-capacity character, backspace to 41 and Enter reset to zero.
+Each check reads the full cleared cursor strip so stale markers are detected.
+The original C/D/E/F transcript and G input are then restored and checked.
