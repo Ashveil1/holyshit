@@ -1155,3 +1155,25 @@ b527.py logs/b527_linkc.log | one HSMLMemory serves the B-523 attribute battery 
 - C4 no interference: attribute battery exact with skills loaded (13/13, 32/32, 22/22, 32/32, 32/32).
 - C5 garbage control: induction on shuffled examples found NOTHING within 611,365 tried (cap = largest successful b515 oops leg, implementation note) - no skill hallucinated from noise; store stays empty -> abstain.
 CAN claim: stored induced procedures execute through the sentence path on novel inputs; abstain when no skill; no degradation of the attribute path; no skills from noise. CANNOT (carried): in-dialog teaching of procedures (skills seeded from b515 logs with provenance); number understanding (parse/format designed); anything beyond cur7's primitive set. Integration != intelligence: this is one more real data-flow link, not a merged-mind claim.
+## B-529 pre-registration (2026-10-24, before running) - Link D: in-dialog procedure teaching (closes B-527's seeded-skills gap)
+Goal: a NEW procedure enters the skill store entirely through conversation - the teacher uses only sentences, never code or a seeding API. B-527's skills were seeded from b515 induction logs; this is the human-facing teaching path the integration audit marks as not yet done (Ash: "ทำให้ทุกอย่างรวมเป็นหนึ่งอย่างสมบูรณ์").
+Design (b529.py):
+- Scripted teacher, sentences only, DESIGNED frames (named as such): a naming statement ("วิธีนี้ชื่อ สองเท่า"), example statements ("ถ้า n เป็น 3 ตอบ 6") and confirmation answers ("ตอบ 6"). The system parses (x -> y) pairs, runs cur7/OOPS induction under a bounded tried budget on the accumulated pairs, then CONFIRMS the candidate by querying the teacher on held-out inputs ("ถ้า n เป็น 7 ตอบอะไร"); only a teacher-confirmed program enters the store, with provenance (dialog, examples, tried, confirmation transcript).
+- Teaching target: one new procedure not among the 4 seeded skills (double, 2n). Validation: 40 unseen inputs through the b527 sentence path.
+- Confirmation-round cap 3: if every candidate fails teacher confirmation within 3 rounds, teaching FAILS and the store stays unchanged.
+Criteria (pre-stated):
+- C1 sentences only: every supervision pair comes from a parsed sentence; no direct store writes. Total teaching supervision (examples + confirmations) <= 20, reported.
+- C2 taught-skill accuracy >= 95% on 40 unseen inputs through the sentence path (B-527 C1 bar).
+- C3 no interference: the 4 seeded skills still 160/160 and the B-523 battery unchanged after the new skill enters.
+- C4 noise control: a teacher giving random (x,y) pairs with the same budget ends with NO new skill (induction finds nothing or confirmation rejects all candidates within the round cap) -> abstain.
+- C5 provenance: the stored skill carries dialog provenance and is inspectable (show_prog).
+FAIL recording: budget exhaustion or confirmation-cap exhaustion is a FAIL with tried counts and rounds recorded; grammar/frame changes mid-run are an amendment, not silent repair.
+CAN claim if PASS: a procedure was taught through conversation alone and is answered through the same sentence path as pre-existing skills, with bounded supervision and noise control. CANNOT: natural-language understanding of the procedure's meaning (frames are designed); procedures beyond cur7's primitive set; human-like teaching flexibility.
+## B-529 verdict (2026-10-24) - PASS: Link D - a procedure was taught through conversation alone and answers through the same sentence path
+Pre-reg 2026-10-24 (above). Harness b529.py, log logs/b529_teach.log. Verdict json: PASS, c1-c4 all true.
+- C1 sentences-only teaching: 'double' (สองเท่า) taught in round 1 from 5 example sentences + 3 confirmation replies = 8 supervision pairs (bar <= 20); induction tried=549; stored program "init b=one; if (lt a b) -> a; else step (a,(add a a)); comb=('add','a',0); post=id" with dialog provenance. No VALID/ADV extra supervision (honest scoping: induction fit teacher pairs only).
+- C2 taught-skill accuracy: 40/40 on unseen inputs (x in 40..2000) through the sentence path (bar >= 38).
+- C3 no interference: seeded skills still 160/160 x4; B-523 battery exact (13/13 abstain, 32/32 unique, 22/22 ambig, 32/32+32/32 unknown).
+- C4 noise control: garbage teacher (memoized random mapping, same budget) -> induction exhausted at tried=700,001, NO skill stored.
+Claim per pre-reg: a procedure was taught through conversation alone, with bounded supervision and noise control, and is answered through the same path as pre-existing skills. Still CANNOT claim: understanding of the procedure's meaning (frames designed); procedures beyond cur7's primitive set; human-like teaching flexibility (scripted teacher, designed frames; teaching of multi-step conditional procedures untested).
+Note: the taught program generalizes behaviorally - 40/40 on unseen x in 40..2000 after only 8 dialog pairs (x <= 40 examples, confirmations x < 400); it is not a memorized table. Mechanism of the found schema not further analyzed.
