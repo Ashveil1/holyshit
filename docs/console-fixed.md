@@ -78,3 +78,12 @@ opaque fixed-buffer state directly without snapshots. The 1000-submission
 proof therefore measures the actual shared redraw path, retaining the same
 16-byte allocation-marker gap and independently checked pixels/outer guards.
 The real GRUB keyboard gate retains the original layout and cursor checks.
+
+At the input's 42-character limit, the underline changes from dark blue to
+red (`#b42318`). Ignored over-capacity keys keep that state; backspace restores
+the normal underline, and Enter clears the old marker. This gives visible
+capacity feedback without changing FIFO/drop behavior or input semantics.
+The real graphical gate checks exact full/backspace/reset pixels, and the
+shared RAM-frame proof exercises full/redraw/backspace/reset on every one of
+1000 cycles with unchanged 16-byte marker gap. The full-input guest screenshot
+was visually inspected. The underline is still steady, not a blinking cursor.

@@ -75,7 +75,8 @@ with tempfile.TemporaryDirectory() as temp:
             for y in (294,295):
                 for x in range(32,548):
                     offset=(y*640+x)*3
-                    want=(22,50,79) if 32+column*12<=x<40+column*12 else (232,237,242)
+                    ink=(180,35,24) if column==42 else (22,50,79)
+                    want=ink if 32+column*12<=x<40+column*12 else (232,237,242)
                     assert tuple(raw[offset:offset+3])==want,('cursor',column,x,y)
         cursor_at(0)
         # Six submissions overflow the four-line transcript; seventh stays editable.
@@ -107,6 +108,8 @@ with tempfile.TemporaryDirectory() as temp:
                 time.sleep(.1)
             else:raise AssertionError('cursor boundary edit stalled '+key)
             if expected in (42,41,0):cursor_at(expected)
+            if expected==42 and os.environ.get('HS_TEST_FULL_SCREENSHOT'):
+                shutil.copyfile(screen,os.environ['HS_TEST_FULL_SCREENSHOT'])
         # Restore the original transcript/current-line screenshot below.
         for key in ['c','ret','d','ret','e','ret','f','ret','g']:
             sock.sendall(('sendkey '+key+'\n').encode());sock.recv(4096)

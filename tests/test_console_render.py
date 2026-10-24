@@ -19,7 +19,7 @@ def put(p,b):
 def get(p):
   unsafe:
     return load8(as_ptr(p))
-s = kconsole_buffer.create(42,4)
+s = kconsole_buffer.create(7,4)
 p = make(30784)
 i = 0
 while i < 30784:
@@ -37,6 +37,20 @@ while n < 1000:
   kconsole_buffer.feed(s,10)
   kfont.fill(f,0,0,128,80,0xe8edf2)
   kconsole_view.history(view)
+  kconsole_view.active(view)
+  i = 0
+  while i < 7:
+    kconsole_buffer.feed(s,97)
+    i = i + 1
+  kconsole_view.active(view)
+  assert get(p + 16 + 78 * 384 + 84 * 3) == 24
+  assert get(p + 16 + 78 * 384 + 84 * 3 + 1) == 35
+  assert get(p + 16 + 78 * 384 + 84 * 3 + 2) == 180
+  kconsole_buffer.feed(s,8)
+  kconsole_view.active(view)
+  assert get(p + 16 + 78 * 384 + 72 * 3) == 79
+  assert get(p + 16 + 78 * 384 + 84 * 3) == 242
+  kconsole_buffer.reset(s)
   kconsole_view.active(view)
   n = n + 1
 after = make(1)
