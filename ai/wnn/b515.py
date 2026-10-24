@@ -97,5 +97,18 @@ if __name__ == '__main__':
             L = capture_lists(train)
             pc = (lambda p: CAP) if mode == 'sanity' else (lambda p: 256 * 2 ** p)
             p, tried, dt = search_oops(train, L, pc)
-        print(json.dumps({'mode': mode, 'task': task, 'found': p is not None, 'tried': tried,
-                          'dt': round(dt, 1)}), flush=True)
+        row = {'mode': mode, 'task': task, 'found': p is not None, 'tried': tried, 'dt': round(dt, 1)}
+        if p is not None:
+            row['prog'] = C.show_prog(p)
+            f = C.make_fn(p); C.CAPF[0] = 20000
+            te = C.random.Random(1000)
+            acc = {}
+            for sc in (1, 2, 3, 4):
+                ok = 0
+                for _ in range(40):
+                    x, y, r = gen(task, te, sc)
+                    try: ok += f(x, y) == r
+                    except Exception: pass
+                acc[str(sc)] = ok
+            row['unseen'] = acc
+        print(json.dumps(row), flush=True)
