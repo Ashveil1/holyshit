@@ -1,2 +1,4 @@
 {"setup": {"ops": ["add", "sub", "mod", "mul", "div", "power", "gcd", "max", "min"], "n_E1": 112, "U": [["add", "a", "b"], ["add", "a", "one"], ["add", "b", "one"], ["mod", "b", "a"], ["mul", "b", "a"], ["power", "a", "b"], ["sub", "a", "b"], ["sub", "a", "one"], ["sub", "b", "one"]], "n_mined": 729, "n_deep": 120960, "absdiff_fragment_in_mined": false}}
 {"task": "absdiff", "seed": 0, "arm": "A_mined_only", "found": false, "tried": 6002880, "dt": 10893.7, "prog": null, "gen": null, "n_bases": 845}
+{"task": "absdiff", "seed": 0, "arm": "B_mined_first_deep", "found": true, "tried": 640435, "dt": 1833.5, "prog": "init b=y; if (nlt a zero) -> ('sub', ('max', 'a', 'b'), ('min', 'a', 'b')); else step (a,b); comb=None; post=id", "gen": {"1": 40, "2": 40, "3": 40, "4": 40}, "n_bases": 121805}
+DONE
