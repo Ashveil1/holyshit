@@ -5,7 +5,7 @@ answered by executing stored programs or by the attribute lookup - real data flo
 Skills are seeded from b515's oops legs: re-derived deterministically (same seed/config)
 and verified show_prog == logged string in logs/b515_oops.log before use (provenance).
 LEDGER pre-reg 2026-10-24. Number parse/format and sentence frames are DESIGNED (named)."""
-import random, json, sys, re
+import random, json, sys, re, os, pickle
 from collections import defaultdict
 from itertools import combinations
 from b521 import ANIMALS, ATTRS, gen_corpus
@@ -43,16 +43,28 @@ class HSMLMemory:
         kind, pl = decide(self.attrs, probe)
         return {'kind': kind, **pl}
 
+CACHE = 'logs/b527_skills_cache.pkl'
+
 def derive_skills(logged):
-    """Re-derive b515 oops programs deterministically; verify against the log strings."""
+    """Re-derive b515 oops programs deterministically; verify against the log strings.
+    Cached per task (pickle): on every use the cached program's show_prog MUST still
+    equal the current log string - provenance is re-verified, not just remembered."""
+    cache = {}
+    if os.path.exists(CACHE):
+        cache = pickle.load(open(CACHE, 'rb'))
     store = {}
     for task in ('even', 'sumto', 'square', 'choose2'):
-        train = setup(task, seed=0)
-        L = capture_lists(train)
-        p, tried, dt = search_oops(train, L, lambda ph: 256 * 2 ** ph)
-        assert p is not None, f'{task}: re-derivation failed'
-        s = show_prog(p)
-        assert s == logged[task], f'{task}: re-derived program != b515 logged program'
+        if task in cache and show_prog(cache[task][0]) == logged[task]:
+            p, tried = cache[task]
+        else:
+            train = setup(task, seed=0)
+            L = capture_lists(train)
+            p, tried, dt = search_oops(train, L, lambda ph: 256 * 2 ** ph)
+            assert p is not None, f'{task}: re-derivation failed'
+            s = show_prog(p)
+            assert s == logged[task], f'{task}: re-derived program != b515 logged program'
+            cache[task] = (p, tried)
+            pickle.dump(cache, open(CACHE, 'wb'))
         C.CAPF[0] = 20000
         store[task] = (p, make_fn(p), {'source': 'b515_oops', 'tried': tried})
     return store

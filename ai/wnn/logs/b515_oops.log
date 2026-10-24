@@ -2,3 +2,8 @@
 {"mode": "baseline", "task": "sumto", "found": true, "tried": 1415698, "dt": 1827.4}
 {"mode": "oops", "task": "even", "found": true, "tried": 611365, "dt": 61.2}
 {"mode": "oops", "task": "sumto", "found": true, "tried": 537, "dt": 0.2}
+{"mode": "baseline", "task": "square", "found": true, "tried": 2583787, "dt": 1746.4}
+{"mode": "baseline", "task": "choose2", "found": true, "tried": 2597867, "dt": 200.9}
+{"mode": "oops", "task": "square", "found": true, "tried": 747, "dt": 0.1, "prog": "init b=one; if (lt a b) -> zero; else step (a,(add b one)); comb=('add', 'a', 0); post=id", "unseen": {"1": 40, "2": 40, "3": 40, "4": 40}}
+{"mode": "oops", "task": "choose2", "found": true, "tried": 43545, "dt": 16.5, "prog": "init b=one; if (lt a b) -> a; else step ((sub a b),b); comb=('add', '(sub a b)', 0); post=id", "unseen": {"1": 40, "2": 40, "3": 40, "4": 40}}
+ALLDONE
