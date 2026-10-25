@@ -38,8 +38,9 @@ class HSMLMemory:
                 return {'kind': 'skill_failed', 'skill': task}
             return {'kind': 'skill_answer', 'skill': task, 'x': x, 'result': r,
                     'sentence': f'{m.group(1)} ของ {x} คือ {r}', 'provenance': prov}
-        # attribute probe path (B-523 semantics)
-        probe = [t for t in toks if t in ATTRS or t == 'เขา']
+        # attribute probe path (B-523 semantics); B-541: dynamic learned vocabulary
+        known = self.attrs.vocab() if hasattr(self.attrs, 'vocab') else set(ATTRS)
+        probe = [t for t in toks if t in known or t == 'เขา']
         kind, pl = decide(self.attrs, probe)
         return {'kind': kind, **pl}
 
