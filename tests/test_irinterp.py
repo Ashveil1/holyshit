@@ -292,6 +292,30 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             fails += 1
             print(f"FAIL unbound module attribute: {ref!r} != {got!r}")
 
+    module_sources = []
+    for expression in ['print f', 'print str(f)', 'print float(f)', 'print f()',
+                       'print keys(f)', 'print len(f)', 'print f["hs_ir_mod"]',
+                       'print f.missing', 'f.missing = 1']:
+        module_sources.append('f = {"hs_ir_mod": "fake", "frame": {}}\ntry:\n  ' +
+                              expression + '\nexcept as error:\n  print error\n')
+    for expression in ['print counter["frame"]', 'counter["frame"] = {}',
+                       'print counter()', 'print float(counter)']:
+        module_sources.append('import counter\ntry:\n  ' + expression +
+                              '\nexcept as error:\n  print error\nprint counter.bump()\n')
+    module_sources.append('import counter\na = counter\nprint a, str(a)\na.value = 7\nprint counter.bump()\n')
+    for source in module_sources:
+        prog = os.path.join(module_dir, "module_records.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL module handle parity: {source!r}: {ref!r} != {got!r}")
+    print("14 module handle/guest Dict cases checked")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')
