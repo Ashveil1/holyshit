@@ -739,7 +739,7 @@ class Gen:
           raise pyrt.py_err("builtin '" + str(name) + "' not in x64 subset", ln)
         self.ev_builtin_value(name)
         return null
-      if name in ["print", "len", "range", "str", "int", "float", "input", "open", "read", "write", "close", "argv", "env", "system", "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey", "readkey_code", "readkey_nav", "pmm_alloc", "meminfo", "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept", "http_get", "json_parse", "json_str", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "json_load", "json_save", "write_bytes", "alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int", "asm"]:
+      if name in ["print", "len", "range", "str", "int", "float", "input", "open", "read", "write", "close", "argv", "env", "system", "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "meminfo", "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept", "http_get", "json_parse", "json_str", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "json_load", "json_save", "write_bytes", "alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int", "asm"]:
         raise pyrt.py_err("builtin '" + str(name) + "' is not a value (call it)", ln)
       if self.find_binding(name, sc) != null:
         raise pyrt.py_err("module '" + str(name) + "' is not a first-class value in x64 subset (use mod.attr)", ln)
@@ -2072,8 +2072,8 @@ class Gen:
       asm.jmp("hs_raise_msg")
       asm.label(lab_fok)
       return null
-    if fn["t"] == "var" and fn["name"] in ["input", "open", "read", "write", "close", "argv", "env", "system", "ticks", "readkey", "readkey_code", "readkey_nav", "pmm_alloc", "pmm_total", "pmm_free", "meminfo", "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on", "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop", "enter_user", "exec_enter", "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept", "http_get", "json_parse", "json_str", "json_load", "json_save", "write_bytes", "asm"]:
-      if self.freestanding and fn["name"] in ["ticks", "readkey", "readkey_code", "readkey_nav", "pmm_alloc", "pmm_total", "pmm_free", "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on", "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop", "enter_user", "exec_enter"]:
+    if fn["t"] == "var" and fn["name"] in ["input", "open", "read", "write", "close", "argv", "env", "system", "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "pmm_total", "pmm_free", "meminfo", "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on", "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop", "enter_user", "exec_enter", "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept", "http_get", "json_parse", "json_str", "json_load", "json_save", "write_bytes", "asm"]:
+      if self.freestanding and fn["name"] in ["ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "pmm_total", "pmm_free", "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on", "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop", "enter_user", "exec_enter"]:
         self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
         return null
       name = fn["name"]
@@ -2250,6 +2250,21 @@ class Gen:
       if args:
         raise pyrt.py_err("readkey_nav takes no args", ln)
       asm.call("nav_dequeue")
+      _t2166 = [self.new_tmp("rkc"), self.new_tmp("rkc")]
+      lab_none = _t2166[0]
+      lab_done = _t2166[1]
+      asm.test_rr("rax", "rax")
+      asm.jcc("e", lab_none)
+      self.tag_box()
+      asm.jmp(lab_done)
+      asm.label(lab_none)
+      asm.mov_ri64("rax", Gen_HS_NULL)
+      asm.label(lab_done)
+      return null
+    if name == "readkey_event":
+      if args:
+        raise pyrt.py_err("readkey_event takes no args", ln)
+      asm.call("event_dequeue")
       _t2166 = [self.new_tmp("rkc"), self.new_tmp("rkc")]
       lab_none = _t2166[0]
       lab_done = _t2166[1]
@@ -4055,9 +4070,11 @@ class Gen:
       asm.data_qword(Gen_KHEAP_BASE)
       asm.data_label("bump_end_")
       asm.data_qword(Gen_KHEAP_BASE + Gen_KHEAP_SIZE)
-      for nm in ["ticks_", "keyhead_", "keytail_", "keydrops_", "navhead_", "navtail_", "navdrops_", "keyextended_", "pmm_next_"]:
+      for nm in ["ticks_", "keyhead_", "keytail_", "keydrops_", "navhead_", "navtail_", "navdrops_", "keyextended_", "eventhead_", "eventtail_", "eventdrops_", "pmm_next_"]:
         asm.data_label(nm)
         asm.data_qword(0)
+      asm.data_label("eventqueue_")
+      asm.data_bytes(pyrt.py_bytes(64))
       asm.data_label("navqueue_")
       asm.data_bytes(pyrt.py_bytes(64))
       asm.data_label("keyqueue_")
@@ -4348,12 +4365,16 @@ class Gen:
     asm.jcc("e", lab_ascii)
     asm.cmp_ri32("rax", 72)
     asm.jcc("ne", lab_down)
+    asm.mov_ri32("rax", 128)
+    asm.call("event_enqueue")
     asm.mov_ri32("rax", 1)
     asm.call("nav_enqueue")
     asm.ret()
     asm.label(lab_down)
     asm.cmp_ri32("rax", 80)
     asm.jcc("ne", lab_done)
+    asm.mov_ri32("rax", 129)
+    asm.call("event_enqueue")
     asm.mov_ri32("rax", 2)
     asm.call("nav_enqueue")
     asm.ret()
@@ -4367,6 +4388,9 @@ class Gen:
     asm.movzx_eax_mx("rcx", "rax", 1, 0)
     asm.test_rr("rax", "rax")
     asm.jcc("e", lab_done)
+    asm.push_r("rax")
+    asm.call("event_enqueue")
+    asm.pop_r("rax")
     asm.call("kbd_enqueue")
     asm.label(lab_done)
     asm.ret()
@@ -4447,6 +4471,49 @@ class Gen:
     lab_empty = self.new_tmp("kbempty")
     asm.jcc("e", lab_empty)
     asm.lea_rip("r11", "navqueue_")
+    asm.add_rr("r11", "rdx")
+    asm.movzx_eax_m8("r11", 0)
+    asm.add_ri32("rdx", 1)
+    asm.and_ri32("rdx", 63)
+    asm.mov_mr("rcx", "rdx", 0)
+    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([157]))
+    asm.ret()
+    asm.label(lab_empty)
+    asm.mov_ri32("rax", 0)
+    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([157]))
+    asm.ret()    asm.label("event_enqueue")
+    asm.lea_rip("rcx", "eventtail_")
+    asm.mov_rm("rdx", "rcx", 0)
+    asm.mov_rr("r10", "rdx")
+    asm.add_ri32("r10", 1)
+    asm.and_ri32("r10", 63)
+    asm.lea_rip("r11", "eventhead_")
+    asm.mov_rm("r11", "r11", 0)
+    asm.cmp_rr("r10", "r11")
+    lab_full = self.new_tmp("kbfull")
+    asm.jcc("e", lab_full)
+    asm.lea_rip("r11", "eventqueue_")
+    asm.add_rr("r11", "rdx")
+    asm.mov_mr8("r11", 0, 0)
+    asm.mov_mr("rcx", "r10", 0)
+    asm.ret()
+    asm.label(lab_full)
+    asm.lea_rip("rcx", "eventdrops_")
+    asm.mov_rm("rax", "rcx", 0)
+    asm.add_ri32("rax", 1)
+    asm.mov_mr("rcx", "rax", 0)
+    asm.ret()
+    asm.label("event_dequeue")
+    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([156]))
+    asm.cli()
+    asm.lea_rip("rcx", "eventhead_")
+    asm.mov_rm("rdx", "rcx", 0)
+    asm.lea_rip("r10", "eventtail_")
+    asm.mov_rm("r10", "r10", 0)
+    asm.cmp_rr("rdx", "r10")
+    lab_empty = self.new_tmp("kbempty")
+    asm.jcc("e", lab_empty)
+    asm.lea_rip("r11", "eventqueue_")
     asm.add_rr("r11", "rdx")
     asm.movzx_eax_m8("r11", 0)
     asm.add_ri32("rdx", 1)
@@ -10760,8 +10827,8 @@ SEL_UDATA = 24
 SEL_UCODE = 32
 SEL_TSS = 40
 RAW_KERNEL_BUILTINS = pyrt.py_set(["alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int"])
-KERNEL_BUILTINS = pyrt.py_set(["ticks", "readkey", "readkey_code", "readkey_nav", "pmm_alloc", "pmm_total", "pmm_free", "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on", "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop", "enter_user", "exec_enter", "ioport_in", "ioport_out"])
-NOT_A_VALUE = pyrt.py_set(["float", "ticks", "readkey", "readkey_code", "readkey_nav", "pmm_alloc", "meminfo", "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept", "http_get", "json_parse", "json_str", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "json_load", "json_save", "write_bytes", "alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int", "asm"])
+KERNEL_BUILTINS = pyrt.py_set(["ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "pmm_total", "pmm_free", "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on", "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop", "enter_user", "exec_enter", "ioport_in", "ioport_out"])
+NOT_A_VALUE = pyrt.py_set(["float", "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "meminfo", "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept", "http_get", "json_parse", "json_str", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "json_load", "json_save", "write_bytes", "alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int", "asm"])
 INLINE_ONLY = pyrt.py_set(["float", "write_bytes"])
 INLINE_DIRECT = pyrt.py_set(["write_bytes", "float", "len", "str", "int", "range", "append", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "read_mem", "has", "contains", "keys", "values"])
 class GenIR(Gen):

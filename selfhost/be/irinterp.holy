@@ -602,7 +602,7 @@ def run_fn(st, key, fdef, frame):
         prev = null
 SUPPORTED = ["const", "load", "stvar", "stglobal", "mkfunc", "bin", "un", "call", "print", "build_list", "build_dict", "index", "slice", "setindex", "iterseq", "copy", "phi", "try_push", "try_pop", "exc_str", "exc_pop", "unbind", "reraise", "import", "attr", "setattr"]
 BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find", "join", "has", "contains", "keys", "values", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "env", "argv", "input", "json_parse", "json_str", "json_load", "json_save", "open", "read", "write", "close", "system"]
-OTHER_BUILTINS = ["alloc", "as_int", "as_ptr", "http_get", "load32", "load64", "load8", "meminfo", "pmm_alloc", "pmm_free", "pmm_total", "read_mem", "readkey", "readkey_code", "readkey_nav", "store32", "store64", "store8", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "write_bytes"]
+OTHER_BUILTINS = ["alloc", "as_int", "as_ptr", "http_get", "load32", "load64", "load8", "meminfo", "pmm_alloc", "pmm_free", "pmm_total", "read_mem", "readkey", "readkey_code", "readkey_nav", "readkey_event", "store32", "store64", "store8", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "write_bytes"]
 def preflight(irmod):
   # Returns null when every instruction is supported, else a refusal message.
   # Builtins outside the supported subset are refused when the program loads

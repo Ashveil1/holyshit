@@ -62,6 +62,33 @@ def probe(g,mod):
         a.call('nav_dequeue')
         a.code+=bytes([0x9c]);a.pop_r('rax');a.and_ri32('rax',512)
         a.cli();number();expected.append(('512' if enabled else '0')+'\n')
+    # Unified stream preserves accepted mixed input order independently.
+    for n in [128,129,128,97,0]:
+        a.call('event_dequeue');number();expected.append(str(n)+'\n')
+    for n in [0x30,0xE0,0x48,0x2E,0xE0,0x50,0x1C]:scan(n)
+    for n in [98,128,99,129,10,0]:
+        a.call('event_dequeue');number();expected.append(str(n)+'\n')
+    get(98);get(99);get(10);get(0)
+    for n in [1,2,0]:
+        a.call('nav_dequeue');number();expected.append(str(n)+'\n')
+    # A full event queue cannot corrupt either legacy queue. Wrapping keeps
+    # oldest accepted input and drop-newest counts each rejected event.
+    for n in range(65):scan(0x1E)
+    for n in range(31):
+        a.call('event_dequeue');number();expected.append('97\n')
+    for n in range(31):scan(0x30)
+    for n in [97]*32+[98]*31+[0]:
+        a.call('event_dequeue');number();expected.append(str(n)+'\n')
+    a.lea_rip('rax','eventdrops_');a.mov_rm('rax','rax',0);number();expected.append('2\n')
+    for n in [97]*63+[0]:get(n)
+    for enabled,nonempty in [(False,False),(False,True),(True,False),(True,True)]:
+        a.cli()
+        if nonempty:
+            a.mov_ri32('rax',129);a.call('event_enqueue')
+        if enabled:a.sti()
+        a.call('event_dequeue')
+        a.code+=bytes([0x9c]);a.pop_r('rax');a.and_ri32('rax',512)
+        a.cli();number();expected.append(('512' if enabled else '0')+'\n')
     if code_mode:
         for n in range(1,64):put(n)
     else:
@@ -89,4 +116,4 @@ for ir_backend,code_mode in [(True,False),(False,False),(True,True),(False,True)
         finally:p.terminate();p.wait(timeout=10)
         want=''.join(expected)+('16\ntrue null\nqueue-done\n'if code_mode else'a\nb\nnull\nqueue-done\n')
         assert out==want,(out,want)
-print('4/4 deterministic FIFO burst/wrap/drop-newest/IF/readkey+code allocation gates (IR and AST)')
+print('4/4 deterministic FIFO burst/wrap/drop-newest/IF/readkey+code and ordered mixed-event gates (IR and AST)')
