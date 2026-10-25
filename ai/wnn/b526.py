@@ -22,6 +22,7 @@ class CountBackend:
     name = 'count'
     def __init__(self):
         self.C = {n: {} for n in ANIMALS}
+        self.N = {}   # B-544: explicit negative evidence (retracted attrs per name)
     def observe(self, toks):
         for n in [t for t in toks if t in ANIMALS]:
             for a in [t for t in toks if t in ATTRS]:
@@ -33,6 +34,30 @@ class CountBackend:
         row = self.C.setdefault(name, {})
         for a in attrs:
             row[a] = row.get(a, 0) + 1
+            self.N.get(name, set()).discard(a)  # B-544: re-teaching clears negative evidence
+    def attrs_of(self, name):
+        # B-543: reverse query - the same stored data, other direction.
+        # None = name unknown (honest abstain); [] = known but fully retracted.
+        row = self.C.get(name)
+        if row is None:
+            return None
+        return sorted(a for a, c in row.items() if c > 0)
+    def unobserve(self, name, attrs):
+        # B-542: explicit retraction (mirrors skill revision's replace semantics).
+        # Deletes the association; returns the attrs actually retracted (never-taught
+        # pairs are NOT acknowledged as retracted - honest no-op reporting).
+        row = self.C.get(name)
+        if row is None:
+            return []
+        gone = []
+        for a in attrs:
+            if row.get(a, 0) > 0:
+                del row[a]; gone.append(a)
+                self.N.setdefault(name, set()).add(a)  # B-544: retraction = explicit negative evidence
+        return gone
+    def neg(self, n, a):
+        # B-544: True only when (n,a) was explicitly retracted (never inferred from absence)
+        return a in self.N.get(n, set())
     def vocab(self):
         # known attribute words = seed ATTRS + every attr ever stored
         v = set(ATTRS)

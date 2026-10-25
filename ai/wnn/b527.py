@@ -44,7 +44,10 @@ class HSMLMemory:
         kind, pl = decide(self.attrs, probe)
         return {'kind': kind, **pl}
 
-CACHE = 'logs/b527_skills_cache.pkl'
+_HERE = os.path.dirname(os.path.abspath(__file__))
+# Resolve against the module dir so hsml works from ANY cwd (chat.py usability fix);
+# a missed cache read would silently force a full startup re-derivation (expensive).
+CACHE = os.path.join(_HERE, 'logs', 'b527_skills_cache.pkl')
 
 def derive_skills(logged):
     """Re-derive b515 oops programs deterministically; verify against the log strings.
@@ -69,7 +72,10 @@ def derive_skills(logged):
             s = show_prog(p)
             assert s == logged[task], f'{task}: re-derived program != b515 logged program'
             cache[task] = (p, tried)
-            pickle.dump(cache, open(CACHE, 'wb'))
+            try:
+                pickle.dump(cache, open(CACHE, 'wb'))
+            except OSError as e:
+                print(f'WARNING: skills cache not writable ({e}); next start re-derives', flush=True)
         C.CAPF[0] = 20000
         store[task] = (p, make_fn(p), {'source': 'b515_oops', 'tried': tried})
     # Self-check: every skill must EXECUTE in this process (pinned LIB may be needed).
@@ -102,7 +108,7 @@ def pin_lib():
 
 def load_logged():
     logged = {}
-    for path in ('logs/b515_oops.log', 'logs/b515_progs.log'):
+    for path in (os.path.join(_HERE, 'logs', 'b515_oops.log'), os.path.join(_HERE, 'logs', 'b515_progs.log')):
         for line in open(path):
             line = line.strip()
             if not line.startswith('{'):

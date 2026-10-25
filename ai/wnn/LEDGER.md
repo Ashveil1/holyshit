@@ -1539,3 +1539,72 @@ Run-1 FAIL (recorded): c1/c2/c4/c6 false - observations were acknowledged and st
 Run-2: PASS c1-c6 (logs/b541_run.log).
 Regressions: b534 PASS, b535 PASS, b540 PASS (caches cleared first), b539 PASS chunked s1a/s1b/s1c/s2 with C6 control bounded at 60,001 tried (sandbox per-call ceiling; full 700,001 control stands from the original merged run; all other checks identical) - logs/b539_regress2.log.
 Scope honesty: vocabulary growth is via DESIGNED statement-frame role parsing (name/attribute roles in 'X มี Y'), not induced structure; frameless input is honestly rejected, not guessed.
+
+## B-542 - attribute retraction (negation frame 'X ไม่มี Y')
+Pre-registered 2026-10-25 (before implementation). Gap: taught attribute facts can be added (B-541) but never corrected - the skill world has revision (B-538/539) but the attribute world has no honest retraction. Same unified-system direction as Ash's steering.
+Design (DESIGNED, named): negation frame 'X ไม่มี Y' (and 'X ไม่มี Y และ Z') parsed with grounded roles; CountBackend.unobserve(name, attrs) deletes the association (explicit retraction semantics, mirroring skill revision's replace); response 'ลบแล้ว' only when something was actually retracted, honest 'nothing to retract' otherwise. No silent no-ops acknowledged as done.
+Criteria:
+- C1: teach name+attr then retract -> probe no longer returns that name for the attr
+- C2: retraction of one attr leaves the name's other attrs intact
+- C3: retraction on a seeded name works the same way (probe reflects it; re-teach restores)
+- C4: retracted state survives save/load in a fresh process
+- C5: retracting a never-taught pair -> honest nothing_to_retract, no crash, no state change
+- C6: re-teach after retract restores the answer
+- C7: noninterference - corpus battery exact (seeded world untouched by these ops) and seeded skills 40/40 x4
+Verdict: PASS (run-3).
+Run-1 FAIL (harness sequencing, recorded): s1 never fed the corpus, so seed-world expectations were vacuous; the c4 fresh-process expectation also conflicted with the harness's own re-teach step. System behavior was per design.
+Run-2 FAIL (mixed, recorded): (a) harness used wrong seed-world facts (ช้าง/งา are NOT in the B-521 world; ครีบ collides with seed ปลา) - harness corrected against b521.ANIMALS/ATTRS; (b) REAL routing gap found: conjunctive probes 'X และ Y' never reached decide ('และ' was not a legal probe token; battery probes bypass hear() so this was invisible before). Fixed: 'และ' admitted as a probe conjunction token in the designed probe filter. This is a designed-routing extension, named as such.
+Run-3: PASS C1-C7 (logs/b542_run.log). Regressions after the probe-filter change: b541 PASS, b534 PASS, b535 PASS, b540 PASS, b539 PASS chunked (c6 control bounded 60,001; full 700,001 stands from the original run) - logs/b539_regress3.log.
+Scope honesty: retraction is an explicit designed negation frame with delete semantics (mirrors skill revision's replace); 'ลบแล้ว' is said only for pairs actually retracted; never-taught pairs get an honest nothing_to_retract with partial reporting (retracted vs not_found). Negation is deletion of the association, NOT negative-evidence counts - a retracted fact is indistinguishable from a never-taught one afterward (decision semantics unknown/ambiguous/no_match preserved).
+
+## B-543 - reverse attribute query ('X มี อะไรบ้าง')
+Pre-registered 2026-10-25 (before implementation). Gap: the attribute store flows one way only (attr probe -> names). The SAME stored data should answer the other direction (name -> its attributes) with identical honesty semantics. Designed frame, no new subsystem.
+Design (DESIGNED, named): frame 'X มี อะไรบ้าง' fullmatch, checked BEFORE statement parsing so 'อะไรบ้าง' can never be stored as an attribute; CountBackend.attrs_of(name) returns the stored attrs (None for unknown name); response lists current stored attrs; unknown name or fully-retracted name -> honest abstain/empty, nothing fabricated.
+Criteria:
+- C1: teach a new name two attrs -> reverse query lists both
+- C2: reverse query reflects retraction (retract one -> query lists only the remaining one)
+- C3: reverse query reflects corpus-seeded knowledge (seed animal lists its taught attrs)
+- C4: unknown name AND fully-retracted name -> honest abstain (no fabricated list)
+- C5: save/load round-trip: reverse query on learned content in a fresh process
+- C6: noninterference - corpus battery exact, seeded skills 40/40 x4, and b541/b542 harnesses still pass
+Verdict: PASS (run-2).
+Run-1 FAIL (harness-only, recorded): expectations compared JSON-decoded lists to Python tuples; every system actual was already correct (lists verified against b521.ANIMALS). Fixed comparisons; no system change.
+Run-2: PASS C1-C6 (logs/b543_run.log). The reverse frame is checked BEFORE statement parsing, so 'อะไรบ้าง' can never be stored as an attribute (c1_no_pollution verified). Regressions after the new route: b541 PASS, b542 PASS, b534 PASS, b535 PASS, b540 PASS, b539 PASS chunked (c6 bounded 60,001; full 700,001 stands) - logs/b539_regress4.log.
+Scope honesty: the reverse query is a designed frame over the same count store - no new inference; unknown names and fully-retracted names abstain honestly (attr_reverse_unknown / attr_reverse_empty); the frame reserves 'อะไรบ้าง' from ever being an attribute (designed reservation, named).
+
+## B-544 - storage safety: questions are not facts + honest yes/no questions
+Pre-registered 2026-10-25 (parent greenlight after eval_ash3 baseline recorded the
+over-acceptance defect: 'นก มี กี่ลักษณะ' was stored as an attribute of นก).
+Design (DESIGNED, named - a FINITE guard list is not general Thai understanding):
+1. Guard: question/particle words (ไหม มั้ย หรือ ใช่ไหม กี่ อะไร เท่าไหร่ ทำไม เมื่อไหร่ ที่ไหน ใคร อย่างไร ครับ ค่ะ จ้า นะ ล่ะ สิ) in name OR attr position of a parsed statement -> NOT stored; honest unsupported response. Nonmutation is verified by probing afterward.
+2. Negative evidence: retraction (B-542) now leaves an explicit negative marker (per-name neg set), instead of being indistinguishable from never-taught. Re-teaching clears the marker. decide()/vocab()/attrs_of() semantics for extension are UNCHANGED (neg = absent there).
+3. Yes/no frame 'X มี Y ไหม' answers three ways from the store: taught -> ใช่; explicitly retracted -> ไม่ (negative evidence); otherwise -> honest ไม่รู้ (absence is NOT false).
+Criteria:
+- C1: question-phrase statements not stored (probe + reverse query unpolluted); honest rejection response
+- C2: question words in NAME position rejected too
+- C3: particles in attr position rejected
+- C4: ordinary new-attribute learning unaffected
+- C5: yes/no three-way: taught=ใช่, never-taught=ไม่รู้ (NOT ไม่), retracted=ไม่
+- C6: negative evidence survives save/load; re-teach clears it
+- C7: noninterference - corpus battery exact, seeded 40/40 x4, b541/b542/b543 regressions PASS
+Verdict: PASS (run-2). Run-1 FAIL recorded: the exact-match guard missed glued
+question stems (e.g. 'กี่ลักษณะ' in attr position) - fixed with the GUARD_STEMS
+prefix match; both runs in logs/b544_run.log. b539 chunked regression
+(s1a/s1b/s1c/s2, bounded c6 60,001) PASS after the change
+(logs/b539_regress5.log); b541/b542/b543/b534/b535/b540 regressions PASS.
+
+## B-545 - usability: cwd-independent paths + ready chat front end
+Defect (found during clean-environment usability verification 2026-10-25):
+b527 resolved the skill logs and the skills cache by RELATIVE path, so
+HSML() crashed outside ai/wnn (FileNotFoundError) and a missed cache would
+have silently forced a full startup re-derivation (expensive hidden
+induction). Fix: paths resolve from the module directory; cache write
+failure warns instead of crashing. Also added chat.py (interactive front
+end: fresh/load memory, --demo-world, autosave, loud corrupt-memory
+failure) and HSML.md (user guide).
+Verification: regress_skills.py PASS (clean-process derivation exercises the
+new CACHE path); b544 harness PASS; chat.py tested from a foreign cwd:
+demo-world teach, reverse query, three-way yes/no, probe, abstain,
+skill teaching end-to-end (n+ naming, 5 examples, 3 checks, query),
+save/reload persistence, retraction + negative evidence, corrupt load exit 2.
+Verdict: PASS
