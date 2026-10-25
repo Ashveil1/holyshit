@@ -26,6 +26,19 @@ STMT_FRAMES = [
     (re.compile(r'(\S+) ของ (\S+) สวย'), lambda m: (m.group(2), [m.group(1)])),
 ]
 
+# B-542: DESIGNED negation frames - retraction of taught attribute facts.
+NEG_FRAMES = [
+    (re.compile(r'(\S+) ไม่มี (\S+) และ (\S+)'), lambda m: (m.group(1), [m.group(2), m.group(3)])),
+    (re.compile(r'(\S+) ไม่มี (\S+)'), lambda m: (m.group(1), [m.group(2)])),
+]
+
+def _parse_negation(s):
+    for rx, f in NEG_FRAMES:
+        m = rx.fullmatch(s)
+        if m:
+            return f(m)
+    return None
+
 def _parse_statement(s):
     for rx, f in STMT_FRAMES:
         m = rx.fullmatch(s)
@@ -134,7 +147,8 @@ class HSML:
         # EVERY token is an attribute word (or 'เขา'); B-541: the vocabulary is DYNAMIC
         # (seed ATTRS + every attr ever stored).
         vocab = self.mem.attrs.vocab() if hasattr(self.mem.attrs, 'vocab') else set(ATTRS)
-        if all(t in vocab or t == 'เขา' for t in toks):
+        # 'และ' allowed as probe conjunction (B-542 run-2 gap: 'X และ Y' probes were unrouted)
+        if all(t in vocab or t in ('เขา', 'และ') for t in toks):
             ans = self.mem.answer(s)
             kind = ans.get('kind')
             self._rec(s, 'attr_' + str(kind), 'attr')
@@ -153,6 +167,19 @@ class HSML:
             self.mem.attrs.observe_pairs(name, attrs)
             self._rec(s, 'observed', 'attr', name=name, attrs=attrs)
             return {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
+        # B-542: retraction through the designed negation frame. 'ลบแล้ว' is said ONLY
+        # for attrs actually retracted (never-taught pairs report honestly, no fake ack).
+        neg = _parse_negation(s)
+        if neg is not None:
+            name, attrs = neg
+            gone = self.mem.attrs.unobserve(name, attrs)
+            self._rec(s, 'retracted', 'attr', name=name, retracted=gone, asked=attrs)
+            if gone:
+                return {'kind': 'retracted', 'text': 'ลบแล้ว', 'source': 'attr',
+                        'name': name, 'retracted': gone,
+                        'not_found': [a for a in attrs if a not in gone]}
+            return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'attr',
+                    'name': name, 'asked': attrs}
         self._rec(s, 'abstain', 'unrouted')
         return {'kind': 'abstain', 'text': None, 'source': 'unrouted'}
 

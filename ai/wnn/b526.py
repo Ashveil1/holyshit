@@ -33,6 +33,18 @@ class CountBackend:
         row = self.C.setdefault(name, {})
         for a in attrs:
             row[a] = row.get(a, 0) + 1
+    def unobserve(self, name, attrs):
+        # B-542: explicit retraction (mirrors skill revision's replace semantics).
+        # Deletes the association; returns the attrs actually retracted (never-taught
+        # pairs are NOT acknowledged as retracted - honest no-op reporting).
+        row = self.C.get(name)
+        if row is None:
+            return []
+        gone = []
+        for a in attrs:
+            if row.get(a, 0) > 0:
+                del row[a]; gone.append(a)
+        return gone
     def vocab(self):
         # known attribute words = seed ATTRS + every attr ever stored
         v = set(ATTRS)

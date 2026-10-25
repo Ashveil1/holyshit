@@ -1551,4 +1551,8 @@ Criteria:
 - C5: retracting a never-taught pair -> honest nothing_to_retract, no crash, no state change
 - C6: re-teach after retract restores the answer
 - C7: noninterference - corpus battery exact (seeded world untouched by these ops) and seeded skills 40/40 x4
-Verdict: PENDING
+Verdict: PASS (run-3).
+Run-1 FAIL (harness sequencing, recorded): s1 never fed the corpus, so seed-world expectations were vacuous; the c4 fresh-process expectation also conflicted with the harness's own re-teach step. System behavior was per design.
+Run-2 FAIL (mixed, recorded): (a) harness used wrong seed-world facts (ช้าง/งา are NOT in the B-521 world; ครีบ collides with seed ปลา) - harness corrected against b521.ANIMALS/ATTRS; (b) REAL routing gap found: conjunctive probes 'X และ Y' never reached decide ('และ' was not a legal probe token; battery probes bypass hear() so this was invisible before). Fixed: 'และ' admitted as a probe conjunction token in the designed probe filter. This is a designed-routing extension, named as such.
+Run-3: PASS C1-C7 (logs/b542_run.log). Regressions after the probe-filter change: b541 PASS, b534 PASS, b535 PASS, b540 PASS, b539 PASS chunked (c6 control bounded 60,001; full 700,001 stands from the original run) - logs/b539_regress3.log.
+Scope honesty: retraction is an explicit designed negation frame with delete semantics (mirrors skill revision's replace); 'ลบแล้ว' is said only for pairs actually retracted; never-taught pairs get an honest nothing_to_retract with partial reporting (retracted vs not_found). Negation is deletion of the association, NOT negative-evidence counts - a retracted fact is indistinguishable from a never-taught one afterward (decision semantics unknown/ambiguous/no_match preserved).
