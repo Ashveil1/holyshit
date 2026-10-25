@@ -115,13 +115,14 @@ class HSML:
         pend['passed'] += 1
         if pend['passed'] >= 3:
             word = self.ctx['word']
+            tot = self.ctx['tried_tot']
             SKILL_BY_WORD[word] = word
             self.mem.skills[word] = (pend['prog'], pend['fn'],
-                {'source': 'dialog', 'tried': pend['tried'], 'examples': len(self.ctx['pairs']) + 3})
-            self._rec(s, 'skill_stored', 'induction', word=word, tried=pend['tried'],
+                {'source': 'dialog', 'tried': tot, 'examples': len(self.ctx['pairs']) + 3})
+            self._rec(s, 'skill_stored', 'induction', word=word, tried=tot,
                       prog=show_prog(pend['prog']))
             self.ctx = None; self.pending = None
-            return {'kind': 'skill_stored', 'text': f'เก็บวิธี {word} แล้ว', 'source': 'induction'}
+            return {'kind': 'skill_stored', 'text': f'เก็บวิธี {word} แล้ว', 'source': 'induction', 'tried': tot}
         q = CONF_Q.format(pend['checks'][pend['passed']])
         self._rec(s, 'confirmation_question', 'induction', passed=pend['passed'])
         return {'kind': 'confirmation_question', 'text': q, 'source': 'induction'}

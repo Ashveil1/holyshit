@@ -1,0 +1,14 @@
+  teach round 1: inducing on 5 pairs...
+  teach round 1: tried=700001 found=False
+ablated zero-eval: False {'fail': 'induction exhausted', 'round': 1, 'tried': 700001, 'pairs': 5, 'confirmations': 0}
+  teach round 1: inducing on 5 pairs...
+  teach round 1: tried=549 found=True
+  teach round 1: inducing on 5 pairs...
+  teach round 1: tried=870 found=True
+  teach round 1: inducing on 5 pairs...
+  teach round 1: tried=29478 found=True
+reuse zero-eval: True {'round': 1, 'tried': 29478, 'pairs': 8, 'confirmations': 3, 'prog': "init b=zero; if (lt a b) -> a; else step (a,(add a b)); comb=('quad', 'a', 1); post=id"}
+C1/C3: {'c1_ablated_lists_equal': True, 'c3_ablated_oldcapture_tried_measured': 1291776, 'c3_ablated_oldcapture_tried_computed': 1291776, 'c1_reuse_lists_equal': True, 'c3_reuse_oldcapture_tried_computed': 2217984, 'c3_reuse_oldcapture_tried_measured': 2217984}
+C5: {'even': '160/160', 'sumto': '160/160', 'square': '160/160', 'choose2': '160/160', 'double': '40/40', 'quad': '40/40'}
+{"verdict": "PASS", "c1": true, "c2": true, "c3": true, "c5": true, "ablated": {"ok": false, "fail": "induction exhausted", "round": 1, "tried": 700001, "pairs": 5, "confirmations": 0}, "reuse": {"ok": true, "round": 1, "tried": 29478, "pairs": 8, "confirmations": 3, "prog": "init b=zero; if (lt a b) -> a; else step (a,(add a b)); comb=('quad', 'a', 1); post=id"}, "c2_accuracy": "40/40", "target_prog": "init b=zero; if (lt a b) -> a; else step (a,(add a b)); comb=('quad', 'a', 1); post=id", "calls_primitive": ["quad"], "c1_ablated_lists_equal": true, "c3_ablated_oldcapture_tried_measured": 1291776, "c3_ablated_oldcapture_tried_computed": 1291776, "c1_reuse_lists_equal": true, "c3_reuse_oldcapture_tried_computed": 2217984, "c3_reuse_oldcapture_tried_measured": 2217984, "c4": {"ablated_search_tried": 700001, "reuse_search_tried": 29478, "ablated_capture_tried_oldprotocol": 1291776, "reuse_capture_tried_oldprotocol": 2217984, "ablated_total_oldprotocol": 1991777, "reuse_total_oldprotocol": 2247462, "ablated_total_zerocapture": 700001, "reuse_total_zerocapture": 29478}, "c5_seeded": {"even": "160/160", "sumto": "160/160", "square": "160/160", "choose2": "160/160", "double": "40/40", "quad": "40/40"}}
+DONE
