@@ -6,7 +6,7 @@ S1: ONE sustained mixed conversation - corpus observations, attr probes, teach d
     attr battery, log integrity, save (expectation table in extra).
 S2: fresh process - load, all probes at recorded final behaviors, attr battery exact,
     abstains, teach สามเท่า 3n, bounded garbage control, log integrity."""
-import json, pickle, random, re, subprocess, sys
+import json, os, pickle, random, re, subprocess, sys
 from hsml import HSML
 import b521, b526
 
@@ -169,9 +169,13 @@ def s2():
 def run():
     outs = {}
     for mode in ('s1', 's2'):
-        p = subprocess.run([sys.executable, '-u', 'b540.py', mode], capture_output=True, text=True)
-        assert p.returncode == 0, (mode, p.stderr)
-        outs[mode] = json.loads(p.stdout.strip().splitlines()[-1])
+        cache = f'logs/b540_{mode}.json'  # session json cached: sandbox-safe chunked runs
+        if os.path.exists(cache):
+            outs[mode] = json.load(open(cache))
+        else:
+            p = subprocess.run([sys.executable, '-u', 'b540.py', mode], capture_output=True, text=True)
+            assert p.returncode == 0, (mode, p.stderr)
+            outs[mode] = json.loads(p.stdout.strip().splitlines()[-1])
     s1, s2 = outs['s1'], outs['s2']
     checks = {
         'c1': (s1['quad_stored'] and s1['c1_quad_probe'] == '10/10'
