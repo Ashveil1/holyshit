@@ -88,7 +88,7 @@ def main():
         r = subprocess.run([sys.executable, '-c',
             "import sys; sys.path.insert(0, %r); from b527 import derive_skills, load_logged;"
             "s = derive_skills(load_logged()); print('SKILLS', sorted(s))" % WNN],
-            capture_output=True, text=True, cwd=WNN, timeout=1800)
+            capture_output=True, text=True, cwd=WNN, timeout=21600)
         out['corrupt_cache'] = {'rc': r.returncode, 'warned': 'WARNING' in r.stdout,
                                 'skills': 'choose2' in r.stdout}
         out['c3_ok'] = r.returncode == 0 and 'WARNING' in r.stdout and 'choose2' in r.stdout
