@@ -1643,3 +1643,32 @@ b542/b543/b544, regress_skills, b539 chunked (bounded c6) all PASS
 (logs/b539_regress6.log). Scope named: finite designed number grammar at the
 frame boundary only - not learned language understanding; classifier phrasing
 ('นก มี สอง ปีก') remains out of scope by design.
+
+## B-547 - bilingual slice: English frames sharing ONE attribute memory
+Pre-registered 2026-10-25 (Ash: Thai+English in parallel with shared knowledge;
+parent: cross-language testing, no human-like/all-word claim, ambiguity tests).
+Design (ALL DESIGNED, named - finite frames and stopwords are not learned
+understanding, and a taught link pair is not a claim the words are always
+interchangeable):
+1. Word links as taught DATA: frame '<thai> ภาษาอังกฤษคือ <english>' stores a
+   bidirectional pair. Resolution at the frame boundary maps a linked English
+   surface word to its linked Thai canonical word; unlinked words keep their
+   own surface form (dynamic vocabulary, same as B-541).
+2. English frames (finite): 'NAME has ATTR [and ATTR]' statements;
+   'what does NAME have' reverse query; 'does NAME have ATTR' three-way
+   yes/no (yes/no/unknown mirroring B-544); articles a/an/the are a finite
+   designed stopword list at those frame positions only.
+3. Ambiguity honesty: if a surface word has TWO taught links, using it in a
+   query abstains and names the candidates - no silent pick.
+Criteria:
+- C1: teach Thai facts + links, English queries answer from the SAME memory
+  ('นก มี ปีก' + link -> 'does นก have wings' yes; 'what does นก have' lists)
+- C2: reverse direction: teach 'a bird has wings' with links bird<->นก
+  wings<->ปีก, Thai probe 'ปีก' and reverse query 'นก มี อะไรบ้าง' see it
+- C3: ambiguity: second link on one surface word -> query abstains naming
+  candidates; retracting one link resolves it
+- C4: unseen English phrasing abstains; English question words never stored
+  as facts (B-544 guard semantics extend to the English frames)
+- C5: links survive save/load; noninterference: b546/b544 harnesses PASS,
+  regress_skills PASS
+Verdict: PENDING
