@@ -1,0 +1,266 @@
+{
+ "sections": {
+  "teach": {
+   "บวกสาม": {
+    "word": "บวกสาม",
+    "naming": "naming",
+    "final": "skill_stored",
+    "tried": 37990
+   },
+   "บวกหก": {
+    "word": "บวกหก",
+    "naming": "naming",
+    "final": "skill_stored",
+    "tried": 23334
+   },
+   "บวกหก_deps": [
+    "บวกสาม"
+   ]
+  },
+  "revision": {
+   "word": "บวกสาม",
+   "final": "skill_stored",
+   "tried": 44838
+  },
+  "dependent_after_revision": "stale_skill",
+  "revalidated": "skill_revalidated",
+  "post_load": [
+   {
+    "in": "บวกสาม ของ 41 คืออะไร",
+    "kind": "skill_answer",
+    "text": "บวกสาม ของ 41 คือ 45",
+    "source": "dialog",
+    "result": 45
+   },
+   {
+    "in": "ปีก",
+    "kind": "attr_answer",
+    "text": "['ค้างคาว', 'นก', 'ผีเสื้อ']",
+    "source": "attr",
+    "decision": "ambiguous"
+   }
+  ]
+ },
+ "log": [
+  {
+   "in": "สวัสดี",
+   "kind": "abstain",
+   "text": null,
+   "source": "unrouted"
+  },
+  {
+   "in": "เลขคู่ของ7คืออะไร",
+   "kind": "abstain",
+   "text": null,
+   "source": "unrouted"
+  },
+  {
+   "in": "ร้อยเท่า ของ 5 คืออะไร",
+   "kind": "abstain",
+   "text": null,
+   "source": "unknown_all"
+  },
+  {
+   "in": "เลขคู่ ของ 7 คืออะไร",
+   "kind": "skill_answer",
+   "text": "เลขคู่ ของ 7 คือ 0",
+   "source": "b515_oops",
+   "result": 0
+  },
+  {
+   "in": "กำลังสอง ของ 13 คืออะไร",
+   "kind": "skill_answer",
+   "text": "กำลังสอง ของ 13 คือ 169",
+   "source": "b515_oops",
+   "result": 169
+  },
+  {
+   "in": "ผลบวกถึง ของ 100 คืออะไร",
+   "kind": "skill_answer",
+   "text": "ผลบวกถึง ของ 100 คือ 5050",
+   "source": "b515_oops",
+   "result": 5050
+  },
+  {
+   "in": "จับคู่สอง ของ 10 คืออะไร",
+   "kind": "skill_answer",
+   "text": "จับคู่สอง ของ 10 คือ 45",
+   "source": "b515_oops",
+   "result": 45
+  },
+  {
+   "in": "วิธีนี้ชื่อ บวกสาม",
+   "kind": "naming",
+   "text": "รับทราบ วิธี บวกสาม",
+   "source": "dialog"
+  },
+  {
+   "in": "ถ้า n เป็น 1 ตอบ 4",
+   "kind": "confirmation_question",
+   "text": "ถ้า n เป็น 237 ตอบอะไร",
+   "source": "induction",
+   "tried": 37990
+  },
+  {
+   "in": "ตอบ 63",
+   "kind": "skill_stored",
+   "text": "เก็บวิธี บวกสาม แล้ว",
+   "source": "induction",
+   "tried": 37990
+  },
+  {
+   "in": "บวกสาม ของ 41 คืออะไร",
+   "kind": "skill_answer",
+   "text": "บวกสาม ของ 41 คือ 44",
+   "source": "dialog",
+   "result": 44
+  },
+  {
+   "in": "วิธีนี้ชื่อ บวกหก",
+   "kind": "naming",
+   "text": "รับทราบ วิธี บวกหก",
+   "source": "dialog"
+  },
+  {
+   "in": "ถ้า n เป็น 38 ตอบ 44",
+   "kind": "confirmation_question",
+   "text": "ถ้า n เป็น 172 ตอบอะไร",
+   "source": "induction",
+   "tried": 23334
+  },
+  {
+   "in": "ตอบ 294",
+   "kind": "skill_stored",
+   "text": "เก็บวิธี บวกหก แล้ว",
+   "source": "induction",
+   "tried": 23334
+  },
+  {
+   "in": "บวกหก ของ 41 คืออะไร",
+   "kind": "skill_answer",
+   "text": "บวกหก ของ 41 คือ 47",
+   "source": "dialog",
+   "result": 47
+  },
+  {
+   "in": "ปีก",
+   "kind": "attr_answer",
+   "text": "['ค้างคาว', 'นก', 'ผีเสื้อ']",
+   "source": "attr",
+   "decision": "ambiguous"
+  },
+  {
+   "in": "จะงอยปาก",
+   "kind": "attr_answer",
+   "text": "นก",
+   "source": "attr",
+   "decision": "unique"
+  },
+  {
+   "in": "ปีก ขน",
+   "kind": "attr_answer",
+   "text": "ค้างคาว",
+   "source": "attr",
+   "decision": "unique"
+  },
+  {
+   "in": "เขา",
+   "kind": "abstain",
+   "text": null,
+   "source": "attr_unknown_all"
+  },
+  {
+   "in": "เหยี่ยว มี ปีก",
+   "kind": "observed",
+   "text": "จำไว้แล้ว",
+   "source": "attr"
+  },
+  {
+   "in": "ปีก",
+   "kind": "attr_answer",
+   "text": "['ค้างคาว', 'นก', 'ผีเสื้อ']",
+   "source": "attr",
+   "decision": "ambiguous"
+  },
+  {
+   "in": "บวกสาม ของ 41 คืออะไร",
+   "kind": "skill_answer",
+   "text": "บวกสาม ของ 41 คือ 44",
+   "source": "dialog",
+   "result": 44
+  },
+  {
+   "in": "ถ้า n เป็น 10 ตอบ 14",
+   "kind": "confirmation_question",
+   "text": "ถ้า n เป็น 247 ตอบอะไร",
+   "source": "induction",
+   "tried": 44838
+  },
+  {
+   "in": "ตอบ 288",
+   "kind": "skill_stored",
+   "text": "เก็บวิธี บวกสาม แล้ว",
+   "source": "induction",
+   "tried": 44838
+  },
+  {
+   "in": "บวกสาม ของ 41 คืออะไร",
+   "kind": "skill_answer",
+   "text": "บวกสาม ของ 41 คือ 45",
+   "source": "dialog",
+   "result": 45
+  },
+  {
+   "in": "บวกหก ของ 41 คืออะไร",
+   "kind": "stale_skill",
+   "text": "วิธี บวกหก ต้องทบทวนก่อน",
+   "source": "stale"
+  },
+  {
+   "in": "วิธีนี้ชื่อ บวกหก",
+   "kind": "revalidate_opened",
+   "text": "ถ้า n เป็น 223 ตอบอะไร",
+   "source": "dialog"
+  },
+  {
+   "in": "ตอบ 231",
+   "kind": "confirmation_question",
+   "text": "ถ้า n เป็น 338 ตอบอะไร",
+   "source": "induction"
+  },
+  {
+   "in": "ตอบ 346",
+   "kind": "confirmation_question",
+   "text": "ถ้า n เป็น 151 ตอบอะไร",
+   "source": "induction"
+  },
+  {
+   "in": "ตอบ 159",
+   "kind": "skill_revalidated",
+   "text": "ทบทวนวิธี บวกหก แล้ว",
+   "source": "dialog"
+  },
+  {
+   "in": "บวกหก ของ 41 คืออะไร",
+   "kind": "skill_answer",
+   "text": "บวกหก ของ 41 คือ 49",
+   "source": "dialog",
+   "result": 49
+  },
+  {
+   "in": "บวกสาม ของ 41 คืออะไร",
+   "kind": "skill_answer",
+   "text": "บวกสาม ของ 41 คือ 45",
+   "source": "dialog",
+   "result": 45
+  },
+  {
+   "in": "ปีก",
+   "kind": "attr_answer",
+   "text": "['ค้างคาว', 'นก', 'ผีเสื้อ']",
+   "source": "attr",
+   "decision": "ambiguous"
+  }
+ ]
+}
+DONE
