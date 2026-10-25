@@ -14,6 +14,18 @@ from b521 import ATTRS
 
 CONF_Q = 'ถ้า n เป็น {} ตอบอะไร'
 
+def _deps_of(prog, known, self_word):
+    """B-539: scan a stored program for references to other stored skills (any nested
+    symbol position). Returns the sorted dependency words, excluding the skill itself."""
+    found = set()
+    def walk(e):
+        if isinstance(e, (tuple, list)):
+            for x in e: walk(x)
+        elif isinstance(e, str) and e in known and e != self_word:
+            found.add(e)
+    walk(prog)
+    return sorted(found)
+
 class HSML:
     def __init__(self, seed=0, induction_lib='separated'):  # B-536 verdict: separated is the default induction regime
         assert induction_lib in ('full', 'separated')
@@ -38,6 +50,17 @@ class HSML:
             # Dialog-taught/loaded skills are revisable; seeded pinned-baselib skills are
             # reserved (provenance protection) - naming one abstains instead of clobbering.
             if word in self.mem.skills and self.mem.skills[word][2].get('source') == 'dialog':
+                prov0 = self.mem.skills[word][2]
+                if 'stale' in prov0:
+                    # B-539: revalidation of a stale skill - confirm the STORED program
+                    # executed under CURRENT dependencies (run() resolves names live).
+                    prog0, fn0, _ = self.mem.skills[word]
+                    checks = self.rng.sample(range(40, 400), 3)
+                    self.ctx = {'word': word, 'pairs': [], 'rounds': 0, 'tried_tot': 0, 'revalidate': True}
+                    self.pending = {'prog': prog0, 'fn': fn0, 'checks': checks, 'passed': 0, 'tried': 0, 'revalidate': True}
+                    q = CONF_Q.format(checks[0])
+                    self._rec(s, 'revalidate_opened', 'dialog', word=word)
+                    return {'kind': 'revalidate_opened', 'text': q, 'source': 'dialog'}
                 self.ctx = {'word': word, 'pairs': [], 'rounds': 0, 'tried_tot': 0, 'revision': True}
                 self.pending = None
                 self._rec(s, 'revision_opened', 'dialog', word=word)
@@ -74,6 +97,12 @@ class HSML:
         m2 = re.fullmatch(r'(\S+) ของ (\d+) คืออะไร', s)
         toks = s.split()
         if m2:
+            w0 = m2.group(1)
+            t0 = SKILL_BY_WORD.get(w0, w0)
+            if t0 in self.mem.skills and 'stale' in self.mem.skills[t0][2]:
+                # B-539: a stale skill NEVER silently answers - explicit invalidation.
+                self._rec(s, 'stale_skill', 'stale', word=w0)
+                return {'kind': 'stale_skill', 'text': f'วิธี {w0} ต้องทบทวนก่อน', 'source': 'stale'}
             ans = self.mem.answer(s)
             if ans.get('kind') == 'skill_answer':
                 src = ans.get('provenance', {}).get('source', '?')
@@ -139,10 +168,27 @@ class HSML:
         except Exception: ry = None
         if ry != y:
             # failed confirmation: add the correcting pair, re-induce (b529 protocol)
+            if pend.get('revalidate'):
+                # B-539: teacher rejected the recomposed behavior -> convert to revision
+                self.ctx['revision'] = True; self.ctx.pop('revalidate', None)
             self.ctx['pairs'].append((cx, y))
             self.pending = None
             return self._try_induce(s)
         pend['passed'] += 1
+        if pend['passed'] >= 3 and pend.get('revalidate'):
+            # B-539 revalidation accepted: stored program confirmed under current deps.
+            word = self.ctx['word']
+            prog0, fn0, prov0 = self.mem.skills[word]
+            prov0.pop('stale')
+            prov0['revalidated'] = prov0.get('revalidated', 0) + 1
+            prov0['dep_rev'] = {d: self.mem.skills[d][2].get('revision', 0)
+                                for d in prov0.get('deps', []) if d in self.mem.skills}
+            C7.CAPF[0] = 20000
+            C7.LIB[word] = (lambda ff: (lambda a, b: ff(a, b)))(fn0)
+            C7.ev.cache_clear()  # B-539: no stale-cache residue after any confirmed change
+            self._rec(s, 'skill_revalidated', 'dialog', word=word)
+            self.ctx = None; self.pending = None
+            return {'kind': 'skill_revalidated', 'text': f'ทบทวนวิธี {word} แล้ว', 'source': 'dialog'}
         if pend['passed'] >= 3:
             word = self.ctx['word']
             tot = self.ctx['tried_tot']
@@ -158,7 +204,37 @@ class HSML:
                 old_prog, _, old_prov = self.mem.skills[word]
                 prov['revision'] = old_prov.get('revision', 0) + 1
                 prov['replaces'] = show_prog(old_prog)
+            # B-539: dependency provenance (which stored skills this program calls,
+            # with each dependency's revision at store time)
+            deps = _deps_of(pend['prog'], set(self.mem.skills) | set(SKILL_BY_WORD), word)
+            if deps:
+                prov['deps'] = deps
+                prov['dep_rev'] = {d: self.mem.skills[d][2].get('revision', 0)
+                                   for d in deps if d in self.mem.skills}
             self.mem.skills[word] = (pend['prog'], pend['fn'], prov)
+            if 'revision' in prov:
+                # B-539: explicit invalidation - every stored skill (TRANSITIVELY)
+                # depending on the revised word is marked stale and leaves the induction
+                # LIB until revalidated. Never a silent behavior change. Fixpoint over
+                # deps so transitive dependents are marked too (a stale skill popped
+                # from LIB would otherwise KeyError its own dependents at query time).
+                r_new = prov['revision']
+                changed = True
+                while changed:
+                    changed = False
+                    for t, (p0, f0, pr0) in self.mem.skills.items():
+                        if t == word or pr0.get('source') != 'dialog' or 'stale' in pr0:
+                            continue
+                        dep_list = pr0.get('deps', [])
+                        direct = word in dep_list and pr0.get('dep_rev', {}).get(word, 0) != r_new
+                        transitive = any(d in self.mem.skills and 'stale' in self.mem.skills[d][2]
+                                         for d in dep_list)
+                        if direct or transitive:
+                            pr0['stale'] = {'dep': word, 'from_revision': pr0.get('dep_rev', {}).get(word, 0),
+                                            'to_revision': r_new}
+                            C7.LIB.pop(t, None)
+                            changed = True
+            C7.ev.cache_clear()  # B-539: no stale-cache residue after any successful store
             self._rec(s, 'skill_stored', 'induction', word=word, tried=tot,
                       prog=show_prog(pend['prog']))
             self.ctx = None; self.pending = None
@@ -195,8 +271,10 @@ class HSML:
             fn = make_fn(prog)
             h.mem.skills[t] = (prog, fn, prov)
             # loaded skills rejoin the induction LIB (B-537: cross-session reuse path,
-            # same registration as _confirm at store time)
-            C7.LIB[t] = (lambda ff: (lambda a, b: ff(a, b)))(fn)
+            # same registration as _confirm at store time); B-539: stale skills stay out
+            # until revalidated (no building on unconfirmed foundations)
+            if 'stale' not in prov:
+                C7.LIB[t] = (lambda ff: (lambda a, b: ff(a, b)))(fn)
         for n, v in payload['attrs_C'].items():
             h.mem.attrs.C[n] = dict(v)
         SKILL_BY_WORD.update(payload['words'])
