@@ -358,7 +358,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py - direct x86-64 backend (xbuild/xkernel) (110)
+## x64gen.py - direct x86-64 backend (xbuild/xkernel) (111)
 
 - `'{n}' already defined in this scope`
 - `Int literal {v} is outside the 62-bit range of the x64 backend`
@@ -435,6 +435,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `read_mem wants read_mem(ptr, nbytes)`
 - `readkey takes no args`
 - `readkey_code takes no args`
+- `readkey_nav takes no args`
 - `return outside function`
 - `scall not in x64 subset`
 - `scall wants scall(nr, a1, a2, a3, a4, a5, a6)`
@@ -652,4 +653,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-606 messages total - duplicates across files are counted once per file
+607 messages total - duplicates across files are counted once per file
