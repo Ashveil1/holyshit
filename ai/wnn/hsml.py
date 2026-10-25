@@ -278,11 +278,11 @@ class HSML:
             self._rec(s, 'nothing_to_retract', 'dialog', en=en, th=th)
             return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
         en_maybe = re.fullmatch(r'[Mm]aybe (.+)', s)
-        if en_maybe is not None and re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?\S+ has [A-Za-z]\S*(?: and [A-Za-z]\S*)?', en_maybe.group(1)):
+        if en_maybe is not None and re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?\S+ has (?:[Aa] |[Aa]n |[Tt]he )?[A-Za-z]\S*(?: and (?:[Aa] |[Aa]n |[Tt]he )?[A-Za-z]\S*)?', en_maybe.group(1)):
             self._rec(s, 'uncertain_not_stored', 'dialog')
             return {'kind': 'uncertain_not_stored',
                     'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}
-        en_stmt = re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?(\S+) has ([A-Za-z]\S*)(?: and ([A-Za-z]\S*))?', s)
+        en_stmt = re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?(\S+) has (?:[Aa] |[Aa]n |[Tt]he )?([A-Za-z]\S*)(?: and (?:[Aa] |[Aa]n |[Tt]he )?([A-Za-z]\S*))?', s)
         if en_stmt is not None:
             raw_name = en_stmt.group(1)
             raw_attrs = [g.lower() for g in en_stmt.groups()[1:] if g]
@@ -298,7 +298,7 @@ class HSML:
             self.mem.attrs.observe_pairs(name, attrs)
             self._rec(s, 'observed', 'attr', name=name, attrs=attrs)
             return {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
-        en_rev = re.fullmatch(r'[Ww]hat does (\S+) have', s)
+        en_rev = re.fullmatch(r'[Ww]hat does (?:[Aa] |[Aa]n |[Tt]he )?(\S+) have', s)
         if en_rev is not None:
             r0 = self._resolve_link(en_rev.group(1))
             if r0[0] == 'amb':
@@ -309,7 +309,7 @@ class HSML:
             if attrs:
                 return {'kind': 'attr_list', 'text': f"{en_rev.group(1)} has {' '.join(attrs)}", 'source': 'attr', 'name': r0[1], 'attrs': attrs}
             return {'kind': 'abstain', 'text': None, 'source': 'attr_reverse_en_' + ('empty' if attrs is not None else 'unknown')}
-        en_yn = re.fullmatch(r'[Dd]oes (\S+) have ([A-Za-z]\S+)', s)
+        en_yn = re.fullmatch(r'[Dd]oes (?:[Aa] |[Aa]n |[Tt]he )?(\S+) have (?:[Aa] |[Aa]n |[Tt]he )?([A-Za-z]\S+)', s)
         if en_yn is not None:
             rn = self._resolve_link(en_yn.group(1)); ra = self._resolve_link(en_yn.group(2).lower())
             for w0, r0 in ((en_yn.group(1), rn), (en_yn.group(2), ra)):

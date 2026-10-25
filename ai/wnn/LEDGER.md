@@ -1838,3 +1838,33 @@ regress_skills attempts hit sandbox timeouts because a killed run had truncated
 logs/b527_skills_cache.pkl; the DESIGNED corrupt-cache fallback absorbed it
 (warning + full re-derivation, 76s), after which the suite completed. No code
 change needed; the incident exercised the same fallback path the suite tests.
+
+## B-552 (pre-registered 2026-10-25): English article coverage (a/an/the)
+Gap found by the B-550 comparison battery (hsml_S1b/S2 transcripts): teach
+'a bird has a beak', query 'what does a bird have', yes/no 'does a bird have
+wings' were REJECTED (no-answer). ALL DESIGNED parser widening, named:
+optional article (a/an/the, any case) before the subject in English
+reverse/yes-no queries, and before each attribute in English teach statements
+and 'maybe ...' uncertain statements. Stripped articles never enter vocab.
+Explicit NON-goals (named limits): NO morphology ('beak' vs 'beaks' stay
+distinct words), no multiword names, articles only a/an/the.
+Pass criteria:
+- C1: 'a bird has a beak' -> observed, attr stored as 'beak'
+- C2: 'an owl has an eye and a wing' -> attrs 'eye','wing'
+- C3: 'what does a bird have' -> lists taught attrs
+- C4: 'does a bird have wings' -> yes; 'does a bird have gills' -> unknown
+- C5: pre-existing bare forms unchanged ('a bird has wings', 'what does bird
+  have', 'does bird have wings')
+- C6: 'maybe a bird has a beak' -> uncertain_not_stored, nothing stored,
+  follow-up 'does a bird have beaks'... 'does bird have beak' -> unknown
+- C7 noninterference: b534-b551 + regress_skills PASS unchanged
+
+## B-552 verdict (2026-10-25): PASS
+Own criteria 13/13 first run (logs/b552_run.log): articles stripped before
+subject (reverse/yes-no) and attributes (teach + 'maybe'); bare forms
+unchanged; uncertain path stores nothing; named no-morphology limit verified
+('beak' != 'beaks' -> unknown). C7 noninterference: b534-b551 clean,
+regress_skills PASS. End-to-end chat transcript of the exact phrases the
+B-550 battery saw rejected: logs/b552_chat.log ('a bird has a beak' ->
+จำไว้แล้ว, 'what does a bird have' -> list, 'does a bird have wings' -> yes,
+gills -> unknown).
