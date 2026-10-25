@@ -1,0 +1,2 @@
+{"verdict": "PASS", "clean_process_no_tmp": {"even": "40/40", "sumto": "40/40", "square": "40/40", "choose2": "40/40"}, "c1_ok": true, "missing_pinning": {"expected_error": "base-library pinning source missing: neither logs/baselib_pin.json nor /tmp/c7_prog_0_base.json exists"}, "c2_ok": true, "corrupt_cache": {"rc": 0, "warned": true, "skills": true}, "c3_ok": true}
+DONE

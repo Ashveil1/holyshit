@@ -1824,3 +1824,17 @@ Pass criteria:
 - C5 noninterference: b534-b549 harnesses + regress_skills PASS unchanged
 Named scope: exactly three hops, attr domain only, single-token surfaces;
 NOT general n-hop. Read-only frames: never store.
+
+## B-551 verdict (2026-10-25): PASS
+Own criteria 10/10 first run (logs/b551_run.log): C1 single chain composed
+('X มี A และ A มี Y และ Y มี Z'), C2 two verified candidates both emitted,
+C3a/b/c per-hop broken chains all abstain ไม่รู้, C4 mid-chain retraction drops
+the broken candidate while the intact one still composes, C4b full break ->
+ไม่รู้, EN twin composes cross-language via taught links, EN broken -> unknown.
+C5 noninterference: b534-b549 harnesses clean; regress_skills PASS
+(logs/b551_regress_skills.log: clean-process 40/40 x4 skills, missing-pinning
+error path, corrupt-cache fallback). Run note (honest): two earlier
+regress_skills attempts hit sandbox timeouts because a killed run had truncated
+logs/b527_skills_cache.pkl; the DESIGNED corrupt-cache fallback absorbed it
+(warning + full re-derivation, 76s), after which the suite completed. No code
+change needed; the incident exercised the same fallback path the suite tests.

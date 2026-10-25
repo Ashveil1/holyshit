@@ -1,0 +1,11 @@
+PASS C3b {'kind': 'compose_unknown', 'text': 'ไม่รู้', 'source': 'attr'}
+PASS C3a {'kind': 'compose_unknown', 'text': 'ไม่รู้', 'source': 'attr'}
+PASS C1 {'kind': 'composed3', 'text': 'ซูโม่ มี กาเฟ่ และ กาเฟ่ มี ม็อกก้า และ ม็อกก้า มี โมจิ', 'source': 'attr', 'x': 'ซูโม่', 'y': 'ม็อกก้า', 'z': 'โมจิ', 'as_': ['กาเฟ่']}
+PASS C2 {'kind': 'composed3', 'text': 'ซูโม่ มี กาเฟ่ และ กาเฟ่ มี ม็อกก้า และ ม็อกก้า มี โมจิ / ซูโม่ มี ลาเต้ และ ลาเต้ มี ม็อกก้า และ ม็อกก้า มี โมจิ', 'source': 'attr', 'x': 'ซูโม่', 'y': 'ม็อกก้า', 'z': 'โมจิ', 'as_': ['กาเฟ่', 'ลาเต้']}
+PASS C3c {'kind': 'compose_unknown', 'text': 'ไม่รู้', 'source': 'attr'}
+PASS C4-retract {'kind': 'retracted', 'text': 'ลบแล้ว', 'source': 'dialog', 'name': 'กาเฟ่', 'retracted': ['ม็อกก้า'], 'not_found': []}
+PASS C4 {'kind': 'composed3', 'text': 'ซูโม่ มี ลาเต้ และ ลาเต้ มี ม็อกก้า และ ม็อกก้า มี โมจิ', 'source': 'attr', 'x': 'ซูโม่', 'y': 'ม็อกก้า', 'z': 'โมจิ', 'as_': ['ลาเต้']}
+PASS C4b {'kind': 'compose_unknown', 'text': 'ไม่รู้', 'source': 'attr'}
+PASS EN1 {'kind': 'composed3', 'text': 'puma has โคอาลา and โคอาลา has wombat and wombat has quokka', 'source': 'attr', 'x': 'ปูม่า', 'y': 'วอมแบท', 'z': 'คว็อกก้า', 'as_': ['โคอาลา']}
+PASS EN-broken {'kind': 'compose_unknown', 'text': 'unknown', 'source': 'attr'}
+FAILS: 0
