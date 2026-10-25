@@ -1681,3 +1681,59 @@ meaning; English answers render canonical (Thai) attr words - the system does
 not translate. Toward Ash's stated goal (compose NEW sentences to answer):
 current answers are still template-rendered from memory, NOT free composition -
 that gap is the next design question, recorded here honestly.
+
+## B-548 - bounded two-hop composition: question-conditioned sentence assembly, verified before speaking
+Pre-registered 2026-10-25 (Ash's stated goal via WhatsApp originals: the system
+composes NEW sentences from words to answer questions; parent: preserve his
+wording as the goal, distinguish learned-frame composition from broader ability,
+held-out sentence/question tests, factual correctness, no canned-demo shortcut).
+This is a BOUNDED slice, honestly named: two-hop composition over the taught
+มี-graph only; surface realization still uses finite designed frames (NOT free
+sentence composition); the question frames are designed, not learned Thai.
+Design (ALL DESIGNED, named):
+1. New question frames (finite, read-only - they never store):
+   Thai 'X มี อะไรที่มี Y' and English 'what does X have that has Y'
+   (link resolution as B-547, ambiguity abstains naming candidates).
+   Semantics: find every Z such that taught(X,Z) AND taught(Z,Y).
+2. Composition: for each verified Z emit a sentence assembled from taught
+   words ('X มี Z และ Z มี Y' / 'X has Z and Z has Y') - a surface string
+   that was never input as a whole; content selection is conditioned on the
+   question (which Z satisfies both hops), not retrieval of a canned answer.
+3. Verification gate: at speak time every link in an emitted sentence is
+   re-checked against LIVE memory (taught() re-query); an unverified link is
+   never spoken. No intermediate cache is trusted at emission.
+4. Honest absence: no verified Z -> 'ไม่รู้'/'unknown'. Broken or
+   reverse-only chains are never completed by guessing.
+Criteria:
+- C1: fresh-word chain (A,B,C novel, not in seed corpus): teach 'A มี B',
+  'B มี C'; ask 'A มี อะไรที่มี C' -> answer names B; the emitted sentence
+  string never appeared in any input (asserted) and every link in it is
+  taught() in memory (asserted)
+- C2: two independent paths A->B1->C and A->B2->C -> both listed, each
+  link of each path verified
+- C3: broken chains: (a) A มี B taught but B มี C never taught (nothing
+  holds C) -> ไม่รู้; (b) D มี C taught but A มี D never taught -> ไม่รู้
+  (no fabrication from a reverse-only hop)
+- C4: retraction: after C1's answer, 'B ไม่มี C' -> same question -> ไม่รู้;
+  re-teach 'B มี C' -> answer returns naming B (no stale emission)
+- C5: unknown word in X or Y slot -> ไม่รู้; the question stores nothing
+  (memory pair-count identical before/after; question tokens never become
+  names/attrs)
+- C6: bilingual: with taught links, 'what does A have that has C' answers
+  from the SAME memory naming the same Z; a doubly-linked English word ->
+  abstain naming candidates
+- C7: noninterference: b534/b535/b540/b541/b542/b543/b544/b546/b547,
+  regress_skills, b539 chunked (bounded c6) all PASS
+Verdict: PASS (run-1). logs/b548_run.log. All criteria green on the first run:
+two-hop composition names only fully verified paths (C1/C2), broken and
+reverse-only chains get ไม่รู้ (C3), retraction removes and re-teaching
+restores paths with no stale emission (C4), queries store nothing (C5),
+bilingual twin shares one memory and ambiguity abstains naming candidates
+(C6). Answer strings asserted never-input and every emitted link asserted
+taught() at speak time. Noninterference (C7): b534/b535/b540/b541/b542/b543/
+b544/b546/b547 + regress_skills PASS; b539 chunked bounded-c6 regression PASS
+(logs/b539_regress8.log, bounded-aware merge as regress7). Scope named
+honestly: bounded TWO-HOP composition over the มี-graph with finite designed
+frames - a real step toward Ash's compose-new-sentences goal (content
+selection is question-conditioned and the emitted string is novel), but still
+NOT free sentence composition; deeper hops and freer realization are open.

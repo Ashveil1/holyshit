@@ -1,0 +1,15 @@
+PASS C3a {'kind': 'compose_unknown', 'text': 'ไม่รู้', 'source': 'attr'}
+PASS C1 {'kind': 'composed', 'text': 'ซูโม่ มี ฟา และ ฟา มี ทริบ', 'source': 'attr', 'x': 'ซูโม่', 'y': 'ทริบ', 'zs': ['ฟา']}
+PASS C2 {'kind': 'composed', 'text': 'ซูโม่ มี ฟา และ ฟา มี ทริบ / ซูโม่ มี โลโม่ และ โลโม่ มี ทริบ', 'source': 'attr', 'x': 'ซูโม่', 'y': 'ทริบ', 'zs': ['ฟา', 'โลโม่']}
+PASS C3b {'kind': 'composed', 'text': 'ซูโม่ มี ฟา และ ฟา มี ทริบ / ซูโม่ มี โลโม่ และ โลโม่ มี ทริบ', 'source': 'attr', 'x': 'ซูโม่', 'y': 'ทริบ', 'zs': ['ฟา', 'โลโม่']}
+PASS C3b2 {'kind': 'compose_unknown', 'text': 'ไม่รู้', 'source': 'attr'}
+PASS C4a {'kind': 'composed', 'text': 'ซูโม่ มี โลโม่ และ โลโม่ มี ทริบ', 'source': 'attr', 'x': 'ซูโม่', 'y': 'ทริบ', 'zs': ['โลโม่']}
+PASS C4b {'kind': 'compose_unknown', 'text': 'ไม่รู้', 'source': 'attr'}
+PASS C4c {'kind': 'composed', 'text': 'ซูโม่ มี ฟา และ ฟา มี ทริบ / ซูโม่ มี โลโม่ และ โลโม่ มี ทริบ', 'source': 'attr', 'x': 'ซูโม่', 'y': 'ทริบ', 'zs': ['ฟา', 'โลโม่']}
+PASS C5a ({'kind': 'compose_unknown', 'text': 'ไม่รู้', 'source': 'attr'}, {'kind': 'compose_unknown', 'text': 'ไม่รู้', 'source': 'attr'})
+PASS C5b (5, 5)
+PASS C6a {'kind': 'composed', 'text': 'zumo has ฟา and ฟา has trip / zumo has โลโม่ and โลโม่ has trip', 'source': 'attr', 'x': 'ซูโม่', 'y': 'ทริบ', 'zs': ['ฟา', 'โลโม่']}
+PASS C6b {'kind': 'abstain', 'text': "'bond' can mean: ฟา โลโม่", 'source': 'link_ambiguous'}
+PASS C6c {'kind': 'yesno', 'text': 'yes', 'source': 'attr', 'answer': 'yes'}
+PASS guard {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
+RESULT: PASS

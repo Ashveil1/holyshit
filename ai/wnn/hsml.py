@@ -215,6 +215,28 @@ class HSML:
                 ans, truth = 'ไม่รู้', 'unknown'
             self._rec(s, 'yesno', 'attr', name=name, attr=attr, answer=truth)
             return {'kind': 'yesno', 'text': ans, 'source': 'attr', 'answer': truth}
+        # B-548 (ALL DESIGNED, named): bounded two-hop composition over the taught
+        # มี-graph. Question-conditioned content selection + sentence assembly from
+        # taught words; every emitted link re-verified against LIVE memory at speak
+        # time (no cache trusted at emission). Read-only: these frames never store.
+        # NOT free sentence composition - finite designed frames, honestly named.
+        mq = re.fullmatch(r'(\S+) มี อะไรที่มี (\S+)', s)
+        if mq is not None:
+            x, y = mq.group(1), mq.group(2)
+            if _guarded(x) or _guarded(y):
+                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
+            return self._compose_two_hop(s, x, y, 'th', x, y)
+        en_chain = re.fullmatch(r'[Ww]hat does (\S+) have that has ([A-Za-z]\S+)', s)
+        if en_chain is not None:
+            rx = self._resolve_link(en_chain.group(1)); ry = self._resolve_link(en_chain.group(2).lower())
+            for w0, r0 in ((en_chain.group(1), rx), (en_chain.group(2), ry)):
+                if r0[0] == 'amb':
+                    self._rec(s, 'abstain', 'link_ambiguous', cands=r0[1])
+                    return {'kind': 'abstain', 'text': f"'{w0}' can mean: {' '.join(r0[1])}", 'source': 'link_ambiguous'}
+            x, y = rx[1], ry[1]
+            if _guarded(x) or _guarded(y):
+                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
+            return self._compose_two_hop(s, x, y, 'en', en_chain.group(1), en_chain.group(2))
         # B-547 (ALL DESIGNED, finite - named: not learned understanding): bilingual slice.
         ml = re.fullmatch(r'(\S+) ภาษาอังกฤษคือ ([A-Za-z]\S*)', s)
         if ml is not None:
@@ -305,6 +327,28 @@ class HSML:
                     'name': name, 'asked': attrs}
         self._rec(s, 'abstain', 'unrouted')
         return {'kind': 'abstain', 'text': None, 'source': 'unrouted'}
+
+    def _compose_two_hop(self, s, x, y, lang, x_surf, y_surf):
+        """B-548: candidates from memory; each emitted link re-verified LIVE at speak
+        time (the verification gate). No verified path -> honest absence."""
+        be = self.mem.attrs
+        xs = be.attrs_of(x)
+        verified = []
+        if xs:
+            for z in xs:
+                # gate: re-query live memory at emission, both hops
+                if be.holds(x, z) and be.holds(z, y):
+                    verified.append(z)
+        self._rec(s, 'compose', 'attr', x=x, y=y, verified=verified)
+        if not verified:
+            txt = 'ไม่รู้' if lang == 'th' else 'unknown'
+            self._rec(s, 'compose_unknown', 'attr', x=x, y=y)
+            return {'kind': 'compose_unknown', 'text': txt, 'source': 'attr'}
+        if lang == 'th':
+            text = ' / '.join(f'{x_surf} มี {z} และ {z} มี {y_surf}' for z in verified)
+        else:
+            text = ' / '.join(f'{x_surf} has {z} and {z} has {y_surf}' for z in verified)
+        return {'kind': 'composed', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'zs': verified}
 
     def _resolve_link(self, w):
         """B-547: english surface word -> ('ok', canonical) or ('amb', [candidates]).
