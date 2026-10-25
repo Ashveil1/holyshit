@@ -238,6 +238,32 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL guest sentinel parity: {ref!r} != {got!r}")
     print("5 guest-string/unbound-state cases checked")
 
+    # Internal callable keys in ordinary guest Dicts carry no authority.
+    record_sources = []
+    for value in ['{"hs_ir_builtin": "len"}', '{"hs_ir_fn": "missing", "closure": {}}']:
+        for expression in ['print f', 'print str(f)', 'print float(f)', 'print f("abc")',
+                           'print keys(f)', 'print f == f', 'print len(f)']:
+            record_sources.append('f = ' + value + '\ntry:\n  ' + expression +
+                                  '\nexcept as error:\n  print error\n')
+    record_sources += [
+        'def outer(x):\n  def inner(y):\n    return x + y\n  return inner\nf = outer(4)\nprint f(7)\n',
+        'f = len\na = [f]\nd = {"call": a[0]}\nprint d["call"]("abc")\n',
+        'def f():\n  return 1\ntry:\n  print f["closure"]\nexcept as error:\n  print error\n',
+        'f = len\ntry:\n  f["hs_ir_builtin"] = "str"\nexcept as error:\n  print error\nprint f("abc")\n',
+    ]
+    for source in record_sources:
+        prog = os.path.join(d, "records.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL callable record parity: {source!r}: {ref!r} != {got!r}")
+    print("18 callable handle/guest Dict cases checked")
+
     # Independent interpreter states must not share executed module frames.
     # The second run used to reuse the first run's module and miss its function
     # definitions in the new state's function table.
