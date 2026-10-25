@@ -151,3 +151,19 @@ restoration and detach/edit on interpreter/GCC/x64/native-seed paths. The
 native/reference kernel stress includes previous/next/detach in100000 cycles
 with the same16-byte marker gap. This is navigation state, not a public widget
 API, a concurrent aliasing contract or an indefinite-session guarantee.
+
+The fixed demo now consumes only `readkey_event()` for input. Extended Up and
+Down browse retained history in accepted IRQ order with ASCII edits. The first
+Up saves the current draft, Down past the newest entry restores it, and typing,
+backspace or Enter detaches the recalled line before changing/submitting it.
+Both ends are no-ops; empty recalled entries clear the active row. This
+supersedes the earlier no-keyboard-binding limitation for this demo only.
+
+The real GRUB gate retains complete native/reference image equality, existing
+finite ASCII allocation checks, cursor/capacity checks and original transcript
+pixels. It additionally verifies mixed ASCII/arrow ordering and full active-row
+glyph/background pixels through both history ends, draft restoration, editing
+a recalled line, submission/reset and an empty recalled entry. Guest screenshots
+were visually inspected. This remains display-only input, never command
+execution; no cursor-left/right, selection, terminal emulation or hardware
+keyboard support is added.

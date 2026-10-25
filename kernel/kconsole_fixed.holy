@@ -1,6 +1,7 @@
 # Fixed edit/history + raw rendering. Input remains display-only, never executed.
 import kframebuffer
 import kfont
+import kconsole_recall
 import kconsole_buffer
 import kconsole_view
 frame = kframebuffer.descriptor()
@@ -10,22 +11,33 @@ kfont.fill(frame, 24, 24, 576, 64, 0x386fa4)
 kfont.draw(frame, 40, 40, "HS SYSTEM CONSOLE", 0xffffff, 3)
 kfont.fill(frame, 24, 104, 576, 224, 0xe8edf2)
 session = kconsole_buffer.create(42, 4)
+navigation = kconsole_recall.create(session)
 view = kconsole_view.create(frame, session, 32, 136, 24, 280, 512)
 kfont.draw(frame, 32, 112, "RECENT INPUT - NOT EXECUTED", 0x16324f, 2)
 kfont.draw(frame, 32, 248, "INPUT:", 0x16324f, 2)
 kconsole_view.active(view)
 edit_label = "FIXED EDIT"
 submitted_label = "FIXED SUBMITTED"
+navigation_label = "FIXED NAV"
 print "FIXED SESSION READY"
 while true:
-  key = readkey_code()
+  key = readkey_event()
   if key != null:
-    submitted = kconsole_buffer.feed(session, key)
+    submitted = false
+    if key == 128:
+      kconsole_recall.previous(navigation)
+    elif key == 129:
+      kconsole_recall.next(navigation)
+    else:
+      kconsole_recall.detach(navigation)
+      submitted = kconsole_buffer.feed(session, key)
     if submitted:
       kconsole_view.history(view)
     kconsole_view.active(view)
     # Fixed literal/scalar serial diagnostics, never string snapshots/JSON.
-    if submitted:
+    if key == 128 or key == 129:
+      print navigation_label, session[3]
+    elif submitted:
       print submitted_label, session[7]
     else:
       print edit_label, session[3]

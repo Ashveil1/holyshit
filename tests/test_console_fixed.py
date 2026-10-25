@@ -27,12 +27,11 @@ with tempfile.TemporaryDirectory() as temp:
                      '    if session_events == 272:\n'
                      '      steady_after = mark()\n'
                      '      print "FIXED STEADY GAP", steady_after - steady_before\n')
-    instrumented=instrumented.replace('while true:\n  key = readkey_code()',
-        'while true:\n  event = readkey_event()\n'
-        '  if event != null:\n    print event_label, event\n'
-        '  navigation = readkey_nav()\n'
-        '  if navigation != null:\n    print "NAV EVENT", navigation\n'
-        '  key = readkey_code()')
+    instrumented=instrumented.replace('while true:\n  key = readkey_event()',
+        'while true:\n  legacy_navigation = readkey_nav()\n'
+        '  if legacy_navigation != null:\n    print "NAV EVENT", legacy_navigation\n'
+        '  key = readkey_event()\n'
+        '  if key != null:\n    print event_label, key')
     source.write_text(instrumented)
     subprocess.run([sys.executable,str(ROOT/'hs.py'),'xkernel',str(source),'-o',str(image)],env=env,check=True,capture_output=True,timeout=90)
     # Native hs kernel linker must produce the complete same image.
@@ -220,18 +219,6 @@ with tempfile.TemporaryDirectory() as temp:
         sock.sendall(('screendump '+str(screen)+'\n').encode())
         deadline=time.monotonic()+5
         while time.monotonic()<deadline and (not screen.exists() or screen.stat().st_size<640*480*3):time.sleep(.1)
-        before_events=[int(line.split()[-1]) for line in content.splitlines() if line.startswith('ORDERED EVENT ')]
-        mixed=['a','up','b','down','backspace','ret']
-        for key in mixed:
-            sock.sendall(('sendkey '+key+' 20\n').encode());sock.recv(4096)
-            time.sleep(.04)
-        deadline=time.monotonic()+10
-        while time.monotonic()<deadline:
-            event_log=[int(line.split()[-1]) for line in serial.read_text(errors='replace').splitlines() if line.startswith('ORDERED EVENT ')]
-            if len(event_log)>=len(before_events)+6:break
-            time.sleep(.1)
-        assert event_log[len(before_events):]==[97,128,98,129,8,10],event_log[-10:]
-        sock.close()
         with screen.open('rb') as f:
             assert f.readline().strip()==b'P6';dims=f.readline()
             while dims.startswith(b'#'):dims=f.readline()
@@ -256,6 +243,62 @@ with tempfile.TemporaryDirectory() as temp:
                 assert pixel(x,y)==((22,50,79) if 44<=x<52 else (232,237,242)),(x,y)
         if os.environ.get('HS_TEST_SCREENSHOT'):
             shutil.copyfile(screen,os.environ['HS_TEST_SCREENSHOT'])
-        print('5/5 fixed-buffer console gates (native image, transcript, text pixels, cursor capacity/backspace/reset and empty-history boundaries)')
+        before_submits=serial.read_text(errors='replace').count('FIXED SUBMITTED')
+        before_events=[int(line.split()[-1]) for line in content.splitlines() if line.startswith('ORDERED EVENT ')]
+        mixed=['a','up','b','down','backspace','ret']
+        for key in mixed:
+            sock.sendall(('sendkey '+key+' 20\n').encode());sock.recv(4096)
+            time.sleep(.04)
+        deadline=time.monotonic()+10
+        while time.monotonic()<deadline:
+            event_log=[int(line.split()[-1]) for line in serial.read_text(errors='replace').splitlines() if line.startswith('ORDERED EVENT ')]
+            if len(event_log)>=len(before_events)+6:break
+            time.sleep(.1)
+        assert event_log[len(before_events):]==[97,128,98,129,8,10],event_log[-10:]
+        # Actual production history binding, independent full active-row oracle.
+        alphabet={'d':[30,17,17,17,17,17,30], 'e':[31,16,16,30,16,16,31],
+                  'f':[31,16,16,30,16,16,16], 'g':[15,16,16,23,17,17,15],
+                  'b':[30,17,17,30,17,17,30]}
+        def active_text(text):
+            cursor_at(len(text))
+            with screen.open('rb') as f:
+                f.readline();f.readline();f.readline();raw=f.read()
+            for y in range(280,294):
+                for x in range(32,544):
+                    col=(x-32)//12; dot=((x-32)%12)//2; row=(y-280)//2
+                    lit=col<len(text) and dot<5 and (alphabet[text[col]][row] & (1<<(4-dot)))
+                    want=(22,50,79) if lit else (232,237,242)
+                    assert tuple(raw[(y*640+x)*3:(y*640+x)*3+3])==want,('history pixels',text,x,y)
+        def key_text(key,text):
+            def completed():
+                log=serial.read_text(errors='replace')
+                return sum(log.count(label) for label in ['FIXED NAV ', 'FIXED EDIT ', 'FIXED SUBMITTED '])
+            before=completed()
+            sock.sendall(('sendkey '+key+' 20\n').encode());sock.recv(4096)
+            deadline=time.monotonic()+10
+            while time.monotonic()<deadline:
+                if completed()>before:break
+                time.sleep(.05)
+            else:raise AssertionError('history key stalled '+key)
+            # Completion diagnostics follow actual redraw, not merely dequeue.
+            active_text(text)
+            if text=='fb' and os.environ.get('HS_TEST_RECALL_SCREENSHOT'):
+                shutil.copyfile(screen,os.environ['HS_TEST_RECALL_SCREENSHOT'])
+        deadline=time.monotonic()+10
+        while serial.read_text(errors='replace').count('FIXED SUBMITTED')<=before_submits:
+            assert time.monotonic()<deadline,'mixed submission stalled'
+            time.sleep(.05)
+        active_text('')
+        for key,text in [('up','f'),('down',''),('g','g'),('up','f'),('up','f'),
+                         ('up','e'),('up','d'),('up','d'),('down','e'),('down','f'),
+                         ('down','f'),('down','g'),('up','f'),('b','fb'),('down','fb'),
+                         ('up','f'),('down','fb'),('ret',''),('up','fb'),('down','')]:
+            key_text(key,text)
+        # Empty recalled line must clear old glyphs; draft survives empty history entry.
+        for key,text in [('ret',''),('g','g'),('up',''),('down','g')]:key_text(key,text)
+        if os.environ.get('HS_TEST_HISTORY_SCREENSHOT'):
+            shutil.copyfile(screen,os.environ['HS_TEST_HISTORY_SCREENSHOT'])
+        sock.close()
+        print('5/5 fixed-buffer console gates (native image, transcript, text pixels, cursor boundaries, ordered mixed input and draft-preserving arrow history)')
     finally:
         p.kill();p.wait();qerrfile.close()
