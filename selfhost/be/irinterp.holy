@@ -505,7 +505,11 @@ def step(st, ins, temps, frame, prev):
       fail("only modules have attributes", ln)
     nm = ins["name"]
     mvs = obj["frame"]["vars"]
-    if nm not in mvs:
+    bound = obj["frame"]["bound"]
+    present = false
+    if nm in mvs and nm in bound:
+      present = bound[nm]
+    if not present:
       fail("module '" + obj["hs_ir_mod"] + "' has no attribute '" + nm + "'", ln)
     temps[ins["dest"]] = mvs[nm]
   elif op == "setattr":
