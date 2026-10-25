@@ -1,0 +1,15 @@
+PASS C3 {'kind': 'yesno', 'text': 'ไม่รู้', 'source': 'attr', 'answer': 'unknown'}
+PASS C1-link {'kind': 'isa_stored', 'text': 'จำไว้แล้ว', 'source': 'dialog'}
+PASS C1 {'kind': 'yesno', 'text': 'ใช่', 'source': 'attr', 'answer': 'yes'}
+PASS C2 {'kind': 'yesno', 'text': 'ใช่', 'source': 'attr', 'answer': 'yes'}
+PASS C5a {'kind': 'uncertain_not_stored', 'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}
+PASS C5b {'kind': 'yesno', 'text': 'ไม่รู้', 'source': 'attr', 'answer': 'unknown'}
+PASS C6 {'kind': 'yesno', 'text': 'ไม่รู้', 'source': 'attr', 'answer': 'conflict'}
+PASS C8 {'kind': 'yesno', 'text': 'ใช่', 'source': 'attr', 'answer': 'yes'}
+PASS C4a {'kind': 'isa_retracted', 'text': 'ลบแล้ว', 'source': 'dialog'}
+PASS C4b {'kind': 'yesno', 'text': 'ไม่รู้', 'source': 'attr', 'answer': 'unknown'}
+PASS C4c {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
+PASS C4d {'kind': 'yesno', 'text': 'ไม่รู้', 'source': 'attr', 'answer': 'unknown'}
+PASS C7 {'kind': 'abstain', 'text': None, 'source': 'isa_guard'}
+PASS C9-reverse-bound {'kind': 'abstain', 'text': None, 'source': 'attr_reverse_unknown'}
+FAILS: 0

@@ -1907,3 +1907,44 @@ retraction restores per-surface view (own facts survive), C6 conflict ->
 ไม่รู้, guard refuses question-stem words. C9 noninterference: b534-b552
 clean, regress_skills PASS. Compat: pre-B-553 memory pickle
 (/tmp/b552_chat.pkl) loads and answers correctly (lazy syn init).
+
+## B-554 (pre-registered 2026-10-25): is-a ('X เป็น Y') with yes/no inheritance
+First second relation type after มี; toward category conversation. ALL
+DESIGNED, named. Thai single-token only this chunk (English is-a: out of scope).
+Frames:
+- teach: 'X เป็น Y' (directed child->parent; cycles allowed, visited-set BFS)
+- retract: 'ไม่ใช่ X เป็น Y' (link removed; honest nothing-to-retract)
+- uncertain: marker + is-a sentence -> uncertain_not_stored (B-549 path extended)
+Semantics (predeclared): inheritance applies to YES/NO questions only, via BFS
+over parents (depth cap 8, cycle-safe): any positive (own, synonym, or
+inherited through is-a) answers ใช่; any explicit negation anywhere answers
+ไม่ - and BOTH present = conflict -> ไม่รู้ (B-553 rule extended). Reverse
+query 'X มี อะไรบ้าง' lists OWN(+synonym) attrs only - inheritance NOT listed
+there this chunk (named bound). Composition unchanged (not inherited) this
+chunk. Guard words refused on both sides.
+Pass criteria:
+- C1: 'นกแก้ว เป็น นก' + 'นก มี ปีก' -> 'นกแก้ว มี ปีก ไหม' answers ใช่
+- C2: transitive two levels -> ใช่
+- C3: no link -> ไม่รู้
+- C4: 'ไม่ใช่ นกแก้ว เป็น นก' -> re-ask ไม่รู้; honest nothing-to-retract repeat
+- C5: uncertain is-a stores nothing
+- C6: own explicit neg + inherited positive -> ไม่รู้ (conflict)
+- C7: guarded words refused
+- C8: cycle X->Y->X terminates, answers from union
+- C9 noninterference: b534-b553 + regress_skills PASS unchanged
+
+### B-554 run-1 note (kept per protocol)
+Run-1 FAIL on C6: my criterion used bare 'ควิ๊บ ไม่มี สเฟน' on a never-taught
+pair and expected an explicit negation - but the DESIGNED B-542 semantics
+treat bare 'X ไม่มี Y' on untaught pairs as honest nothing-to-retract (no neg
+recorded), so inheritance correctly answered ใช่. The system was right; the
+criterion was wrong. Amended C6 to establish the explicit negation via the
+designed teach-then-correct ('ไม่ใช่') path. No code change.
+
+## B-554 verdict (2026-10-25): PASS (after C6 criterion amendment, see run-1 note)
+Own criteria 14/14 (logs/b554_run.log): C1 one-level inheritance, C2
+transitive (BFS cap 8), C3 no-link unknown, C4 is-a retraction incl.
+descendant effect, C5 uncertain not stored, C6 own-neg + inherited-pos ->
+conflict ไม่รู้, C7 guard, C8 cycle-safe, C9 reverse-query bound held
+(inheritance answers yes/no only, not listings). C9 noninterference:
+b534-b553 clean, regress_skills PASS.
