@@ -15,7 +15,9 @@ from b521 import ATTRS
 CONF_Q = 'ถ้า n เป็น {} ตอบอะไร'
 
 class HSML:
-    def __init__(self, seed=0):
+    def __init__(self, seed=0, induction_lib='separated'):  # B-536 verdict: separated is the default induction regime
+        assert induction_lib in ('full', 'separated')
+        self.induction_lib = induction_lib  # B-536: 'separated' excludes heavy pinned baselib from the SEARCH space only
         self.mem = HSMLMemory()
         self.mem.skills = derive_skills(load_logged())
         self.rng = random.Random(seed)
@@ -88,7 +90,15 @@ class HSML:
             word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
             self._rec(s, 'teach_failed', 'induction', word=word, tried=tried)
             return {'kind': 'teach_failed', 'text': None, 'source': 'induction', 'tried': tried}
-        p, tried = induce(self.ctx['pairs'], **({} if self.induce_cap is None else {'cap': self.induce_cap}))
+        heavy = ('fact', 'sumto', 'square', 'choose2', 'dblfact')  # B-536: pinned recursive baselib
+        popped = {}
+        if self.induction_lib == 'separated':
+            for k0 in heavy:
+                if k0 in C7.LIB: popped[k0] = C7.LIB.pop(k0)
+        try:
+            p, tried = induce(self.ctx['pairs'], **({} if self.induce_cap is None else {'cap': self.induce_cap}))
+        finally:
+            C7.LIB.update(popped)
         self.ctx['tried_tot'] += tried
         if p is None:
             word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
@@ -118,6 +128,10 @@ class HSML:
             word = self.ctx['word']
             tot = self.ctx['tried_tot']
             SKILL_BY_WORD[word] = word
+            # dialog-taught skills enter the induction LIB at store time (B-531 reuse path,
+            # now in-conversation; same wrapping as b530.as_primitive / pin_lib)
+            C7.CAPF[0] = 20000
+            C7.LIB[word] = (lambda ff: (lambda a, b: ff(a, b)))(pend['fn'])
             self.mem.skills[word] = (pend['prog'], pend['fn'],
                 {'source': 'dialog', 'tried': tot, 'examples': len(self.ctx['pairs']) + 3})
             self._rec(s, 'skill_stored', 'induction', word=word, tried=tot,
