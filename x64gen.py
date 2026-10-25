@@ -851,7 +851,7 @@ class Gen:
             # become unbound globals (runtime error).
             if name in ("print", "len", "range", "str", "int", "float", "input",
                         "open", "read", "write", "close", "argv", "env", "system",
-                        "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey", "readkey_code", "readkey_nav",
+                        "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event",
                         "pmm_alloc", "meminfo", "tcp_connect", "tcp_send",
                         "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
                         "http_get", "json_parse", "json_str", "read_text",
@@ -2239,7 +2239,7 @@ class Gen:
         if fn["t"] == "var" and fn["name"] in (
                 "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
-                "readkey", "readkey_code", "readkey_nav", "pmm_alloc", "pmm_total",
+                "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "pmm_total",
                 "pmm_free", "meminfo", "mb_info", "mb_magic",
                 "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush",
                 "ctx_swap", "task_run", "task_init",
@@ -2250,7 +2250,7 @@ class Gen:
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "json_load", "json_save", "write_bytes", "asm"):
             if self.freestanding and fn["name"] in (
-                    "ticks", "readkey", "readkey_code", "readkey_nav", "pmm_alloc", "pmm_total", "pmm_free",
+                    "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "pmm_total", "pmm_free",
                     "mb_info", "mb_magic", "image_end", "cr2", "cr3",
                     "set_cr3", "invlpg", "tlb_flush",
                     "ctx_swap", "task_run", "task_init",
@@ -2490,6 +2490,19 @@ class Gen:
             if args:
                 raise HSErr("readkey_nav takes no args", ln)
             a.call("nav_dequeue")
+            lab_none, lab_done = self.new_tmp("rkc"), self.new_tmp("rkc")
+            a.test_rr("rax", "rax")
+            a.jcc("e", lab_none)
+            self.tag_box()
+            a.jmp(lab_done)
+            a.label(lab_none)
+            a.mov_ri64("rax", Gen.HS_NULL)
+            a.label(lab_done)
+            return
+        if name == "readkey_event":
+            if args:
+                raise HSErr("readkey_event takes no args", ln)
+            a.call("event_dequeue")
             lab_none, lab_done = self.new_tmp("rkc"), self.new_tmp("rkc")
             a.test_rr("rax", "rax")
             a.jcc("e", lab_none)
@@ -4548,9 +4561,11 @@ class Gen:
             self.a.data_label("bump_end_")
             self.a.data_qword(Gen.KHEAP_BASE + Gen.KHEAP_SIZE)
             # kernel device state: timer ticks, bounded keyboard FIFO, pmm
-            for nm in ("ticks_", "keyhead_", "keytail_", "keydrops_", "navhead_", "navtail_", "navdrops_", "keyextended_", "pmm_next_"):
+            for nm in ("ticks_", "keyhead_", "keytail_", "keydrops_", "navhead_", "navtail_", "navdrops_", "keyextended_", "eventhead_", "eventtail_", "eventdrops_", "pmm_next_"):
                 self.a.data_label(nm)
                 self.a.data_qword(0)
+            self.a.data_label("eventqueue_")
+            self.a.data_bytes(bytes(64))
             self.a.data_label("navqueue_")
             self.a.data_bytes(bytes(64))
             self.a.data_label("keyqueue_")
@@ -4907,7 +4922,7 @@ class Gen:
             a.pop_r(r)
         a.iretq()
 
-        # E0-prefixed Up/Down go only to the independent navigation FIFO.
+        # E0-prefixed Up/Down enter navigation and ordered event FIFOs.
         # All other extended make/break bytes are ignored, never ASCII.
         a.label("kbd_scancode")
         a.cmp_ri32("rax", 0xE0)
@@ -4924,12 +4939,16 @@ class Gen:
         a.jcc("e", lab_ascii)
         a.cmp_ri32("rax", 0x48)
         a.jcc("ne", lab_down)
+        a.mov_ri32("rax", 128)
+        a.call("event_enqueue")
         a.mov_ri32("rax", 1)
         a.call("nav_enqueue")
         a.ret()
         a.label(lab_down)
         a.cmp_ri32("rax", 0x50)
         a.jcc("ne", lab_done)
+        a.mov_ri32("rax", 129)
+        a.call("event_enqueue")
         a.mov_ri32("rax", 2)
         a.call("nav_enqueue")
         a.ret()
@@ -4943,6 +4962,9 @@ class Gen:
         a.movzx_eax_mx("rcx", "rax", 1, 0)
         a.test_rr("rax", "rax")
         a.jcc("e", lab_done)
+        a.push_r("rax")
+        a.call("event_enqueue")
+        a.pop_r("rax")
         a.call("kbd_enqueue")
         a.label(lab_done)
         a.ret()
@@ -5027,6 +5049,50 @@ class Gen:
         lab_empty = self.new_tmp("kbempty")
         a.jcc("e", lab_empty)
         a.lea_rip("r11", "navqueue_")
+        a.add_rr("r11", "rdx")
+        a.movzx_eax_m8("r11", 0)
+        a.add_ri32("rdx", 1)
+        a.and_ri32("rdx", 63)
+        a.mov_mr("rcx", "rdx", 0)
+        a.code += bytes([0x9d])  # popfq
+        a.ret()
+        a.label(lab_empty)
+        a.mov_ri32("rax", 0)
+        a.code += bytes([0x9d])
+        a.ret()
+        a.label("event_enqueue")
+        a.lea_rip("rcx", "eventtail_")
+        a.mov_rm("rdx", "rcx", 0)
+        a.mov_rr("r10", "rdx")
+        a.add_ri32("r10", 1)
+        a.and_ri32("r10", 63)
+        a.lea_rip("r11", "eventhead_")
+        a.mov_rm("r11", "r11", 0)
+        a.cmp_rr("r10", "r11")
+        lab_full = self.new_tmp("kbfull")
+        a.jcc("e", lab_full)
+        a.lea_rip("r11", "eventqueue_")
+        a.add_rr("r11", "rdx")
+        a.mov_mr8("r11", 0, 0)
+        a.mov_mr("rcx", "r10", 0)
+        a.ret()
+        a.label(lab_full)
+        a.lea_rip("rcx", "eventdrops_")
+        a.mov_rm("rax", "rcx", 0)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rcx", "rax", 0)
+        a.ret()
+        a.label("event_dequeue")
+        a.code += bytes([0x9c])  # pushfq: preserve caller IF, not unconditional sti
+        a.cli()
+        a.lea_rip("rcx", "eventhead_")
+        a.mov_rm("rdx", "rcx", 0)
+        a.lea_rip("r10", "eventtail_")
+        a.mov_rm("r10", "r10", 0)
+        a.cmp_rr("rdx", "r10")
+        lab_empty = self.new_tmp("kbempty")
+        a.jcc("e", lab_empty)
+        a.lea_rip("r11", "eventqueue_")
         a.add_rr("r11", "rdx")
         a.movzx_eax_m8("r11", 0)
         a.add_ri32("rdx", 1)

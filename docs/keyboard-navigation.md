@@ -12,6 +12,8 @@ extended bytes are ignored. Repeated E0 prefixes remain pending. Ordinary
 ASCII map behavior is unchanged, with no shift/keypad/Unicode/USB/SMP support.
 The two queues do not preserve ordering between ASCII and navigation input;
 callers needing a unified ordered event stream cannot infer it from this API.
+Use the independent `readkey_event()` stream described in [keyboard-events.md](keyboard-events.md)
+for ordered accepted ASCII/Up/Down input.
 E1/Pause handling is not implemented. An incomplete prefix has no timeout.
 
 The generated translation helper is tested directly on IR and retained AST

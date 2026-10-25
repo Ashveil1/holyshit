@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as temp:
     instrumented=(ROOT/'kernel/kconsole_fixed.holy').read_text()
     instrumented=instrumented.replace('print "FIXED SESSION READY"',
         'def mark():\n  unsafe:\n    return as_int(alloc(1))\n'
-        'session_before = mark()\nsession_events = 0\nprint "FIXED SESSION READY"')
+        'event_label = "ORDERED EVENT"\nsession_before = mark()\nsession_events = 0\nprint "FIXED SESSION READY"')
     instrumented += ('    session_events = session_events + 1\n'
                      '    if session_events == 16:\n'
                      '      session_after = mark()\n'
@@ -28,7 +28,9 @@ with tempfile.TemporaryDirectory() as temp:
                      '      steady_after = mark()\n'
                      '      print "FIXED STEADY GAP", steady_after - steady_before\n')
     instrumented=instrumented.replace('while true:\n  key = readkey_code()',
-        'while true:\n  navigation = readkey_nav()\n'
+        'while true:\n  event = readkey_event()\n'
+        '  if event != null:\n    print event_label, event\n'
+        '  navigation = readkey_nav()\n'
         '  if navigation != null:\n    print "NAV EVENT", navigation\n'
         '  key = readkey_code()')
     source.write_text(instrumented)
@@ -218,6 +220,17 @@ with tempfile.TemporaryDirectory() as temp:
         sock.sendall(('screendump '+str(screen)+'\n').encode())
         deadline=time.monotonic()+5
         while time.monotonic()<deadline and (not screen.exists() or screen.stat().st_size<640*480*3):time.sleep(.1)
+        before_events=[int(line.split()[-1]) for line in content.splitlines() if line.startswith('ORDERED EVENT ')]
+        mixed=['a','up','b','down','backspace','ret']
+        for key in mixed:
+            sock.sendall(('sendkey '+key+' 20\n').encode());sock.recv(4096)
+            time.sleep(.04)
+        deadline=time.monotonic()+10
+        while time.monotonic()<deadline:
+            event_log=[int(line.split()[-1]) for line in serial.read_text(errors='replace').splitlines() if line.startswith('ORDERED EVENT ')]
+            if len(event_log)>=len(before_events)+6:break
+            time.sleep(.1)
+        assert event_log[len(before_events):]==[97,128,98,129,8,10],event_log[-10:]
         sock.close()
         with screen.open('rb') as f:
             assert f.readline().strip()==b'P6';dims=f.readline()
