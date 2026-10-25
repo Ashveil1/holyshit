@@ -122,3 +122,17 @@ shared redraw remain inside the measured interval. The original transcript
 and capacity/empty-history checks run afterward; final pixels were visually
 inspected. This is not a proof for unbounded sessions, FIFO bursts, arbitrary
 input sequences, counter overflow or real hardware.
+
+`kconsole_buffer.recall(state,index)` copies one retained line into the active
+edit, with the same oldest-first index convention as history accessors. It
+validates the index before changing the edit; history order, lengths and
+submission count stay unchanged. The copy uses existing raw storage and does
+not create a string/list. Empty lines replace the edit with empty input.
+This is a storage primitive, not keyboard navigation: the display-only demo
+has no new shortcut and PS/2 translation is unchanged.
+
+The independent hosted model checks wrapped-history recall, empty lines and
+invalid indexes without mutation on interpreter/GCC/x64/native-seed routes.
+The native/reference-identical kernel stress includes recall/backspace/reset
+in100000 cycles and retains its16-byte marker gap. A visible recall binding
+and draft-preserving navigation need their own interaction design/test.

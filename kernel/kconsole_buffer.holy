@@ -63,3 +63,15 @@ def history_address(state, index):
   return state[0] + (slot(state, index) + 1) * state[1]
 def history_length(state, index):
   return state[4][slot(state, index)]
+def recall(state, index):
+  # Validate before replacing the active edit. History remains unchanged.
+  physical = slot(state, index)
+  count = state[4][physical]
+  source = state[0] + (physical + 1) * state[1]
+  target = state[0]
+  i = 0
+  while i < count:
+    unsafe:
+      store8(as_ptr(target + i), load8(as_ptr(source + i)))
+    i = i + 1
+  state[3] = count
