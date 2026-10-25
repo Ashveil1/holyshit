@@ -196,10 +196,18 @@ class HSML:
         if mrev is not None:
             name = mrev.group(1)
             attrs = self._attrs_of_any(name)
-            self._rec(s, 'reverse_query', 'attr', name=name, found=attrs)
-            if attrs:
-                return {'kind': 'attr_list', 'text': f"{name} มี {' '.join(attrs)}",
-                        'source': 'attr', 'name': name, 'attrs': attrs}
+            own = list(attrs or [])
+            inh = [(p, [t for t in ts if t not in own]) for p, ts in self._inherited_attrs(name)]
+            inh = [(p, ts) for p, ts in inh if ts]
+            self._rec(s, 'reverse_query', 'attr', name=name, found=attrs,
+                      inherited={p: ts for p, ts in inh})
+            if own or inh:
+                text = f"{name} มี {' '.join(own)}" if own else ''
+                for p, ts in inh:
+                    text += (' และ' if text else f'{name} มี') + f'จาก {p}: {" ".join(ts)}'
+                return {'kind': 'attr_list', 'text': text,
+                        'source': 'attr', 'name': name, 'attrs': own,
+                        'inherited': dict(inh)}
             # unknown name OR fully retracted: honest abstain, no fabricated list
             return {'kind': 'abstain', 'text': None,
                     'source': 'attr_reverse_' + ('empty' if attrs is not None else 'unknown')}
@@ -351,10 +359,18 @@ class HSML:
             if r0[0] == 'amb':
                 self._rec(s, 'abstain', 'link_ambiguous', cands=r0[1])
                 return {'kind': 'abstain', 'text': f"'{en_rev.group(1)}' can mean: {' '.join(r0[1])}", 'source': 'link_ambiguous'}
-            attrs = self.mem.attrs.attrs_of(r0[1]) if hasattr(self.mem.attrs, 'attrs_of') else None
-            self._rec(s, 'reverse_query_en', 'attr', name=r0[1], found=attrs)
-            if attrs:
-                return {'kind': 'attr_list', 'text': f"{en_rev.group(1)} has {' '.join(attrs)}", 'source': 'attr', 'name': r0[1], 'attrs': attrs}
+            attrs = self._attrs_of_any(r0[1])
+            own = list(attrs or [])
+            inh = [(p, [t for t in ts if t not in own]) for p, ts in self._inherited_attrs(r0[1])]
+            inh = [(p, ts) for p, ts in inh if ts]
+            self._rec(s, 'reverse_query_en', 'attr', name=r0[1], found=attrs,
+                      inherited={p: ts for p, ts in inh})
+            if own or inh:
+                text = f"{en_rev.group(1)} has {' '.join(own)}" if own else ''
+                for p, ts in inh:
+                    text += (' and' if text else f"{en_rev.group(1)} has") + f" from {p}: {' '.join(ts)}"
+                return {'kind': 'attr_list', 'text': text, 'source': 'attr', 'name': r0[1],
+                        'attrs': own, 'inherited': dict(inh)}
             return {'kind': 'abstain', 'text': None, 'source': 'attr_reverse_en_' + ('empty' if attrs is not None else 'unknown')}
         en_yn = re.fullmatch(r'[Dd]oes (?:[Aa] |[Aa]n |[Tt]he )?(\S+) have (?:[Aa] |[Aa]n |[Tt]he )?([A-Za-z]\S+)', s)
         if en_yn is not None:
@@ -511,6 +527,19 @@ class HSML:
             if pos and neg:
                 break
         return pos, neg
+
+    def _inherited_attrs(self, name):
+        """B-555: [(parent, [attrs])] in BFS order, deduped internally. Live memory."""
+        groups = []
+        seen = set()
+        for p in self._parents_any(name):
+            a = self._attrs_of_any(p)
+            if a:
+                fresh = [t for t in a if t not in seen]
+                if fresh:
+                    groups.append((p, fresh))
+                    seen.update(fresh)
+        return groups
 
     def _compose_two_hop(self, s, x, y, lang, x_surf, y_surf):
         """B-548: candidates from memory; each emitted link re-verified LIVE at speak

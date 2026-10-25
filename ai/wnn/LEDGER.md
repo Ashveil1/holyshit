@@ -1948,3 +1948,37 @@ descendant effect, C5 uncertain not stored, C6 own-neg + inherited-pos ->
 conflict ไม่รู้, C7 guard, C8 cycle-safe, C9 reverse-query bound held
 (inheritance answers yes/no only, not listings). C9 noninterference:
 b534-b553 clean, regress_skills PASS.
+
+## B-555 (pre-registered 2026-10-25): inheritance-aware reverse query with provenance
+Extends B-554: 'X มี อะไรบ้าง' now also lists attributes inherited through
+is-a, each group WITH its source named ('และจาก P: attrs') - no silent
+inheritance. ALL DESIGNED, named. Own(+synonym) attrs first; inherited groups
+in BFS order, deduped against already-listed attrs; live memory at answer
+time (retracted parent attr disappears). If X has no own attrs but inherits,
+it answers (was: abstain) - flagged in the record. EN twin: 'X has own ... and
+from P: ...'. Composition frames unchanged this chunk.
+Pass criteria:
+- C1: own + inherited listed, source named
+- C2: no own attrs, only inherited -> answers with from-group only
+- C3: parent attr equal to own attr -> listed once (as own)
+- C4: two ancestors -> two from-groups in BFS order
+- C5: retract parent attr -> inherited group gone on re-ask
+- C6: EN twin
+- C7: is-a via synonym surface counts
+- C8 noninterference: b534-b554 + regress_skills PASS unchanged
+
+## B-555 ผนวก (17:45): run-1 FAIL + การแก้ไขวิธีสแกน noninterference (บันทึกซื่อตรง)
+
+- run-1 (17:36): C6 FAIL — เส้นทาง reverse query ภาษาอังกฤษยังใช้ attrs_of ดิบ (B-553 rewire ครอบคลุม reverse-TH / uncertain / yes-no / compose แต่ไม่ถึง EN reverse; b553 ไม่มี criterion เฉพาะ EN reverse — ช่องว่างการทดสอบ) ไม่เคยมีการอ้างพฤติกรรม EN reverse มาก่อน แก้โดย rewire + inheritance แบบเดียวกับ TH; run-2 (17:37): 8/8 PASS
+- การแก้ไขวิธี (ระดับกระบวนการ): การสแกน noninterference แบบ import (`python3 -c "import bXXX"`) เป็นโมฆะสำหรับ harness ที่มีการ์ด `if __name__ == '__main__'` (b530-b547) — import รันเฉพาดนิยาม ไม่รันตัวทดสอบ ความพยายามสแกนครั้งแรกของ B-555 ใช้รูปแบบนี้ (ผิดพลาด) และรูปแบบสแกนก่อนหน้าไม่ได้บันทึกไว้สม่ำเสมอ จึงรัน b534-b554 ใหม่ทั้งหมดในรูปแบบสคริปต์ (verdict = exit code) เพื่อสร้างบันทึกที่ถูกต้อง หากพบ regression จะแก้ไขและรายงานเปิดเผย
+- หมายเหตุ: b545.py ไม่มีอยู่จริง (ชื่อผิดในรายการสแกนเดิม — เครื่องหมาย ModuleNotFoundError ในครั้งแรกเป็นเพียงเรื่องตกแต่ง)
+- 17:48 ตามคำสั่ง main: หยุด merge PR #278 ชั่วคราวจนกว่าจะยืนยัน regression ด้วยการรันสคริปต์จริงที่ head 4f5c849 — เริ่มสแกนใน worktree /tmp/wt-4f5c849 (b534-b553 ที่มีอยู่ รวม b539/b542 + regress_skills, verdict = exit code + บรรทัดสรุป, log /tmp/head_*.log) พบว่า CI (tests/run_all.py) รันแบบ subprocess ถูกต้อง แต่ไม่ครอบคลุม harness ของ ai/wnn เลย — การรันสแกนนี้จึงเป็นหลักฐานเดียวสำหรับ hsml
+
+## PR #278 merge + การยืนยัน exact-head (17:48-18:58)
+- สแกน regression รูปแบบสคริปต์จริงที่ head 4f5c849 (worktree /tmp/wt-4f5c849): b534 b535 b536 b537 b538 b539 b540 b541 b542 b543 b544 b546 b547 b548 b549 b551 b552 b553 + regress_skills — 19/19 exit=0 พร้อมบรรทัด verdict (log /tmp/head_sweep.log, ต่อ harness /tmp/head_*.log) — นี่คือหลักฐาน noninterference ฉบับยืนยันได้ชุดแรกหลังพบว่ารูปแบบ import เป็นโมฆะสำหรับ harness ที่มี __main__ guard
+- CI: quick pass (37m16s), arm64-port pass; ls-remote wnn == 4f5c849 == PR head → merge ตาม grant: merge commit d51533c บน master — ทดสอบ smoke จากโคลน master สด: ผ่าน (basic/yesno/B-551 composed3/B-552 articles/B-553 synonyms; smoke รอบแรกเกณฑ์พิมพ์ 'compose3' ผิด ของจริงคือ 'composed3' — ข้อผิดพลาดในสคริปต์ทดสอบของฉัน ไม่ใช่โค้ด)
+
+## B-555 verdict: PASS (run-2) — ถามย้อนแบบรวมของสืบทอดพร้อมที่มา
+- เกณฑ์ตัวเอง 8/8 (log logs/b555_run.log): C1 own+inherited ระบุที่มา ' และจาก X: ...', C2 inherited-only, C3 dedup own/บรรพบุรุษ, C4 สองบรรพบุรุษเรียง BFS, C5 ลบของบรรพบุรุษแล้วกลุ่มหาย, C6 EN twin ('and from X: ...'), C7 ใช้ผ่านคำพ้องได้, C8 อยู่ในสแกนด้านล่าง
+- noninterference รูปแบบสคริปต์จริง (ทรี bf53284 + การแก้ B-555): b534-b554 + regress_skills = 20/20 exit=0 พร้อม verdict lines (logs/b555_noninterference.log, ต่อ harness /tmp/wt_*.log) — หลักฐานนี้ยืนยัน B-554 ไปด้วยในคราวเดียว: คำกังวลเรื่องสแกน import-โมฆะของ B-554 ถูกแทนด้วยหลักฐานการรันจริงแล้ว
+- ขอบเขตตั้งใจ: การถามย้อนรวมของสืบทอดเท่านั้น; การประกอบประโยคผ่าน is-a ยังไม่ทำ (ข้อถัดไป)
