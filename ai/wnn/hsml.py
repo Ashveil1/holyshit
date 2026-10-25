@@ -34,6 +34,18 @@ class HSML:
         m = NAME_RE.fullmatch(s)
         if m:
             word = m.group(1)
+            # B-538 (DESIGNED, named): naming an existing word is a REVISION request.
+            # Dialog-taught/loaded skills are revisable; seeded pinned-baselib skills are
+            # reserved (provenance protection) - naming one abstains instead of clobbering.
+            if word in self.mem.skills:
+                prov = self.mem.skills[word][2]
+                if prov.get('source') != 'dialog':
+                    self._rec(s, 'abstain', 'reserved', word=word)
+                    return {'kind': 'abstain', 'text': None, 'source': 'reserved', 'word': word}
+                self.ctx = {'word': word, 'pairs': [], 'rounds': 0, 'tried_tot': 0, 'revision': True}
+                self.pending = None
+                self._rec(s, 'revision_opened', 'dialog', word=word)
+                return {'kind': 'revision_opened', 'text': f'จะแก้วิธี {word} ใหม่', 'source': 'dialog'}
             self.ctx = {'word': word, 'pairs': [], 'rounds': 0, 'tried_tot': 0}
             self.pending = None
             self._rec(s, 'naming', 'dialog', word=word)
@@ -95,6 +107,12 @@ class HSML:
         if self.induction_lib == 'separated':
             for k0 in heavy:
                 if k0 in C7.LIB: popped[k0] = C7.LIB.pop(k0)
+        if self.ctx.get('revision'):
+            # B-538: the word being revised is excluded from its own revision's search
+            # space - the corrected method must not be defined in terms of the method
+            # being replaced (also keeps save/load rebuild safe: no self-reference).
+            w0 = self.ctx['word']
+            if w0 in C7.LIB: popped[w0] = C7.LIB.pop(w0)
         try:
             p, tried = induce(self.ctx['pairs'], **({} if self.induce_cap is None else {'cap': self.induce_cap}))
         finally:
@@ -132,8 +150,14 @@ class HSML:
             # now in-conversation; same wrapping as b530.as_primitive / pin_lib)
             C7.CAPF[0] = 20000
             C7.LIB[word] = (lambda ff: (lambda a, b: ff(a, b)))(pend['fn'])
-            self.mem.skills[word] = (pend['prog'], pend['fn'],
-                {'source': 'dialog', 'tried': tot, 'examples': len(self.ctx['pairs']) + 3})
+            prov = {'source': 'dialog', 'tried': tot, 'examples': len(self.ctx['pairs']) + 3}
+            if self.ctx.get('revision') and word in self.mem.skills:
+                # B-538: revision provenance - count + replaced program string recorded;
+                # LIB registration above now wraps the NEW program (correction propagates).
+                old_prog, _, old_prov = self.mem.skills[word]
+                prov['revision'] = old_prov.get('revision', 0) + 1
+                prov['replaces'] = show_prog(old_prog)
+            self.mem.skills[word] = (pend['prog'], pend['fn'], prov)
             self._rec(s, 'skill_stored', 'induction', word=word, tried=tot,
                       prog=show_prog(pend['prog']))
             self.ctx = None; self.pending = None
