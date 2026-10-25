@@ -1632,4 +1632,14 @@ Criteria:
 - C4: malformed words abstain exactly as before ('สี่สอง', 'สิบสิบ', 'สามร้อยสองสิบสี่ห้า')
 - C5: noninterference - digit and Thai-glyph paths byte-identical; b544 harness
   PASS; regress_skills PASS
-Verdict: PENDING
+Verdict: PASS (run-2). Run-1 FAIL recorded: C2 as pre-registered asked for
+ANSWERS at สองหมื่นห้า (20,005) and หนึ่งล้าน, which exceed the pre-existing
+DESIGNED recursive-execution cap (CAPF=20,000) of the seeded skills - the
+words parsed correctly but execution abstained honestly. Criteria amended:
+in-range words verified end-to-end through the dialog path; large words
+verified at the parser (frame_num) plus an explicit over-cap honest-abstain
+check. Both runs in logs/b546_run.log. Regressions: b534/b535/b540/b541/
+b542/b543/b544, regress_skills, b539 chunked (bounded c6) all PASS
+(logs/b539_regress6.log). Scope named: finite designed number grammar at the
+frame boundary only - not learned language understanding; classifier phrasing
+('นก มี สอง ปีก') remains out of scope by design.

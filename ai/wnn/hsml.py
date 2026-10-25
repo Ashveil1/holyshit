@@ -9,10 +9,11 @@ from cur7 import make_fn, show_prog
 import cur7 as C7
 import b529
 from b529 import induce, EX_RE, NAME_RE, CONF_RE
-from b527 import HSMLMemory, derive_skills, load_logged, SKILL_BY_WORD
+from b527 import HSMLMemory, derive_skills, load_logged, SKILL_BY_WORD, frame_num
 from b521 import ATTRS
 
 CONF_Q = 'ถ้า n เป็น {} ตอบอะไร'
+
 
 # B-541: DESIGNED statement frames (from B-521's world generator) - fullmatch parsing
 # grounds the name/attr token ROLES, enabling dynamic vocabulary learning.
@@ -118,27 +119,36 @@ class HSML:
             self.pending = None
             self._rec(s, 'naming', 'dialog', word=word)
             return {'kind': 'naming', 'text': f'รับทราบ วิธี {word}', 'source': 'dialog'}
-        m = EX_RE.fullmatch(s)
+        m = re.fullmatch(r'ถ้า n เป็น (\S+) ตอบ (\S+)', s)  # B-546: relaxed; _num validates
+        if m:
+            x, y = frame_num(m.group(1)), frame_num(m.group(2))
+            if x is None or y is None:
+                m = None  # malformed number word: fall through to today's routing
         if m:
             if self.ctx is None or self.pending is not None:
                 self._rec(s, 'abstain', 'no-open-teaching-context')
                 return {'kind': 'abstain', 'text': None, 'source': 'no-open-teaching-context'}
-            x, y = int(m.group(1)), int(m.group(2))
             self.ctx['pairs'].append((x, y))
             if len(self.ctx['pairs']) >= 5:
                 return self._try_induce(s)
             self._rec(s, 'example', 'dialog', n=len(self.ctx['pairs']))
             return {'kind': 'example', 'text': f'จำไว้แล้ว {len(self.ctx["pairs"])} ตัวอย่าง', 'source': 'dialog'}
-        m = CONF_RE.fullmatch(s)
+        m = re.fullmatch(r'ตอบ (\S+)', s)  # B-546: relaxed; _num validates
+        if m:
+            _cy = frame_num(m.group(1))
+            if _cy is None:
+                m = None
         if m:
             if self.pending is None:
                 self._rec(s, 'abstain', 'no-pending-confirmation')
                 return {'kind': 'abstain', 'text': None, 'source': 'no-pending-confirmation'}
-            return self._confirm(s, int(m.group(1)))
+            return self._confirm(s, _cy)
         # DESIGNED routing (named): skill query frame -> skill path; a sentence whose FIRST
         # token is an attribute word (or 'เขา') -> attr probe; otherwise a sentence containing
         # an attribute word -> declarative statement, observed into attr memory; else abstain.
-        m2 = re.fullmatch(r'(\S+) ของ (\d+) คืออะไร', s)
+        m2 = re.fullmatch(r'(\S+) ของ (\S+) คืออะไร', s)  # B-546: relaxed; _num validates
+        if m2 and frame_num(m2.group(2)) is None:
+            m2 = None  # not a number at all: fall through to today's routing
         toks = s.split()
         if m2:
             w0 = m2.group(1)
