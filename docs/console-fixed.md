@@ -167,3 +167,14 @@ a recalled line, submission/reset and an empty recalled entry. Guest screenshots
 were visually inspected. This remains display-only input, never command
 execution; no cursor-left/right, selection, terminal emulation or hardware
 keyboard support is added.
+
+The real GRUB gate now also measures256 paced Up/Down events through the actual
+production binding, with full active-row/cursor pixels checked after every key.
+Each pair recalls an empty newest entry and restores G. Test-only X/Y markers
+bracket dequeue, storage, redraw and serial diagnostics; the finite bump-pointer
+gap is16bytes, solely the final allocation marker. Test-only legacy-navigation
+logging retains its label before the interval rather than allocating a label
+per event. Complete native/reference instrumented images must match. The final
+restored-draft guest screen was visually inspected. This bounded sequence does
+not prove arbitrary input allocation, burst losslessness, indefinite session
+lifetime or real-hardware behavior.

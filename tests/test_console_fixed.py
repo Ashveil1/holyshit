@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as temp:
     instrumented=(ROOT/'kernel/kconsole_fixed.holy').read_text()
     instrumented=instrumented.replace('print "FIXED SESSION READY"',
         'def mark():\n  unsafe:\n    return as_int(alloc(1))\n'
-        'event_label = "ORDERED EVENT"\nsession_before = mark()\nsession_events = 0\nprint "FIXED SESSION READY"')
+        'event_label = "ORDERED EVENT"\nlegacy_nav_label = "NAV EVENT"\nsession_before = mark()\nsession_events = 0\nprint "FIXED SESSION READY"')
     instrumented += ('    session_events = session_events + 1\n'
                      '    if session_events == 16:\n'
                      '      session_after = mark()\n'
@@ -29,9 +29,13 @@ with tempfile.TemporaryDirectory() as temp:
                      '      print "FIXED STEADY GAP", steady_after - steady_before\n')
     instrumented=instrumented.replace('while true:\n  key = readkey_event()',
         'while true:\n  legacy_navigation = readkey_nav()\n'
-        '  if legacy_navigation != null:\n    print "NAV EVENT", legacy_navigation\n'
+        '  if legacy_navigation != null:\n    print legacy_nav_label, legacy_navigation\n'
         '  key = readkey_event()\n'
         '  if key != null:\n    print event_label, key')
+    # Test-only ASCII markers delimit a later finite history budget.
+    instrumented += ('    if key == 120:\n      history_before = mark()\n'
+                     '    if key == 121:\n      history_after = mark()\n'
+                     '      print "HISTORY SESSION GAP", history_after - history_before\n')
     source.write_text(instrumented)
     subprocess.run([sys.executable,str(ROOT/'hs.py'),'xkernel',str(source),'-o',str(image)],env=env,check=True,capture_output=True,timeout=90)
     # Native hs kernel linker must produce the complete same image.
@@ -258,7 +262,8 @@ with tempfile.TemporaryDirectory() as temp:
         # Actual production history binding, independent full active-row oracle.
         alphabet={'d':[30,17,17,17,17,17,30], 'e':[31,16,16,30,16,16,31],
                   'f':[31,16,16,30,16,16,16], 'g':[15,16,16,23,17,17,15],
-                  'b':[30,17,17,30,17,17,30]}
+                  'b':[30,17,17,30,17,17,30], 'x':[17,17,10,4,10,17,17],
+                  'y':[17,17,10,4,4,4,4]}
         def active_text(text):
             cursor_at(len(text))
             with screen.open('rb') as f:
@@ -296,6 +301,20 @@ with tempfile.TemporaryDirectory() as temp:
             key_text(key,text)
         # Empty recalled line must clear old glyphs; draft survives empty history entry.
         for key,text in [('ret',''),('g','g'),('up',''),('down','g')]:key_text(key,text)
+        #256 paced real Up/Down events traverse history and restore G each time.
+        # Test-only X/Y checkpoints bracket actual dequeue/storage/redraw/logging.
+        key_text('x','gx')
+        key_text('backspace','g')
+        for key in ['up','down']*128:
+            key_text(key,'' if key=='up' else 'g')
+        key_text('y','gy')
+        deadline=time.monotonic()+10
+        while time.monotonic()<deadline:
+            content=serial.read_text(errors='replace')
+            if 'HISTORY SESSION GAP ' in content:break
+            time.sleep(.05)
+        assert 'HISTORY SESSION GAP 16\n' in content,content[-500:]
+        key_text('backspace','g')
         if os.environ.get('HS_TEST_HISTORY_SCREENSHOT'):
             shutil.copyfile(screen,os.environ['HS_TEST_HISTORY_SCREENSHOT'])
         sock.close()
