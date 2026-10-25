@@ -235,40 +235,30 @@ class HSML:
         # taught words; every emitted link re-verified against LIVE memory at speak
         # time (no cache trusted at emission). Read-only: these frames never store.
         # NOT free sentence composition - finite designed frames, honestly named.
-        mq3 = re.fullmatch(r'(\S+) มี อะไรที่มี (\S+) ที่มี (\S+)', s)
-        if mq3 is not None:
-            x, y, z = mq3.group(1), mq3.group(2), mq3.group(3)
-            if _guarded(x) or _guarded(y) or _guarded(z):
+        # B-557 (ALL DESIGNED, named): the fixed 2-hop/3-hop compose frames are now ONE
+        # bounded n-hop search: chain cap 3 attrs after the question head (= 4 verified
+        # links), candidate-visit cap per question (recorded if hit), same live
+        # re-verification gate + per-hop provenance as B-556. Longer chains -> honest
+        # ไม่รู้/unknown (bounded by design). Behavior on existing 2/3-hop inputs unchanged.
+        mchain = re.fullmatch(r'(\S+) มี อะไรที่มี (\S+(?: ที่มี \S+)*)', s)
+        if mchain is not None:
+            x = mchain.group(1); chain = mchain.group(2).split(' ที่มี ')
+            if _guarded(x) or any(_guarded(c) for c in chain):
                 self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
-            return self._compose_three_hop(s, x, y, z, 'th', x, y, z)
-        en3 = re.fullmatch(r'[Ww]hat does (\S+) have that has ([A-Za-z]\S+) that has ([A-Za-z]\S+)', s)
-        if en3 is not None:
-            rx = self._resolve_link(en3.group(1)); ry = self._resolve_link(en3.group(2).lower()); rz = self._resolve_link(en3.group(3).lower())
-            for w0, r0 in ((en3.group(1), rx), (en3.group(2), ry), (en3.group(3), rz)):
+            return self._compose_n_hop(s, x, chain, 'th', x, chain)
+        enchain = re.fullmatch(r'[Ww]hat does (\S+) have that has ([A-Za-z]\S+(?: that has [A-Za-z]\S+)*)', s)
+        if enchain is not None:
+            x_surf = enchain.group(1); chain_surf = enchain.group(2).split(' that has ')
+            rx = self._resolve_link(x_surf)
+            rs = [self._resolve_link(w.lower()) for w in chain_surf]
+            for w0, r0 in [(x_surf, rx)] + list(zip(chain_surf, rs)):
                 if r0[0] == 'amb':
                     self._rec(s, 'abstain', 'link_ambiguous', cands=r0[1])
                     return {'kind': 'abstain', 'text': f"'{w0}' can mean: {' '.join(r0[1])}", 'source': 'link_ambiguous'}
-            x, y, z = rx[1], ry[1], rz[1]
-            if _guarded(x) or _guarded(y) or _guarded(z):
+            x = rx[1]; chain = [r0[1] for r0 in rs]
+            if _guarded(x) or any(_guarded(c) for c in chain):
                 self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
-            return self._compose_three_hop(s, x, y, z, 'en', en3.group(1), en3.group(2), en3.group(3))
-        mq = re.fullmatch(r'(\S+) มี อะไรที่มี (\S+)', s)
-        if mq is not None:
-            x, y = mq.group(1), mq.group(2)
-            if _guarded(x) or _guarded(y):
-                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
-            return self._compose_two_hop(s, x, y, 'th', x, y)
-        en_chain = re.fullmatch(r'[Ww]hat does (\S+) have that has ([A-Za-z]\S+)', s)
-        if en_chain is not None:
-            rx = self._resolve_link(en_chain.group(1)); ry = self._resolve_link(en_chain.group(2).lower())
-            for w0, r0 in ((en_chain.group(1), rx), (en_chain.group(2), ry)):
-                if r0[0] == 'amb':
-                    self._rec(s, 'abstain', 'link_ambiguous', cands=r0[1])
-                    return {'kind': 'abstain', 'text': f"'{w0}' can mean: {' '.join(r0[1])}", 'source': 'link_ambiguous'}
-            x, y = rx[1], ry[1]
-            if _guarded(x) or _guarded(y):
-                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
-            return self._compose_two_hop(s, x, y, 'en', en_chain.group(1), en_chain.group(2))
+            return self._compose_n_hop(s, x, chain, 'en', x_surf, chain_surf)
         # B-547 (ALL DESIGNED, finite - named: not learned understanding): bilingual slice.
         ml = re.fullmatch(r'(\S+) ภาษาอังกฤษคือ ([A-Za-z]\S*)', s)
         if ml is not None:
@@ -566,53 +556,51 @@ class HSML:
                     xs.append(t)
         return xs
 
-    def _compose_two_hop(self, s, x, y, lang, x_surf, y_surf):
-        """B-548 + B-556: candidates own-then-inherited; each emitted link re-verified
-        LIVE at speak time (speakable iff pos and not neged, B-554 aggregation);
-        per-hop provenance recorded. No verified path -> honest absence."""
-        verified = []
-        prov = []
-        for z in self._attr_candidates(x):
-            # gate: re-query live memory at emission, both hops
-            h1 = self._has_via(x, z)
-            h2 = self._has_via(z, y)
-            if h1 and h2:
-                verified.append(z)
-                prov.append((z, h1, h2))
-        self._rec(s, 'compose', 'attr', x=x, y=y, verified=verified, prov=prov)
-        if not verified:
-            txt = 'ไม่รู้' if lang == 'th' else 'unknown'
-            self._rec(s, 'compose_unknown', 'attr', x=x, y=y)
-            return {'kind': 'compose_unknown', 'text': txt, 'source': 'attr'}
-        if lang == 'th':
-            text = ' / '.join(f'{x_surf} มี {z} และ {z} มี {y_surf}' for z in verified)
-        else:
-            text = ' / '.join(f'{x_surf} has {z} and {z} has {y_surf}' for z in verified)
-        return {'kind': 'composed', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'zs': verified, 'prov': prov}
+    COMPOSE_MAX_CHAIN = 3    # B-557: attrs after the question head -> at most 4 verified links
+    COMPOSE_VISIT_CAP = 64   # B-557: candidates examined per question, recorded if hit
 
-    def _compose_three_hop(self, s, x, y, z, lang, x_surf, y_surf, z_surf):
-        """B-551 (ALL DESIGNED, named): exactly-three-hop composition; same live
-        re-verification gate as B-548. No verified path -> honest absence."""
-        verified = []
-        prov = []
+    def _compose_n_hop(self, s, x, chain, lang, x_surf, chain_surf):
+        """B-557: one bounded n-hop path check replacing the fixed 2/3-hop pair.
+        Candidates own-then-inherited (B-556 order); EVERY link on a candidate path
+        re-verified LIVE at speak time via _has_via; per-hop provenance recorded.
+        Chain longer than COMPOSE_MAX_CHAIN or no verified path -> honest absence.
+        Fixed-depth verification only: cycles in the มี-graph cannot loop the search."""
+        if len(chain) > self.COMPOSE_MAX_CHAIN:
+            txt = 'ไม่รู้' if lang == 'th' else 'unknown'
+            self._rec(s, 'compose_unknown', 'attr', x=x, chain=list(chain), reason='chain_too_long')
+            return {'kind': 'compose_unknown', 'text': txt, 'source': 'attr'}
+        verified = []; prov = []; visited = 0; capped = False
         for a in self._attr_candidates(x):
-            # gate: re-query live memory at emission, all three hops
-            h1 = self._has_via(x, a)
-            h2 = self._has_via(a, y)
-            h3 = self._has_via(y, z)
-            if h1 and h2 and h3:
-                verified.append(a)
-                prov.append((a, h1, h2, h3))
-        self._rec(s, 'compose3', 'attr', x=x, y=y, z=z, verified=verified, prov=prov)
+            if visited >= self.COMPOSE_VISIT_CAP:
+                capped = True; break
+            visited += 1
+            hops = [self._has_via(x, a), self._has_via(a, chain[0])]
+            ok = hops[0] is not None and hops[1] is not None
+            for i in range(1, len(chain)):
+                if not ok: break
+                h = self._has_via(chain[i - 1], chain[i])
+                hops.append(h)
+                ok = h is not None
+            if ok:
+                verified.append(a); prov.append(tuple([a] + hops))
+        kind = {1: 'composed', 2: 'composed3'}.get(len(chain), 'composed4')
+        self._rec(s, 'compose', 'attr', x=x, chain=list(chain), verified=verified, prov=prov, visited=visited, capped=capped)
         if not verified:
             txt = 'ไม่รู้' if lang == 'th' else 'unknown'
-            self._rec(s, 'compose3_unknown', 'attr', x=x, y=y, z=z)
+            self._rec(s, 'compose_unknown', 'attr', x=x, chain=list(chain))
             return {'kind': 'compose_unknown', 'text': txt, 'source': 'attr'}
-        if lang == 'th':
-            text = ' / '.join(f'{x_surf} มี {a} และ {a} มี {y_surf} และ {y_surf} มี {z_surf}' for a in verified)
-        else:
-            text = ' / '.join(f'{x_surf} has {a} and {a} has {y_surf} and {y_surf} has {z_surf}' for a in verified)
-        return {'kind': 'composed3', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'z': z, 'as_': verified, 'prov': prov}
+        have = 'มี' if lang == 'th' else 'has'
+        joiner = ' และ ' if lang == 'th' else ' and '
+        def _sentence(a):
+            segs = [f'{x_surf} {have} {a}']
+            prev = a
+            for c in chain_surf:
+                segs.append(f'{prev} {have} {c}')
+                prev = c
+            return joiner.join(segs)
+        text = ' / '.join(_sentence(a) for a in verified)
+        return {'kind': kind, 'text': text, 'source': 'attr', 'x': x, 'chain': list(chain),
+                'zs': verified, 'as_': verified, 'prov': prov, 'capped': capped}
 
     def _resolve_link(self, w):
         """B-547: english surface word -> ('ok', canonical) or ('amb', [candidates]).
