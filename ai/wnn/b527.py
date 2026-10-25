@@ -22,6 +22,7 @@ class HSMLMemory:
     def __init__(self):
         self.attrs = CountBackend()
         self.skills = {}   # task -> (prog_tuple, fn, provenance)
+        self.links = {}    # B-547: taught bilingual pairs, english surface -> {thai canonicals}
     def answer(self, sentence):
         toks = sentence.split()
         # skill query frame (DESIGNED): "<skillword> ของ <n> คืออะไร"

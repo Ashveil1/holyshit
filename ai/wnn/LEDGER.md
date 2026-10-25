@@ -1671,4 +1671,13 @@ Criteria:
   as facts (B-544 guard semantics extend to the English frames)
 - C5: links survive save/load; noninterference: b546/b544 harnesses PASS,
   regress_skills PASS
-Verdict: PENDING
+Verdict: PASS (run-1). logs/b547_run.log. All five criteria green on the first
+run, including both cross-language directions, ambiguity abstain + resolution,
+and English-question-word storage guards. Regressions: b534/b535/b540/b541/
+b542/b543/b544/b546, regress_skills, b539 chunked (bounded c6) all PASS
+(logs/b539_regress7.log). Scope named: finite designed English frames +
+taught link pairs; a link is taught data, not a claim of always-interchangeable
+meaning; English answers render canonical (Thai) attr words - the system does
+not translate. Toward Ash's stated goal (compose NEW sentences to answer):
+current answers are still template-rendered from memory, NOT free composition -
+that gap is the next design question, recorded here honestly.
