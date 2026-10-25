@@ -37,15 +37,16 @@ class HSML:
             # B-538 (DESIGNED, named): naming an existing word is a REVISION request.
             # Dialog-taught/loaded skills are revisable; seeded pinned-baselib skills are
             # reserved (provenance protection) - naming one abstains instead of clobbering.
-            if word in self.mem.skills:
-                prov = self.mem.skills[word][2]
-                if prov.get('source') != 'dialog':
-                    self._rec(s, 'abstain', 'reserved', word=word)
-                    return {'kind': 'abstain', 'text': None, 'source': 'reserved', 'word': word}
+            if word in self.mem.skills and self.mem.skills[word][2].get('source') == 'dialog':
                 self.ctx = {'word': word, 'pairs': [], 'rounds': 0, 'tried_tot': 0, 'revision': True}
                 self.pending = None
                 self._rec(s, 'revision_opened', 'dialog', word=word)
                 return {'kind': 'revision_opened', 'text': f'จะแก้วิธี {word} ใหม่', 'source': 'dialog'}
+            if word in self.mem.skills or word in SKILL_BY_WORD:
+                # reserved: seeded pinned-baselib word (mem.skills is keyed by TASK for
+                # seeded skills; SKILL_BY_WORD resolves the Thai word -> task)
+                self._rec(s, 'abstain', 'reserved', word=word)
+                return {'kind': 'abstain', 'text': None, 'source': 'reserved', 'word': word}
             self.ctx = {'word': word, 'pairs': [], 'rounds': 0, 'tried_tot': 0}
             self.pending = None
             self._rec(s, 'naming', 'dialog', word=word)
