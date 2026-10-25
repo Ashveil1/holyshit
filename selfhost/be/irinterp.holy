@@ -11,7 +11,6 @@ import irbuild
 import verify
 import pyrt
 import irprofile
-UNB = "u0004IRUNBOUNDu0004"
 JUMP = "u0001IRJUMPu0001"
 def trailing_line(s):
   n = len(s)
@@ -58,20 +57,25 @@ def fail(msg, ln):
   raise pyrt.py_err(msg, ln)
 def new_frame(st, parent, root, gnames):
   st["nid"] = st["nid"] + 1
-  return {"id": st["nid"], "vars": {}, "parent": parent, "root": root, "globals": gnames, "basedir": null}
+  return {"id": st["nid"], "vars": {}, "bound": {}, "parent": parent, "root": root, "globals": gnames, "basedir": null}
 def frame_get(frame, name, ln):
   f = frame
   while f != null:
     vs = f["vars"]
-    if name in vs and vs[name] != UNB:
-      return vs[name]
+    if name in vs:
+      if name in f["bound"]:
+        if f["bound"][name]:
+          return vs[name]
     f = f["parent"]
   fail("unknown variable '" + name + "'", ln)
+def bind(frame, name, val):
+  frame["vars"][name] = val
+  frame["bound"][name] = true
 def frame_set(frame, name, val):
   if name in frame["globals"]:
-    frame["root"]["vars"][name] = val
+    bind(frame["root"], name, val)
   else:
-    frame["vars"][name] = val
+    bind(frame, name, val)
 def frame_basedir(frame):
   f = frame
   while f != null:
@@ -194,7 +198,7 @@ def call_value(st, fn, args, ln):
     fr = new_frame(st, fn["closure"], fn["closure"]["root"], fdef["globals"])
     i = 0
     while i < len(args):
-      fr["vars"][fdef["params"][i]] = args[i]
+      bind(fr, fdef["params"][i], args[i])
       i = i + 1
     return run_fn(st, key, fdef, fr)
   fail("not callable: " + type_name(fn), ln)
@@ -283,7 +287,7 @@ def mod_import(st, name, frame, ln):
       pmod = mod_shell(st, parent)
     path = mod_find(name, frame_basedir(frame), ln)
     leafmod = mod_exec(st, name, path, ln)
-    pmod["frame"]["vars"][leaf] = leafmod
+    bind(pmod["frame"], leaf, leafmod)
     topname = parts[0]
     topmod = null
     try:
@@ -389,7 +393,7 @@ def step(st, ins, temps, frame, prev):
   elif op == "stvar":
     frame_set(frame, ins["name"], temps[ins["src"]])
   elif op == "stglobal":
-    frame["root"]["vars"][ins["name"]] = temps[ins["src"]]
+    bind(frame["root"], ins["name"], temps[ins["src"]])
   elif op == "mkfunc":
     temps[ins["dest"]] = {"hs_ir_fn": ins["func"], "closure": frame}
   elif op == "bin":
@@ -485,7 +489,7 @@ def step(st, ins, temps, frame, prev):
     if len(st["active"]) > 0:
       pop_active(st)
   elif op == "unbind":
-    frame["vars"][ins["name"]] = UNB
+    frame["bound"][ins["name"]] = false
   elif op == "reraise":
     act = st["active"]
     if len(act) == 0:
@@ -508,7 +512,7 @@ def step(st, ins, temps, frame, prev):
     obj = temps[ins["obj"]]
     if not is_mod(obj):
       fail("only modules have attributes", ln)
-    obj["frame"]["vars"][ins["name"]] = temps[ins["val"]]
+    bind(obj["frame"], ins["name"], temps[ins["val"]])
   else:
     fail("IR: bad op '" + op + "'", ln)
 def pop_handler(st):
@@ -682,7 +686,7 @@ def run(st):
   root["basedir"] = st["basedir"]
   st["broot"] = root
   for name in BUILTIN_NAMES:
-    root["vars"][name] = {"hs_ir_builtin": name}
+    bind(root, name, {"hs_ir_builtin": name})
   main = st["funcs"][st["entry"]]
   frame = new_frame(st, root, root, main["globals"])
   frame["root"] = frame

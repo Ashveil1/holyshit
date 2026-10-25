@@ -217,6 +217,27 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
     print("20 float conversion cases checked (aliases, caught and uncaught)")
 
 
+    # Guest strings must not collide with internal unbound-variable state.
+    sentinel_cases = [
+        'x = "u0004IRUNBOUNDu0004"\nprint x\n',
+        'def echo(x):\n  return x\nprint echo("u0004IRUNBOUNDu0004")\n',
+        'x = "u0004IRUNBOUNDu0004"\ndef change():\n  global x\n  x = "u0004IRUNBOUNDu0004"\nchange()\nprint x\n',
+        'try:\n  raise "u0004IRUNBOUNDu0004"\nexcept as e:\n  print e\ntry:\n  print e\nexcept as e:\n  print e\n',
+        'x = ["u0004IRUNBOUNDu0004"]\ny = x[0]\nprint y\n',
+    ]
+    for source in sentinel_cases:
+        prog = os.path.join(d, "sentinel.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL guest sentinel parity: {ref!r} != {got!r}")
+    print("5 guest-string/unbound-state cases checked")
+
     # Independent interpreter states must not share executed module frames.
     # The second run used to reuse the first run's module and miss its function
     # definitions in the new state's function table.
