@@ -1737,3 +1737,50 @@ honestly: bounded TWO-HOP composition over the มี-graph with finite designed
 frames - a real step toward Ash's compose-new-sentences goal (content
 selection is question-conditioned and the emitted string is novel), but still
 NOT free sentence composition; deeper hops and freer realization are open.
+
+## B-549 - learn-while-chatting separation: uncertain statements never become facts; natural 'ไม่ใช่' corrections
+Pre-registered 2026-10-25 (Ash via WhatsApp, 2026-10-25:
+"ทำให้มันเป็นแบบเรียนรู้ไปด้วยระหว่างคุยไปด้วยได้ไหม"; parent: preserve the
+distinction between existing in-chat fact teaching and learning from ordinary
+dialogue; separate explicit teaching/corrections from questions and uncertain
+statements). Already-true scope named: in-chat learning EXISTS but only through
+designed frames (B-541/542/544/529); this step adds the confidence separation,
+NOT learning from free dialogue. ALL DESIGNED, named: finite marker lists and
+frames are not learned language understanding.
+Design:
+1. Uncertainty markers (finite designed set): อาจจะ, อาจ, น่าจะ, คงจะ, ไม่แน่ใจ,
+   มั้ง (Thai, any token position); 'maybe' (English statement frame). A
+   statement containing a marker is NOT stored; the system says honestly it
+   will not remember it as fact. Marker tokens never become names/attrs.
+2. Correction frame 'ไม่ใช่ <statement>': parses the inner statement through
+   the existing designed frames and retracts those pairs via the B-542 path;
+   never-taught pairs report nothing-to-retract (no fake ack).
+3. Questions remain non-storing (B-544, unchanged).
+Criteria:
+- C1: 'อาจจะ นก มี ปีก' (and each Thai marker variant, and 'maybe a bird has
+  wings' with links) stores nothing; the yes/no query afterwards answers
+  ไม่รู้ - not ใช่, and not ไม่ (uncertain is not negative evidence)
+- C2: marker tokens never enter vocab/names; the ack text is the honest
+  not-stored reply, never 'จำไว้แล้ว'
+- C3: teach 'ฟา มี ทริบ'; 'ไม่ใช่ ฟา มี ทริบ' -> retracted, yes/no -> ไม่
+  (explicit negative); 'ไม่ใช่ ฟา มี มุก' (never taught) -> honest
+  nothing-to-retract; 'ไม่ใช่' of a non-statement abstains without mutation
+- C4: confident statements still store (B-541 semantics unchanged); skill
+  teaching frames unaffected by markers elsewhere in memory
+- C5: noninterference: b534/b535/b540/b541/b542/b543/b544/b546/b547/b548,
+  regress_skills, b539 chunked (bounded c6) all PASS
+Verdict: PASS (run-2; run-1 FAIL recorded: the B-544 yes/no paths KeyError'd on
+a completely unknown name - be.taught() indexed C[n] directly, exposed by C1's
+uncertain-then-query sequence; fixed by routing both yes/no checks through the
+KeyError-safe holds() added in B-548. Two harness bugs also fixed: C4b queried
+a non-seeded skill word, then asserted a field hsml.py does not forward).
+logs/b549_run.log. All criteria green: six Thai uncertainty markers + English
+'maybe' store nothing and follow-up yes/no answers ไม่รู้/unknown (uncertain is
+NOT negative evidence); marker tokens never enter vocab/names; 'ไม่ใช่
+<statement>' retracts via the B-542 path with honest nothing-to-retract and
+non-mutation abstain on unparseable corrections; confident statements and skill
+frames unchanged. Noninterference (C5): b534/b535/b540/b541/b542/b543/b544/
+b546/b547/b548 + regress_skills PASS; b539 chunked bounded-c6 PASS
+(logs/b539_regress9.log, bounded-aware merge as regress7/8). Scope named:
+finite designed marker lists and frames - confidence separation for in-chat
+learning, NOT learning from free ordinary dialogue (that remains open).

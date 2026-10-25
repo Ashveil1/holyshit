@@ -32,6 +32,10 @@ STMT_FRAMES = [
 EN_GUARD = frozenset(['what', 'does', 'do', 'is', 'are', 'many', 'much', 'who',
                       'where', 'when', 'why', 'how', 'which', 'a', 'an', 'the',
                       'has', 'have'])  # B-547: finite designed English guard (named)
+# B-549 (DESIGNED, finite, named): uncertainty markers - a statement containing one
+# is NOT stored as fact (learn-while-chatting confidence separation).
+UNCERTAIN_TH = frozenset(['อาจจะ', 'อาจ', 'น่าจะ', 'คงจะ', 'ไม่แน่ใจ', 'มั้ง'])
+UNCERTAIN_EN = frozenset(['maybe'])
 GUARD_WORDS = frozenset(['ไหม', 'มั้ย', 'หรือ', 'ใช่ไหม', 'อะไร',
                          'ครับ', 'ค่ะ', 'จ้า', 'นะ', 'ล่ะ', 'สิ'])
 # question STEMS match by prefix: Thai glues them to nouns ('กี่ลักษณะ' is one token -
@@ -207,7 +211,7 @@ class HSML:
             be = self.mem.attrs
             if _guarded(name) or _guarded(attr):
                 self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
-            if hasattr(be, 'neg') and be.taught(name, attr):
+            if hasattr(be, 'neg') and be.holds(name, attr):
                 ans, truth = 'ใช่', 'yes'
             elif hasattr(be, 'neg') and be.neg(name, attr):
                 ans, truth = 'ไม่', 'no_explicit'
@@ -256,6 +260,11 @@ class HSML:
                 return {'kind': 'link_retracted', 'text': 'ลบแล้ว', 'source': 'dialog'}
             self._rec(s, 'nothing_to_retract', 'dialog', en=en, th=th)
             return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
+        en_maybe = re.fullmatch(r'[Mm]aybe (.+)', s)
+        if en_maybe is not None and re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?\S+ has [A-Za-z]\S*(?: and [A-Za-z]\S*)?', en_maybe.group(1)):
+            self._rec(s, 'uncertain_not_stored', 'dialog')
+            return {'kind': 'uncertain_not_stored',
+                    'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}
         en_stmt = re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?(\S+) has ([A-Za-z]\S*)(?: and ([A-Za-z]\S*))?', s)
         if en_stmt is not None:
             raw_name = en_stmt.group(1)
@@ -294,7 +303,7 @@ class HSML:
             if _guarded(name) or _guarded(attr):
                 self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
             be = self.mem.attrs
-            if hasattr(be, 'neg') and be.taught(name, attr):
+            if hasattr(be, 'neg') and be.holds(name, attr):
                 ans, truth = 'yes', 'yes'
             elif hasattr(be, 'neg') and be.neg(name, attr):
                 ans, truth = 'no', 'no_explicit'
@@ -302,6 +311,32 @@ class HSML:
                 ans, truth = 'unknown', 'unknown'
             self._rec(s, 'yesno_en', 'attr', name=name, attr=attr, answer=truth)
             return {'kind': 'yesno', 'text': ans, 'source': 'attr', 'answer': truth}
+        # B-549 (DESIGNED, named): confidence separation for in-chat learning.
+        # Uncertain statements are NOT stored (honest reply, no negative evidence
+        # either - uncertain != retracted). 'ไม่ใช่ <statement>' is a natural
+        # correction: retract the inner statement's pairs via the B-542 path.
+        toks_u = s.split()
+        if any(t in UNCERTAIN_TH for t in toks_u):
+            rest = ' '.join(t for t in toks_u if t not in UNCERTAIN_TH)
+            if _parse_statement(rest) is not None:
+                self._rec(s, 'uncertain_not_stored', 'dialog')
+                return {'kind': 'uncertain_not_stored',
+                        'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}
+        mcorr = re.fullmatch(r'ไม่ใช่ (.+)', s)
+        if mcorr is not None:
+            inner = _parse_statement(mcorr.group(1))
+            if inner is None:
+                self._rec(s, 'abstain', 'correction_unparsed')
+                return {'kind': 'abstain', 'text': None, 'source': 'correction_unparsed'}
+            name, attrs = inner
+            gone = self.mem.attrs.unobserve(name, attrs)
+            self._rec(s, 'correction', 'dialog', name=name, retracted=gone, asked=attrs)
+            if gone:
+                return {'kind': 'retracted', 'text': 'ลบแล้ว', 'source': 'dialog',
+                        'name': name, 'retracted': gone,
+                        'not_found': [a for a in attrs if a not in gone]}
+            return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog',
+                    'name': name, 'asked': attrs}
         stmt = _parse_statement(s)
         if stmt is not None:
             name, attrs = stmt

@@ -1,0 +1,9 @@
+PASS C1-th 6 markers
+PASS C1-en ({'kind': 'uncertain_not_stored', 'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}, {'kind': 'yesno', 'text': 'unknown', 'source': 'attr', 'answer': 'unknown'})
+PASS C2 vocab/names clean
+PASS C3a ({'kind': 'retracted', 'text': 'ลบแล้ว', 'source': 'dialog', 'name': 'ฟา', 'retracted': ['ทริบ'], 'not_found': []}, {'kind': 'yesno', 'text': 'ไม่', 'source': 'attr', 'answer': 'no_explicit'})
+PASS C3b {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog', 'name': 'ฟา', 'asked': ['มุก']}
+PASS C3c {'kind': 'abstain', 'text': None, 'source': 'correction_unparsed'}
+PASS C4a ({'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}, {'kind': 'yesno', 'text': 'ใช่', 'source': 'attr', 'answer': 'yes'})
+PASS C4b {'kind': 'skill_answer', 'text': 'เลขคู่ ของ 100 คือ 1', 'source': 'b515_oops', 'result': 1}
+RESULT: PASS
