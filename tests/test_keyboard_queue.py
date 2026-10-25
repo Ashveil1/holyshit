@@ -38,6 +38,30 @@ def probe(g,mod):
         a.call('kbd_dequeue')
         a.code+=bytes([0x9c]);a.pop_r('rax');a.and_ri32('rax',512)
         a.cli();number();expected.append(('512' if enabled else '0')+'\n')
+    # Same translation helper IRQ1 uses: extended make, break, unknown,
+    # repeated prefix and ordinary release handling. Separate FIFO isolation.
+    def scan(n):
+        a.mov_ri32('rax',n);a.call('kbd_scancode')
+    for n in [0xE0,0x48,0xE0,0xC8,0xE0,0x50,0xE0,0xD0,
+              0xE0,0x1C,0xE0,0xE0,0x48,0x1E,0x9E]:scan(n)
+    for n in [1,2,1,0]:
+        a.call('nav_dequeue');number();expected.append(str(n)+'\n')
+    get(97);get(0)
+    # Navigation overflow drops newest, retaining63events independently.
+    for n in range(65):
+        a.mov_ri32('rax',1);a.call('nav_enqueue')
+    for n in range(63):
+        a.call('nav_dequeue');number();expected.append('1\n')
+    a.call('nav_dequeue');number();expected.append('0\n')
+    a.lea_rip('rax','navdrops_');a.mov_rm('rax','rax',0);number();expected.append('2\n')
+    for enabled,nonempty in [(False,False),(False,True),(True,False),(True,True)]:
+        a.cli()
+        if nonempty:
+            a.mov_ri32("rax",2);a.call("nav_enqueue")
+        if enabled:a.sti()
+        a.call('nav_dequeue')
+        a.code+=bytes([0x9c]);a.pop_r('rax');a.and_ri32('rax',512)
+        a.cli();number();expected.append(('512' if enabled else '0')+'\n')
     if code_mode:
         for n in range(1,64):put(n)
     else:

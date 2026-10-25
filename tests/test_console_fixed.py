@@ -27,6 +27,10 @@ with tempfile.TemporaryDirectory() as temp:
                      '    if session_events == 272:\n'
                      '      steady_after = mark()\n'
                      '      print "FIXED STEADY GAP", steady_after - steady_before\n')
+    instrumented=instrumented.replace('while true:\n  key = readkey_code()',
+        'while true:\n  navigation = readkey_nav()\n'
+        '  if navigation != null:\n    print "NAV EVENT", navigation\n'
+        '  key = readkey_code()')
     source.write_text(instrumented)
     subprocess.run([sys.executable,str(ROOT/'hs.py'),'xkernel',str(source),'-o',str(image)],env=env,check=True,capture_output=True,timeout=90)
     # Native hs kernel linker must produce the complete same image.
@@ -138,6 +142,16 @@ with tempfile.TemporaryDirectory() as temp:
             if 'FIXED STEADY GAP ' in content:break
             time.sleep(.1)
         assert 'FIXED STEADY GAP 16\n' in content,content[-1000:]
+        # Real extended PS/2 make+break produces one event each, no ASCII.
+        for key in ['up','down']:
+            sock.sendall(('sendkey '+key+'\n').encode());sock.recv(4096)
+        deadline=time.monotonic()+5
+        while time.monotonic()<deadline:
+            content=serial.read_text(errors='replace')
+            if 'NAV EVENT 1\n' in content and 'NAV EVENT 2\n' in content:break
+            time.sleep(.1)
+        assert content.count('NAV EVENT 1\n')==1 and content.count('NAV EVENT 2\n')==1,content[-1000:]
+        assert content.count('FIXED EDIT')==edits and content.count('FIXED SUBMITTED')==submits
         cursor_at(0)
         # Restore a single editable character for the capacity boundary walk.
         sock.sendall(b'sendkey g\n');sock.recv(4096);edits+=1
