@@ -21,6 +21,7 @@ class HSML:
         self.ctx = None        # {'word':..., 'pairs':[...], 'rounds':int}
         self.pending = None    # {'prog':..., 'fn':..., 'checks':[cx,...], 'passed':int}
         self.log = []          # (sentence, response-kind, source)
+        self.induce_cap = None  # None -> b529 default; B-534 Amendment 1 sets a bounded cap for C6
 
     def _rec(self, sentence, kind, source, **extra):
         self.log.append({'in': sentence, 'kind': kind, 'source': source, **extra})
@@ -86,7 +87,7 @@ class HSML:
             word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
             self._rec(s, 'teach_failed', 'induction', word=word, tried=tried)
             return {'kind': 'teach_failed', 'text': None, 'source': 'induction', 'tried': tried}
-        p, tried = induce(self.ctx['pairs'])
+        p, tried = induce(self.ctx['pairs'], **({} if self.induce_cap is None else {'cap': self.induce_cap}))
         self.ctx['tried_tot'] += tried
         if p is None:
             word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
