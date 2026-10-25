@@ -1303,3 +1303,21 @@ Pre-reg + Amendment 1 (2026-10-25). Harness b533.py, log logs/b533_capture.log.
 - C5 no interference: 160/160 x4 seeded skills, double+quad 40/40.
 - Harness change following: b515.capture_lists default becomes zero-eval (harness-only; tried counts in b529/b530/b531 were never affected since capture tried was discarded, and C2 shows outcomes identical).
 CAN claim (upgrades B-531's scoped claim for THIS task): accumulated dialog-taught knowledge makes an unreachable target reachable and cuts total program-search tried 23.7x, with exact capture accounting. CANNOT: anything beyond B-531's boundaries (no semantic understanding; designed frames + numeric DSL; single-task evidence; not a general compute law). General warning recorded: any future reuse/curriculum experiment must budget capture, because capture cost grows ~quadratically with library size and can silently reverse total-cost comparisons.
+## B-533 Addendum 1 (2026-10-25, parent-directed claim qualification)
+Parent 2026-10-25 04:59: cap-qualify the comparison and state teaching-inclusive totals.
+1. CAP-QUALIFIED: the ablated arm EXHAUSTED the 700,001 budget without finding any program.
+   The comparison is success-vs-not-found-within-budget, NOT an exact speedup against a
+   completed baseline; the true ablated cost is unknown (> 700,001).
+2. TEACHING-INCLUSIVE TOTALS (B-533's C4 counted only the target's own search+capture):
+   the reuse arm's full learning sequence is double teach + quad teach + target teach.
+   Exact per-stage capture blocks (LIB 9/10/12 ops): 1,291,776 / 1,572,864 / 2,217,984.
+   Old-protocol reuse TOTAL = (549+870+29,478) search + 5,082,624 capture = 5,113,521 tried
+   (+ 9 confirmation evaluations). Old-protocol ablated TOTAL = 700,001 + 1,291,776
+   = 1,991,777. Under the old protocol the reuse arm cost 2.57x MORE total tried.
+   Zero-eval (current default) totals: reuse 30,897 tried (+ 9 confirmations) vs ablated
+   700,001 (exhausted, nothing found) = 22.6x fewer tried AND reachability, cap-qualified.
+3. METRIC LABEL: 'tried' = search-candidate evaluations (candidate programs screened),
+   NOT full compute: per-candidate cost varies (run() executions, staging depth), and
+   confirmation/accuracy verifications are counted separately (9 confirmation evals in the
+   reuse learning sequence; post-hoc accuracy spots are reporting, not learning).
+   No wall/CPU claims (sandbox clocks unreliable, B-531 lesson).
