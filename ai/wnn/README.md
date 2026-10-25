@@ -36,6 +36,20 @@ Known limits: memory is wasteful (640 full 2^16 tables; a hashed or
 packed-counter layout would cut it ~4-16x). Shift augmentation was tested
 in the Python prototype and *hurt* accuracy, so it is not used.
 
+## hsml — dialog-taught conversation system (user-ready entry point)
+
+`hsml.py` + `chat.py`: an experimental system you teach through Thai
+conversation (procedures by example, facts by statements; honest abstains,
+no LLM weights). Ready-to-run chat front end, no driver writing needed:
+
+```sh
+cd ai/wnn
+python3 chat.py --demo-world
+```
+
+Full user guide, version/tested-status map, exact phrasings, memory/update
+semantics and safety notes: **[HSML.md](HSML.md)**.
+
 ## Run
 
 ```sh

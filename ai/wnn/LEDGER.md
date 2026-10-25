@@ -1592,3 +1592,19 @@ question stems (e.g. 'กี่ลักษณะ' in attr position) - fixed wit
 prefix match; both runs in logs/b544_run.log. b539 chunked regression
 (s1a/s1b/s1c/s2, bounded c6 60,001) PASS after the change
 (logs/b539_regress5.log); b541/b542/b543/b534/b535/b540 regressions PASS.
+
+## B-545 - usability: cwd-independent paths + ready chat front end
+Defect (found during clean-environment usability verification 2026-10-25):
+b527 resolved the skill logs and the skills cache by RELATIVE path, so
+HSML() crashed outside ai/wnn (FileNotFoundError) and a missed cache would
+have silently forced a full startup re-derivation (expensive hidden
+induction). Fix: paths resolve from the module directory; cache write
+failure warns instead of crashing. Also added chat.py (interactive front
+end: fresh/load memory, --demo-world, autosave, loud corrupt-memory
+failure) and HSML.md (user guide).
+Verification: regress_skills.py PASS (clean-process derivation exercises the
+new CACHE path); b544 harness PASS; chat.py tested from a foreign cwd:
+demo-world teach, reverse query, three-way yes/no, probe, abstain,
+skill teaching end-to-end (n+ naming, 5 examples, 3 checks, query),
+save/reload persistence, retraction + negative evidence, corrupt load exit 2.
+Verdict: PASS
