@@ -33,6 +33,13 @@ class CountBackend:
         row = self.C.setdefault(name, {})
         for a in attrs:
             row[a] = row.get(a, 0) + 1
+    def attrs_of(self, name):
+        # B-543: reverse query - the same stored data, other direction.
+        # None = name unknown (honest abstain); [] = known but fully retracted.
+        row = self.C.get(name)
+        if row is None:
+            return None
+        return sorted(a for a, c in row.items() if c > 0)
     def unobserve(self, name, attrs):
         # B-542: explicit retraction (mirrors skill revision's replace semantics).
         # Deletes the association; returns the attrs actually retracted (never-taught

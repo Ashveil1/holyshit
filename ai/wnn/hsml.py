@@ -161,6 +161,19 @@ class HSML:
         # so both may be NEW words and are actually stored (no ack without learning:
         # the eval_ash baseline showed 'เหยี่ยว มี ปีก' was acknowledged but dropped).
         # A sentence with attr content but no designed frame abstains honestly.
+        # B-543 (DESIGNED, named): reverse query 'X มี อะไรบ้าง' - checked BEFORE the
+        # statement frames so 'อะไรบ้าง' can never be stored as an attribute.
+        mrev = re.fullmatch(r'(\S+) มี อะไรบ้าง', s)
+        if mrev is not None:
+            name = mrev.group(1)
+            attrs = self.mem.attrs.attrs_of(name) if hasattr(self.mem.attrs, 'attrs_of') else None
+            self._rec(s, 'reverse_query', 'attr', name=name, found=attrs)
+            if attrs:
+                return {'kind': 'attr_list', 'text': f"{name} มี {' '.join(attrs)}",
+                        'source': 'attr', 'name': name, 'attrs': attrs}
+            # unknown name OR fully retracted: honest abstain, no fabricated list
+            return {'kind': 'abstain', 'text': None,
+                    'source': 'attr_reverse_' + ('empty' if attrs is not None else 'unknown')}
         stmt = _parse_statement(s)
         if stmt is not None:
             name, attrs = stmt

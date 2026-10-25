@@ -1567,4 +1567,7 @@ Criteria:
 - C4: unknown name AND fully-retracted name -> honest abstain (no fabricated list)
 - C5: save/load round-trip: reverse query on learned content in a fresh process
 - C6: noninterference - corpus battery exact, seeded skills 40/40 x4, and b541/b542 harnesses still pass
-Verdict: PENDING
+Verdict: PASS (run-2).
+Run-1 FAIL (harness-only, recorded): expectations compared JSON-decoded lists to Python tuples; every system actual was already correct (lists verified against b521.ANIMALS). Fixed comparisons; no system change.
+Run-2: PASS C1-C6 (logs/b543_run.log). The reverse frame is checked BEFORE statement parsing, so 'อะไรบ้าง' can never be stored as an attribute (c1_no_pollution verified). Regressions after the new route: b541 PASS, b542 PASS, b534 PASS, b535 PASS, b540 PASS, b539 PASS chunked (c6 bounded 60,001; full 700,001 stands) - logs/b539_regress4.log.
+Scope honesty: the reverse query is a designed frame over the same count store - no new inference; unknown names and fully-retracted names abstain honestly (attr_reverse_unknown / attr_reverse_empty); the frame reserves 'อะไรบ้าง' from ever being an attribute (designed reservation, named).
