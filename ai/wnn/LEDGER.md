@@ -1871,3 +1871,39 @@ wings' -> unknown (wings NOT taught in that run - correct abstention),
 gills -> unknown). Correction: an earlier version of this entry claimed the
 wings answer was 'yes'; the literal log says unknown, which is the honest
 answer for an untaught attribute.
+
+## B-553 (pre-registered 2026-10-25): Thai synonym intake while chatting
+Ash's steering: learn while chatting. ALL DESIGNED frames, named; query-time
+resolution only (no memory rewrite, mirrors B-547 link design).
+Frames (single-token Thai words):
+- teach: 'X กับ Y คือคำเดียวกัน' -> symmetric link stored (ack จำไว้แล้ว)
+- retract: 'X กับ Y ไม่ใช่คำเดียวกัน' -> link removed; honest nothing-to-retract
+- uncertain: marker + synonym sentence -> uncertain_not_stored (B-549 path extended)
+Semantics (predeclared): DIRECT links only, NOT transitive. Queries about X
+see facts taught under X and its direct synonyms (union for reverse query;
+exists-for yes/no and composition gates). Retraction ('ไม่ใช่ X มี Y' / 'X ไม่มี
+Y') removes Y from every direct-synonym surface that holds it. CONFLICT (one
+surface holds X-Y, another holds explicit neg X-Y) -> yes/no answers ไม่รู้.
+Emission surfaces stay as stored (compose may emit the stored surface form).
+Out of scope (named): the 'which things have' probe, skill names, morphology,
+multiword synonyms, transitive chains.
+Pass criteria:
+- C1: teach 'X มี Y', link X=Z, ask 'Z มี อะไรบ้าง' -> lists Y
+- C2: symmetric (ask X, facts taught under Z)
+- C3: yes/no via synonym -> ใช่
+- C4: retract link -> re-ask -> ไม่รู้/abstain; link retract idempotence honest
+- C5: uncertain synonym sentence stores nothing (link absent after)
+- C6: conflict -> ไม่รู้
+- C7: retraction via synonym removes from the holding surface; re-ask -> ไม่รู้
+- C8: composition (2-hop + 3-hop) works through a synonym hop
+- C9 noninterference: b534-b552 + regress_skills PASS unchanged
+
+## B-553 verdict (2026-10-25): PASS
+Own criteria 15/15 first run (logs/b553_run.log): C1/C2 union reverse query
+both directions, C3 yes/no via synonym, C5 uncertain synonym stores nothing,
+C8 composition through a synonym hop (2-hop + 3-hop), C7 retraction via
+synonym removes from the holding surface (explicit ไม่ after), C4 link
+retraction restores per-surface view (own facts survive), C6 conflict ->
+ไม่รู้, guard refuses question-stem words. C9 noninterference: b534-b552
+clean, regress_skills PASS. Compat: pre-B-553 memory pickle
+(/tmp/b552_chat.pkl) loads and answers correctly (lazy syn init).
