@@ -1321,3 +1321,20 @@ Parent 2026-10-25 04:59: cap-qualify the comparison and state teaching-inclusive
    confirmation/accuracy verifications are counted separately (9 confirmation evals in the
    reuse learning sequence; post-hoc accuracy spots are reporting, not learning).
    No wall/CPU claims (sandbox clocks unreliable, B-531 lesson).
+## Integration gap analysis (2026-10-25, parent direction 04:59: prioritize the fully integrated usable hsml over another isolated curriculum layer)
+Grounded in BACKLOG.md integration status + current code:
+- G1 (CORE): teaching and answering live in SEPARATE entry points. HSMLMemory.answer() handles queries; b529.teach() is a harness function driving a scripted Teacher; each experiment builds its own memory. There is no single conversation flow where one incoming sentence can name/exemplify/confirm (teach), state (observe), or ask (answer) against ONE memory object. Ash's bar ("one system, real data flow end-to-end, no stub routing") is not met while teach and answer are separate doors into separate memories.
+- G2: no full-memory persistence story (taught skills, attrs) across processes; only seeded-skill cache + baselib_pin exist.
+- G3: relation/graph store (B-532) sits outside the unified memory; engineering-only status (isomorphic to tables, cheaper per query).
+B-534 (below) takes G1 as the highest-value bounded step: one conversation entry point over one memory, teaching and answering interleaved in one conversation.
+
+## B-534 pre-registration (2026-10-25, before running) - one conversation entry point: teach and answer interleaved against ONE memory
+Design (hsml.py): class HSML wrapping HSMLMemory with a single hear(sentence) -> response entry. Designed frames (named as designed): naming ('วิธีนี้ชื่อ X'), example ('ถ้า n เป็น A ตอบ B'), confirmation reply ('ตอบ Y'), statement (observation into attr memory), query (existing answer path), else abstain. Teaching state machine lives in the conversation: naming opens a teaching context for a NEW word; examples accumulate; at 5 pairs the system induces (b529.induce, zero-eval capture default post-B-533); on a candidate it ASKS a confirmation question ('ถ้า n เป็น C ตอบอะไร'); 3 correct confirmations store the skill into the SAME memory the query path reads; a failed confirmation continues the dialog (b529 protocol, cap 3 rounds). The SAME HSML object carries the whole conversation; a skill taught mid-conversation is immediately queryable in that conversation.
+Criteria (pre-stated):
+- C1 one process, one HSML object, one memory for the whole scripted conversation (no per-segment rebuilds).
+- C2 a skill taught mid-conversation (double, then quad by dialog) answers correctly through the query path IN THE SAME conversation: 10/10 unseen in-conversation probes each.
+- C3 interleaving does not corrupt: after a mixed conversation (teach double, attr statements, queries, teach quad, queries), seeded skills 40/40 x4 spot, attribute battery exact, no-skill-query abstains.
+- C4 order independence: answers about double remain correct AFTER quad is taught (no clobbering).
+- C5 data-flow evidence: the conversation log records each response's memory source (taught-this-conversation vs seeded vs attr store vs abstain) - no response from a stub.
+- C6 garbage-teacher control in-conversation: a random-response teacher yields no stored skill (tried cap 700,001 recorded).
+Verdict PASS iff C1-C6. CAN claim: one conversation entry point teaches and answers against one memory with real data flow (integration claim, scoped). CANNOT: semantic understanding, natural-language generality (designed frames + numeric DSL), intelligence claims; B-529 Correction 1 boundaries stand.
