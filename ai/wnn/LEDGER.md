@@ -1215,3 +1215,61 @@ Criteria (pre-stated):
 - C5 garbage control on the target (same budget): nothing stored.
 FAIL recording: if all three candidates are too-shallow, verdict = INCONCLUSIVE-DEPTH (record tried per candidate); if the reuse arm fails C3 on the selected deep target, the reuse hypothesis is FAIL at depth too - record tried counts and the found programs.
 CAN claim if PASS: accumulated dialog-taught knowledge measurably accelerates later learning (ablation-credited). CANNOT: semantic understanding; designed frames + numeric DSL only; B-529 Correction 1 boundaries stand.
+## B-531 verdict (2026-10-25) - PASS: accumulated dialog-taught knowledge measurably accelerates later learning (search phase, ablation-credited)
+Pre-reg 2026-10-24. Harness b531.py, log logs/b531_reuse.log. Verdict json: PASS, c1-c5 all true.
+- Target selection (fixed rule): hexdec 16n (สิบหกเท่า) - ablated arm (no taught primitives) exhausted the cap at tried=700,001 with NO program. Deep as required by the B-530 lesson.
+- C3 reuse: with double+quad (dialog-taught in-run) + sumto (seeded, provenance) in LIB, induction found 16n at tried=29,478 - 23.7x fewer tried than the ablated cap, and the ablated arm found NOTHING. The found program "init b=zero; if (lt a b) -> a; else step (a,(add a b)); comb=('quad','a',1); post=id" actually CALLS the taught quad primitive (calls_primitive=['quad']) - reuse is structural, not a cost artifact.
+- C1 dialog-only, 8 pairs for the target (bar <=20). C2 40/40 unseen through the sentence path. C4 no interference (seeded 160/160 x4, double+quad 40/40, battery exact). C5 garbage target teacher: exhausted at 700,001, nothing stored.
+- Curriculum note: double (549) -> quad (870) -> 16n (29,478): each layer teaches through dialog and the next layer is findable only because the previous one is in the library.
+COST RECORDED HONESTLY: 'tried' counts only the search_oops phase. The unbudgeted capture phase (capture_lists full enumeration) grows with library size: ~800s CPU ablated vs ~7000s with three primitives (utime deltas, sandbox clocks unreliable - treat as approximate). For THIS task the tried metric favors reuse 23.7x while total compute favored the ablated arm; the claim is therefore scoped: accumulated knowledge makes deeper targets REACHABLE within the tried budget (16n was unreachable without it) and cuts search-phase tried 23.7x - it does not yet claim lower total compute. Future protocols should budget the capture phase (B-530/B-531 lesson).
+CAN claim: dialog-taught procedures accumulate as reusable primitives; a target unreachable by direct search within budget becomes reachable via the taught library, ablation-credited, with the primitive visibly called in the found program. CANNOT: semantic understanding; designed frames + numeric DSL; total-compute superiority (see cost note); B-529 Correction 1 boundaries stand.
+## B-532 pre-registration (2026-10-25, before running) - engineered-connectome arm 2: does WIRING contribute anything behaviorally distinct from isomorphic count tables?
+Parent question (2026-10-24 17:08): distinguish an engineered depletion heuristic inspired by STD (arm 1) from a contribution of the connectome graph itself. Analysis before pre-reg: the T2 battery has no headroom for a wiring effect (gc precision 1.0; recall .767 is the structural ceiling of selecting 3 attrs against 3-4 true ones; B-523 battery exact). So arm 2 tests the graph on a capability the flat path lacks - multi-hop relational chain queries - and asks whether the GRAPH implementation differs behaviorally from the ISOMORPHIC count-table implementation of the same queries.
+Design (b532.py):
+- Small DESIGNED relational corpus (named as designed): ~10 Thai sentences forming entity-relation chains (e.g. นก กิน หนอน / หนอน อาศัย ดิน / ดิน อยู่ สวน) with branches, so 1..3-hop queries have ground-truth answer sets.
+- Same information stored TWO ways: (G) explicit edge graph + traversal; (T) count/relation tables + designed multi-step lookup. Query frames designed and named.
+- Arms: G-traverse, T-lookup, SHAM-G (degree-preserving rewired graph, same traversal code).
+Criteria (pre-stated):
+- C1 isomorphism: G and T return IDENTICAL answer sets on every query (1..3 hop, ~12 queries). If any differ, investigate which is wrong before any verdict - a difference is a bug finding, not a wiring contribution.
+- C2 SHAM-G answers at <= chance overlap with ground truth (credits the wiring's content for G's answers, not the traversal code).
+- C3 cost: record per-query candidate-visits for G vs T (the one axis they may honestly differ on).
+- C4 existing battery unchanged (B-523 + skill path 160/160 x4 spot check).
+Verdict logic: PASS-NULL if C1 identical AND C2 holds AND C4 exact => the connectome graph contributes NOTHING behaviorally distinct from count tables at current scope; wiring is an implementation choice, not a capability; the connectome line's only measured contribution remains arm-1's STD-inspired dynamics. Any C1 difference => BUG, fixed and recorded. C3 differences are reported as engineering facts only (not intelligence claims).
+CAN claim if PASS-NULL: with evidence, that at current scope graph wiring adds no behavioral capability beyond isomorphic tables - closing the graph-contribution question honestly. CANNOT: wiring never matters (larger scale/dynamics could differ); biological claims; integration completeness.
+## B-532 Amendment 1 (2026-10-25, before rerunning) - two harness bugs caught by the first run + sham criterion fix
+First run FAILED, informatively:
+1. Reverse multi-hop queries returned empty in BOTH arms (G==T everywhere, isomorphism held; both disagreed with hand-worked truth). Bug: reverse walks traversed the relation path in forward order instead of reversed. Fix: rev queries walk reversed(path).
+2. C4 skill spot check failed 120/160 (all 'even'): KeyError 'mod'. The cached even program calls the pinned LIB primitive 'mod'; with cache hits, no setup/pinning call ever ran, so LIB stayed {add,sub}. PROVENANCE FINDING (recorded): skill execution silently depends on /tmp/c7_prog_0_base.json (the baselib pinning artifact) - not fully repo-backed. b529/b530 masked it because their teach() calls triggered pinning before the checks. Fix: explicit pinning block in b532 (same logic as cur7.search's), and a recorded TODO: make library pinning repo-backed.
+3. Sham criterion: pre-registered 'sham mean Jaccard <= 0.2' measured 0.2462 - within-relation permutation on 5-edge relations leaves ~1/5 structural chance overlap, so the absolute bar was miscalibrated (bar-setting error, not a sham pass). Amended criterion, pre-stated before rerunning: G-vs-truth Jaccard 1.0 must exceed SHAM-vs-truth mean Jaccard by >= 0.5 (margin criterion, same crediting function as B-528's sham separation).
+## B-532 verdict (2026-10-25) - PASS-NULL: graph wiring contributes NOTHING behaviorally distinct from isomorphic count tables at current scope
+Pre-reg + Amendment 1 (2026-10-25). Harness b532.py. Verdict json: PASS-NULL (c1, c2, c4 true).
+- C1 isomorphism: edge-graph traversal and relation-table joins returned IDENTICAL, correct answer sets on all 13 chain queries (1-3 hop, forward+reverse). Where both failed before the Amendment-1 fix, they failed identically - the stores are behaviorally isomorphic, as predicted.
+- C2 content credit: G-vs-truth Jaccard = 1.0 vs SHAM-rewired mean 0.3077 (margin .692 >= .5) - G's correct answers come from the wiring's CONTENT, not the traversal code.
+- C3 cost (engineering fact only): graph 24 candidate-visits vs tables 83 over the query set - adjacency is cheaper per query at this scale; no capability difference.
+- C4 existing system unchanged: battery exact, skills 160/160.
+Conclusion for the connectome line (answering the 2026-10-24 17:08 steering question): at current scope the ONLY measured connectome-derived contribution to the answer path is arm 1's STD-inspired depletion DYNAMICS over counts (experimental). The graph wiring itself is an implementation choice with no measured behavioral contribution - recorded honestly; it stays out of the answer path and out of capability claims. Ash's cut rule applied to claims, not to the code: the engineered graph remains available as an engineering structure (cheaper associative lookups, C3) but earns no intelligence-adjacent language.
+Also recorded (Amendment 1): reverse-walk harness bug (both arms), LIB-pinning /tmp provenance dependency (TODO: repo-backed pinning), sham bar miscalibration -> margin criterion.
+## Provenance fix (2026-10-25) - LIB pinning is now repo-backed
+B-532 Amendment 1 found skill execution silently depended on /tmp/c7_prog_0_base.json. Fix: the pinned base library (12 programs: mod/mul/div/power/gcd/max/min/fact/sumto/square/choose2/dblfact) is committed as ai/wnn/logs/baselib_pin.json; cur7.search and b532 pin repo-first, /tmp as fallback. Fresh-clone skill execution no longer depends on a sandbox /tmp artifact.
+
+## Hardening: repo-backed skill pinning + clean-process regression (2026-10-25, parent direction 00:37)
+Context: B-532 Amendment 1 found cached skills could not execute in a fresh process without
+the transient /tmp/c7_prog_0_base.json artifact. Parent directed: fix before deeper curriculum,
+add clean-process/rebuilt-workspace regression coverage, explicit missing/corrupt dependency
+handling, retain skill provenance.
+- 8d3e4db: logs/baselib_pin.json (12 pinned programs) committed; cur7.search + b532 pin
+  repo-first with /tmp fallback; fresh-process sanity even(24)=1, even(21)=0 passed.
+- This commit: b527.derive_skills hardened - unreadable cache falls back to full re-derivation
+  with WARNING; pin_lib() (repo-first) called before an execution self-check of every skill on
+  ground-truth probes, raising RuntimeError naming logs/baselib_pin.json when a dependency is
+  missing/corrupt. regress_skills.py: 3-check clean-process regression (C1: /tmp hidden,
+  fresh subprocess, 40/40 sentence-path spot per skill; C2: both pinning sources hidden ->
+  clear RuntimeError; C3: corrupt cache -> warning + re-derivation, no crash).
+- FINDING (cache gap): logs/b527_skills_cache.pkl contained ONLY 'even' (evidence of a
+  partially-completed earlier re-derivation, interrupted after the first task). Untracked
+  derived cache; the regression run's re-derivation repopulates it. Known hazard recorded:
+  pinning must never let a TARGET task resolve through the pinned library - cur7.search
+  EXCL handling covers search; b529-style induce() clears EXCL, so a future teach of a
+  target that IS in baselib_pin.json would shortcut. Current taught targets
+  (double/quad/16n) are not in the pin set; B-529/530/531 results unaffected.
+- Regression verdict: IN FLIGHT at commit time (long re-derivation); verdict to be recorded.
