@@ -1804,3 +1804,23 @@ grep found no copyright headers or vendored-source markers (residual: cannot
 prove a negative - a headerless copied file would not be caught). No "or
 later" wording added (Ash chose v3 only). No release/tag; root LICENSE and
 non-hsml dirs untouched.
+
+## B-551 (pre-registered 2026-10-25): bounded three-hop verified composition
+Extends B-548's two-hop gate to exactly three hops. ALL DESIGNED, named: finite
+frames, not learned understanding, not free sentence composition.
+Query forms (single-token surfaces only):
+- TH: 'X มี อะไรที่มี Y ที่มี Z'
+- EN: 'what does X have that has Y that has Z'  (link-resolved like B-548 EN)
+Semantics (predeclared): find A with holds(X,A) AND holds(A,Y) AND holds(Y,Z),
+every link re-verified against LIVE memory at emission (same gate as B-548).
+Emit TH: 'X มี A และ A มี Y และ Y มี Z' / EN: 'X has A and A has Y and Y has Z'
+(' / ' joins multiple verified A).
+Pass criteria:
+- C1: teach X-A, A-Y, Y-Z -> composed naming A (verified==[A])
+- C2: two different A candidates both verified -> both emitted
+- C3a/b/c: missing Y-Z / X-A / A-Y link -> ไม่รู้ (TH) or unknown (EN)
+- C4: teach all three, then 'ไม่ใช่ A มี Y' -> re-ask answers ไม่รู้
+  (mid-chain retraction kills composition)
+- C5 noninterference: b534-b549 harnesses + regress_skills PASS unchanged
+Named scope: exactly three hops, attr domain only, single-token surfaces;
+NOT general n-hop. Read-only frames: never store.

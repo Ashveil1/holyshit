@@ -224,6 +224,23 @@ class HSML:
         # taught words; every emitted link re-verified against LIVE memory at speak
         # time (no cache trusted at emission). Read-only: these frames never store.
         # NOT free sentence composition - finite designed frames, honestly named.
+        mq3 = re.fullmatch(r'(\S+) มี อะไรที่มี (\S+) ที่มี (\S+)', s)
+        if mq3 is not None:
+            x, y, z = mq3.group(1), mq3.group(2), mq3.group(3)
+            if _guarded(x) or _guarded(y) or _guarded(z):
+                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
+            return self._compose_three_hop(s, x, y, z, 'th', x, y, z)
+        en3 = re.fullmatch(r'[Ww]hat does (\S+) have that has ([A-Za-z]\S+) that has ([A-Za-z]\S+)', s)
+        if en3 is not None:
+            rx = self._resolve_link(en3.group(1)); ry = self._resolve_link(en3.group(2).lower()); rz = self._resolve_link(en3.group(3).lower())
+            for w0, r0 in ((en3.group(1), rx), (en3.group(2), ry), (en3.group(3), rz)):
+                if r0[0] == 'amb':
+                    self._rec(s, 'abstain', 'link_ambiguous', cands=r0[1])
+                    return {'kind': 'abstain', 'text': f"'{w0}' can mean: {' '.join(r0[1])}", 'source': 'link_ambiguous'}
+            x, y, z = rx[1], ry[1], rz[1]
+            if _guarded(x) or _guarded(y) or _guarded(z):
+                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
+            return self._compose_three_hop(s, x, y, z, 'en', en3.group(1), en3.group(2), en3.group(3))
         mq = re.fullmatch(r'(\S+) มี อะไรที่มี (\S+)', s)
         if mq is not None:
             x, y = mq.group(1), mq.group(2)
@@ -384,6 +401,26 @@ class HSML:
         else:
             text = ' / '.join(f'{x_surf} has {z} and {z} has {y_surf}' for z in verified)
         return {'kind': 'composed', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'zs': verified}
+
+    def _compose_three_hop(self, s, x, y, z, lang, x_surf, y_surf, z_surf):
+        """B-551 (ALL DESIGNED, named): exactly-three-hop composition; same live
+        re-verification gate as B-548. No verified path -> honest absence."""
+        be = self.mem.attrs
+        verified = []
+        for a in (be.attrs_of(x) or []):
+            # gate: re-query live memory at emission, all three hops
+            if be.holds(x, a) and be.holds(a, y) and be.holds(y, z):
+                verified.append(a)
+        self._rec(s, 'compose3', 'attr', x=x, y=y, z=z, verified=verified)
+        if not verified:
+            txt = 'ไม่รู้' if lang == 'th' else 'unknown'
+            self._rec(s, 'compose3_unknown', 'attr', x=x, y=y, z=z)
+            return {'kind': 'compose_unknown', 'text': txt, 'source': 'attr'}
+        if lang == 'th':
+            text = ' / '.join(f'{x_surf} มี {a} และ {a} มี {y_surf} และ {y_surf} มี {z_surf}' for a in verified)
+        else:
+            text = ' / '.join(f'{x_surf} has {a} and {a} has {y_surf} and {y_surf} has {z_surf}' for a in verified)
+        return {'kind': 'composed3', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'z': z, 'as_': verified}
 
     def _resolve_link(self, w):
         """B-547: english surface word -> ('ok', canonical) or ('amb', [candidates]).
