@@ -196,10 +196,18 @@ class HSML:
         if mrev is not None:
             name = mrev.group(1)
             attrs = self._attrs_of_any(name)
-            self._rec(s, 'reverse_query', 'attr', name=name, found=attrs)
-            if attrs:
-                return {'kind': 'attr_list', 'text': f"{name} มี {' '.join(attrs)}",
-                        'source': 'attr', 'name': name, 'attrs': attrs}
+            own = list(attrs or [])
+            inh = [(p, [t for t in ts if t not in own]) for p, ts in self._inherited_attrs(name)]
+            inh = [(p, ts) for p, ts in inh if ts]
+            self._rec(s, 'reverse_query', 'attr', name=name, found=attrs,
+                      inherited={p: ts for p, ts in inh})
+            if own or inh:
+                text = f"{name} มี {' '.join(own)}" if own else ''
+                for p, ts in inh:
+                    text += (' และ' if text else f'{name} มี') + f'จาก {p}: {" ".join(ts)}'
+                return {'kind': 'attr_list', 'text': text,
+                        'source': 'attr', 'name': name, 'attrs': own,
+                        'inherited': dict(inh)}
             # unknown name OR fully retracted: honest abstain, no fabricated list
             return {'kind': 'abstain', 'text': None,
                     'source': 'attr_reverse_' + ('empty' if attrs is not None else 'unknown')}
@@ -211,10 +219,9 @@ class HSML:
             be = self.mem.attrs
             if _guarded(name) or _guarded(attr):
                 self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
-            pos = self._holds_any(name, attr)
-            neged = self._neg_any(name, attr)
+            pos, neged = self._pos_neg_any(name, attr)
             if pos and neged:
-                ans, truth = 'ไม่รู้', 'conflict'  # B-553: synonym surfaces disagree
+                ans, truth = 'ไม่รู้', 'conflict'  # B-553/B-554: surfaces or ancestors disagree
             elif pos:
                 ans, truth = 'ใช่', 'yes'
             elif neged:
@@ -305,6 +312,26 @@ class HSML:
                 return {'kind': 'syn_retracted', 'text': 'ลบแล้ว', 'source': 'dialog'}
             self._rec(s, 'nothing_to_retract', 'dialog', x=x, y=y)
             return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
+        # B-554 (ALL DESIGNED, named): is-a relation, Thai single-token.
+        misa = re.fullmatch(r'(\S+) เป็น (\S+)', s)
+        if misa is not None:
+            x, y = misa.group(1), misa.group(2)
+            if x == y or _guarded(x) or _guarded(y):
+                self._rec(s, 'abstain', 'isa_guard'); return {'kind': 'abstain', 'text': None, 'source': 'isa_guard'}
+            self._isa().setdefault(x, set()).add(y)
+            self._rec(s, 'isa_stored', 'dialog', x=x, y=y)
+            return {'kind': 'isa_stored', 'text': 'จำไว้แล้ว', 'source': 'dialog'}
+        misar = re.fullmatch(r'ไม่ใช่ (\S+) เป็น (\S+)', s)
+        if misar is not None:
+            x, y = misar.group(1), misar.group(2)
+            isa = self._isa()
+            if y in isa.get(x, set()):
+                isa[x].discard(y)
+                if not isa[x]: del isa[x]
+                self._rec(s, 'isa_retracted', 'dialog', x=x, y=y)
+                return {'kind': 'isa_retracted', 'text': 'ลบแล้ว', 'source': 'dialog'}
+            self._rec(s, 'nothing_to_retract', 'dialog', x=x, y=y)
+            return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
         en_maybe = re.fullmatch(r'[Mm]aybe (.+)', s)
         if en_maybe is not None and re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?\S+ has (?:[Aa] |[Aa]n |[Tt]he )?[A-Za-z]\S*(?: and (?:[Aa] |[Aa]n |[Tt]he )?[A-Za-z]\S*)?', en_maybe.group(1)):
             self._rec(s, 'uncertain_not_stored', 'dialog')
@@ -332,10 +359,18 @@ class HSML:
             if r0[0] == 'amb':
                 self._rec(s, 'abstain', 'link_ambiguous', cands=r0[1])
                 return {'kind': 'abstain', 'text': f"'{en_rev.group(1)}' can mean: {' '.join(r0[1])}", 'source': 'link_ambiguous'}
-            attrs = self.mem.attrs.attrs_of(r0[1]) if hasattr(self.mem.attrs, 'attrs_of') else None
-            self._rec(s, 'reverse_query_en', 'attr', name=r0[1], found=attrs)
-            if attrs:
-                return {'kind': 'attr_list', 'text': f"{en_rev.group(1)} has {' '.join(attrs)}", 'source': 'attr', 'name': r0[1], 'attrs': attrs}
+            attrs = self._attrs_of_any(r0[1])
+            own = list(attrs or [])
+            inh = [(p, [t for t in ts if t not in own]) for p, ts in self._inherited_attrs(r0[1])]
+            inh = [(p, ts) for p, ts in inh if ts]
+            self._rec(s, 'reverse_query_en', 'attr', name=r0[1], found=attrs,
+                      inherited={p: ts for p, ts in inh})
+            if own or inh:
+                text = f"{en_rev.group(1)} has {' '.join(own)}" if own else ''
+                for p, ts in inh:
+                    text += (' and' if text else f"{en_rev.group(1)} has") + f" from {p}: {' '.join(ts)}"
+                return {'kind': 'attr_list', 'text': text, 'source': 'attr', 'name': r0[1],
+                        'attrs': own, 'inherited': dict(inh)}
             return {'kind': 'abstain', 'text': None, 'source': 'attr_reverse_en_' + ('empty' if attrs is not None else 'unknown')}
         en_yn = re.fullmatch(r'[Dd]oes (?:[Aa] |[Aa]n |[Tt]he )?(\S+) have (?:[Aa] |[Aa]n |[Tt]he )?([A-Za-z]\S+)', s)
         if en_yn is not None:
@@ -347,10 +382,9 @@ class HSML:
             name, attr = rn[1], ra[1]
             if _guarded(name) or _guarded(attr):
                 self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
-            pos = self._holds_any(name, attr)
-            neged = self._neg_any(name, attr)
+            pos, neged = self._pos_neg_any(name, attr)
             if pos and neged:
-                ans, truth = 'unknown', 'conflict'  # B-553: synonym surfaces disagree
+                ans, truth = 'unknown', 'conflict'  # B-553/B-554: surfaces or ancestors disagree
             elif pos:
                 ans, truth = 'yes', 'yes'
             elif neged:
@@ -366,7 +400,9 @@ class HSML:
         toks_u = s.split()
         if any(t in UNCERTAIN_TH for t in toks_u):
             rest = ' '.join(t for t in toks_u if t not in UNCERTAIN_TH)
-            if _parse_statement(rest) is not None or re.fullmatch(r'\S+ กับ \S+ คือคำเดียวกัน', rest) is not None:
+            if (_parse_statement(rest) is not None
+                    or re.fullmatch(r'\S+ กับ \S+ คือคำเดียวกัน', rest) is not None
+                    or re.fullmatch(r'\S+ เป็น \S+', rest) is not None):
                 self._rec(s, 'uncertain_not_stored', 'dialog')
                 return {'kind': 'uncertain_not_stored',
                         'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}
@@ -451,6 +487,59 @@ class HSML:
         if not hasattr(be, 'neg'):
             return False
         return any(be.neg(sx, sy) for sx in self._synonyms(x) for sy in self._synonyms(y))
+
+    def _isa(self):
+        d = getattr(self.mem, 'isa', None)
+        if d is None:
+            d = {}
+            self.mem.isa = d
+        return d
+
+    def _parents_any(self, name):
+        """B-554: BFS over is-a parents of name and its synonyms. Depth cap 8,
+        cycle-safe (visited set). Returns set of ancestors (excluding starts)."""
+        seen = set(self._synonyms(name))
+        frontier = list(seen)
+        out = set()
+        for _ in range(8):
+            nxt = []
+            for w in frontier:
+                for p in self._isa().get(w, ()):  # child -> parents
+                    if p not in seen:
+                        seen.add(p)
+                        out.add(p)
+                        nxt.append(p)
+            if not nxt:
+                break
+            frontier = nxt
+        return out
+
+    def _pos_neg_any(self, name, attr):
+        """B-554: aggregate positive/negative evidence for yes/no: own,
+        synonyms, and is-a ancestors (all via live memory)."""
+        pos = self._holds_any(name, attr)
+        neg = self._neg_any(name, attr)
+        for p in self._parents_any(name):
+            if not pos and self._holds_any(p, attr):
+                pos = True
+            if not neg and self._neg_any(p, attr):
+                neg = True
+            if pos and neg:
+                break
+        return pos, neg
+
+    def _inherited_attrs(self, name):
+        """B-555: [(parent, [attrs])] in BFS order, deduped internally. Live memory."""
+        groups = []
+        seen = set()
+        for p in self._parents_any(name):
+            a = self._attrs_of_any(p)
+            if a:
+                fresh = [t for t in a if t not in seen]
+                if fresh:
+                    groups.append((p, fresh))
+                    seen.update(fresh)
+        return groups
 
     def _compose_two_hop(self, s, x, y, lang, x_surf, y_surf):
         """B-548: candidates from memory; each emitted link re-verified LIVE at speak
