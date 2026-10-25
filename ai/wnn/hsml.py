@@ -111,15 +111,20 @@ class HSML:
                         'result': ans['result']}
             self._rec(s, 'abstain', ans.get('kind', 'no_skill'))
             return {'kind': 'abstain', 'text': None, 'source': ans.get('kind', 'no_skill')}
-        if any(t in ATTRS or t == 'เขา' for t in toks):
-            if toks[0] in ATTRS or toks[0] == 'เขา':
-                ans = self.mem.answer(s)
-                kind = ans.get('kind')
-                self._rec(s, 'attr_' + str(kind), 'attr')
-                if kind in ('unique', 'ambiguous'):
-                    return {'kind': 'attr_answer', 'text': str(ans.get('answer', ans.get('ext'))),
-                            'source': 'attr', 'decision': kind}
-                return {'kind': 'abstain', 'text': None, 'source': 'attr_' + str(kind)}
+        # B-540 run-1 fix (DESIGNED routing, named): an attr PROBE is a sentence whose
+        # EVERY token is an attribute word (or 'เขา'); ANY sentence containing an attr
+        # word plus other content is a STATEMENT and is observed. The previous
+        # first-token rule silently misrouted 51/219 corpus statements (frames like
+        # 'ปีก ของ นก สวย' and 'ขน และ หาง ของ หมา' start with an attr) as probes.
+        if all(t in ATTRS or t == 'เขา' for t in toks):
+            ans = self.mem.answer(s)
+            kind = ans.get('kind')
+            self._rec(s, 'attr_' + str(kind), 'attr')
+            if kind in ('unique', 'ambiguous'):
+                return {'kind': 'attr_answer', 'text': str(ans.get('answer', ans.get('ext'))),
+                        'source': 'attr', 'decision': kind}
+            return {'kind': 'abstain', 'text': None, 'source': 'attr_' + str(kind)}
+        if any(t in ATTRS for t in toks):
             self.mem.attrs.observe(toks)
             self._rec(s, 'observed', 'attr')
             return {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
