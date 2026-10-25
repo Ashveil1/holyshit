@@ -1,0 +1,7 @@
+{"mode": "oops", "task": "even", "found": true, "tried": 611365, "dt": 62.5, "prog": "init b=one; if (lt a b) -> a; else step (a,(add a a)); comb=('mod', '(add b b)', 1); post=iszero", "unseen": {"1": 40, "2": 40, "3": 40, "4": 40}}
+{"mode": "oops", "task": "sumto", "found": true, "tried": 537, "dt": 2.7, "prog": "init b=one; if (lt a b) -> a; else step ((sub a b),b); comb=('add', 'a', 0); post=id", "unseen": {"1": 40, "2": 40, "3": 40, "4": 40}}
+{"mode": "baseline", "task": "even", "found": true, "tried": 123944, "dt": 12.4, "prog": "init b=one; if (lt a one) -> b; else step ((sub a one),(sub one b)); comb=None; post=id", "unseen": {"1": 40, "2": 40, "3": 40, "4": 26}}
+{"mode": "baseline", "task": "sumto", "found": true, "tried": 1415698, "dt": 124.0, "prog": "init b=zero; if (lt a one) -> b; else step ((sub a one),(add a b)); comb=None; post=id", "unseen": {"1": 40, "2": 40, "3": 40, "4": 40}}
+{"mode": "baseline", "task": "square", "found": true, "tried": 2583787, "dt": 193.7, "prog": "init b=one; if (lt a b) -> zero; else step (a,(add b one)); comb=('add', 'a', 0); post=id", "unseen": {"1": 40, "2": 40, "3": 40, "4": 40}}
+{"mode": "baseline", "task": "choose2", "found": true, "tried": 2597867, "dt": 3200.4, "prog": "init b=one; if (nlt b a) -> zero; else step (a,(add b one)); comb=('add', 'b', 0); post=id", "unseen": {"1": 40, "2": 40, "3": 40, "4": 40}}
+FOLLOWUPDONE
