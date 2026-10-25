@@ -10,7 +10,7 @@ surface choices) are unseen until the final run. Strongest future validation:
 phrasings authored by Ash himself."""
 import random
 
-SEED = 55800  # frozen 2026-10-26, pre-implementation of the hsml hook
+SEED = 55801  # rotated 2026-10-26: mechanism v4 (claim-marker block + multi-entity abstain) changed AFTER the 55800 one-shot eval - per protocol, tuning requires a new recorded evaluation. 55800 result stands in LEDGER for v3.
 
 _SYL = ['มิ','โร','เค','ฟา','ลู','เซ','ทะ','ปิ','เง','จุ','บ๊','ดี','โย','ซ่','ฮิ','เอ']
 _ATTR = ['ฝุ่','แจ๊','โถ่','คิ','เล๊','วั','ซิ','โบะ','เฟิ','หยิ','แช่','โต๊ะ','นิ','ผึ','แม๊','จี้']
