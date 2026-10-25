@@ -93,11 +93,16 @@ def s1():
     r = h.hear('วิธีนี้ชื่อ สองห้าหกเท่า')
     out['c5_revalidate_opened'] = (r['kind'] == 'revalidate_opened')
     cx = int(re.fullmatch(r'ถ้า n เป็น (\d+) ตอบอะไร', r['text']).group(1))
-    r = h.hear(f'ตอบ {256*cx}')  # teacher rejects recomposed (625n), wants 256n semantics...
-    # ...but 256n is unreachable in the post-revision LIB (Amendment 1): the revision
-    # re-teach target is what the teacher then actually teaches - 10n examples.
-    out['c5_reject_continues'] = (r['kind'] == 'example')
-    r = teach(h, 'สองห้าหกเท่า', lambda x: 10*x, seed=7, name=False)
+    r = h.hear(f'ตอบ {10*cx}')  # teacher rejects the recomposed value (625n) by stating
+    # the DESIRED value (Amendment 1: the re-teach target is 10n) - this correcting pair
+    # converts the revalidation into a revision (b529 protocol: re-induce at once).
+    out['c5_reject_continues'] = r['kind']
+    tries = 0
+    while r['kind'] == 'confirmation_question':
+        tries += 1
+        assert tries < 50, 'c5 confirmation loop'
+        cx = int(re.fullmatch(r'ถ้า n เป็น (\d+) ตอบอะไร', r['text']).group(1))
+        r = h.hear(f'ตอบ {10*cx}')
     out['c5_stored'] = (r['kind'] == 'skill_stored'); out['c5_tried'] = r.get('tried')
     out['c5_new_probe'] = probe(h, 'สองห้าหกเท่า', lambda x: 10*x, seed=24)
     p256 = h.mem.skills['สองห้าหกเท่า'][2]
@@ -139,7 +144,7 @@ def run():
         'c2': s1['c2_quad_revised'] and s1['c2_quad_rev'] == 1 and s1['c2_quad_replaces'] and s1['c2_16_stale'] == {'dep': 'สี่เท่า', 'from_revision': 0, 'to_revision': 1},
         'c3': s1['c3_16_response'] == 'stale_skill' and not s1['c3_16_in_lib'],
         'c4': s1['c4_kind'] == 'skill_revalidated' and s1['c4_16_probe'] == '10/10' and s1['c4_stale_cleared'] and s1['c4_dep_rev'] == {'สี่เท่า': 1} and s1['c4_revalidated'] == 1 and s1['c4_16_in_lib'],
-        'c5': s1['c5_revalidate_opened'] and s1['c5_reject_continues'] and s1['c5_stored'] and s1['c5_new_probe'] == '10/10' and s1['c5_revision'] == 1 and s1['c5_replaces'] and s1['c5_stale_cleared'],
+        'c5': s1['c5_revalidate_opened'] and s1['c5_reject_continues'] in ('confirmation_question', 'skill_stored') and s1['c5_stored'] and s1['c5_new_probe'] == '10/10' and s1['c5_revision'] == 1 and s1['c5_replaces'] and s1['c5_stale_cleared'],
         'c6': s1['c6_kind'] == 'teach_failed' and s1['c6_tried'] == 700001 and s1['c6_16_not_stale'] and s1['c6_16_probe'] == '10/10',
         'c7': s2['c7_16_response'] == 'stale_skill' and not s2['c7_16_in_lib'] and s2['c7_quad_rev'] == 2 and s2['c7_quad_probe'] == '10/10' and s2['c7_reval_kind'] == 'skill_revalidated' and s2['c7_16_probe'] == '10/10' and s2['c7_dep_rev'] == {'สี่เท่า': 2} and s2['c7_16_in_lib_after'],
         'c8': s1['c8_pre_quad'] == '10/10' and s1['c8_post_quad_same_inputs'] == '10/10',
