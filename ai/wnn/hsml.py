@@ -5,6 +5,7 @@ observe into attribute memory; queries go through the existing answer path; anyt
 abstains. Frames + number parsing are DESIGNED (named). A skill taught mid-conversation is
 stored in the SAME memory the query path reads and is immediately queryable."""
 import os, pickle, random, re
+import assoc
 from cur7 import make_fn, show_prog
 import cur7 as C7
 import b529
@@ -88,6 +89,7 @@ class HSML:
         self.ctx = None        # {'word':..., 'pairs':[...], 'rounds':int}
         self.pending = None    # {'prog':..., 'fn':..., 'checks':[cx,...], 'passed':int}
         self.log = []          # (sentence, response-kind, source)
+        self.assoc = assoc.Assoc()  # B-558: derived index, rebuilt from live store at proposal time
         self.induce_cap = None  # None -> b529 default; B-534 Amendment 1 sets a bounded cap for C6
 
     def _rec(self, sentence, kind, source, **extra):
@@ -418,6 +420,9 @@ class HSML:
             name, attrs = stmt
             # B-544: questions/particles are never stored as facts (nonmutation)
             if _guarded(name) or any(_guarded(a) for a in attrs):
+                alt = self._assoc_fallback(s)  # B-558: abstention site is in scope for a verified proposal
+                if alt is not None:
+                    return alt
                 self._rec(s, 'abstain', 'attr_guard', name=name, attrs=attrs)
                 return {'kind': 'unsupported_question', 'text': 'ยังไม่รองรับคำถามแบบนี้', 'source': 'attr_guard'}
             self.mem.attrs.observe_pairs(name, attrs)
@@ -438,8 +443,61 @@ class HSML:
                         'not_found': [a for a in attrs if a not in gone]}
             return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'attr',
                     'name': name, 'asked': attrs}
+        # B-558 (EXPERIMENTAL, route A, pre-registered): bounded associative layer.
+        # Fires ONLY when no designed frame matched. The index is rebuilt from the
+        # LIVE store at proposal time (measured cheap at this scale, b558 C6) so it
+        # can never be stale - retraction is exact by construction. Every proposed
+        # fact is re-verified against live memory before being spoken (B-548
+        # philosophy); the answer kind 'assoc_answer' keeps mechanism provenance
+        # separable from exact-frame answers. Not language understanding: name-
+        # anchored surface similarity over taught facts (assoc.py docstring).
+        alt = self._assoc_fallback(s)  # B-558
+        if alt is not None:
+            return alt
         self._rec(s, 'abstain', 'unrouted')
         return {'kind': 'abstain', 'text': None, 'source': 'unrouted'}
+
+    def _assoc_rebuild(self):
+        """B-558: rebuild the associative index from the live store. Surfaces =
+        canonical + synonyms (B-553) + linked EN words (B-547 reverse map). Only
+        currently-held, non-retracted facts are indexed."""
+        rev = {}
+        for en, cans in (getattr(self.mem, 'links', None) or {}).items():
+            for c in cans:
+                rev.setdefault(c, []).append(en)
+        name_surfaces = {}
+        facts = {}
+        for name in self.mem.attrs.C:
+            held = []
+            for a in (self._attrs_of_any(name) or []):
+                pos, neged = self._pos_neg_any(name, a)
+                if pos and not neged:
+                    held.append(a)
+            if not held:
+                continue
+            name_surfaces[name] = list({name} | self._synonyms(name)) + rev.get(name, [])
+            for a in held:
+                facts[(name, a)] = list({a} | self._synonyms(a)) + rev.get(a, [])
+        self.assoc.rebuild(name_surfaces, facts)
+
+    def _assoc_propose(self, s):
+        """B-558: lazy rebuild (index = pure derived view, never stale) + propose."""
+        self._assoc_rebuild()
+        return self.assoc.propose(s)
+
+    def _assoc_fallback(self, s):
+        """B-558: propose + LIVE re-verification gate. Returns an assoc_answer
+        response dict or None (caller falls through to its original abstention)."""
+        pname, ranked, diag = self._assoc_propose(s)
+        if pname is None or not ranked:
+            return None
+        verified = [f for f in ranked if self._has_via(*f)]
+        if not verified:
+            return None
+        text = ' และ '.join(f'{n} มี {a}' for n, a in verified[:5])
+        self._rec(s, 'assoc_answer', 'assoc', name=pname, facts=verified[:5], diag=diag)
+        return {'kind': 'assoc_answer', 'text': text, 'source': 'assoc',
+                'name': pname, 'facts': verified[:5], 'diag': diag}
 
     def _syn(self):
         syn = getattr(self.mem, 'syn', None)
