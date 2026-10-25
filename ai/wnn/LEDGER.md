@@ -1608,3 +1608,76 @@ demo-world teach, reverse query, three-way yes/no, probe, abstain,
 skill teaching end-to-end (n+ naming, 5 examples, 3 checks, query),
 save/reload persistence, retraction + negative evidence, corrupt load exit 2.
 Verdict: PASS
+
+## B-546 - Thai number words at the designed frame boundary
+Pre-registered 2026-10-25 (Ash: "มาพัฒนา hsml ต่อ"; parent: safe language intake,
+then Thai numeral words/varied phrasing; eval_ash3 baseline recorded the failure:
+'เลขคู่ ของ สี่ คืออะไร' abstained while digits and Thai glyphs answered).
+Design (DESIGNED, named - a finite number-word parser is NOT learned language
+understanding): a strict single-token Thai number-word parser (standard place
+grammar ศูนย์-เก้า/เอ็ด/ยี่ + สิบ ร้อย พัน หมื่น แสน ล้าน, places strictly
+descending, digits only before a place or at the end) maps a word to an integer
+ONLY at the numeric positions of the existing designed frames (skill query
+'X ของ N คืออะไร', teaching example 'ถ้า n เป็น N ตอบ M', confirmation
+'ตอบ M'). Attribute/name tokens are NOT normalized (classifier phrasing like
+'นก มี สอง ปีก' stays out of scope). A malformed word parses to None and the
+sentence falls through to exactly today's routing (no behavior change).
+Criteria:
+- C1: word-form skill query answers identically to the digit form
+  ('เลขคู่ ของ สี่ คืออะไร' -> '... คือ 1'; 'ผลบวกถึง ของ สิบ' -> 55)
+- C2: compounds: ยี่สิบ -> 20, สามสิบห้า -> 35, หนึ่งร้อยยี่สิบสาม -> 123,
+  สองหมื่นห้า -> 20005, หนึ่งล้าน -> 1000000 parse correctly
+- C3: full teaching with word-form examples and word-form confirmation answers
+  stores the skill; word-form query answers (rendered in digits, as today)
+- C4: malformed words abstain exactly as before ('สี่สอง', 'สิบสิบ', 'สามร้อยสองสิบสี่ห้า')
+- C5: noninterference - digit and Thai-glyph paths byte-identical; b544 harness
+  PASS; regress_skills PASS
+Verdict: PASS (run-2). Run-1 FAIL recorded: C2 as pre-registered asked for
+ANSWERS at สองหมื่นห้า (20,005) and หนึ่งล้าน, which exceed the pre-existing
+DESIGNED recursive-execution cap (CAPF=20,000) of the seeded skills - the
+words parsed correctly but execution abstained honestly. Criteria amended:
+in-range words verified end-to-end through the dialog path; large words
+verified at the parser (frame_num) plus an explicit over-cap honest-abstain
+check. Both runs in logs/b546_run.log. Regressions: b534/b535/b540/b541/
+b542/b543/b544, regress_skills, b539 chunked (bounded c6) all PASS
+(logs/b539_regress6.log). Scope named: finite designed number grammar at the
+frame boundary only - not learned language understanding; classifier phrasing
+('นก มี สอง ปีก') remains out of scope by design.
+
+## B-547 - bilingual slice: English frames sharing ONE attribute memory
+Pre-registered 2026-10-25 (Ash: Thai+English in parallel with shared knowledge;
+parent: cross-language testing, no human-like/all-word claim, ambiguity tests).
+Design (ALL DESIGNED, named - finite frames and stopwords are not learned
+understanding, and a taught link pair is not a claim the words are always
+interchangeable):
+1. Word links as taught DATA: frame '<thai> ภาษาอังกฤษคือ <english>' stores a
+   bidirectional pair. Resolution at the frame boundary maps a linked English
+   surface word to its linked Thai canonical word; unlinked words keep their
+   own surface form (dynamic vocabulary, same as B-541).
+2. English frames (finite): 'NAME has ATTR [and ATTR]' statements;
+   'what does NAME have' reverse query; 'does NAME have ATTR' three-way
+   yes/no (yes/no/unknown mirroring B-544); articles a/an/the are a finite
+   designed stopword list at those frame positions only.
+3. Ambiguity honesty: if a surface word has TWO taught links, using it in a
+   query abstains and names the candidates - no silent pick.
+Criteria:
+- C1: teach Thai facts + links, English queries answer from the SAME memory
+  ('นก มี ปีก' + link -> 'does นก have wings' yes; 'what does นก have' lists)
+- C2: reverse direction: teach 'a bird has wings' with links bird<->นก
+  wings<->ปีก, Thai probe 'ปีก' and reverse query 'นก มี อะไรบ้าง' see it
+- C3: ambiguity: second link on one surface word -> query abstains naming
+  candidates; retracting one link resolves it
+- C4: unseen English phrasing abstains; English question words never stored
+  as facts (B-544 guard semantics extend to the English frames)
+- C5: links survive save/load; noninterference: b546/b544 harnesses PASS,
+  regress_skills PASS
+Verdict: PASS (run-1). logs/b547_run.log. All five criteria green on the first
+run, including both cross-language directions, ambiguity abstain + resolution,
+and English-question-word storage guards. Regressions: b534/b535/b540/b541/
+b542/b543/b544/b546, regress_skills, b539 chunked (bounded c6) all PASS
+(logs/b539_regress7.log). Scope named: finite designed English frames +
+taught link pairs; a link is taught data, not a claim of always-interchangeable
+meaning; English answers render canonical (Thai) attr words - the system does
+not translate. Toward Ash's stated goal (compose NEW sentences to answer):
+current answers are still template-rendered from memory, NOT free composition -
+that gap is the next design question, recorded here honestly.

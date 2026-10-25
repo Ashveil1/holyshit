@@ -22,13 +22,18 @@ class HSMLMemory:
     def __init__(self):
         self.attrs = CountBackend()
         self.skills = {}   # task -> (prog_tuple, fn, provenance)
+        self.links = {}    # B-547: taught bilingual pairs, english surface -> {thai canonicals}
     def answer(self, sentence):
         toks = sentence.split()
         # skill query frame (DESIGNED): "<skillword> ของ <n> คืออะไร"
-        m = re.fullmatch(r'(\S+) ของ (\d+) คืออะไร', sentence)
+        m = re.fullmatch(r'(\S+) ของ (\S+) คืออะไร', sentence)  # B-546: relaxed; frame_num validates
+        if m:
+            _x = frame_num(m.group(2))
+            if _x is None:
+                m = None  # not a number: fall through to the probe path, as before
         if m and m.group(1) in SKILL_BY_WORD:
             task = SKILL_BY_WORD[m.group(1)]
-            x = int(m.group(2))
+            x = _x
             if task not in self.skills:
                 return {'kind': 'no_skill', 'skill': task}
             _, fn, prov = self.skills[task]
@@ -47,6 +52,52 @@ class HSMLMemory:
 _HERE = os.path.dirname(os.path.abspath(__file__))
 # Resolve against the module dir so hsml works from ANY cwd (chat.py usability fix);
 # a missed cache read would silently force a full startup re-derivation (expensive).
+
+# B-546: DESIGNED strict Thai number-word parser (named - finite grammar, NOT learned
+# language understanding). Maps a single Thai number-word token to an int, or None when
+# malformed. Applied ONLY at the numeric positions of the designed frames below.
+_THAI_DIGIT = {'ศูนย์': 0, 'หนึ่ง': 1, 'เอ็ด': 1, 'สอง': 2, 'ยี่': 2, 'สาม': 3,
+               'สี่': 4, 'ห้า': 5, 'หก': 6, 'เจ็ด': 7, 'แปด': 8, 'เก้า': 9}
+_THAI_PLACE = {'สิบ': 10, 'ร้อย': 100, 'พัน': 1000, 'หมื่น': 10000, 'แสน': 100000, 'ล้าน': 1000000}
+
+def _thaiframe_num(tok):
+    """Strict standard place grammar: digits only before a place or at the end, places
+    strictly descending, ยี่ only before สิบ, เอ็ด only trailing, ศูนย์ only alone."""
+    if not tok: return None
+    if tok == 'ศูนย์': return 0
+    i, total, pending, last_place = 0, 0, None, None
+    n = len(tok)
+    while i < n:
+        kind = val = None
+        for w in _THAI_PLACE:            # places first (multi-char, longest unique set)
+            if tok.startswith(w, i): kind, val, step = 'P', _THAI_PLACE[w], len(w); break
+        if kind is None:
+            for w in _THAI_DIGIT:
+                if tok.startswith(w, i): kind, val, step = 'D', _THAI_DIGIT[w], len(w); break
+        if kind is None: return None
+        word = tok[i:i+step]; i += step
+        if kind == 'D':
+            if pending is not None: return None              # two digits in a row
+            if word == 'ศูนย์': return None                  # ศูนย์ only valid alone
+            if word == 'ยี่' and not tok.startswith('สิบ', i): return None
+            if word == 'เอ็ด' and i != n: return None        # trailing ones only
+            pending = val
+        else:
+            if last_place is not None and val >= last_place: return None
+            total += (pending if pending is not None else 1) * val
+            pending, last_place = None, val
+    total += pending if pending is not None else 0
+    return total if pending is not None or total > 0 else None
+
+def frame_num(tok):
+    """Frame numeric position: ASCII/Unicode digits (int handles Thai glyphs) or a strict
+    Thai number word; anything else -> None (caller falls through to today's routing)."""
+    if tok.isdigit():
+        try: return int(tok)
+        except ValueError: return None
+    return _thaiframe_num(tok)
+
+
 CACHE = os.path.join(_HERE, 'logs', 'b527_skills_cache.pkl')
 
 def derive_skills(logged):

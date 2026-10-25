@@ -9,10 +9,11 @@ from cur7 import make_fn, show_prog
 import cur7 as C7
 import b529
 from b529 import induce, EX_RE, NAME_RE, CONF_RE
-from b527 import HSMLMemory, derive_skills, load_logged, SKILL_BY_WORD
+from b527 import HSMLMemory, derive_skills, load_logged, SKILL_BY_WORD, frame_num
 from b521 import ATTRS
 
 CONF_Q = 'ถ้า n เป็น {} ตอบอะไร'
+
 
 # B-541: DESIGNED statement frames (from B-521's world generator) - fullmatch parsing
 # grounds the name/attr token ROLES, enabling dynamic vocabulary learning.
@@ -28,6 +29,9 @@ STMT_FRAMES = [
 
 # B-544: FINITE designed guard list (named: this is NOT general Thai understanding) -
 # question/particle words must never be stored as names or attributes.
+EN_GUARD = frozenset(['what', 'does', 'do', 'is', 'are', 'many', 'much', 'who',
+                      'where', 'when', 'why', 'how', 'which', 'a', 'an', 'the',
+                      'has', 'have'])  # B-547: finite designed English guard (named)
 GUARD_WORDS = frozenset(['ไหม', 'มั้ย', 'หรือ', 'ใช่ไหม', 'อะไร',
                          'ครับ', 'ค่ะ', 'จ้า', 'นะ', 'ล่ะ', 'สิ'])
 # question STEMS match by prefix: Thai glues them to nouns ('กี่ลักษณะ' is one token -
@@ -118,27 +122,36 @@ class HSML:
             self.pending = None
             self._rec(s, 'naming', 'dialog', word=word)
             return {'kind': 'naming', 'text': f'รับทราบ วิธี {word}', 'source': 'dialog'}
-        m = EX_RE.fullmatch(s)
+        m = re.fullmatch(r'ถ้า n เป็น (\S+) ตอบ (\S+)', s)  # B-546: relaxed; _num validates
+        if m:
+            x, y = frame_num(m.group(1)), frame_num(m.group(2))
+            if x is None or y is None:
+                m = None  # malformed number word: fall through to today's routing
         if m:
             if self.ctx is None or self.pending is not None:
                 self._rec(s, 'abstain', 'no-open-teaching-context')
                 return {'kind': 'abstain', 'text': None, 'source': 'no-open-teaching-context'}
-            x, y = int(m.group(1)), int(m.group(2))
             self.ctx['pairs'].append((x, y))
             if len(self.ctx['pairs']) >= 5:
                 return self._try_induce(s)
             self._rec(s, 'example', 'dialog', n=len(self.ctx['pairs']))
             return {'kind': 'example', 'text': f'จำไว้แล้ว {len(self.ctx["pairs"])} ตัวอย่าง', 'source': 'dialog'}
-        m = CONF_RE.fullmatch(s)
+        m = re.fullmatch(r'ตอบ (\S+)', s)  # B-546: relaxed; _num validates
+        if m:
+            _cy = frame_num(m.group(1))
+            if _cy is None:
+                m = None
         if m:
             if self.pending is None:
                 self._rec(s, 'abstain', 'no-pending-confirmation')
                 return {'kind': 'abstain', 'text': None, 'source': 'no-pending-confirmation'}
-            return self._confirm(s, int(m.group(1)))
+            return self._confirm(s, _cy)
         # DESIGNED routing (named): skill query frame -> skill path; a sentence whose FIRST
         # token is an attribute word (or 'เขา') -> attr probe; otherwise a sentence containing
         # an attribute word -> declarative statement, observed into attr memory; else abstain.
-        m2 = re.fullmatch(r'(\S+) ของ (\d+) คืออะไร', s)
+        m2 = re.fullmatch(r'(\S+) ของ (\S+) คืออะไร', s)  # B-546: relaxed; _num validates
+        if m2 and frame_num(m2.group(2)) is None:
+            m2 = None  # not a number at all: fall through to today's routing
         toks = s.split()
         if m2:
             w0 = m2.group(1)
@@ -202,6 +215,71 @@ class HSML:
                 ans, truth = 'ไม่รู้', 'unknown'
             self._rec(s, 'yesno', 'attr', name=name, attr=attr, answer=truth)
             return {'kind': 'yesno', 'text': ans, 'source': 'attr', 'answer': truth}
+        # B-547 (ALL DESIGNED, finite - named: not learned understanding): bilingual slice.
+        ml = re.fullmatch(r'(\S+) ภาษาอังกฤษคือ ([A-Za-z]\S*)', s)
+        if ml is not None:
+            th, en = ml.group(1), ml.group(2).lower()
+            if _guarded(th) or en in EN_GUARD:
+                self._rec(s, 'abstain', 'link_guard'); return {'kind': 'abstain', 'text': None, 'source': 'link_guard'}
+            self.mem.links.setdefault(en, set()).add(th)
+            self._rec(s, 'link_stored', 'dialog', en=en, th=th)
+            return {'kind': 'link_stored', 'text': f'จำไว้แล้ว {en} = {th}', 'source': 'dialog'}
+        mlr = re.fullmatch(r'(\S+) ภาษาอังกฤษไม่ใช่ ([A-Za-z]\S*)', s)
+        if mlr is not None:
+            th, en = mlr.group(1), mlr.group(2).lower()
+            if en in self.mem.links and th in self.mem.links[en]:
+                self.mem.links[en].discard(th)
+                if not self.mem.links[en]: del self.mem.links[en]
+                self._rec(s, 'link_retracted', 'dialog', en=en, th=th)
+                return {'kind': 'link_retracted', 'text': 'ลบแล้ว', 'source': 'dialog'}
+            self._rec(s, 'nothing_to_retract', 'dialog', en=en, th=th)
+            return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
+        en_stmt = re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?(\S+) has ([A-Za-z]\S*)(?: and ([A-Za-z]\S*))?', s)
+        if en_stmt is not None:
+            raw_name = en_stmt.group(1)
+            raw_attrs = [g.lower() for g in en_stmt.groups()[1:] if g]
+            toks_en = [raw_name] + raw_attrs
+            if any(_guarded(t) or t.lower() in EN_GUARD for t in toks_en):
+                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'unsupported_question', 'text': 'ยังไม่รองรับคำถามแบบนี้', 'source': 'attr_guard'}
+            res = [self._resolve_link(t) for t in toks_en]
+            amb = [r for r in res if r[0] == 'amb']
+            if amb:
+                self._rec(s, 'abstain', 'link_ambiguous', cands=amb[0][1])
+                return {'kind': 'abstain', 'text': f"คำว่า '{toks_en[res.index(amb[0])]}' หมายถึงได้หลายคำ: {' '.join(amb[0][1])}", 'source': 'link_ambiguous'}
+            name = res[0][1]; attrs = [r[1] for r in res[1:]]
+            self.mem.attrs.observe_pairs(name, attrs)
+            self._rec(s, 'observed', 'attr', name=name, attrs=attrs)
+            return {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
+        en_rev = re.fullmatch(r'[Ww]hat does (\S+) have', s)
+        if en_rev is not None:
+            r0 = self._resolve_link(en_rev.group(1))
+            if r0[0] == 'amb':
+                self._rec(s, 'abstain', 'link_ambiguous', cands=r0[1])
+                return {'kind': 'abstain', 'text': f"'{en_rev.group(1)}' can mean: {' '.join(r0[1])}", 'source': 'link_ambiguous'}
+            attrs = self.mem.attrs.attrs_of(r0[1]) if hasattr(self.mem.attrs, 'attrs_of') else None
+            self._rec(s, 'reverse_query_en', 'attr', name=r0[1], found=attrs)
+            if attrs:
+                return {'kind': 'attr_list', 'text': f"{en_rev.group(1)} has {' '.join(attrs)}", 'source': 'attr', 'name': r0[1], 'attrs': attrs}
+            return {'kind': 'abstain', 'text': None, 'source': 'attr_reverse_en_' + ('empty' if attrs is not None else 'unknown')}
+        en_yn = re.fullmatch(r'[Dd]oes (\S+) have ([A-Za-z]\S+)', s)
+        if en_yn is not None:
+            rn = self._resolve_link(en_yn.group(1)); ra = self._resolve_link(en_yn.group(2).lower())
+            for w0, r0 in ((en_yn.group(1), rn), (en_yn.group(2), ra)):
+                if r0[0] == 'amb':
+                    self._rec(s, 'abstain', 'link_ambiguous', cands=r0[1])
+                    return {'kind': 'abstain', 'text': f"'{w0}' can mean: {' '.join(r0[1])}", 'source': 'link_ambiguous'}
+            name, attr = rn[1], ra[1]
+            if _guarded(name) or _guarded(attr):
+                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
+            be = self.mem.attrs
+            if hasattr(be, 'neg') and be.taught(name, attr):
+                ans, truth = 'yes', 'yes'
+            elif hasattr(be, 'neg') and be.neg(name, attr):
+                ans, truth = 'no', 'no_explicit'
+            else:
+                ans, truth = 'unknown', 'unknown'
+            self._rec(s, 'yesno_en', 'attr', name=name, attr=attr, answer=truth)
+            return {'kind': 'yesno', 'text': ans, 'source': 'attr', 'answer': truth}
         stmt = _parse_statement(s)
         if stmt is not None:
             name, attrs = stmt
@@ -227,6 +305,14 @@ class HSML:
                     'name': name, 'asked': attrs}
         self._rec(s, 'abstain', 'unrouted')
         return {'kind': 'abstain', 'text': None, 'source': 'unrouted'}
+
+    def _resolve_link(self, w):
+        """B-547: english surface word -> ('ok', canonical) or ('amb', [candidates]).
+        Unlinked words keep their own surface form (dynamic vocabulary, B-541)."""
+        c = self.mem.links.get(w) or self.mem.links.get(w.lower())
+        if not c: return ('ok', w)
+        if len(c) == 1: return ('ok', next(iter(c)))
+        return ('amb', sorted(c))
 
     def _try_induce(self, s):
         self.ctx['rounds'] += 1
@@ -352,7 +438,8 @@ class HSML:
                    'skills': {t: (prog, prov) for t, (prog, fn, prov) in self.mem.skills.items()},
                    'attrs_C': {n: dict(v) for n, v in self.mem.attrs.C.items()},
                    'attrs_N': {n: sorted(v) for n, v in getattr(self.mem.attrs, 'N', {}).items()},
-                   'words': dict(SKILL_BY_WORD)}
+                   'words': dict(SKILL_BY_WORD),
+                   'links': {k: sorted(v) for k, v in self.mem.links.items()}}
         if extra: payload.update(extra)
         with open(path, 'wb') as f: pickle.dump(payload, f)
 
@@ -384,5 +471,7 @@ class HSML:
         if hasattr(h.mem.attrs, 'N'):
             for n, v in payload.get('attrs_N', {}).items():
                 h.mem.attrs.N[n] = set(v)
+        for k, v in payload.get('links', {}).items():
+            h.mem.links[k] = set(v)
         SKILL_BY_WORD.update(payload['words'])
         return h
