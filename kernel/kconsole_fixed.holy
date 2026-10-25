@@ -14,6 +14,8 @@ view = kconsole_view.create(frame, session, 32, 136, 24, 280, 512)
 kfont.draw(frame, 32, 112, "RECENT INPUT - NOT EXECUTED", 0x16324f, 2)
 kfont.draw(frame, 32, 248, "INPUT:", 0x16324f, 2)
 kconsole_view.active(view)
+edit_label = "FIXED EDIT"
+submitted_label = "FIXED SUBMITTED"
 print "FIXED SESSION READY"
 while true:
   key = readkey_code()
@@ -24,6 +26,6 @@ while true:
     kconsole_view.active(view)
     # Fixed literal/scalar serial diagnostics, never string snapshots/JSON.
     if submitted:
-      print "FIXED SUBMITTED", session[7]
+      print submitted_label, session[7]
     else:
-      print "FIXED EDIT", session[3]
+      print edit_label, session[3]

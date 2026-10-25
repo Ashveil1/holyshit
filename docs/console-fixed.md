@@ -105,3 +105,11 @@ This is deliberately not the renderer-only 16-byte proof: freestanding string
 constants in diagnostics allocate through `x_str_at`. The whole interactive
 session is not allocation-free. The measured finite budget is not a bound on
 all event sequences, an indefinite-lifetime guarantee or a new heap/GC policy.
+
+The demo now creates the edit/submission diagnostic label strings once before
+its loop and reuses them, rather than reconstructing the same string for every
+event. With identical input/serial output and pixels, the measured first16-event
+gap drops from576 to64bytes: READY's48bytes plus16bytes of marker alignment.
+The two retained labels initialize before the measurement. The gate still
+includes actual serial printing and does not establish all-session zero
+allocation, source-independent heap lifetime or GC.
