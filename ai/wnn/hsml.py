@@ -4,8 +4,9 @@ dialog teaching (b529 induction protocol, zero-eval capture default post-B-533);
 observe into attribute memory; queries go through the existing answer path; anything else
 abstains. Frames + number parsing are DESIGNED (named). A skill taught mid-conversation is
 stored in the SAME memory the query path reads and is immediately queryable."""
-import random, re
+import os, pickle, random, re
 from cur7 import make_fn, show_prog
+import cur7 as C7
 import b529
 from b529 import induce, EX_RE, NAME_RE, CONF_RE
 from b527 import HSMLMemory, derive_skills, load_logged, SKILL_BY_WORD
@@ -14,7 +15,9 @@ from b521 import ATTRS
 CONF_Q = 'ถ้า n เป็น {} ตอบอะไร'
 
 class HSML:
-    def __init__(self, seed=0):
+    def __init__(self, seed=0, induction_lib='separated'):  # B-536 verdict: separated is the default induction regime
+        assert induction_lib in ('full', 'separated')
+        self.induction_lib = induction_lib  # B-536: 'separated' excludes heavy pinned baselib from the SEARCH space only
         self.mem = HSMLMemory()
         self.mem.skills = derive_skills(load_logged())
         self.rng = random.Random(seed)
@@ -87,7 +90,15 @@ class HSML:
             word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
             self._rec(s, 'teach_failed', 'induction', word=word, tried=tried)
             return {'kind': 'teach_failed', 'text': None, 'source': 'induction', 'tried': tried}
-        p, tried = induce(self.ctx['pairs'], **({} if self.induce_cap is None else {'cap': self.induce_cap}))
+        heavy = ('fact', 'sumto', 'square', 'choose2', 'dblfact')  # B-536: pinned recursive baselib
+        popped = {}
+        if self.induction_lib == 'separated':
+            for k0 in heavy:
+                if k0 in C7.LIB: popped[k0] = C7.LIB.pop(k0)
+        try:
+            p, tried = induce(self.ctx['pairs'], **({} if self.induce_cap is None else {'cap': self.induce_cap}))
+        finally:
+            C7.LIB.update(popped)
         self.ctx['tried_tot'] += tried
         if p is None:
             word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
@@ -117,6 +128,10 @@ class HSML:
             word = self.ctx['word']
             tot = self.ctx['tried_tot']
             SKILL_BY_WORD[word] = word
+            # dialog-taught skills enter the induction LIB at store time (B-531 reuse path,
+            # now in-conversation; same wrapping as b530.as_primitive / pin_lib)
+            C7.CAPF[0] = 20000
+            C7.LIB[word] = (lambda ff: (lambda a, b: ff(a, b)))(pend['fn'])
             self.mem.skills[word] = (pend['prog'], pend['fn'],
                 {'source': 'dialog', 'tried': tot, 'examples': len(self.ctx['pairs']) + 3})
             self._rec(s, 'skill_stored', 'induction', word=word, tried=tot,
@@ -126,3 +141,34 @@ class HSML:
         q = CONF_Q.format(pend['checks'][pend['passed']])
         self._rec(s, 'confirmation_question', 'induction', passed=pend['passed'])
         return {'kind': 'confirmation_question', 'text': q, 'source': 'induction'}
+
+    def save(self, path, extra=None):
+        """Persist the FULL learned state as data (B-535): skills {task: (prog, provenance)}
+        (fn rebuilt on load), attr count table, dialog-added word map. Format-tagged."""
+        payload = {'format': 'hsml-mem-1',
+                   'skills': {t: (prog, prov) for t, (prog, fn, prov) in self.mem.skills.items()},
+                   'attrs_C': {n: dict(v) for n, v in self.mem.attrs.C.items()},
+                   'words': dict(SKILL_BY_WORD)}
+        if extra: payload.update(extra)
+        with open(path, 'wb') as f: pickle.dump(payload, f)
+
+    @classmethod
+    def load(cls, path, seed=0):
+        """Fresh HSML (baselib re-derived) + overlay saved learned state. Missing, corrupt or
+        wrong-format files fail loudly - never a silent fresh memory (B-535 C6)."""
+        if not os.path.exists(path):
+            raise FileNotFoundError(f'hsml memory file missing: {path}')
+        try:
+            with open(path, 'rb') as f: payload = pickle.load(f)
+        except Exception as e:
+            raise RuntimeError(f'hsml memory file corrupt: {path} ({e})')
+        if not isinstance(payload, dict) or payload.get('format') != 'hsml-mem-1':
+            raise RuntimeError(f'hsml memory file wrong format: {path}')
+        h = cls(seed=seed)
+        C7.CAPF[0] = 20000
+        for t, (prog, prov) in payload['skills'].items():
+            h.mem.skills[t] = (prog, make_fn(prog), prov)
+        for n, v in payload['attrs_C'].items():
+            h.mem.attrs.C[n] = dict(v)
+        SKILL_BY_WORD.update(payload['words'])
+        return h
