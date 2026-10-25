@@ -1587,4 +1587,8 @@ Criteria:
 - C5: yes/no three-way: taught=ใช่, never-taught=ไม่รู้ (NOT ไม่), retracted=ไม่
 - C6: negative evidence survives save/load; re-teach clears it
 - C7: noninterference - corpus battery exact, seeded 40/40 x4, b541/b542/b543 regressions PASS
-Verdict: PENDING
+Verdict: PASS (run-2). Run-1 FAIL recorded: the exact-match guard missed glued
+question stems (e.g. 'กี่ลักษณะ' in attr position) - fixed with the GUARD_STEMS
+prefix match; both runs in logs/b544_run.log. b539 chunked regression
+(s1a/s1b/s1c/s2, bounded c6 60,001) PASS after the change
+(logs/b539_regress5.log); b541/b542/b543/b534/b535/b540 regressions PASS.

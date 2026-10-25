@@ -26,6 +26,18 @@ STMT_FRAMES = [
     (re.compile(r'(\S+) ของ (\S+) สวย'), lambda m: (m.group(2), [m.group(1)])),
 ]
 
+# B-544: FINITE designed guard list (named: this is NOT general Thai understanding) -
+# question/particle words must never be stored as names or attributes.
+GUARD_WORDS = frozenset(['ไหม', 'มั้ย', 'หรือ', 'ใช่ไหม', 'อะไร',
+                         'ครับ', 'ค่ะ', 'จ้า', 'นะ', 'ล่ะ', 'สิ'])
+# question STEMS match by prefix: Thai glues them to nouns ('กี่ลักษณะ' is one token -
+# run-1 of b544 caught exact-matching missing it). Designed heuristic, named limits:
+# a legitimately taught word starting with a question stem would be refused too.
+GUARD_STEMS = ('กี่', 'เท่าไหร่', 'เท่าไหร', 'ทำไม', 'เมื่อไหร่', 'ที่ไหน', 'ใคร', 'อย่างไร', 'อะไร')
+
+def _guarded(w):
+    return w in GUARD_WORDS or any(w.startswith(st) for st in GUARD_STEMS)
+
 # B-542: DESIGNED negation frames - retraction of taught attribute facts.
 NEG_FRAMES = [
     (re.compile(r'(\S+) ไม่มี (\S+) และ (\S+)'), lambda m: (m.group(1), [m.group(2), m.group(3)])),
@@ -174,9 +186,29 @@ class HSML:
             # unknown name OR fully retracted: honest abstain, no fabricated list
             return {'kind': 'abstain', 'text': None,
                     'source': 'attr_reverse_' + ('empty' if attrs is not None else 'unknown')}
+        # B-544 (DESIGNED): yes/no question 'X มี Y ไหม' - three-way honest answer:
+        # taught -> ใช่; explicitly retracted -> ไม่; otherwise -> ไม่รู้ (absence != false).
+        myn = re.fullmatch(r'(\S+) มี (\S+) ไหม', s)
+        if myn is not None:
+            name, attr = myn.group(1), myn.group(2)
+            be = self.mem.attrs
+            if _guarded(name) or _guarded(attr):
+                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
+            if hasattr(be, 'neg') and be.taught(name, attr):
+                ans, truth = 'ใช่', 'yes'
+            elif hasattr(be, 'neg') and be.neg(name, attr):
+                ans, truth = 'ไม่', 'no_explicit'
+            else:
+                ans, truth = 'ไม่รู้', 'unknown'
+            self._rec(s, 'yesno', 'attr', name=name, attr=attr, answer=truth)
+            return {'kind': 'yesno', 'text': ans, 'source': 'attr', 'answer': truth}
         stmt = _parse_statement(s)
         if stmt is not None:
             name, attrs = stmt
+            # B-544: questions/particles are never stored as facts (nonmutation)
+            if _guarded(name) or any(_guarded(a) for a in attrs):
+                self._rec(s, 'abstain', 'attr_guard', name=name, attrs=attrs)
+                return {'kind': 'unsupported_question', 'text': 'ยังไม่รองรับคำถามแบบนี้', 'source': 'attr_guard'}
             self.mem.attrs.observe_pairs(name, attrs)
             self._rec(s, 'observed', 'attr', name=name, attrs=attrs)
             return {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
@@ -319,6 +351,7 @@ class HSML:
         payload = {'format': 'hsml-mem-1',
                    'skills': {t: (prog, prov) for t, (prog, fn, prov) in self.mem.skills.items()},
                    'attrs_C': {n: dict(v) for n, v in self.mem.attrs.C.items()},
+                   'attrs_N': {n: sorted(v) for n, v in getattr(self.mem.attrs, 'N', {}).items()},
                    'words': dict(SKILL_BY_WORD)}
         if extra: payload.update(extra)
         with open(path, 'wb') as f: pickle.dump(payload, f)
@@ -347,5 +380,9 @@ class HSML:
                 C7.LIB[t] = (lambda ff: (lambda a, b: ff(a, b)))(fn)
         for n, v in payload['attrs_C'].items():
             h.mem.attrs.C[n] = dict(v)
+        # B-544: restore negative evidence (older saves without attrs_N default to empty)
+        if hasattr(h.mem.attrs, 'N'):
+            for n, v in payload.get('attrs_N', {}).items():
+                h.mem.attrs.N[n] = set(v)
         SKILL_BY_WORD.update(payload['words'])
         return h

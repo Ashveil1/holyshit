@@ -1,0 +1,2 @@
+{"bounded_aware_merge": true, "c6_note": "bounded control 60,001 (sandbox ceiling); full 700,001 control stands from the original merged run", "checks": {"c1": true, "c2": true, "c3": true, "c4": true, "c5": true, "c6": true, "c7": true, "c8": true, "c9": true}, "verdict": "PASS"}
+DONE
