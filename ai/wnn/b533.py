@@ -58,6 +58,9 @@ def arm_capture_compare(train, arm):
     CAPS.append((arm, block_tried(Lo)))
     return Lo, to, Lz, tz
 
+def capture_zero_lists(train):
+    return capture_zero(train)[0]
+
 def run():
     out = {}
     key, truth = TARGET
@@ -68,7 +71,7 @@ def run():
     # ---- ablated arm: zero-eval capture ----
     mem = fresh_mem()
     for p0 in ('double', 'quad', 'sumto'): LIB.pop(p0, None)
-    b529.capture_lists = capture_zero
+    b529.capture_lists = capture_zero_lists
     aok, alog = teach(mem, Teacher(truth), key)
     out['ablated'] = {'ok': aok, **alog}
     print('ablated zero-eval:', aok, alog, flush=True)

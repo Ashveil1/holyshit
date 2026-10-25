@@ -69,13 +69,16 @@ def run():
     out['c3_seeded'] = c3
     b = battery(h.mem.attrs)
     out['c3_attr_battery'] = {k: f'{v[0]}/{v[1]}' for k, v in b.items()}
-    # C6: garbage teacher in-conversation
+    # C6: garbage teacher in-conversation (bounded cap per LEDGER B-534 Amendment 1:
+    # pinned-12 LIB exhaustive induce measured at 0.6 tried/s sustained in deep phases ->
+    # full 700,001 cap projected >8 CPU-days/round; gate-rejection control does not need it)
+    h.induce_cap = 60000
     grng = random.Random(555); memo = {}
     def gtruth(x):
         if x not in memo: memo[x] = grng.randrange(0, 1000)
         return memo[x]
     r = teach_via_dialog(h, 'สามเท่า', gtruth)
-    out['c6_garbage'] = {'final_kind': r['kind'], 'tried': r.get('tried')}
+    out['c6_garbage'] = {'final_kind': r['kind'], 'tried': r.get('tried'), 'cap': h.induce_cap}
     r = h.hear('สามเท่า ของ 5 คืออะไร')
     out['c6_garbage_abstains'] = (r['kind'] == 'abstain')
     print('C6:', out['c6_garbage'], flush=True)

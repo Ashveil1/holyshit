@@ -21,6 +21,7 @@ class HSML:
         self.ctx = None        # {'word':..., 'pairs':[...], 'rounds':int}
         self.pending = None    # {'prog':..., 'fn':..., 'checks':[cx,...], 'passed':int}
         self.log = []          # (sentence, response-kind, source)
+        self.induce_cap = None  # None -> b529 default; B-534 Amendment 1 sets a bounded cap for C6
 
     def _rec(self, sentence, kind, source, **extra):
         self.log.append({'in': sentence, 'kind': kind, 'source': source, **extra})
@@ -86,7 +87,7 @@ class HSML:
             word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
             self._rec(s, 'teach_failed', 'induction', word=word, tried=tried)
             return {'kind': 'teach_failed', 'text': None, 'source': 'induction', 'tried': tried}
-        p, tried = induce(self.ctx['pairs'])
+        p, tried = induce(self.ctx['pairs'], **({} if self.induce_cap is None else {'cap': self.induce_cap}))
         self.ctx['tried_tot'] += tried
         if p is None:
             word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
@@ -114,13 +115,14 @@ class HSML:
         pend['passed'] += 1
         if pend['passed'] >= 3:
             word = self.ctx['word']
+            tot = self.ctx['tried_tot']
             SKILL_BY_WORD[word] = word
             self.mem.skills[word] = (pend['prog'], pend['fn'],
-                {'source': 'dialog', 'tried': pend['tried'], 'examples': len(self.ctx['pairs']) + 3})
-            self._rec(s, 'skill_stored', 'induction', word=word, tried=pend['tried'],
+                {'source': 'dialog', 'tried': tot, 'examples': len(self.ctx['pairs']) + 3})
+            self._rec(s, 'skill_stored', 'induction', word=word, tried=tot,
                       prog=show_prog(pend['prog']))
             self.ctx = None; self.pending = None
-            return {'kind': 'skill_stored', 'text': f'เก็บวิธี {word} แล้ว', 'source': 'induction'}
+            return {'kind': 'skill_stored', 'text': f'เก็บวิธี {word} แล้ว', 'source': 'induction', 'tried': tot}
         q = CONF_Q.format(pend['checks'][pend['passed']])
         self._rec(s, 'confirmation_question', 'induction', passed=pend['passed'])
         return {'kind': 'confirmation_question', 'text': q, 'source': 'induction'}
