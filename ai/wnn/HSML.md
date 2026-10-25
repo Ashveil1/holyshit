@@ -103,3 +103,5 @@ a single measurement, not a hardware guarantee).
   what you teach it.
 - Teaching search can be expensive; there is no guarantee a target is found.
 - Single-user, local, no concurrency, no access control.
+---
+License: hsml source in this directory is AGPL-3.0-only (see LICENSE and NOTICE). The rest of the repository remains Apache-2.0. Prior Apache-2.0 releases remain valid.

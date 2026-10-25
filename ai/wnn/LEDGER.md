@@ -1784,3 +1784,23 @@ b546/b547/b548 + regress_skills PASS; b539 chunked bounded-c6 PASS
 (logs/b539_regress9.log, bounded-aware merge as regress7/8). Scope named:
 finite designed marker lists and frames - confidence separation for in-chat
 learning, NOT learning from free ordinary dialogue (that remains open).
+
+## Licensing decision (2026-10-25) - hsml component -> AGPL-3.0-only
+Ash's explicit approval (WhatsApp, 2026-10-25): initial "ตามนั้นเปลี่ยนเป็น
+AGPLV3 ฉบับเต็มครบทุกตัวอักษร",
+reconsidered GPLv3 ("หรือ gplv3 ธรรมดาดี"), then confirmed after the AGPL-vs-GPL
+tradeoff (cloud-hosted modified services must offer source) with "ใช่"
+to the explicit question
+"ให้ผมเดินหน้าต่อด้วย AGPLv3 เฉพาะ hsml เลยไหม?".
+Applied: ai/wnn/LICENSE = complete canonical AGPLv3 text fetched byte-exact
+from https://www.gnu.org/licenses/agpl-3.0.txt (34,523 bytes; a web_fetch
+markdown copy was REJECTED - it had stripped <https://...> URLs and was not
+character-complete). ai/wnn/NOTICE scopes AGPL-3.0-only to the hsml source,
+excludes third-party data (MNIST, Cook 2019 wormwiring-derived connectome -
+reuse license not established, SNIPS CC0), keeps the rest of the repo
+Apache-2.0, and states prior Apache releases remain valid/irrevocable.
+Rights check: git authors of ai/wnn are all Ash's own identities; provenance
+grep found no copyright headers or vendored-source markers (residual: cannot
+prove a negative - a headerless copied file would not be caught). No "or
+later" wording added (Ash chose v3 only). No release/tag; root LICENSE and
+non-hsml dirs untouched.
