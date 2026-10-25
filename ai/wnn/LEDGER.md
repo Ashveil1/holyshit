@@ -1804,3 +1804,106 @@ grep found no copyright headers or vendored-source markers (residual: cannot
 prove a negative - a headerless copied file would not be caught). No "or
 later" wording added (Ash chose v3 only). No release/tag; root LICENSE and
 non-hsml dirs untouched.
+
+## B-551 (pre-registered 2026-10-25): bounded three-hop verified composition
+Extends B-548's two-hop gate to exactly three hops. ALL DESIGNED, named: finite
+frames, not learned understanding, not free sentence composition.
+Query forms (single-token surfaces only):
+- TH: 'X มี อะไรที่มี Y ที่มี Z'
+- EN: 'what does X have that has Y that has Z'  (link-resolved like B-548 EN)
+Semantics (predeclared): find A with holds(X,A) AND holds(A,Y) AND holds(Y,Z),
+every link re-verified against LIVE memory at emission (same gate as B-548).
+Emit TH: 'X มี A และ A มี Y และ Y มี Z' / EN: 'X has A and A has Y and Y has Z'
+(' / ' joins multiple verified A).
+Pass criteria:
+- C1: teach X-A, A-Y, Y-Z -> composed naming A (verified==[A])
+- C2: two different A candidates both verified -> both emitted
+- C3a/b/c: missing Y-Z / X-A / A-Y link -> ไม่รู้ (TH) or unknown (EN)
+- C4: teach all three, then 'ไม่ใช่ A มี Y' -> re-ask answers ไม่รู้
+  (mid-chain retraction kills composition)
+- C5 noninterference: b534-b549 harnesses + regress_skills PASS unchanged
+Named scope: exactly three hops, attr domain only, single-token surfaces;
+NOT general n-hop. Read-only frames: never store.
+
+## B-551 verdict (2026-10-25): PASS
+Own criteria 10/10 first run (logs/b551_run.log): C1 single chain composed
+('X มี A และ A มี Y และ Y มี Z'), C2 two verified candidates both emitted,
+C3a/b/c per-hop broken chains all abstain ไม่รู้, C4 mid-chain retraction drops
+the broken candidate while the intact one still composes, C4b full break ->
+ไม่รู้, EN twin composes cross-language via taught links, EN broken -> unknown.
+C5 noninterference: b534-b549 harnesses clean; regress_skills PASS
+(logs/b551_regress_skills.log: clean-process 40/40 x4 skills, missing-pinning
+error path, corrupt-cache fallback). Run note (honest): two earlier
+regress_skills attempts hit sandbox timeouts because a killed run had truncated
+logs/b527_skills_cache.pkl; the DESIGNED corrupt-cache fallback absorbed it
+(warning + full re-derivation, 76s), after which the suite completed. No code
+change needed; the incident exercised the same fallback path the suite tests.
+
+## B-552 (pre-registered 2026-10-25): English article coverage (a/an/the)
+Gap found by the B-550 comparison battery (hsml_S1b/S2 transcripts): teach
+'a bird has a beak', query 'what does a bird have', yes/no 'does a bird have
+wings' were REJECTED (no-answer). ALL DESIGNED parser widening, named:
+optional article (a/an/the, any case) before the subject in English
+reverse/yes-no queries, and before each attribute in English teach statements
+and 'maybe ...' uncertain statements. Stripped articles never enter vocab.
+Explicit NON-goals (named limits): NO morphology ('beak' vs 'beaks' stay
+distinct words), no multiword names, articles only a/an/the.
+Pass criteria:
+- C1: 'a bird has a beak' -> observed, attr stored as 'beak'
+- C2: 'an owl has an eye and a wing' -> attrs 'eye','wing'
+- C3: 'what does a bird have' -> lists taught attrs
+- C4: 'does a bird have wings' -> yes; 'does a bird have gills' -> unknown
+- C5: pre-existing bare forms unchanged ('a bird has wings', 'what does bird
+  have', 'does bird have wings')
+- C6: 'maybe a bird has a beak' -> uncertain_not_stored, nothing stored,
+  follow-up 'does a bird have beaks'... 'does bird have beak' -> unknown
+- C7 noninterference: b534-b551 + regress_skills PASS unchanged
+
+## B-552 verdict (2026-10-25): PASS
+Own criteria 13/13 first run (logs/b552_run.log): articles stripped before
+subject (reverse/yes-no) and attributes (teach + 'maybe'); bare forms
+unchanged; uncertain path stores nothing; named no-morphology limit verified
+('beak' != 'beaks' -> unknown). C7 noninterference: b534-b551 clean,
+regress_skills PASS. End-to-end chat transcript of the exact phrases the
+B-550 battery saw rejected: logs/b552_chat.log ('a bird has a beak' ->
+จำไว้แล้ว, 'what does a bird have' -> 'bird has beak tail', 'does a bird have
+wings' -> unknown (wings NOT taught in that run - correct abstention),
+gills -> unknown). Correction: an earlier version of this entry claimed the
+wings answer was 'yes'; the literal log says unknown, which is the honest
+answer for an untaught attribute.
+
+## B-553 (pre-registered 2026-10-25): Thai synonym intake while chatting
+Ash's steering: learn while chatting. ALL DESIGNED frames, named; query-time
+resolution only (no memory rewrite, mirrors B-547 link design).
+Frames (single-token Thai words):
+- teach: 'X กับ Y คือคำเดียวกัน' -> symmetric link stored (ack จำไว้แล้ว)
+- retract: 'X กับ Y ไม่ใช่คำเดียวกัน' -> link removed; honest nothing-to-retract
+- uncertain: marker + synonym sentence -> uncertain_not_stored (B-549 path extended)
+Semantics (predeclared): DIRECT links only, NOT transitive. Queries about X
+see facts taught under X and its direct synonyms (union for reverse query;
+exists-for yes/no and composition gates). Retraction ('ไม่ใช่ X มี Y' / 'X ไม่มี
+Y') removes Y from every direct-synonym surface that holds it. CONFLICT (one
+surface holds X-Y, another holds explicit neg X-Y) -> yes/no answers ไม่รู้.
+Emission surfaces stay as stored (compose may emit the stored surface form).
+Out of scope (named): the 'which things have' probe, skill names, morphology,
+multiword synonyms, transitive chains.
+Pass criteria:
+- C1: teach 'X มี Y', link X=Z, ask 'Z มี อะไรบ้าง' -> lists Y
+- C2: symmetric (ask X, facts taught under Z)
+- C3: yes/no via synonym -> ใช่
+- C4: retract link -> re-ask -> ไม่รู้/abstain; link retract idempotence honest
+- C5: uncertain synonym sentence stores nothing (link absent after)
+- C6: conflict -> ไม่รู้
+- C7: retraction via synonym removes from the holding surface; re-ask -> ไม่รู้
+- C8: composition (2-hop + 3-hop) works through a synonym hop
+- C9 noninterference: b534-b552 + regress_skills PASS unchanged
+
+## B-553 verdict (2026-10-25): PASS
+Own criteria 15/15 first run (logs/b553_run.log): C1/C2 union reverse query
+both directions, C3 yes/no via synonym, C5 uncertain synonym stores nothing,
+C8 composition through a synonym hop (2-hop + 3-hop), C7 retraction via
+synonym removes from the holding surface (explicit ไม่ after), C4 link
+retraction restores per-surface view (own facts survive), C6 conflict ->
+ไม่รู้, guard refuses question-stem words. C9 noninterference: b534-b552
+clean, regress_skills PASS. Compat: pre-B-553 memory pickle
+(/tmp/b552_chat.pkl) loads and answers correctly (lazy syn init).

@@ -195,7 +195,7 @@ class HSML:
         mrev = re.fullmatch(r'(\S+) มี อะไรบ้าง', s)
         if mrev is not None:
             name = mrev.group(1)
-            attrs = self.mem.attrs.attrs_of(name) if hasattr(self.mem.attrs, 'attrs_of') else None
+            attrs = self._attrs_of_any(name)
             self._rec(s, 'reverse_query', 'attr', name=name, found=attrs)
             if attrs:
                 return {'kind': 'attr_list', 'text': f"{name} มี {' '.join(attrs)}",
@@ -211,9 +211,13 @@ class HSML:
             be = self.mem.attrs
             if _guarded(name) or _guarded(attr):
                 self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
-            if hasattr(be, 'neg') and be.holds(name, attr):
+            pos = self._holds_any(name, attr)
+            neged = self._neg_any(name, attr)
+            if pos and neged:
+                ans, truth = 'ไม่รู้', 'conflict'  # B-553: synonym surfaces disagree
+            elif pos:
                 ans, truth = 'ใช่', 'yes'
-            elif hasattr(be, 'neg') and be.neg(name, attr):
+            elif neged:
                 ans, truth = 'ไม่', 'no_explicit'
             else:
                 ans, truth = 'ไม่รู้', 'unknown'
@@ -224,6 +228,23 @@ class HSML:
         # taught words; every emitted link re-verified against LIVE memory at speak
         # time (no cache trusted at emission). Read-only: these frames never store.
         # NOT free sentence composition - finite designed frames, honestly named.
+        mq3 = re.fullmatch(r'(\S+) มี อะไรที่มี (\S+) ที่มี (\S+)', s)
+        if mq3 is not None:
+            x, y, z = mq3.group(1), mq3.group(2), mq3.group(3)
+            if _guarded(x) or _guarded(y) or _guarded(z):
+                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
+            return self._compose_three_hop(s, x, y, z, 'th', x, y, z)
+        en3 = re.fullmatch(r'[Ww]hat does (\S+) have that has ([A-Za-z]\S+) that has ([A-Za-z]\S+)', s)
+        if en3 is not None:
+            rx = self._resolve_link(en3.group(1)); ry = self._resolve_link(en3.group(2).lower()); rz = self._resolve_link(en3.group(3).lower())
+            for w0, r0 in ((en3.group(1), rx), (en3.group(2), ry), (en3.group(3), rz)):
+                if r0[0] == 'amb':
+                    self._rec(s, 'abstain', 'link_ambiguous', cands=r0[1])
+                    return {'kind': 'abstain', 'text': f"'{w0}' can mean: {' '.join(r0[1])}", 'source': 'link_ambiguous'}
+            x, y, z = rx[1], ry[1], rz[1]
+            if _guarded(x) or _guarded(y) or _guarded(z):
+                self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
+            return self._compose_three_hop(s, x, y, z, 'en', en3.group(1), en3.group(2), en3.group(3))
         mq = re.fullmatch(r'(\S+) มี อะไรที่มี (\S+)', s)
         if mq is not None:
             x, y = mq.group(1), mq.group(2)
@@ -260,12 +281,36 @@ class HSML:
                 return {'kind': 'link_retracted', 'text': 'ลบแล้ว', 'source': 'dialog'}
             self._rec(s, 'nothing_to_retract', 'dialog', en=en, th=th)
             return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
+        # B-553 (ALL DESIGNED, named): Thai synonym intake while chatting.
+        msyn = re.fullmatch(r'(\S+) กับ (\S+) คือคำเดียวกัน', s)
+        if msyn is not None:
+            x, y = msyn.group(1), msyn.group(2)
+            if x == y or _guarded(x) or _guarded(y):
+                self._rec(s, 'abstain', 'syn_guard'); return {'kind': 'abstain', 'text': None, 'source': 'syn_guard'}
+            syn = self._syn()
+            syn.setdefault(x, set()).add(y); syn.setdefault(y, set()).add(x)
+            self._rec(s, 'syn_stored', 'dialog', x=x, y=y)
+            return {'kind': 'syn_stored', 'text': 'จำไว้แล้ว', 'source': 'dialog'}
+        msynr = re.fullmatch(r'(\S+) กับ (\S+) ไม่ใช่คำเดียวกัน', s)
+        if msynr is not None:
+            x, y = msynr.group(1), msynr.group(2)
+            syn = self._syn()
+            if y in syn.get(x, set()):
+                syn[x].discard(y)
+                if not syn[x]: del syn[x]
+                if x in syn.get(y, set()):
+                    syn[y].discard(x)
+                    if not syn[y]: del syn[y]
+                self._rec(s, 'syn_retracted', 'dialog', x=x, y=y)
+                return {'kind': 'syn_retracted', 'text': 'ลบแล้ว', 'source': 'dialog'}
+            self._rec(s, 'nothing_to_retract', 'dialog', x=x, y=y)
+            return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
         en_maybe = re.fullmatch(r'[Mm]aybe (.+)', s)
-        if en_maybe is not None and re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?\S+ has [A-Za-z]\S*(?: and [A-Za-z]\S*)?', en_maybe.group(1)):
+        if en_maybe is not None and re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?\S+ has (?:[Aa] |[Aa]n |[Tt]he )?[A-Za-z]\S*(?: and (?:[Aa] |[Aa]n |[Tt]he )?[A-Za-z]\S*)?', en_maybe.group(1)):
             self._rec(s, 'uncertain_not_stored', 'dialog')
             return {'kind': 'uncertain_not_stored',
                     'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}
-        en_stmt = re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?(\S+) has ([A-Za-z]\S*)(?: and ([A-Za-z]\S*))?', s)
+        en_stmt = re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?(\S+) has (?:[Aa] |[Aa]n |[Tt]he )?([A-Za-z]\S*)(?: and (?:[Aa] |[Aa]n |[Tt]he )?([A-Za-z]\S*))?', s)
         if en_stmt is not None:
             raw_name = en_stmt.group(1)
             raw_attrs = [g.lower() for g in en_stmt.groups()[1:] if g]
@@ -281,7 +326,7 @@ class HSML:
             self.mem.attrs.observe_pairs(name, attrs)
             self._rec(s, 'observed', 'attr', name=name, attrs=attrs)
             return {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
-        en_rev = re.fullmatch(r'[Ww]hat does (\S+) have', s)
+        en_rev = re.fullmatch(r'[Ww]hat does (?:[Aa] |[Aa]n |[Tt]he )?(\S+) have', s)
         if en_rev is not None:
             r0 = self._resolve_link(en_rev.group(1))
             if r0[0] == 'amb':
@@ -292,7 +337,7 @@ class HSML:
             if attrs:
                 return {'kind': 'attr_list', 'text': f"{en_rev.group(1)} has {' '.join(attrs)}", 'source': 'attr', 'name': r0[1], 'attrs': attrs}
             return {'kind': 'abstain', 'text': None, 'source': 'attr_reverse_en_' + ('empty' if attrs is not None else 'unknown')}
-        en_yn = re.fullmatch(r'[Dd]oes (\S+) have ([A-Za-z]\S+)', s)
+        en_yn = re.fullmatch(r'[Dd]oes (?:[Aa] |[Aa]n |[Tt]he )?(\S+) have (?:[Aa] |[Aa]n |[Tt]he )?([A-Za-z]\S+)', s)
         if en_yn is not None:
             rn = self._resolve_link(en_yn.group(1)); ra = self._resolve_link(en_yn.group(2).lower())
             for w0, r0 in ((en_yn.group(1), rn), (en_yn.group(2), ra)):
@@ -302,10 +347,13 @@ class HSML:
             name, attr = rn[1], ra[1]
             if _guarded(name) or _guarded(attr):
                 self._rec(s, 'abstain', 'attr_guard'); return {'kind': 'abstain', 'text': None, 'source': 'attr_guard'}
-            be = self.mem.attrs
-            if hasattr(be, 'neg') and be.holds(name, attr):
+            pos = self._holds_any(name, attr)
+            neged = self._neg_any(name, attr)
+            if pos and neged:
+                ans, truth = 'unknown', 'conflict'  # B-553: synonym surfaces disagree
+            elif pos:
                 ans, truth = 'yes', 'yes'
-            elif hasattr(be, 'neg') and be.neg(name, attr):
+            elif neged:
                 ans, truth = 'no', 'no_explicit'
             else:
                 ans, truth = 'unknown', 'unknown'
@@ -318,7 +366,7 @@ class HSML:
         toks_u = s.split()
         if any(t in UNCERTAIN_TH for t in toks_u):
             rest = ' '.join(t for t in toks_u if t not in UNCERTAIN_TH)
-            if _parse_statement(rest) is not None:
+            if _parse_statement(rest) is not None or re.fullmatch(r'\S+ กับ \S+ คือคำเดียวกัน', rest) is not None:
                 self._rec(s, 'uncertain_not_stored', 'dialog')
                 return {'kind': 'uncertain_not_stored',
                         'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}
@@ -329,7 +377,9 @@ class HSML:
                 self._rec(s, 'abstain', 'correction_unparsed')
                 return {'kind': 'abstain', 'text': None, 'source': 'correction_unparsed'}
             name, attrs = inner
-            gone = self.mem.attrs.unobserve(name, attrs)
+            gone = []
+            for sw in self._synonyms(name):
+                gone += [a for a in self.mem.attrs.unobserve(sw, attrs) if a not in gone]
             self._rec(s, 'correction', 'dialog', name=name, retracted=gone, asked=attrs)
             if gone:
                 return {'kind': 'retracted', 'text': 'ลบแล้ว', 'source': 'dialog',
@@ -352,7 +402,9 @@ class HSML:
         neg = _parse_negation(s)
         if neg is not None:
             name, attrs = neg
-            gone = self.mem.attrs.unobserve(name, attrs)
+            gone = []
+            for sw in self._synonyms(name):
+                gone += [a for a in self.mem.attrs.unobserve(sw, attrs) if a not in gone]
             self._rec(s, 'retracted', 'attr', name=name, retracted=gone, asked=attrs)
             if gone:
                 return {'kind': 'retracted', 'text': 'ลบแล้ว', 'source': 'attr',
@@ -363,16 +415,52 @@ class HSML:
         self._rec(s, 'abstain', 'unrouted')
         return {'kind': 'abstain', 'text': None, 'source': 'unrouted'}
 
+    def _syn(self):
+        syn = getattr(self.mem, 'syn', None)
+        if syn is None:
+            syn = {}
+            self.mem.syn = syn
+        return syn
+
+    def _synonyms(self, w):
+        """B-553: direct synonyms only (NOT transitive - named bound)."""
+        out = {w}
+        out |= self._syn().get(w, set())
+        return out
+
+    def _attrs_of_any(self, name):
+        be = self.mem.attrs
+        if not hasattr(be, 'attrs_of'):
+            return None
+        acc, known = [], False
+        for w in self._synonyms(name):
+            a = be.attrs_of(w)
+            if a is not None:
+                known = True
+                for t in (a or []):
+                    if t not in acc:
+                        acc.append(t)
+        return acc if acc else ([] if known else None)
+
+    def _holds_any(self, x, y):
+        be = self.mem.attrs
+        return any(be.holds(sx, sy) for sx in self._synonyms(x) for sy in self._synonyms(y))
+
+    def _neg_any(self, x, y):
+        be = self.mem.attrs
+        if not hasattr(be, 'neg'):
+            return False
+        return any(be.neg(sx, sy) for sx in self._synonyms(x) for sy in self._synonyms(y))
+
     def _compose_two_hop(self, s, x, y, lang, x_surf, y_surf):
         """B-548: candidates from memory; each emitted link re-verified LIVE at speak
         time (the verification gate). No verified path -> honest absence."""
-        be = self.mem.attrs
-        xs = be.attrs_of(x)
+        xs = self._attrs_of_any(x)
         verified = []
         if xs:
             for z in xs:
                 # gate: re-query live memory at emission, both hops
-                if be.holds(x, z) and be.holds(z, y):
+                if self._holds_any(x, z) and self._holds_any(z, y):
                     verified.append(z)
         self._rec(s, 'compose', 'attr', x=x, y=y, verified=verified)
         if not verified:
@@ -384,6 +472,25 @@ class HSML:
         else:
             text = ' / '.join(f'{x_surf} has {z} and {z} has {y_surf}' for z in verified)
         return {'kind': 'composed', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'zs': verified}
+
+    def _compose_three_hop(self, s, x, y, z, lang, x_surf, y_surf, z_surf):
+        """B-551 (ALL DESIGNED, named): exactly-three-hop composition; same live
+        re-verification gate as B-548. No verified path -> honest absence."""
+        verified = []
+        for a in (self._attrs_of_any(x) or []):
+            # gate: re-query live memory at emission, all three hops
+            if self._holds_any(x, a) and self._holds_any(a, y) and self._holds_any(y, z):
+                verified.append(a)
+        self._rec(s, 'compose3', 'attr', x=x, y=y, z=z, verified=verified)
+        if not verified:
+            txt = 'ไม่รู้' if lang == 'th' else 'unknown'
+            self._rec(s, 'compose3_unknown', 'attr', x=x, y=y, z=z)
+            return {'kind': 'compose_unknown', 'text': txt, 'source': 'attr'}
+        if lang == 'th':
+            text = ' / '.join(f'{x_surf} มี {a} และ {a} มี {y_surf} และ {y_surf} มี {z_surf}' for a in verified)
+        else:
+            text = ' / '.join(f'{x_surf} has {a} and {a} has {y_surf} and {y_surf} has {z_surf}' for a in verified)
+        return {'kind': 'composed3', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'z': z, 'as_': verified}
 
     def _resolve_link(self, w):
         """B-547: english surface word -> ('ok', canonical) or ('amb', [candidates]).
