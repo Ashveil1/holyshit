@@ -1571,3 +1571,20 @@ Verdict: PASS (run-2).
 Run-1 FAIL (harness-only, recorded): expectations compared JSON-decoded lists to Python tuples; every system actual was already correct (lists verified against b521.ANIMALS). Fixed comparisons; no system change.
 Run-2: PASS C1-C6 (logs/b543_run.log). The reverse frame is checked BEFORE statement parsing, so 'อะไรบ้าง' can never be stored as an attribute (c1_no_pollution verified). Regressions after the new route: b541 PASS, b542 PASS, b534 PASS, b535 PASS, b540 PASS, b539 PASS chunked (c6 bounded 60,001; full 700,001 stands) - logs/b539_regress4.log.
 Scope honesty: the reverse query is a designed frame over the same count store - no new inference; unknown names and fully-retracted names abstain honestly (attr_reverse_unknown / attr_reverse_empty); the frame reserves 'อะไรบ้าง' from ever being an attribute (designed reservation, named).
+
+## B-544 - storage safety: questions are not facts + honest yes/no questions
+Pre-registered 2026-10-25 (parent greenlight after eval_ash3 baseline recorded the
+over-acceptance defect: 'นก มี กี่ลักษณะ' was stored as an attribute of นก).
+Design (DESIGNED, named - a FINITE guard list is not general Thai understanding):
+1. Guard: question/particle words (ไหม มั้ย หรือ ใช่ไหม กี่ อะไร เท่าไหร่ ทำไม เมื่อไหร่ ที่ไหน ใคร อย่างไร ครับ ค่ะ จ้า นะ ล่ะ สิ) in name OR attr position of a parsed statement -> NOT stored; honest unsupported response. Nonmutation is verified by probing afterward.
+2. Negative evidence: retraction (B-542) now leaves an explicit negative marker (per-name neg set), instead of being indistinguishable from never-taught. Re-teaching clears the marker. decide()/vocab()/attrs_of() semantics for extension are UNCHANGED (neg = absent there).
+3. Yes/no frame 'X มี Y ไหม' answers three ways from the store: taught -> ใช่; explicitly retracted -> ไม่ (negative evidence); otherwise -> honest ไม่รู้ (absence is NOT false).
+Criteria:
+- C1: question-phrase statements not stored (probe + reverse query unpolluted); honest rejection response
+- C2: question words in NAME position rejected too
+- C3: particles in attr position rejected
+- C4: ordinary new-attribute learning unaffected
+- C5: yes/no three-way: taught=ใช่, never-taught=ไม่รู้ (NOT ไม่), retracted=ไม่
+- C6: negative evidence survives save/load; re-teach clears it
+- C7: noninterference - corpus battery exact, seeded 40/40 x4, b541/b542/b543 regressions PASS
+Verdict: PENDING
