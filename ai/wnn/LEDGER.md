@@ -1608,3 +1608,28 @@ demo-world teach, reverse query, three-way yes/no, probe, abstain,
 skill teaching end-to-end (n+ naming, 5 examples, 3 checks, query),
 save/reload persistence, retraction + negative evidence, corrupt load exit 2.
 Verdict: PASS
+
+## B-546 - Thai number words at the designed frame boundary
+Pre-registered 2026-10-25 (Ash: "มาพัฒนา hsml ต่อ"; parent: safe language intake,
+then Thai numeral words/varied phrasing; eval_ash3 baseline recorded the failure:
+'เลขคู่ ของ สี่ คืออะไร' abstained while digits and Thai glyphs answered).
+Design (DESIGNED, named - a finite number-word parser is NOT learned language
+understanding): a strict single-token Thai number-word parser (standard place
+grammar ศูนย์-เก้า/เอ็ด/ยี่ + สิบ ร้อย พัน หมื่น แสน ล้าน, places strictly
+descending, digits only before a place or at the end) maps a word to an integer
+ONLY at the numeric positions of the existing designed frames (skill query
+'X ของ N คืออะไร', teaching example 'ถ้า n เป็น N ตอบ M', confirmation
+'ตอบ M'). Attribute/name tokens are NOT normalized (classifier phrasing like
+'นก มี สอง ปีก' stays out of scope). A malformed word parses to None and the
+sentence falls through to exactly today's routing (no behavior change).
+Criteria:
+- C1: word-form skill query answers identically to the digit form
+  ('เลขคู่ ของ สี่ คืออะไร' -> '... คือ 1'; 'ผลบวกถึง ของ สิบ' -> 55)
+- C2: compounds: ยี่สิบ -> 20, สามสิบห้า -> 35, หนึ่งร้อยยี่สิบสาม -> 123,
+  สองหมื่นห้า -> 20005, หนึ่งล้าน -> 1000000 parse correctly
+- C3: full teaching with word-form examples and word-form confirmation answers
+  stores the skill; word-form query answers (rendered in digits, as today)
+- C4: malformed words abstain exactly as before ('สี่สอง', 'สิบสิบ', 'สามร้อยสองสิบสี่ห้า')
+- C5: noninterference - digit and Thai-glyph paths byte-identical; b544 harness
+  PASS; regress_skills PASS
+Verdict: PENDING
