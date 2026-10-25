@@ -26,8 +26,10 @@ driver and compares exit code, stdout and stderr byte for byte (67 programs
 match; 17 are pinned as refused; `t_load64` is a documented 62-bit vs 64-bit
 Int divergence).
 
-Known limits: the callable records (`hs_ir_fn`, `hs_ir_builtin`) are dicts, so a
-user dict with those reserved keys would be mistaken for a callable.
+Callable values now use opaque host closures, not guest Dict records. Ordinary
+guest Dicts containing `hs_ir_fn` or `hs_ir_builtin` remain Dicts. Module values
+still use tagged Dict records; their separate collision limit remains. This
+is not a sandbox or a claim of full callable display/container-operation parity.
 
 On arm64, the test builds a native driver with `a64build.py` as stage0,
 then executes each program in the hs interpreter. The driver uses the shared
@@ -98,3 +100,15 @@ stored value; explicit later attribute assignment binds it again. Two further
 caught/uncaught parity cases cover the missing-attribute error and rebinding,
 for237 total classifications. This closes the module-attribute path of the
 binding-state fix, not the separate record-collision limitation.
+
+## Opaque callable handles
+
+Guest function and builtin metadata is held behind interpreter-owned host
+closures. Only the interpreter unwraps these handles. A guest Dict cannot gain
+call authority by naming an internal key, and indexing or assigning into a
+handle reports the guest Func/Builtin error rather than exposing metadata.
+Closures, aliases, container-held callables and hot dispatch retain their existing
+behavior. Eighteen focused cases compare key-shaped guest Dict calls, display,
+conversion, equality and length, plus valid captured calls and attempted handle
+index/mutation, for255 parity classifications. Native arm64 is a required CI
+gate. Module records and broader callable display/operations are separate work.

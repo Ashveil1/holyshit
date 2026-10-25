@@ -90,8 +90,15 @@ def owns(hframe, frame):
       return true
     f = f["parent"]
   return false
+def callable_handle(record):
+  # Guest functions are host closures, never guest-constructible Dict records.
+  def handle():
+    return record
+  return handle
 def is_callable_rec(v, tag):
-  return pyrt.py_type(v) == "dict" and tag in v
+  if pyrt.py_type(v) != "func":
+    return false
+  return tag in v()
 BUILTIN_ARITY = {"append": 2, "find": 2, "join": 2, "has": 2, "contains": 2, "keys": 1, "values": 1, "read_text": 1, "write_text": 2, "append_text": 2, "exists": 1, "ls": 1, "mkdir": 1, "env": 1, "argv": 0, "input": 0, "json_parse": 1, "json_str": 1, "json_load": 1, "json_save": 2, "open": 2, "read": 1, "write": 2, "close": 1, "system": 1}
 BUILTIN_ARITY_ERROR = {"append": "append wants append(list, x)", "find": "find wants find(s, sub)", "join": "join wants join(sep, list)", "has": "has wants has(dict, key)", "contains": "contains wants contains(container, x)", "keys": "keys wants keys(dict)", "values": "values wants values(dict)", "read_text": "read_text wants read_text(path)", "write_text": "write_text wants write_text(path, str)", "append_text": "append_text wants append_text(path, str)", "exists": "exists wants exists(path)", "ls": "ls wants ls(dir)", "mkdir": "mkdir wants mkdir(path)", "env": "env wants env(name)", "argv": "argv takes no args", "input": "input takes no args", "json_parse": "json_parse wants json_parse(str)", "json_str": "json_str wants json_str(x)", "json_load": "json_load wants json_load(path)", "json_save": "json_save wants json_save(path, x)", "open": "open wants open(path, mode)", "read": "read wants read(f)", "write": "write wants write(f, str)", "close": "close wants close(f)", "system": "system wants system(cmd)"}
 def call_builtin(name, args, ln):
@@ -185,9 +192,10 @@ def call_builtin(name, args, ln):
   fail("IR: builtin '" + name + "' not in subset", ln)
 def call_value(st, fn, args, ln):
   if is_callable_rec(fn, "hs_ir_builtin"):
-    return call_builtin(fn["hs_ir_builtin"], args, ln)
+    return call_builtin(fn()["hs_ir_builtin"], args, ln)
   if is_callable_rec(fn, "hs_ir_fn"):
-    key = fn["hs_ir_fn"]
+    record = fn()
+    key = record["hs_ir_fn"]
     fdef = st["funcs"][key]
     if len(args) != len(fdef["params"]):
       fail(fdef["dispname"] + " wants " + str(len(fdef["params"])) + " args, got " + str(len(args)), ln)
@@ -195,7 +203,7 @@ def call_value(st, fn, args, ln):
       native = st["dispatch"](key, fdef, args)
       if native[0]:
         return native[1]
-    fr = new_frame(st, fn["closure"], fn["closure"]["root"], fdef["globals"])
+    fr = new_frame(st, record["closure"], record["closure"]["root"], fdef["globals"])
     i = 0
     while i < len(args):
       bind(fr, fdef["params"][i], args[i])
@@ -315,11 +323,12 @@ def type_name(v):
     return "Str"
   if t == "list":
     return "List"
-  if t == "dict":
-    if "hs_ir_fn" in v:
+  if t == "func":
+    if is_callable_rec(v, "hs_ir_fn"):
       return "Func"
-    if "hs_ir_builtin" in v:
+    if is_callable_rec(v, "hs_ir_builtin"):
       return "Builtin"
+  if t == "dict":
     if "hs_ir_mod" in v:
       return "Module"
     return "Dict"
@@ -395,7 +404,7 @@ def step(st, ins, temps, frame, prev):
   elif op == "stglobal":
     bind(frame["root"], ins["name"], temps[ins["src"]])
   elif op == "mkfunc":
-    temps[ins["dest"]] = {"hs_ir_fn": ins["func"], "closure": frame}
+    temps[ins["dest"]] = callable_handle({"hs_ir_fn": ins["func"], "closure": frame})
   elif op == "bin":
     temps[ins["dest"]] = do_binop(ins["binop"], temps[ins["l"]], temps[ins["r"]], ln)
   elif op == "un":
@@ -435,6 +444,8 @@ def step(st, ins, temps, frame, prev):
         raise conv(e, ln)
     temps[ins["dest"]] = d
   elif op == "index":
+    if pyrt.py_type(temps[ins["obj"]]) == "func":
+      fail("cannot index " + type_name(temps[ins["obj"]]), ln)
     try:
       temps[ins["dest"]] = temps[ins["obj"]][temps[ins["idx"]]]
     except as e:
@@ -448,6 +459,8 @@ def step(st, ins, temps, frame, prev):
       hi = temps[ins["stop"]]
     temps[ins["dest"]] = do_slice(temps[ins["obj"]], lo, hi, ln)
   elif op == "setindex":
+    if pyrt.py_type(temps[ins["obj"]]) == "func":
+      fail("cannot assign into " + type_name(temps[ins["obj"]]), ln)
     try:
       temps[ins["obj"]][temps[ins["idx"]]] = temps[ins["val"]]
     except as e:
@@ -690,7 +703,7 @@ def run(st):
   root["basedir"] = st["basedir"]
   st["broot"] = root
   for name in BUILTIN_NAMES:
-    bind(root, name, {"hs_ir_builtin": name})
+    bind(root, name, callable_handle({"hs_ir_builtin": name}))
   main = st["funcs"][st["entry"]]
   frame = new_frame(st, root, root, main["globals"])
   frame["root"] = frame
