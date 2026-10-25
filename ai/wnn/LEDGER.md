@@ -1251,3 +1251,25 @@ Conclusion for the connectome line (answering the 2026-10-24 17:08 steering ques
 Also recorded (Amendment 1): reverse-walk harness bug (both arms), LIB-pinning /tmp provenance dependency (TODO: repo-backed pinning), sham bar miscalibration -> margin criterion.
 ## Provenance fix (2026-10-25) - LIB pinning is now repo-backed
 B-532 Amendment 1 found skill execution silently depended on /tmp/c7_prog_0_base.json. Fix: the pinned base library (12 programs: mod/mul/div/power/gcd/max/min/fact/sumto/square/choose2/dblfact) is committed as ai/wnn/logs/baselib_pin.json; cur7.search and b532 pin repo-first, /tmp as fallback. Fresh-clone skill execution no longer depends on a sandbox /tmp artifact.
+
+## Hardening: repo-backed skill pinning + clean-process regression (2026-10-25, parent direction 00:37)
+Context: B-532 Amendment 1 found cached skills could not execute in a fresh process without
+the transient /tmp/c7_prog_0_base.json artifact. Parent directed: fix before deeper curriculum,
+add clean-process/rebuilt-workspace regression coverage, explicit missing/corrupt dependency
+handling, retain skill provenance.
+- 8d3e4db: logs/baselib_pin.json (12 pinned programs) committed; cur7.search + b532 pin
+  repo-first with /tmp fallback; fresh-process sanity even(24)=1, even(21)=0 passed.
+- This commit: b527.derive_skills hardened - unreadable cache falls back to full re-derivation
+  with WARNING; pin_lib() (repo-first) called before an execution self-check of every skill on
+  ground-truth probes, raising RuntimeError naming logs/baselib_pin.json when a dependency is
+  missing/corrupt. regress_skills.py: 3-check clean-process regression (C1: /tmp hidden,
+  fresh subprocess, 40/40 sentence-path spot per skill; C2: both pinning sources hidden ->
+  clear RuntimeError; C3: corrupt cache -> warning + re-derivation, no crash).
+- FINDING (cache gap): logs/b527_skills_cache.pkl contained ONLY 'even' (evidence of a
+  partially-completed earlier re-derivation, interrupted after the first task). Untracked
+  derived cache; the regression run's re-derivation repopulates it. Known hazard recorded:
+  pinning must never let a TARGET task resolve through the pinned library - cur7.search
+  EXCL handling covers search; b529-style induce() clears EXCL, so a future teach of a
+  target that IS in baselib_pin.json would shortcut. Current taught targets
+  (double/quad/16n) are not in the pin set; B-529/530/531 results unaffected.
+- Regression verdict: IN FLIGHT at commit time (long re-derivation); verdict to be recorded.
