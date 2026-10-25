@@ -1539,3 +1539,16 @@ Run-1 FAIL (recorded): c1/c2/c4/c6 false - observations were acknowledged and st
 Run-2: PASS c1-c6 (logs/b541_run.log).
 Regressions: b534 PASS, b535 PASS, b540 PASS (caches cleared first), b539 PASS chunked s1a/s1b/s1c/s2 with C6 control bounded at 60,001 tried (sandbox per-call ceiling; full 700,001 control stands from the original merged run; all other checks identical) - logs/b539_regress2.log.
 Scope honesty: vocabulary growth is via DESIGNED statement-frame role parsing (name/attribute roles in 'X มี Y'), not induced structure; frameless input is honestly rejected, not guessed.
+
+## B-542 - attribute retraction (negation frame 'X ไม่มี Y')
+Pre-registered 2026-10-25 (before implementation). Gap: taught attribute facts can be added (B-541) but never corrected - the skill world has revision (B-538/539) but the attribute world has no honest retraction. Same unified-system direction as Ash's steering.
+Design (DESIGNED, named): negation frame 'X ไม่มี Y' (and 'X ไม่มี Y และ Z') parsed with grounded roles; CountBackend.unobserve(name, attrs) deletes the association (explicit retraction semantics, mirroring skill revision's replace); response 'ลบแล้ว' only when something was actually retracted, honest 'nothing to retract' otherwise. No silent no-ops acknowledged as done.
+Criteria:
+- C1: teach name+attr then retract -> probe no longer returns that name for the attr
+- C2: retraction of one attr leaves the name's other attrs intact
+- C3: retraction on a seeded name works the same way (probe reflects it; re-teach restores)
+- C4: retracted state survives save/load in a fresh process
+- C5: retracting a never-taught pair -> honest nothing_to_retract, no crash, no state change
+- C6: re-teach after retract restores the answer
+- C7: noninterference - corpus battery exact (seeded world untouched by these ops) and seeded skills 40/40 x4
+Verdict: PENDING
