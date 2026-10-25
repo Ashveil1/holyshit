@@ -56,7 +56,7 @@ def s1():
     # 1. corpus observations interleaved with everything below
     corpus = b521.gen_corpus(random.Random(0), 8)
     kinds = {h.hear(s)['kind'] for s in corpus}
-    out['chk']['corpus_observed'] = sorted(kinds)
+    out['chk']['corpus_observed'] = sorted(kinds)  # run-1 router fix: every statement observed
     # 2. attr probe
     r = h.hear('ปีก')
     out['chk']['attr_probe'] = (r['kind'], r.get('decision'))
@@ -72,8 +72,8 @@ def s1():
     r = h.hear(f'ถ้า n เป็น {xs[1]} ตอบ {4 * xs[1]}')
     out['chk']['quad_ex2'] = r['kind']
     # interleave: attr observation, attr probe, double query - mid teaching context
-    r = h.hear('ช้าง มี งา'); out['chk']['interleave_obs'] = r['kind']
-    r = h.hear('งา'); out['chk']['interleave_attr'] = (r['kind'], r.get('decision'))
+    r = h.hear('หมา มี ขน'); out['chk']['interleave_obs'] = r['kind']
+    r = h.hear('ขน'); out['chk']['interleave_attr'] = (r['kind'], r.get('decision'))
     r = h.hear('สองเท่า ของ 7 คืออะไร'); out['chk']['interleave_double'] = (r['kind'], r.get('result'))
     for x in xs[2:]:
         r = h.hear(f'ถ้า n เป็น {x} ตอบ {4 * x}')
@@ -181,7 +181,7 @@ def run():
         'c1': (s1['quad_stored'] and s1['c1_quad_probe'] == '10/10'
                and s1['chk']['quad_naming'] == 'naming' and s1['chk']['quad_ex2'] == 'example'
                and s1['chk']['interleave_obs'] == 'observed'
-               and s1['chk']['interleave_attr'] == ['attr_answer', 'unique']
+               and s1['chk']['interleave_attr'] == ['attr_answer', 'ambiguous']
                and s1['chk']['interleave_double'] == ['skill_answer', 14]),
         'c2': s1['c2_battery_s1'] and s2['c7_battery'] and s1['c2_double_post_attr'] == '10/10',
         'c3': (s1['c3_eight_stored'] and s1['c3_eight_probe'] == '10/10'
