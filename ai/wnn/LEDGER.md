@@ -1338,3 +1338,6 @@ Criteria (pre-stated):
 - C5 data-flow evidence: the conversation log records each response's memory source (taught-this-conversation vs seeded vs attr store vs abstain) - no response from a stub.
 - C6 garbage-teacher control in-conversation: a random-response teacher yields no stored skill (tried cap 700,001 recorded).
 Verdict PASS iff C1-C6. CAN claim: one conversation entry point teaches and answers against one memory with real data flow (integration claim, scoped). CANNOT: semantic understanding, natural-language generality (designed frames + numeric DSL), intelligence claims; B-529 Correction 1 boundaries stand.
+
+### Correction (B-533 harness reproducibility)
+Committed b533.py (through 0dfa327) assigned tuple-returning `capture_zero` directly to `b529.capture_lists`; the executed PASS run used the working-tree wrapper `capture_zero_lists` (applied 03:27 UTC, before the run completed 04:57 UTC). Re-running the committed script would not reproduce the verdict. Fixed by committing the executed version. Verdict data and log are unaffected (produced by the now-committed code).
