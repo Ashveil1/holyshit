@@ -1556,3 +1556,15 @@ Run-1 FAIL (harness sequencing, recorded): s1 never fed the corpus, so seed-worl
 Run-2 FAIL (mixed, recorded): (a) harness used wrong seed-world facts (ช้าง/งา are NOT in the B-521 world; ครีบ collides with seed ปลา) - harness corrected against b521.ANIMALS/ATTRS; (b) REAL routing gap found: conjunctive probes 'X และ Y' never reached decide ('และ' was not a legal probe token; battery probes bypass hear() so this was invisible before). Fixed: 'และ' admitted as a probe conjunction token in the designed probe filter. This is a designed-routing extension, named as such.
 Run-3: PASS C1-C7 (logs/b542_run.log). Regressions after the probe-filter change: b541 PASS, b534 PASS, b535 PASS, b540 PASS, b539 PASS chunked (c6 control bounded 60,001; full 700,001 stands from the original run) - logs/b539_regress3.log.
 Scope honesty: retraction is an explicit designed negation frame with delete semantics (mirrors skill revision's replace); 'ลบแล้ว' is said only for pairs actually retracted; never-taught pairs get an honest nothing_to_retract with partial reporting (retracted vs not_found). Negation is deletion of the association, NOT negative-evidence counts - a retracted fact is indistinguishable from a never-taught one afterward (decision semantics unknown/ambiguous/no_match preserved).
+
+## B-543 - reverse attribute query ('X มี อะไรบ้าง')
+Pre-registered 2026-10-25 (before implementation). Gap: the attribute store flows one way only (attr probe -> names). The SAME stored data should answer the other direction (name -> its attributes) with identical honesty semantics. Designed frame, no new subsystem.
+Design (DESIGNED, named): frame 'X มี อะไรบ้าง' fullmatch, checked BEFORE statement parsing so 'อะไรบ้าง' can never be stored as an attribute; CountBackend.attrs_of(name) returns the stored attrs (None for unknown name); response lists current stored attrs; unknown name or fully-retracted name -> honest abstain/empty, nothing fabricated.
+Criteria:
+- C1: teach a new name two attrs -> reverse query lists both
+- C2: reverse query reflects retraction (retract one -> query lists only the remaining one)
+- C3: reverse query reflects corpus-seeded knowledge (seed animal lists its taught attrs)
+- C4: unknown name AND fully-retracted name -> honest abstain (no fabricated list)
+- C5: save/load round-trip: reverse query on learned content in a fresh process
+- C6: noninterference - corpus battery exact, seeded skills 40/40 x4, and b541/b542 harnesses still pass
+Verdict: PENDING
