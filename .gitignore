@@ -12,4 +12,3 @@ __pycache__/
 blackhole_*.html
 blackhole_*.png
 *.hsc
-hsml_memory.pkl
