@@ -1398,3 +1398,12 @@ Adoption (pre-stated rule): separated induction-LIB is now hsml.py's DEFAULT ind
 CAN claim: search-space engineering (excluding heavy pinned recursive baselib from induction) preserves dialog teaching + in-conversation reuse and restores full-cap control feasibility, with measured behavioral equivalence. CANNOT: capability claims beyond the measured arms; the arm-A miss is budget-qualified only.
 
 Post-adoption regression (2026-10-25): b534.py and b535.py re-run under the new 'separated' default - both PASS with identical measurements (double 549, quad 870, C6 teach_failed at its amended 60,000 cap; persistence checks unchanged). No verdict text changed.
+
+## B-537 pre-registration (2026-10-25, before running) - continual teaching across sessions
+Gap: B-535 verified load-then-ANSWER; the usable-system loop is load-then-CONTINUE-TEACHING (memory grows across conversations). Known suspect: HSML.load restores skills + word map but does NOT register loaded skills into the induction LIB (B-536 registered only at store time), so a loaded skill would not be reusable as a component in a later session's induction.
+Design: three real sessions (subprocess, clean interpreter each), one save file:
+- S1: teach double via dialog, save.
+- S2: load; teach quad via dialog (probes of double must still pass BEFORE the new teach starts); teach 16n via dialog (expected to reuse quad if registration is correct); save.
+- S3: load; probe double/quad/16n 10/10 each; provenance of all three == 'dialog'; attr snapshot parity if used; never-taught word abstains.
+Criteria: C1 S2 pre-teach double probe 10/10 (loaded memory behaviorally live before any new teaching); C2 S2 quad + 16n stored, 16n tried recorded and its program calls quad (cross-session reuse through the LIB registration); C3 S3 all three skills 10/10, provenance 'dialog' each; C4 cumulative-state check: S3's save contains all three skills (state accumulates, not just latest); C5 never-taught abstains in S3.
+Verdict PASS iff C1-C5. If C2 fails by missing LIB registration, the pre-identified fix (register loaded skills into the induction LIB in HSML.load) is applied and recorded as the finding. CAN claim: learned memory accumulates across sessions through save/load with reuse intact. CANNOT: anything beyond cross-session persistence + reuse.
