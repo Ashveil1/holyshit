@@ -1272,4 +1272,69 @@ handling, retain skill provenance.
   EXCL handling covers search; b529-style induce() clears EXCL, so a future teach of a
   target that IS in baselib_pin.json would shortcut. Current taught targets
   (double/quad/16n) are not in the pin set; B-529/530/531 results unaffected.
-- Regression verdict: IN FLIGHT at commit time (long re-derivation); verdict to be recorded.
+- Regression verdict: PASS (2026-10-25 03:22, logs/regress_skills.log).
+  C1 clean process, /tmp artifact hidden: all 4 skills execute, 40/40 sentence-path spot each
+  (pinning resolved from repo logs/baselib_pin.json). C2 both pinning sources hidden: clear
+  RuntimeError naming the dependency. C3 corrupt cache: WARNING + full re-derivation, rc 0.
+  Note: re-derivation runs at baseline cost (~25-30 min CPU per task) because derive_skills
+  does not add derived skills to LIB between tasks - recorded as a known cost characteristic,
+  not a correctness defect (found programs are train-trace-verified either way; the original
+  oops-mode speedups in b515 came from the library-growth protocol of that experiment).
+## B-533 pre-registration (2026-10-25, before running) - capture-budgeted curriculum accounting: does B-531's reuse advantage survive TOTAL-tried accounting?
+Context: B-531's honest cost note recorded that 'tried' counts only the search_oops phase; the capture phase (capture_lists) evaluates one full first (comb,init) block as a side effect of reusing cur7.search for list materialization, and that block grows ~quadratically with library size (B-531 clock estimates ~800s CPU ablated vs ~7000s reuse; sandbox clocks unreliable). Parent direction 2026-10-25 00:37: continue with capture-budgeted experiments.
+Source analysis (pre-registered, from cur7.search): the only tried_cap check is per (comb,init) block, so a tried_cap=0 capture evaluates EXACTLY the first block = len(conds) x len(bases) x len(steps_pair) candidates; the captured lists are fully materialized BEFORE any evaluation, so those evaluations are pure harness overhead (search_oops re-enumerates every candidate from the lists anyway).
+Design (b533.py); same arms/target as B-531 (ablated vs reuse [double+quad dialog-taught in-run, sumto seeded], target hexdec 16n fixed by B-531's selection rule - no re-selection):
+- Fix under test: zero-eval capture (tried_cap=-1: materialize lists, evaluate nothing). Harness-only change; no protocol change.
+- C1 equivalence: zero-eval captured lists IDENTICAL to old-protocol captured lists, both arms (dict equality on combs/inits/conds/bases/steps_pair/steps_single/posts).
+- C2 outcome equivalence: search_oops on zero-eval lists reproduces B-531 exactly: ablated exhausts the 700,001 cap with no program; reuse finds the same 16n program (calls 'quad') at tried=29,478 (same seeds, deterministic enumeration). Any difference means the capture evaluations were silently load-bearing -> FAIL of the fix, recorded as a harness-provenance finding in the same class as the /tmp pinning dependency.
+- C3 exact old-protocol capture cost: computed from list sizes (len(conds) x len(bases) x len(steps_pair)) per arm, AND validated by one actual old-protocol capture run on the ablated arm; measured tried must equal the computed product.
+- C4 total accounting recorded BOTH ways per arm: old-protocol total (capture tried + search tried) and zero-eval total (search tried only). The honest claim each supports is stated; the old-protocol totals are expected to shrink the 23.7x ratio - reported, not hidden.
+- C5 no interference: seeded 160/160 x4, double+quad 40/40 after the harness change.
+Verdict PASS iff C1 & C2 & C3 & C5 hold; C4 numbers recorded either way.
+CAN claim if PASS: for this task, accumulated dialog-taught knowledge cuts TOTAL program-search tried 23.7x and makes an otherwise-unreachable target reachable, with capture-phase accounting exact and harness overhead removed. CANNOT: anything beyond B-531's boundaries (no semantic understanding; designed frames + numeric DSL; single-task evidence; not a general compute law).
+## B-533 Amendment 1 (2026-10-25, before running) - replicate B-531's exact LIB state
+The derive_skills hardening (c10bda9, pin_lib() before the execution self-check) pins ALL 12 baselib programs into LIB, including fact/square/choose2/dblfact, which were NOT in LIB during B-531's run (old derive_skills never pinned). Enumeration content/order depends on LIB keys, so B-533 would not reproduce tried=29,478 for a reason unrelated to the capture fix. Amendment: b533 pops fact/square/choose2/dblfact AND sumto from LIB immediately after derive_skills in BOTH arms (recorded in the harness); in the reuse arm teach_primitives re-adds sumto via as_primitive exactly as b531 did. This restores B-531's exact LIB state at every stage (9 ops during double teaching; 12 at target teaching); all other conditions identical to b531 (teach_primitives seed=0, target hexdec, CAP7=700,000). C2's exact tried replication (ablated 700,001 exhausted; reuse 29,478, calls 'quad') stands.
+## B-533 verdict (2026-10-25) - PASS: capture overhead was pure harness cost; B-531's claim upgrades to total-tried, AND the old protocol silently REVERSED the total-cost comparison
+Pre-reg + Amendment 1 (2026-10-25). Harness b533.py, log logs/b533_capture.log.
+- C1 equivalence: zero-eval capture (tried_cap=-1) produces enumeration lists IDENTICAL to the old protocol, both arms (dict equality).
+- C2 outcome equivalence: exact B-531 replication with zero-eval capture: ablated exhausts 700,001 (no program); double 549; quad 870; reuse finds the SAME 16n program calling 'quad' at tried=29,478, 40/40 unseen. The capture evaluations were NOT load-bearing.
+- C3 exact capture cost: old-protocol capture tried measured == computed (len(conds) x len(bases) x len(steps_pair)), both arms: ablated 1,291,776; reuse 2,217,984. Replaces B-531's unreliable clock estimates (~800s/~7000s) with exact counts.
+- C4 total accounting (the finding): under the OLD protocol, totals were ablated 1,991,777 vs reuse 2,247,462 - the reuse arm's TOTAL tried was HIGHER; the 23.7x search-phase advantage was silently reversed by capture overhead growing with library size. B-531's claim survived only because capture tried was never counted. With zero-eval capture (C1/C2 prove this changes no outcome), totals are ablated 700,001 (exhausted, unreachable) vs reuse 29,478: the 23.7x advantage is now a TOTAL-tried statement for this task.
+- C5 no interference: 160/160 x4 seeded skills, double+quad 40/40.
+- Harness change following: b515.capture_lists default becomes zero-eval (harness-only; tried counts in b529/b530/b531 were never affected since capture tried was discarded, and C2 shows outcomes identical).
+CAN claim (upgrades B-531's scoped claim for THIS task): accumulated dialog-taught knowledge makes an unreachable target reachable and cuts total program-search tried 23.7x, with exact capture accounting. CANNOT: anything beyond B-531's boundaries (no semantic understanding; designed frames + numeric DSL; single-task evidence; not a general compute law). General warning recorded: any future reuse/curriculum experiment must budget capture, because capture cost grows ~quadratically with library size and can silently reverse total-cost comparisons.
+## B-533 Addendum 1 (2026-10-25, parent-directed claim qualification)
+Parent 2026-10-25 04:59: cap-qualify the comparison and state teaching-inclusive totals.
+1. CAP-QUALIFIED: the ablated arm EXHAUSTED the 700,001 budget without finding any program.
+   The comparison is success-vs-not-found-within-budget, NOT an exact speedup against a
+   completed baseline; the true ablated cost is unknown (> 700,001).
+2. TEACHING-INCLUSIVE TOTALS (B-533's C4 counted only the target's own search+capture):
+   the reuse arm's full learning sequence is double teach + quad teach + target teach.
+   Exact per-stage capture blocks (LIB 9/10/12 ops): 1,291,776 / 1,572,864 / 2,217,984.
+   Old-protocol reuse TOTAL = (549+870+29,478) search + 5,082,624 capture = 5,113,521 tried
+   (+ 9 confirmation evaluations). Old-protocol ablated TOTAL = 700,001 + 1,291,776
+   = 1,991,777. Under the old protocol the reuse arm cost 2.57x MORE total tried.
+   Zero-eval (current default) totals: reuse 30,897 tried (+ 9 confirmations) vs ablated
+   700,001 (exhausted, nothing found) = 22.6x fewer tried AND reachability, cap-qualified.
+3. METRIC LABEL: 'tried' = search-candidate evaluations (candidate programs screened),
+   NOT full compute: per-candidate cost varies (run() executions, staging depth), and
+   confirmation/accuracy verifications are counted separately (9 confirmation evals in the
+   reuse learning sequence; post-hoc accuracy spots are reporting, not learning).
+   No wall/CPU claims (sandbox clocks unreliable, B-531 lesson).
+## Integration gap analysis (2026-10-25, parent direction 04:59: prioritize the fully integrated usable hsml over another isolated curriculum layer)
+Grounded in BACKLOG.md integration status + current code:
+- G1 (CORE): teaching and answering live in SEPARATE entry points. HSMLMemory.answer() handles queries; b529.teach() is a harness function driving a scripted Teacher; each experiment builds its own memory. There is no single conversation flow where one incoming sentence can name/exemplify/confirm (teach), state (observe), or ask (answer) against ONE memory object. Ash's bar ("one system, real data flow end-to-end, no stub routing") is not met while teach and answer are separate doors into separate memories.
+- G2: no full-memory persistence story (taught skills, attrs) across processes; only seeded-skill cache + baselib_pin exist.
+- G3: relation/graph store (B-532) sits outside the unified memory; engineering-only status (isomorphic to tables, cheaper per query).
+B-534 (below) takes G1 as the highest-value bounded step: one conversation entry point over one memory, teaching and answering interleaved in one conversation.
+
+## B-534 pre-registration (2026-10-25, before running) - one conversation entry point: teach and answer interleaved against ONE memory
+Design (hsml.py): class HSML wrapping HSMLMemory with a single hear(sentence) -> response entry. Designed frames (named as designed): naming ('วิธีนี้ชื่อ X'), example ('ถ้า n เป็น A ตอบ B'), confirmation reply ('ตอบ Y'), statement (observation into attr memory), query (existing answer path), else abstain. Teaching state machine lives in the conversation: naming opens a teaching context for a NEW word; examples accumulate; at 5 pairs the system induces (b529.induce, zero-eval capture default post-B-533); on a candidate it ASKS a confirmation question ('ถ้า n เป็น C ตอบอะไร'); 3 correct confirmations store the skill into the SAME memory the query path reads; a failed confirmation continues the dialog (b529 protocol, cap 3 rounds). The SAME HSML object carries the whole conversation; a skill taught mid-conversation is immediately queryable in that conversation.
+Criteria (pre-stated):
+- C1 one process, one HSML object, one memory for the whole scripted conversation (no per-segment rebuilds).
+- C2 a skill taught mid-conversation (double, then quad by dialog) answers correctly through the query path IN THE SAME conversation: 10/10 unseen in-conversation probes each.
+- C3 interleaving does not corrupt: after a mixed conversation (teach double, attr statements, queries, teach quad, queries), seeded skills 40/40 x4 spot, attribute battery exact, no-skill-query abstains.
+- C4 order independence: answers about double remain correct AFTER quad is taught (no clobbering).
+- C5 data-flow evidence: the conversation log records each response's memory source (taught-this-conversation vs seeded vs attr store vs abstain) - no response from a stub.
+- C6 garbage-teacher control in-conversation: a random-response teacher yields no stored skill (tried cap 700,001 recorded).
+Verdict PASS iff C1-C6. CAN claim: one conversation entry point teaches and answers against one memory with real data flow (integration claim, scoped). CANNOT: semantic understanding, natural-language generality (designed frames + numeric DSL), intelligence claims; B-529 Correction 1 boundaries stand.

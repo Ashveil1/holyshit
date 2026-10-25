@@ -19,8 +19,13 @@ def setup(task, seed=0):
     return train
 
 def capture_lists(train):
+    # B-533: zero-eval capture (tried_cap=-1) - lists are fully materialized before any
+    # evaluation, and B-533 C1/C2 proved the first-block evaluations were pure harness
+    # overhead (identical lists, identical search outcomes). Old-protocol capture tried
+    # (one full first (comb,init) block) was never counted anywhere but grew ~quadratically
+    # with library size.
     C.LIST_CAPTURE = {}
-    search(train, ABL, tried_cap=0)
+    search(train, ABL, tried_cap=-1)
     lists = dict(C.LIST_CAPTURE); C.LIST_CAPTURE = None
     return lists
 
