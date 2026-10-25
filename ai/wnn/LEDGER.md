@@ -1681,3 +1681,126 @@ meaning; English answers render canonical (Thai) attr words - the system does
 not translate. Toward Ash's stated goal (compose NEW sentences to answer):
 current answers are still template-rendered from memory, NOT free composition -
 that gap is the next design question, recorded here honestly.
+
+## B-548 - bounded two-hop composition: question-conditioned sentence assembly, verified before speaking
+Pre-registered 2026-10-25 (Ash's stated goal via WhatsApp originals: the system
+composes NEW sentences from words to answer questions; parent: preserve his
+wording as the goal, distinguish learned-frame composition from broader ability,
+held-out sentence/question tests, factual correctness, no canned-demo shortcut).
+This is a BOUNDED slice, honestly named: two-hop composition over the taught
+มี-graph only; surface realization still uses finite designed frames (NOT free
+sentence composition); the question frames are designed, not learned Thai.
+Design (ALL DESIGNED, named):
+1. New question frames (finite, read-only - they never store):
+   Thai 'X มี อะไรที่มี Y' and English 'what does X have that has Y'
+   (link resolution as B-547, ambiguity abstains naming candidates).
+   Semantics: find every Z such that taught(X,Z) AND taught(Z,Y).
+2. Composition: for each verified Z emit a sentence assembled from taught
+   words ('X มี Z และ Z มี Y' / 'X has Z and Z has Y') - a surface string
+   that was never input as a whole; content selection is conditioned on the
+   question (which Z satisfies both hops), not retrieval of a canned answer.
+3. Verification gate: at speak time every link in an emitted sentence is
+   re-checked against LIVE memory (taught() re-query); an unverified link is
+   never spoken. No intermediate cache is trusted at emission.
+4. Honest absence: no verified Z -> 'ไม่รู้'/'unknown'. Broken or
+   reverse-only chains are never completed by guessing.
+Criteria:
+- C1: fresh-word chain (A,B,C novel, not in seed corpus): teach 'A มี B',
+  'B มี C'; ask 'A มี อะไรที่มี C' -> answer names B; the emitted sentence
+  string never appeared in any input (asserted) and every link in it is
+  taught() in memory (asserted)
+- C2: two independent paths A->B1->C and A->B2->C -> both listed, each
+  link of each path verified
+- C3: broken chains: (a) A มี B taught but B มี C never taught (nothing
+  holds C) -> ไม่รู้; (b) D มี C taught but A มี D never taught -> ไม่รู้
+  (no fabrication from a reverse-only hop)
+- C4: retraction: after C1's answer, 'B ไม่มี C' -> same question -> ไม่รู้;
+  re-teach 'B มี C' -> answer returns naming B (no stale emission)
+- C5: unknown word in X or Y slot -> ไม่รู้; the question stores nothing
+  (memory pair-count identical before/after; question tokens never become
+  names/attrs)
+- C6: bilingual: with taught links, 'what does A have that has C' answers
+  from the SAME memory naming the same Z; a doubly-linked English word ->
+  abstain naming candidates
+- C7: noninterference: b534/b535/b540/b541/b542/b543/b544/b546/b547,
+  regress_skills, b539 chunked (bounded c6) all PASS
+Verdict: PASS (run-1). logs/b548_run.log. All criteria green on the first run:
+two-hop composition names only fully verified paths (C1/C2), broken and
+reverse-only chains get ไม่รู้ (C3), retraction removes and re-teaching
+restores paths with no stale emission (C4), queries store nothing (C5),
+bilingual twin shares one memory and ambiguity abstains naming candidates
+(C6). Answer strings asserted never-input and every emitted link asserted
+taught() at speak time. Noninterference (C7): b534/b535/b540/b541/b542/b543/
+b544/b546/b547 + regress_skills PASS; b539 chunked bounded-c6 regression PASS
+(logs/b539_regress8.log, bounded-aware merge as regress7). Scope named
+honestly: bounded TWO-HOP composition over the มี-graph with finite designed
+frames - a real step toward Ash's compose-new-sentences goal (content
+selection is question-conditioned and the emitted string is novel), but still
+NOT free sentence composition; deeper hops and freer realization are open.
+
+## B-549 - learn-while-chatting separation: uncertain statements never become facts; natural 'ไม่ใช่' corrections
+Pre-registered 2026-10-25 (Ash via WhatsApp, 2026-10-25:
+"ทำให้มันเป็นแบบเรียนรู้ไปด้วยระหว่างคุยไปด้วยได้ไหม"; parent: preserve the
+distinction between existing in-chat fact teaching and learning from ordinary
+dialogue; separate explicit teaching/corrections from questions and uncertain
+statements). Already-true scope named: in-chat learning EXISTS but only through
+designed frames (B-541/542/544/529); this step adds the confidence separation,
+NOT learning from free dialogue. ALL DESIGNED, named: finite marker lists and
+frames are not learned language understanding.
+Design:
+1. Uncertainty markers (finite designed set): อาจจะ, อาจ, น่าจะ, คงจะ, ไม่แน่ใจ,
+   มั้ง (Thai, any token position); 'maybe' (English statement frame). A
+   statement containing a marker is NOT stored; the system says honestly it
+   will not remember it as fact. Marker tokens never become names/attrs.
+2. Correction frame 'ไม่ใช่ <statement>': parses the inner statement through
+   the existing designed frames and retracts those pairs via the B-542 path;
+   never-taught pairs report nothing-to-retract (no fake ack).
+3. Questions remain non-storing (B-544, unchanged).
+Criteria:
+- C1: 'อาจจะ นก มี ปีก' (and each Thai marker variant, and 'maybe a bird has
+  wings' with links) stores nothing; the yes/no query afterwards answers
+  ไม่รู้ - not ใช่, and not ไม่ (uncertain is not negative evidence)
+- C2: marker tokens never enter vocab/names; the ack text is the honest
+  not-stored reply, never 'จำไว้แล้ว'
+- C3: teach 'ฟา มี ทริบ'; 'ไม่ใช่ ฟา มี ทริบ' -> retracted, yes/no -> ไม่
+  (explicit negative); 'ไม่ใช่ ฟา มี มุก' (never taught) -> honest
+  nothing-to-retract; 'ไม่ใช่' of a non-statement abstains without mutation
+- C4: confident statements still store (B-541 semantics unchanged); skill
+  teaching frames unaffected by markers elsewhere in memory
+- C5: noninterference: b534/b535/b540/b541/b542/b543/b544/b546/b547/b548,
+  regress_skills, b539 chunked (bounded c6) all PASS
+Verdict: PASS (run-2; run-1 FAIL recorded: the B-544 yes/no paths KeyError'd on
+a completely unknown name - be.taught() indexed C[n] directly, exposed by C1's
+uncertain-then-query sequence; fixed by routing both yes/no checks through the
+KeyError-safe holds() added in B-548. Two harness bugs also fixed: C4b queried
+a non-seeded skill word, then asserted a field hsml.py does not forward).
+logs/b549_run.log. All criteria green: six Thai uncertainty markers + English
+'maybe' store nothing and follow-up yes/no answers ไม่รู้/unknown (uncertain is
+NOT negative evidence); marker tokens never enter vocab/names; 'ไม่ใช่
+<statement>' retracts via the B-542 path with honest nothing-to-retract and
+non-mutation abstain on unparseable corrections; confident statements and skill
+frames unchanged. Noninterference (C5): b534/b535/b540/b541/b542/b543/b544/
+b546/b547/b548 + regress_skills PASS; b539 chunked bounded-c6 PASS
+(logs/b539_regress9.log, bounded-aware merge as regress7/8). Scope named:
+finite designed marker lists and frames - confidence separation for in-chat
+learning, NOT learning from free ordinary dialogue (that remains open).
+
+## Licensing decision (2026-10-25) - hsml component -> AGPL-3.0-only
+Ash's explicit approval (WhatsApp, 2026-10-25): initial "ตามนั้นเปลี่ยนเป็น
+AGPLV3 ฉบับเต็มครบทุกตัวอักษร",
+reconsidered GPLv3 ("หรือ gplv3 ธรรมดาดี"), then confirmed after the AGPL-vs-GPL
+tradeoff (cloud-hosted modified services must offer source) with "ใช่"
+to the explicit question
+"ให้ผมเดินหน้าต่อด้วย AGPLv3 เฉพาะ hsml เลยไหม?".
+Applied: ai/wnn/LICENSE = complete canonical AGPLv3 text fetched byte-exact
+from https://www.gnu.org/licenses/agpl-3.0.txt (34,523 bytes; a web_fetch
+markdown copy was REJECTED - it had stripped <https://...> URLs and was not
+character-complete). ai/wnn/NOTICE scopes AGPL-3.0-only to the hsml source,
+excludes third-party data (MNIST, Cook 2019 wormwiring-derived connectome -
+reuse license not established, SNIPS CC0), keeps the rest of the repo
+Apache-2.0, and states prior Apache releases remain valid/irrevocable.
+Rights check: git authors of ai/wnn are all Ash's own identities; provenance
+grep found no copyright headers or vendored-source markers (residual: cannot
+prove a negative - a headerless copied file would not be caught). No "or
+later" wording added (Ash chose v3 only). No release/tag; root LICENSE and
+non-hsml dirs untouched.

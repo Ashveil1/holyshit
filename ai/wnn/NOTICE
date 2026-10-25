@@ -1,0 +1,39 @@
+hsml - licensing notice (2026-10-25)
+
+The hsml SOURCE CODE in this directory (ai/wnn) - the .py and .holy sources,
+shell scripts, and documentation written for this project - is licensed under
+the GNU Affero General Public License, version 3 only (AGPL-3.0-only). The
+complete, unabridged license text is in the LICENSE file next to this notice.
+
+    hsml - a small teachable dialog/skill system and its research harnesses
+    Copyright (C) 2026 Ashveil1
+
+    This program is free software: you can redistribute it and/or modify it
+    under the terms of the GNU Affero General Public License as published by
+    the Free Software Foundation, version 3 of the License (only - no later
+    version is granted by this notice).
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+    General Public License (LICENSE file) for more details.
+
+EXCLUSIONS - the following are NOT relicensed and retain their own terms:
+- MNIST data files (train-*/t10k-*-idx*-ubyte.gz, mnist_train*.txt,
+  mnist_test*.txt): Yann LeCun's MNIST dataset.
+- data/connectome.txt and data/connectome_core.txt: derived from the
+  Cook et al. 2019 C. elegans connectome (wormwiring.org); reuse license
+  not established - treat as research data, not AGPL-licensed code.
+- data/snips_train.txt and data/snips_test.txt: derived from the SNIPS
+  NLU benchmark (CC0).
+- Anything under data/ that did not originate in this project.
+
+SCOPE - this license applies to the hsml component (ai/wnn) ONLY. The rest
+of the holyshit repository (language, OS, other components) remains under
+its existing Apache License 2.0 (root LICENSE file), unchanged.
+
+PRIOR RELEASES - hsml source was previously published under Apache-2.0.
+Copies already obtained under Apache-2.0 keep those rights; the Apache
+grant for those releases is irrevocable and is NOT revoked by this notice.
+This change applies AGPL-3.0-only to the hsml source from this revision
+forward.

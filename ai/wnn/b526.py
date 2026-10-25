@@ -66,6 +66,10 @@ class CountBackend:
         return v
     def taught(self, n, a):
         return self.C[n].get(a, 0) > 0
+    def holds(self, n, a):
+        # B-548: KeyError-safe taught() for composition hops, where the middle
+        # entity may exist only as an attr (never a subject row).
+        return self.C.get(n, {}).get(a, 0) > 0
     def names(self):
         # B-541: dynamic name vocabulary (seed world + every learned name)
         return list(self.C)
