@@ -1866,5 +1866,8 @@ unchanged; uncertain path stores nothing; named no-morphology limit verified
 ('beak' != 'beaks' -> unknown). C7 noninterference: b534-b551 clean,
 regress_skills PASS. End-to-end chat transcript of the exact phrases the
 B-550 battery saw rejected: logs/b552_chat.log ('a bird has a beak' ->
-จำไว้แล้ว, 'what does a bird have' -> list, 'does a bird have wings' -> yes,
-gills -> unknown).
+จำไว้แล้ว, 'what does a bird have' -> 'bird has beak tail', 'does a bird have
+wings' -> unknown (wings NOT taught in that run - correct abstention),
+gills -> unknown). Correction: an earlier version of this entry claimed the
+wings answer was 'yes'; the literal log says unknown, which is the honest
+answer for an untaught attribute.
