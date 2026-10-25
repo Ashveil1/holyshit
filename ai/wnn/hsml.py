@@ -497,21 +497,21 @@ class HSML:
 
     def _parents_any(self, name):
         """B-554: BFS over is-a parents of name and its synonyms. Depth cap 8,
-        cycle-safe (visited set). Returns set of ancestors (excluding starts)."""
+        cycle-safe (visited set), depth-capped. Returns a LIST in deterministic BFS order (sorted within each level) - B-556 sweep run-1 found set-iteration order made provenance group order nondeterministic across processes (b555 C4 criterion was right, implementation wrong)."""
         seen = set(self._synonyms(name))
-        frontier = list(seen)
-        out = set()
+        frontier = sorted(seen)
+        out = []
         for _ in range(8):
-            nxt = []
+            nxt = set()
             for w in frontier:
                 for p in self._isa().get(w, ()):  # child -> parents
                     if p not in seen:
                         seen.add(p)
-                        out.add(p)
-                        nxt.append(p)
+                        out.append(p)
+                        nxt.add(p)
             if not nxt:
                 break
-            frontier = nxt
+            frontier = sorted(nxt)
         return out
 
     def _pos_neg_any(self, name, attr):
@@ -541,17 +541,45 @@ class HSML:
                     seen.update(fresh)
         return groups
 
+    def _has_via(self, name, attr):
+        """B-556: ('own', None) | ('inherited', parent) | None. Speakable iff the
+        B-554 aggregation says pos and not neged; provenance prefers own, then the
+        closest ancestor (BFS order) that holds the attr. Live memory."""
+        pos, neged = self._pos_neg_any(name, attr)
+        if not pos or neged:
+            return None
+        if self._holds_any(name, attr):
+            return ('own', None)
+        for p, _ts in self._inherited_attrs(name):
+            if self._holds_any(p, attr):
+                return ('inherited', p)
+        return None
+
+    def _attr_candidates(self, x):
+        """B-556: own attrs first, then inherited (BFS), deduped. Live memory."""
+        xs = list(self._attrs_of_any(x) or [])
+        seen = set(xs)
+        for _p, ts in self._inherited_attrs(x):
+            for t in ts:
+                if t not in seen:
+                    seen.add(t)
+                    xs.append(t)
+        return xs
+
     def _compose_two_hop(self, s, x, y, lang, x_surf, y_surf):
-        """B-548: candidates from memory; each emitted link re-verified LIVE at speak
-        time (the verification gate). No verified path -> honest absence."""
-        xs = self._attrs_of_any(x)
+        """B-548 + B-556: candidates own-then-inherited; each emitted link re-verified
+        LIVE at speak time (speakable iff pos and not neged, B-554 aggregation);
+        per-hop provenance recorded. No verified path -> honest absence."""
         verified = []
-        if xs:
-            for z in xs:
-                # gate: re-query live memory at emission, both hops
-                if self._holds_any(x, z) and self._holds_any(z, y):
-                    verified.append(z)
-        self._rec(s, 'compose', 'attr', x=x, y=y, verified=verified)
+        prov = []
+        for z in self._attr_candidates(x):
+            # gate: re-query live memory at emission, both hops
+            h1 = self._has_via(x, z)
+            h2 = self._has_via(z, y)
+            if h1 and h2:
+                verified.append(z)
+                prov.append((z, h1, h2))
+        self._rec(s, 'compose', 'attr', x=x, y=y, verified=verified, prov=prov)
         if not verified:
             txt = 'ไม่รู้' if lang == 'th' else 'unknown'
             self._rec(s, 'compose_unknown', 'attr', x=x, y=y)
@@ -560,17 +588,22 @@ class HSML:
             text = ' / '.join(f'{x_surf} มี {z} และ {z} มี {y_surf}' for z in verified)
         else:
             text = ' / '.join(f'{x_surf} has {z} and {z} has {y_surf}' for z in verified)
-        return {'kind': 'composed', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'zs': verified}
+        return {'kind': 'composed', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'zs': verified, 'prov': prov}
 
     def _compose_three_hop(self, s, x, y, z, lang, x_surf, y_surf, z_surf):
         """B-551 (ALL DESIGNED, named): exactly-three-hop composition; same live
         re-verification gate as B-548. No verified path -> honest absence."""
         verified = []
-        for a in (self._attrs_of_any(x) or []):
+        prov = []
+        for a in self._attr_candidates(x):
             # gate: re-query live memory at emission, all three hops
-            if self._holds_any(x, a) and self._holds_any(a, y) and self._holds_any(y, z):
+            h1 = self._has_via(x, a)
+            h2 = self._has_via(a, y)
+            h3 = self._has_via(y, z)
+            if h1 and h2 and h3:
                 verified.append(a)
-        self._rec(s, 'compose3', 'attr', x=x, y=y, z=z, verified=verified)
+                prov.append((a, h1, h2, h3))
+        self._rec(s, 'compose3', 'attr', x=x, y=y, z=z, verified=verified, prov=prov)
         if not verified:
             txt = 'ไม่รู้' if lang == 'th' else 'unknown'
             self._rec(s, 'compose3_unknown', 'attr', x=x, y=y, z=z)
@@ -579,7 +612,7 @@ class HSML:
             text = ' / '.join(f'{x_surf} มี {a} และ {a} มี {y_surf} และ {y_surf} มี {z_surf}' for a in verified)
         else:
             text = ' / '.join(f'{x_surf} has {a} and {a} has {y_surf} and {y_surf} has {z_surf}' for a in verified)
-        return {'kind': 'composed3', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'z': z, 'as_': verified}
+        return {'kind': 'composed3', 'text': text, 'source': 'attr', 'x': x, 'y': y, 'z': z, 'as_': verified, 'prov': prov}
 
     def _resolve_link(self, w):
         """B-547: english surface word -> ('ok', canonical) or ('amb', [candidates]).
