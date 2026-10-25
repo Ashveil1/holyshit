@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/home/sandbox/holyshit/ai/wnn/b527.py", line 123, in <module>
+    print(json.dumps(run_battery(), ensure_ascii=False), flush=True)
+  File "/home/sandbox/holyshit/ai/wnn/b527.py", line 74, in run_battery
+    mem.skills = derive_skills(load_logged())
+  File "/home/sandbox/holyshit/ai/wnn/b527.py", line 55, in derive_skills
+    assert s == logged[task], f'{task}: re-derived program != b515 logged program'
+KeyError: 'even'
+Traceback (most recent call last):
+  File "/home/sandbox/holyshit/ai/wnn/b527.py", line 124, in <module>
+    print(json.dumps(run_battery(), ensure_ascii=False), flush=True)
+  File "/home/sandbox/holyshit/ai/wnn/b527.py", line 75, in run_battery
+    mem.skills = derive_skills(load_logged())
+  File "/home/sandbox/holyshit/ai/wnn/b527.py", line 55, in derive_skills
+    assert s == logged[task], f'{task}: re-derived program != b515 logged program'
+KeyError: 'sumto'
+{"c1_skill_sentence_accuracy": {"even": "160/160", "sumto": "160/160", "square": "160/160", "choose2": "160/160"}, "c2_copier_unseen": {"even": "11/160", "sumto": "54/160", "square": "87/160", "choose2": "63/160"}, "c3_no_skill_query": {"kind": "unknown_all", "unknown": []}, "c4_attr_battery": {"abstain": "13/13", "unique": "32/32", "ambig": "22/22", "unk_flag": "32/32", "unk_valid": "32/32"}, "c5_shuffled_induction": {"found": false, "tried": 611366}}
+DONE
