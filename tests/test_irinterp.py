@@ -245,6 +245,27 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
     os.makedirs(module_dir)
     with open(os.path.join(module_dir, "counter.holy"), "w") as f:
         f.write('value = 1\ndef bump():\n  global value\n  value = value + 1\n  return value\n')
+    # Module attribute reads must respect exception-name unbinding too.
+    with open(os.path.join(module_dir, "expired.holy"), "w") as f:
+        f.write('try:\n  raise "gone"\nexcept as e:\n  print e\n')
+    for caught in (False, True):
+        source = 'import expired\n'
+        if caught:
+            source += 'try:\n  print expired.e\nexcept as error:\n  print error\n'
+            source += 'expired.e = "u0004IRUNBOUNDu0004"\nprint expired.e\n'
+        else:
+            source += 'print expired.e\n'
+        prog = os.path.join(module_dir, "attributes.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL unbound module attribute: {ref!r} != {got!r}")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')

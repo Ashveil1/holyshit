@@ -91,3 +91,10 @@ cases, including exception-name cleanup, for235 total classifications. Existing
 hot-leaf53/53, profiling11/11 and native interpreter command5/5 gates remain.
 This does not fix the separately documented callable/module-record collision
 limit or establish a sandbox.
+
+Module attribute reads also consult binding metadata. An exception name cleared
+at module scope is absent through `module.name`, rather than exposing its stale
+stored value; explicit later attribute assignment binds it again. Two further
+caught/uncaught parity cases cover the missing-attribute error and rebinding,
+for237 total classifications. This closes the module-attribute path of the
+binding-state fix, not the separate record-collision limitation.
