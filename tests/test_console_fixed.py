@@ -22,7 +22,11 @@ with tempfile.TemporaryDirectory() as temp:
     instrumented += ('    session_events = session_events + 1\n'
                      '    if session_events == 16:\n'
                      '      session_after = mark()\n'
-                     '      print "FIXED SESSION GAP", session_after - session_before\n')
+                     '      print "FIXED SESSION GAP", session_after - session_before\n'
+                     '      steady_before = mark()\n'
+                     '    if session_events == 272:\n'
+                     '      steady_after = mark()\n'
+                     '      print "FIXED STEADY GAP", steady_after - steady_before\n')
     source.write_text(instrumented)
     subprocess.run([sys.executable,str(ROOT/'hs.py'),'xkernel',str(source),'-o',str(image)],env=env,check=True,capture_output=True,timeout=90)
     # Native hs kernel linker must produce the complete same image.
@@ -115,6 +119,34 @@ with tempfile.TemporaryDirectory() as temp:
         # that one-time initialization, not the serial printing itself.
         # Instrumentation itself uses only scalar counters.
         assert 'FIXED SESSION GAP 64\n' in content,content[-1000:]
+        cursor_at(1)
+        # A paced256-event real PS/2 session includes edits, backspace,
+        # empty submissions and history wrap. No synthetic enqueue bypass.
+        for key in ['a','b','backspace','c','ret','ret','a','ret'] * 32:
+            sock.sendall(('sendkey '+key+'\n').encode());sock.recv(4096)
+            if key=='ret':submits+=1
+            else:edits+=1
+            deadline=time.monotonic()+15
+            while time.monotonic()<deadline:
+                content=serial.read_text(errors='replace')
+                if content.count('FIXED SUBMITTED')>=submits and content.count('FIXED EDIT')>=edits:break
+                time.sleep(.1)
+            else:raise AssertionError('steady session stalled '+key)
+        deadline=time.monotonic()+5
+        while time.monotonic()<deadline:
+            content=serial.read_text(errors='replace')
+            if 'FIXED STEADY GAP ' in content:break
+            time.sleep(.1)
+        assert 'FIXED STEADY GAP 16\n' in content,content[-1000:]
+        cursor_at(0)
+        # Restore a single editable character for the capacity boundary walk.
+        sock.sendall(b'sendkey g\n');sock.recv(4096);edits+=1
+        deadline=time.monotonic()+15
+        while time.monotonic()<deadline:
+            content=serial.read_text(errors='replace')
+            if content.count('FIXED EDIT')>=edits:break
+            time.sleep(.1)
+        else:raise AssertionError('post-steady input stalled')
         cursor_at(1)
         # Overflow typing leaves the cursor at the full-capacity position;
         # backspace removes the old marker, and Enter resets it to column 0.

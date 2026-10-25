@@ -113,3 +113,12 @@ gap drops from576 to64bytes: READY's48bytes plus16bytes of marker alignment.
 The two retained labels initialize before the measurement. The gate still
 includes actual serial printing and does not establish all-session zero
 allocation, source-independent heap lifetime or GC.
+
+After the first16-event checkpoint, the graphical gate measures256 further
+paced real PS/2 events, including edits, backspace, empty submissions and
+history wrap. The retained-label path's bump-pointer gap is16bytes, solely
+the marker alignment in this finite sequence. Serial printing and actual
+shared redraw remain inside the measured interval. The original transcript
+and capacity/empty-history checks run afterward; final pixels were visually
+inspected. This is not a proof for unbounded sessions, FIFO bursts, arbitrary
+input sequences, counter overflow or real hardware.
