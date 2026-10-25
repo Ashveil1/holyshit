@@ -110,9 +110,11 @@ with tempfile.TemporaryDirectory() as temp:
             if 'FIXED SESSION GAP ' in content:break
             time.sleep(.1)
         # Finite end-to-end budget, not the renderer-only allocation proof:
-        # includes READY and per-event freestanding string diagnostics, plus
-        # marker alignment. Instrumentation itself uses only scalar counters.
-        assert 'FIXED SESSION GAP 576\n' in content,content[-1000:]
+        # includes READY (48 bytes) and the marker (16 bytes), while retained
+        # diagnostic labels are initialized before measurement. This excludes
+        # that one-time initialization, not the serial printing itself.
+        # Instrumentation itself uses only scalar counters.
+        assert 'FIXED SESSION GAP 64\n' in content,content[-1000:]
         cursor_at(1)
         # Overflow typing leaves the cursor at the full-capacity position;
         # backspace removes the old marker, and Enter resets it to column 0.
