@@ -1355,3 +1355,15 @@ One scripted conversation through HSML.hear() over ONE memory (hsml.py), pre-reg
 - C6 garbage-teacher control (Amendment 1 bounded cap 60,000/round): teach_failed after 60,001 tried (round 1 exhausted, no fit proposed), nothing stored, follow-up query abstains.
 ACCOUNTING (search-candidate tried, labeled separately from execution): double teach 549, quad teach 870 - byte-identical to the B-531/B-533 direct-API costs, i.e. the dialog path reproduces the underlying teaching protocol exactly; C6 control 60,001 (amended cap). Conversation total search tried = 61,420. Probes, seeded evals and the attr battery are execution, not search. Zero-eval capture default (post-B-533); no uncosted capture blocks in this experiment.
 Claim boundary (pre-reg, unchanged): CAN claim one conversation entry point teaches and answers against one memory with real data flow (scoped integration claim). CANNOT claim semantic understanding, natural-language generality (designed frames + numeric DSL), or intelligence. B-529 Correction 1 boundaries stand. Run-1 in-flight data (272,026 tried at kill, gate unbreached) recorded in Amendment 1.
+
+## B-535 pre-registration (2026-10-25, before running) - G2: full-memory persistence across processes
+Gap (LEDGER integration gap analysis 2026-10-25): no full-memory persistence story; taught skills and attr observations live only in-process.
+Design: HSML.save(path) / HSML.load(path) persisting the FULL learned state as data: dialog-taught skills {task: (prog, provenance)} (fn rebuilt via make_fn on load), CountBackend attr counts C, and the dialog-added SKILL_BY_WORD word map. Format tag 'hsml-mem-1'. Missing/corrupt/wrong-format files fail with a clear error, never a silent fresh memory.
+Test (b535.py, two real processes via subprocess):
+- C1 process 1: scripted conversation teaches double via dialog, observes attr statements, probes a FIXED probe set, stores the pre-save probe snapshot in the save file, saves, exits.
+- C2 process 2 (fresh interpreter): fresh HSML + load; double answers 10/10 unseen inputs (400-3999) through the sentence path (behavioral recall, not storage presence).
+- C3 attr probe decisions after load == pre-save snapshot exactly (unique/ambiguous/abstain parity).
+- C4 provenance survives: double's provenance source == 'dialog' after load; seeded skills still answer (spot 40/40 even).
+- C5 negative control: a never-taught word query abstains after load; no spurious skills.
+- C6 missing file and corrupt file each produce a clear error, not a silent fresh memory.
+Verdict PASS iff C1-C6. CAN claim: learned state (dialog-taught skills + observed attributes) persists across processes with behavioral recall through the same sentence path (engineering persistence). CANNOT: any new capability, generalization, or understanding claim. Accounting: search-candidate tried recorded for the teach; loads record zero tried.
