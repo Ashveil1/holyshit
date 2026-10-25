@@ -1,0 +1,42 @@
+# Trusted navigation state. Keyboard bindings are deliberately separate.
+import kconsole_buffer
+def create(session):
+  capacity = session[1]
+  unsafe:
+    address = as_int(alloc(capacity))
+  return [session, address, 0, -1]
+def copy(source, target, count):
+  i = 0
+  while i < count:
+    unsafe:
+      store8(as_ptr(target + i), load8(as_ptr(source + i)))
+    i = i + 1
+def previous(nav):
+  session = nav[0]
+  if session[6] == 0:
+    return false
+  if nav[3] == -1:
+    nav[2] = session[3]
+    copy(session[0], nav[1], nav[2])
+    nav[3] = session[6] - 1
+  elif nav[3] > 0:
+    nav[3] = nav[3] - 1
+  else:
+    return false
+  kconsole_buffer.recall(session, nav[3])
+  return true
+def next(nav):
+  session = nav[0]
+  if nav[3] == -1:
+    return false
+  if nav[3] + 1 < session[6]:
+    nav[3] = nav[3] + 1
+    kconsole_buffer.recall(session, nav[3])
+  else:
+    copy(nav[1], session[0], nav[2])
+    session[3] = nav[2]
+    nav[3] = -1
+  return true
+def detach(nav):
+  # Call before an edit/submission/reset: the current line becomes the draft.
+  nav[3] = -1
