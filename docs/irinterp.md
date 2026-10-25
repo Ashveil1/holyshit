@@ -79,3 +79,15 @@ globals and function registrations. Imports repeated within one state still
 reuse that state's module. The regression interleaves two states and checks
 counter results 2, 2, 3. Parsed-module metadata remains a process cache; this
 change does not promise source reload, concurrent execution or a sandbox.
+
+## Variable binding state
+
+Frame binding metadata is now separate from guest values. A guest string equal
+to the former `u0004IRUNBOUNDu0004` marker is an ordinary string in assignments,
+parameters, globals and containers. Unbinding an exception name clears its
+binding flag instead of storing a guest-visible sentinel. All interpreter-owned
+frame writes use the same binding helper. The parity gate adds five focused
+cases, including exception-name cleanup, for235 total classifications. Existing
+hot-leaf53/53, profiling11/11 and native interpreter command5/5 gates remain.
+This does not fix the separately documented callable/module-record collision
+limit or establish a sandbox.
