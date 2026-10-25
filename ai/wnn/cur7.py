@@ -95,7 +95,8 @@ def mine_macros(progs):
 def search(train, abl, tag='', tried_cap=6_000_000):
     if 'baselib' in abl and not getattr(search, '_baselib_done', False):  # pin LIB to the default arm's grown library
         import json as _json, os as _os
-        sv0 = '/tmp/c7_prog_0_base.json'
+        sv0 = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'logs', 'baselib_pin.json')  # repo-backed (B-532 provenance fix); /tmp fallback below
+        if not _os.path.exists(sv0): sv0 = '/tmp/c7_prog_0_base.json'
         if _os.path.exists(sv0):
             saved0 = _json.load(open(sv0))
             def tup0(e): return tuple(tup0(t) for t in e) if isinstance(e, list) else e

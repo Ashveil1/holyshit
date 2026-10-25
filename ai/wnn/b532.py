@@ -116,7 +116,8 @@ def run_battery():
     # LIB pinning (same logic as cur7.search) - skill programs may call pinned primitives;
     # depends on /tmp/c7_prog_0_base.json (TODO: repo-backed pinning, LEDGER Amendment 1)
     import os as _os, json as _json
-    sv0 = '/tmp/c7_prog_0_base.json'
+    sv0 = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'logs', 'baselib_pin.json')  # repo-backed (B-532 fix)
+    if not _os.path.exists(sv0): sv0 = '/tmp/c7_prog_0_base.json'
     if _os.path.exists(sv0):
         saved0 = _json.load(open(sv0))
         def tup0(e): return tuple(tup0(t) for t in e) if isinstance(e, list) else e
