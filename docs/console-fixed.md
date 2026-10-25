@@ -136,3 +136,18 @@ invalid indexes without mutation on interpreter/GCC/x64/native-seed routes.
 The native/reference-identical kernel stress includes recall/backspace/reset
 in100000 cycles and retains its16-byte marker gap. A visible recall binding
 and draft-preserving navigation need their own interaction design/test.
+
+`kconsole_recall` adds separate trusted navigation state with one fixed draft
+buffer allocated at creation. `previous` visits newest-to-oldest retained lines;
+`next` moves toward newer lines and then restores the saved draft. Reaching an
+end returns false without changing input. Empty history is a no-op. Before
+editing, submitting or resetting, callers must `detach` so the current line
+becomes the draft; bypassing that contract while navigation is active is not
+supported. History content/count stay unchanged. There is still no keyboard
+binding or change to the existing display-only demo.
+
+Hosted checks exercise wrapped history, empty entries, both ends, draft
+restoration and detach/edit on interpreter/GCC/x64/native-seed paths. The
+native/reference kernel stress includes previous/next/detach in100000 cycles
+with the same16-byte marker gap. This is navigation state, not a public widget
+API, a concurrent aliasing contract or an indefinite-session guarantee.
