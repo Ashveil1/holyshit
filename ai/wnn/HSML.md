@@ -73,6 +73,58 @@ Facts about things:
 ขน และ หาง                  probe: which things have these?
 ```
 
+Thai number words work in numeric positions (สี่, ยี่สิบ, สามสิบห้า ... หนึ่งล้าน):
+```
+ถ้า n เป็น สี่ ตอบ แปด          example with words
+ตอบ สิบสอง                     confirm with words
+```
+Malformed number words ('สี่สอง') are not guessed; they get an honest no-answer.
+
+English frames share the same memory — teach in one language, ask in the other:
+```
+ปีก ภาษาอังกฤษคือ wings       link a word (both directions; remove: ปีก ภาษาอังกฤษไม่ใช่ wings)
+a bird has wings              teach in English (a/an/the are dropped)
+what does a bird have         ask in English
+does a bird have wings        yes / no / unknown
+```
+Answers render with the canonical (taught) words — this is a shared store, not
+translation. Singular and plural are different words ('beak' vs 'beaks');
+the wrong form gets an honest unknown.
+
+Synonyms while chatting:
+```
+แมว กับ cat คือคำเดียวกัน      teach a synonym (both directions; remove: แมว กับ cat ไม่ใช่คำเดียวกัน)
+```
+A word taught two meanings is never guessed between: the system abstains and
+lists the options until you remove a link.
+
+Types and inherited answers:
+```
+นก มี ปีก                    (a fact taught earlier)
+เหยี่ยว เป็น นก                teach a type link (remove: ไม่ใช่ เหยี่ยว เป็น นก)
+เหยี่ยว มี ปีก ไหม            ใช่ — inherited through นก, derivation recorded
+เหยี่ยว มี อะไรบ้าง           own attrs first, then inherited ones grouped by source: ' และจาก นก: ...'
+```
+Retracting the parent's fact removes the inherited answer. Type cycles do not
+loop. Inheritance walks only links you taught — it is not common-sense inference.
+
+Composing new sentences from taught words (question-conditioned, verified before speaking):
+```
+ซูโม่ มี อะไรที่มี ทริบ        ->  'ซูโม่ มี ฟา และ ฟา มี ทริบ'  (a sentence it never heard)
+ซูโม่ มี อะไรที่มี ทริบ ที่มี โกล่    three links
+what does sumo have that has wing    English twin
+```
+Every link in the spoken sentence is re-checked against live memory before
+answering; a broken or half-known chain gets ไม่รู้, not a guess. Links may
+hold through type inheritance as well; each hop's provenance (own, or
+inherited from whom) is recorded in the machine result.
+
+Uncertain statements and corrections:
+```
+แมว อาจจะมีหาง                NOT stored as fact (อาจจะ อาจ น่าจะ คงจะ ไม่แน่ใจ มั้ง, maybe)
+ไม่ใช่ แมว มี หาง             correct memory: retract what was taught (honest when nothing to retract)
+```
+
 Teaching a new procedure triggers a program search. Cost is strongly
 target-dependent: a simple target (doubling) is found after ~10^3 candidate
 programs (sub-second here); harder targets can search for minutes of CPU and
@@ -98,9 +150,12 @@ a single measurement, not a hardware guarantee).
 
 ## Honest limits
 
-- Narrow Thai coverage, finite designed frames; unknown phrasing = abstain.
+- Narrow Thai coverage + a small English frame set; finite designed frames;
+  unknown phrasing = abstain.
 - No general language understanding, no common sense, no knowledge beyond
-  what you teach it.
+  what you teach it. Synonyms and is-a inheritance traverse only links you
+  taught explicitly; composed sentences assemble taught words over the
+  มี/is-a graph only — bounded designed frames, not free generation.
 - Teaching search can be expensive; there is no guarantee a target is found.
 - Single-user, local, no concurrency, no access control.
 ---
