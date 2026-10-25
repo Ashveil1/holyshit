@@ -167,7 +167,11 @@ class HSML:
         h = cls(seed=seed)
         C7.CAPF[0] = 20000
         for t, (prog, prov) in payload['skills'].items():
-            h.mem.skills[t] = (prog, make_fn(prog), prov)
+            fn = make_fn(prog)
+            h.mem.skills[t] = (prog, fn, prov)
+            # loaded skills rejoin the induction LIB (B-537: cross-session reuse path,
+            # same registration as _confirm at store time)
+            C7.LIB[t] = (lambda ff: (lambda a, b: ff(a, b)))(fn)
         for n, v in payload['attrs_C'].items():
             h.mem.attrs.C[n] = dict(v)
         SKILL_BY_WORD.update(payload['words'])
