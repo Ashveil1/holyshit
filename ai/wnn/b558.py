@@ -25,7 +25,7 @@ def teach_all(h, facts):
     for n, a in facts: h.hear(f'{n} มี {a}')
 
 # C1: noninterference battery - exact-frame answers byte-identical (assoc must not fire on matched input)
-h = HSML(seed=0)
+h = HSML(seed=0, assoc_fallback=True)  # B-558 harnesses explicitly opt into the EXPERIMENTAL layer (parent direction 2026-10-26: never default); probes byte-identical
 teach_all(h, FACTS)
 r = h.hear('บอร์ท มี อะไรบ้าง')
 check('C1a', r['kind'] == 'attr_list' and 'ฟลิบ' in (r['text'] or ''), r)
@@ -60,7 +60,7 @@ r2 = h.hear('บอร์ท มี ฟลิบ ไหม')
 check('C4b', r2['text'] == 'ไม่', r2)
 
 # C5: retention - 100 nonce facts, then 100 more; store recall 100%; assoc mis-association measured
-h5 = HSML(seed=0)
+h5 = HSML(seed=0, assoc_fallback=True)  # B-558 harnesses explicitly opt into the EXPERIMENTAL layer (parent direction 2026-10-26: never default); probes byte-identical
 SYL = ['ก๊า','ขิ๊บ','งู้','จ๊อ','ซ่า','ตุ๊','ท๊อ','บี้','ปู๋','ผ่า']
 names_a = [f'{SYL[i % 10]}{i:02d}' for i in range(100)]
 attrs_a = [f'ล{i:02d}' for i in range(100)]

@@ -12,7 +12,7 @@ def check(cid, cond, detail):
     print(('PASS' if cond else 'FAIL'), cid, '' if cond else str(detail)[:200], flush=True)
     if not cond: FAILS.append(cid)
 
-h = HSML(seed=0)
+h = HSML(seed=0, assoc_fallback=True)  # B-558 harnesses explicitly opt into the EXPERIMENTAL layer (parent direction 2026-10-26: never default); probes byte-identical
 # setup: nested names + normal facts
 h.hear('กา มี จิ๊บ'); h.hear('กาโตะ มี ซ็อก'); h.hear('นก มี ปีก'); h.hear('วินนี่ มี โบ้')
 

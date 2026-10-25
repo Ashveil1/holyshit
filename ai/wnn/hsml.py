@@ -80,7 +80,7 @@ def _deps_of(prog, known, self_word):
     return sorted(found)
 
 class HSML:
-    def __init__(self, seed=0, induction_lib='separated'):  # B-536 verdict: separated is the default induction regime
+    def __init__(self, seed=0, induction_lib='separated', assoc_fallback=False):  # B-536: separated default; B-558 v4: assoc layer is EXPERIMENTAL opt-in, never the default unmatched-chat path
         assert induction_lib in ('full', 'separated')
         self.induction_lib = induction_lib  # B-536: 'separated' excludes heavy pinned baselib from the SEARCH space only
         self.mem = HSMLMemory()
@@ -90,6 +90,7 @@ class HSML:
         self.pending = None    # {'prog':..., 'fn':..., 'checks':[cx,...], 'passed':int}
         self.log = []          # (sentence, response-kind, source)
         self.assoc = assoc.Assoc()  # B-558: derived index, rebuilt from live store at proposal time
+        self.assoc_fallback = assoc_fallback  # B-558 v4: opt-in only; default keeps pre-B-558 exact-frame + abstain behavior
         self.induce_cap = None  # None -> b529 default; B-534 Amendment 1 sets a bounded cap for C6
 
     def _rec(self, sentence, kind, source, **extra):
@@ -420,9 +421,10 @@ class HSML:
             name, attrs = stmt
             # B-544: questions/particles are never stored as facts (nonmutation)
             if _guarded(name) or any(_guarded(a) for a in attrs):
-                alt = self._assoc_fallback(s)  # B-558: abstention site is in scope for a verified proposal
-                if alt is not None:
-                    return alt
+                if self.assoc_fallback:  # B-558 v4: opt-in; abstention site in scope for a verified proposal
+                    alt = self._assoc_fallback(s)
+                    if alt is not None:
+                        return alt
                 self._rec(s, 'abstain', 'attr_guard', name=name, attrs=attrs)
                 return {'kind': 'unsupported_question', 'text': 'ยังไม่รองรับคำถามแบบนี้', 'source': 'attr_guard'}
             self.mem.attrs.observe_pairs(name, attrs)
@@ -451,9 +453,10 @@ class HSML:
         # philosophy); the answer kind 'assoc_answer' keeps mechanism provenance
         # separable from exact-frame answers. Not language understanding: name-
         # anchored surface similarity over taught facts (assoc.py docstring).
-        alt = self._assoc_fallback(s)  # B-558
-        if alt is not None:
-            return alt
+        if self.assoc_fallback:  # B-558 v4: opt-in only, not default fallback
+            alt = self._assoc_fallback(s)
+            if alt is not None:
+                return alt
         self._rec(s, 'abstain', 'unrouted')
         return {'kind': 'abstain', 'text': None, 'source': 'unrouted'}
 

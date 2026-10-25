@@ -19,7 +19,7 @@ def check(cid, cond, detail):
 
 g = probe_gen.generate()
 retracted = set(g['retract'])
-h = HSML(seed=0)
+h = HSML(seed=0, assoc_fallback=True)  # B-558 harnesses explicitly opt into the EXPERIMENTAL layer (parent direction 2026-10-26: never default); probes byte-identical
 for n, a in g['facts']: h.hear(f'{n} มี {a}')
 for n, a in g['retract']: h.hear(f'ไม่ใช่ {n} มี {a}')
 
