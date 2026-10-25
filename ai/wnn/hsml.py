@@ -14,6 +14,25 @@ from b521 import ATTRS
 
 CONF_Q = 'ถ้า n เป็น {} ตอบอะไร'
 
+# B-541: DESIGNED statement frames (from B-521's world generator) - fullmatch parsing
+# grounds the name/attr token ROLES, enabling dynamic vocabulary learning.
+STMT_FRAMES = [
+    (re.compile(r'(\S+) มี (\S+) และ (\S+) และ (\S+)'), lambda m: (m.group(1), [m.group(2), m.group(3), m.group(4)])),
+    (re.compile(r'(\S+) มี (\S+) และ (\S+)'), lambda m: (m.group(1), [m.group(2), m.group(3)])),
+    (re.compile(r'(\S+) และ (\S+) ของ (\S+)'), lambda m: (m.group(3), [m.group(1), m.group(2)])),
+    (re.compile(r'(\S+) นั้น มี (\S+)'), lambda m: (m.group(1), [m.group(2)])),
+    (re.compile(r'(\S+) มี (\S+)'), lambda m: (m.group(1), [m.group(2)])),
+    (re.compile(r'ดู (\S+) ของ (\S+)'), lambda m: (m.group(2), [m.group(1)])),
+    (re.compile(r'(\S+) ของ (\S+) สวย'), lambda m: (m.group(2), [m.group(1)])),
+]
+
+def _parse_statement(s):
+    for rx, f in STMT_FRAMES:
+        m = rx.fullmatch(s)
+        if m:
+            return f(m)
+    return None
+
 def _deps_of(prog, known, self_word):
     """B-539: scan a stored program for references to other stored skills (any nested
     symbol position). Returns the sorted dependency words, excluding the skill itself."""
@@ -112,11 +131,10 @@ class HSML:
             self._rec(s, 'abstain', ans.get('kind', 'no_skill'))
             return {'kind': 'abstain', 'text': None, 'source': ans.get('kind', 'no_skill')}
         # B-540 run-1 fix (DESIGNED routing, named): an attr PROBE is a sentence whose
-        # EVERY token is an attribute word (or 'เขา'); ANY sentence containing an attr
-        # word plus other content is a STATEMENT and is observed. The previous
-        # first-token rule silently misrouted 51/219 corpus statements (frames like
-        # 'ปีก ของ นก สวย' and 'ขน และ หาง ของ หมา' start with an attr) as probes.
-        if all(t in ATTRS or t == 'เขา' for t in toks):
+        # EVERY token is an attribute word (or 'เขา'); B-541: the vocabulary is DYNAMIC
+        # (seed ATTRS + every attr ever stored).
+        vocab = self.mem.attrs.vocab() if hasattr(self.mem.attrs, 'vocab') else set(ATTRS)
+        if all(t in vocab or t == 'เขา' for t in toks):
             ans = self.mem.answer(s)
             kind = ans.get('kind')
             self._rec(s, 'attr_' + str(kind), 'attr')
@@ -124,9 +142,16 @@ class HSML:
                 return {'kind': 'attr_answer', 'text': str(ans.get('answer', ans.get('ext'))),
                         'source': 'attr', 'decision': kind}
             return {'kind': 'abstain', 'text': None, 'source': 'attr_' + str(kind)}
-        if any(t in ATTRS for t in toks):
-            self.mem.attrs.observe(toks)
-            self._rec(s, 'observed', 'attr')
+        # B-541 (DESIGNED, named): statements are parsed through the designed B-521
+        # frames, which ground WHICH token is the name and which are attributes -
+        # so both may be NEW words and are actually stored (no ack without learning:
+        # the eval_ash baseline showed 'เหยี่ยว มี ปีก' was acknowledged but dropped).
+        # A sentence with attr content but no designed frame abstains honestly.
+        stmt = _parse_statement(s)
+        if stmt is not None:
+            name, attrs = stmt
+            self.mem.attrs.observe_pairs(name, attrs)
+            self._rec(s, 'observed', 'attr', name=name, attrs=attrs)
             return {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
         self._rec(s, 'abstain', 'unrouted')
         return {'kind': 'abstain', 'text': None, 'source': 'unrouted'}

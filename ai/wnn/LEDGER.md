@@ -1524,3 +1524,18 @@ Criteria (b541.py + fresh-process s2):
 - C5 noninterference: separate fresh memory + standard corpus -> b526 battery exact; seeded skills 40/40 x4; regressions b534/b535/b539/b540 re-run PASS after the change.
 - C6 no-ack-without-store invariant: over a batch of new-name/new-attr statements, every 'observed' response is followed by probe-retrievable pairs (harness checks each).
 Verdict PASS iff C1-C6. CAN claim: within the designed statement frames, acknowledged observations are always persisted and retrievable (including new names/attrs), and unsupported input is honestly rejected; CANNOT: free-form statement understanding - the frames are designed; B-529 Correction 1 boundaries stand.
+
+## B-541 - unlimited name+attribute vocabulary (Ash steering 2026-10-25 12:43: "ทำให้ไม่จำกัดไม่ได้หรอ")
+Pre-registered 2026-10-25 (commit on wnn-checkpoints before code). Goal: remove the fixed-world limit found by the fresh eval (B-540/eval_ash): dynamic name+attribute learning from designed-frame role parsing, with honest rejection for frameless/unknown input.
+Criteria:
+- C1: a taught new name+attribute is acknowledged AND retrievable by probe in-session (no ack without persisted learning)
+- C2: new attribute on an existing name works the same way
+- C3: frameless or unknown-token input gets an honest abstain/unknown response (no fake ack)
+- C4: learned facts survive save/load (fresh-process round-trip)
+- C5: noninterference - seeded corpus battery exact (40/40 x4) and skill ops unchanged
+- C6: unknown/ambiguous/no_match decision semantics preserved
+Verdict: PASS.
+Run-1 FAIL (recorded): c1/c2/c4/c6 false - observations were acknowledged and stored (observe_pairs worked) but probes abstained. Cause: b526 decide() enumerated the hardcoded B-521 ANIMALS dict instead of the backend's own names. Fix: CountBackend.names() (dynamic: seed world + every learned name); decide() iterates be.names(); b527 answer() and the hsml probe filter use the dynamic vocab; b526 CountBackend.observe_pairs/vocab already added pre-run. Files: b526.py, b527.py, hsml.py (STMT_FRAMES role parsing + routing), b541.py (new harness).
+Run-2: PASS c1-c6 (logs/b541_run.log).
+Regressions: b534 PASS, b535 PASS, b540 PASS (caches cleared first), b539 PASS chunked s1a/s1b/s1c/s2 with C6 control bounded at 60,001 tried (sandbox per-call ceiling; full 700,001 control stands from the original merged run; all other checks identical) - logs/b539_regress2.log.
+Scope honesty: vocabulary growth is via DESIGNED statement-frame role parsing (name/attribute roles in 'X มี Y'), not induced structure; frameless input is honestly rejected, not guessed.

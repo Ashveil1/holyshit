@@ -26,8 +26,24 @@ class CountBackend:
         for n in [t for t in toks if t in ANIMALS]:
             for a in [t for t in toks if t in ATTRS]:
                 self.C[n][a] = self.C[n].get(a, 0) + 1
+    def observe_pairs(self, name, attrs):
+        # B-541: dynamic vocabulary - the DESIGNED statement frame grounds which token
+        # is the name and which are attributes, so BOTH may be new words. No silent drop:
+        # whatever is acknowledged is stored here and is probe-retrievable afterward.
+        row = self.C.setdefault(name, {})
+        for a in attrs:
+            row[a] = row.get(a, 0) + 1
+    def vocab(self):
+        # known attribute words = seed ATTRS + every attr ever stored
+        v = set(ATTRS)
+        for row in self.C.values():
+            v |= set(row)
+        return v
     def taught(self, n, a):
         return self.C[n].get(a, 0) > 0
+    def names(self):
+        # B-541: dynamic name vocabulary (seed world + every learned name)
+        return list(self.C)
     def mem_bytes(self):
         return sum(8 * len(v) for v in self.C.values())
 
@@ -145,12 +161,15 @@ class HDC2Backend:
         return len(ANIMALS) * (D // 8)
 
 def decide(be, probe):
-    """B-523 three-way decision, evidence read ONLY through the backend."""
-    known = [a for a in probe if any(be.taught(n, a) for n in ANIMALS)]
+    """B-523 three-way decision, evidence read ONLY through the backend.
+    B-541: enumerate the backend's OWN names (dynamic vocabulary), not the
+    hardcoded seed world - a learned new name must appear in answers."""
+    names = be.names() if hasattr(be, 'names') else list(ANIMALS)
+    known = [a for a in probe if any(be.taught(n, a) for n in names)]
     unknown = [a for a in probe if a not in known]
     if not known:
         return 'unknown_all', {'unknown': unknown}
-    ext = sorted(n for n in ANIMALS if all(be.taught(n, a) for a in known))
+    ext = sorted(n for n in names if all(be.taught(n, a) for a in known))
     if not ext:
         return 'no_match', {'unknown': unknown}
     if len(ext) > 1:
