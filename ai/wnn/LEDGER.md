@@ -1272,4 +1272,11 @@ handling, retain skill provenance.
   EXCL handling covers search; b529-style induce() clears EXCL, so a future teach of a
   target that IS in baselib_pin.json would shortcut. Current taught targets
   (double/quad/16n) are not in the pin set; B-529/530/531 results unaffected.
-- Regression verdict: IN FLIGHT at commit time (long re-derivation); verdict to be recorded.
+- Regression verdict: PASS (2026-10-25 03:22, logs/regress_skills.log).
+  C1 clean process, /tmp artifact hidden: all 4 skills execute, 40/40 sentence-path spot each
+  (pinning resolved from repo logs/baselib_pin.json). C2 both pinning sources hidden: clear
+  RuntimeError naming the dependency. C3 corrupt cache: WARNING + full re-derivation, rc 0.
+  Note: re-derivation runs at baseline cost (~25-30 min CPU per task) because derive_skills
+  does not add derived skills to LIB between tasks - recorded as a known cost characteristic,
+  not a correctness defect (found programs are train-trace-verified either way; the original
+  oops-mode speedups in b515 came from the library-growth protocol of that experiment).
