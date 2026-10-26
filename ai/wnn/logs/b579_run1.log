@@ -1,0 +1,12 @@
+ROW {"seed": 0, "eval": "c21", "n": 64, "fully_unassisted": 27, "helped": 37, "interactive_joint_on_fu": 19, "static_joint_on_fu": 1, "interactive_joint_on_helped": 21, "static_joint_all_items": 1}
+ROW {"seed": 0, "eval": "c22", "n": 64, "fully_unassisted": 23, "helped": 41, "interactive_joint_on_fu": 12, "static_joint_on_fu": 7, "interactive_joint_on_helped": 28, "static_joint_all_items": 20}
+ROW {"seed": 1, "eval": "c21", "n": 64, "fully_unassisted": 27, "helped": 37, "interactive_joint_on_fu": 19, "static_joint_on_fu": 3, "interactive_joint_on_helped": 22, "static_joint_all_items": 4}
+ROW {"seed": 1, "eval": "c22", "n": 64, "fully_unassisted": 30, "helped": 34, "interactive_joint_on_fu": 19, "static_joint_on_fu": 5, "interactive_joint_on_helped": 26, "static_joint_all_items": 12}
+ROW {"seed": 2, "eval": "c21", "n": 64, "fully_unassisted": 25, "helped": 39, "interactive_joint_on_fu": 17, "static_joint_on_fu": 2, "interactive_joint_on_helped": 22, "static_joint_all_items": 3}
+ROW {"seed": 2, "eval": "c22", "n": 64, "fully_unassisted": 18, "helped": 46, "interactive_joint_on_fu": 15, "static_joint_on_fu": 1, "interactive_joint_on_helped": 30, "static_joint_all_items": 12}
+ROW {"seed": 3, "eval": "c21", "n": 64, "fully_unassisted": 33, "helped": 31, "interactive_joint_on_fu": 18, "static_joint_on_fu": 2, "interactive_joint_on_helped": 17, "static_joint_all_items": 3}
+ROW {"seed": 3, "eval": "c22", "n": 64, "fully_unassisted": 35, "helped": 29, "interactive_joint_on_fu": 23, "static_joint_on_fu": 11, "interactive_joint_on_helped": 20, "static_joint_all_items": 20}
+ROW {"seed": 4, "eval": "c21", "n": 64, "fully_unassisted": 26, "helped": 38, "interactive_joint_on_fu": 16, "static_joint_on_fu": 2, "interactive_joint_on_helped": 24, "static_joint_all_items": 3}
+ROW {"seed": 4, "eval": "c22", "n": 64, "fully_unassisted": 22, "helped": 42, "interactive_joint_on_fu": 13, "static_joint_on_fu": 3, "interactive_joint_on_helped": 22, "static_joint_all_items": 12}
+RES-FINAL {"peak_rss_mb_overall": 28.5, "wall_seconds": 6.4}
+DONE

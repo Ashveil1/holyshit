@@ -3289,3 +3289,39 @@ Consequences:
    contaminated, not rewritten. A corrected EVAL_FAM_V2 (replacing the
    invalid template) will be defined if a future arm needs an ev-style set;
    it will be labeled non-comparable to ev.
+
+## B-579 PRE-REGISTERED (2026-10-26, before code) - matched-baseline reconciliation of B-578 G3
+
+Measurement pass, NO gate. Fixes the B-578 G3 contrast per review: the
+static baseline is computed on EXACTLY the items the interactive arm
+executed FULLY UNASSISTED (no intent question AND no slot question),
+killing the selection-inflation confound; teacher-helped items are reported
+separately; all-item unassisted-correct/total is reported alongside. Same
+B-578 run1 protocol (margin>=0 deviation carried, labeled); B-578's
+'first positive transfer' wording stays WITHDRAWN until this contrast is
+read. Static baseline = raw-argmax NBu + frozen S4 extractor, no asks.
+
+## B-579 FINDINGS (2026-10-26): matched contrast survives; all-item gain is coverage-limited
+
+Run: logs/b579_run1.log, script b579.py (measurement, no gate; same B-578
+run1 protocol with margin>=0 deviation labeled). 5-seed totals, n=320/cell.
+c21: fully-unassisted 138 items, helped 182.
+  MATCHED conditional contrast: interactive joint 89/138 = .645 vs static
+  10/138 = .072 on the SAME items - selection alone does NOT explain the
+  gap; learned span-to-role transfer is supported on this contrast (scoped:
+  this protocol, simulated teacher, margin>=0 acceptance).
+  All-item: interactive unassisted-correct 89/320 = .278 vs static all-item
+  14/320 = .044. Helped items (teacher-supplied, NOT learned transfer):
+  106/182 = .583.
+c22: fully-unassisted 128, helped 192.
+  MATCHED: interactive 82/128 = .641 vs static 27/128 = .211 - transfer
+  supported on this contrast, smaller margin.
+  All-item: interactive unassisted-correct 82/320 = .256 vs static all-item
+  76/320 = .238 - nearly NO net all-item gain on c22.
+Honest bottom line: the conditional transfer is real in this protocol, but
+~57-60% of items still need teacher help, ~35% of unassisted executions are
+wrong, and on c22 the all-item unassisted correctness is statistically
+indistinguishable from the static baseline. Gating, coverage, retention
+(.55-.70) and representation/teacher validity are ALL unresolved - no
+single 'hard part' claim is made. The 'first genuine positive transfer'
+wording stays withdrawn in favor of these matched numbers.
