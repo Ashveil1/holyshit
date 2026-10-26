@@ -1,0 +1,45 @@
+TURN {"turn": "สวัสดี", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "category": null, "resolution": "none", "definition_fired": false}
+TURN {"turn": "มิโล เป็น แมว", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "แมว เป็น สัตว์", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "มิโล เป็น สัตว์ ไหม", "expected": "inference_ok", "got": "inference_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "มิโล มี หาง", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "หาง ของ มิโล คืออะไร", "expected": "answer_ok", "got": "answer_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "แมวตัวนี้ชื่อมิโลนะ", "expected": "teach_ok", "got": "literal_repeat", "ok": false, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "มัน กิน ปลา ไหม", "expected": "ask_needed", "got": "ask_needed", "ok": true, "category": null, "resolution": "clarify", "definition_fired": false}
+TURN {"turn": "วันนี้ อากาศ ดี มาก", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "category": null, "resolution": "none", "definition_fired": false}
+TURN {"turn": "ราคา เท่าไหร่ กัน", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "category": null, "resolution": "none", "definition_fired": false}
+TURN {"turn": "สอนวิธี บวก ให้หน่อย", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "ตอบ สี่", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "มิโล เป็น นก ไหม", "expected": "answer_ok", "got": "answer_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "นก เป็น สัตว์", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "มิโล ไม่มี หาง", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "หาง ของ มิโล คืออะไร รู้ไหม", "expected": "answer_ok", "got": "answer_ok", "ok": true, "category": "unassisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "good night sleep well", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "category": null, "resolution": "none", "definition_fired": false}
+TURN {"turn": "เหยี่ยว เป็น สัตว์เลี้ยง ไหม", "expected": "answer_ok", "got": "answer_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+SUMMARY {"scenario": "v1-comparable", "match": 17, "turns": 18, "questions_total": 14, "yes": 1, "corrections": 13, "fabricated": 0, "categories": {"honest_engaged": 4, "teacher_assisted": 12, "ask_needed": 1, "unassisted": 1}, "resolutions": {"none": 17, "clarify": 1}}
+TURN {"turn": "สวัสดี", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "category": null, "resolution": "none", "definition_fired": false}
+TURN {"turn": "มิโล เป็น แมว", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "แมว เป็น สัตว์", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "มัน เป็น สัตว์ ไหม", "expected": "ask_needed", "got": "ask_needed", "ok": true, "category": null, "resolution": "clarify", "definition_fired": false}
+TURN {"turn": "มัน กิน ปลา ไหม", "expected": "ask_needed", "got": "ask_needed", "ok": true, "category": null, "resolution": "clarify", "definition_fired": false}
+TURN {"turn": "มิโล มี หาง", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "ของมัน สวย ไหม", "expected": "ask_needed", "got": "ask_needed", "ok": true, "category": null, "resolution": "clarify", "definition_fired": false}
+TURN {"turn": "นก เป็น สัตว์", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "มัน เป็น สัตว์เลี้ยง ไหม", "expected": "ask_needed", "got": "ask_needed", "ok": true, "category": null, "resolution": "clarify", "definition_fired": false}
+TURN {"turn": "วันนี้ อากาศ ดี มาก", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "category": null, "resolution": "none", "definition_fired": false}
+SUMMARY {"scenario": "v2-relabeled", "match": 10, "turns": 10, "questions_total": 8, "yes": 0, "corrections": 8, "fabricated": 0, "categories": {"honest_engaged": 2, "teacher_assisted": 4, "ask_needed": 4}, "resolutions": {"none": 6, "clarify": 4}}
+TURN {"turn": "สวัสดี", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "category": null, "resolution": "none", "definition_fired": false}
+TURN {"turn": "มิโล เป็น แมว", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": "none", "definition_fired": false}
+TURN {"turn": "นิยาม เหยี่ยว น่ะ เป็น นก เหมื", "expected": "def_taught", "got": "def_taught", "ok": true, "category": null, "resolution": null, "definition_fired": false}
+TURN {"turn": "กวาง น่ะ เป็น สัตว์", "expected": "teach_ok", "got": "teach_ok", "ok": true, "category": "teacher_assisted", "resolution": null, "definition_fired": true}
+TURN {"turn": "มัน กิน ปลา ไหม", "expected": "ask_needed", "got": "ask_needed", "ok": true, "category": null, "resolution": "clarify", "definition_fired": false}
+TURN {"turn": "พวกมัน เป็น สัตว์ ไหม", "expected": "ask_needed", "got": "ask_needed", "ok": true, "category": null, "resolution": "plural", "definition_fired": false}
+TURN {"turn": "ทำไมมิโลถึงเป็นแมว", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "category": null, "resolution": "none", "definition_fired": false}
+TURN {"turn": "มิโล เป็น แมว", "expected": "literal_repeat", "got": "literal_repeat", "ok": true, "category": "literal_repeat", "resolution": null, "definition_fired": false}
+TURN {"turn": "แล้วนกล่ะ กิน ปลา ไหม", "expected": "ask_needed", "got": "honest_engaged", "ok": false, "category": null, "resolution": "none", "definition_fired": false}
+TURN {"turn": "ขอบคุณ", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "category": null, "resolution": "none", "definition_fired": false}
+TURN {"turn": "นิยาม แพะ ก็ มี เขา เหมือน แพะ", "expected": "def_taught", "got": "def_taught", "ok": true, "category": null, "resolution": null, "definition_fired": false}
+TURN {"turn": "ม้า ก็ มี ขน", "expected": "teach_ok", "got": "honest_engaged", "ok": false, "category": "taught_pattern", "resolution": null, "definition_fired": true}
+SUMMARY {"scenario": "v3-challenge", "match": 10, "turns": 12, "questions_total": 7, "yes": 0, "corrections": 7, "fabricated": 0, "categories": {"honest_engaged": 4, "teacher_assisted": 2, "def_taught": 2, "ask_needed": 2, "literal_repeat": 1, "taught_pattern": 1}, "resolutions": {"none": 5, "clarify": 1, "plural": 1}}
+RES-FINAL {"peak_rss_mb_overall": 27.5, "wall_seconds": 1.3}
+DONE

@@ -1,0 +1,3 @@
+LOAD {"snapshot_roundtrip_equal": true, "taught_infer": "inference_ok", "questions_for_taught": 1, "seen_surface": "literal_repeat", "unfamiliar": "honest_engaged", "questions_for_unfamiliar": 1, "persisted_definition_fires": true, "def_turn": "teach_ok"}
+RES-FINAL {"peak_rss_mb_overall": 27.1, "wall_seconds": 1.2}
+DONE

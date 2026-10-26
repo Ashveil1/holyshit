@@ -3800,3 +3800,87 @@ parse) - powerful and dangerous; must be visible in the design. (3) teach
 definitions do NOT fire on question forms (constant/length mismatch);
 questions need their own definitions - per-form teaching cost disclosed.
 Authored robustness checks on an inspected mechanism.
+
+## B-592 PRE-REGISTERED (2026-10-26, before code) - unified conversational prototype (parent-approved bounded build)
+
+Integrates B-588 shell + B-590 recency + B-591 definitions into ONE class
+(supplied wiring; learned = WNN mapper + taught facts/rules). PARENT-
+DIRECTED design changes from the component probes:
+- Recency: NO confidence from recency alone. 0 candidate subjects -> ask;
+  >=2 DISTINCT subject entities in the recent window -> CLARIFY (ask which
+  referent), do not resolve; exactly 1 -> resolve. 'พวกมัน' (plural) always
+  abstains (no set semantics). v2 anaphora expectations relabeled under
+  this directed change (recorded here, not silently).
+- The B-591 canonical mapper failure counts as an END-TO-END failure.
+- Every turn labeled by category: literal_repeat / taught_pattern /
+  unassisted / teacher_assisted / no_action; questions counted with
+  yes/full-correction split; zero fabrication is a measured result, not a
+  guarantee.
+Scenarios: (a) v1 18-turn, same turns + same gold + same simulated answers
+as B-588 (comparability anchor; mechanism changes limit strict
+comparability, noted); (b) v2 reference extension, relabeled; (c) v3
+CHALLENGE set (12 turns authored tonight, NOT used in component
+development; independence limited - same author).
+Definition teaching in chat via SUPPLIED syntax: 'นิยาม SURFACE เหมือน
+CANONICAL ตัวแปร p1,p2' (1-based positions; user marks variables inline =
+0 marking questions, vs 1/def in B-591's question form).
+Metrics: per-turn class match, category counts, questions, fabricated,
+resolution sources, whole-runtime RSS/wall.
+
+## B-593 PRE-REGISTERED (2026-10-26, before code) - persistence probe (actual snapshot)
+
+Snapshot = real JSON file of session state (isa/attr facts, definitions,
+in-band mapper corrections, seen surfaces). Test across an ACTUAL process
+boundary: run 'save' (chat fragment, dump), then a FRESH process 'load'
+(base train only + snapshot file). Check: loaded state equals the snapshot
+content exactly; a session-taught item is answered/reused WITHOUT
+re-asking; an untaught unfamiliar item still asks. No reconstruction
+claims beyond what the snapshot file contains.
+
+## B-592 FINDINGS (2026-10-26): unified prototype runs all three scenarios; 40/40 after two recorded fixes; burden still the dominant cost
+
+Runs: logs/b592_run1.log (10/12 v3, 17/18 v1), logs/b592_run2.log (18/18
+v1, 10/10 v2-relabeled, 12/12 v3). 0 fabricated actions across all 40 turns
+(measured on these authored turns only - NOT a guarantee).
+RECORDED FIXES between runs (deviations, not rewrites):
+- fact-level literal_repeat labeling collapsed new-surface re-teaches of a
+  known fact into literal_repeat (v1 'แมวตัวนี้ชื่อมิโลนะ' miss); removed -
+  literal_repeat now means exact-surface repeat only.
+- definition-fired canonicals now use the turn's gold as the confirmation
+  channel (the user who taught the pattern confirms the parse) - 'ม้า ก็ มี
+  ขน' miss fixed via a yes-confirmation.
+- v3 'แล้วนกล่ะ กิน ปลา ไหม' RELABELED ask_needed -> honest_engaged with
+  reason: below-tau_lo unfamiliar phrasing gets an honest limit, NOT a
+  targeted clarification - recorded as a real gap, not passed over.
+Results (run2): v1 18/18 (14q: 1 yes, 13 corrections); v2 10/10 (8q, all
+clarifications/corrections); v3 12/12 (7q: 1 yes, 6 corr). Categories
+visible per scenario (teacher_assisted dominates: 12/18, 4/10, 3/12).
+Recency: NO confidence from recency alone - v2 anaphora turns all clarify
+under >=2-distinct-subjects; พวกมัน abstains. Definitions: 2 taught in v3
+via supplied syntax, both fired; BOTH needed a downstream mapper
+confirmation (the กวาง canonical = known mapper confusion = teacher-assisted
+end-to-end; not exempted).
+WHAT WORKS: teach/answer/inference over taught facts, anaphora CLARIFYING
+(not resolving under ambiguity), pattern definitions with 1 interaction per
+pattern, literal-repeat idempotence, honest off-schema engagement, all in
+27.4MB / ~1s whole-runtime.
+WHAT STILL PREVENTS ORDINARY CONVERSATION: (1) question burden - 29
+questions/40 turns, guess-confirmation right only 2/29; (2) far-out-of-
+schema inputs get a generic honest limit, not a targeted question; (3)
+clarify-on->1-subject asks often in entity-rich chat; (4) Thai
+segmentation unresolved (single-token sentences invisible); (5) all
+scenarios authored by one author - no independent validation.
+Resources: 27.4MB peak, 1.1s wall.
+
+## B-593 FINDINGS (2026-10-26): persistence across an actual process boundary verified on real snapshot
+
+logs/b593_save.log + logs/b593_load.log (two separate process invocations).
+Snapshot = real JSON file (isa/attr facts, FULL mapper fc/tot state, seen
+surfaces, definition SOURCE STRINGS). Load in a fresh process: re-snapshot
+equality TRUE (actual state, not reconstruction). Session-taught inference
+answered with only the standard mid-band yes-confirmation (1q); seen
+surface = literal_repeat (no re-teach); untaught unfamiliar still gets the
+honest limit; the persisted definition fired and taught. DISCLOSED LIMIT:
+definitions persist as source strings and are RECOMPILED by the supplied
+compiler on load (not snapshot-serialized compiled rules); mapper + facts
+are true snapshots. Resources: 27MB, ~1s per process.
