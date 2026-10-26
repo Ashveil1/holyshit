@@ -31,6 +31,9 @@ EXTENSION_LEX = {'หมู', 'เสือ', 'ช้าง', 'น่ะ'}   # s
 YES = {'ใช่', 'ถูก', 'ใช่ครับ', 'ใช่ค่ะ'}
 NO = {'ไม่ใช่', 'ไม่', 'ผิด'}
 GREETINGS = {'สวัสดี', 'หวัดดี', 'ดี'}
+QMARKERS = {'ไหม', 'หรือเปล่า', 'คืออะไร', 'จริงไหม', 'ทำไม', 'อะไร'}   # supplied
+QINTENTS = {'is_a_q', 'ask_attr'}
+MUTATING = {'teach_isa', 'teach_attr', 'retract_attr'}
 
 RESTATE = {
     'teach_isa': lambda sl: 'สอนว่า %s เป็น %s' % (sl[0], sl[1]),
@@ -51,9 +54,10 @@ class InteractiveChat(ChatSpeaks):
     offered once; after two rejected guesses, honest limit naming the
     definition route)."""
 
-    def __init__(self, m, tau_hi, tau_lo, frame, fillers, soff, fn0, anchor0, offstat0, rolepos0):
+    def __init__(self, m, tau_hi, tau_lo, frame, fillers, soff, fn0, anchor0, offstat0, rolepos0, vocab=None):
         super().__init__(m, tau_hi, tau_lo, self._extract)
         self.frame, self.fillers, self.soff = frame, fillers, soff
+        self.vocab = vocab
         self.fn0, self.anchor0, self.offstat0, self.rolepos0 = fn0, anchor0, offstat0, rolepos0
         self.markers = set().union(*frame.values()) | set(anchor0.values())
         self.grammar = set(self.markers)
@@ -107,6 +111,11 @@ class InteractiveChat(ChatSpeaks):
 
     def _commit(self, s, d, sl, category):
         sl = [self._clean(x) for x in sl] if sl else sl
+        if d == 'ask_attr' and sl and 'ของ' in s.split():
+            toks = s.split()
+            after = toks[toks.index('ของ') + 1] if toks.index('ของ') + 1 < len(toks) else None
+            if after in sl and sl[0] != after:
+                sl = [after] + [x for x in sl if x != after]
         self._grow_lex(sl)
         cls = self._act(d, sl)
         return cls, self.realize(cls, s, d, sl, {'category': category}), category
@@ -127,9 +136,14 @@ class InteractiveChat(ChatSpeaks):
 
     def _try_confirm(self, s, exclude=()):
         """Offer a guess-confirmation for the best non-excluded intent
-        whose slots extract, guarded by marker-word or known-entity."""
+        whose slots extract, guarded by marker-word or known-entity.
+        B-605: question-marked surfaces only get question-intent guesses;
+        unmarked surfaces never get question-intent guesses."""
+        q = any(t in QMARKERS for t in s.split())
         for d, _sc in self._ranked(s):
             if d in exclude or d not in RESTATE: continue
+            if q and d not in QINTENTS: continue
+            if not q and d in QINTENTS: continue
             sl = self._extract(s, d)
             if sl is None or len(sl) != B.NSLOTS[d]: continue
             if self._known(sl) or any(t in self.markers for t in s.split()):
@@ -266,12 +280,12 @@ def fresh_chat():
     for s, d, _, _ in train: m.add(B.encode(s), d)
     tau_hi, _ = pick_tau_precision(m, dev)
     fn0, anchor0, offstat0, rolepos0 = learn_s4(train)
-    frame, fillers = learn_gold_stats(train)
+    frame, fillers, vocab = learn_gold_stats(train)
     soff = slot_offsets(train, anchor0)
-    return InteractiveChat(m, tau_hi, 1.0, frame, fillers, soff, fn0, anchor0, offstat0, rolepos0)
+    return InteractiveChat(m, tau_hi, 1.0, frame, fillers, soff, fn0, anchor0, offstat0, rolepos0, vocab)
 
 # ---------- check transcript (authored, UNSPACED user input) ----------
-PART1 = ['สวัสดี', 'มิโลเป็นแมว', 'ไม่ใช่', 'ใช่', 'แมวเป็นสัตว์', 'ใช่',
+PART1 = ['สวัสดี', 'มิโลเป็นแมว', 'ใช่', 'แมวเป็นสัตว์', 'ใช่',
          'มันเป็นสัตว์ไหม', 'มิโล', 'มิโลมีหาง', 'ใช่', 'บัวมีกลีบ', 'ใช่',
          'นิยาม เหยี่ยว น่ะ เป็น นก เหมือน เหยี่ยว เป็น นก ตัวแปร 1,4']
 PART2 = ['เหยี่ยวน่ะเป็นนก', 'ใช่', 'มิโลเป็นสัตว์ไหม', 'ใช่', 'มิโลเป็นแมว',
@@ -297,8 +311,27 @@ def check_part1():
     watchdog.stop()
     print('RES-PART1 ' + json.dumps({'peak_rss_mb': round(watchdog.peak/1e6,1),
         'wall_seconds': round(time.time()-t0,1)}))
-    r = subprocess.run([sys.executable, 'hsml_chat.py', '--check-part2'])
-    sys.exit(r.returncode)
+    import threading
+    peak = [0]; stop = False
+    def sampler(proc):
+        while not stop:
+            total = 0
+            for pid in {subprocess.os.getpid(), proc.pid}:
+                try:
+                    with open('/proc/%d/status' % pid) as f:
+                        for ln in f:
+                            if ln.startswith('VmRSS'):
+                                total += int(ln.split()[1]) * 1024
+                except FileNotFoundError:
+                    pass
+            peak[0] = max(peak[0], total)
+            time.sleep(0.05)
+    proc = subprocess.Popen([sys.executable, 'hsml_chat.py', '--check-part2'])
+    th = threading.Thread(target=sampler, args=(proc,)); th.start()
+    r = proc.wait(); stop = True; th.join()
+    print('TREE-PEAK ' + json.dumps({'peak_concurrent_tree_mb': round(peak[0]/1e6,1),
+        'note': 'parent+child RSS sampled concurrently during child lifetime'}))
+    sys.exit(r)
 
 def check_part2():
     watchdog = Watchdog(BUDGET); watchdog.start()

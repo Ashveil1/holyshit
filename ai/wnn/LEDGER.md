@@ -4324,3 +4324,91 @@ exercised together here; earlier per-probe results remain component
 evidence only. The transcript is a same-author development check, not
 independent validation, and passing it does not establish the
 overnight conversational target.
+
+## B-605 PRE-REGISTERED (2026-10-27, before code) - wrong-intent mutation guard + mutation accounting
+
+Recorded defect (logs/hsml_check_prefix.log, preserved pre-fix): the
+question 'บัวมีกลีบไหม' was confirmed as a TEACH guess and the yes
+answer re-committed the fact - a question turn mutated (well,
+re-wrote) the store; outcome correct by luck, intent wrong. A question
+must not mutate facts. SUPPLIED guard, labeled: (a) a surface carrying
+a question marker (ไหม, หรือเปล่า, คืออะไร, จริงไหม, ทำไม, อะไร) is never
+committed as a teach/retract intent, unassisted or confirmed - confirm
+candidates are restricted to question intents, else honest clarify
+WITHOUT committing; (b) mutation accounting: the check driver diffs
+isa/attr before/after EVERY turn and asserts zero mutations on
+question-marked or question-intent turns, logging each mutation with
+its turn and intent. Tests use UNFAMILIAR question/teaching
+compositions (authored, not the repaired example): 'ควาย มี เขา',
+'เป็ด เป็น นก', 'เสือ มี ขน', then 'ควาย มี เขา ไหม', 'เป็ด เป็น หมา ไหม',
+'ช้าง ไม่มี งา จริงไหม' (after teaching ช้าง มี งา - a retract-intent
+misread would DELETE an existing fact; must not), 'หมู มี เขา หรือเปล่า'.
+Gates: G1 zero mutations on all question turns; G2 question battery
+answered or honestly declined, none committed as facts; G3 the existing
+--check transcript still passes with mutation accounting active.
+Authored battery = development check. Resources: no pretrained, no
+paid, pure-Python, 1e9-byte live watchdog.
+
+## B-604 SUPPLIED-VS-LEARNED AUDIT (2026-10-27)
+
+The fallback's per-intent frame words, global filler set and slot-offset
+statistics derive from the b562 TRAIN split's GOLD SLOT LABELS -
+engineered supervision baked into the synthetic bootstrap corpus, NOT
+acquired through the REPL teaching exchange. Runtime initialization
+(fresh_chat) trains mapper AND extraction on that gold-labeled corpus;
+in-session REPL exchanges add mapper rows for user-confirmed surfaces
+but extraction statistics are never updated from user teaching. The
+fallback is therefore ENGINEERED EXTRACTION SUPPORT, not learned
+generalization; the 12-case grid and the 64-item frozen-eval identity
+are narrow regression evidence only. Matched pre/post contrast below
+uses authored unfamiliar compositions NOT in the development grid;
+scoring gold for these test items is authored for evaluation only and
+is never added to any runtime structure.
+
+## B-605 FINDINGS (2026-10-27): wrong-intent mutation guard PASS - zero question-turn mutations on unfamiliar compositions
+
+logs/b605_run1.log + logs/hsml_check_run2.log (pre-fix defect preserved in
+logs/hsml_check_prefix.log). Supplied guard: question-marked surfaces
+(ไหม/หรือเปล่า/คืออะไร/จริงไหม/ทำไม/อะไร) are never committed as mutating
+intents - unassisted teach commits blocked, confirm guesses restricted
+to question intents; unmarked surfaces never get question-intent
+guesses (this also removed the wrong first guess on 'มิโล เป็น แมว',
+cutting part-1 burden from 6 to 5 questions and corrections to 0 on the
+check transcript). Mutation accounting diffs isa/attr before/after every
+turn: on the unfamiliar-composition battery (ควาย/เป็ด/เสือ/ช้าง/หมู
+compositions not used in development) ZERO mutations on question turns,
+the retraction-question 'ช้างไม่มีงาจริงไหม' left ช้าง/งา intact, final
+store exactly the 4 confirmed teaches, mutations only on confirm-yes
+turns. The entry's --check transcript still passes with accounting
+active. Honest notes: retraction-questions are safely DECLINED, not
+answered ('เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน' where 'ไม่จริง' would be
+better); the guard is a supplied marker list, not learned safety.
+
+## B-604 FOLLOW-UP (2026-10-27): candidacy tightened; held-out contrast pre 4/8 -> post 7/8
+
+Candidacy now excludes words seen in train but never a gold filler in
+BOTH selection paths (the cross-intent functionish filter missed
+single-intent grammar words like ไหม/คืออะไร). Frozen-eval identity no
+longer exact: 2/64 outputs changed, BOTH clear repairs of a broken
+candidate (anchor word ของ had been selected as a slot); role ORDER on
+those two items still mismatches the frozen-eval gold (surface-order
+assignment, pre-existing). Matched pre/post on 8 authored held-out
+unfamiliar compositions (evaluation-only gold, never added to runtime):
+standard-only 4/8 -> with fallback 7/8. Remaining failure: ask_attr
+role ORDER ('เกล็ด ของ ปลา คืออะไร' yields (ปลา, เกล็ด) where authored
+want was surface order) - ask_attr slot-order conventions are
+inconsistent across authored sets; the entry resolves subject/attr
+semantically at commit time via a supplied ของ-position rule (verified
+end-to-end: 'งาของช้างคืออะไร' answers 'ใช่ ช้าง มี งา'). All statistics
+remain ENGINEERED EXTRACTION SUPPORT from bootstrap gold labels, not
+learned generalization (see B-604 audit above).
+
+## RESOURCE CLARIFICATION (2026-10-27)
+
+hsml_chat.py --check runs TWO phase-separated python processes (part 1,
+then a child part 2; the parent stays alive while the child runs).
+Per-process peak RSS: part1 28.5MB, part2 28.1MB (watchdog-sampled,
+interpreter + mapper + stores + lexicon included). Peak CONCURRENT
+process-tree RSS (parent+child sampled every 50ms during the child's
+lifetime): 56.8MB. Both far under the 1e9-byte live cap; the watchdog
+stays armed in both processes.
