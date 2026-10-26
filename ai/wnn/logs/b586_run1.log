@@ -1,0 +1,4 @@
+ROW {"arm": "NBu_raw", "tau": 26.0716, "dev_wrong_at_tau": 0.0, "seen_margin_median": 28.878, "unseen_margin_median": 1.608, "seen_pass": 34, "seen_n": 64, "unseen_pass": 1, "unseen_n": 64, "unseen_pass_wrong_intent": 0}
+ROW {"arm": "NBn_normalized", "tau": 1000000000.0, "dev_wrong_at_tau": 0.0, "seen_margin_median": 0.822, "unseen_margin_median": 0.032, "seen_pass": 0, "seen_n": 64, "unseen_pass": 0, "unseen_n": 64, "unseen_pass_wrong_intent": 0}
+RES-FINAL {"peak_rss_mb_overall": 26.9, "wall_seconds": 1.6}
+DONE

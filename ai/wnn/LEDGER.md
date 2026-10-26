@@ -3539,3 +3539,57 @@ teaching, and response richness are ALL absent, not one knob. Resources:
 ~29MB peak, <2s. Next: candidates (definitions channel; teach-first shell
 with per-turn confirmation dialogue; richer fallback engagement) assessed
 against THIS scenario before any further gate tuning.
+
+## B-585 PRE-REGISTERED (2026-10-26, before code) - teach-first conversational shell: asking AS the conversational move
+
+B-584 showed both gates fail conversationally. This arm replaces silent
+fallback with a REAL clarification exchange: on low intent margin or
+uncertain slots, the shell asks a specific natural question (paraphrase
+choice / slot confirm); a SIMULATED user (authored script, development
+evidence) answers; the answer is learned (intent pair / slot confirmation);
+the turn completes. Out-of-scope turns get an honest engaged non-answer
+(name the limit, offer what IS possible) instead of a bare refusal.
+Metrics per turn: final behavior-class match AFTER the exchange, questions
+asked, fabricated-action count (must be 0 by construction - verified),
+exact denominators. No gate - feasibility measurement of the conversation
+SHAPE the user actually asked for. Same scenario as B-584 for comparability,
+extended with scripted answers where the shell asks. SUPPLIED: question
+templates, fallback lines, scenario, answers. LEARNED: mapper, store.
+
+## B-585 FINDINGS (2026-10-26): teach-first shell 8/18 - dominant failure is the gate refusing SEEN items
+
+Run: logs/b585_run1.log, script b585.py. Same authored 18-turn scenario
+(B-584 comparable) + scripted simulated-user answers where the shell asks
+(development evidence). Result: 8/18 behavior-class matches, 5 questions
+total, 0 fabricated actions (by construction, verified in log). BUT the
+dominant mismatch class is NEW information: seen-template teaching turns
+('มิโล เป็น แมว', 'มิโล มี หาง', 'ตอบ สี่', 'นก เป็น สัตว์'...) fall to
+fallback because the B-574 precision tau (26.07) REJECTS MOST SEEN ITEMS -
+the gate tuned for unseen-cell safety refuses the system's own trained
+language. The teach-first SHAPE works where the gate lets it (ask ->
+scripted answer -> learned -> teach_ok on both unseen-phrasing turns).
+
+## B-586 DIAGNOSTIC (2026-10-26): margin-scale analysis + operating points
+
+Run: logs/b586_run1.log + inline sweep (script b586.py; seed 0 diagnostic,
+labeled single-seed). Facts:
+- Raw NBu margins: seen median 28.9, unseen(c22) median 1.6 - separable in
+  the median, but seen spread is wide: at the dev-calibrated precision
+  tau=26.07 only 34/64 seen items act (all right). Dev calibration picked
+  26 because of dev's NONE/dev-family items - a dev artifact, mismatched
+  with the real operating objective (seen coverage + unseen/off-topic
+  rejection).
+- Length-normalized scores (NBn): NO threshold reaches <=5% dev wrong
+  short of abstain-all - normalization destroys the safety property.
+  Recorded as a tried-and-failed representation variant.
+- Operating sweep (seed 0 only, small samples, NOT validated): tau=10
+  acted 48/64 seen (all right), 7/64 unseen (0 wrong), 0/20 off-topic;
+  tau=5: 53/64 seen (51 right), 10/64 unseen (0 wrong), 2/20 off-topic
+  acted. tau=1-2: unseen wrong-intent 16 and 9 - unsafe. A dominated
+  calibration choice (26.07) exists because the dev objective differs from
+  the conversational objective; tau~10 LOOKS better on these numbers but
+  needs paired-seed validation before any claim.
+Conclusion (scoped): margin-based gating has an intrinsic
+coverage/safety overlap (seen spread crosses unseen spread), but the
+specific tau=26 operating point was also a calibration-objective artifact.
+Both things are true; neither alone explains the conversational failure.

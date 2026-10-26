@@ -1,0 +1,21 @@
+TURN {"turn": "สวัสดี", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "greeting - engage honestly, no fake action"}
+TURN {"turn": "มิโล เป็น แมว", "expected": "teach_ok", "got": "honest_engaged", "ok": false, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "seen-template teach_isa"}
+TURN {"turn": "แมว เป็น สัตว์", "expected": "teach_ok", "got": "honest_engaged", "ok": false, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "seen-template teach_isa"}
+TURN {"turn": "มิโล เป็น สัตว์ ไหม", "expected": "inference_ok", "got": "honest_engaged", "ok": false, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "transitive isa -> yes"}
+TURN {"turn": "มิโล มี หาง", "expected": "teach_ok", "got": "honest_engaged", "ok": false, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "seen teach_attr"}
+TURN {"turn": "หาง ของ มิโล คืออะไร", "expected": "answer_ok", "got": "ask_needed", "ok": false, "questions": 1, "resp": "ถามยืนยันความหมาย", "note": "ask_attr -> หาง"}
+TURN {"turn": "แมวตัวนี้ชื่อมิโลนะ", "expected": "teach_ok", "got": "teach_ok", "ok": true, "questions": 1, "resp": "จำ มิโล เป็น แมว", "note": "unseen phrasing: ask -> user confirms it states Milo is a cat -> learned"}
+TURN {"turn": "มัน กิน ปลา ไหม", "expected": "ask_needed", "got": "ask_needed", "ok": true, "questions": 1, "resp": "บอกตรงๆ ว่ายังผูก \"มัน\" กับสิ่งที่พูดถึงก่อนหน้าไม่ได้", "note": "anaphora - system must SAY it cannot resolve มัน yet"}
+TURN {"turn": "วันนี้ อากาศ ดี มาก", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "off-topic: engage, no fake action"}
+TURN {"turn": "ราคา เท่าไหร่ กัน", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "off-topic question: honest limit"}
+TURN {"turn": "สอนวิธี บวก ให้หน่อย", "expected": "teach_ok", "got": "teach_ok", "ok": true, "questions": 1, "resp": "รับคำสั่ง บวก", "note": "unseen phrasing: ask -> user confirms skill request"}
+TURN {"turn": "ตอบ สี่", "expected": "teach_ok", "got": "honest_engaged", "ok": false, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "seen confirm_answer"}
+TURN {"turn": "มิโล เป็น นก ไหม", "expected": "answer_ok", "got": "honest_engaged", "ok": false, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "no isa path -> honest unknown/no"}
+TURN {"turn": "นก เป็น สัตว์", "expected": "teach_ok", "got": "honest_engaged", "ok": false, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "seen teach_isa"}
+TURN {"turn": "มิโล ไม่มี หาง", "expected": "teach_ok", "got": "ask_needed", "ok": false, "questions": 1, "resp": "ถามยืนยันความหมาย", "note": "retract_attr"}
+TURN {"turn": "หาง ของ มิโล คืออะไร รู้ไหม", "expected": "answer_ok", "got": "answer_ok", "ok": true, "questions": 0, "resp": "ตอบตรงๆ ว่าไม่มีข้อมูล", "note": "after retract -> must NOT say หาง"}
+TURN {"turn": "good night sleep well", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "off-topic"}
+TURN {"turn": "เหยี่ยว เป็น สัตว์เลี้ยง ไหม", "expected": "answer_ok", "got": "honest_engaged", "ok": false, "questions": 0, "resp": "เรื่องนี้ยังไม่รู้/ไม่มีคำสั่ง - บอกข้อจำกัดตรงๆ", "note": "unknown entity -> honest unknown"}
+SUMMARY {"match": 8, "mismatch": 10, "total_questions": 5, "turns": 18}
+RES-FINAL {"peak_rss_mb_overall": 27.2, "wall_seconds": 1.4}
+DONE
