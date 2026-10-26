@@ -8,7 +8,7 @@ and resumes the hs interpreter. Source rebinding and aliases keep their normal
 function identities. No performance claim is made.
 
 Eligibility is deliberately narrow: an acyclic CFG of up to 16 blocks, up to six
-parameters, constants/parameter loads, integer + - * or unary minus, integer comparisons for conditions, and statically uniform Int or Bool return.
+parameters, constants/parameter loads, integer + - * & | ^ or unary minus/complement, integer comparisons for conditions, and statically uniform Int or Bool return.
 No calls, globals/captures, mutation, allocation, print, loops, phi nodes or exceptions
 are compiled. Bool, objects and values outside signed 30-bit fall back before
 native entry. Every native intermediate is range-guarded; a guard failure
@@ -54,3 +54,11 @@ uses scalar zero/nonzero truth tests; objects and Bool parameters still fall
 back before native entry. Nested negation, comparison negation and branch
 conditions preserve guest Bool identity. Bool arithmetic remains refused.
 Seven additional scalar-not cases bring the focused gate to 53.
+
+Bitwise `&`, `|`, `^` and unary `~` now admit Int temporaries only. Signed
+30-bit operands are closed under these operations, including negative values;
+the existing intermediate guard still applies. Bool arithmetic/bitwise inputs
+remain refused, and non-Int or wider arguments fall back before native entry.
+Eight further programs cover signed boundaries, complement, Bool refusal,
+type fallback, guarded replay after multiplication and Bool predicate results,
+for61 focused cases. Shifts, loops and shared objects remain outside admission.

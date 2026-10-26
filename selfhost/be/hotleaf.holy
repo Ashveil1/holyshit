@@ -84,14 +84,14 @@ def plan(fn):
           return null
         if ins["binop"] in ["<", "<=", ">", ">=", "==", "!="]:
           ty = "Bool"
-        elif ins["binop"] not in ["+", "-", "*"]:
+        elif ins["binop"] not in ["+", "-", "*", "&", "|", "^"]:
           return null
       elif op == "un":
         if ins["v"] not in have:
           return null
         if ins["unop"] == "not":
           ty = "Bool"
-        elif ins["unop"] != "neg" or types[ins["v"]] != "Int":
+        elif ins["unop"] not in ["neg", "unot"] or types[ins["v"]] != "Int":
           return null
       else:
         return null
@@ -160,6 +160,8 @@ def compile_leaf(fn, p):
             asm.cmp_ri32("rax", 0)
             asm.setcc_al("e")
             asm.movzx_eax_al()
+          elif ins["unop"] == "unot":
+            asm.not_r("rax")
           else:
             asm.neg_r("rax")
         else:
@@ -171,6 +173,12 @@ def compile_leaf(fn, p):
             asm.sub_rr("rax", "rcx")
           elif ins["binop"] == "*":
             asm.imul_rr("rax", "rcx")
+          elif ins["binop"] == "&":
+            asm.and_rr("rax", "rcx")
+          elif ins["binop"] == "|":
+            asm.or_rr("rax", "rcx")
+          elif ins["binop"] == "^":
+            asm.xor_rr("rax", "rcx")
           else:
             asm.cmp_rr("rax", "rcx")
             cc = {"<": "l", "<=": "le", ">": "g", ">=": "ge", "==": "e", "!=": "ne"}
