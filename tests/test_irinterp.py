@@ -424,6 +424,44 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL handle contains parity: {source!r}: {ref!r} != {got!r}")
     print("13 handle contains error/control programs checked")
 
+    json_sources = []
+    for value in ['len', 'counter', 'local_fn']:
+        for shape in ['f', '[f]', '{"nested": [f]}']:
+            for caught in (False, True):
+                source = 'import counter\ndef local_fn():\n  return 1\nf = ' + value + '\n'
+                expr = 'print json_str(' + shape + ')'
+                if caught:
+                    source += 'try:\n  ' + expr + '\nexcept as error:\n  print error\n'
+                else:
+                    source += expr + '\n'
+                json_sources.append(source)
+    json_sources += [
+        'try:\n  print json_str({"first": len, 2: 0})\nexcept as error:\n  print error\n',
+        'a = []\nappend(a, a)\ntry:\n  print json_str(a)\nexcept as error:\n  print error\n',
+        'print json_str({"x": [null, true, false, 3, "str"], "tag": {"hs_ir_mod": "plain"}})\n',
+    ]
+    for depth in [200, 201]:
+        json_sources.append('v = len\ni = 0\nwhile i < ' + str(depth) + ':\n  v = [v]\n  i = i + 1\ntry:\n  print json_str(v)\nexcept as error:\n  print error\n')
+    json_sources.append('try:\n  json_save(1, len)\nexcept as error:\n  print error\n')
+    json_path = os.path.join(module_dir, "preserved.json")
+    for value in ['len', 'counter', 'local_fn']:
+        source = 'import counter\ndef local_fn():\n  return 1\n'
+        source += 'path = ' + repr(json_path).replace("'", '"') + '\nwrite_text(path, "keep")\n'
+        source += 'try:\n  json_save(path, {"nested": [' + value + ']})\nexcept as error:\n  print error\nprint read_text(path)\n'
+        json_sources.append(source)
+    for source in json_sources:
+        prog = os.path.join(module_dir, "handle_json.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL handle JSON parity: {source!r}: {ref!r} != {got!r}")
+    print("27 handle JSON error/order/depth/save/control programs checked")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')
