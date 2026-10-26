@@ -146,6 +146,7 @@ class InteractiveChat(ChatSpeaks):
 
     def _commit(self, s, d, sl, category):
         if d in MUTATING: self.writes += 1
+        self.seen.add(s)
         self._last_surface = s
         sl = [self._clean(x) for x in sl] if sl else sl
         self._grow_lex(sl)
@@ -169,7 +170,7 @@ class InteractiveChat(ChatSpeaks):
     def _unparsed(self, s, sl):
         """Non-grammar tokens the proposed parse does not account for."""
         return [t for t in s.split()
-                if t not in self.grammar and t not in sl and not t.startswith('<UNK:')
+                if t not in self.grammar and t not in sl
                 and t not in ('มัน', 'ของมัน')]
 
     def _try_confirm(self, s, exclude=()):
@@ -226,16 +227,17 @@ class InteractiveChat(ChatSpeaks):
             return 'ask_needed', reply, 'teacher_assisted'
         left = self._best_leftover(s)
         if left:
-            return 'honest_engaged', 'ยังไม่เข้าใจคำว่า «%s» ในประโยคนี้' % '», «'.join(left[:3]), cat
+            disp = [self._clean(t) for t in left[:3]]
+            return 'honest_engaged', 'ยังไม่เข้าใจคำว่า «%s» ในประโยคนี้' % '», «'.join(disp), cat
         return 'honest_engaged', self.realize('honest_engaged', s, None, None, {}), cat
 
     def _handle_new(self, text):
         s = self._segment(text)
-        if s in self.seen:
-            return 'literal_repeat', 'อันนี้รู้อยู่แล้วนะ', 'literal_repeat'
         if s.split() and all(t in GREETINGS for t in s.split()):
             self.seen.add(s)
             return 'honest_engaged', 'สวัสดี สอนอะไรก็ได้เลย', 'unassisted'
+        if s in self.seen:
+            return 'literal_repeat', 'อันนี้รู้อยู่แล้วนะ', 'literal_repeat'
         if s.startswith('นิยาม '):
             try:
                 lhs, rest = s[6:].split(' เหมือน ', 1)
@@ -255,26 +257,21 @@ class InteractiveChat(ChatSpeaks):
             canon = fire(rule, s)
             if canon:
                 cls, reply, cat = self._handle_classified(canon, via='taught_pattern')
-                self.seen.add(s)
                 return cls, reply, cat
         hits = self._match_patterns(s)
         intents = {h[0] for h in hits}
         if len(intents) > 1:
-            self.seen.add(s)
             self.q += 1
             return 'ask_needed', 'ประโยคนี้เข้ากับรูปแบบที่เรียนไว้หลายแบบ ช่วยบอกว่าหมายถึงแบบไหน', 'teacher_assisted'
         if len(hits) == 1:
             pd, psl = hits[0]
             if INDUCED_AUTOCOMMIT:
-                self.seen.add(s)
                 cls, reply, cat = self._commit(s, pd, list(psl), 'induced_pattern')
                 return cls, reply, cat
             if pd in RESTATE:
-                self.seen.add(s)
                 reply = self._ask('confirm', surface=s, intent=pd, slots=psl, rejected=[pd])
                 return 'ask_needed', 'ตามรูปแบบที่จำไว้: ' + reply, 'induced_pattern'
         rw, status = self._resolve(s)
-        self.seen.add(s)
         if status in ('clarify', 'plural'):
             cands = [e for e in dict.fromkeys(reversed(self.subjects))][:3]
             if status == 'plural' or not cands:

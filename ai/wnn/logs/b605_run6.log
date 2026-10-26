@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/sandbox/holyshit/ai/wnn/b605.py", line 38, in <module>
+    reply = chat.user_turn(line)
+  File "/home/sandbox/holyshit/ai/wnn/hsml_chat.py", line 364, in user_turn
+    _cls, reply, _cat = self._handle_new(text)
+  File "/home/sandbox/holyshit/ai/wnn/hsml_chat.py", line 282, in _handle_new
+    return self._handle_classified(rw)
+  File "/home/sandbox/holyshit/ai/wnn/hsml_chat.py", line 231, in _handle_classified
+    return 'honest_engaged', 'ยังไม่เข้าใจคำว่า «%s» ในประโยคนี้' % '», «'.join(disp), cat
+UnboundLocalError: local variable 'disp' referenced before assignment

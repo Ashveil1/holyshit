@@ -1,0 +1,18 @@
+TURN {"in": "มิโลเป็นแมว", "out": "เดาว่า: สอนว่า มิโล เป็น แมว ใช่ไหม", "wrote": false}
+TURN {"in": "ใช่", "out": "จำแล้ว: มิโล เป็น แมว", "wrote": true}
+TURN {"in": "ช้างมีงา", "out": "เดาว่า: สอนว่า ช้าง มี งา ใช่ไหม", "wrote": false}
+TURN {"in": "ใช่", "out": "จำแล้ว: ช้าง มี งา", "wrote": true}
+TURN {"in": "มิโลเป็นแมว", "out": "อันนี้รู้อยู่แล้วนะ", "wrote": false}
+TURN {"in": "ตัวอย่างคำถามคือแมวมีหางไหม", "out": "ยังไม่เข้าใจคำว่า «ตัวอย่างคำถาม» ในประโยคนี้", "wrote": false}
+TURN {"in": "ไม่ใช่", "out": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน", "wrote": false}
+TURN {"in": "ไม่ใช่", "out": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน", "wrote": false}
+TURN {"in": "ช้างไม่มีงา", "out": "เดาว่า: สอนว่า ช้าง ไม่มี งา ใช่ไหม", "wrote": false}
+TURN {"in": "ใช่", "out": "ลบแล้ว: ช้าง ไม่มี งา", "wrote": true}
+TURN {"in": "เสือมีขน", "out": "เดาว่า: สอนว่า เสือ มี ขน ใช่ไหม", "wrote": false}
+TURN {"in": "ใช่", "out": "จำแล้ว: เสือ มี ขน", "wrote": true}
+TURN {"in": "ขนของเสือคืออะไร", "out": "เดาว่า: ถามเรื่อง ขน ของ เสือ ใช่ไหม", "wrote": false}
+TURN {"in": "ใช่", "out": "รู้ว่า เสือ มี ขน แต่ไม่รู้รายละเอียด", "wrote": false}
+TURN {"in": "เขาของมิโลคืออะไร", "out": "ไม่รู้ว่า มิโล มี เขา ยังไม่เคยถูกสอน", "wrote": false}
+RESULTS {"marked_known_q": "ยังไม่เข้าใจคำว่า «จริง» ในประโยคนี้", "escape_first_guess": "เดาว่า: สอนว่า หมา เป็น สัตว์ ใช่ไหม", "escape_second_guess": "เดาว่า: ถามว่า หมา เป็น สัตว์ ใช่ไหม", "escape_reached_question": true, "escape_answer": "ไม่รู้ว่า หมา เป็น สัตว์ ยังไม่เคยถูกสอน", "escape_answered": true, "quoted_replies": ["ยังไม่เข้าใจคำว่า «ตัวอย่างคำถาม» ในประโยคนี้", "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน", "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน"], "quoted_no_write": true, "quoted_ends_honest": true, "retraction_removed": true, "value_known_confirm": "เดาว่า: ถามเรื่อง ขน ของ เสือ ใช่ไหม", "value_known_confirm_semantic": true, "value_known_reply": "รู้ว่า เสือ มี ขน แต่ไม่รู้รายละเอียด", "value_known_relevant": true, "value_unknown_reply": "ไม่รู้ว่า มิโล มี เขา ยังไม่เคยถูกสอน", "value_unknown_honest": true}
+CHECK PASS
+RES {"peak_rss_mb": 27.8, "wall_seconds": 3.7}

@@ -1,0 +1,33 @@
+TURN {"in": "เหยี่ยวน่ะเป็นนก", "out": "เดาว่า: สอนว่า เหยี่ยว เป็น นก ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: เหยี่ยว เป็น นก"}
+TURN {"in": "มิโลเป็นสัตว์ไหม", "out": "อันนี้รู้อยู่แล้วนะ"}
+Traceback (most recent call last):
+  File "/home/sandbox/holyshit/ai/wnn/hsml_chat.py", line 526, in <module>
+    check_part2()
+  File "/home/sandbox/holyshit/ai/wnn/hsml_chat.py", line 481, in check_part2
+    run_lines(chat, PART2)
+  File "/home/sandbox/holyshit/ai/wnn/hsml_chat.py", line 426, in run_lines
+    print('TURN ' + json.dumps({'in': line, 'out': chat.user_turn(line)[:90]}, ensure_ascii=False))
+  File "/home/sandbox/holyshit/ai/wnn/hsml_chat.py", line 364, in user_turn
+    _cls, reply, _cat = self._handle_new(text)
+  File "/home/sandbox/holyshit/ai/wnn/hsml_chat.py", line 282, in _handle_new
+    return self._handle_classified(rw)
+  File "/home/sandbox/holyshit/ai/wnn/hsml_chat.py", line 231, in _handle_classified
+    return 'honest_engaged', 'ยังไม่เข้าใจคำว่า «%s» ในประโยคนี้' % '», «'.join(disp), cat
+UnboundLocalError: local variable 'disp' referenced before assignment
+TURN {"in": "สวัสดี", "out": "สวัสดี สอนอะไรก็ได้เลย"}
+TURN {"in": "มิโลเป็นแมว", "out": "เดาว่า: สอนว่า มิโล เป็น แมว ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: มิโล เป็น แมว"}
+TURN {"in": "แมวเป็นสัตว์", "out": "เดาว่า: สอนว่า แมว เป็น สัตว์ ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: แมว เป็น สัตว์"}
+TURN {"in": "มันเป็นสัตว์ไหม", "out": "หมายถึงตัวไหน: แมว หรือ มิโล?"}
+TURN {"in": "มิโล", "out": "ใช่ มิโล เป็น สัตว์ เพราะ มิโล เป็น แมว และ แมว เป็น สัตว์"}
+TURN {"in": "มิโลมีหาง", "out": "เดาว่า: สอนว่า มิโล มี หาง ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: มิโล มี หาง"}
+TURN {"in": "บัวมีกลีบ", "out": "เดาว่า: สอนว่า บัว มี กลีบ ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: บัว มี กลีบ"}
+TURN {"in": "นิยาม เหยี่ยว น่ะ เป็น นก เหมือน เหยี่ยว เป็น นก ตัวแปร 1,4", "out": "จำรูปแบบใหม่แล้ว"}
+SNAPSHOT-SAVED {"isa": 2, "attr": 2, "defs": 1, "lex_extra": 2, "subjects": 5, "seen": 7}
+BURDEN-PART1 {"questions": 5, "yes": 4, "corrections": 0}
+RES-PART1 {"peak_rss_mb": 28.5, "wall_seconds": 1.1}
+TREE-PEAK {"peak_concurrent_tree_mb": 67.8, "note": "parent+child RSS sampled concurrently during child lifetime"}

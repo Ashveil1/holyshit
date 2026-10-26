@@ -4597,3 +4597,59 @@ excluded from completeness (unknown words cannot be accounted);
 pattern consent text is supplied presentation, intelligibility assessed
 by construction not by a user. Shape interpolation only; no
 new-structure transfer claimed or observed.
+
+## B-609 PRE-REGISTERED (2026-10-27, before code) - guard coverage on every mutating path + UNK spans block + repeat-path truth
+
+Completeness is SYNTACTIC coverage, not semantic authorization; it
+cannot establish assertion vs question/quotation/hypothesis (recorded).
+Two defects: (a) <UNK:> spans are EXEMPTED from completeness - an
+unresolved content span must BLOCK unassisted mutation and yield a
+clear proposal/clarification naming it, not disappear from the safety
+check (UNK inside a slot = candidate new entity, allowed in proposals
+with cleaned display); (b) the seen-set gets surfaces that were never
+committed, so a repeat of a DECLINED/limited turn replies
+'อันนี้รู้อยู่แล้วนะ' falsely. Fixes: UNK-outside-slots counts as
+unparsed everywhere; seen-set membership only on committed or answered
+turns. Executable NEGATIVE CONTROLS (b609.py, store + write-counter
+assertions, no grep-as-proof): N1 quoted high-margin unassisted write
+attempt -> blocked, counter unchanged; N2 quoted surface containing UNK
+span -> blocked AND reply names the span; N3 repeat of a declined turn
+-> not 'รู้อยู่แล้ว'; N4 post-RESTORE quoted write attempt -> blocked;
+N5 definition-fired canonical that would mutate on a question-marked
+surface -> blocked. POSITIVE CONTROLS: P1 ordinary confirmed teach
+still writes; P2 high-margin familiar-statement teach still commits
+unassisted (if any surface qualifies; else recorded as none). Gate: all
+negative controls blocked with counter unchanged, positives unaffected;
+regressions pass. Authored battery = development check. No pretrained,
+no paid, 1e9-byte watchdog.
+
+## B-609 FINDINGS (2026-10-27): guard coverage verified by executable negative controls; UNK spans block; repeat-path truth fixed
+
+logs/b609_run4.log CHECK PASS; regressions: b604_run4+run5 (grid 12/14,
+0 swaps; heldout v2 3/8 -> 7/8; G3 62/64 identical with the 2 recorded
+repair deltas), b605_run7, b606_run7, b607_run4, b608_run3,
+hsml_check_run8 (12/12 audits), all PASS.
+FIXES: (a) <UNK:> spans outside slots now count as unparsed content -
+they BLOCK unassisted mutation and are NAMED in the honest-limit reply
+(cleaned display, no internal tokens shown). UNK inside a slot remains
+allowed in proposals (candidate new entity, shown cleaned). (b) The
+seen-set is now membership-on-commit/answer only; previously declined or
+limited turns entered seen and a repeat falsely replied
+'อันนี้รู้อยู่แล้วนะ'. Greeting stays idempotent by ordering. (c) A
+display-fix edit initially broke the honest-limit path for the
+fully-parsed fallback (UnboundLocalError in b605/b606 run6) - caught by
+the regression sweep, fixed, rerun; recorded here per the
+failure-preservation rule.
+EXECUTABLE NEGATIVE CONTROLS (store + write-counter assertions):
+N1 quoted high-margin unassisted write attempt ('เขาบอกว่าวัวเป็น
+สัตว์เลี้ยง' after 3 prior in-session accepts) - blocked, counter
+unchanged, reply names «เขา» «บอก» «ว่า». N2 quoted surface with UNK
+spans - blocked, reply names the spans. N3 repeat of a declined turn -
+honest limit again, no false 'รู้อยู่แล้ว'. N4 post-RESTORE quoted write
+attempt - blocked. N5 unmarked question - no mutating write. POSITIVE:
+P1 confirmed teach still writes (counter +1, fact present); P2 repeat of
+a committed teach still answers 'รู้อยู่แล้วนะ'.
+SCOPE (unchanged): completeness is syntactic coverage, not semantic
+authorization; a surface-identical zero-extra-token quotation or
+hypothetical remains indistinguishable from assertion and is recorded as
+an unresolved failure class, not patched.
