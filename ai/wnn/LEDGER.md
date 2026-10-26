@@ -3257,3 +3257,35 @@ re-prediction. Consistent with the intent-side pattern: the signal is
 present; the GATE is the hard part. Retypes (~10/64) are mostly spans the
 candidate generator ranked below top-3, not absent spans (gold spans are
 <=5 tokens in these families).
+
+## GOLD-SEMANTICS AUDIT (2026-10-26) - one invalid template found; illustrative exchange withdrawn
+
+Audit of every family template's (utterance -> intent, slots) pair against
+the action schema (teach_attr(x,y) = "x has y" etc.):
+- TRAIN FAM, DEV_FAM, NEW_EVAL_FAM (c21), FRESH3_FAM (c22): every template
+  asserts or asks exactly what its gold intent/slots say (listed in repo
+  history; spot-verified per intent). Gold slots are SINGLE vocab tokens;
+  no multiword span boundaries exist anywhere in the protocol. VALID.
+- EVAL_FAM (the b562 'ev' set used by B-562..B-567) teach_attr template
+  '{y} ของ {x} สวย' is INVALID for teach_attr(x,y): "งา ของ เหยี่ยว สวย"
+  asserts the horn is BEAUTIFUL; it does not assert "hawk has horn". Under
+  the action schema a correct system would record attr(beautiful) on the
+  horn, so the gold parse manufactures a confirmation the utterance does
+  not supply. Contamination scope: 1 of 3 teach_attr templates in the old
+  ev set only (~1/3 of teach_attr ev items in B-562..B-567 eval rows);
+  c21/c22 (B-570..B-578) are UNAFFECTED.
+Consequences:
+1. The B-567 'marker-position' example ('งา ของ เหยี่ยว สวย' -> ask_attr)
+   rested on this invalid gold: predicting ask_attr for a '{y} ของ {x} ...'
+   question-shaped utterance is not a clean learner error. The Class B
+   motivation example is therefore PARTIALLY UNDERMINED; B-572's null stands
+   on its own numbers but its motivating example is not evidence.
+2. My B-578 illustrative user-facing exchange taught slot values
+   ('งา ของ เหยี่ยว' as the entity, 'สวย' as the attribute) that are WRONG
+   under the schema - WITHDRAWN. Valid replacement exchange (below in the
+   B-579 report context): intent question on 'ช่วยบอกหน่อยว่า งา ของ
+   เหยี่ยว คืออะไร' style items with single-token gold slots.
+3. Comparability break: ev-set teach_attr rows in B-562..B-567 are flagged
+   contaminated, not rewritten. A corrected EVAL_FAM_V2 (replacing the
+   invalid template) will be defined if a future arm needs an ev-style set;
+   it will be labeled non-comparable to ev.
