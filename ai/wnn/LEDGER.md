@@ -2670,3 +2670,31 @@ then residual swaps 2-6/seed, then unseen-particle leaks).
 Line status: intent accuracy (S1 NBu, .36-.56 raw argmax) is now the
 dominant error source. The next decision is line-level, not another
 micro-experiment.
+
+## B-567 PRE-REGISTERED (2026-10-26, before code) - discriminative feature weighting for the intent mapper (final bounded round of this line)
+
+Observed-error rationale (confusion diagnosis on the frozen protocol, seeds
+0/2, all three sets): intent error mass is MARKER DILUTION - top confusions
+are teach_isa<->is_a_q (5-6/seed; share copula เป็น/is, differ only in the
+question marker), name_skill->ask_attr (5-6 on newtmpl/fresh3 seeds), and
+confirm_answer<->give_example (up to 7 on fresh3 seed2; share ตอบ/answer).
+The mapper's word+char-ngram likelihood lets many shared features outvote the
+few intent-exclusive markers. Candidate mechanism: reweight each feature by
+its learned intent-exclusivity so shared material contributes less.
+
+FROZEN: extractor (S4 selection + positional assignment, per B-566), evals,
+protocol, seeds. ONLY the intent mapper varies.
+  M0 = NBu uniform (frozen strongest cheap baseline).
+  M1 = NBu with per-feature weight w(f) = ln(1 + 8/df(f)), df = number of
+       distinct intents whose TRAIN examples contain f (train-only; 8 =
+       number of intents). Single fixed formula, no tuning variants.
+Fixed cost/stopping bound: 5 seeds x 3 evals x 2 arms = 30 cells, one run
+(~10s). After this run the learned-language line closes with a consolidated
+closeout either way; no new arms, gates, or eval families afterward.
+All eval sets remain INSPECTED development comparisons; no generalization
+or production claim under any outcome.
+Gates (fixed before code):
+  G1: M1 mean intent >= M0 + 5 points on newtmpl AND fresh3, with >=4/5
+      per-seed deltas non-negative on each.
+  G2: frozen mean intent not worse than M0 by >3 points.
+  G1 fail or G2 fail -> null recorded; line closes at the consolidated state.
