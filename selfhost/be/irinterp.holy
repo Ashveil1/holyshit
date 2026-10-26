@@ -137,8 +137,8 @@ def json_guest_check(v, depth, ln):
         fail("json_str needs Str keys", ln)
     for key in names:
       json_guest_check(v[key], depth + 1, ln)
-BUILTIN_ARITY = {"append": 2, "find": 2, "join": 2, "has": 2, "contains": 2, "keys": 1, "values": 1, "read_text": 1, "write_text": 2, "append_text": 2, "exists": 1, "ls": 1, "mkdir": 1, "env": 1, "argv": 0, "input": 0, "json_parse": 1, "json_str": 1, "json_load": 1, "json_save": 2, "open": 2, "read": 1, "write": 2, "close": 1, "system": 1}
-BUILTIN_ARITY_ERROR = {"append": "append wants append(list, x)", "find": "find wants find(s, sub)", "join": "join wants join(sep, list)", "has": "has wants has(dict, key)", "contains": "contains wants contains(container, x)", "keys": "keys wants keys(dict)", "values": "values wants values(dict)", "read_text": "read_text wants read_text(path)", "write_text": "write_text wants write_text(path, str)", "append_text": "append_text wants append_text(path, str)", "exists": "exists wants exists(path)", "ls": "ls wants ls(dir)", "mkdir": "mkdir wants mkdir(path)", "env": "env wants env(name)", "argv": "argv takes no args", "input": "input takes no args", "json_parse": "json_parse wants json_parse(str)", "json_str": "json_str wants json_str(x)", "json_load": "json_load wants json_load(path)", "json_save": "json_save wants json_save(path, x)", "open": "open wants open(path, mode)", "read": "read wants read(f)", "write": "write wants write(f, str)", "close": "close wants close(f)", "system": "system wants system(cmd)"}
+BUILTIN_ARITY = {"write_bytes": 2, "append": 2, "find": 2, "join": 2, "has": 2, "contains": 2, "keys": 1, "values": 1, "read_text": 1, "write_text": 2, "append_text": 2, "exists": 1, "ls": 1, "mkdir": 1, "env": 1, "argv": 0, "input": 0, "json_parse": 1, "json_str": 1, "json_load": 1, "json_save": 2, "open": 2, "read": 1, "write": 2, "close": 1, "system": 1}
+BUILTIN_ARITY_ERROR = {"write_bytes": "write_bytes wants write_bytes(path, [Int 0..255])", "append": "append wants append(list, x)", "find": "find wants find(s, sub)", "join": "join wants join(sep, list)", "has": "has wants has(dict, key)", "contains": "contains wants contains(container, x)", "keys": "keys wants keys(dict)", "values": "values wants values(dict)", "read_text": "read_text wants read_text(path)", "write_text": "write_text wants write_text(path, str)", "append_text": "append_text wants append_text(path, str)", "exists": "exists wants exists(path)", "ls": "ls wants ls(dir)", "mkdir": "mkdir wants mkdir(path)", "env": "env wants env(name)", "argv": "argv takes no args", "input": "input takes no args", "json_parse": "json_parse wants json_parse(str)", "json_str": "json_str wants json_str(x)", "json_load": "json_load wants json_load(path)", "json_save": "json_save wants json_save(path, x)", "open": "open wants open(path, mode)", "read": "read wants read(f)", "write": "write wants write(f, str)", "close": "close wants close(f)", "system": "system wants system(cmd)"}
 def call_builtin(name, args, ln):
   n = len(args)
   # Validate guest arity before indexing or invoking a host builtin. Otherwise
@@ -197,6 +197,15 @@ def call_builtin(name, args, ln):
       return values(args[0])
     if name == "read_text":
       return read_text(args[0])
+    if name == "write_bytes":
+      if pyrt.py_type(args[0]) != "str" or pyrt.py_type(args[1]) != "list":
+        fail("write_bytes wants write_bytes(path, [Int 0..255])", ln)
+      for byte in args[1]:
+        if pyrt.py_type(byte) != "int":
+          fail("write_bytes wants a list of Ints 0..255", ln)
+        if byte < 0 or byte > 255:
+          fail("write_bytes wants a list of Ints 0..255", ln)
+      return write_bytes(args[0], args[1])
     if name == "write_text":
       return write_text(args[0], args[1])
     if name == "append_text":
@@ -687,8 +696,8 @@ def run_fn(st, key, fdef, frame):
         lab = tgt[1]
         prev = null
 SUPPORTED = ["const", "load", "stvar", "stglobal", "mkfunc", "bin", "un", "call", "print", "build_list", "build_dict", "index", "slice", "setindex", "iterseq", "copy", "phi", "try_push", "try_pop", "exc_str", "exc_pop", "unbind", "reraise", "import", "attr", "setattr"]
-BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find", "join", "has", "contains", "keys", "values", "read_text", "write_text", "append_text", "exists", "ls", "mkdir", "env", "argv", "input", "json_parse", "json_str", "json_load", "json_save", "open", "read", "write", "close", "system"]
-OTHER_BUILTINS = ["alloc", "as_int", "as_ptr", "http_get", "load32", "load64", "load8", "meminfo", "pmm_alloc", "pmm_free", "pmm_total", "read_mem", "readkey", "readkey_code", "readkey_nav", "readkey_event", "store32", "store64", "store8", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "write_bytes"]
+BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find", "join", "has", "contains", "keys", "values", "read_text", "write_bytes", "write_text", "append_text", "exists", "ls", "mkdir", "env", "argv", "input", "json_parse", "json_str", "json_load", "json_save", "open", "read", "write", "close", "system"]
+OTHER_BUILTINS = ["alloc", "as_int", "as_ptr", "http_get", "load32", "load64", "load8", "meminfo", "pmm_alloc", "pmm_free", "pmm_total", "read_mem", "readkey", "readkey_code", "readkey_nav", "readkey_event", "store32", "store64", "store8", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks"]
 def preflight(irmod):
   # Returns null when every instruction is supported, else a refusal message.
   # Builtins outside the supported subset are refused when the program loads

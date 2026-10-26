@@ -12,7 +12,7 @@ Supported: the dynamic core (variables, closures, calls, lists, dicts, slices,
 iteration, try/except/finally, raise, print), `import` (including dotted module
 paths and package shells) with `attr`/`setattr` on modules, and the builtins
 `len str int float range append split find join has contains keys values`,
-plus the file, env, argv, input, json and system builtins. The import graph is
+plus the file (including `write_bytes`), env, argv, input, json and system builtins. The import graph is
 walked statically at preflight (parse + irbuild only, no execution), so modules
 using unsupported ops are still refused before any output; missing, broken or
 circular imports reproduce interp.py's rc-1 errors at runtime.
@@ -58,7 +58,7 @@ interpreter execution remains available through its tested stage0 build path.
 
 ## Builtin argument counts
 
-The hs interpreter checks all 31 supported builtin argument counts before
+The hs interpreter checks all 32 supported builtin argument counts before
 indexing the guest argument list or invoking a host builtin. It no longer
 ignores extra arguments, reports host index errors for missing arguments, or
 accepts a prompt for the no-argument `input()` builtin. Errors retain the
@@ -167,3 +167,11 @@ existing file unchanged on handle failure. Twenty-seven error/order/depth/save
 and valid-value control programs bring parity to344 classifications. Encoding
 still uses the host JSON builtin; this does not claim all JSON formatting or
 numeric edges match the reference.
+
+`write_bytes(path, bytes)` is now available directly and through guest aliases.
+It validates path/List shape and every Int byte (0..255, excluding Bool) before
+opening the output. Seventeen value/error/file-content programs check empty
+output, embedded zero/high bytes, alias calls, argument counts, invalid paths
+and preservation of an existing file on validation failure, for361 parity
+classifications. Unsafe memory and network builtins remain refused; this is
+binary file output, not broader unsafe or FFI support.
