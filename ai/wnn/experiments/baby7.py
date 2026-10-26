@@ -4,6 +4,7 @@ and picks a word evoked by the PRESENT tokens (association) -> caregiver praise/
 Reward modulates word<->present-token association (praise strengthens, correction weakens) and
 speak-propensity by context (END vs no-END). T1 >=.9/<=.2; T2 >=.8; T3 day1->day5 >=+.2;
 controls: NO-FEEDBACK (random reward), SHUFFLED-PROMPT (prompt scene != visible scene)."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, json, sys
 from collections import defaultdict
 from baby5 import WorldC, Baby5, load_llm_pools, WE, WA, WL, TOK, ENT, ACT, VALID

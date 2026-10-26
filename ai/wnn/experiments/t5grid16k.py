@@ -1,5 +1,6 @@
 """T5 dim-16384 encoding grid (B-227..235): level/thermo/random x arith/facts/2-hop at dim 16384 (= P5's 16KB).
 arith: 475 sampled pairs, 2 seeds. random arith already 1.000 (t5dim2) - replicated here for the record."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np, random
 import t5hdc
 from t5hdc import codebook, clean, facts, twohop

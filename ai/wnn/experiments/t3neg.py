@@ -1,6 +1,7 @@
 """B-187: negative examples - chit-chat with numbers but no op should be rejected (abstain).
 Baseline always-answer. Rules: r1 abstain if no known features; r2 abstain if avg log-lik per feature < T.
 Success: false-answer rate < 10% on chit-chat with op acc drop <= 2pts. tok n=150, 5 seeds."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import math, random
 from text2prog import Learner, gen_set, evaluate, HYP, run_hyp, feats, numbers_of
 CHAT = ["i saw {a} birds in the park", "my friend has {a} cats and {b} dogs", "the meeting lasted {a} hours",

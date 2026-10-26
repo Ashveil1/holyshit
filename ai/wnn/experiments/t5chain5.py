@@ -1,6 +1,7 @@
 """B-249..254: HDC chain depth 5 at link counts 70/300/1000, dim 16384, random-proj, 3 seeds.
 logic: follow 5 hops from chain start, check 5th node (sample 200 starts). arith: exactly 5 +1-recalls (150 queries).
 Depth-2 reference (t5chain): 70: 1.0/1.0, 300: .996/.945, 1000: .284/.038."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np, random
 import t5hdc
 from t5hdc import codebook, clean

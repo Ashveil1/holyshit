@@ -3,6 +3,7 @@ unseen-synonyms task. Hypothesis classification over text2prog.HYP (21 labels) w
 soft CE over the consistent-hypothesis set; answer via run_hyp on real numbers.
 Protocol = text2prog.py __main__: train gen_set(rng,0,400), eval gen_set(r,wh,300,big=True).
 Gradient-checked before training (pre-registered harness sanity)."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, math, json, time
 import numpy as np
 import text2prog as P

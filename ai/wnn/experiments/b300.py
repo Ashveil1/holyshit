@@ -7,6 +7,7 @@ Protocol: kind='tok', soft counts; train gen_set(rng,0,300) (train frames); test
 answers; tie -> larger summed hypothesis score mass -> top-1 answer; execution failures skip a vote).
 PASS criterion (pre-stated): mean unseen-frame accuracy of best vote arm >= top1 + 3 points.
 Ceiling caveat pre-stated: if top1 >= 97% the +3 criterion is unattainable -> report as ceiling-vacuous."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, math, json
 from collections import defaultdict
 from text2prog import Learner, gen_set, HYP, run_hyp, numbers_of, feats

@@ -2,6 +2,7 @@
 Tasks (P5 E5 protocol): arith chaining (x->x+1 stored 0..99, compute a+k by k recalls, ALL pairs a+k<=99),
 facts (35 key->value facts, XOR binding, recall both directions = 70 queries), 2-hop (50 chains A->B->C->D,
 directional binding, query start follow 2 hops). RAM: memory vector 1024 int8 = 1KB (128B packed) vs P5 4KB/16KB."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np
 D = 1024
 def codebook(n, enc, rng):

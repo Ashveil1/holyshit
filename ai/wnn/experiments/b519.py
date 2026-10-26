@@ -1,5 +1,6 @@
 """B-519: babbling trajectory - production volume + correct-rate per day + first-grounded day per word.
 baby7 run_d dynamics UNCHANGED (passive instrumentation only). LEDGER pre-reg 2026-10-24."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, json, sys
 from collections import defaultdict
 import baby7

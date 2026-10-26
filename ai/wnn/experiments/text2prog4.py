@@ -1,4 +1,5 @@
 """P18: EM reweighting of two-step explanations (uses the P16 TwoStep model as init)."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import sys, math, random
 from collections import defaultdict
 from text2prog2 import *

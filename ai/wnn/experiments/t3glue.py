@@ -2,6 +2,7 @@
 sentences, then TEACH arm adds 4 labelled sentences: wh=0 sentences with the connector swapped
 for each new connector (familiar frames, new glue word). Eval: wh=1 (new connectors+frames).
 Baseline: P16 .44 (n=1000). Success: > .6. 5 seeds, 300 eval rows/seed."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random
 from text2prog2 import TwoStep, two_step, CONN
 def teach_rows(rng):

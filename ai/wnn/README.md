@@ -40,8 +40,10 @@ in the Python prototype and *hurt* accuracy, so it is not used.
 
 One-off research scripts cited by LEDGER.md (B-300..B-519 era) live in
 [experiments/](experiments/README.md). Run them from this directory as
-`python3 experiments/<name>.py` (previously `python3 <name>.py`; working
-directory, args and `logs/` outputs unchanged).
+`python3 experiments/<name>.py` (working directory, args and `logs/` outputs
+unchanged). Scripts with a documented command line (the baby*, cur1-cur6 and
+text2prog families) stayed at this root so those documented commands,
+e.g. `python3 cur6.py 0`, keep working verbatim.
 
 ## hsml — dialog-taught conversation system (user-ready entry point)
 

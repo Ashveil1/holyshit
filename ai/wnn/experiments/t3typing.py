@@ -1,6 +1,7 @@
 """B-185: typing - restrict fit candidates by arg-count signature before run_hyp.
 UNARY ops need exactly 1 number; fixed-binary (sub/div/mod/power) need >=2; variadic (add/mul/gcd/...) need >=2.
 Success: same accuracy, faster fit. Measures fit wall time + P15 acc spot-check (tok, n=150/400, 5 seeds)."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import time, random
 from text2prog import Learner, gen_set, evaluate, HYP, run_hyp, numbers_of, UNARY
 FIXED2 = ('sub', 'div', 'mod', 'power')

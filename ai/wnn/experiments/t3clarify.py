@@ -2,6 +2,7 @@
 simulated user which reading was meant (1 question); user answers with the correct reading.
 Baseline: no clarification (always top-1). Task: 1-step unseen frames+synonyms, tok, n=150, 5 seeds.
 Success: clarify accuracy > top-1 accuracy."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import math, random
 from collections import defaultdict
 from text2prog import Learner, gen_set, HYP, run_hyp, feats, numbers_of

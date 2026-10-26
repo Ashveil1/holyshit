@@ -3,6 +3,7 @@ commutative/direction-duplicate hypotheses (measured: k3 -23.8pts, k5 -38.9pts v
 FAIR reading of 'execution agreement': marginalize hypothesis posterior over EXECUTION-EQUIVALENCE
 classes - answer score = logsumexp of hypothesis scores producing that answer (within top-k and over
 all 21 hyps); argmax over answers. Same protocol as b300.py otherwise. PASS criterion unchanged (+3pts)."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, math, json
 from collections import defaultdict
 from text2prog import Learner, gen_set, HYP, run_hyp, numbers_of, feats

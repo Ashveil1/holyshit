@@ -1,6 +1,7 @@
 """T3 min-count ablation (B-111..128): drop features with document frequency < k at n=150.
 Default (min-count 1) = P15 default. 2-step cells (B-113/116/119/122/125/128) are not run:
 the P15 learner has no two-step capability (that is P16/text2prog2.py's task)."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random
 from collections import defaultdict
 import text2prog as T

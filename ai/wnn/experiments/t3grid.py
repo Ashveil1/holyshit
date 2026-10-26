@@ -1,6 +1,7 @@
 """T3 grid (B-063..086): features {tok,char} x credit {soft,hard} x n {24,60,150,400} on unseen frames/synonyms.
 Soft cells reproduce P15's published rows (verification); HARD credit is an unmeasured ablation.
 Same code path as text2prog.py main: 5 seeds, evaluate on 300 big-number sentences per cell."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, sys
 from collections import defaultdict
 from text2prog import Learner, gen_set, evaluate

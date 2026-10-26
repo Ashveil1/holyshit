@@ -2130,3 +2130,25 @@ Pass criteria:
 - ไฟล์ที่ LEDGER อ้างด้วยชื่อเดิม (b504.py, baby4.py, t3lex.py ฯลฯ) ตอนนี้อยู่ที่ experiments/<ชื่อเดิม>.py — คำอ้าง logs/... ไม่เปลี่ยน
 - รันจาก ai/wnn เหมือนเดิม: python3 experiments/<name>.py (cwd/args/logs เหมือนเดิมทุกอย่าง; ไฟล์ที่ import โมดูลที่อยู่ต่อมี bootstrap 1 บรรทัด)
 - ยืนยันการรันซ้ำหลังย้าย: b504 ตรงเลขเดิมใน LEDGER เป๊ะ (0.188/0.163), text2prog P15, cur2_test, b300r เขียน logs ถูกที่; output isolation: เขียน /tmp หรือไฟล์ตัวเองเท่านั้น ไม่แตะ state ของ harness ที่อยู่ต่อ
+
+## Migration note update (2026-10-26, PR #290 rev 2) - compatibility scope chosen per review
+
+After review, the 19 moved scripts that carry a documented invocation line in
+their docstring (baby, baby2, baby3, baby3c, baby3h, baby4, cur1-cur6,
+text2prog, text2prog2/3/5/6/7/8) were moved BACK to the ai/wnn root: their
+documented commands (e.g. `python3 cur6.py 0`, `python3 baby4.py`) run
+verbatim, byte-identical files. The remaining 43 scripts (no documented
+invocation; LEDGER citations are verdict records, not command lines) stay in
+experiments/ with a one-line sys.path bootstrap each; run as
+`python3 experiments/<name>.py [args]` from ai/wnn, same cwd/args/outputs.
+Verification after the split: b504 EXACT (wnn 0.188 | tf 0.163); baby4 full
+run CRITERION MET (chance-level arms 13/20, 12/20 vs documented 11/20, 10/20 -
+both ~chance-10, hash-order wobble, qualitative verdict unchanged, recorded
+honestly); baby.py full (true .84/.87 vs shuffled .06/.16); text2prog.py 1
+P15 complete; cur6.py 0 bounded start (mul FOUND 43s; full sweep long, not
+re-run); cur2_test.py add,sub runs; b300r logs/ write unchanged; t5chain
+import+bounded start only (full 1000-link sweep long, NOT re-run - labeled as
+such). baby3 needs OR_KEY (external API): not executed, no secrets in repo.
+regress_skills PASS and b559 36/36 (RSS 11.3 MB) on the split head; staying
+tree outside experiments/ byte-identical to 48bc8a1 except HSML.md/README.md/
+LEDGER.md docs.

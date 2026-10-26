@@ -1,6 +1,7 @@
 """B-242: episodic recall of a named fact after 1000 distractor facts (HDC, XOR binding, random codes).
 Recall the FIRST fact after writing N more. Baseline: recall with no distractors. dims 4096/16384, 5 seeds.
 Success: recall unchanged."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np
 import t5hdc
 from t5hdc import codebook, clean

@@ -3,6 +3,7 @@ SEPARATE (P16 baseline): TwoStep fit on digit sentences, frozen; learn_lexicon (
 against it; eval via apply_lex. JOINT: interleaved rounds - one lexicon voting round against
 the current model, then refit the model on digit sentences + lexicon-decoded word sentences.
 Same corpora, same thresholds, same eval. 5 seeds. Sizes fixed pre-run (LEDGER B-503)."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, math, json, re, sys, time
 from collections import defaultdict
 import text2prog as P

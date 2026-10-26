@@ -1,3 +1,4 @@
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, json, re
 from collections import defaultdict
 import text2prog as P

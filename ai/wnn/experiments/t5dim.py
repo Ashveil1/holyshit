@@ -1,5 +1,6 @@
 """T5 follow-up: random-proj at dim 2048/4096 - where does chaining capacity recover?
 arith: 475 sampled (a,k) pairs (P5's test count) per seed, 3 seeds. 2-hop: 50 chains."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np, random
 from t5hdc import codebook, clean, facts, twohop
 def arith_sampled(C, rng):

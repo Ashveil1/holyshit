@@ -1,5 +1,6 @@
 """T5 dim-4096 encoding grid (B-218..226): level/thermo/random x arith/facts/2-hop at dim 4096.
 arith: 475 sampled pairs (P5 count), 3 seeds. facts: 70 queries. 2-hop: 50 chains. P5 baseline: 100% at 4-16KB."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np, random
 import t5hdc
 from t5hdc import codebook, clean, facts, twohop

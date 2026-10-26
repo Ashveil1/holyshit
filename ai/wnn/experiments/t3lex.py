@@ -1,6 +1,7 @@
 """P16 word-lexicon hyperparameter grid (B-129..152+): learn_lexicon with (minv, mass, margin, rounds).
 Backlog mapping: 'minmass 1.5' -> minv=1.5 (>=2 votes; default 3), 'margin' -> the 2.5x runner-up factor, 'rounds' -> rounds.
 Baseline = P16 defaults (minv=3, mass .25, margin 2.5, rounds 4). Success: more gold words at same n, spurious <= +1."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, re
 from collections import defaultdict
 import text2prog2 as T2

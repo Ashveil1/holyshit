@@ -8,6 +8,7 @@ Learner: feature-token Hebbian association (word<->token, +1 present / -0.25 abs
 - no slots, no clustering needed for grounding; token-class structure measured separately (P29b).
 Chunk 1: world + mixer + TEMPLATE fallback pools (smoke test until LLM pools.json arrives) +
 grounding accuracy vs dilution f. PRE-STAGED: C1 f=1.0 grounding >=.80; controls f=0 & shuffled <=.20."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, json, sys
 from collections import defaultdict
 # --- world: 19 latent things, opaque tokens ---

@@ -1,5 +1,6 @@
 """B-236 + B-241 (fixed): WiSARD with 28-bit tuples (28 nodes) on binarized MNIST; Bloom-WiSARD at half RAM.
 Few-shot sweep 1/5/20 per class vs one-vs-rest pure-numpy MLP (784-64-1, 800 epochs)."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np, time
 def load(path):
     f = open(path); n, npix = map(int, f.readline().split())

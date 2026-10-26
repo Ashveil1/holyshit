@@ -2,6 +2,7 @@
 HDC memory: bind encode(a)*roll,encode(b) -> encode(a+b) for a,b in SEEN values; query with one
 unseen operand; exact answer after cleanup over the value codebook. level vs thermo vs random.
 P5 E2/E3 predicts ~0 for everyone (exact arithmetic from examples = memorization). dim 4096, 3 seeds."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np
 import t5hdc
 from t5hdc import codebook, clean

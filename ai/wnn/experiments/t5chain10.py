@@ -1,5 +1,6 @@
 """B-255..260: HDC chain depth 10 at link counts 70/300/1000, dim 16384, random-proj, 3 seeds.
 Same protocol as t5chain5 but k=10 hops. Depth-5 reference: 70: 1/1, 300: .990/.989, 1000: .038/.031."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np, random
 import t5hdc
 from t5hdc import codebook, clean

@@ -1,5 +1,6 @@
 """B-514 (F-5): Soft (2^-len explanation weighting, text2prog8) vs TwoStep (categorical Occam, text2prog2),
 same rows, same protocol; ambiguity-subset analysis. LEDGER pre-reg 2026-10-24."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, json
 from collections import defaultdict
 from text2prog2 import *

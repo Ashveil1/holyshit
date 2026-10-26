@@ -3,6 +3,7 @@ Encode sentence = bundle of random codes of its tok features (unigrams+bigrams);
 bundle of all training sentences for that op; query = nearest class vector (cosine).
 12 ops, train n=150 sentences (P15 protocol seed split), eval unseen frames (which=1).
 Baseline: random recall 1/12 = 8.3%. Success: >90% top-1. dims 1024/4096/16384, 3 seeds."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np, random
 from text2prog import gen_set, feats, T
 OPS = list(T); N = len(OPS)

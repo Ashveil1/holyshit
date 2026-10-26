@@ -1,6 +1,7 @@
 """B-243..248: HDC chain depth 2 at link counts 70/300/1000, dim 16384, random-proj, 3 seeds.
 logic = transitive chains (A->B->C, 2-hop query); arith = x->x+1 chaining with N links (475 sampled queries).
 Baseline: P5 100% at 100 links / 50 chains. Success: exact at larger scale or honest limit."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np, random
 import t5hdc
 from t5hdc import codebook, clean

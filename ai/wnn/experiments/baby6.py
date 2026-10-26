@@ -3,6 +3,7 @@
 turning on the NEXT tick (selective response); referential mentions don't. Learner: Baby5 grounding
 + temporal-shift Hebbian channel (prev-line bare word <-> current event tokens). Events opaque tokens.
 V1 comprehension >=.9 (f=1.0); V2 instrumental production >=.9; V3 shuffled-consequence control <=.6/.5."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, json, sys
 from collections import defaultdict
 from baby5 import WorldC, Baby5, load_llm_pools, WE, WA, TOK, ENT, ACT, VALID

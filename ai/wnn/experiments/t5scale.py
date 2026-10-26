@@ -1,5 +1,6 @@
 """B-237: HDC at 10x scale. facts: 350 pairs (700 queries, XOR binding). 2-hop: 500 chains (1500 links).
 dims 8192/16384, random-proj, 3 seeds. Baseline: P5 T2 100% at 35 facts / 50 chains."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import numpy as np
 import t5hdc
 from t5hdc import codebook, clean
