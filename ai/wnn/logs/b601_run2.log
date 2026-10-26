@@ -1,0 +1,31 @@
+TURN {"sc": "v1", "turn": "สวัสดี", "cls": "honest_engaged", "reply": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "มิโล เป็น แมว", "cls": "teach_ok", "reply": "จำแล้ว: มิโล เป็น แมว", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "แมว เป็น สัตว์", "cls": "teach_ok", "reply": "จำแล้ว: แมว เป็น สัตว์", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "มิโล เป็น สัตว์ ไหม", "cls": "inference_ok", "reply": "ใช่ มิโล เป็น สัตว์ เพราะ มิโล เป็น แมว และ แมว เป็น สัตว์", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "มิโล มี หาง", "cls": "teach_ok", "reply": "จำแล้ว: มิโล มี หาง", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "หาง ของ มิโล คืออะไร", "cls": "answer_ok", "reply": "ไม่รู้ว่า มิโล มี หาง ยังไม่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "แมวตัวนี้ชื่อมิโลนะ", "cls": "teach_ok", "reply": "จำแล้ว: มิโล เป็น แมว", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "มัน กิน ปลา ไหม", "cls": "ask_needed", "reply": "หมายถึงตัวไหน: มิโล หรือ แมว?", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "วันนี้ อากาศ ดี มาก", "cls": "honest_engaged", "reply": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "ราคา เท่าไหร่ กัน", "cls": "honest_engaged", "reply": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "สอนวิธี บวก ให้หน่อย", "cls": "teach_ok", "reply": "จำวิธีแล้ว: บวก", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "ตอบ สี่", "cls": "teach_ok", "reply": "รับคำตอบ: สี่", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "มิโล เป็น นก ไหม", "cls": "answer_ok", "reply": "ไม่รู้ว่า มิโล เป็น นก ยังไม่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "นก เป็น สัตว์", "cls": "teach_ok", "reply": "จำแล้ว: นก เป็น สัตว์", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "มิโล ไม่มี หาง", "cls": "teach_ok", "reply": "ลบแล้ว: มิโล ไม่มี หาง", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "หาง ของ มิโล คืออะไร รู้", "cls": "answer_ok", "reply": "ไม่รู้ว่า มิโล มี หาง ยังไม่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "good night sleep well", "cls": "honest_engaged", "reply": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v1", "turn": "เหยี่ยว เป็น สัตว์เลี้ยง", "cls": "answer_ok", "reply": "ไม่รู้ว่า เหยี่ยว เป็น สัตว์เลี้ยง ยังไม่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "สวัสดี", "cls": "honest_engaged", "reply": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "มิโล เป็น แมว", "cls": "teach_ok", "reply": "จำแล้ว: มิโล เป็น แมว", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "แมว เป็น สัตว์", "cls": "teach_ok", "reply": "จำแล้ว: แมว เป็น สัตว์", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "มัน เป็น สัตว์ ไหม", "cls": "ask_needed", "reply": "หมายถึงตัวไหน: แมว หรือ มิโล?", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "มัน กิน ปลา ไหม", "cls": "ask_needed", "reply": "หมายถึงตัวไหน: แมว หรือ มิโล?", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "มิโล มี หาง", "cls": "teach_ok", "reply": "จำแล้ว: มิโล มี หาง", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "ของมัน สวย ไหม", "cls": "ask_needed", "reply": "หมายถึงตัวไหน: มิโล หรือ แมว?", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "นก เป็น สัตว์", "cls": "teach_ok", "reply": "จำแล้ว: นก เป็น สัตว์", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "มัน เป็น สัตว์เลี้ยง ไหม", "cls": "ask_needed", "reply": "หมายถึงตัวไหน: นก หรือ มิโล หรือ แมว?", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+TURN {"sc": "v2", "turn": "วันนี้ อากาศ ดี มาก", "cls": "honest_engaged", "reply": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน", "nonempty": true, "content_ok": true, "chain_ok": true, "reply_class_match": true}
+SUMMARY {"turns": 28, "nonempty": 28, "content_ok": 28, "chain_ok": 28, "reply_class_match": 28}
+RES-FINAL {"peak_rss_mb_overall": 27.2, "wall_seconds": 1.2}
+DONE

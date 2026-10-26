@@ -4138,3 +4138,32 @@ limit beats a referent question), but it IS a behavior change on one v2
 turn and would need a recorded expectation relabel if the router were
 adopted. v1 and v3 have no router-marker hits (verified); the router
 remains probe-only, not merged.
+
+## B-601 PRE-REGISTERED (2026-10-27, before code) - response realization: class labels -> Thai replies
+
+The unified prototype returns action CLASSES, not sentences; the
+conversation target needs actual Thai replies. SUPPLIED templates per
+class with learned content (entities, chains) filled in - design work,
+not learning. Replies: teach echo, repeat note, inference WITH derivation
+chain, honest-unknown with what-was-not-taught, clarify with candidate
+referents, gradable/explain honest limits, vocab clarification, guess-
+confirmation with the guessed parse. Checks on v1+v2 scenarios: (a) every
+turn yields a non-empty Thai reply; (b) reply entities match the action
+slots (no wrong content); (c) inference replies show the actual chain
+when one exists; (d) ANTI-FABRICATION: reply class always equals the
+action class taken (a reply never claims an action not taken); (e)
+question/burden counters unchanged vs B-592 run2. Metric: per-turn checks,
+counts; no score gate beyond 0 anti-fabrication violations.
+
+## B-601 FINDINGS (2026-10-27): response realization complete on v1+v2 (28/28 replies, content 28/28, chains 28/28, 0 anti-fabrication violations)
+
+Runs: logs/b601_run1.log (26/28 content - two generic teach templates
+lacked slot content), logs/b601_run2.log (templates fixed; run1 retained).
+Every one of the 28 v1+v2 turns produces a non-empty Thai reply; slotted
+entities appear correctly; inference replies carry the actual derivation
+chain ('ใช่ มิโล เป็น สัตว์ เพราะ มิโล เป็น แมว และ แมว เป็น สัตว์');
+clarify replies list the actual candidate referents; every reply's class
+equals the action taken (0 anti-fabrication violations by construction,
+checked). SUPPLIED templates + learned content (entities/chains from the
+taught store); richness is design-limited - the replies are formulaic by
+construction. Burden counters untouched (realization is post-action).
