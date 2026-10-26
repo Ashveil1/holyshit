@@ -2152,3 +2152,12 @@ such). baby3 needs OR_KEY (external API): not executed, no secrets in repo.
 regress_skills PASS and b559 36/36 (RSS 11.3 MB) on the split head; staying
 tree outside experiments/ byte-identical to 48bc8a1 except HSML.md/README.md/
 LEDGER.md docs.
+
+Cross-reference sweep (same head): searched every repo markdown file for
+reproduction command lines (python invocations and run/reproduce instructions
+naming moved scripts). Result: zero documented commands reference any of the
+43 moved files (root README command lines cover hs.py/interp.py/prepare_*.py,
+all unmoved). Eight LEDGER verdict citations name moved files as file+log
+records (b300r, b503, b519, cur2_test, t3grid, t3lex, t5dim2, t5grid16k) -
+historical result records, not published command lines; the files remain
+in-repo at experiments/<name>.py under the migration note.
