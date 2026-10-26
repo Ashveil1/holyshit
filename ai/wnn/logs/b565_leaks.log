@@ -1,0 +1,44 @@
+ROW {"seed": 0, "extractor": "S3", "eval": "frozen_INSPECTED", "intent": 0.516, "slot_exact_on_correct": 0.364, "joint": 0.188, "wrong_action": 31, "abstain_gated_SEPARATE": 20, "n": 64}
+ROW {"seed": 0, "extractor": "S3", "eval": "newtmpl_INSPECTED1", "intent": 0.562, "slot_exact_on_correct": 0.0, "joint": 0.0, "wrong_action": 28, "abstain_gated_SEPARATE": 16, "n": 64}
+ROW {"seed": 0, "extractor": "S3", "eval": "fresh3", "intent": 0.547, "slot_exact_on_correct": 0.429, "joint": 0.234, "wrong_action": 29, "abstain_gated_SEPARATE": 16, "n": 64}
+ROW {"seed": 0, "extractor": "S4", "eval": "frozen_INSPECTED", "intent": 0.516, "slot_exact_on_correct": 0.545, "joint": 0.281, "wrong_action": 31, "abstain_gated_SEPARATE": 20, "n": 64}
+ROW {"seed": 0, "extractor": "S4", "eval": "newtmpl_INSPECTED1", "intent": 0.562, "slot_exact_on_correct": 0.306, "joint": 0.172, "wrong_action": 28, "abstain_gated_SEPARATE": 16, "n": 64}
+ROW {"seed": 0, "extractor": "S4", "eval": "fresh3", "intent": 0.547, "slot_exact_on_correct": 0.543, "joint": 0.297, "wrong_action": 29, "abstain_gated_SEPARATE": 16, "n": 64}
+ROW {"seed": 1, "extractor": "S3", "eval": "frozen_INSPECTED", "intent": 0.438, "slot_exact_on_correct": 0.321, "joint": 0.141, "wrong_action": 36, "abstain_gated_SEPARATE": 28, "n": 64}
+ROW {"seed": 1, "extractor": "S3", "eval": "newtmpl_INSPECTED1", "intent": 0.516, "slot_exact_on_correct": 0.0, "joint": 0.0, "wrong_action": 31, "abstain_gated_SEPARATE": 27, "n": 64}
+ROW {"seed": 1, "extractor": "S3", "eval": "fresh3", "intent": 0.453, "slot_exact_on_correct": 0.448, "joint": 0.203, "wrong_action": 35, "abstain_gated_SEPARATE": 19, "n": 64}
+ROW {"seed": 1, "extractor": "S4", "eval": "frozen_INSPECTED", "intent": 0.438, "slot_exact_on_correct": 0.464, "joint": 0.203, "wrong_action": 36, "abstain_gated_SEPARATE": 28, "n": 64}
+ROW {"seed": 1, "extractor": "S4", "eval": "newtmpl_INSPECTED1", "intent": 0.516, "slot_exact_on_correct": 0.242, "joint": 0.125, "wrong_action": 31, "abstain_gated_SEPARATE": 27, "n": 64}
+ROW {"seed": 1, "extractor": "S4", "eval": "fresh3", "intent": 0.453, "slot_exact_on_correct": 0.379, "joint": 0.172, "wrong_action": 35, "abstain_gated_SEPARATE": 19, "n": 64}
+ROW {"seed": 2, "extractor": "S3", "eval": "frozen_INSPECTED", "intent": 0.406, "slot_exact_on_correct": 0.269, "joint": 0.109, "wrong_action": 38, "abstain_gated_SEPARATE": 40, "n": 64}
+ROW {"seed": 2, "extractor": "S3", "eval": "newtmpl_INSPECTED1", "intent": 0.359, "slot_exact_on_correct": 0.0, "joint": 0.0, "wrong_action": 41, "abstain_gated_SEPARATE": 24, "n": 64}
+ROW {"seed": 2, "extractor": "S3", "eval": "fresh3", "intent": 0.453, "slot_exact_on_correct": 0.379, "joint": 0.172, "wrong_action": 35, "abstain_gated_SEPARATE": 30, "n": 64}
+ROW {"seed": 2, "extractor": "S4", "eval": "frozen_INSPECTED", "intent": 0.406, "slot_exact_on_correct": 0.462, "joint": 0.188, "wrong_action": 38, "abstain_gated_SEPARATE": 40, "n": 64}
+ROW {"seed": 2, "extractor": "S4", "eval": "newtmpl_INSPECTED1", "intent": 0.359, "slot_exact_on_correct": 0.391, "joint": 0.141, "wrong_action": 41, "abstain_gated_SEPARATE": 24, "n": 64}
+ROW {"seed": 2, "extractor": "S4", "eval": "fresh3", "intent": 0.453, "slot_exact_on_correct": 0.414, "joint": 0.188, "wrong_action": 35, "abstain_gated_SEPARATE": 30, "n": 64}
+ROW {"seed": 3, "extractor": "S3", "eval": "frozen_INSPECTED", "intent": 0.469, "slot_exact_on_correct": 0.367, "joint": 0.172, "wrong_action": 34, "abstain_gated_SEPARATE": 35, "n": 64}
+ROW {"seed": 3, "extractor": "S3", "eval": "newtmpl_INSPECTED1", "intent": 0.422, "slot_exact_on_correct": 0.0, "joint": 0.0, "wrong_action": 37, "abstain_gated_SEPARATE": 30, "n": 64}
+ROW {"seed": 3, "extractor": "S3", "eval": "fresh3", "intent": 0.547, "slot_exact_on_correct": 0.457, "joint": 0.25, "wrong_action": 29, "abstain_gated_SEPARATE": 24, "n": 64}
+ROW {"seed": 3, "extractor": "S4", "eval": "frozen_INSPECTED", "intent": 0.469, "slot_exact_on_correct": 0.333, "joint": 0.156, "wrong_action": 34, "abstain_gated_SEPARATE": 35, "n": 64}
+ROW {"seed": 3, "extractor": "S4", "eval": "newtmpl_INSPECTED1", "intent": 0.422, "slot_exact_on_correct": 0.148, "joint": 0.062, "wrong_action": 37, "abstain_gated_SEPARATE": 30, "n": 64}
+ROW {"seed": 3, "extractor": "S4", "eval": "fresh3", "intent": 0.547, "slot_exact_on_correct": 0.371, "joint": 0.203, "wrong_action": 29, "abstain_gated_SEPARATE": 24, "n": 64}
+ROW {"seed": 4, "extractor": "S3", "eval": "frozen_INSPECTED", "intent": 0.5, "slot_exact_on_correct": 0.312, "joint": 0.156, "wrong_action": 32, "abstain_gated_SEPARATE": 29, "n": 64}
+ROW {"seed": 4, "extractor": "S3", "eval": "newtmpl_INSPECTED1", "intent": 0.469, "slot_exact_on_correct": 0.0, "joint": 0.0, "wrong_action": 34, "abstain_gated_SEPARATE": 28, "n": 64}
+ROW {"seed": 4, "extractor": "S3", "eval": "fresh3", "intent": 0.438, "slot_exact_on_correct": 0.607, "joint": 0.266, "wrong_action": 36, "abstain_gated_SEPARATE": 27, "n": 64}
+ROW {"seed": 4, "extractor": "S4", "eval": "frozen_INSPECTED", "intent": 0.5, "slot_exact_on_correct": 0.531, "joint": 0.266, "wrong_action": 32, "abstain_gated_SEPARATE": 29, "n": 64}
+ROW {"seed": 4, "extractor": "S4", "eval": "newtmpl_INSPECTED1", "intent": 0.469, "slot_exact_on_correct": 0.267, "joint": 0.125, "wrong_action": 34, "abstain_gated_SEPARATE": 28, "n": 64}
+ROW {"seed": 4, "extractor": "S4", "eval": "fresh3", "intent": 0.438, "slot_exact_on_correct": 0.679, "joint": 0.297, "wrong_action": 36, "abstain_gated_SEPARATE": 27, "n": 64}
+DONE
+{"s": "horse มี จงอย่าง อยู่นะ", "intent": "teach_attr", "gold": ["horse", "จงอย่าง"], "pred": ["จงอย่าง", "horse"]}
+{"s": "horse มี feather อยู่นะ", "intent": "teach_attr", "gold": ["horse", "feather"], "pred": ["feather", "horse"]}
+{"s": "horse มี ปาก อยู่นะ", "intent": "teach_attr", "gold": ["horse", "ปาก"], "pred": ["ปาก", "horse"]}
+{"s": "ม้า มี จงอย่าง อยู่นะ", "intent": "teach_attr", "gold": ["ม้า", "จงอย่าง"], "pred": ["จงอย่าง", "ม้า"]}
+{"s": "horse มี beak อยู่นะ", "intent": "teach_attr", "gold": ["horse", "beak"], "pred": ["beak", "horse"]}
+{"s": "duck มี ปาก อยู่นะ", "intent": "teach_attr", "gold": ["duck", "ปาก"], "pred": ["ปาก", "duck"]}
+{"s": "ขน ของ horse คืออะไร รู้ไหม", "intent": "ask_attr", "gold": ["horse", "ขน"], "pred": ["ขน", "horse"]}
+{"s": "feather ของ เป็ด คืออะไร รู้ไหม", "intent": "ask_attr", "gold": ["เป็ด", "feather"], "pred": ["feather", "เป็ด"]}
+{"s": "ขน ของ ม้า คืออะไร รู้ไหม", "intent": "ask_attr", "gold": ["ม้า", "ขน"], "pred": ["ขน", "ม้า"]}
+{"s": "ขน ของ duck คืออะไร รู้ไหม", "intent": "ask_attr", "gold": ["duck", "ขน"], "pred": ["ขน", "duck"]}
+{"s": "ปาก ของ ม้า คืออะไร รู้ไหม", "intent": "ask_attr", "gold": ["ม้า", "ปาก"], "pred": ["ปาก", "ม้า"]}
+{"s": "horse มัน เป็น นกน้ำ", "intent": "teach_isa", "gold": ["horse", "นกน้ำ"], "pred": ["มัน", "นกน้ำ"]}
+total sample errors shown: 12
