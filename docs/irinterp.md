@@ -152,3 +152,9 @@ operation raises, leaving normal scalar and equality/truth paths unchanged.
 Three programs compare102 operator expressions, including both operand orders,
 negation, complement, truth and equality controls, for304 parity classifications.
 This is bounded handle-error coverage, not all operand combinations.
+
+`contains()` rejects handle containers and handle needles in Str containers
+with their guest Func/Builtin/Module kind. Twelve caught/uncaught errors plus
+one List-handle identity and valid Str/Dict control program bring parity to317
+classifications. This fixes membership error names, not JSON serialization or
+all remaining builtin type edges.
