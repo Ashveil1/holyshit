@@ -2886,3 +2886,40 @@ Gates (fixed before code):
   G2: same test on c22 (fresh3): mean delta improvement >= +10 points.
   Both fail -> scale hypothesis NULL in the tested range; closeout, no
   automatic continuation.
+
+## B-571 verdict (2026-10-26) - data-scale probe: G1/G2 FAIL, scale hypothesis null in tested range; closeout (b571.py, logs/b571_run1.log)
+
+Frozen B-570 implementation; nested-prefix training at 8/32/128 per intent
+(64/256/1024 sentences), 5 seeds, paired. Resources: peak RSS 43.3MB (no
+child processes; single-process VmHVM = whole tree), 159s wall, no timeout.
+Note: B-570 numbers recomputed inside this harness (nested-prefix rng
+stream); direction and magnitude consistent with B-570's c11/c12 readings.
+
+PTR-BASE joint deltas by scale (means; per-seed in log):
+- c11 seen/seen:      +.303 (k8) -> +.578 (k32) -> +.547 (k128)
+- c12 seenT/unseenE:  -.453 -> -.350 -> -.390
+- c21 unseenT/seenE:  +.094 -> +.090 -> +.188
+- c22 fresh3:         -.219 -> -.213 -> -.247
+G1 FAIL: c12 improvement k8->k128 = +.062 mean (< +.10 required), only 3/5
+per-seed improvements. G2 FAIL: c22 moved -.028 (wrong direction).
+NULL in the tested range: 16x more same-distribution authored data improves
+the pointer arm where entities are SEEN (c11/c21 deltas grow) but does NOT
+close the unseen-entity gap (c12/c22 stay -.2..-.5 at every scale).
+Scope preserved per prereg: does not establish data scale as THE binding
+constraint (other axes frozen, not ruled out); does not isolate pointer-copy
+(architecture bundle differs from baseline); does not speak for the
+recurrent variant; does not show the gap never closes (range 8-128/intent).
+Baseline remains the best honest measured state at every tested scale.
+
+## LEARNED-LANGUAGE MECHANISM SEARCH - CONSOLIDATED STATE (2026-10-26)
+
+Eight preregistered axes tested against the frozen protocol, all failed
+their gates: WNN, 1-NN, text2prog (B-562), pooled slots (B-564), pooled role
+stats (B-566-A1), discriminative feature weighting (B-567), pointer-copy
+neural at 64 sentences (B-570), and the same at 256/1024 (B-571). This is a
+record of what was tried and failed under THESE bounds - not closure of all
+mechanisms and not a teach-once impossibility claim. Best honest state:
+NBu + S4-selection + positional roles (joint .19-.29 on inspected unseen-
+phrasing dev cells at 64/seed; .62 on seen-template/unseen-entity).
+Dominant open problem, measured: UNSEEN-ENTITY slot handling (c12/c22) -
+neither counting nor pointer-copy learned it at tested scales.

@@ -1,0 +1,137 @@
+ROW {"seed": 0, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.859, "joint": 0.062, "n": 64}
+ROW {"seed": 0, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.797, "joint": 0.594, "n": 64}
+ROW {"seed": 0, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.562, "joint": 0.047, "n": 64}
+ROW {"seed": 0, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.453, "joint": 0.328, "n": 64}
+ROW {"seed": 0, "k": 8, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.969, "joint": 0.641, "n": 64}
+ROW {"seed": 0, "k": 8, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.703, "joint": 0.188, "n": 64}
+ROW {"seed": 0, "k": 8, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.609, "joint": 0.266, "n": 64}
+ROW {"seed": 0, "k": 8, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.297, "joint": 0.0, "n": 64}
+RES {"seed": 0, "k": 8, "train_seconds": 3.1, "peak_rss_mb": 40.2}
+ROW {"seed": 0, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.875, "joint": 0.094, "n": 64}
+ROW {"seed": 0, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.797, "joint": 0.594, "n": 64}
+ROW {"seed": 0, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.688, "joint": 0.016, "n": 64}
+ROW {"seed": 0, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.469, "joint": 0.328, "n": 64}
+ROW {"seed": 0, "k": 32, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.766, "joint": 0.719, "n": 64}
+ROW {"seed": 0, "k": 32, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.766, "joint": 0.281, "n": 64}
+ROW {"seed": 0, "k": 32, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.391, "joint": 0.078, "n": 64}
+ROW {"seed": 0, "k": 32, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.422, "joint": 0.156, "n": 64}
+RES {"seed": 0, "k": 32, "train_seconds": 3.4, "peak_rss_mb": 41.4}
+ROW {"seed": 0, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.875, "joint": 0.094, "n": 64}
+ROW {"seed": 0, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.812, "joint": 0.688, "n": 64}
+ROW {"seed": 0, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.688, "joint": 0.031, "n": 64}
+ROW {"seed": 0, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.516, "joint": 0.344, "n": 64}
+ROW {"seed": 0, "k": 128, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.625, "joint": 0.344, "n": 64}
+ROW {"seed": 0, "k": 128, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.484, "joint": 0.203, "n": 64}
+ROW {"seed": 0, "k": 128, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.328, "joint": 0.141, "n": 64}
+ROW {"seed": 0, "k": 128, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.188, "joint": 0.016, "n": 64}
+RES {"seed": 0, "k": 128, "train_seconds": 11.3, "peak_rss_mb": 42.7}
+ROW {"seed": 1, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.875, "joint": 0.172, "n": 64}
+ROW {"seed": 1, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.766, "joint": 0.562, "n": 64}
+ROW {"seed": 1, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.531, "joint": 0.047, "n": 64}
+ROW {"seed": 1, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.406, "joint": 0.266, "n": 64}
+ROW {"seed": 1, "k": 8, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.688, "joint": 0.578, "n": 64}
+ROW {"seed": 1, "k": 8, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.641, "joint": 0.203, "n": 64}
+ROW {"seed": 1, "k": 8, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.266, "joint": 0.141, "n": 64}
+ROW {"seed": 1, "k": 8, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.266, "joint": 0.094, "n": 64}
+RES {"seed": 1, "k": 8, "train_seconds": 1.1, "peak_rss_mb": 42.7}
+ROW {"seed": 1, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.891, "joint": 0.094, "n": 64}
+ROW {"seed": 1, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.75, "joint": 0.547, "n": 64}
+ROW {"seed": 1, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.531, "joint": 0.031, "n": 64}
+ROW {"seed": 1, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.484, "joint": 0.266, "n": 64}
+ROW {"seed": 1, "k": 32, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 1.0, "joint": 1.0, "n": 64}
+ROW {"seed": 1, "k": 32, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.891, "joint": 0.297, "n": 64}
+ROW {"seed": 1, "k": 32, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.469, "joint": 0.156, "n": 64}
+ROW {"seed": 1, "k": 32, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.344, "joint": 0.031, "n": 64}
+RES {"seed": 1, "k": 32, "train_seconds": 5.2, "peak_rss_mb": 42.7}
+ROW {"seed": 1, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.844, "joint": 0.094, "n": 64}
+ROW {"seed": 1, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.766, "joint": 0.641, "n": 64}
+ROW {"seed": 1, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.578, "joint": 0.031, "n": 64}
+ROW {"seed": 1, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.469, "joint": 0.297, "n": 64}
+ROW {"seed": 1, "k": 128, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.844, "joint": 0.797, "n": 64}
+ROW {"seed": 1, "k": 128, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.781, "joint": 0.438, "n": 64}
+ROW {"seed": 1, "k": 128, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.469, "joint": 0.25, "n": 64}
+ROW {"seed": 1, "k": 128, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.484, "joint": 0.156, "n": 64}
+RES {"seed": 1, "k": 128, "train_seconds": 18.4, "peak_rss_mb": 43.2}
+ROW {"seed": 2, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.953, "joint": 0.141, "n": 64}
+ROW {"seed": 2, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.781, "joint": 0.609, "n": 64}
+ROW {"seed": 2, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.516, "joint": 0.062, "n": 64}
+ROW {"seed": 2, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.422, "joint": 0.188, "n": 64}
+ROW {"seed": 2, "k": 8, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.328, "joint": 0.281, "n": 64}
+ROW {"seed": 2, "k": 8, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.359, "joint": 0.172, "n": 64}
+ROW {"seed": 2, "k": 8, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.406, "joint": 0.109, "n": 64}
+ROW {"seed": 2, "k": 8, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.344, "joint": 0.094, "n": 64}
+RES {"seed": 2, "k": 8, "train_seconds": 0.8, "peak_rss_mb": 43.2}
+ROW {"seed": 2, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.969, "joint": 0.078, "n": 64}
+ROW {"seed": 2, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.828, "joint": 0.656, "n": 64}
+ROW {"seed": 2, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.547, "joint": 0.016, "n": 64}
+ROW {"seed": 2, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.406, "joint": 0.188, "n": 64}
+ROW {"seed": 2, "k": 32, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.641, "joint": 0.234, "n": 64}
+ROW {"seed": 2, "k": 32, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.641, "joint": 0.141, "n": 64}
+ROW {"seed": 2, "k": 32, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.172, "joint": 0.031, "n": 64}
+ROW {"seed": 2, "k": 32, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.344, "joint": 0.031, "n": 64}
+RES {"seed": 2, "k": 32, "train_seconds": 10.2, "peak_rss_mb": 43.2}
+ROW {"seed": 2, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.969, "joint": 0.078, "n": 64}
+ROW {"seed": 2, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.828, "joint": 0.609, "n": 64}
+ROW {"seed": 2, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.672, "joint": 0.031, "n": 64}
+ROW {"seed": 2, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.438, "joint": 0.234, "n": 64}
+ROW {"seed": 2, "k": 128, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.859, "joint": 0.656, "n": 64}
+ROW {"seed": 2, "k": 128, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.828, "joint": 0.297, "n": 64}
+ROW {"seed": 2, "k": 128, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.469, "joint": 0.188, "n": 64}
+ROW {"seed": 2, "k": 128, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.375, "joint": 0.031, "n": 64}
+RES {"seed": 2, "k": 128, "train_seconds": 48.0, "peak_rss_mb": 43.2}
+ROW {"seed": 3, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.906, "joint": 0.188, "n": 64}
+ROW {"seed": 3, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.844, "joint": 0.609, "n": 64}
+ROW {"seed": 3, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.531, "joint": 0.031, "n": 64}
+ROW {"seed": 3, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.422, "joint": 0.219, "n": 64}
+ROW {"seed": 3, "k": 8, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.219, "joint": 0.188, "n": 64}
+ROW {"seed": 3, "k": 8, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.188, "joint": 0.125, "n": 64}
+ROW {"seed": 3, "k": 8, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.188, "joint": 0.0, "n": 64}
+ROW {"seed": 3, "k": 8, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.172, "joint": 0.062, "n": 64}
+RES {"seed": 3, "k": 8, "train_seconds": 0.8, "peak_rss_mb": 43.2}
+ROW {"seed": 3, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.922, "joint": 0.094, "n": 64}
+ROW {"seed": 3, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.859, "joint": 0.625, "n": 64}
+ROW {"seed": 3, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.547, "joint": 0.031, "n": 64}
+ROW {"seed": 3, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.453, "joint": 0.234, "n": 64}
+ROW {"seed": 3, "k": 32, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.875, "joint": 0.719, "n": 64}
+ROW {"seed": 3, "k": 32, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.797, "joint": 0.281, "n": 64}
+ROW {"seed": 3, "k": 32, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.188, "joint": 0.109, "n": 64}
+ROW {"seed": 3, "k": 32, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.328, "joint": 0.016, "n": 64}
+RES {"seed": 3, "k": 32, "train_seconds": 6.3, "peak_rss_mb": 43.2}
+ROW {"seed": 3, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.938, "joint": 0.094, "n": 64}
+ROW {"seed": 3, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.859, "joint": 0.625, "n": 64}
+ROW {"seed": 3, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.594, "joint": 0.031, "n": 64}
+ROW {"seed": 3, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.484, "joint": 0.266, "n": 64}
+ROW {"seed": 3, "k": 128, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.844, "joint": 0.828, "n": 64}
+ROW {"seed": 3, "k": 128, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.797, "joint": 0.266, "n": 64}
+ROW {"seed": 3, "k": 128, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.422, "joint": 0.312, "n": 64}
+ROW {"seed": 3, "k": 128, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.266, "joint": 0.0, "n": 64}
+RES {"seed": 3, "k": 128, "train_seconds": 14.3, "peak_rss_mb": 43.3}
+ROW {"seed": 4, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.891, "joint": 0.109, "n": 64}
+ROW {"seed": 4, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.875, "joint": 0.703, "n": 64}
+ROW {"seed": 4, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.625, "joint": 0.031, "n": 64}
+ROW {"seed": 4, "k": 8, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.5, "joint": 0.391, "n": 64}
+ROW {"seed": 4, "k": 8, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.672, "joint": 0.5, "n": 64}
+ROW {"seed": 4, "k": 8, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.672, "joint": 0.125, "n": 64}
+ROW {"seed": 4, "k": 8, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.312, "joint": 0.172, "n": 64}
+ROW {"seed": 4, "k": 8, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.328, "joint": 0.047, "n": 64}
+RES {"seed": 4, "k": 8, "train_seconds": 1.5, "peak_rss_mb": 43.3}
+ROW {"seed": 4, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.922, "joint": 0.094, "n": 64}
+ROW {"seed": 4, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.859, "joint": 0.609, "n": 64}
+ROW {"seed": 4, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.578, "joint": 0.0, "n": 64}
+ROW {"seed": 4, "k": 32, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.453, "joint": 0.359, "n": 64}
+ROW {"seed": 4, "k": 32, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.875, "joint": 0.672, "n": 64}
+ROW {"seed": 4, "k": 32, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.766, "joint": 0.281, "n": 64}
+ROW {"seed": 4, "k": 32, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.328, "joint": 0.172, "n": 64}
+ROW {"seed": 4, "k": 32, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.453, "joint": 0.078, "n": 64}
+RES {"seed": 4, "k": 32, "train_seconds": 11.3, "peak_rss_mb": 43.3}
+ROW {"seed": 4, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.922, "joint": 0.109, "n": 64}
+ROW {"seed": 4, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.859, "joint": 0.734, "n": 64}
+ROW {"seed": 4, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.609, "joint": 0.0, "n": 64}
+ROW {"seed": 4, "k": 128, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.453, "joint": 0.359, "n": 64}
+ROW {"seed": 4, "k": 128, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.656, "joint": 0.578, "n": 64}
+ROW {"seed": 4, "k": 128, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.453, "joint": 0.141, "n": 64}
+ROW {"seed": 4, "k": 128, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.484, "joint": 0.172, "n": 64}
+ROW {"seed": 4, "k": 128, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.266, "joint": 0.062, "n": 64}
+RES {"seed": 4, "k": 128, "train_seconds": 16.8, "peak_rss_mb": 43.3}
+RES-FINAL {"peak_rss_mb_overall": 43.3, "budget_bytes": 1000000000, "stopped": null, "wall_seconds": 158.7}
+DONE
