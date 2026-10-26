@@ -4989,3 +4989,24 @@ annotation/repetition costs. No such improved implementation is supported
 by this result alone. Stop at frozen bounds, preserve NULL, report blocker.
 General conversational target remains unmet; existing entry answer and
 lossy-definition failures unchanged. No production integration.
+
+## B-613 interpretation correction and bounded alignment source review
+
+The prior suggestion that denotation ambiguity explains the NULL is not
+causally established. Semantically equivalent syntax may be harmless for
+denotation tasks. Exact AST failure alone is insufficient; denotation 0/12
+is substantive in this fixed setup. Feature choices, one-step optimization,
+candidate biases and feedback are confounded. This weak learner is NOT a
+replication/test of the cited SHRDLURN full system. No extra B613 runs.
+
+ALIGNMENT_REVIEW.md records inspected SGOLL, situated instruction and
+dialogue-cost sources. SGOLL is distinct local phrase/subgraph contrast,
+but reported settings minimum support 10 and thousands of instructions do
+not establish teach-once feasibility. Published timing on 32GB-capacity
+servers is not actual RAM or a sub-1GB guarantee; source warns memory can
+be high. Soar few-example concept grounding supplies static dictionary/
+grammar and explicit property-level guidance, not general language learning.
+No new build justified yet. Concrete next review: SGOLL feature/training/
+grammar assumptions, implementation availability/license, support-one and
+memory evidence. Outcome target remains active but unmet; this is an
+internal research blocker, not a request for user action or completion.
