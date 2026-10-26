@@ -4858,3 +4858,62 @@ answer-relevance evidence; the 11/12 figure includes that vacuous boolean.
 No production merge. No supported new capability direction beyond narrow
 associations has yet been identified; general conversational target remains
 unmet. Status consolidated rather than adding score-improving scenarios.
+
+## B-612 verification corrections pre-registration
+
+Withdraw old attr_answered result: it was 'or True' and excluded from
+CHECK. Capture actual replies in original PART2 and assert cat-tail unknown
+('ไม่รู้ว่า แมว มี หาง ยังไม่เคยถูกสอน') and taught lotus-petal attribute
+answer ('ใช่ บัว มี กลีบ'), following a confirmation only if proposed.
+Keep def_fired_novel unchanged, expecting intentional lossy compatibility
+failure. No expectation changes to force green. Add independent lossless
+identity-definition persistence test with original/canonical provenance,
+no write before yes, +1 after yes. Distinguish identity pattern reuse
+from learning new grammar. Independently monitor aggregate concurrent
+RSS of verification supervisor plus all live descendants every 10ms,
+enforce 1e9-byte cap throughout entry and B611 subprocess workloads.
+Sampled aggregate RSS may double-count shared pages and miss shorter
+transients; it is not summed per-process high-water marks.
+
+## B-612 verification findings
+
+logs/b612_entry_tree.log retains CHECK FAIL, now with non-vacuous answers:
+cat-tail unknown is relevant (true); lotus-petal returns ISA unknown
+'ไม่รู้ว่า บัว เป็น กลีบ ยังไม่เคยถูกสอน' rather than taught attribute
+'ใช่ บัว มี กลีบ' (false). def_fired_novel also remains false for the
+intentional lossy hold. Old attr_answered is withdrawn, removed, and no
+longer excluded from CHECK. Actual 11/13 booleans true, two failures.
+No marker fix or changed expected answer was used to raise the score.
+
+Separate b612_lossless_tree: standalone REPL definition-save, load and
+source-visible proposal without fact, then independent load/proposal/yes
+persists fact. 4/4 checks true. This is identity-definition persistence,
+not new grammar learning; counter +1 is separately checked by B611.
+Final B611 with live process-tree monitor CHECK PASS.
+
+Aggregate sampled concurrent RSS includes verification supervisor AND
+all descendants throughout each workload, 10ms target sampling, enforced
+1e9-byte cap, none exceeded:
+- entry (including parent and restart child): 67,555,328 bytes, exit 1;
+- final B611 including independent interpreter: 68,026,368 bytes, exit 0;
+- standalone lossless REPL sequence: 49,618,944 bytes, exit 0.
+These are workload-specific sums of concurrent RSS, not sums of HWM.
+Shared pages may be double-counted; transients shorter than sampling can
+be missed; no claim of universal future-memory bound.
+
+## Bounded route review (no build)
+
+ROUTE_REVIEW.md / ROUTE_SOURCES.md record six inspected public sources and
+source-code inspection. Candidate: typed compositional logical-form
+proposal search with online fragment/subtree weights learned from selected
+outcomes (SHRDLURN style), materially different from whole-surface
+interpolation or intent-row learning. Evidence supports bounded grounded
+learning only. Supplied grammar/executor/curriculum and teacher selection
+must stay explicit. No source establishes RAM, Thai, bilingual shared
+knowledge or broad conversation under present constraints. Didactic code
+is GPLv2-labelled and uses eval/exhaustive derivations; not adopted or
+copied. A fresh pure-AST, capped-beam probe would need structure-held-out,
+no-feedback, permuted-feedback, flat/memorization and oracle-candidate
+controls. This is a narrower research candidate, not a supported path to
+the complete conversational target. Target remains unmet. No implementation
+started during this review; no integration or release.

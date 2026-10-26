@@ -1,0 +1,7 @@
+# Sources inspected 2026-10-27
+1. Wang, Liang, Manning, Learning Language Games through Interaction (2016), primary paper: https://ar5iv.labs.arxiv.org/html/1606.02447 . No seed lexicon; supplied logical-form grammar, beam search, online lexical/tree features; teacher selects denotation. Strong support for bounded grounded learning, no RAM/broad dialogue support.
+2. Stanford SEMPRE docs: https://www-nlp.stanford.edu/software/sempre/ . Domain grammar and online-learning toolkit. Operational docs, not performance evidence for this task.
+3. Wang, Berant, Liang, Building a Semantic Parser Overnight (2015), abstract: https://aclanthology.org/P15-1129/ . Supplied grammar/canonical utterances and crowdsourced paraphrases. Cannot treat title as low-effort general conversation evidence.
+4. Winograd official project archive: https://hci.stanford.edu/winograd/shrdlu/ . Small blocks-world dialogue; curated demo, not learning benchmark or open-domain result.
+5. SippyCup code/docs: https://github.com/wcmac/sippycup . Didactic Python chart parser, learned linear ranking, limited induction. GPLv2 metadata, no adoption clearance.
+6. Liang/Potts demonstration code/docs: https://github.com/cgpotts/annualreview-complearning/ . Source inspected at 97f100f30f5703e3c0779b3ffcff968eaa7b2fa3. Grammar supplied; lexical semantic ranking learned; exhaustive trees and eval-based semantic execution unsuitable for untrusted chat. GNU GPL version 2 labels. Do not copy into AGPL-only project without license resolution.

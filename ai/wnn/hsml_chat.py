@@ -448,8 +448,12 @@ PART2 = ['เหยี่ยวน่ะเป็นนก', 'ใช่', 'ม�
          'หางของแมวคืออะไร', 'บัวมีกลีบไหม', 'ใช่']
 
 def run_lines(chat, lines):
+    replies = []
     for line in lines:
-        print('TURN ' + json.dumps({'in': line, 'out': chat.user_turn(line)[:90]}, ensure_ascii=False))
+        reply = chat.user_turn(line)
+        replies.append(reply)
+        print('TURN ' + json.dumps({'in': line, 'out': reply[:90]}, ensure_ascii=False))
+    return replies
 
 def check_part1():
     watchdog = Watchdog(BUDGET); watchdog.start()
@@ -504,12 +508,19 @@ def check_part2():
         'seen_kept': 'มิโล เป็น แมว' in chat.seen,
         'mapper_counts': sum(sum(c.values()) for c in chat.m.fc.values()) == fc_snap,
     }
-    run_lines(chat, PART2)
+    replies = run_lines(chat, PART2)
     audits['def_fired_novel'] = 'นก' in chat.isa.get('เหยี่ยว', set())
     audits['lex_extra_kept'] = not (set(snap['lex_extra']) - chat.lex)
     audits['session_lexicon_restart'] = 'บัว' in snap['lex_extra'] and 'กลีบ' in snap['lex_extra']
     audits['chain_inference'] = chat.answer_isa('มิโล', 'สัตว์') == 'yes'
-    audits['attr_answered'] = 'หาง' in chat.attr.get('แมว', set()) or True  # see transcript
+    cat_reply = replies[PART2.index('หางของแมวคืออะไร')]
+    lotus_index = PART2.index('บัวมีกลีบไหม')
+    lotus_reply = replies[lotus_index]
+    if lotus_reply.startswith('เดาว่า:'):
+        lotus_reply = replies[lotus_index + 1]
+    audits['cat_tail_unknown_relevant'] = cat_reply == 'ไม่รู้ว่า แมว มี หาง ยังไม่เคยถูกสอน'
+    audits['lotus_petal_answer_relevant'] = lotus_reply == 'ใช่ บัว มี กลีบ'
+    print('ANSWER-RELEVANCE ' + json.dumps({'cat_tail': cat_reply, 'lotus_petal': lotus_reply}, ensure_ascii=False))
     wrong = [(x, y) for x, ys in chat.isa.items() for y in ys
              if (x, y) not in {('มิโล','แมว'), ('แมว','สัตว์'), ('เหยี่ยว','นก')}]
     wrong_attr = [(x, y) for x, ys in chat.attr.items() for y in ys
@@ -522,7 +533,7 @@ def check_part2():
     watchdog.stop()
     print('RES-PART2 ' + json.dumps({'peak_rss_mb': round(watchdog.peak/1e6,1),
         'wall_seconds': round(time.time()-t0,1)}))
-    ok = all(v for k, v in audits.items() if k != 'attr_answered')
+    ok = all(audits.values())
     print('CHECK ' + ('PASS' if ok else 'FAIL'))
     sys.exit(0 if ok else 1)
 

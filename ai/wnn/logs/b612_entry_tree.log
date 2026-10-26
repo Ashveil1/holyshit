@@ -1,0 +1,36 @@
+TURN {"in": "เหยี่ยวน่ะเป็นนก", "out": "รูปแบบนี้ตัดข้อความจาก «เหยี่ยว น่ะ เป็น นก» เป็น «เหยี่ยว เป็น นก» ยังทำตามไม่ได้ ช่วยบอก"}
+TURN {"in": "ใช่", "out": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน"}
+TURN {"in": "มิโลเป็นสัตว์ไหม", "out": "อันนี้รู้อยู่แล้วนะ"}
+TURN {"in": "ใช่", "out": "เรื่องนี้อยู่นอกสิ่งที่เคยถูกสอน"}
+TURN {"in": "มิโลเป็นแมว", "out": "อันนี้รู้อยู่แล้วนะ"}
+TURN {"in": "วันนี้อากาศดีมาก", "out": "ยังไม่เข้าใจคำว่า «ดี», «มาก» ในประโยคนี้"}
+TURN {"in": "หมูมีงา", "out": "เดาว่า: สอนว่า หมู มี งา ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: หมู มี งา"}
+TURN {"in": "มิโลเป็นหมาไหม", "out": "เดาว่า: ถามว่า มิโล เป็น หมา ใช่ไหม"}
+TURN {"in": "ใช่", "out": "ไม่รู้ว่า มิโล เป็น หมา ยังไม่เคยถูกสอน"}
+TURN {"in": "หางของแมวคืออะไร", "out": "ไม่รู้ว่า แมว มี หาง ยังไม่เคยถูกสอน"}
+TURN {"in": "บัวมีกลีบไหม", "out": "เดาว่า: ถามว่า บัว เป็น กลีบ ใช่ไหม"}
+TURN {"in": "ใช่", "out": "ไม่รู้ว่า บัว เป็น กลีบ ยังไม่เคยถูกสอน"}
+ANSWER-RELEVANCE {"cat_tail": "ไม่รู้ว่า แมว มี หาง ยังไม่เคยถูกสอน", "lotus_petal": "ไม่รู้ว่า บัว เป็น กลีบ ยังไม่เคยถูกสอน"}
+RESTART-AUDIT {"facts_isa": true, "facts_attr": true, "defs_loaded": true, "subjects_kept": true, "seen_kept": true, "mapper_counts": true, "def_fired_novel": false, "lex_extra_kept": true, "session_lexicon_restart": true, "chain_inference": true, "cat_tail_unknown_relevant": true, "lotus_petal_answer_relevant": false, "zero_wrong_facts": true}
+BURDEN-PART2 {"questions": 4, "yes": 3, "corrections": 0}
+FINAL-STORE {"isa": {"มิโล": ["แมว"], "แมว": ["สัตว์"], "สัตว์": [], "บัว": []}, "attr": {"มิโล": ["หาง"], "บัว": ["กลีบ"], "หมู": ["งา"]}}
+RES-PART2 {"peak_rss_mb": 28.6, "wall_seconds": 1.4}
+CHECK FAIL
+TURN {"in": "สวัสดี", "out": "สวัสดี สอนอะไรก็ได้เลย"}
+TURN {"in": "มิโลเป็นแมว", "out": "เดาว่า: สอนว่า มิโล เป็น แมว ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: มิโล เป็น แมว"}
+TURN {"in": "แมวเป็นสัตว์", "out": "เดาว่า: สอนว่า แมว เป็น สัตว์ ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: แมว เป็น สัตว์"}
+TURN {"in": "มันเป็นสัตว์ไหม", "out": "หมายถึงตัวไหน: แมว หรือ มิโล?"}
+TURN {"in": "มิโล", "out": "ใช่ มิโล เป็น สัตว์ เพราะ มิโล เป็น แมว และ แมว เป็น สัตว์"}
+TURN {"in": "มิโลมีหาง", "out": "เดาว่า: สอนว่า มิโล มี หาง ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: มิโล มี หาง"}
+TURN {"in": "บัวมีกลีบ", "out": "เดาว่า: สอนว่า บัว มี กลีบ ใช่ไหม"}
+TURN {"in": "ใช่", "out": "จำแล้ว: บัว มี กลีบ"}
+TURN {"in": "นิยาม เหยี่ยว น่ะ เป็น นก เหมือน เหยี่ยว เป็น นก ตัวแปร 1,4", "out": "จำรูปแบบใหม่แล้ว"}
+SNAPSHOT-SAVED {"isa": 2, "attr": 2, "defs": 1, "lex_extra": 2, "subjects": 5, "seen": 7}
+BURDEN-PART1 {"questions": 5, "yes": 4, "corrections": 0}
+RES-PART1 {"peak_rss_mb": 28.5, "wall_seconds": 1.3}
+TREE-PEAK {"peak_concurrent_tree_mb": 57.3, "note": "parent+child RSS sampled concurrently during child lifetime"}
+LIVE-TREE {"command": ["python3", "hsml_chat.py", "--check"], "peak_concurrent_rss_bytes": 67555328, "budget_bytes": 1000000000, "exceeded": false, "samples": 241, "sample_interval_seconds": 0.01, "includes": "supervisor plus all descendants", "pids_at_peak": [7459, 7460, 7463], "child_exit": 1}
