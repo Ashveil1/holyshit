@@ -2258,3 +2258,71 @@ B-562 Amendment 1 (2026-10-26, BEFORE code and any result inspection; original e
   to the factual store unconfirmed (mirrors the production rule).
 - Validation label: the phrasing-family split is AUTHOR-GENERATED - recorded
   as authored validation, NOT independent validation, in every report.
+
+## B-562 verdict (2026-10-26) - LEARNED sentence-to-intent+slot mapping: MIXED, hypotheses answered (b562.py, logs/b562_run4.log)
+
+Pre-registered + Amendment 1 honored; no criterion edits after code. Split is
+AUTHOR-GENERATED (not independent validation). 5 seeds, 8 hsml dialogue intents,
+k in {1,2,4,8} teach-once examples per intent, family-disjoint eval with
+UNFAMILIAR entities/attrs/classes/numbers, wrong-intent controls, shuffled-label
+sanity. Whole-process peak RSS 17.1 MB (measured, ru_maxrss).
+
+Run-1 artifact catches (recorded, harness fixed before any result claim):
+(1) hardcoded abstention thresholds made NB/T2P abstain 100% - replaced with
+per-arm dev-chosen frozen thresholds; (2) original eval families had ZERO
+lexical overlap with training (uninformative impossible eval) - added
+marker-sharing paraphrase families so the eval has an informative gradient;
+(3) slot leftover-assignment bug. Run-2/3/4 numbers below are post-fix.
+
+AGG intent accuracy (family-disjoint, unfamiliar vocab; chance=0.125):
+- nb (online NB a=1):      k1 .209  k2 .287  k4 .319  k8 .353   <- best route
+- t2p (text2prog rule):    k1 .172  k2 .287  k4 .322  k8 .338   (same rule, a=0.05)
+- nn1 (1-NN cosine):       k1 .272  k2 .263  k4 .306  k8 .291   (wins k=1 only)
+- wnn (bleached WiSARD):   k1 .150  k2 .141  k4 .163  k8 .156   <- candidate FAILS
+- frames (designed hsml router): .072 at every k (cannot read unfamiliar phrasing)
+- majority: .125
+
+H1 (amended: learned WNN >= NB AND >= 1NN AND > majority): **FAIL** - WNN ~ chance.
+Per Amendment 1 the answer is the winner: online NB-style association counting
+(text2prog lineage - the recovered text2prog mapping transfers and matches NB;
+text2prog2's learn_lexicon does NOT transfer: it needs an answer-oracle over a
+hypothesis space and learns word->digit substitutions, no such structure here).
+Learned mapping beats designed frames 5x and majority 3x on unfamiliar input.
+
+H2 (wrong-intent abstention precision >=0.9 @ recall >=0.5): **FAIL** as pre-set.
+Precision .17-.21, recall .52-.90 (nb/t2p/nn1): mappers abstain on unfamiliar
+LEGITIMATE input far more than on chit-chat. Asymmetry noted: over-abstention is
+the safe direction; the confirmation flow below is what rescues it.
+
+H3 (correction): recovery .97-1.0 all seeds (same-sentence re-predict - near-trivial,
+named); collateral leg **FAILS**: seed 0 mean degradation 0.625 on uncorrected
+intents (others 0.0); mean across seeds 0.125 >> 0.02. Caveat: correcting EVERY
+misclassified eval item = 31-40 corrections ~ 50% data rebalance, harsher than
+dialogue reality; per-correction effects not separated.
+
+H4 (end-to-end hsml act >= H1-5pts): literal **FAIL** (correct-without-confirmation
+5-34% vs ~30% bar on nb seeds). BUT safe-act accounting: correct+confirmation-routed
+= 83-98% of eval; wrong execution 0-3/64 (0-4.7%); unconfirmed factual-store writes:
+ZERO (confirmation routing enforced, as designed).
+
+Retention (teach-once drift, sequential teaching): early-taught intents lose
+accuracy as later intents are taught - teach_attr drift 0.25-0.875, teach_isa
+0.125-0.625 (nb/t2p seeds), nn1 drift smaller (0.047-0.25). Mechanism: shared
+entity/marker char-n-grams erode margins as more intents absorb them. REAL
+interference, not catastrophic, but measurable - a named limit of plain online
+counting.
+
+Confirmation retention: after ONE confirmed example of a low-confidence item,
+44/46, 58/58, 60/60, 44/47, 33/36 become correct (96-100%).
+
+Shuffled-label control: 0.0625 <= chance 0.125 - pipeline measures real signal,
+no leakage.
+
+CONCLUSION (bounded, named): a LEARNED own-system mapping (NB/text2prog counting)
+over simple n-gram features generalizes to unfamiliar phrasings+entities far
+beyond designed frames and needs ~2-8 examples per intent, but at 8-way scale it
+is a CONFIDENCE-GATED proposer, not a standalone router: it must ask on
+low-margin input (which it does safely) and its corrections can hurt sibling
+intents at scale. WNN is not the route. Next questions (not started): why NB
+drift concentrates on teach_attr/teach_isa; whether per-intent calibration or
+example replay cuts correction collateral.
