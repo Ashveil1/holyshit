@@ -1,0 +1,7 @@
+ROW {"seed": 0, "novel_items": 62, "novel_executed": 0, "novel_wrong_execution": 0, "novel_questions": 62, "slot_signature_collisions": 0}
+ROW {"seed": 1, "novel_items": 63, "novel_executed": 0, "novel_wrong_execution": 0, "novel_questions": 63, "slot_signature_collisions": 0}
+ROW {"seed": 2, "novel_items": 63, "novel_executed": 0, "novel_wrong_execution": 0, "novel_questions": 63, "slot_signature_collisions": 0}
+ROW {"seed": 3, "novel_items": 61, "novel_executed": 0, "novel_wrong_execution": 0, "novel_questions": 61, "slot_signature_collisions": 0}
+ROW {"seed": 4, "novel_items": 62, "novel_executed": 0, "novel_wrong_execution": 0, "novel_questions": 62, "slot_signature_collisions": 0}
+RES-FINAL {"peak_rss_mb_overall": 28.7, "wall_seconds": 5.9}
+DONE

@@ -3414,3 +3414,50 @@ then:
 Scope: same generators/vocab; this is persistence of counting-scorer state,
 NOT evidence of natural-language retention. ~40-50% of persisted
 unassisted predictions are still wrong (margin>=0 era).
+
+## B-583 PRE-REGISTERED (2026-10-26, before code) - local-confirmation accept rule
+
+Structurally different gate (not another margin calibration): a slot is
+accepted UNASSISTED only when its exact local configuration -
+(intent, role, prev-token, span-text, next-token) - was LITERALLY confirmed
+by the teacher before. Wrong-execution on slots is then bounded by
+confirmation coverage rather than by margin calibration. Intent side keeps
+the B-574 precision tau (act/ask). KNOWN COST stated in advance: on truly
+novel phrasings, local configurations are unseen, so burden stays high BY
+CONSTRUCTION; the arm tests whether safety + teach-once-style absorption
+(1 confirmation per family-role configuration) can coexist, not whether
+novel phrasings are free.
+Frozen: NBu mapper, extractor as proposer fallback, cells, teacher
+(intent label + span confirmations), single-token slots caveat.
+Gates (fixed before code): G1 wrong-execution <=5% of executed, each cell.
+G2 burden second half <= half of first half (within-cell absorption).
+G3 all-item unassisted-correct > static all-item joint, each cell.
+Matched conditional + helped/unassisted splits reported (B-579 discipline).
+Fail -> null. Resources unchanged.
+
+## B-583 VERDICT (2026-10-26): NULL at G2/G3(c22) - safe by literal confirmation, but tiny coverage and heavy flat burden
+
+Run: logs/b583_run1.log, script b583.py. Runtime features use observed
+utterance/history only - no gold family labels, no future items. INSPECTED
+cells, simulated teacher, single-token synthetic slots.
+5-seed totals (n=320/cell):
+  c21: wrong-execution 0/320 (G1 PASS). fully-unassisted 33 (10.3%);
+    unassisted-correct all-item .103 vs static .044 (G3 PASS). burden:
+    176 intent + 618 slot-offer + 65 retype questions (~2.7/utterance);
+    helped-flags h1 217 -> h2 225 (G2 FAIL, not halving). helped joint
+    287/287.
+  c22: wrong-execution 2/320 = 0.6% (G1 PASS; both were wrong acted INTENT
+    at the precision tau - slots cannot be wrong on literal repeats).
+    fully-unassisted 67 (20.9%); unassisted-correct .209 vs static .237
+    (G3 FAIL). burden ~2.4/utterance; h1 212 -> h2 200 (G2 FAIL). helped
+    joint 251/253.
+Reading (scoped): the local-confirmation rule delivers near-zero
+wrong-execution but is MEMORIZED STRUCTURAL COVERAGE - it acts only on
+literally repeated configurations, so 79-90% of unseen-template items
+still demand questions and burden does not fall within a cell. This is
+containment, not understanding; the tradeoff was predicted in the prereg.
+B-583b controls (logs/b583b_run1.log): after teaching c21+c22, a THIRD
+genuinely new template family (EVAL_FAM minus the audited-invalid
+template, 311 items) produced 0 executions and 311 questions - no safety
+leak on novelty - and 0 slot-signature collisions (confirmed signature
+firing with a differing gold value). Measured, not assumed.
