@@ -3134,3 +3134,57 @@ interference observed - but scope: same session, immediate re-prediction,
 still UNVERIFIED.
 Teacher burden at the precision gate stands at median 4-5 asks per family
 (~35-45 per 96 unseen-template items) - the main open cost of the channel.
+
+## B-576 PRE-REGISTERED (2026-10-26, before code) - two-tier gate with confirmation-transferred trust
+
+Mechanism (distinct from threshold re-tuning): tau_hi = B-574 precision tau
+(dev wrong-action <=5%); tau_lo = B-573-style dev accuracy-maximizing tau.
+For items with margin >= tau_hi: ACT. For margin < tau_lo: ASK. BETWEEN the
+tiers: ACT only if the argmax intent has >=1 TEACHER-CONFIRMED example this
+session (confirmation transfers trust to moderately-confident items of that
+intent); otherwise ASK. Frozen mapper(NBu)/extractor/cells/teacher (intent
+label only, authored). INSPECTED cells, development calibration.
+Gates (fixed before code): G1 wrong-action <=5% on EACH cell (5-seed
+totals); G2 coverage >=50% each cell; G3 asks/family median <=2. Fail ->
+null, no automatic continuation. Rationale: confirmation, not margin alone,
+should carry trust for mid-confidence items.
+Resources unchanged (pure-Python, watchdog, 10-min timeout, seeds 0-4).
+
+## B-576 VERDICT (2026-10-26): NULL at G1 (wrong-intent); G2/G3 pass
+
+Run: logs/b576_run1.log, script b576.py. INSPECTED cells, authored teacher
+(intent label only), taught items excluded, development calibration.
+Two-tier gate (act >=tau_hi; ask <tau_lo; mid-band acts only for
+teacher-confirmed intents):
+  coverage .78-.86 (G2 PASS >=.5); asks/family median 1-2, max 3 (G3 PASS
+  <=2); wrong-INTENT on acted 13.7-41.8% per seed (G1 FAIL <=5%).
+Scoped finding: teacher confirmation of an intent transfers too much trust -
+the mid-margin band is where the known confusion mass lives, and confirming
+intent d does not make other mid-band items of d safe. The realistic-runtime
+mechanism (no gold family labels, no future items) is validated as
+implementable, but its safety gate fails.
+
+## B-577 METRIC RECONCILIATION (2026-10-26): wrong-intent vs wrong-execution; labels corrected
+
+Run: logs/b577_run1.log, script b577.py - EXACT counters, same frozen
+protocols, no gate. CORRECTION to B-573/B-574/B-575 wording: what those
+entries called 'wrong-action' was WRONG-INTENT on acted items only. A
+correct intent with wrong slots still executes wrongly. Exact 5-seed totals
+(n=320/cell):
+  c21 static baseline: wrong-intent 123/320; joint 14/320; wrong-execution
+    306/320 (95.6%).
+  c21 B-574 precision: abstain 176; acted 144; wrong-intent 0;
+    joint-correct 11; WRONG-EXECUTION 133/144 acted (92.4%), 41.6% of all.
+  c21 B-576 two-tier: abstain 59; acted 261; wrong-intent 66 (25.3%);
+    joint-correct 21; WRONG-EXECUTION 240/261 (92.0%), 75.0% of all.
+  c22 static baseline: wrong-intent 179/320; joint 76/320; wrong-execution
+    244/320 (76.3%).
+  c22 B-574 precision: abstain 189; acted 131; wrong-intent 2 (1.5%);
+    joint-correct 34; WRONG-EXECUTION 97/131 (74.0%), 30.3% of all.
+  c22 B-576 two-tier: abstain 53; acted 267; wrong-intent 69 (25.8%);
+    joint-correct 75; WRONG-EXECUTION 192/267 (71.9%), 60.0% of all.
+Denominators now explicit throughout. Consequence (scoped to this protocol):
+on unseen templates the SLOT side dominates end-to-end failure - even
+zero-wrong-intent gating leaves 74-92% of acted items not fully correct.
+Intent gating alone cannot deliver correct actions; slot acquisition on new
+phrasings is the binding constraint.

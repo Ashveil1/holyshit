@@ -1,0 +1,12 @@
+ROW {"seed": 0, "eval": "c21_unseenT_seenE_DEVCAL", "tau_hi": 26.072, "tau_lo": 0.489, "coverage": 0.859, "acted_intent": 0.582, "acted_joint": 0.018, "wrong_action": 23, "wrong_rate": 0.418, "asked": 9, "asks_family_median": 1, "asks_family_max": 2}
+ROW {"seed": 0, "eval": "c22_fresh3_DEVCAL", "tau_hi": 26.072, "tau_lo": 0.489, "coverage": 0.844, "acted_intent": 0.611, "acted_joint": 0.241, "wrong_action": 21, "wrong_rate": 0.389, "asked": 10, "asks_family_median": 1, "asks_family_max": 2}
+ROW {"seed": 1, "eval": "c21_unseenT_seenE_DEVCAL", "tau_hi": 27.019, "tau_lo": 0.704, "coverage": 0.781, "acted_intent": 0.82, "acted_joint": 0.1, "wrong_action": 9, "wrong_rate": 0.18, "asked": 14, "asks_family_median": 2, "asks_family_max": 2}
+ROW {"seed": 1, "eval": "c22_fresh3_DEVCAL", "tau_hi": 27.019, "tau_lo": 0.704, "coverage": 0.844, "acted_intent": 0.722, "acted_joint": 0.241, "wrong_action": 15, "wrong_rate": 0.278, "asked": 10, "asks_family_median": 1, "asks_family_max": 2}
+ROW {"seed": 2, "eval": "c21_unseenT_seenE_DEVCAL", "tau_hi": 30.576, "tau_lo": 1.425, "coverage": 0.797, "acted_intent": 0.706, "acted_joint": 0.137, "wrong_action": 15, "wrong_rate": 0.294, "asked": 13, "asks_family_median": 2, "asks_family_max": 3}
+ROW {"seed": 2, "eval": "c22_fresh3_DEVCAL", "tau_hi": 30.576, "tau_lo": 1.425, "coverage": 0.828, "acted_intent": 0.755, "acted_joint": 0.283, "wrong_action": 13, "wrong_rate": 0.245, "asked": 11, "asks_family_median": 1, "asks_family_max": 2}
+ROW {"seed": 3, "eval": "c21_unseenT_seenE_DEVCAL", "tau_hi": 21.181, "tau_lo": 1.244, "coverage": 0.844, "acted_intent": 0.778, "acted_joint": 0.074, "wrong_action": 12, "wrong_rate": 0.222, "asked": 10, "asks_family_median": 1, "asks_family_max": 2}
+ROW {"seed": 3, "eval": "c22_fresh3_DEVCAL", "tau_hi": 21.181, "tau_lo": 1.244, "coverage": 0.812, "acted_intent": 0.808, "acted_joint": 0.327, "wrong_action": 10, "wrong_rate": 0.192, "asked": 12, "asks_family_median": 2, "asks_family_max": 2}
+ROW {"seed": 4, "eval": "c21_unseenT_seenE_DEVCAL", "tau_hi": 34.499, "tau_lo": 1.351, "coverage": 0.797, "acted_intent": 0.863, "acted_joint": 0.078, "wrong_action": 7, "wrong_rate": 0.137, "asked": 13, "asks_family_median": 2, "asks_family_max": 3}
+ROW {"seed": 4, "eval": "c22_fresh3_DEVCAL", "tau_hi": 34.499, "tau_lo": 1.351, "coverage": 0.844, "acted_intent": 0.815, "acted_joint": 0.315, "wrong_action": 10, "wrong_rate": 0.185, "asked": 10, "asks_family_median": 1, "asks_family_max": 3}
+RES-FINAL {"peak_rss_mb_overall": 27.9, "wall_seconds": 8.7}
+DONE

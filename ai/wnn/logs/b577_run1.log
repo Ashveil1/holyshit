@@ -1,0 +1,32 @@
+BASE {"seed": 0, "eval": "c21", "n": 64, "all_item_wrong_intent": 28, "all_item_joint": 1, "all_item_wrong_execution": 63}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 36, "acted": 28, "wrong_intent": 0, "joint_correct": 1, "wrong_execution": 27, "seed": 0, "eval": "c21"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 9, "acted": 55, "wrong_intent": 23, "joint_correct": 1, "wrong_execution": 54, "seed": 0, "eval": "c21"}
+BASE {"seed": 0, "eval": "c22", "n": 64, "all_item_wrong_intent": 33, "all_item_joint": 20, "all_item_wrong_execution": 44}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 40, "acted": 24, "wrong_intent": 0, "joint_correct": 8, "wrong_execution": 16, "seed": 0, "eval": "c22"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 10, "acted": 54, "wrong_intent": 21, "joint_correct": 13, "wrong_execution": 41, "seed": 0, "eval": "c22"}
+BASE {"seed": 1, "eval": "c21", "n": 64, "all_item_wrong_intent": 25, "all_item_joint": 4, "all_item_wrong_execution": 60}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 35, "acted": 29, "wrong_intent": 0, "joint_correct": 3, "wrong_execution": 26, "seed": 1, "eval": "c21"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 14, "acted": 50, "wrong_intent": 9, "joint_correct": 5, "wrong_execution": 45, "seed": 1, "eval": "c21"}
+BASE {"seed": 1, "eval": "c22", "n": 64, "all_item_wrong_intent": 39, "all_item_joint": 12, "all_item_wrong_execution": 52}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 33, "acted": 31, "wrong_intent": 0, "joint_correct": 7, "wrong_execution": 24, "seed": 1, "eval": "c22"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 10, "acted": 54, "wrong_intent": 15, "joint_correct": 13, "wrong_execution": 41, "seed": 1, "eval": "c22"}
+BASE {"seed": 2, "eval": "c21", "n": 64, "all_item_wrong_intent": 25, "all_item_joint": 3, "all_item_wrong_execution": 61}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 37, "acted": 27, "wrong_intent": 0, "joint_correct": 3, "wrong_execution": 24, "seed": 2, "eval": "c21"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 13, "acted": 51, "wrong_intent": 15, "joint_correct": 7, "wrong_execution": 44, "seed": 2, "eval": "c21"}
+BASE {"seed": 2, "eval": "c22", "n": 64, "all_item_wrong_intent": 35, "all_item_joint": 12, "all_item_wrong_execution": 52}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 45, "acted": 19, "wrong_intent": 0, "joint_correct": 1, "wrong_execution": 18, "seed": 2, "eval": "c22"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 11, "acted": 53, "wrong_intent": 13, "joint_correct": 15, "wrong_execution": 38, "seed": 2, "eval": "c22"}
+BASE {"seed": 3, "eval": "c21", "n": 64, "all_item_wrong_intent": 26, "all_item_joint": 3, "all_item_wrong_execution": 61}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 30, "acted": 34, "wrong_intent": 0, "joint_correct": 2, "wrong_execution": 32, "seed": 3, "eval": "c21"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 10, "acted": 54, "wrong_intent": 12, "joint_correct": 4, "wrong_execution": 50, "seed": 3, "eval": "c21"}
+BASE {"seed": 3, "eval": "c22", "n": 64, "all_item_wrong_intent": 34, "all_item_joint": 20, "all_item_wrong_execution": 44}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 29, "acted": 35, "wrong_intent": 2, "joint_correct": 13, "wrong_execution": 22, "seed": 3, "eval": "c22"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 12, "acted": 52, "wrong_intent": 10, "joint_correct": 17, "wrong_execution": 35, "seed": 3, "eval": "c22"}
+BASE {"seed": 4, "eval": "c21", "n": 64, "all_item_wrong_intent": 19, "all_item_joint": 3, "all_item_wrong_execution": 61}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 38, "acted": 26, "wrong_intent": 0, "joint_correct": 2, "wrong_execution": 24, "seed": 4, "eval": "c21"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 13, "acted": 51, "wrong_intent": 7, "joint_correct": 4, "wrong_execution": 47, "seed": 4, "eval": "c21"}
+BASE {"seed": 4, "eval": "c22", "n": 64, "all_item_wrong_intent": 38, "all_item_joint": 12, "all_item_wrong_execution": 52}
+RECON {"arm": "B574_precision", "n": 64, "abstained": 42, "acted": 22, "wrong_intent": 0, "joint_correct": 5, "wrong_execution": 17, "seed": 4, "eval": "c22"}
+RECON {"arm": "B576_two_tier", "n": 64, "abstained": 10, "acted": 54, "wrong_intent": 10, "joint_correct": 17, "wrong_execution": 37, "seed": 4, "eval": "c22"}
+RES-FINAL {"peak_rss_mb_overall": 28.1, "wall_seconds": 9.6}
+DONE
