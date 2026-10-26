@@ -406,6 +406,8 @@ def do_unop(op, v, ln):
     raise conv(e, ln)
   fail("IR: bad unop '" + op + "'", ln)
 def do_slice(obj, lo, hi, ln):
+  if pyrt.py_type(obj) == "func":
+    fail("cannot slice " + type_name(obj), ln)
   try:
     if lo == null and hi == null:
       return obj[0:len(obj)]

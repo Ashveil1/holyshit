@@ -140,3 +140,8 @@ closure's Func kind. Builtin and Module errors retain their names and source
 lines, with twelve caught/uncaught cases across Func/Builtin/Module, for289
 parity classifications. Valid conversions and other operation limits are
 unchanged; this does not claim all handle error edges are covered.
+
+Slicing Func/Builtin/Module handles now rejects them before evaluating implicit
+length bounds, preserving `cannot slice <guest kind>` for all four bound forms.
+Twelve focused caught-error cases bring parity to301 classifications. This
+closes a reproduced host-Func/len error leak, not all slicing edge cases.
