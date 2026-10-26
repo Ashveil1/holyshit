@@ -3023,3 +3023,28 @@ open-ended language learning; no production integration; no user dialogue
 used as data.
 Resources: no pretrained, no paid; pure-Python; 1e9-byte live watchdog;
 10-min hard timeout; seeds 0-4.
+
+## B-573 VERDICT (2026-10-26): NULL at G1 (safety/lift gate); G2 (teach-once) PASSES
+
+Run: logs/b573_run1.log, script b573.py. INSPECTED dev/debug cells, simulated
+AUTHORED teacher, taught items excluded from metrics - not independent
+validation; no production integration; no deployability claim.
+Per-seed (5 seeds, 96 items/cell/seed):
+  c21 unseenT/seenE: static M0 .562-.703 | acted intent .559-.789 |
+    wrong-action 93/288 acted (32%) | asked 5-9/seed
+  c22 fresh3: static M0 .391-.484 | acted intent .466-.650 |
+    wrong-action 121/288 acted (42%) | asked 4-8/seed
+G1 FAIL: wrong-action 32%/42% >> 5%; acted-intent lift over static M0 is
+~+.07 (c21) and ~+.14 (c22) mean, not +30 points.
+G2 PASS: asks per unseen intent-family median 1.0, max 2, over both cells
+and all seeds (28+26 family-ask events of 60 possible families) - the
+teach-once property holds for the ask channel itself.
+Interpretation (scoped, not causally isolated): the ask CHANNEL behaves as
+hoped (one taught example per family is enough for the mapper to absorb the
+rest of that family), but the accuracy-maximizing dev-calibrated margin
+threshold is NOT a safety gate - it releases high-confidence wrong intent
+predictions (the known teach_isa<->is_a_q confusions carry real margin).
+A precision-targeted threshold (dev-chosen for <=5% wrong-action, not max
+accuracy) is the obvious next calibration but is NOT run: prereg says null
+-> no automatic continuation.
+Resources: peak RSS 28.4MB, 8.1s wall, 1e9-byte watchdog, no new deps.
