@@ -1,4 +1,4 @@
-"""P30 (baby6.py): vocative / call-consequence learning. Ash's question: how does the baby know
+"""P30 (baby6.py): vocative / call-consequence learning. the requester's question: how does the baby know
 "แม่" is a CALL? Design (pre-registered with owner): bare-name lines predict the NAMED caregiver
 turning on the NEXT tick (selective response); referential mentions don't. Learner: Baby5 grounding
 + temporal-shift Hebbian channel (prev-line bare word <-> current event tokens). Events opaque tokens.

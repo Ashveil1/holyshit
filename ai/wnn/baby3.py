@@ -1,4 +1,4 @@
-"""BABY3 (P27): Ash's live-LLM caregiver version of the baby experiment. Same world, learner and criterion as baby2.py;
+"""BABY3 (P27): the requester's live-LLM caregiver version of the baby experiment. Same world, learner and criterion as baby2.py;
 the only change is WHO TALKS: two LLM caregivers (OpenRouter free models) talk to each other about each scene in Thai,
 and see + react to the baby's productions in later dialogue (contingent feedback through the language channel).
 Baby learner: unchanged from-scratch Hebbian association (same code as baby2). Segmentation prior: caregivers are asked

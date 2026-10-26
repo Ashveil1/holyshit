@@ -1,5 +1,5 @@
 """eval_ash3: UNTOUCHED BASELINE - Thai numeral-word + varied-Thai comprehension.
-For Ash's question 2026-10-25 13:18: 'มันเข้าใจ หนึ่ง สอง สาม สี่ อะไรหมดรึยัง
+For the requester's question 2026-10-25 13:18: 'มันเข้าใจ หนึ่ง สอง สาม สี่ อะไรหมดรึยัง
 เค้าใจภาษาไทยเท่าไหนแล้ว'. No code changes. Fresh HSML + normal corpus startup.
 Entry point: HSML.hear. Literal outputs only; interpretation lives in the report.
 Tested revision: wnn-checkpoints ffbe3c6 (B-541+B-542+B-543)."""

@@ -1,4 +1,4 @@
-"""B-558 SEALED held-out probe generator (parent-mandated protocol 2026-10-26):
+"""B-558 SEALED held-out probe generator (sealed held-out protocol 2026-10-26):
 the 15 probes in b558.py are DEV probes (their baseline behavior was inspected).
 Final quality claims come ONLY from this generator's output, materialized and
 printed solely at final-eval time by the sealed harness - never read or iterated
@@ -7,7 +7,7 @@ constructions are disjoint from the dev set's. HONEST LIMIT (recorded): the
 template FAMILY is human-authored and visible here, so family-level design bias
 is possible; only the realizations (nonce names, template-to-fact assignment,
 surface choices) are unseen until the final run. Strongest future validation:
-phrasings authored by Ash himself."""
+phrasings authored by the requester himself (steering paraphrased)."""
 import random
 
 SEED = 55801  # rotated 2026-10-26: mechanism v4 (claim-marker block + multi-entity abstain) changed AFTER the 55800 one-shot eval - per protocol, tuning requires a new recorded evaluation. 55800 result stands in LEDGER for v3.

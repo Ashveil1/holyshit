@@ -1,7 +1,7 @@
-"""B-558 SEALED final-eval harness (parent protocol 2026-10-26): probes materialize
+"""B-558 SEALED final-eval harness (review protocol 2026-10-26): probes materialize
 from probe_gen (frozen SEED=55800) ONLY here, at final-eval time. Never iterated
 against: run results are recorded in LEDGER whatever they show; further mechanism
-changes require a recorded seed rotation or Ash-authored probes.
+changes require a recorded seed rotation or the requester-authored probes.
 Pre-registered bars (written before the first sealed run):
   paraphrase: >= 8/9 live-fact probes -> assoc_answer carrying the correct verified attr
   unanswerable: 0 assoc answers
@@ -19,7 +19,7 @@ def check(cid, cond, detail):
 
 g = probe_gen.generate()
 retracted = set(g['retract'])
-h = HSML(seed=0, assoc_fallback=True)  # B-558 harnesses explicitly opt into the EXPERIMENTAL layer (parent direction 2026-10-26: never default); probes byte-identical
+h = HSML(seed=0, assoc_fallback=True)  # B-558 harnesses explicitly opt into the EXPERIMENTAL layer (review direction 2026-10-26: never default); probes byte-identical
 for n, a in g['facts']: h.hear(f'{n} มี {a}')
 for n, a in g['retract']: h.hear(f'ไม่ใช่ {n} มี {a}')
 
