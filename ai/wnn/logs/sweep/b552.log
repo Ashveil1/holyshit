@@ -1,0 +1,14 @@
+PASS C1 {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
+PASS C1b {'kind': 'attr_list', 'text': 'quibbo has snarp', 'source': 'attr', 'name': 'quibbo', 'attrs': ['snarp'], 'inherited': {}}
+PASS C2 {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
+PASS C2b {'kind': 'attr_list', 'text': 'ozzle has ipf wenv', 'source': 'attr', 'name': 'ozzle', 'attrs': ['ipf', 'wenv'], 'inherited': {}}
+PASS C3 {'kind': 'attr_list', 'text': 'quibbo has snarp', 'source': 'attr', 'name': 'quibbo', 'attrs': ['snarp'], 'inherited': {}}
+PASS C4a {'kind': 'yesno', 'text': 'yes', 'source': 'attr', 'answer': 'yes'}
+PASS C4b {'kind': 'yesno', 'text': 'unknown', 'source': 'attr', 'answer': 'unknown'}
+PASS C5a {'kind': 'observed', 'text': 'จำไว้แล้ว', 'source': 'attr'}
+PASS C5b {'kind': 'attr_list', 'text': 'brindle has beaks', 'source': 'attr', 'name': 'brindle', 'attrs': ['beaks'], 'inherited': {}}
+PASS C5c {'kind': 'yesno', 'text': 'yes', 'source': 'attr', 'answer': 'yes'}
+PASS C6a {'kind': 'uncertain_not_stored', 'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}
+PASS C6b {'kind': 'yesno', 'text': 'unknown', 'source': 'attr', 'answer': 'unknown'}
+PASS C6c {'kind': 'yesno', 'text': 'unknown', 'source': 'attr', 'answer': 'unknown'}
+FAILS: 0

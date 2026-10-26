@@ -1,0 +1,8 @@
+PASS C1 {'kind': 'attr_list', 'text': 'มอล์ท มี กริบ และจาก วินท์: โพล่', 'source': 'attr', 'name': 'มอล์ท', 'attrs': ['กริบ'], 'inherited': {'วินท์': ['โพล่']}}
+PASS C2 {'kind': 'attr_list', 'text': 'แพลท มีจาก วินท์: โพล่', 'source': 'attr', 'name': 'แพลท', 'attrs': [], 'inherited': {'วินท์': ['โพล่']}}
+PASS C3 {'kind': 'attr_list', 'text': 'ดร็อป มี โพล่', 'source': 'attr', 'name': 'ดร็อป', 'attrs': ['โพล่'], 'inherited': {}}
+PASS C4 {'kind': 'attr_list', 'text': 'มอล์ท มี กริบ และจาก วินท์: โพล่ และจาก ควอลท์: เมิร์ก', 'source': 'attr', 'name': 'มอล์ท', 'attrs': ['กริบ'], 'inherited': {'วินท์': ['โพล่'], 'ควอลท์': ['เมิร์ก']}}
+PASS C5 {'kind': 'attr_list', 'text': 'แพลท มีจาก ควอลท์: เมิร์ก', 'source': 'attr', 'name': 'แพลท', 'attrs': [], 'inherited': {'ควอลท์': ['เมิร์ก']}}
+PASS C7 {'kind': 'attr_list', 'text': 'เฟริก มี กริบ และจาก ควอลท์: เมิร์ก', 'source': 'attr', 'name': 'เฟริก', 'attrs': ['กริบ'], 'inherited': {'ควอลท์': ['เมิร์ก']}}
+PASS C6 {'kind': 'attr_list', 'text': 'pum has ชิ้น and from ก๊อบ: เบล่', 'source': 'attr', 'name': 'ปั๊ม', 'attrs': ['ชิ้น'], 'inherited': {'ก๊อบ': ['เบล่']}}
+FAILS: 0

@@ -1,1 +1,8 @@
 hsml_memory.pkl
+# b539 chunk caches/pickles: per-run execution artifacts, never commit (stale caches once replayed as evidence)
+logs/b539_s1a.json
+logs/b539_s1b.json
+logs/b539_s1c.json
+logs/b539_s2.json
+logs/b539_tmp1.pkl
+logs/b539_mem.pkl

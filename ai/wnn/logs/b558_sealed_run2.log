@@ -1,0 +1,25 @@
+  S-para PASS 'ช่วยบอกของ บ๊ หน่อย' -> 'บ๊ มี โบะ'
+  S-para PASS 'what stuff does ทะ have' -> 'ทะ มี โถ่'
+  S-para PASS 'do you know what ซ่ has' -> 'ซ่ มี คิ'
+  S-para PASS 'เซ น่ะมีอะไรบ้าง' -> 'เซ มี เฟิ'
+  S-para PASS 'what belongs to โย' -> 'โย มี โต๊ะ'
+  S-para PASS 'ฮิ น่ะมีอะไรบ้าง' -> 'ฮิ มี แม๊'
+  S-para PASS 'อยากรู้ว่า โร มีอะไร' -> 'โร มี ผึ'
+  S-para PASS 'อยากรู้ว่า ฟา มีอะไร' -> 'ฟา มี ซิ'
+  S-para PASS 'จุถืออะไรอยู่' -> 'จุ มี แจ๊'
+  S-retract ok 'what belongs to ดี' -> None
+  S-retract ok 'ลู มีของอะไร' -> None
+  S-retract ok 'do you know what เง has' -> None
+  S-neg ok 'what belongs to มิ' -> None
+  S-neg ok 'เค has what exactly' -> None
+  S-neg ok 'อยากรู้ว่า ปิ มีอะไร' -> None
+  S-neg ok 'เอ มีของอะไร' -> None
+  S-conf ok 'บ๊ มี เฟิ หรือเปล่า มีอะไรอีก' -> ''
+  S-conf ok 'ทะ มี โต๊ะ หรือเปล่า มีอะไรอีก' -> ''
+  S-conf ok 'ซ่ มี แม๊ หรือเปล่า มีอะไรอีก' -> ''
+  S-conf ok 'เซ มี ผึ หรือเปล่า มีอะไรอีก' -> ''
+PASS S1 
+PASS S2 
+PASS S3 
+PASS S4 
+FAILS: 0

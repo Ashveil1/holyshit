@@ -1,0 +1,27 @@
+PASS C1a 
+PASS C1b 
+PASS C1c 
+  C2 probe PASS 'บอร์ทมีอะไรบ้าง' -> 'บอร์ท มี ฟลิบ'
+  C2 probe PASS 'กาโตะ มี อะไร บ้าง' -> 'กาโตะ มี ซ็อก'
+  C2 probe PASS 'เมอร์ล มี อะไรบ้าง ครับ' -> 'เมอร์ล มี แคร่'
+  C2 probe PASS 'นาโก้มีไรมั้ง' -> 'นาโก้ มี ปี๊บ'
+  C2 probe PASS 'โต้ง มีอะไรบ้าง' -> 'โต้ง มี เคิ้ม'
+  C2 probe PASS 'what has วินนี่ got' -> 'วินนี่ มี โบ้'
+  C2 probe PASS 'แพนด้า มี อะไร' -> 'แพนด้า มี กุ๊ก'
+  C2 probe PASS 'โยโกะ มี อะไรบ้าง?' -> 'โยโกะ มี ชู่'
+  C2 probe PASS 'tell me what ริมุ has' -> 'ริมุ มี แฮ่ม'
+  C2 probe PASS 'โคเอ็น มี อะไรอยู่บ้าง' -> 'โคเอ็น มี ลิ่ว'
+PASS C2 
+  C3 probe ok(abstain) 'ซันนี่มีอะไรบ้าง' -> None
+  C3 probe ok(abstain) 'เบอร์ต มี อะไร บ้าง' -> None
+  C3 probe ok(abstain) 'what has มิโคะ got' -> None
+  C3 probe ok(abstain) 'ลูน่า มีอะไรบ้าง' -> None
+  C3 probe ok(abstain) 'โอลีฟมีไรมั้ง' -> None
+PASS C3 
+PASS C4 
+PASS C4b 
+  C5 store exact recall 100/100; assoc ok=100 wrong=0 abstain=0
+PASS C5 
+  C6 rebuild_cpu=1.4ms peak_rss=11.7MiB per_query=1.63ms facts=200
+PASS C6 
+FAILS: 0
