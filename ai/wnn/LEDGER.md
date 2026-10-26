@@ -2637,3 +2637,36 @@ Gates (stated before code):
   If A2 ~= A0: honest null - role learning adds nothing over position in
   these setups; record and keep the simpler arm. No production integration
   under any outcome.
+
+## B-566 verdict (2026-10-26) - learned-vs-positional role assignment: NULL, positional retained (b566.py, logs/b566_run1.log)
+
+All three eval sets are INSPECTED development comparisons, not held-out
+validation; no production route chosen on them. Raw-argmax protocol; gated
+abstention separate per row (16-40/64); wrong_action identical across arms
+per seed (same mapper; intent errors untouched by this axis).
+
+Result (5 seeds, means; per-seed paired deltas preserved in the log):
+- A2 (per-intent role stats + positional fallback) == A0 (pure positional)
+  EXACTLY on all 15 seed x eval cells (every per-seed delta +0.000):
+  joint frozen .259, newtmpl .191, fresh3 .285 for both.
+- G1 FAIL (A2 - A0 = 0, not >= +3 points): learned role assignment beats
+  position by NOTHING in these setups. Per prereg: retain the null, keep
+  the simpler arm (A0 positional).
+- A1 (pooled role stats = B-565's S4) is strictly WORSE than positional:
+  joint frozen .219 vs .259, newtmpl .125 vs .191, fresh3 .231 vs .285;
+  role swaps up to 14/seed (A0/A2: 2-6). Pooled cross-intent role stats
+  actively hurt via exactly the teach_attr/ask_attr conflict the B-565
+  anatomy suspected.
+
+Correction to B-565's framing: S4's gains over S3 came from candidate
+SELECTION (function-ness + anchor-offset ranking), not role assignment -
+S4's pooled role machinery was a net negative vs assigning by position.
+Current best honest configuration on this frozen protocol: S1 mapper + S4
+selection + A0 positional assignment (joint: frozen .259, newtmpl .191,
+fresh3 .285; slot_exact_on_correct up to .63 frozen / .43-.49 newtmpl /
+.41-.82 fresh3; remaining error mass = intent wrong_actions 28-41/64,
+then residual swaps 2-6/seed, then unseen-particle leaks).
+
+Line status: intent accuracy (S1 NBu, .36-.56 raw argmax) is now the
+dominant error source. The next decision is line-level, not another
+micro-experiment.
