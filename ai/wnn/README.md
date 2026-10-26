@@ -165,8 +165,8 @@ cd ai/wnn && /tmp/chat    # or: printf 'hello\nquit\n' | /tmp/chat
   statistically, +8 pts one-shot episodic recall (74%).
 - `facts.holy` - hyperdimensional (HDC) one-shot fact memory: 70 facts
   in a fixed 4KB vector, 70/70 recall both directions, no training loop.
-- `chat_learn.holy` - the chatbot that LEARNS: "learn: my name -> the requester"
-  once, then "what is my name?" or "my name" answers "the requester" forever
+- `chat_learn.holy` - the chatbot that LEARNS: "learn: my name -> Ming"
+  once, then "what is my name?" or "my name" answers "Ming" forever
   (paraphrase-tolerant, 31 facts tested, 9.4MB RAM).
 
 Honest summary: this system learns in one pass, never catastrophically

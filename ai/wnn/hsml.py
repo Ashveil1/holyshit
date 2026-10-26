@@ -829,7 +829,7 @@ class HSML:
         return pos, neg
 
     def _inherited_attrs(self, name):
-        """B-555: [(review, [attrs])] in BFS order, deduped internally. Live memory."""
+        """B-555: [(parent, [attrs])] in BFS order, deduped internally. Live memory."""
         groups = []
         seen = set()
         for p in self._parents_any(name):

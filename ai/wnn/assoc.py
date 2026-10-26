@@ -1,5 +1,5 @@
 """B-558: bounded associative layer over the live structured store (route A,
-requester-approved 2026-10-26; pre-registered in LEDGER). Integer count tables over
+pre-registered in LEDGER 2026-10-26). Integer count tables over
 char n-grams (wnn heritage: no floats, no gradients, CPU-cheap). Fed ONLY by
 facts the structured store accepted; the store stays the single source of
 truth and this index is a pure derived view — rebuilt from the store after any
