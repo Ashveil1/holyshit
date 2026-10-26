@@ -2391,3 +2391,56 @@ mean/max degradation; and n-gram feature overlap (Jaccard) between each
 corrected intent's correction features and each degraded intent's eval items,
 to test the shared-marker (เป็น) hypothesis with a number.
 No pass/fail bar; the outcome is a mechanism attribution table.
+
+## B-563 verdict (2026-10-26) - correction-collateral mechanism ATTRIBUTED + one null (b563.py, logs/b563_run1.log)
+
+Frozen comparisons honored (same data/state/protocol; only the NB correction
+update varied). Mean degradation on uncorrected intents (points, 5 seeds,
+3-correction protocol): A_full 13.2 | A_prior_only 7.9 | A_feat_only 11.8 |
+A_replay 11.8. BOTH NB components drive collateral, feature-mass shift slightly
+larger than prior shift. NULL: replaying every uncorrected intent's original
+examples does NOT reduce collateral (seed 3 worsens) - it is not dilution.
+
+Casualty decomposition (the informative split):
+- name_skill (feature-POOR single-word items) is damaged by the PRIOR shift
+  alone: A_prior_only reproduces 100% of its loss on every seed (37.5-62.5
+  points). Sparse items are decided mostly by class priors; corrections raise
+  the corrected intent's doc count and flip them.
+- retract_attr is damaged by FEATURE-mass shift: A_feat_only reproduces it,
+  A_prior_only does not (seeds 1,3,4). Overlap: EN marker char-n-grams
+  ('has' vs 'have' families).
+- CORRECTION of my earlier mechanism claim: "shared เป็น marker" was specific
+  to the mass protocol (which corrected teach_isa items). In the 3-correction
+  protocol corrections are always teach_attr (the hardest intent); Jaccard
+  overlap between correction features and the main casualty's eval features
+  is ~0.01. Shared markers are NOT the general driver - prior dominance on
+  feature-poor items + EN marker overlap are the two real channels.
+
+H2 metric-formula clarification (target class stated; per-seed counts in
+logs/b562_diag.log and attached results file):
+- abstention-precision (target = wrong-intent/NONE; of abstained items,
+  fraction truly NONE) = NONE_abstained/(NONE_abstained + abstained_real)
+  = .11-.22  <- this is what was labeled "precision" earlier
+- abstention-recall = NONE_abstained/12 = .33-.67
+- acceptance-precision (of accepted real items, fraction gold intent)
+  = accepted_correct/(accepted_correct+accepted_wrong) = .58-.77 (nb)
+- acceptance-recall = accepted_correct/64 = .28-.42 (nb)
+
+Full arm ordering (k=8, intent-only): nb .353 >= t2p .338 > nn1 .291 >
+wnn .156 > majority .125 > frames .072. At k=1 nn1 .272 > nb .209 (earlier
+"NB>WNN>frames" phrasing skipped nn1; corrected).
+
+Slot extraction - exact learned/supplied split:
+- SUPPLIED: tokenizer/encoder, intent inventory, slot COUNT per intent
+  (NSLOTS), role ORDER semantics (slot1=entity, slot2=attr via GLUE), the
+  fixed 50% frame-word threshold, and the family templates that generate data.
+- LEARNED: per-intent frame words (>=50% frequency in that intent's training
+  examples), filler->position statistics, and the actual per-sentence fillers.
+- Consequence: roles are learned only as POSITION STATISTICS; what makes
+  slot1 "the entity" is supplied. Joint correctness .091 (k=8 nb) is the
+  honest end-to-end-relevant number.
+
+Confirmation-transfer disclosure: "fresh" transfer items share the SAME eval
+family template and the SAME unfamiliar vocab pools - only slot substitution
+is fresh; no new-template transfer was measured. Same-item recall after
+confirmation is near-trivial (the confirmed sentence itself was added).
