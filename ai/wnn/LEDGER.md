@@ -2531,3 +2531,17 @@ FROZEN: b562/b564 data, eval, protocol, S1 mapper. ONLY slot extraction varies.
 - G2: frozen-eval joint must not drop more than 3 points vs S3's .153.
 - G3: report which tokens leak on new-template items when G1 fails (null
   anatomy, recorded either way).
+
+B-564/565 wording corrections (2026-10-26, review-requested, nothing rewritten):
+- "The wall for joint correctness is slot extraction on unseen templates" is a
+  MEASURED failure in THESE setups (these features, these arms, these authored
+  templates), not proof it is the sole general-language bottleneck.
+- "No single-knob fix exists in NB's update rule" overreached: the tested
+  ablations showed two independently sufficient channels IN THOSE ABLATIONS;
+  other untested single mechanisms might still fix both. Qualified.
+- Frozen b562/b564 eval has now been INSPECTED across many rounds; further
+  tuning on it is not "new" evidence. B-565+ labels frozen-eval numbers as
+  inspected and relies on fresh authored families for new conclusions.
+- B-565+ tracks under ONE protocol (raw argmax, labeled): intent-only,
+  slot exactness (ordered roles), joint, wrong-action and abstention counts.
+  These raw-argmax numbers are never mixed with the gated B-562 numbers.
