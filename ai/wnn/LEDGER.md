@@ -4127,3 +4127,14 @@ router, an HONEST LIMITATION of token-based routing on unsegmented Thai.
 SCOPE: the router is SUPPLIED (authored marker lists at design time) - a
 designed capability, NOT learned understanding and NOT general safety;
 gradable predicates outside the 4-word list are uncovered.
+
+## B-600 Correction 1 (2026-10-27)
+
+The regression-surface claim is WRONG as written: v2's 'ของมัน สวย ไหม'
+DOES contain สวย+ไหม and WOULD route to the gradable honest limit,
+changing its class from the B-592 v2 expectation (ask_needed/clarify) to
+honest_engaged. Arguably the better behavior (vague predicate -> honest
+limit beats a referent question), but it IS a behavior change on one v2
+turn and would need a recorded expectation relabel if the router were
+adopted. v1 and v3 have no router-marker hits (verified); the router
+remains probe-only, not merged.
