@@ -5163,3 +5163,48 @@ assumptions in anaphora clarification/canonicalization before extending any
 coverage claims; use existing relation counterexamples rather than new
 phrase routes. Broad conversational target remains unmet; no supported
 large capability build is implied by defect repair. Alignment probes stop.
+
+## B-616 preregistration: clarification fast-path compatibility audit
+
+B615 continuation, existing defect class only. Inspect pronoun clarification
+fast path for missing relation-family check. Construct competing ISA/HAS
+facts and two possible antecedents, force wrong ISA query score for a HAS
+question after referent selection. Assert answer matches original HAS
+relation or clarifies, never wrong ISA answer, with unchanged stores and
+write/attempt counters. Repeat after snapshot restore. Include positive
+ISA and HAS referent selection. Preserve initial failure. Fix must reuse
+B615 compatibility/slot logic, not new surface phrases. Original entry
+expectations unchanged; lossy definition failure remains. CPU/live 1e9 cap.
+
+B-616 initial fixture PASS did not exercise fast-path bypass: wrong-family
+extractor returned None on fresh contexts. Preserve it as run1. Before
+patch, extend fixture with original lotus session where wrong ISA extractor
+is known to return slots, then force wrong ISA score on resolved lotus
+pronoun. This is diagnostic fixture correction, not an unchanged initial
+failure claim. No production behavior patch yet.
+
+## B-616 findings: clarification fast-path relation check repaired
+
+run2 preserves actual live/restored failure after original lotus context:
+wrong-family forced ISA query answered unknown on HAS question. Counters
+0, but defaultdict empty-key insertion also broke literal store equality.
+Do not call this mutating-commit execution: it is a query side effect.
+Patch uses existing B615 compatible candidate slots plus relation check
+on clarification fast-answer path; fallback confirmation keeps original,
+resolved, antecedent provenance, including through existing rejection flow.
+No new word routing, teacher labels or expectation changes.
+run3 PASS on four authored diagnostic cases: correct HAS and ISA answers
+live/restored, stores unchanged, writes/attempts 0. Initial run1 PASS did
+not exercise bypass and is not evidence of its safety. B615 and B611
+post616 PASS. Original entry remains 12/13 with intentional lossy-definition
+compatibility failure; both actual answer-relevance checks pass.
+Live aggregate tree: B616 38,780,928 bytes; B615 40,148,992 bytes; entry
+67,895,296 bytes, no 1e9-byte breach, 10ms sampled with supervisor included.
+No general completeness guarantee. The base query defaultdict empty-key
+behavior remains unmodified for other unknown queries.
+
+Concrete continuation: audit whether antecedent selection recognizes an
+unambiguous exact entity vs substring overlap before committing any query;
+currently substring membership can match several names and pick first.
+Do not extend learned-language claims from this engineered defect repair.
+General conversational target remains unmet, alignment NULLs unchanged.

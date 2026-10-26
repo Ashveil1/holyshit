@@ -411,13 +411,18 @@ class InteractiveChat(ChatSpeaks):
                     rw = ' '.join(hit[0] if t in ('มัน', 'ของมัน') else t
                                   for t in p['original'].split())
                     pi, mg = B.predict(self.m, B.encode(rw), -1e18)
-                    sl = self._extract(rw, pi) if pi else None
+                    sl = self._candidate_slots(rw, pi) if pi else None
                     if (pi in ('is_a_q', 'ask_attr') and mg >= self.tau_lo
+                            and self._relation_compatible(rw, pi)
                             and sl is not None and len(sl) == B.NSLOTS[pi]):
                         self.m.add(B.encode(rw), pi)
                         _c, reply, _ = self._commit(rw, pi, sl, 'teacher_assisted')
                         return reply
                     _c, reply, _cat = self._handle_classified(rw)
+                    if self.pending is not None:
+                        self.pending['provenance'] = {'original': p['original'],
+                                                      'resolved': rw, 'antecedent': hit[0]}
+                        reply = 'จากข้อความ «%s»: %s' % (p['original'], reply)
                     return reply
         if self.pattern_awaiting and text in YES | NO:
             key, d = self.pattern_awaiting
