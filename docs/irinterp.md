@@ -123,3 +123,14 @@ explicit attributes, dotted packages and independent-state imports retain parity
 Fourteen focused cases cover shaped Dict operations and actual module handles,
 including invalid calls/index/mutation, conversion and alias attribute writes,
 for269 total classifications. This is not a sandbox or full operation parity.
+
+## Callable and module display
+
+`print` and `str()` now use guest display rules for opaque handles: functions
+show `<func name>`, builtins `<builtin name>` and modules `<module name>`.
+Nested List/Dict display walks their guest contents in order rather than
+printing host closure objects or internal metadata. Function handles retain
+the source display name when created. Eight focused cases cover direct and
+nested handles, closures, aliases and ordinary tag-shaped Dicts, for277 parity
+classifications. Cyclic containers, deep recursion and other handle operations
+are not new guarantees of this change.

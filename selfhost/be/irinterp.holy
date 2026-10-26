@@ -99,6 +99,27 @@ def is_callable_rec(v, tag):
   if pyrt.py_type(v) != "func":
     return false
   return tag in v()
+def display(v):
+  kind = pyrt.py_type(v)
+  if kind == "func":
+    record = v()
+    if "hs_ir_fn" in record:
+      return "<func " + record["name"] + ">"
+    if "hs_ir_builtin" in record:
+      return "<builtin " + record["hs_ir_builtin"] + ">"
+    if "hs_ir_mod" in record:
+      return "<module " + record["hs_ir_mod"] + ">"
+  if kind == "list":
+    parts = []
+    for item in v:
+      append(parts, display(item))
+    return "[" + join(", ", parts) + "]"
+  if kind == "dict":
+    parts = []
+    for key in keys(v):
+      append(parts, display(key) + ": " + display(v[key]))
+    return "{" + join(", ", parts) + "}"
+  return str(v)
 BUILTIN_ARITY = {"append": 2, "find": 2, "join": 2, "has": 2, "contains": 2, "keys": 1, "values": 1, "read_text": 1, "write_text": 2, "append_text": 2, "exists": 1, "ls": 1, "mkdir": 1, "env": 1, "argv": 0, "input": 0, "json_parse": 1, "json_str": 1, "json_load": 1, "json_save": 2, "open": 2, "read": 1, "write": 2, "close": 1, "system": 1}
 BUILTIN_ARITY_ERROR = {"append": "append wants append(list, x)", "find": "find wants find(s, sub)", "join": "join wants join(sep, list)", "has": "has wants has(dict, key)", "contains": "contains wants contains(container, x)", "keys": "keys wants keys(dict)", "values": "values wants values(dict)", "read_text": "read_text wants read_text(path)", "write_text": "write_text wants write_text(path, str)", "append_text": "append_text wants append_text(path, str)", "exists": "exists wants exists(path)", "ls": "ls wants ls(dir)", "mkdir": "mkdir wants mkdir(path)", "env": "env wants env(name)", "argv": "argv takes no args", "input": "input takes no args", "json_parse": "json_parse wants json_parse(str)", "json_str": "json_str wants json_str(x)", "json_load": "json_load wants json_load(path)", "json_save": "json_save wants json_save(path, x)", "open": "open wants open(path, mode)", "read": "read wants read(f)", "write": "write wants write(f, str)", "close": "close wants close(f)", "system": "system wants system(cmd)"}
 def call_builtin(name, args, ln):
@@ -118,9 +139,7 @@ def call_builtin(name, args, ln):
     if name == "len":
       return len(args[0])
     if name == "str":
-      if is_mod(args[0]):
-        return "<module " + args[0]()["hs_ir_mod"] + ">"
-      return str(args[0])
+      return display(args[0])
     if name == "int":
       return int(args[0])
     if name == "float":
@@ -405,7 +424,7 @@ def step(st, ins, temps, frame, prev):
   elif op == "stglobal":
     bind(frame["root"], ins["name"], temps[ins["src"]])
   elif op == "mkfunc":
-    temps[ins["dest"]] = callable_handle({"hs_ir_fn": ins["func"], "closure": frame})
+    temps[ins["dest"]] = callable_handle({"hs_ir_fn": ins["func"], "closure": frame, "name": st["funcs"][ins["func"]]["dispname"]})
   elif op == "bin":
     temps[ins["dest"]] = do_binop(ins["binop"], temps[ins["l"]], temps[ins["r"]], ln)
   elif op == "un":
@@ -426,10 +445,7 @@ def step(st, ins, temps, frame, prev):
       if pyrt.py_type(v) == "str":
         line = line + v
       else:
-        if is_mod(v):
-          line = line + "<module " + v()["hs_ir_mod"] + ">"
-        else:
-          line = line + str(v)
+        line = line + display(v)
     print line
   elif op == "build_list":
     items = []

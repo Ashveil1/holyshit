@@ -316,6 +316,29 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL module handle parity: {source!r}: {ref!r} != {got!r}")
     print("14 module handle/guest Dict cases checked")
 
+    display_sources = [
+        'def f():\n  return 1\nprint f\nprint str(f)\n',
+        'f = len\nprint f\nprint str(f)\n',
+        'def outer():\n  def nested():\n    return 2\n  return nested\nprint outer()\n',
+        'import counter\nprint counter, str(counter)\n',
+        'def f():\n  return 1\nprint [f, len, {"call": f}]\n',
+        'import counter\nprint {"module": [counter, len]}\n',
+        'def f():\n  return 1\nprint str([f, len])\nprint str({"f": f})\n',
+        'print {"hs_ir_fn": "plain", "hs_ir_mod": "plain"}\n',
+    ]
+    for source in display_sources:
+        prog = os.path.join(module_dir, "display_handles.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL handle display parity: {source!r}: {ref!r} != {got!r}")
+    print("8 callable/module display cases checked")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')
