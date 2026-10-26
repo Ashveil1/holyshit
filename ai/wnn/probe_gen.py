@@ -1,4 +1,4 @@
-"""B-558 SEALED held-out probe generator (review-mandated protocol 2026-10-26):
+"""B-558 SEALED held-out probe generator (sealed held-out protocol 2026-10-26):
 the 15 probes in b558.py are DEV probes (their baseline behavior was inspected).
 Final quality claims come ONLY from this generator's output, materialized and
 printed solely at final-eval time by the sealed harness - never read or iterated
