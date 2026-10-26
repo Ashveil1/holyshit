@@ -392,6 +392,17 @@ def do_binop(op, l, r, ln):
     if op == ">=":
       return l >= r
   except as e:
+    if pyrt.py_type(l) == "func" or pyrt.py_type(r) == "func":
+      left = type_name(l)
+      right = type_name(r)
+      if op == "+":
+        fail("cannot add " + left + " and " + right, ln)
+      if op in ["-", "*", "/", "%"]:
+        fail("operator '" + op + "' needs numbers, got " + left + " and " + right, ln)
+      if op in ["<<", ">>", "&", "|", "^"]:
+        fail("operator '" + op + "' needs Ints, got " + left + " and " + right, ln)
+      if op in ["<", ">", "<=", ">="]:
+        fail("cannot compare " + left + " and " + right, ln)
     raise conv(e, ln)
   fail("IR: bad binop '" + op + "'", ln)
 def do_unop(op, v, ln):
@@ -403,6 +414,11 @@ def do_unop(op, v, ln):
     if op == "not":
       return not v
   except as e:
+    if pyrt.py_type(v) == "func":
+      if op == "neg":
+        fail("cannot negate " + type_name(v), ln)
+      if op == "unot":
+        fail("cannot bitwise-not " + type_name(v), ln)
     raise conv(e, ln)
   fail("IR: bad unop '" + op + "'", ln)
 def do_slice(obj, lo, hi, ln):

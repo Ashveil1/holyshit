@@ -379,6 +379,27 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
                 print(f"FAIL handle slice parity: {source!r}: {ref!r} != {got!r}")
     print("12 handle slice error cases checked")
 
+    op_cases = 0
+    for value in ['len', 'counter', 'local_fn']:
+        expressions = ['f ' + op + ' 1' for op in ['+', '-', '*', '/', '%', '<<', '>>', '&', '|', '^', '<', '>', '<=', '>=']]
+        expressions += ['1 ' + op + ' f' for op in ['+', '-', '*', '/', '%', '<<', '>>', '&', '|', '^', '<', '>', '<=', '>=']]
+        expressions += ['-f', '~f', 'not f', 'f == f', 'f != f', 'f == 1']
+        source = 'import counter\ndef local_fn():\n  return 1\nf = ' + value + '\n'
+        for expr in expressions:
+            source += 'try:\n  print ' + expr + '\nexcept as error:\n  print error\n'
+        prog = os.path.join(module_dir, "handle_ops.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        op_cases += len(expressions)
+        if ref != got:
+            fails += 1
+            print(f"FAIL handle operation parity for {value}: {ref!r} != {got!r}")
+    print(f"{op_cases} handle operator expressions checked in 3 programs")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')

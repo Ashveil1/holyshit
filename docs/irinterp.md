@@ -145,3 +145,10 @@ Slicing Func/Builtin/Module handles now rejects them before evaluating implicit
 length bounds, preserving `cannot slice <guest kind>` for all four bound forms.
 Twelve focused caught-error cases bring parity to301 classifications. This
 closes a reproduced host-Func/len error leak, not all slicing edge cases.
+
+Failed arithmetic, bitwise, comparison and unary operations now translate opaque
+handle errors to guest Func/Builtin/Module kinds. Checks run only after a host
+operation raises, leaving normal scalar and equality/truth paths unchanged.
+Three programs compare102 operator expressions, including both operand orders,
+negation, complement, truth and equality controls, for304 parity classifications.
+This is bounded handle-error coverage, not all operand combinations.
