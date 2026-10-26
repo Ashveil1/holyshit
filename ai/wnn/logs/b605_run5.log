@@ -1,0 +1,22 @@
+TURN {"in": "ควายมีเขา", "out": "เดาว่า: สอนว่า ควาย มี เขา ใช่ไหม", "mutated": false, "note": "teach novel composition"}
+TURN {"in": "ใช่", "out": "จำแล้ว: ควาย มี เขา", "mutated": true, "note": "confirm teach"}
+TURN {"in": "เป็ดเป็นนก", "out": "เดาว่า: สอนว่า เป็ด เป็น นก ใช่ไหม", "mutated": false, "note": "teach"}
+TURN {"in": "ใช่", "out": "จำแล้ว: เป็ด เป็น นก", "mutated": true, "note": ""}
+TURN {"in": "เสือมีขน", "out": "เดาว่า: สอนว่า เสือ มี ขน ใช่ไหม", "mutated": false, "note": "teach"}
+TURN {"in": "ใช่", "out": "จำแล้ว: เสือ มี ขน", "mutated": true, "note": ""}
+TURN {"in": "ช้างมีงา", "out": "เดาว่า: สอนว่า ช้าง มี งา ใช่ไหม", "mutated": false, "note": "teach"}
+TURN {"in": "ใช่", "out": "จำแล้ว: ช้าง มี งา\nสังเกตว่าประโยคแบบ «ช้าง มี งา» หมายถึงสอนข้อเท็จจริงแบบเดียว", "mutated": true, "note": ""}
+TURN {"in": "ควายมีเขาไหม", "out": "เดาว่า: ถามว่า ควาย เป็น เขา ใช่ไหม", "mutated": false, "note": "known question - answer, no mutation"}
+TURN {"in": "ใช่", "out": "ไม่รู้ว่า ควาย เป็น เขา ยังไม่เคยถูกสอน", "mutated": false, "note": "confirm question guess"}
+TURN {"in": "เป็ดเป็นหมาไหม", "out": "เดาว่า: ถามว่า เป็ด เป็น หมา ใช่ไหม", "mutated": false, "note": "unknown question - honest, no mutation"}
+TURN {"in": "ใช่", "out": "ไม่รู้ว่า เป็ด เป็น หมา ยังไม่เคยถูกสอน", "mutated": false, "note": ""}
+TURN {"in": "ช้างไม่มีงาจริงไหม", "out": "เดาว่า: ถามว่า ช้าง เป็น งา ใช่ไหม", "mutated": false, "note": "retraction-QUESTION - must not delete ช้าง/งา"}
+TURN {"in": "ใช่", "out": "ไม่รู้ว่า ช้าง เป็น งา ยังไม่เคยถูกสอน", "mutated": false, "note": ""}
+TURN {"in": "หมูมีเขาหรือเปล่า", "out": "ไม่รู้ว่า หมู เป็น เขา ยังไม่เคยถูกสอน", "mutated": false, "note": "unknown entity question"}
+TURN {"in": "ใช่", "out": "จำรูปแบบแล้ว ครั้งต่อไปจะจำให้ทันที", "mutated": false, "note": ""}
+TURN {"in": "งาของช้างคืออะไร", "out": "เดาว่า: ถามเรื่อง งา ของ ช้าง ใช่ไหม", "mutated": false, "note": "ask_attr known - answer, no mutation"}
+TURN {"in": "ใช่", "out": "รู้ว่า ช้าง มี งา แต่ไม่รู้รายละเอียด", "mutated": false, "note": ""}
+MUTATIONS [{"turn": "ใช่", "added_isa": [], "added_attr": [["ควาย", "เขา"]], "removed_isa": [], "removed_attr": []}, {"turn": "ใช่", "added_isa": [["เป็ด", "นก"]], "added_attr": [], "removed_isa": [], "removed_attr": []}, {"turn": "ใช่", "added_isa": [], "added_attr": [["เสือ", "ขน"]], "removed_isa": [], "removed_attr": []}, {"turn": "ใช่", "added_isa": [], "added_attr": [["ช้าง", "งา"]], "removed_isa": [], "removed_attr": []}]
+SUMMARY {"question_turn_mutations": [], "retraction_survived": true, "final_store_exact": true, "mutating_turns": 4}
+CHECK PASS
+RES {"peak_rss_mb": 27.7, "wall_seconds": 1.2}

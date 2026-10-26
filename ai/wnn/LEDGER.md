@@ -4515,3 +4515,85 @@ misunderstood shape would commit wrong facts until retracted;
 single-shape evidence only (isa shape); composed/multi-shape sessions
 untested; battery is authored development check. Regressions:
 hsml_check run4 (12/12 audits), b605 run3, b606 run2 all PASS.
+
+## CLAIM CORRECTION (2026-10-27): scope of 'exchange-learned'
+
+'First genuinely exchange-learned capability' is WITHDRAWN as worded:
+mapper rows from confirm-yes and taught definition inventories were
+already exchange-updated. Accurate scope: B-607 is the first
+exchange-learned GENERALIZATION (a shape -> intent+slots rule induced
+from user-validated instances rather than taught via supplied syntax).
+It is shape interpolation over confirmed labeled instances, NOT general
+language understanding.
+
+## B-608 PRE-REGISTERED (2026-10-27, before code) - induced patterns as PROPOSAL-ONLY + adversarial battery + real-REPL check
+
+B-607's auto-commit firing is DEMOTED to sandbox contrast only:
+approving a generalized pattern once does not establish that every
+future matching utterance asserts its apparent fact (quotation,
+negation, hypotheticals, questions can share surface pieces).
+Retraction after an error is not containment. In the entry, a pattern
+match now produces a PATTERN-INFORMED PROPOSAL ('ตามรูปแบบที่จำไว้
+หมายถึง ... ใช่ไหม') requiring explicit yes; the auto-commit arm
+remains only as a sandbox flag for measuring the contrast. PROPOSED
+erroneous writes count as errors even when declined. Consent
+intelligibility: the proposal names a concrete taught exemplar, not
+'X1/X2' abstraction. CONFLICTS: multiple active patterns matching with
+different intents -> abstain + clarify, never first-match. Battery
+(b608.py, expectations v1): unfamiliar entities; negative statements
+('ม้า ไม่มี เขา' against an active '<X> มี <Y>' pattern); quoted/longer
+utterances containing pattern pieces; extended structures (no
+new-structure transfer - a different shape needs its own instances);
+question shapes; incompatible-match collision; multiword/unspaced
+input. Literal shape interpolation vs new-structure transfer reported
+separately; no-pattern control on MATCHED items. REAL-REPL check: the
+whole induction flow driven through the actual `python3 hsml_chat.py`
+stdin/stdout subprocess (no fixture gold), then --load in a SECOND real
+process verifying the pattern still proposes. Gates: G1 3/3 correct
+pattern-informed proposals on new instances, 0 wrong proposals; G2 0
+wrong-write proposals on negation/quoted/extended/question near-misses;
+G3 conflict abstains; G4 real-REPL + real restart pass; G5 regressions
+(--check, b605, b606, b607 sandbox contrast) pass. Supplied labels
+preserved: abstraction, trigger, alignment, matching, confirmation
+machinery all supplied; induction signal learned. Authored battery =
+development check. No pretrained, no paid, 1e9-byte watchdog.
+
+## B-608 FINDINGS (2026-10-27): proposal-only induced patterns + completeness guard; masked-write hole found and closed
+
+logs/b608_run2.log (CHECK PASS) + regressions: b607_run3 (sandbox
+auto-commit contrast), b605_run5, b606_run5, hsml_check_run6 (12/12),
+b604_run3 (grid 12/14, 0 swaps, heldout 7/8 v2, frozen 62/64 identical
+with the 2 recorded repair deltas).
+DEMOTED: induced-pattern firing in the entry is PROPOSAL-ONLY
+('ตามรูปแบบที่จำไว้: เดาว่า: ... ใช่ไหม'); auto-commit remains a sandbox
+flag for contrast only. Consent text now names a concrete taught
+exemplar. Pattern conflict (different intents matching one surface) ->
+abstain + clarify.
+FOUND BY THE BATTERY (the directive's value, honestly): a quoted
+utterance ('เขาบอกว่าวัวเป็นสัตว์เลี้ยง') triggered an UNASSISTED
+high-margin teach commit masked by the fact already existing - and a
+quoted NEW fact ('...ลิง...') wrote garbage ('ว่าลิง เป็น สัตว์เลี้ยง').
+Root: in-session mapper rows push near-miss surfaces over tau_hi;
+unassisted commits skipped every guard. FIX (from the authorization
+semantics, not a marker patch): COMPLETENESS - no write proposal or
+write commit unless the parse accounts for every non-grammar token;
+unparsed content -> honest limit NAMING the unparsed words
+('ยังไม่เข้าใจคำว่า «เขา», «บอก» ในประโยคนี้'). A yes now authorizes
+exactly the proposition shown. Also verified missing: the B-605
+unassisted question-marker block had silently never landed (edit
+mismatch); now actually present and grep-verified.
+MEASURED (battery v1): 3/3 correct pattern-informed proposals on new
+novel-entity instances, 0 wrong proposals; negation statement correctly
+proposes a retraction write; marked question proposes a question;
+extended utterance ('เป็ดเป็นนกมาก') and both quoted cases -> no write,
+honest limit naming unparsed words; per-turn write counter (counts
+re-writes, catches set-masked writes); real-REPL subprocess check:
+induction proposal, pattern-informed proposal, save, and pattern still
+active in a SECOND real process via --load. UNRESOLVED (recorded, not
+patched): a surface-IDENTICAL hypothetical/quotation with zero extra
+tokens is indistinguishable from an assertion; <UNK:> chunks are
+excluded from completeness (unknown words cannot be accounted);
+ Thai questions with no marker reach question intents only via escape;
+pattern consent text is supplied presentation, intelligibility assessed
+by construction not by a user. Shape interpolation only; no
+new-structure transfer claimed or observed.

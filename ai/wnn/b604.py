@@ -40,9 +40,9 @@ def slot_offsets(train, anchor):
     return off
 
 def select_std(s, d, functionish, anchor, offstat, frame, nslots, fillers=None, vocab=None):
-    """Standard S4 selection PLUS per-intent frame-word exclusion (B-604
-    fix: grammar words like ไหม/คืออะไร are single-intent so the
-    cross-intent functionish filter misses them)."""
+    """Unified candidacy (B-608): a token is slot-eligible iff it is a
+    known gold filler OR a novel word, and is not a grammar word
+    (frame-union or any intent's anchor). Ranked by offset likelihood."""
     toks = s.split()
     ap = toks.index(anchor[d]) if anchor[d] in toks else None
     fr = set().union(*frame.values()) if frame else set()

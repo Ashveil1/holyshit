@@ -28,6 +28,7 @@ from b601 import ChatSpeaks
 from b604 import learn_gold_stats, slot_offsets, extract_fb
 
 EXTENSION_LEX = {'หมู', 'เสือ', 'ช้าง', 'น่ะ'}   # supplied lexicon extension
+INDUCED_AUTOCOMMIT = False   # sandbox contrast only; entry path is proposal-only (B-608)
 YES = {'ใช่', 'ถูก', 'ใช่ครับ', 'ใช่ค่ะ'}
 NO = {'ไม่ใช่', 'ไม่', 'ผิด'}
 GREETINGS = {'สวัสดี', 'หวัดดี', 'ดี'}
@@ -67,6 +68,7 @@ class InteractiveChat(ChatSpeaks):
         self.patterns = {}         # shape_key -> {'intent':.., 'status':'active'|'rejected'}
         self.patterns_proposed = set()
         self.pattern_awaiting = None   # (key, intent) proposed, awaiting yes/no
+        self.writes = 0                # every mutating commit (incl. re-writes)
 
     @staticmethod
     def _shape(toks, sl):
@@ -143,6 +145,7 @@ class InteractiveChat(ChatSpeaks):
     _last_surface = None
 
     def _commit(self, s, d, sl, category):
+        if d in MUTATING: self.writes += 1
         self._last_surface = s
         sl = [self._clean(x) for x in sl] if sl else sl
         self._grow_lex(sl)
@@ -163,36 +166,67 @@ class InteractiveChat(ChatSpeaks):
             return 'หมายถึงตัวไหน: ' + ' หรือ '.join(p['candidates']) + '?'
         return 'ขอถามเพิ่มหน่อย'
 
+    def _unparsed(self, s, sl):
+        """Non-grammar tokens the proposed parse does not account for."""
+        return [t for t in s.split()
+                if t not in self.grammar and t not in sl and not t.startswith('<UNK:')
+                and t not in ('มัน', 'ของมัน')]
+
     def _try_confirm(self, s, exclude=()):
         """Offer a guess-confirmation for the best non-excluded intent
         whose slots extract, guarded by marker-word or known-entity.
         B-605: marker-based intent restriction. B-606 escape hatch: the
         restriction applies only while nothing has been rejected; after a
-        rejection every intent is eligible again."""
+        rejection every intent is eligible again. B-608 completeness: a
+        write proposal must account for every content token - a yes
+        authorizes the proposition actually shown."""
         q = any(t in QMARKERS for t in s.split())
         restrict = not exclude
+        unparsed = None
         for d, _sc in self._ranked(s):
             if d in exclude or d not in RESTATE: continue
             if restrict and q and d not in QINTENTS: continue
             if restrict and not q and d in QINTENTS: continue
             sl = self._extract(s, d)
             if sl is None or len(sl) != B.NSLOTS[d]: continue
+            left = self._unparsed(s, sl)
+            if left:
+                unparsed = unparsed or left
+                continue
             if self._known(sl) or any(t in self.markers for t in s.split()):
                 return d, sl
         return None, None
+
+    def _best_leftover(self, s):
+        """Unparsed content tokens under the best-ranked extractable
+        parse (for honest-limit naming)."""
+        for d, _sc in self._ranked(s):
+            if d not in B.NSLOTS: continue
+            sl = self._extract(s, d)
+            if sl is not None and len(sl) == B.NSLOTS[d]:
+                return self._unparsed(s, sl)
+        return self._unparsed(s, ())
 
     def _handle_classified(self, s, via=None):
         cat = via or 'unassisted'
         p, mg = B.predict(self.m, B.encode(s), -1e18)
         if p is not None:
-            sl = self.extract(s, p)
-            if mg >= self.tau_hi and sl is not None and len(sl) == B.NSLOTS[p]:
+            sl = self._extract(s, p)
+            q = any(t in QMARKERS for t in s.split())
+            blocked = q and p in MUTATING           # B-605: question-marked -> never write
+            if p in MUTATING and sl is not None and self._unparsed(s, sl):
+                blocked = True                      # B-608: unaccounted content words -> no silent write
+            if (not blocked and mg >= self.tau_hi and sl is not None
+                    and len(sl) == B.NSLOTS[p]):
                 return self._commit(s, p, sl, cat)
         d, sl = self._try_confirm(s)
         if d is not None:
             reply = self._ask('confirm', surface=s, intent=d, slots=tuple(sl),
                               rejected=[d])
             return 'ask_needed', reply, 'teacher_assisted'
+        left = self._best_leftover(s)
+        if left:
+            return 'honest_engaged', 'ยังไม่เข้าใจคำว่า «%s» ในประโยคนี้' % '», «'.join(left[:3]), cat
         return 'honest_engaged', self.realize('honest_engaged', s, None, None, {}), cat
 
     def _handle_new(self, text):
@@ -223,11 +257,22 @@ class InteractiveChat(ChatSpeaks):
                 cls, reply, cat = self._handle_classified(canon, via='taught_pattern')
                 self.seen.add(s)
                 return cls, reply, cat
-        pd, psl = self._fire_patterns(s)
-        if pd is not None:
+        hits = self._match_patterns(s)
+        intents = {h[0] for h in hits}
+        if len(intents) > 1:
             self.seen.add(s)
-            cls, reply, cat = self._commit(s, pd, list(psl), 'induced_pattern')
-            return cls, reply, cat
+            self.q += 1
+            return 'ask_needed', 'ประโยคนี้เข้ากับรูปแบบที่เรียนไว้หลายแบบ ช่วยบอกว่าหมายถึงแบบไหน', 'teacher_assisted'
+        if len(hits) == 1:
+            pd, psl = hits[0]
+            if INDUCED_AUTOCOMMIT:
+                self.seen.add(s)
+                cls, reply, cat = self._commit(s, pd, list(psl), 'induced_pattern')
+                return cls, reply, cat
+            if pd in RESTATE:
+                self.seen.add(s)
+                reply = self._ask('confirm', surface=s, intent=pd, slots=psl, rejected=[pd])
+                return 'ask_needed', 'ตามรูปแบบที่จำไว้: ' + reply, 'induced_pattern'
         rw, status = self._resolve(s)
         self.seen.add(s)
         if status in ('clarify', 'plural'):
@@ -249,15 +294,16 @@ class InteractiveChat(ChatSpeaks):
         for (d, key), n in shapes.items():
             if n >= 3 and key not in self.patterns_proposed and self.patterns.get(key, {}).get('status') != 'rejected':
                 self.patterns_proposed.add(key)
-                sample = ' '.join('X%d' % (v[1] + 1) if v[0] == 'VAR' else v[1] for v in key)
-                gloss = RESTATE[d](['X%d' % (i+1) for i in range(B.NSLOTS[d])])
+                exemplar = exemplars[(d, key)][0]
                 self.pattern_awaiting = (key, d)
                 self.q += 1
-                return 'สังเกตว่ารูปแบบ «%s» %s ใช่ไหม' % (sample, gloss)
+                return ('สังเกตว่าประโยคแบบ «%s» หมายถึงสอนข้อเท็จจริงแบบเดียวกันทุกครั้ง ใช่ไหม '
+                        '(ถ้าใช่ ครั้งต่อไปผมจะเสนอคำตอบแบบนี้ให้ยืนยันทันที)' % exemplar)
         return None
 
-    def _fire_patterns(self, s):
+    def _match_patterns(self, s):
         toks = s.split()
+        hits = []
         for key, st in self.patterns.items():
             if st['status'] != 'active' or len(key) != len(toks): continue
             d = st['intent']
@@ -267,8 +313,8 @@ class InteractiveChat(ChatSpeaks):
                 if kind == 'TOK' and v != t: ok = False; break
                 if kind == 'VAR': slots[v] = t
             if ok and all(x is not None for x in slots):
-                return d, tuple(slots)
-        return None, None
+                hits.append((d, tuple(slots)))
+        return hits
 
     # ----- user-facing loop -----
     def user_turn(self, text):

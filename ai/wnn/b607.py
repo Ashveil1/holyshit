@@ -4,7 +4,9 @@ Usage: python3 b607.py
 """
 import json, time
 from b570 import Watchdog, BUDGET
+import hsml_chat
 from hsml_chat import fresh_chat
+hsml_chat.INDUCED_AUTOCOMMIT = True   # sandbox contrast arm (B-608 demotes auto-commit)
 
 def stores(c):
     return ({(k, v) for k, vs in c.isa.items() for v in vs},

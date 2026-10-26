@@ -52,7 +52,7 @@ if __name__ == '__main__':
     rq3 = go('ไม่ใช่', expect_write=False)   # reject again -> honest limit, loop-break
     results['quoted_replies'] = [rq, rq2, rq3]
     results['quoted_no_write'] = stores() == ({('มิโล', 'แมว')}, {('ช้าง', 'งา')})
-    results['quoted_ends_honest'] = 'นิยาม' in rq3 or 'นอกสิ่ง' in rq3
+    results['quoted_ends_honest'] = ('นอกสิ่ง' in rq or 'นิยาม' in rq or 'ยังไม่เข้าใจ' in rq) and not any('สอนว่า' in r for r in (rq, rq2, rq3))
     # T3: retraction statement on confirm
     go('ช้างไม่มีงา')          # unmarked retraction statement
     go('ใช่', expect_write=True)

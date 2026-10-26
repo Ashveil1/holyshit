@@ -1,0 +1,19 @@
+GRID {"s": "แมว เป็น นก", "intent": "teach_isa", "want": ["แมว", "นก"], "got": ["แมว", "นก"], "how": "fallback", "ok": true}
+GRID {"s": "แมว เป็น สัตว์", "intent": "teach_isa", "want": ["แมว", "สัตว์"], "got": ["แมว", "สัตว์"], "how": "fallback", "ok": true}
+GRID {"s": "แมว มี หาง", "intent": "teach_attr", "want": ["แมว", "หาง"], "got": ["แมว", "หาง"], "how": "fallback", "ok": true}
+GRID {"s": "มิโล เป็น แมว", "intent": "is_a_q", "want": ["มิโล", "แมว"], "got": ["มิโล", "แมว"], "how": "fallback", "ok": true}
+GRID {"s": "มิโล เป็น แมว ไหม", "intent": "is_a_q", "want": ["มิโล", "แมว"], "got": ["มิโล", "แมว"], "how": "fallback", "ok": true}
+GRID {"s": "แมว เป็น สัตว์ ไหม", "intent": "is_a_q", "want": ["แมว", "สัตว์"], "got": ["แมว", "สัตว์"], "how": "fallback", "ok": true}
+GRID {"s": "แมว มี หาง ไหม", "intent": "teach_attr", "want": ["แมว", "หาง"], "got": ["แมว", "หาง"], "how": "fallback", "ok": true}
+GRID {"s": "หาง ของ แมว คืออะไร", "intent": "ask_attr", "want": ["แมว", "หาง"], "got": ["แมว", "หาง"], "how": "fallback", "ok": true}
+GRID {"s": "แมว ไม่มี ปีก", "intent": "retract_attr", "want": ["แมว", "ปีก"], "got": ["แมว", "ปีก"], "how": "fallback", "ok": true}
+GRID {"s": "เหยี่ยว เป็น นก", "intent": "teach_isa", "want": ["เหยี่ยว", "นก"], "got": ["เหยี่ยว", "นก"], "how": "fallback", "ok": true}
+GRID {"s": "หมู มี งา", "intent": "teach_attr", "want": ["หมู", "งา"], "got": ["หมู", "งา"], "how": "standard", "ok": true}
+GRID {"s": "นก มี ปีก ไหม", "intent": "teach_attr", "want": ["นก", "ปีก"], "got": ["นก", "ปีก"], "how": "fallback", "ok": true}
+GRID {"s": "วันนี้ อากาศ ดี มาก", "intent": "ask_attr", "want": null, "got": ["วันนี้", "อากาศ"], "how": "standard", "ok": false}
+GRID {"s": "สวัสดี", "intent": "name_skill", "want": null, "got": ["สวัสดี"], "how": "standard", "ok": false}
+G3-DELTA {"s": "งา ของ เหยี่ยว สวย", "d": "teach_attr", "old": ["งา", "ของ"], "new": ["งา", "เหยี่ยว"], "gold": ["เหยี่ยว", "งา"]}
+G3-DELTA {"s": "เขา ของ tiger สวย", "d": "teach_attr", "old": ["เขา", "ของ"], "new": ["เขา", "tiger"], "gold": ["tiger", "เขา"]}
+G3 {"eval_items": 64, "standard_path": 64, "outputs_identical_to_old": 62, "fallback_fired": 0}
+SUMMARY {"grid_ok": 12, "grid_n": 14, "role_swaps": 0}
+RES {"mb": 27.2, "s": 1.1}
