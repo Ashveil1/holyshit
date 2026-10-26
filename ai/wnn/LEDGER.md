@@ -2919,7 +2919,12 @@ stats (B-566-A1), discriminative feature weighting (B-567), pointer-copy
 neural at 64 sentences (B-570), and the same at 256/1024 (B-571). This is a
 record of what was tried and failed under THESE bounds - not closure of all
 mechanisms and not a teach-once impossibility claim. Best honest state:
-NBu + S4-selection + positional roles (joint .19-.29 on inspected unseen-
-phrasing dev cells at 64/seed; .62 on seen-template/unseen-entity).
-Dominant open problem, measured: UNSEEN-ENTITY slot handling (c12/c22) -
-neither counting nor pointer-copy learned it at tested scales.
+NBu + S4-selection + positional roles. Actual per-cell joint figures at
+64/seed (inspected dev): c11 seen/seen .134, c12 seenT/unseenE .615,
+c21 unseenT/seenE .044, c22 unseenT/unseenE .278 (B-571 k=8 rows). The
+pointer arm's collapse was concentrated on unseen-entity cells (c12/c22)
+while the counting baseline held up there; whether "unseen-entity slot
+handling" is the SYSTEM's dominant open problem is NOT established by these
+cells (they differ in more than entity novelty, and arm-specific failure
+patterns differ) - recorded as an arm-specific observation, not a
+line-level diagnosis.
