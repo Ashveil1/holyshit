@@ -1,0 +1,41 @@
+B-558 v4.1 script-form noninterference sweep, tree a9f5fd3 (+ this commit's hygiene fix), 2026-10-26.
+Each harness run as `python3 <name>.py`, exit 0 required; verdict extracted from its own output
+(format differs by era: JSON "verdict", "RESULT:", or "FAILS: N"). Raw logs: logs/sweep/<name>.log.
+
+PASS b534   (JSON verdict)
+PASS b535   (JSON verdict)
+PASS b536   (JSON verdict)
+PASS b537   (JSON verdict)
+PASS b538   (JSON verdict)
+PASS b539   (JSON verdict - see NOTE below; evidence logs/sweep/b539_full.log)
+PASS b540   (JSON verdict)
+PASS b541   (JSON verdict)
+PASS b542   (JSON verdict)
+PASS b543   (JSON verdict)
+PASS b544   (JSON verdict)
+PASS b546   (JSON verdict)
+PASS b547   (JSON verdict)
+PASS b548   (RESULT: PASS)
+PASS b549   (RESULT: PASS)
+PASS b551   (FAILS: 0)
+PASS b552   (FAILS: 0)
+PASS b553   (FAILS: 0)
+PASS b554   (FAILS: 0)
+PASS b555   (FAILS: 0)
+PASS b556   (FAILS: 0)
+PASS b557   (FAILS: 0)
+PASS b558   (FAILS: 0; 9 checks incl C2 10/10, C3 5/5)
+PASS b558_sealed (FAILS: 0; seed 55801, one-shot generated family-disjoint evaluation - NOT independent/unseen validation)
+PASS regress_skills (JSON verdict)
+
+NOTE b539 (recorded transparently): the first sweep pass replayed COMMITTED chunk-output caches
+(logs/b539_s1*.json from the B-540 era, bounded 60,001-try control) instead of executing, and the
+harness verdict FAILed criterion c6 (hard-codes the full 700,001 control). Nothing had executed on
+this tree. Handling: caches removed, chunks re-executed fresh - first bounded (c1-c5,c7-c9 true on
+this tree), then the FULL 700,001-try control: verdict PASS on this tree (logs/sweep/b539_full.log).
+Old-baseline full-control evidence also stands at logs/b539_run.log (commit 2009278).
+Hygiene fix in this commit: b539 chunk caches/pickles removed from git + .gitignored so committed
+caches can never stand in for execution again.
+
+ALL CHECKS GREEN (25/25, all executed on the current tree)
+WT558D_SWEEP_DONE

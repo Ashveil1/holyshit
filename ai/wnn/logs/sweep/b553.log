@@ -1,0 +1,16 @@
+PASS C1-link {'kind': 'syn_stored', 'text': 'จำไว้แล้ว', 'source': 'dialog'}
+PASS C1 {'kind': 'attr_list', 'text': 'ซวก มี วูป', 'source': 'attr', 'name': 'ซวก', 'attrs': ['วูป'], 'inherited': {}}
+PASS C2 {'kind': 'attr_list', 'text': 'บลิบ มี เฟล็ด วูป', 'source': 'attr', 'name': 'บลิบ', 'attrs': ['เฟล็ด', 'วูป'], 'inherited': {}}
+PASS C3 {'kind': 'yesno', 'text': 'ใช่', 'source': 'attr', 'answer': 'yes'}
+PASS C5a {'kind': 'uncertain_not_stored', 'text': 'ยังไม่แน่ใจ ขอยังไม่จำเป็นข้อเท็จจริง', 'source': 'dialog'}
+PASS C5b {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
+PASS C8a {'kind': 'composed', 'text': 'ซวก มี วูป และ วูป มี เกล็น', 'source': 'attr', 'x': 'ซวก', 'chain': ['เกล็น'], 'zs': ['วูป'], 'as_': ['วูป'], 'prov': [('วูป', ('own', None), ('own', None))], 'capped': False}
+PASS C8b {'kind': 'composed3', 'text': 'ซวก มี วูป และ วูป มี เกล็น และ เกล็น มี ฮ็อก', 'source': 'attr', 'x': 'ซวก', 'chain': ['เกล็น', 'ฮ็อก'], 'zs': ['วูป'], 'as_': ['วูป'], 'prov': [('วูป', ('own', None), ('own', None), ('own', None))], 'capped': False}
+PASS C7a {'kind': 'retracted', 'text': 'ลบแล้ว', 'source': 'dialog', 'name': 'ซวก', 'retracted': ['วูป'], 'not_found': []}
+PASS C7b {'kind': 'yesno', 'text': 'ไม่', 'source': 'attr', 'answer': 'no_explicit'}
+PASS C4a {'kind': 'syn_retracted', 'text': 'ลบแล้ว', 'source': 'dialog'}
+PASS C4b {'kind': 'attr_list', 'text': 'ซวก มี เฟล็ด', 'source': 'attr', 'name': 'ซวก', 'attrs': ['เฟล็ด'], 'inherited': {}}
+PASS C4c {'kind': 'yesno', 'text': 'ใช่', 'source': 'attr', 'answer': 'yes'}
+PASS C6 {'kind': 'yesno', 'text': 'ไม่รู้', 'source': 'attr', 'answer': 'conflict'}
+PASS C9-guard {'kind': 'abstain', 'text': None, 'source': 'syn_guard'}
+FAILS: 0
