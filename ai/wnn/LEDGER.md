@@ -3949,3 +3949,31 @@ in-lexicon BY CONSTRUCTION - this is a plumbing check. General Thai
 coverage is NOT established: B-589's unknown-word and ambiguity failures
 stand, and ordinary chat will hit out-of-lexicon words constantly. 27.0MB,
 1.2s.
+
+## B-596 PRE-REGISTERED (2026-10-26, before code) - out-of-lexicon degradation end-to-end
+
+De-spaced sentences containing words OUTSIDE the 90-word lexicon through the
+B-589 segmenter + unified pipeline. Authored set (12): in-schema meaning
+with 1-2 unknown content words; fully unknown sentences; partially
+segmentable. Metric: honest-degradation rate - every turn must end in
+honest_engaged / ask_needed / clarification, NEVER a fabricated or wrong
+action (0 wrong actions = the bar; segmentation failure must not become
+plausible-looking wrong behavior). Also record: does a taught definition
+for an unknown-word pattern recover the turn (teach-once path for unknown
+vocabulary)?
+
+## B-596 FINDINGS (2026-10-26): out-of-lexicon degradation is honest end-to-end (12/12, 0 fabricated)
+
+logs/b596_run1.log. 12 de-spaced cases with unknown content words: unknown-
+word sentences segment into <UNK:...> islands and the pipeline either
+teaches them through the normal teacher-confirmation path (4 cases:
+unknown subject + known predicate) or lands on honest_engaged/ask (8
+cases). NO wrong or fabricated action on any case (the bar). Unknown
+vocabulary is teachable one item at a time through confirmation - but
+every case cost a question (12/12), and UNKNOWN SEGMENTS CANNOT
+PARTICIPATE IN DEFINITIONS: the น่ะ-definition did not fire on the
+de-spaced form because น่ะ is not in the lexicon (segmented as UNK); the
+turn was recovered by the mapper path instead. Compound unknowns degrade
+to one large UNK (เพกวินบินไม่ได้), losing internal structure. This
+confirms B-595's stated limit: plumbing works, lexicon coverage is the
+binding constraint for ordinary Thai. 27.0MB, 1.2s.

@@ -1,0 +1,15 @@
+CASE {"surface": "ช้างเป็นสัตว์", "seg": "<UNK:ช้าง> เป็น สัตว์", "cls": "teach_ok", "expect": "teach_ok", "ok": true, "note": "unknown word ช้าง, in-schema"}
+CASE {"surface": "ปูใบไม้มีหนาม", "seg": "<UNK:ปูใบไม้> มี <UNK:หนาม>", "cls": "honest_engaged", "expect": "honest", "ok": true, "note": "garbage-ish unknown"}
+CASE {"surface": "แมวกินปลา", "seg": "แมว กิน ปลา", "cls": "honest_engaged", "expect": "honest", "ok": true, "note": "in-lexicon words, no schema intent (กิน not an intent)"}
+CASE {"surface": "โรงเรียนของฉันใหญ่", "seg": "<UNK:โรงเรียน> ของ <UNK:ฉันใหญ่>", "cls": "honest_engaged", "expect": "honest", "ok": true, "note": "fully unknown"}
+CASE {"surface": "เสือมีเขา", "seg": "<UNK:เสือ> มี เขา", "cls": "teach_ok", "expect": "teach_ok", "ok": true, "note": "unknown subject, known predicate"}
+CASE {"surface": "มิโลชอบนอน", "seg": "มิโล <UNK:ชอบนอน>", "cls": "honest_engaged", "expect": "honest", "ok": true, "note": "known entity, unknown verb"}
+CASE {"surface": "อากาศวันนี้ดีมาก", "seg": "อากาศ วันนี้ ดี มาก", "cls": "honest_engaged", "expect": "honest", "ok": true, "note": "transposed word order, in-lexicon"}
+CASE {"surface": "นกเพกวินบินไม่ได้", "seg": "นก <UNK:เพกวินบินไม่ได้>", "cls": "honest_engaged", "expect": "honest", "ok": true, "note": "compound unknown"}
+CASE {"surface": "กวางน่ะเป็นสัตว์", "seg": "กวาง <UNK:น่ะ> เป็น สัตว์", "cls": "teach_ok", "expect": "teach_ok", "ok": true, "note": "definition-reliant (def taught in setup)"}
+CASE {"surface": "มันกินปลาไหม", "seg": "มัน กิน ปลา ไหม", "cls": "ask_needed", "expect": "ask", "ok": true, "note": "anaphora de-spaced, no context -> clarify"}
+CASE {"surface": "สวัสดีครับวันนี้", "seg": "สวัสดี <UNK:ครับ> วันนี้", "cls": "honest_engaged", "expect": "honest", "ok": true, "note": "greeting with unknown particle ครับ"}
+CASE {"surface": "หมูมีขน", "seg": "<UNK:หมู> มี ขน", "cls": "teach_ok", "expect": "teach_ok", "ok": true, "note": "unknown subject known attr"}
+SUMMARY {"ok": 12, "cases": 12, "questions_total": 12, "fabricated": 0}
+RES-FINAL {"peak_rss_mb_overall": 27.0, "wall_seconds": 1.2}
+DONE
