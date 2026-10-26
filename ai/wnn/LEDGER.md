@@ -3461,3 +3461,34 @@ genuinely new template family (EVAL_FAM minus the audited-invalid
 template, 311 items) produced 0 executions and 311 questions - no safety
 leak on novelty - and 0 slot-signature collisions (confirmed signature
 firing with a differing gold value). Measured, not assumed.
+
+## B-583 DENOMINATOR + WORDING CORRECTIONS (2026-10-26, per review)
+
+- Denominators made explicit: wrong-execution 0/320 (c21) and 2/320 (c22)
+  are ALL-item (= all-executed, since the always-answering simulated
+  teacher means every item eventually executes). Among FULLY-UNASSISTED
+  executions only: 0/33 (c21) and 0/67 (c22) wrong. Both views stand; the
+  2 wrong-executions were helped items whose acted INTENT was wrong.
+- WITHDRAWN as universal claims: 'slots on literal repeats cannot be wrong'
+  and 'safety by literal confirmation works'. The measured facts are
+  narrower: in THIS simulation, confirmed-signature accepts had 0 errors
+  and 0 measured collisions - but repeated context can still be ambiguous
+  or bind a wrong span/intent in general, and zero measured collisions does
+  not prove impossibility.
+- The B-582 persistence result is demonstrated only in the tested
+  pickle/rebuild reconstruction; no process-restart/disk durability claim.
+- Definitions-channel critique registered: definitions do NOT ensure one
+  question per pattern or unlimited correct utterances by construction; my
+  illustrative definition ("'X ของ Y สวย' แปลว่า...") was semantically
+  unclear and must NOT seed valid gold.
+- No single-bottleneck wording: data semantics, representation, retention
+  and gate validity all remain potential limitations.
+
+## OVERNIGHT TARGET (2026-10-26 23:07, user-set via main)
+
+User's stated target: a conversational hsml he can talk to like the
+assistant, very low resources (<=1GB whole runtime), running locally. Main
+answered without promising overnight success; user asked for no hsml
+updates unless the target is actually achieved. Work continues overnight
+on bounded authorized research; no production integration, no user success
+claims from synthetic gates.
