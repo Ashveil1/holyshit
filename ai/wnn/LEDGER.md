@@ -2119,3 +2119,9 @@ Pass criteria:
 - b538 PASS แบบ chunked s1/s2: c1-c8 ตรง run() เดิมทุกข้อ, c5 BOUNDED 60,001 ด้วย flag ใหม่ B538_BOUNDED_C5 (เช่นเดียวกัน) — เส้นทางสอน/แก้ทักษะผ่านบทสนทนา + save/load จริงรันบน routing ที่เปลี่ยนแล้ว
 - ชุด noninterference ฉบับสมบูรณ์ตอนนี้ตรงกับ convention เดิม (b534-b558 + regress_skills): 25 harness เขียว โดย b536/b538/b539 แบบ chunked+bounded ตาม precedent ที่บันทึกไว้
 - เหตุที่ต้อง bounded: เพดานเวลาต่อ bash call ของ sandbox ไม่ใช่ขีดจำกัดของตัว harness (run เต็มเคยผ่านใน PR ก่อนๆ ผ่าน subprocess ต่อเนื่อง)
+
+## B-559 full controls + merge (26 ตุลาคม 2026) — PR #288 → master 48bc8a1
+- ก่อน merge parent สั่งรัน full controls แบบไม่ bound สำหรับ 3 harness ที่รอบแรกรันแบบ bounded: b536 (c5 garbage), b538 (c5), b539 (c6) — รันบนโค้ด head c2606f2 ที่ freeze ไว้ ผ่าน runner แบบ detached (setsid) เพราะ sandbox หยุดช่วงไม่มี turn
+- ผล unbounded ทั้งสาม: b536 PASS (c5_tried 700,001, c1-c5 ครบตาม run()), b539 PASS (c6_tried 700,001, chunked ผ่าน save/load จริง caches ถูกลบก่อน), b538 PASS (c5_tried 700,001, c1-c8 ครบ) — logs: /tmp/full_b536.log, /tmp/full_b539.log, /tmp/full_b538.log (รอบ bounded ก่อนหน้าเก็บแยกไว้เป็นหลักฐานชั่วคราว ไม่ใช่ฉบับปิดเกณฑ์)
+- การนับ regression ฉบับแก้: 26 harness = 23 full เขียว + 3 ที่ต้อง full-control แยก (ตอนนี้ full เขียวครบแล้ว) — เลข 25 หรือ 33/33 ที่เคยรายงานผิดได้แก้ในบันทึกแล้ว
+- Merge gates ณ เวลา merge: CI quick+arm64-port SUCCESS ที่ head c2606f2 ตรง 3 ทาง (PR head = ls-remote wnn = local wnn), master เคลื่อนจาก d36fa6d เป็น 7b78703 ผ่าน PR #287 (docs/+selfhost/+tests/ เท่านั้น, file-disjoint จาก ai/wnn 100%), merge เป็น 48bc8a1; fresh-clone smoke: บทสนทนา Milo ครบ + b559 36/36 จาก clone สด
