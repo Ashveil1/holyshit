@@ -74,6 +74,16 @@ cases.extend([
  ('bitwise-guard-replay','def f(n):\n  return (n * n) & 7\nprint f(3)\nprint f(536870911)\nprint f(4)\n',1,1,2,1),
  ('bitwise-predicate','def f(n):\n  return (n & 1) == 0\nprint json_str([f(2), f(3)])\n',1,1,2,0),
 ])
+cases.extend([
+ ('shift-left','def f(n,k):\n  return n << k\nprint f(1,0)\nprint f(1,28)\nprint f(-1,29)\n',1,1,3,0),
+ ('shift-right','def f(n,k):\n  return n >> k\nprint f(-7,1)\nprint f(-536870912,29)\nprint f(536870911,29)\n',1,1,3,0),
+ ('shift-overflow','def f(n,k):\n  return n << k\nprint f(1,29)\nprint f(-2,29)\nprint f(2,2)\n',1,1,1,2),
+ ('shift-large-count','def f(n,k):\n  return n >> k\nprint f(-1,30)\nprint f(-1,63)\ntry:\n  print f(1,64)\nexcept as e:\n  print e\nprint f(8,1)\n',1,1,1,3),
+ ('shift-negative-count','def f(n,k):\n  return n << k\ntry:\n  print f(1,-1)\nexcept as e:\n  print e\nprint f(1,2)\n',1,1,1,1),
+ ('shift-bool-refused','def f(n):\n  return n << true\ntry:\n  print f(1)\nexcept as e:\n  print e\n',1,0,0,0),
+ ('shift-bool-fallback','def f(n,k):\n  return n >> k\nprint f(8,1)\ntry:\n  print f(1,true)\nexcept as e:\n  print e\n',1,1,1,1),
+ ('shift-intermediate','def f(n):\n  return (n << 29) >> 29\nprint f(2)\nprint f(-2)\nprint f(-1)\n',1,1,1,2),
+])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
  source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'
