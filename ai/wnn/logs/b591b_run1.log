@@ -1,0 +1,11 @@
+DEF {"def": ["เหยี่ยว น่ะ เป็น นก", "เหยี่ยว เป็น นก"], "compiled": true, "note": "'X น่ะ เป็น Y' -> teach_isa(X,Y)"}
+DEF {"def": ["แพะ ก็ มี เขา", "แพะ มี เขา"], "compiled": true, "note": "'X ก็ มี Y' -> teach_attr(X,Y)"}
+CASE {"case": "กวาง น่ะ เป็น สัตว์", "expect": "fire", "fired": true, "canonical": "กวาง เป็น สัตว์", "action_correct": false, "ok": false}
+CASE {"case": "ม้า ก็ มี ขน", "expect": "fire", "fired": true, "canonical": "ม้า มี ขน", "action_correct": true, "ok": true}
+CASE {"case": "กวาง น่ะ มี เขา", "expect": "nofire", "fired": false, "canonical": null, "action_correct": null, "ok": true}
+CASE {"case": "ม้า ก็ เป็น เป็ด", "expect": "nofire", "fired": false, "canonical": null, "action_correct": null, "ok": true}
+CASE {"case": "เป็ด น่ะ เป็น นกน้ำ", "expect": "fire", "fired": true, "canonical": "เป็ด เป็น นกน้ำ", "action_correct": true, "ok": true}
+CASE {"case": "กวาง น่ะ เป็น สัตว์ จริงๆ", "expect": "nofire", "fired": false, "canonical": null, "action_correct": null, "ok": true}
+SUMMARY {"cases_ok": 5, "cases": 6, "defs_compiled": 2, "defs_total": 2, "questions_per_def": [1, 1]}
+RES-FINAL {"peak_rss_mb_overall": 27.2, "wall_seconds": 1.2}
+DONE

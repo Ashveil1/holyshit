@@ -3753,3 +3753,28 @@ instances of the taught patterns (new entities) - should parse and act;
 fire (safety); (c) the same instance BEFORE definition - must not parse.
 Metrics: fire/no-fire correctness per case, questions, end-to-end action
 correctness when fired. No gate - feasibility assessment as planned (D).
+
+## B-591 FINDINGS (2026-10-26): example-pair definitions compile and generalize - first burden-cutting mechanism; one-shot requires one variable-marking question per definition
+
+Runs: logs/b591_run1.log (naive positional aligner), logs/b591b_run1.log
+(LCS aligner + simulated variable-marking answer). AUTHORED cases,
+development evidence.
+Run1 (no variable marking, positional): compiled 0/5 definitions - length-
+mismatched pairs and all-equal-minus-insertion pairs produce no variables;
+ONE-SHOT definitions WITHOUT variable marking do not generalize at all.
+Run2 (LCS aligner + ONE follow-up question per definition naming variable
+positions, simulated answers from authored setup): 2/2 compiled; fires
+correctly on 3/3 novel instances (new entities) and rejects 3/3 near-misses
+(one function token different, or length differs); end-to-end 5/6 - the one
+miss is the mapper calling the novel-instance canonical 'กวาง เป็น สัตว์'
+is_a_q instead of teach_isa (KNOWN teach/ask confusion on unseen teaches,
+B-577), NOT a definitions-mechanism failure; the canonical string built by
+the rule was exact.
+COST: 1 question per definition, then the pattern covers novel entities with
+0 further questions. This is the first mechanism that cuts per-item teaching
+burden (pattern-level generalization vs per-item examples).
+SCOPE: SUPPLIED aligner + compiler; learned = user-taught rule inventory
+only. Simulated variable-marking answers are derived from the authored
+definition setup. Variables must appear in the canonical side; canonical-
+side constants not in the surface form are not insertable (disclosed limit).
+Resources: 27.2MB, 1.2s.
