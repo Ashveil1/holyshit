@@ -2928,3 +2928,37 @@ handling" is the SYSTEM's dominant open problem is NOT established by these
 cells (they differ in more than entity novelty, and arm-specific failure
 patterns differ) - recorded as an arm-specific observation, not a
 line-level diagnosis.
+
+## B-572 PRE-REGISTERED (2026-10-26, before code) - Class B targeted test: order-sensitive intent features (explicitly authorized bounded round)
+
+Class-B target (from measured confusion examples, logs in b567 diagnosis):
+marker-position confusions like teach_attr 'X ของ Y สวย' misread as ask_attr -
+the mapper's bag-of-features is order-blind to WHERE a marker sits relative
+to slots/edges.
+FROZEN: protocol, 2x2 cells (all INSPECTED development/debug evidence, not
+independent validation), seeds 0-4, S4-selection+positional extractor,
+baseline M0 = NBu with B.encode features (the frozen best).
+Arms (SEPARATED for attribution; a win only in combination would be labeled
+a combined intervention):
+  M-BI:  B.encode + word-bigram features 'b:w1|w2'.
+  M-POS: B.encode + edge-relative position features: for each of the first 2
+         and last 3 tokens, feature '<slot>:w' naming its edge position.
+DISCLOSURE (required): the position/bigram cues are a REPRESENTATION DESIGN
+CHOICE deliberately supplied by us; learned weights over designed features
+are not proof of autonomous grammar discovery. No deployability or
+general-language claim follows from these cells either way.
+Gates (fixed before code): G1: an arm's mean INTENT >= M0 +5 points on BOTH
+unseen-template cells (c21, c22) with >=4/5 non-negative per-seed paired
+deltas. G2: no cell mean intent worse than M0 by >3 points. Attribution only
+if exactly one arm wins; fail -> null recorded, no automatic continuation.
+Resources: no pretrained, no paid; pure-Python counting features (no new
+deps); 1e9-byte live watchdog; 10-min hard timeout; 5 seeds x 4 cells x 3
+arms + baseline.
+
+Class-C wording correction (supersedes my earlier phrasing): unseen tokens
+do NOT make correct handling information-theoretically impossible - context,
+compositional patterns and inductive bias can sometimes support unseen-token
+handling. The B-562..571 failures establish only that THESE tested
+implementations did not generalize on THESE examples; same-distribution
+scaling (B-571) does not isolate causes. Class-A recovery is scoped to the
+measured before/after tests, not a universal diagnosis.
