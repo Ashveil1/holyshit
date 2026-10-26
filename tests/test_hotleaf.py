@@ -63,6 +63,17 @@ cases.extend([
  ('not-type-fallback','def f(n):\n  return not n\nprint f(0)\nprint f("")\nprint f([])\nprint f(true)\nprint f(2)\n',1,1,2,3),
  ('not-arithmetic-rejected','def f(n):\n  return (not n) + 1\ntry:\n  print f(0)\nexcept:\n  print "caught"\n',1,0,0,0),
 ])
+for op in ('&', '|', '^'):
+ source=f'def f(a,b):\n  return a {op} b\n'
+ source+=''.join(f'print f({a},{b})\n' for a,b in [(0,0),(-1,7),(-536870912,536870911),(536870911,-536870912)])
+ cases.append(('bitwise-'+op,source,1,1,4,0))
+cases.extend([
+ ('bitwise-not','def f(n):\n  return ~n\nprint f(0)\nprint f(-1)\nprint f(536870911)\nprint f(-536870912)\n',1,1,4,0),
+ ('bitwise-bool-rejected','def f(n):\n  return n & true\ntry:\n  print f(2)\nexcept as e:\n  print e\n',1,0,0,0),
+ ('bitwise-type-fallback','def f(n):\n  return ~n\nprint f(1)\ntry:\n  print f(true)\nexcept as e:\n  print e\nprint f(536870912)\n',1,1,1,2),
+ ('bitwise-guard-replay','def f(n):\n  return (n * n) & 7\nprint f(3)\nprint f(536870911)\nprint f(4)\n',1,1,2,1),
+ ('bitwise-predicate','def f(n):\n  return (n & 1) == 0\nprint json_str([f(2), f(3)])\n',1,1,2,0),
+])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
  source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'
