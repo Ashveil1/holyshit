@@ -4092,3 +4092,38 @@ questions) is real but inseparable from a high misleading-ask rate under
 the current supplied rules; no hand-written exclusion patch applied per
 review instruction - the failed guard result stands and any refinement
 needs a mechanism that distinguishes question TYPE, not token presence.
+
+## B-600 PRE-REGISTERED (2026-10-27, before code) - SUPPLIED question-type router (designed, not learned)
+
+B-599 showed token-presence rules cannot separate appropriate from
+misleading asks. This probe adds a SUPPLIED question-type router
+(design decision, NOT learned understanding, NOT claimed as general
+safety): (a) explanatory markers (ทำไม/อย่างไร/ยังไง/เพราะ) -> honest
+'cannot explain' WITHOUT a schema confirmation; (b) a supplied
+gradable-predicate list (สวย/ดี/ใหญ่/เร็ว) -> honest 'cannot judge'
+without schema confirmation; (c) everything else keeps the B-598 guard
+behavior. Assessment: re-run the B-599 mix unchanged; misleading-asks
+should drop; appropriate-asks must survive; 0 fabricated; burden reported.
+Then the SEPARATE unfamiliar-composition set (3 turns, never used to
+choose the router) is re-measured as the held-out check. This is designed
+routing over authored marker lists - scope labeled accordingly.
+
+## B-600 FINDINGS (2026-10-27): SUPPLIED question-type router cuts misleading-asks 5->1 on the mix; designed routing, not learned
+
+Runs: logs/b600_run1.log (router placed inside the low-band branch -
+NEVER FIRED: the misleading asks come from the MID-band, which bypasses
+it; recorded as a placement defect), logs/b600_run2.log (router at turn
+level, before band logic). Run2 on the unchanged B-599 mix: misleading-
+asks 5 -> 1 (explanatory ทำไม/อย่างไร and gradable สวย/ดี now get honest
+limits with NO schema confirmation; 4 honest type routes), appropriate-
+asks preserved (2/2), questions 14 -> 10, 0 fabricated. Residual
+misleading type: off-schema wh-question with known entity ('ช้าง ชอบ กิน
+อะไร') - no marker coverage. The 2 base mid-band asks on silent-ok cases
+remain (base shell behavior, outside this router's scope). Regression
+surface check: no v1/v2/v3 scenario turn contains the router markers as
+standalone tokens (verified by token inspection) - the unsegmented v3
+why-question 'ทำไมมิโลถึงเป็นแมว' is a single token and bypasses the
+router, an HONEST LIMITATION of token-based routing on unsegmented Thai.
+SCOPE: the router is SUPPLIED (authored marker lists at design time) - a
+designed capability, NOT learned understanding and NOT general safety;
+gradable predicates outside the 4-word list are uncovered.
