@@ -119,7 +119,7 @@ def call_builtin(name, args, ln):
       return len(args[0])
     if name == "str":
       if is_mod(args[0]):
-        return "<module " + args[0]["hs_ir_mod"] + ">"
+        return "<module " + args[0]()["hs_ir_mod"] + ">"
       return str(args[0])
     if name == "int":
       return int(args[0])
@@ -212,7 +212,7 @@ def call_value(st, fn, args, ln):
   fail("not callable: " + type_name(fn), ln)
 PARS = {}
 def is_mod(v):
-  return pyrt.py_type(v) == "dict" and "hs_ir_mod" in v
+  return is_callable_rec(v, "hs_ir_mod")
 def mod_find(name, basedir, ln):
   rel = pyrt.py_replace(name, ".", "/")
   hspath = [d for d in pyrt.py_split(pyrt.py_hspath(), ":") if d]
@@ -256,6 +256,7 @@ def mod_exec(st, name, path, ln):
   fr["root"] = fr
   fr["basedir"] = mod["basedir"]
   mod["frame"] = fr
+  mod = callable_handle(mod)
   st["mods"][path] = {"state": "busy", "mod": mod}
   for key in sub["order"]:
     st["funcs"][key] = sub["funcs"][key]
@@ -278,7 +279,7 @@ def mod_shell(st, name):
   fr = new_frame(st, st["broot"], null, [])
   fr["root"] = fr
   fr["basedir"] = ""
-  m = {"hs_ir_mod": name, "frame": fr, "basedir": ""}
+  m = callable_handle({"hs_ir_mod": name, "frame": fr, "basedir": ""})
   st["shells"][name] = m
   return m
 def mod_import(st, name, frame, ln):
@@ -295,7 +296,7 @@ def mod_import(st, name, frame, ln):
       pmod = mod_shell(st, parent)
     path = mod_find(name, frame_basedir(frame), ln)
     leafmod = mod_exec(st, name, path, ln)
-    bind(pmod["frame"], leaf, leafmod)
+    bind(pmod()["frame"], leaf, leafmod)
     topname = parts[0]
     topmod = null
     try:
@@ -328,9 +329,9 @@ def type_name(v):
       return "Func"
     if is_callable_rec(v, "hs_ir_builtin"):
       return "Builtin"
-  if t == "dict":
-    if "hs_ir_mod" in v:
+    if is_mod(v):
       return "Module"
+  if t == "dict":
     return "Dict"
   return "?"
 def do_binop(op, l, r, ln):
@@ -426,7 +427,7 @@ def step(st, ins, temps, frame, prev):
         line = line + v
       else:
         if is_mod(v):
-          line = line + "<module " + v["hs_ir_mod"] + ">"
+          line = line + "<module " + v()["hs_ir_mod"] + ">"
         else:
           line = line + str(v)
     print line
@@ -516,6 +517,7 @@ def step(st, ins, temps, frame, prev):
     obj = temps[ins["obj"]]
     if not is_mod(obj):
       fail("only modules have attributes", ln)
+    obj = obj()
     nm = ins["name"]
     mvs = obj["frame"]["vars"]
     bound = obj["frame"]["bound"]
@@ -529,7 +531,7 @@ def step(st, ins, temps, frame, prev):
     obj = temps[ins["obj"]]
     if not is_mod(obj):
       fail("only modules have attributes", ln)
-    bind(obj["frame"], ins["name"], temps[ins["val"]])
+    bind(obj()["frame"], ins["name"], temps[ins["val"]])
   else:
     fail("IR: bad op '" + op + "'", ln)
 def pop_handler(st):

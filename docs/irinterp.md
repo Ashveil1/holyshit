@@ -28,7 +28,7 @@ Int divergence).
 
 Callable values now use opaque host closures, not guest Dict records. Ordinary
 guest Dicts containing `hs_ir_fn` or `hs_ir_builtin` remain Dicts. Module values
-still use tagged Dict records; their separate collision limit remains. This
+also use opaque handles rather than tagged guest Dicts. This
 is not a sandbox or a claim of full callable display/container-operation parity.
 
 On arm64, the test builds a native driver with `a64build.py` as stage0,
@@ -91,15 +91,15 @@ binding flag instead of storing a guest-visible sentinel. All interpreter-owned
 frame writes use the same binding helper. The parity gate adds five focused
 cases, including exception-name cleanup, for235 total classifications. Existing
 hot-leaf53/53, profiling11/11 and native interpreter command5/5 gates remain.
-This does not fix the separately documented callable/module-record collision
-limit or establish a sandbox.
+Callable/module collision fixes are described below; binding metadata alone
+does not establish a sandbox.
 
 Module attribute reads also consult binding metadata. An exception name cleared
 at module scope is absent through `module.name`, rather than exposing its stale
 stored value; explicit later attribute assignment binds it again. Two further
 caught/uncaught parity cases cover the missing-attribute error and rebinding,
 for237 total classifications. This closes the module-attribute path of the
-binding-state fix, not the separate record-collision limitation.
+binding-state fix, independent of the handle representation described below.
 
 ## Opaque callable handles
 
@@ -111,4 +111,15 @@ Closures, aliases, container-held callables and hot dispatch retain their existi
 behavior. Eighteen focused cases compare key-shaped guest Dict calls, display,
 conversion, equality and length, plus valid captured calls and attempted handle
 index/mutation, for255 parity classifications. Native arm64 is a required CI
-gate. Module records and broader callable display/operations are separate work.
+gate. Broader callable/module display and operations remain separate work.
+
+## Opaque module handles
+
+Imported modules and synthetic package shells now keep their metadata behind
+interpreter-owned host closures too. Guest Dicts with `hs_ir_mod` stay ordinary
+Dicts. Attribute reads/writes unwrap only recognized module handles; index or
+mutation attempts cannot expose their internal frame. Module aliases, display,
+explicit attributes, dotted packages and independent-state imports retain parity.
+Fourteen focused cases cover shaped Dict operations and actual module handles,
+including invalid calls/index/mutation, conversion and alias attribute writes,
+for269 total classifications. This is not a sandbox or full operation parity.
