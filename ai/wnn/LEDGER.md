@@ -2514,7 +2514,7 @@ per-template frequency - needs its own prereg.
 ## B-565 PRE-REGISTERED (2026-10-26) - template-robust slot extraction via cross-intent statistics (before code)
 
 Direct continuation on the B-564-isolated wall (joint intent+slots). Mandate:
-Ash's ทำเลย (authenticated-channel original, held by main) + bounded-improvement direction - see the B-565 verdict's authorization-basis correction.
+Project decision (2026-10-26): continue bounded learned-language improvement on the B-564-isolated joint intent+slots wall; no production integration, <=1GB total runtime RAM goal applies.
 FROZEN: b562/b564 data, eval, protocol, S1 mapper. ONLY slot extraction varies.
 
 - S4 = cross-intent function-word separation + anchor-relative slot ranking:
@@ -2548,11 +2548,11 @@ B-564/565 wording corrections (2026-10-26, review-requested, nothing rewritten):
 
 ## B-565 verdict (2026-10-26) - template-robust slot extraction: G1 PASS, G2 PASS, anatomy recorded (b565.py, logs/b565_run1.log, logs/b565_leaks.log)
 
-Authorization basis for this work: Ash's ทำเลย in the runtime conversation
-context (authenticated channel original) + main's explicit continuation
-direction - NOT the observation-table lookup I cited earlier (that row's
-message-id mapping was also wrong: the id I quoted belonged to a different
-message; corrected, and identifiers stay out of the repo).
+Scope: bounded continuation of the learned-language work decided on
+2026-10-26; no production integration, <=1GB total runtime RAM goal applies.
+An earlier wording of this basis mischaracterized a historical-record lookup
+as the decision source and quoted a wrong record identifier; corrected here,
+and record identifiers stay out of the repo.
 
 Protocol: raw argmax (labeled, separate from gated B-562 numbers); abstention
 reported separately via the dev-frozen gate, never mixed into accuracy.
