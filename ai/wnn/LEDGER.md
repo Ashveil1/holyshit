@@ -2514,7 +2514,7 @@ per-template frequency - needs its own prereg.
 ## B-565 PRE-REGISTERED (2026-10-26) - template-robust slot extraction via cross-intent statistics (before code)
 
 Direct continuation on the B-564-isolated wall (joint intent+slots). Mandate:
-Ash's ทำเลย (verified original, wamid on file) + bounded-improvement direction.
+Ash's ทำเลย (authenticated-channel original, held by main) + bounded-improvement direction - see the B-565 verdict's authorization-basis correction.
 FROZEN: b562/b564 data, eval, protocol, S1 mapper. ONLY slot extraction varies.
 
 - S4 = cross-intent function-word separation + anchor-relative slot ranking:
