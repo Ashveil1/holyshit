@@ -1,0 +1,21 @@
+TURN {"turn": "สวัสดี", "expected": "honest_fallback", "got": "honest_fallback", "ok": true, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "greeting - no schema intent; must not fake an action"}
+TURN {"turn": "มิโล เป็น แมว", "expected": "teach_ok", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "seen-template teach_isa"}
+TURN {"turn": "แมว เป็น สัตว์", "expected": "teach_ok", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "seen-template teach_isa"}
+TURN {"turn": "มิโล เป็น สัตว์ ไหม", "expected": "inference_ok", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "is_a_q via transitive isa -> answer yes"}
+TURN {"turn": "มิโล มี หาง", "expected": "teach_ok", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "seen-template teach_attr"}
+TURN {"turn": "หาง ของ มิโล คืออะไร", "expected": "answer_ok", "got": "ask_needed", "ok": false, "resp": "สล็อตไม่ชัด - ต้องถาม", "note": "ask_attr seen template -> หาง"}
+TURN {"turn": "แมวตัวนี้ชื่อมิโลนะ", "expected": "ask_needed", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "unseen phrasing -> must ask, not guess"}
+TURN {"turn": "มัน กิน ปลา ไหม", "expected": "ask_needed", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "anaphora มัน - out of schema; must not bind blindly"}
+TURN {"turn": "วันนี้ อากาศ ดี มาก", "expected": "honest_fallback", "got": "honest_fallback", "ok": true, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "off-topic -> no fake action/answer"}
+TURN {"turn": "ราคา เท่าไหร่ กัน", "expected": "honest_fallback", "got": "honest_fallback", "ok": true, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "off-topic question"}
+TURN {"turn": "สอนวิธี บวก ให้หน่อย", "expected": "ask_needed", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "name_skill-adjacent unseen phrasing"}
+TURN {"turn": "ตอบ สี่", "expected": "teach_ok", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "seen-template confirm_answer"}
+TURN {"turn": "มิโล เป็น นก ไหม", "expected": "inference_ok", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "is_a_q: no isa path -> answer no/unknown honestly"}
+TURN {"turn": "นก เป็น สัตว์", "expected": "teach_ok", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "seen-template teach_isa"}
+TURN {"turn": "มิโล ไม่มี หาง", "expected": "teach_ok", "got": "ask_needed", "ok": false, "resp": "สล็อตไม่ชัด - ต้องถาม", "note": "retract_attr seen template"}
+TURN {"turn": "หาง ของ มิโล คืออะไร รู้ไหม", "expected": "answer_ok", "got": "ask_needed", "ok": false, "resp": "ไม่มีในความจำ - ถาม", "note": "ask_attr fresh-ish template -> after retract, should NOT answer หาง"}
+TURN {"turn": "good night sleep well", "expected": "honest_fallback", "got": "honest_fallback", "ok": true, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "off-topic"}
+TURN {"turn": "เหยี่ยว เป็น สัตว์เลี้ยง ไหม", "expected": "ask_needed", "got": "honest_fallback", "ok": false, "resp": "ไม่เข้าใจ/ไม่แน่ใจ - ถามกลับ", "note": "unseen entities, unseen info -> ask/abstain honestly"}
+SUMMARY {"match": 4, "exp_honest_fallback": 4, "got_honest_fallback": 15, "mismatch": 14, "exp_teach_ok": 6, "exp_inference_ok": 2, "exp_answer_ok": 2, "got_ask_needed": 3, "exp_ask_needed": 4}
+RES-FINAL {"peak_rss_mb_overall": 27.1, "wall_seconds": 1.3}
+DONE

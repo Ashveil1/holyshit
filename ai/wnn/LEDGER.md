@@ -3492,3 +3492,50 @@ answered without promising overnight success; user asked for no hsml
 updates unless the target is actually achieved. Work continues overnight
 on bounded authorized research; no production integration, no user success
 claims from synthetic gates.
+
+## B-584 PRE-REGISTERED (2026-10-26, before code) - conversational-feasibility baseline against the USER'S actual target
+
+The overnight target is conversation, not template cells. This arm builds an
+AUTHORED multi-turn conversational scenario (greetings, teaching in seen
+and UNSEEN phrasings, inference questions, anaphora, off-topic, ambiguity -
+each turn labeled with its expected behavior class; authored = development
+evidence, NOT validation) and measures a candidate shell end-to-end:
+retrieval over taught parses -> gated NBu intent + S4 extraction ->
+knowledge traversal for answers -> honest fallback when nothing is safe.
+SUPPLIED: response templates, knowledge traversal (transitive isa), the
+fallback lines, the eval itself. LEARNED: intent mapper, span scorer,
+taught-parse store. No definitions channel in this arm (separate candidate).
+Metrics: per-turn behavior-class match with exact counts by class (correct
+action / correct abstention+honest fallback / wrong action / wrong answer),
+plus RAM/time. No gate - this is the honest gap measurement between the
+current components and the user's stated target. No success claims.
+
+## B-584 FINDINGS (2026-10-26): conversational gap measured directly - 4/18 (precision gate) and 3/18 (accuracy gate)
+
+Runs: logs/b584_run1.log (precision intent tau), logs/b584_run2_accuracy.log
+(accuracy tau). AUTHORED 18-turn scenario (development evidence only):
+greetings, seen-template teaching, inference, unseen phrasings, anaphora,
+off-topic, retract-then-ask. Seed 0. Shell = retrieval over taught parses
+-> gated NBu + S4 -> knowledge traversal -> honest fallback (supplied
+templates; learned mapper/store). Retrieval branch never fired (store
+starts empty; no near-repeats in scenario) - disclosed.
+PRECISION gate (the only measured-safe configuration): 4/18 behavior-class
+matches. It refused nearly ALL valid in-scope turns: 'มิโล เป็น แมว',
+'มิโล มี หาง', 'ตอบ สี่' -> honest_fallback. ZERO fabricated actions -
+but conversationally useless: the gate that keeps unseen phrasings safe
+also rejects seen-template teaching (its dev-calibrated threshold sits
+above most seen-item margins).
+ACCURACY gate: 3/18, and qualitatively worse: DANGEROUS FABRICATIONS -
+'มัน กิน ปลา ไหม' (anaphora) -> fake answer; 'ราคา เท่าไหร่ กัน' ->
+fake answer; 'เหยี่ยว เป็น สัตว์เลี้ยง ไหม' -> fabricated knowledge;
+'สอนวิธี บวก ให้หน่อย' -> wrong action. Plus seen teaches misrouted to
+ask_needed via wrong-intent slot-count mismatches.
+Conclusion (scoped, no single-cause claim): between these two gates the
+current components cannot hold even an 18-turn authored conversation
+without either refusing most valid turns or fabricating answers. The
+distance to the user's stated target (talk like the assistant) is large
+and structural: anaphora, off-topic honesty-with-engagement, definition
+teaching, and response richness are ALL absent, not one knob. Resources:
+~29MB peak, <2s. Next: candidates (definitions channel; teach-first shell
+with per-turn confirmation dialogue; richer fallback engagement) assessed
+against THIS scenario before any further gate tuning.
