@@ -158,3 +158,12 @@ with their guest Func/Builtin/Module kind. Twelve caught/uncaught errors plus
 one List-handle identity and valid Str/Dict control program bring parity to317
 classifications. This fixes membership error names, not JSON serialization or
 all remaining builtin type edges.
+
+JSON serialization checks guest values before the host encoder sees opaque
+handles. Direct and nested Func/Builtin/Module failures retain their guest
+kind; Dict key validation precedes values, and the existing depth limit stops
+cyclic input. `json_save` checks valid-path values before writing, leaving an
+existing file unchanged on handle failure. Twenty-seven error/order/depth/save
+and valid-value control programs bring parity to344 classifications. Encoding
+still uses the host JSON builtin; this does not claim all JSON formatting or
+numeric edges match the reference.
