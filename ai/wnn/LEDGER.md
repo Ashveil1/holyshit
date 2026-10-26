@@ -3676,3 +3676,29 @@ Metrics: exact gold-token recovery rate per set; unknown-span fallbacks;
 ambiguity failures inspected manually. Authored lexicon + authored
 sentences = MANUAL development evidence, not validation; one probe of a
 major untested risk, not a sufficiency proof.
+
+## B-589 FINDINGS (2026-10-26): longest-match works on ordinary in-lexicon Thai; unknowns group cleanly; ambiguity unresolved
+
+Run: logs/b589_run1.log, script b589.py. SUPPLIED longest-match + AUTHORED
+~90-word Thai lexicon; manual development evidence (authored lexicon and
+sentences), NOT validation; one probe of a major untested risk, not a
+sufficiency proof.
+- train_family de-spaced: 36/64 exact gold-token recovery; ALL 28 failures
+  are ENGLISH vocab items (Milo/tail...) not in the Thai lexicon, grouped
+  as <UNK:...> spans as designed (teachable). Thai-side segmentation was
+  correct whenever tokens were in the lexicon.
+- c22 de-spaced: 22/64; 42 with unknowns - dominated by de-spaced ENGLISH
+  ('duckalsohasbeak' becomes one UNK span). De-spacing is natural for Thai
+  only; mixed-language input needs separate handling (caveat, measured).
+- Authored ordinary Thai: 'มิโลเป็นแมว', 'วันนี้อากาศดีมาก',
+  'แมวตัวนี้ชื่อมิโลนะ' all segment exactly. Ambiguity cases fail as
+  expected for a context-free heuristic: 'ตาเล็กมองเหยี่ยว' ->
+  [ตา, UNK:เล็กมอง, เหยี่ยว] (เล็ก/มอง not in lexicon, merged);
+  'เขามีงาใหญ่' cannot distinguish เขา-as-pronoun from เขา-as-horn.
+Interpretation (scoped): segmentation of ordinary Thai is NOT the blocker
+for in-domain chat at this scale - a supplied longest-match segmenter plus
+teach-as-you-go lexicon handles the tested ordinary sentences; unknown
+words degrade gracefully to teachable UNK spans. TRUE ambiguity (เขา
+pronoun/horn class) is out of reach of this component and would surface as
+clarification questions downstream (containment, not understanding).
+Resources: 26.7MB, 1.1s.

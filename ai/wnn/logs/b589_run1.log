@@ -1,0 +1,9 @@
+ROW {"set": "train_family", "n": 64, "exact_recovery": 36, "with_unknown": 28, "fail_examples": [["Milo มี tail", ["<UNK:Milo>", "มี", "<UNK:tail>"]], ["Milo นั้น มี ขา", ["<UNK:Milo>", "นั้น", "มี", "ขา"]], ["Milo นั้น มี ปีก", ["<UNK:Milo>", "นั้น", "มี", "ปีก"]]]}
+ROW {"set": "c22_fresh", "n": 64, "exact_recovery": 22, "with_unknown": 42, "fail_examples": [["duck also has beak", ["<UNK:duckalsohasbeak>"]], ["ควาย also has จงอย่าง", ["ควาย", "<UNK:alsohas>", "จงอย่าง"]], ["เป็ด also has beak", ["เป็ด", "<UNK:alsohasbeak>"]]]}
+AUTH {"text": "มิโลเป็นแมว", "segmented": ["มิโล", "เป็น", "แมว"], "note": "ordinary, in-lexicon"}
+AUTH {"text": "วันนี้อากาศดีมาก", "segmented": ["วันนี้", "อากาศ", "ดี", "มาก"], "note": "ordinary sentence"}
+AUTH {"text": "ตาเล็กมองเหยี่ยว", "segmented": ["ตา", "<UNK:เล็กมอง>", "เหยี่ยว"], "note": "ambiguity: ตา/เล็ก vs ตาเล็ก; เล็ก not in lexicon"}
+AUTH {"text": "เขามีงาใหญ่", "segmented": ["เขา", "มี", "งา", "<UNK:ใหญ่>"], "note": "ambiguity: เขา(pronoun) vs เขา(horn) - classic Thai ambiguity"}
+AUTH {"text": "แมวตัวนี้ชื่อมิโลนะ", "segmented": ["แมว", "ตัวนี้", "ชื่อ", "มิโล", "นะ"], "note": "mixed known/unknown"}
+RES-FINAL {"peak_rss_mb_overall": 26.7, "wall_seconds": 1.1}
+DONE
