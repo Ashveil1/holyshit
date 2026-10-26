@@ -3325,3 +3325,31 @@ indistinguishable from the static baseline. Gating, coverage, retention
 (.55-.70) and representation/teacher validity are ALL unresolved - no
 single 'hard part' claim is made. The 'first genuine positive transfer'
 wording stays withdrawn in favor of these matched numbers.
+
+## B-580 FAILURE ACCOUNTING (2026-10-26): helped-item failures are ALL partial-help slot slips
+
+Run: logs/b580_run1.log, script b580.py (diagnostic, no arm). 5-seed totals.
+c21 helped 182: OK 106, wrong 76 - ALL 76 are class B/intent_only: teacher
+confirmed the INTENT, then every slot was UNASSISTED-accepted
+(scorer had >=1 example, margin>=0) and >=1 was wrong.
+c22 helped 192: OK 126, wrong 66 - ALL 66 same class.
+Class A (wrong acted intent on a helped item): 0. Class C (all required
+fields teacher-confirmed yet execution wrong): 0 - the invariant "complete
+confirmation => correct execution" holds IN THIS SIMULATION.
+Conclusion (scoped): partial help is exactly where the remaining helped-item
+failures live; confirming intent does not make the action correct when slots
+pass unassisted under the lax margin>=0 rule. This is the slot-gate failure
+surfacing inside the helped set, matching the 35-39% wrong-execution rate.
+
+## WORDING CORRECTIONS (2026-10-26, per review)
+
+- The invalid EVAL_FAM template '{y} ของ {x} สวย' is a STATEMENT OF BEAUTY
+  ("the hawk's horn is beautiful"), not 'question-shaped'; that the model
+  predicted ask_attr does not make the utterance a question. Corrected.
+- The c21/c22 semantic audit is MY MANUAL authored-data assessment, not
+  independent validation.
+- Applicability caveat made explicit: this protocol's slots are SINGLE
+  VOCAB TOKENS with synthetic regularities; natural dialogue has multiword,
+  ambiguous, context-dependent fillers, so none of these numbers transfer
+  directly to natural chat. The earlier superseded conditional comparison
+  (B-578 G3) remains withdrawn; B-579's matched counts are the record.

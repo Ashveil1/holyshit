@@ -1,0 +1,12 @@
+ROW {"seed": 0, "eval": "c21", "classes": {"helped_both_OK": 7, "helped_intent_only_OK": 13, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 16, "helped_slot_only_OK": 1}}
+ROW {"seed": 0, "eval": "c22", "classes": {"helped_both_OK": 7, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 13, "helped_intent_only_OK": 20, "helped_slot_only_OK": 1}}
+ROW {"seed": 1, "eval": "c21", "classes": {"helped_both_OK": 6, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 15, "helped_intent_only_OK": 14, "helped_slot_only_OK": 2}}
+ROW {"seed": 1, "eval": "c22", "classes": {"helped_both_OK": 7, "helped_intent_only_OK": 18, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 8, "helped_slot_only_OK": 1}}
+ROW {"seed": 2, "eval": "c21", "classes": {"helped_both_OK": 6, "helped_intent_only_OK": 14, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 17, "helped_slot_only_OK": 2}}
+ROW {"seed": 2, "eval": "c22", "classes": {"helped_both_OK": 7, "helped_intent_only_OK": 22, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 16, "helped_slot_only_OK": 1}}
+ROW {"seed": 3, "eval": "c21", "classes": {"helped_both_OK": 7, "helped_intent_only_OK": 9, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 14, "helped_slot_only_OK": 1}}
+ROW {"seed": 3, "eval": "c22", "classes": {"helped_both_OK": 8, "helped_intent_only_OK": 12, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 9}}
+ROW {"seed": 4, "eval": "c21", "classes": {"helped_both_OK": 8, "helped_intent_only_OK": 16, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 14}}
+ROW {"seed": 4, "eval": "c22", "classes": {"helped_both_OK": 8, "B_confirmed_intent_unassisted_slot_wrong__intent_only": 20, "helped_intent_only_OK": 14}}
+RES-FINAL {"peak_rss_mb_overall": 28.4, "wall_seconds": 6.6}
+DONE
