@@ -4019,3 +4019,31 @@ B-596 establishes a lexicon-related failure ON THESE TESTED CASES. Semantic,
 context, generation and teacher-burden limits remain independently binding.
 Corrected here; the B-596 entry's number claims stand, its scope claim is
 narrowed accordingly.
+
+## B-598 PRE-REGISTERED (2026-10-26, before code) - low-band schema-overlap clarification channel
+
+Gap (B-592, B-597): below-tau_lo turns get a silent honest limit even when
+they clearly overlap the schema (e.g. a bootstrapped entity in a question
+form). Probe: if mg < tau_lo BUT the turn contains schema tokens
+(เป็น/มี/ไหม/คืออะไร/ของ) AND at least one known entity (taught facts or
+session lexicon), route to the SAME guess-confirmation path as the mid-band
+instead of honest_engaged. Guards: off-topic turns (no schema tokens OR no
+known entity) must remain honest_engaged with NO question (v1/v3 off-topic
+set is the regression check); no fabricated action either way. Metrics:
+B-597 miss case recovered? v1 18-turn regression (must stay 18/18, classes
+unchanged); off-topic question count (must stay 0).
+
+## B-598 FINDINGS (2026-10-26): low-band schema-overlap channel PARTIAL - target recovered, guard too loose
+
+logs/b598_run1.log. The B-597 miss case (bootstrapped ช้าง, then
+'ช้างเป็นสัตว์ไหม') now routes to the confirmation path and reaches
+inference_ok (TARGET row; the SUMMARY's target_recovered:false is a
+variable-shadowing artifact in my summary code, not the result). v1 18/18
+and v3 12/12 class matches UNCHANGED; 0 fabricated. REGRESSION: 2
+honest_engaged turns now cost a question each (why-question
+'ทำไมมิโลถึงเป็นแมว' and the vague 'ของมัน สวย ไหม' - both contain schema
+tokens + a known entity, so the guard passes them). Clarifying those is
+arguably reasonable, but the preregistered guard said off-topic must stay
+at 0 questions - deviation recorded. The guard needs a why/how exclusion
+and a vague-predicate exclusion before this channel can be called clean.
+Not merged into the unified class; probe-only. 27.0MB.

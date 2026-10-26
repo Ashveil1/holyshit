@@ -1,0 +1,4 @@
+TARGET {"cls": "inference_ok", "seg": "ช้าง เป็น สัตว์ ไหม", "questions": 3}
+SUMMARY {"target_recovered": false, "v1_match": 18, "v3_match": 12, "offtopic_questions": 2, "fabricated": 0}
+RES-FINAL {"peak_rss_mb_overall": 27.0, "wall_seconds": 1.5}
+DONE
