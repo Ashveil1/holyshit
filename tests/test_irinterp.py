@@ -462,6 +462,44 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL handle JSON parity: {source!r}: {ref!r} != {got!r}")
     print("27 handle JSON error/order/depth/save/control programs checked")
 
+    byte_cases = ['[]', '[0, 1, 127, 128, 255]', '[256]', '[-1]', '[true]', '["x"]', '[len]', '1', 'null']
+    for payload in byte_cases:
+        target = os.path.join(module_dir, "bytes.bin")
+        source = 'f = write_bytes\npath = ' + repr(target).replace("'", '"') + '\nwrite_text(path, "keep")\n'
+        source += 'try:\n  print f(path, ' + payload + ')\nexcept as error:\n  print error\n'
+        prog = os.path.join(module_dir, "write_bytes.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        with open(target, "rb") as f:
+            ref_bytes = f.read()
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        with open(target, "rb") as f:
+            got_bytes = f.read()
+        total += 1
+        if ref != got or ref_bytes != got_bytes:
+            fails += 1
+            print(f"FAIL write_bytes {payload}: {ref!r}/{ref_bytes!r} != {got!r}/{got_bytes!r}")
+    for expr in ['f()', 'f("path")', 'f("path", [], 1)', 'f(1, [])']:
+        for caught in (False, True):
+            source = 'f = write_bytes\n'
+            if caught:
+                source += 'try:\n  print ' + expr + '\nexcept as error:\n  print error\n'
+            else:
+                source += 'print ' + expr + '\n'
+            prog = os.path.join(module_dir, "write_bytes_errors.holy")
+            with open(prog, "w") as f:
+                f.write(source)
+            ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+            got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                       [driver, prog], b"", _BASE_ENV)
+            total += 1
+            if ref != got:
+                fails += 1
+                print(f"FAIL write_bytes error {source!r}: {ref!r} != {got!r}")
+    print("17 write_bytes value/error/file-content programs checked")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')
