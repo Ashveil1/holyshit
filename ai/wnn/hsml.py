@@ -42,6 +42,8 @@ GUARD_WORDS = frozenset(['ไหม', 'มั้ย', 'หรือ', 'ใช่
 # question STEMS match by prefix: Thai glues them to nouns ('กี่ลักษณะ' is one token -
 # run-1 of b544 caught exact-matching missing it). Designed heuristic, named limits:
 # a legitimately taught word starting with a question stem would be refused too.
+PRONOUNS_TH = frozenset(['มัน', 'เขา', 'หล่อน'])  # B-559
+
 GUARD_STEMS = ('กี่', 'เท่าไหร่', 'เท่าไหร', 'ทำไม', 'เมื่อไหร่', 'ที่ไหน', 'ใคร', 'อย่างไร', 'อะไร')
 
 def _guarded(w):
@@ -92,11 +94,79 @@ class HSML:
         self.assoc = assoc.Assoc()  # B-558: derived index, rebuilt from live store at proposal time
         self.assoc_fallback = assoc_fallback  # B-558 v4: opt-in only; default keeps pre-B-558 exact-frame + abstain behavior
         self.induce_cap = None  # None -> b529 default; B-534 Amendment 1 sets a bounded cap for C6
+        # B-559 (DESIGNED, named): dialogue referent state for pronoun resolution.
+        # current_topic = the single subject of the most recent unambiguous turn;
+        # last_turn_topics = distinct subjects mentioned in the immediately previous turn
+        # (>1 means the previous turn was multi-topic -> a following pronoun must clarify).
+        self.current_topic = None
+        self.last_turn_topics = []
+        self._turn_subjects = []
 
     def _rec(self, sentence, kind, source, **extra):
         self.log.append({'in': sentence, 'kind': kind, 'source': source, **extra})
+        # B-559: topic tracking for pronoun resolution. Subjects come from recorded
+        # store/query events only; is-a OBJECTS (categories) are never collected.
+        if kind in ('observed', 'isa_stored', 'attr_list', 'yesno', 'reverse_query',
+                    'reverse_query_en'):
+            subj = extra.get('name') or extra.get('x')
+            if subj:
+                self._turn_subjects.append(subj)
 
     def hear(self, sentence):
+        # B-559 (ALL DESIGNED, named): wrapper handling discourse particle + pronouns.
+        s = sentence.strip()
+        if s.startswith('แล้ว '):  # B-559: discourse particle
+            s = s[len('แล้ว '):].strip()
+        toks = s.split()
+        self._turn_subjects = []
+        # Query-only gate (B-559 design refinement, recorded in LEDGER): pronoun
+        # resolution applies to QUESTION frames only. Pronoun-initial statements
+        # ('เขา มี ปลู๊ก') keep base behavior (literal entity) so teaching is not
+        # hijacked - pronouns stay usable as ordinary names in teaching frames.
+        is_query = (toks[-1] in ('ไหม', 'มั้ย', 'หรือ', 'ใช่ไหม')
+                    or re.fullmatch(r'\S+ มี อะไร ?บ้าง', s) is not None)
+        if len(toks) >= 2 and toks[0] in PRONOUNS_TH and is_query:
+            bind, clarify = self._resolve_pronoun()
+            if bind is None:
+                self._rec(s, 'anaphora_abstain', 'dialog', cands=clarify)
+                text = ('หมายถึง ' + ' หรือ '.join(clarify) + ' ไหม') if clarify else 'ยังไม่ทราบว่าหมายถึงใคร'
+                return {'kind': 'anaphora_abstain', 'text': text, 'source': 'dialog',
+                        'candidates': clarify}
+            pron = toks[0]
+            s2 = bind + s[len(pron):]
+            r = self._hear_core(s2)
+            self._rec(s, 'anaphora_resolved', 'dialog', pronoun=pron, bound=bind,
+                      inner_kind=r.get('kind'))
+            r = dict(r)
+            r['via_anaphora'] = f'{pron} -> {bind}'
+            self._end_turn_topics()
+            return r
+        r = self._hear_core(s)
+        self._end_turn_topics()
+        return r
+
+    def _resolve_pronoun(self):
+        """B-559: bind มัน/เขา/หล่อน. Abstain+clarify when the previous turn named
+        several subjects (multi-topic). Never binds is-a objects/categories: only
+        subjects recorded by _rec are candidates. Designed heuristic, named limits."""
+        if self.last_turn_topics and len(self.last_turn_topics) > 1:
+            return None, list(self.last_turn_topics)
+        if self.current_topic is not None:
+            return self.current_topic, None
+        return None, []
+
+    def _end_turn_topics(self):
+        distinct = []
+        for t in self._turn_subjects:
+            if t not in distinct:
+                distinct.append(t)
+        if len(distinct) == 1:
+            self.current_topic = distinct[0]
+            self.last_turn_topics = distinct
+        elif len(distinct) > 1:
+            self.last_turn_topics = distinct
+
+    def _hear_core(self, sentence):
         s = sentence.strip()
         m = NAME_RE.fullmatch(s)
         if m:
@@ -195,7 +265,7 @@ class HSML:
         # A sentence with attr content but no designed frame abstains honestly.
         # B-543 (DESIGNED, named): reverse query 'X มี อะไรบ้าง' - checked BEFORE the
         # statement frames so 'อะไรบ้าง' can never be stored as an attribute.
-        mrev = re.fullmatch(r'(\S+) มี อะไรบ้าง', s)
+        mrev = re.fullmatch(r'(\S+) มี อะไร ?บ้าง', s)  # B-559: tolerate 'อะไร บ้าง' at frame-match level only (never touches multiword content)
         if mrev is not None:
             name = mrev.group(1)
             attrs = self._attrs_of_any(name)
@@ -325,6 +395,22 @@ class HSML:
                 return {'kind': 'isa_retracted', 'text': 'ลบแล้ว', 'source': 'dialog'}
             self._rec(s, 'nothing_to_retract', 'dialog', x=x, y=y)
             return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'dialog'}
+        # B-559 (ALL DESIGNED, named): is-a yes/no question 'X เป็น Y ไหม'.
+        # Answers via a live cycle-safe chain walk with provenance path:
+        # taught/transitive -> ใช่ (+path); nothing found -> ไม่รู้ (absence != false,
+        # B-544 philosophy; is-a has no negative-evidence store, recorded scope limit).
+        misay = re.fullmatch(r'(\S+) เป็น (\S+) ไหม', s)
+        if misay is not None:
+            x, y = misay.group(1), misay.group(2)
+            if _guarded(x) or _guarded(y):
+                self._rec(s, 'abstain', 'isa_guard'); return {'kind': 'abstain', 'text': None, 'source': 'isa_guard'}
+            path = self._isa_path(x, y)
+            self._rec(s, 'isa_yesno', 'dialog', x=x, y=y, found=path is not None, path=path)
+            if path is not None:
+                text = 'ใช่' if len(path) == 2 else 'ใช่ เพราะ ' + ' เป็น '.join(path)
+                return {'kind': 'isa_yesno', 'text': text, 'source': 'dialog',
+                        'answer': 'yes', 'path': path}
+            return {'kind': 'isa_yesno', 'text': 'ไม่รู้', 'source': 'dialog', 'answer': 'unknown'}
         en_maybe = re.fullmatch(r'[Mm]aybe (.+)', s)
         if en_maybe is not None and re.fullmatch(r'(?:[Aa] |[Aa]n |[Tt]he )?\S+ has (?:[Aa] |[Aa]n |[Tt]he )?[A-Za-z]\S*(?: and (?:[Aa] |[Aa]n |[Tt]he )?[A-Za-z]\S*)?', en_maybe.group(1)):
             self._rec(s, 'uncertain_not_stored', 'dialog')
@@ -445,6 +531,21 @@ class HSML:
                         'not_found': [a for a in attrs if a not in gone]}
             return {'kind': 'nothing_to_retract', 'text': 'ไม่มีอะไรให้ลบ', 'source': 'attr',
                     'name': name, 'asked': attrs}
+        # B-559 (ALL DESIGNED, named): compound teaching 'clause และ clause ...'.
+        # Runs ONLY when no designed frame above matched (noninterference by placement).
+        # Segmentation prefers the LONGEST frame-matching clause so existing attr
+        # conjunctions ('X มี A และ B') stay single stores. Per-clause rules
+        # (pre-registered): uncertain-marked clause is never stored; a clause that
+        # matches no full frame is never stored (no fragment stores); the reply
+        # always names what was stored and what was skipped.
+        if ' และ ' in s:
+            parts = s.split(' และ ')
+            if len(parts) >= 2:
+                segs = self._compound_segment(parts)
+                actions = [a for _, a in segs]
+                doable = [a for a in actions if a is not None and a[0] != 'skip_uncertain']
+                if doable:
+                    return self._compound_exec(s, segs)
         # B-558 (EXPERIMENTAL, route A, pre-registered): bounded associative layer.
         # Fires ONLY when no designed frame matched. The index is rebuilt from the
         # LIVE store at proposal time (measured cheap at this scale, b558 C6) so it
@@ -459,6 +560,124 @@ class HSML:
                 return alt
         self._rec(s, 'abstain', 'unrouted')
         return {'kind': 'abstain', 'text': None, 'source': 'unrouted'}
+
+    def _clause_action(self, cl):
+        """B-559: classify one compound clause into an executable action WITHOUT
+        mutating. Returns ('isa', x, y) | ('isa_retract', x, y) |
+        ('attrs', name, attrs) | ('attrs_retract', name, attrs) |
+        ('skip_uncertain',) | None (no full frame match -> never stored)."""
+        toks = cl.split()
+        if any(t in UNCERTAIN_TH for t in toks):
+            return ('skip_uncertain',)
+        m = re.fullmatch(r'(\S+) เป็น (\S+)', cl)
+        if m is not None:
+            x, y = m.group(1), m.group(2)
+            if x != y and not _guarded(x) and not _guarded(y):
+                return ('isa', x, y)
+            return None
+        m = re.fullmatch(r'ไม่ใช่ (\S+) เป็น (\S+)', cl)
+        if m is not None:
+            return ('isa_retract', m.group(1), m.group(2))
+        st = _parse_statement(cl)
+        if st is not None:
+            name, attrs = st
+            if _guarded(name) or any(_guarded(a) for a in attrs):
+                return None  # guarded content is never stored via compound either
+            return ('attrs', name, attrs)
+        ng = _parse_negation(cl)
+        if ng is not None:
+            return ('attrs_retract', ng[0], ng[1])
+        return None
+
+    def _compound_segment(self, parts):
+        """B-559: segment ' และ '-joined parts into clauses, preferring the LONGEST
+        frame-matching clause at each position (keeps 'X มี A และ B' one store).
+        Uncertainty is judged per single part, never across a merged span."""
+        segs = []
+        i = 0
+        while i < len(parts):
+            best = None
+            for j in range(len(parts), i, -1):
+                txt = ' และ '.join(parts[i:j])
+                a = self._clause_action(txt)
+                if a is not None and a[0] != 'skip_uncertain':
+                    best = (txt, a, j)
+                    break
+            if best is not None:
+                segs.append((best[0], best[1]))
+                i = best[2]
+            else:
+                if any(t in UNCERTAIN_TH for t in parts[i].split()):
+                    segs.append((parts[i], ('skip_uncertain',)))
+                else:
+                    segs.append((parts[i], None))
+                i += 1
+        return segs
+
+    def _compound_exec(self, s, segs):
+        """B-559: execute segmented compound actions in order. Each stored clause is
+        recorded (compound_clause) so the reply can name stored vs skipped honestly."""
+        stored, skipped = [], []
+        for txt, a in segs:
+            if a is None:
+                skipped.append((txt, 'ไม่เข้าเฟรม'))
+                continue
+            if a[0] == 'skip_uncertain':
+                skipped.append((txt, 'ไม่แน่ใจ'))
+                continue
+            if a[0] == 'isa':
+                self._isa().setdefault(a[1], set()).add(a[2])
+                self._rec(txt, 'compound_clause', 'dialog', x=a[1], action='isa_stored')
+                stored.append(txt)
+            elif a[0] == 'isa_retract':
+                isa = self._isa()
+                if a[2] in isa.get(a[1], set()):
+                    isa[a[1]].discard(a[2])
+                    if not isa[a[1]]:
+                        del isa[a[1]]
+                    self._rec(txt, 'compound_clause', 'dialog', x=a[1], action='isa_retracted')
+                    stored.append(txt + ' (ลบ)')
+                else:
+                    skipped.append((txt, 'ไม่มีอะไรให้ลบ'))
+            elif a[0] == 'attrs':
+                self.mem.attrs.observe_pairs(a[1], a[2])
+                self._rec(txt, 'compound_clause', 'dialog', name=a[1], action='observed')
+                stored.append(txt)
+            elif a[0] == 'attrs_retract':
+                gone = []
+                for sw in self._synonyms(a[1]):
+                    gone += [x for x in self.mem.attrs.unobserve(sw, a[2]) if x not in gone]
+                self._rec(txt, 'compound_clause', 'dialog', name=a[1], action='retracted', retracted=gone)
+                if gone:
+                    stored.append(txt + ' (ลบ)')
+                else:
+                    skipped.append((txt, 'ไม่มีอะไรให้ลบ'))
+        # Topic tracking for pronoun resolution (pre-registered chain rule):
+        # a run of is-a clauses where each subject equals the previous object is a
+        # definition chain -> only the chain head becomes the topic (never the
+        # category). Otherwise every stored clause's subject is a topic.
+        isa_seq = [a for _, a in segs if a is not None and a[0] in ('isa', 'isa_retract')]
+        others = [a for _, a in segs if a is not None and a[0] in ('attrs', 'attrs_retract')]
+        topics = []
+        if isa_seq:
+            chain = all(isa_seq[i + 1][1] == isa_seq[i][2] for i in range(len(isa_seq) - 1))
+            if chain:
+                topics.append(isa_seq[0][1])
+            else:
+                topics += [a[1] for a in isa_seq]
+        topics += [a[1] for a in others]
+        self._turn_subjects = []
+        for t in topics:
+            if t not in self._turn_subjects:
+                self._turn_subjects.append(t)
+        if not stored:
+            self._rec(s, 'compound_nothing_stored', 'dialog')
+            return {'kind': 'abstain', 'text': None, 'source': 'compound_nothing_stored'}
+        text = f'จำไว้แล้ว {len(stored)} ข้อ'
+        if skipped:
+            text += ' ข้าม: ' + ' / '.join(t for t, _ in skipped)
+        return {'kind': 'compound_stored', 'text': text, 'source': 'dialog',
+                'stored': stored, 'skipped': [t for t, _ in skipped]}
 
     def _assoc_rebuild(self):
         """B-558: rebuild the associative index from the live store. Surfaces =
@@ -545,6 +764,36 @@ class HSML:
             d = {}
             self.mem.isa = d
         return d
+
+    def _isa_path(self, x, y):
+        """B-559: shortest child->parent path from x to y over the LIVE is-a graph
+        (synonyms of x included as starting points, B-553). Cycle-safe (visited set),
+        depth-capped at 8 like _parents_any. Returns [x,...,y] or None."""
+        seen = set(self._synonyms(x))
+        prev = {}
+        frontier = sorted(seen)
+        for _ in range(8):
+            if y in seen:
+                break
+            nxt = set()
+            for w in frontier:
+                for p_ in sorted(self._isa().get(w, ())):
+                    if p_ not in seen:
+                        seen.add(p_)
+                        prev[p_] = w
+                        nxt.add(p_)
+            frontier = sorted(nxt)
+            if not frontier:
+                break
+        if y not in seen:
+            return None
+        path = [y]
+        while path[-1] in prev:
+            path.append(prev[path[-1]])
+        path.reverse()
+        if path and path[0] != x and len(path) > 1:
+            path[0] = x  # display the asked surface; the hop is via its synonym (B-553)
+        return path
 
     def _parents_any(self, name):
         """B-554: BFS over is-a parents of name and its synonyms. Depth cap 8,
