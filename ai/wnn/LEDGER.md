@@ -3353,3 +3353,32 @@ surfacing inside the helped set, matching the 35-39% wrong-execution rate.
   ambiguous, context-dependent fillers, so none of these numbers transfer
   directly to natural chat. The earlier superseded conditional comparison
   (B-578 G3) remains withdrawn; B-579's matched counts are the record.
+
+## B-581 PRE-REGISTERED (2026-10-26, before code) - dev-calibrated slot tau (standalone; the originally preregistered variant)
+
+Implements the B-578 prereg as written: slot acceptance requires >=1 prior
+confirmed example for (intent,role) AND scorer margin >= SLOT_TAU, where
+SLOT_TAU is calibrated on the AUTHORED dev split: the simulated teacher
+loop runs over dev first (seen templates), and SLOT_TAU is the tightest
+margin threshold with dev wrong-slot-accepts <=5% (if none, tightest
+available and G1 fails). Everything else frozen from B-578 run1. Standalone
+arm: NO burden-reduction mechanism mixed in. INSPECTED cells, simulated
+teacher, single-token synthetic slots (applicability caveat stands).
+Gates (fixed before code): G1 wrong-execution <=5% of executed, each cell.
+G2 question burden second half <= half of first half. G3 all-item
+unassisted-correct > static all-item joint, each cell (all-item vs
+all-item, B-579 discipline). Report matched-set conditional numbers
+alongside. Fail -> null, no automatic continuation.
+Resources unchanged.
+
+## B-582 PRE-REGISTERED (2026-10-26, before code) - cross-session persistence probe
+
+Simulates a session break: after streaming cell c22 with teacher (B-578
+run1 protocol), the learned state (intent mapper counts + span-scorer
+counts) is SERIALIZED (pickle to /tmp) and REBUILT in a fresh process-like
+state; then (a) unassisted correctness is measured on FRESH items of the
+taught families (same generators, new rng draws - authored), and (b) after
+streaming a second cell of NEW families, session-1 families are re-tested
+(interference check). No gate; measurement. Disclosed limits: same
+generators/vocab, so persistence here is not evidence of natural-language
+retention. Resources unchanged.
