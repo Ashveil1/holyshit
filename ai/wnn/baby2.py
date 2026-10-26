@@ -1,4 +1,4 @@
-"""BABY2: two-caregiver version of Ash's experiment. Two scripted speakers (A,B) talk to EACH OTHER about a shared
+"""BABY2: two-caregiver version of the requester's experiment. Two scripted speakers (A,B) talk to EACH OTHER about a shared
 simulated scene; the baby (from-scratch Hebbian associative learner, no pretrained anything) overhears. Once the baby
 babbles words, caregivers reply contingently (correct word -> 'ใช่ <word>' + association boost; wrong -> 'ไม่ใช่' + penalty)
 = Turing's reward channel on top of the language channel.

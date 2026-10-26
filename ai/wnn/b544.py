@@ -1,5 +1,5 @@
 """B-544: storage safety - questions are not facts + three-way yes/no questions.
-LEDGER pre-reg 2026-10-25 (parent greenlight after eval_ash3 baseline).
+LEDGER pre-reg 2026-10-25 (review greenlight after eval_ash3 baseline).
 S1: guards + nonmutation + ordinary learning + yes/no three-way + save.
 S2: fresh-process round-trip of negative evidence + re-teach clearing.
 S3: noninterference (corpus battery + seeded skills)."""

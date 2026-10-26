@@ -1,4 +1,4 @@
-"""B-558 adversarial dev controls (parent review 2026-10-26): exact-substring name
+"""B-558 adversarial dev controls (review review 2026-10-26): exact-substring name
 anchoring collision classes. Reports wrong-but-stored answers (true stored fact,
 question misread) SEPARATELY from fabricated facts (content not in store).
 Classes: A nested names, B negation/uncertainty phrasing, C multi-entity,
@@ -12,7 +12,7 @@ def check(cid, cond, detail):
     print(('PASS' if cond else 'FAIL'), cid, '' if cond else str(detail)[:200], flush=True)
     if not cond: FAILS.append(cid)
 
-h = HSML(seed=0, assoc_fallback=True)  # B-558 harnesses explicitly opt into the EXPERIMENTAL layer (parent direction 2026-10-26: never default); probes byte-identical
+h = HSML(seed=0, assoc_fallback=True)  # B-558 harnesses explicitly opt into the EXPERIMENTAL layer (review direction 2026-10-26: never default); probes byte-identical
 # setup: nested names + normal facts
 h.hear('กา มี จิ๊บ'); h.hear('กาโตะ มี ซ็อก'); h.hear('นก มี ปีก'); h.hear('วินนี่ มี โบ้')
 

@@ -1,4 +1,4 @@
-"""B-523: root-cause + fix for impossible-combination lookup (Ash follow-up to B-522 T2 FAIL).
+"""B-523: root-cause + fix for impossible-combination lookup (the requester follow-up to B-522 T2 FAIL).
 Part 1 verifies the mechanism (per-attribute decomposition of empty-pair top scores).
 Part 2 replaces additive lookup with a three-way decision over the SAME learned counts:
 UNKNOWN (word never taught anywhere) / NO MATCH (not taught together) / AMBIGUOUS (full

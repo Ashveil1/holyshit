@@ -1,4 +1,4 @@
-"""Clean-process skill-execution regression (parent direction 2026-10-25).
+"""Clean-process skill-execution regression (review direction 2026-10-25).
 Simulates a rebuilt workspace: hides /tmp/c7_prog_0_base.json, then in a FRESH subprocess
 derives the skill store (cache allowed) and executes every skill on ground-truth probes
 plus a 40-query sentence-path spot check per skill. Also covers the missing-pinning error
@@ -31,7 +31,7 @@ if mode == 'clean':
         res[task] = f'{ok}/{n}'
     print(json.dumps(res))
 elif mode == 'nopin':
-    # both pinning sources hidden (repo copy renamed by parent) -> clear RuntimeError expected
+    # both pinning sources hidden (repo copy renamed by review) -> clear RuntimeError expected
     try:
         derive_skills(load_logged())
         print(json.dumps({'error': 'NO ERROR - pinning dependency not actually required?'}))

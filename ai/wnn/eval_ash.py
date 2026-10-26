@@ -1,4 +1,4 @@
-"""eval_ash.py - fresh, revealing evaluation of current hsml for Ash (2026-10-25).
+"""eval_ash.py - fresh, revealing evaluation of current hsml for the requester (2026-10-25).
 NOT a replay of curated batteries: new content throughout. NO code change precedes
 this baseline - the current implementation is the subject. Every utterance + the
 system's LITERAL response (kind/text/source) is logged; failures preserved."""

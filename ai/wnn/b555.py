@@ -24,11 +24,11 @@ check('C2', r['kind'] == 'attr_list' and r['text'] == 'แพลท มีจา
 hear('ดร็อป มี โพล่'); hear('ดร็อป เป็น วินท์')
 r = hear('ดร็อป มี อะไรบ้าง')
 check('C3', r['kind'] == 'attr_list' and r['text'] == 'ดร็อป มี โพล่', r)
-# C4: two ancestors, BFS order (parent before grandparent)
+# C4: two ancestors, BFS order (review before grandparent)
 hear('วินท์ เป็น ควอลท์'); hear('ควอลท์ มี เมิร์ก')
 r = hear('มอล์ท มี อะไรบ้าง')
 check('C4', r['kind'] == 'attr_list' and r['text'] == 'มอล์ท มี กริบ และจาก วินท์: โพล่ และจาก ควอลท์: เมิร์ก', r)
-# C5: retract parent attr -> inherited group disappears
+# C5: retract review attr -> inherited group disappears
 hear('ไม่ใช่ วินท์ มี โพล่')
 r = hear('แพลท มี อะไรบ้าง')
 check('C5', r['kind'] == 'attr_list' and r['text'] == 'แพลท มีจาก ควอลท์: เมิร์ก', r)

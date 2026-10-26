@@ -1,4 +1,4 @@
-"""eval_ash2: FRESH end-to-end evaluation of the vocabulary/fact-learning fix for Ash
+"""eval_ash2: FRESH end-to-end evaluation of the vocabulary/fact-learning fix for the requester
 (request 2026-10-25 13:18 'ทดสอบเลย'). ALL-NEW content (no hawk/wings replay).
 Entry point: HSML.hear (the real conversation entry). One continuous conversation,
 then a FRESH-PROCESS reload for persistence evidence. No code changes before/during.
