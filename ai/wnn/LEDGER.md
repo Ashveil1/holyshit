@@ -3188,3 +3188,13 @@ on unseen templates the SLOT side dominates end-to-end failure - even
 zero-wrong-intent gating leaves 74-92% of acted items not fully correct.
 Intent gating alone cannot deliver correct actions; slot acquisition on new
 phrasings is the binding constraint.
+
+## SLOT-TEACHING DESIGN (2026-10-26, planning only)
+
+See SLOT_TEACHING_DESIGN.md. Concrete natural exchange (paraphrase-choice
+intent question, per-slot yes/no-or-pick confirmations, never role names),
+exact teacher information (intent choice + span confirmations/picks/retyped
+values), roles SUPPLIED as the action API while span-to-role mapping is
+LEARNED from confirmation labels, containment via per-slot confidence gates
+and one targeted question per uncertain slot. Implementation NOT started;
+awaits direction.
