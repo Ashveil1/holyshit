@@ -3198,3 +3198,37 @@ values), roles SUPPLIED as the action API while span-to-role mapping is
 LEARNED from confirmation labels, containment via per-slot confidence gates
 and one targeted question per uncertain slot. Implementation NOT started;
 awaits direction.
+
+## B-578 PRE-REGISTERED (2026-10-26, before code) - slot-teaching feasibility prototype
+
+Bounded standalone feasibility prototype of SLOT_TEACHING_DESIGN.md (parent-
+authorized 2026-10-26). NOT production integration. Streamed INSPECTED
+cells c21/c22, authored SIMULATED teacher (establishes correctness only
+inside the stated simulation), frozen NBu intent mapper + frozen extractor
+as candidate proposer.
+SUPPLIED (designed): role inventory per intent, candidate generator = all
+contiguous token spans of length <=5, confidence gates, dialogue shape.
+LEARNED: span-to-role scorer (NBu-style counts over span features: span
+tokens, length, start/end position, distance to intent marker), trained
+only on teacher confirmation labels. Roles never learned from scratch.
+FLOW per utterance: (1) intent: act-tier if margin >= B-574 precision tau,
+else ONE intent question (teacher supplies intent). (2) per required slot:
+if >=1 prior confirmed example for (intent,role) AND scorer margin >=
+dev-calibrated slot tau -> accept UNASSISTED; else propose top candidate,
+teacher yes/no, up to 3 offered spans, then RETYPE (teacher supplies exact
+value; if gold span absent from candidates the retype path is mandatory and
+counted - no privileged span access). (3) EXECUTE only when intent and ALL
+required slots are unassisted-accepted or teacher-confirmed; execution is
+correct iff joint gold match. No automatic execution of uncertain actions.
+METRICS (exact denominators, reported together): intent questions, slot
+yes/no questions, offer rounds, retypes, executed, wrong-execution,
+abstentions (0 by construction with an always-answering simulated teacher -
+disclosed), unassisted vs teacher-confirmed split (confirmed answers NEVER
+count as learned transfer), first-half vs second-half question burden,
+retention probe (unassisted re-predict of taught items after the stream).
+SUCCESS CRITERIA (fixed before code): G1 wrong-execution <=5% of executed,
+each cell (5-seed totals). G2 second-half question burden <= half of
+first-half (learning happens). G3 unassisted-executed joint >= static-M0
+all-item joint, each cell. Fail -> null, no automatic continuation.
+Resources: pure-Python, 1e9-byte live watchdog, 10-min timeout, seeds 0-4,
+no pretrained, no paid, no personal dialogue.
