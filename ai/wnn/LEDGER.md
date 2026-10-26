@@ -2585,3 +2585,55 @@ Honest scope: joint .13-.30 on authored new phrasings remains far from usable;
 these are measured failures in these setups, not the general-language wall.
 Hygiene: b562_diag/b564/b565 now import-safe (main guards added, standalone
 behavior unchanged).
+
+## CONSOLIDATION (2026-10-26) - learned-language line on the frozen protocol (b_consol.py; parses logs only, no re-scoring)
+
+Frozen protocol: 8 intents; train 64/seed (8/intent); evals 64 each (8/intent):
+frozen (INSPECTED many rounds - reference only), newtmpl (INSPECTED once),
+fresh3 (authored at B-565, unfamiliar entity set #2). Mapper S1 uniform-prior
+NB frozen since B-564. B-562 numbers are GATED (abstention) protocol; B-565
+numbers are raw-argmax; never mixed. Regenerate: python3 b_consol.py.
+
+B-562 gated (frozen eval, 5-seed means): best joint nb k=8 .0906, t2p k=8
+.0844, nn1 k=4 .0625; wnn .019-.044; frames .072 / majority .125 intent floor.
+B-565 raw-argmax S3->S4 paired per-seed deltas (joint):
+- frozen:  +.093 +.062 +.079 -.016 +.110 (mean .153->.219; 4/5 up)
+- newtmpl: +.172 +.125 +.141 +.062 +.125 (mean .000->.125; 5/5 up, from zero)
+- fresh3:  +.063 -.031 +.016 -.047 +.031 (mean .225->.231; 3/5 up, mixed)
+slot_exact_on_correct: frozen .327->.467, newtmpl .000->.271, fresh3 .464->.477.
+wrong_action identical S3/S4 per seed (same mapper; 28-41/64). abstain_gated
+reported separately per row, never in accuracy.
+
+Resource workload (measured this consolidation): one full b565 run (5 seeds x
+3 evals x 2 extractors) peak RSS 12.9 MB, ~7s wall in this sandbox - the
+whole sweep is 3 orders of magnitude under the <=1GB total-runtime goal;
+the goal is not yet stressed by this line.
+
+Learned vs engineered in the current best extractor (S4) - disclosure:
+- LEARNED from train only: cross-intent function-ness counts; anchor-offset
+  likelihood table; slot arity per intent; role-position stats (pooled).
+- ENGINEERED (fixed by design): the >=2-intent function threshold; candidate
+  selection + role assignment algorithm; leftover fallback ordering; the
+  dev-frozen abstention gate.
+
+Error taxonomy driving the next round (B-565 leak anatomy, fresh3): role
+swaps on unfamiliar fillers dominate; unseen-particle leaks minor.
+
+## B-566 PRE-REGISTERED (2026-10-26, before code) - is role assignment LEARNED better than POSITIONAL? (bounded, from taxonomy)
+
+Question: on unseen fillers/templates, does learned role assignment beat a
+simple positional baseline - with NO test-label access anywhere?
+Arms (all train-only statistics, same frozen mapper/evals/protocol):
+  A0 positional: slots assigned to roles by surface order (zero learning).
+  A1 pooled role-position stats (current S4 - known to conflict cross-intent).
+  A2 per-intent role-position stats + positional fallback for unseen fillers.
+Frozen evals only: frozen/newtmpl/fresh3, all labeled INSPECTED; NO new
+author-generated sets this round. Metrics: joint, slot_exact_on_correct,
+role-swap count on unseen-filler items; per-seed paired deltas.
+Gates (stated before code):
+  G1: A2 mean joint >= A0 + 3 points on newtmpl AND fresh3, with >=4/5
+      per-seed deltas non-negative vs A0 (learned must beat position).
+  G2: frozen joint not worse than A0 by >3 points on any seed mean.
+  If A2 ~= A0: honest null - role learning adds nothing over position in
+  these setups; record and keep the simpler arm. No production integration
+  under any outcome.
