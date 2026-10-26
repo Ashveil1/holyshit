@@ -3702,3 +3702,54 @@ words degrade gracefully to teachable UNK spans. TRUE ambiguity (เขา
 pronoun/horn class) is out of reach of this component and would surface as
 clarification questions downstream (containment, not understanding).
 Resources: 26.7MB, 1.1s.
+
+## B-590 PRE-REGISTERED (2026-10-26, before code) - reference recency + ask-on-ambiguity component
+
+Supplied engineered context handling (labeled as such, per review): a
+recency stack of mentioned entities (pushed on every acted turn); 'มัน'
+resolves to the single most recent entity; ZERO or 2+ plausible candidates
+-> ask a specific question. NOT learned; not claimed as understanding.
+Probe on the B-584 scenario EXTENDED with 4 reference turns (authored,
+development evidence): post-teach anaphora, no-context anaphora (must
+ask), ambiguous two-entity anaphora (must ask), resolved-then-inference.
+The original anaphora turn's expected class changes from ask_needed to
+answer_ok (honest limit on the unknown predicate) - comparability note:
+extension v2, not comparable to the v1 18-turn score as a single number.
+Metrics: per-turn matches, questions, fabricated actions (must be 0).
+
+## B-590 FINDINGS (2026-10-26): recency resolution works on the extended scenario (9/10); two label corrections recorded
+
+Runs: logs/b590_run1.log (too-strict ambiguity rule), logs/b590_run2.log
+(recency-ranked resolution: most recent mention; ask only with ZERO
+candidates). Script b590.py. AUTHORED v2 scenario (10 turns, development
+evidence; NOT comparable to the v1 18-turn score).
+Run2: 9/10. Post-teach anaphora ('มัน เป็น สัตว์ ไหม' -> แมว -> inference)
+RESOLVES AND ANSWERS; resolved-but-unknown-predicate ('มัน กิน ปลา ไหม')
+gets an honest limit; 0 fabricated.
+- LABEL CORRECTION 1 (recorded, not rewritten): my authored expectation
+  for 'มัน เป็น สัตว์เลี้ยง ไหม' was wrong - นก เป็น สัตว์ does not entail
+  สัตว์เลี้ยง, so the honest 'unknown' (answer_ok) IS correct; expectation
+  relabeled with this note.
+- Remaining miss: 'ของมัน สวย ไหม' resolves to the last entity and falls
+  to honest_engaged instead of a targeted question (routing nuance;
+  defensible but not the authored expectation).
+- Run1 lesson recorded: asking on every multi-entity context is unusable
+  (all anaphora turns became questions).
+- SUPPLIED engineered context handling, not learned understanding; burden
+  still 8 questions/10 turns and the guess-confirmation was exactly right
+  0/8 - the mid-band guess quality is the main residual UX cost.
+Resources: 27.3MB, 1.1s.
+
+## B-591 PRE-REGISTERED (2026-10-26, before code) - example-pair definitions (Wang-style, minimal)
+
+User teaches a pattern by ONE PAIRED EXAMPLE: 'แมวตัวนี้ชื่อมิโลนะ เหมือน
+มิโล เป็น แมว' (surface form + canonical form). A SUPPLIED aligner finds
+differing token positions and compiles a pattern rule (surface template ->
+canonical template with variables). LEARNED: which rules exist (user-taught)
+- nothing induced; labeled supplied-rule compilation, not grammar learning.
+Probe (authored, development): teach 2 definitions, then test (a) NOVEL
+instances of the taught patterns (new entities) - should parse and act;
+(b) near-miss utterances differing in one FUNCTION token - should NOT
+fire (safety); (c) the same instance BEFORE definition - must not parse.
+Metrics: fire/no-fire correctness per case, questions, end-to-end action
+correctness when fired. No gate - feasibility assessment as planned (D).

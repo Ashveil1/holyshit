@@ -1,0 +1,13 @@
+TURN {"turn": "สวัสดี", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "questions_total": 0}
+TURN {"turn": "มิโล เป็น แมว", "expected": "teach_ok", "got": "teach_ok", "ok": true, "questions_total": 1}
+TURN {"turn": "แมว เป็น สัตว์", "expected": "teach_ok", "got": "teach_ok", "ok": true, "questions_total": 2}
+TURN {"turn": "มัน เป็น สัตว์ ไหม", "expected": "inference_ok", "got": "ask_needed", "ok": false, "questions_total": 2}
+TURN {"turn": "มัน กิน ปลา ไหม", "expected": "answer_ok", "got": "ask_needed", "ok": false, "questions_total": 2}
+TURN {"turn": "มิโล มี หาง", "expected": "teach_ok", "got": "teach_ok", "ok": true, "questions_total": 3}
+TURN {"turn": "ของมัน สวย ไหม", "expected": "ask_needed", "got": "ask_needed", "ok": true, "questions_total": 3}
+TURN {"turn": "นก เป็น สัตว์", "expected": "teach_ok", "got": "teach_ok", "ok": true, "questions_total": 4}
+TURN {"turn": "มัน เป็น สัตว์เลี้ยง ไหม", "expected": "inference_ok", "got": "ask_needed", "ok": false, "questions_total": 4}
+TURN {"turn": "วันนี้ อากาศ ดี มาก", "expected": "honest_engaged", "got": "honest_engaged", "ok": true, "questions_total": 5}
+SUMMARY {"match": 7, "turns": 10, "questions_total": 5, "yes": 0, "corrections": 5, "fabricated": 0}
+RES-FINAL {"peak_rss_mb_overall": 27.3, "wall_seconds": 1.1}
+DONE
