@@ -68,6 +68,15 @@ class InteractiveChat(ChatSpeaks):
         self.patterns = {}         # shape_key -> {'intent':.., 'status':'active'|'rejected'}
         self.patterns_proposed = set()
         self.pattern_awaiting = None   # (key, intent) proposed, awaiting yes/no
+        # B615: supplied intent-family alignment; cue strings come from
+        # gold-bootstrap learned anchors, not a manually enumerated route.
+        self.relation_family = {'teach_isa': 'isa', 'is_a_q': 'isa',
+                                'teach_attr': 'has', 'ask_attr': 'has',
+                                'retract_attr': 'remove'}
+        self.relation_cues = defaultdict(set)
+        for intent, family in self.relation_family.items():
+            if intent in anchor0:
+                self.relation_cues[anchor0[intent]].add(family)
         self.writes = 0                # every mutating commit (incl. re-writes)
         self.write_attempts = 0        # mutating _commit entries, including idempotent ones
 
@@ -176,6 +185,33 @@ class InteractiveChat(ChatSpeaks):
                 if t not in self.grammar and t not in sl
                 and t not in ('มัน', 'ของมัน')]
 
+    def _candidate_slots(self, s, intent):
+        slots = self._extract(s, intent)
+        if slots is not None:
+            return slots
+        family = self.relation_family.get(intent)
+        if family is None or B.NSLOTS.get(intent) != 2:
+            return None
+        peers = set()
+        for peer, pf in self.relation_family.items():
+            if pf != family or peer == intent or B.NSLOTS.get(peer) != 2:
+                continue
+            candidate = self._extract(s, peer)
+            if candidate is not None and not self._unparsed(s, candidate):
+                peers.add(tuple(candidate))
+        return next(iter(peers)) if len(peers) == 1 else None
+
+    def _relation_evidence(self, s):
+        families = set()
+        for token in s.split():
+            families.update(self.relation_cues.get(token, ()))
+        return families
+
+    def _relation_compatible(self, s, intent):
+        evidence = self._relation_evidence(s)
+        return not evidence or (len(evidence) == 1 and
+                                self.relation_family.get(intent) in evidence)
+
     def _try_confirm(self, s, exclude=()):
         """Offer a guess-confirmation for the best non-excluded intent
         whose slots extract, guarded by marker-word or known-entity.
@@ -189,9 +225,10 @@ class InteractiveChat(ChatSpeaks):
         unparsed = None
         for d, _sc in self._ranked(s):
             if d in exclude or d not in RESTATE: continue
+            if not self._relation_compatible(s, d): continue
             if restrict and q and d not in QINTENTS: continue
             if restrict and not q and d in QINTENTS: continue
-            sl = self._extract(s, d)
+            sl = self._candidate_slots(s, d)
             if sl is None or len(sl) != B.NSLOTS[d]: continue
             left = self._unparsed(s, sl)
             if left:
@@ -213,11 +250,14 @@ class InteractiveChat(ChatSpeaks):
 
     def _handle_classified(self, s, via=None, proposal_only=False):
         cat = via or 'unassisted'
+        if len(self._relation_evidence(s)) > 1:
+            self.q += 1
+            return 'ask_needed', 'ประโยคนี้มีความสัมพันธ์หลายแบบ ช่วยแยกถามหรือสอนทีละเรื่อง', cat
         p, mg = B.predict(self.m, B.encode(s), -1e18)
         if p is not None:
-            sl = self._extract(s, p)
+            sl = self._candidate_slots(s, p)
             q = any(t in QMARKERS for t in s.split())
-            blocked = q and p in MUTATING           # B-605: question-marked -> never write
+            blocked = not self._relation_compatible(s, p) or (q and p in MUTATING)           # B-605: question-marked -> never write
             if p in MUTATING and sl is not None and self._unparsed(s, sl):
                 blocked = True                      # B-608: unaccounted content words -> no silent write
             if (not proposal_only and not blocked and mg >= self.tau_hi and sl is not None
@@ -290,7 +330,7 @@ class InteractiveChat(ChatSpeaks):
             if INDUCED_AUTOCOMMIT:
                 cls, reply, cat = self._commit(s, pd, list(psl), 'induced_pattern')
                 return cls, reply, cat
-            if pd in RESTATE:
+            if pd in RESTATE and self._relation_compatible(s, pd):
                 reply = self._ask('confirm', surface=s, intent=pd, slots=psl, rejected=[pd])
                 return 'ask_needed', 'ตามรูปแบบที่จำไว้: ' + reply, 'induced_pattern'
         rw, status = self._resolve(s)

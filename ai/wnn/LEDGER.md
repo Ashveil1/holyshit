@@ -5093,3 +5093,73 @@ Supported next work is bounded diagnosis of relation-sensitive parse scoring
 from existing evidence, if a general mechanism is justified; no new capability
 claim or automatic build follows from these NULLs. Current conversational
 entry failures and target remain unresolved. Stop this feasibility probe.
+
+## B-615 pre-registration: bootstrap-derived relation compatibility
+
+Defect correction, not natural-language learning. Existing intent mapper
+already sees relation tokens, but flat ranking can contradict them; slot
+completeness drops function words from accountability. Bootstrap ask_attr
+examples use ของ while the failing familiar pattern uses มี: direct ask_attr
+lexical evidence for this shape is absent. Supplied semantic family mapping:
+teach_isa/is_a_q share ISA; teach_attr/ask_attr share HAS; retract_attr is
+separate REMOVE. Derive relation cue tokens from existing learned anchors
+for these intents (no hand-written word->intent routes). Candidate parse
+must agree with all observed anchor families; multiple families -> clarify.
+Missing evidence keeps existing behavior, not invented semantic certainty.
+Apply compatibility to confirmation candidates AND high-margin execution;
+ambiguous family evidence cannot execute/write. Pattern/definition proposals
+also must respect compatibility; no weakening of containment. Removing
+question-marker restriction is not part of this correction.
+
+Freeze tests before code: original unchanged lotus expectation; novel
+entities Q0..Q3 with both ISA and HAS stores, matching positive and crossed
+unknown questions; both assertions propose matching family without writes;
+mixed relation tokens clarify with store/write/attempt equality. Include
+spaces and unspaced Thai, direct/restored high-margin wrong-family pressure.
+Regression B605-612 plus original lossy-def failure kept visible. Negative
+control disables compatibility and reproduces original wrong lotus proposal.
+No pretrained/spending/integration; live aggregate cap 1e9 and 60s/test.
+
+B-615 run1 FAIL preserved: original lotus repaired but novel Q0..Q3 HAS
+questions abstain because ask_attr extraction returns None on the missing
+anchor/novel-entity shape; teach_attr extraction returns correct two slots.
+Existing completeness never solved candidate extraction. B615 amendment
+before patch: for two-slot relation-family intents, when target extraction
+fails, accept a peer family extractor only if EVERY successful peer yields
+the same slot tuple with complete token coverage. Supplied role-schema
+alignment (subject,predicate/value) is explicit; bootstrap extraction remains
+gold-trained. Peer conflict/no parse -> clarification, never force relation.
+No single-word route or new phrase data. Preserve original tests/gates.
+
+## B-615 findings: relation defect corrected with supplied family constraints
+
+logs/b615_run2.log CHECK PASS: 24 fixed relation cases across Q0..Q3,
+positive and crossed-unknown ISA/HAS questions with competing stores, and
+assertion proposals; direct/restored wrong-family high-margin pressure;
+mixed-family hold; unchanged lotus expectation. Disabled compatibility
+control reproduces original wrong ISA answer. Novel contrasts are spaced;
+unspaced behavior in this battery is original Thai lotus only, not all
+novel Q entities. Run1 failures retained, amendment supplied role/schema
+sharing explicitly. No gold labels/dataset expectations changed.
+
+Compatibility uses supplied semantic family map, bootstrap-derived anchor
+cues; not learned general relation semantics. Missing relation evidence
+still falls back to pre-existing behavior. Synonym/negation/quoted relations
+are not generally solved. Equal peer tuples do not establish semantics.
+Guards preserve conservative write checks; induced definitions remain
+proposal-only in entry, lossy rewrite hold unchanged. B605-B612 final
+regressions pass. Original entry audit is 12/13, CHECK FAIL solely on
+unchanged def_fired_novel intentional loss. Answer relevance no longer
+vacuous; lotus answer exactly 'ใช่ บัว มี กลีบ'.
+
+Live whole-tree final B615 workload 40,329,216 bytes; original entry/restart
+67,829,760 bytes, supervisor plus all descendants, 10ms sampled aggregate,
+no enforced 1e9-byte exceed. B615 wall remains below preregistered per-test
+60s; memory numbers do not guarantee future scale. No pretrained/spending,
+production integration, release or general conversation claim.
+
+Concrete continuation: audit family-compatibility provenance and slot-role
+assumptions in anaphora clarification/canonicalization before extending any
+coverage claims; use existing relation counterexamples rather than new
+phrase routes. Broad conversational target remains unmet; no supported
+large capability build is implied by defect repair. Alignment probes stop.

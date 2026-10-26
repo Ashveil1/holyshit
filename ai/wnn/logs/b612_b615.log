@@ -1,0 +1,3 @@
+CHECKS {"definition_saved": true, "restored_proposal_only": true, "original_source_visible": true, "confirmed_fact_after_restart": true}
+TRANSCRIPTS ["hsml prototype (experimental) - พิมพ์ save เพื่อบันทึก, Ctrl-D เพื่อจบ\n> จำรูปแบบใหม่แล้ว\n> บันทึกแล้ว logs/hsml_snapshot.json\n> ", "โหลดความจำแล้ว\nhsml prototype (experimental) - พิมพ์ save เพื่อบันทึก, Ctrl-D เพื่อจบ\n> จากข้อความ «แพะ เป็น สัตว์เลี้ยง»: เดาว่า: สอนว่า แพะ เป็น สัตว์เลี้ยง ใช่ไหม\n> บันทึกแล้ว logs/hsml_snapshot.json\n> ", "โหลดความจำแล้ว\nhsml prototype (experimental) - พิมพ์ save เพื่อบันทึก, Ctrl-D เพื่อจบ\n> จากข้อความ «แพะ เป็น สัตว์เลี้ยง»: เดาว่า: สอนว่า แพะ เป็น สัตว์เลี้ยง ใช่ไหม\n> จำแล้ว: แพะ เป็น สัตว์เลี้ยง\n> บันทึกแล้ว logs/hsml_snapshot.json\n> "]
+CHECK PASS

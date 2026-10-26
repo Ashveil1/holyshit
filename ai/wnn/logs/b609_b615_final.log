@@ -1,0 +1,2 @@
+RESULTS {"N1_reply": "ยังไม่เข้าใจคำว่า «เขา», «บอก», «ว่า» ในประโยคนี้", "N1_quoted_high_margin_blocked": true, "N2_reply": "ยังไม่เข้าใจคำว่า «เขา», «พูดเรื่อง», «เมื่อวาน» ในประโยคนี้", "N2_blocked": true, "N3_first": "ยังไม่เข้าใจคำว่า «นก» ในประโยคนี้", "N3_repeat": "ยังไม่เข้าใจคำว่า «นก» ในประโยคนี้", "N3_not_known_already": true, "N4_post_restore_blocked": true, "N5_reply": "ไม่รู้ว่า มิโล เป็น แมว ยังไม่เคยถูกสอน", "N5_unmarked_q_no_write": true, "P1_confirm_teach_writes": true, "P2_repeat_committed": "อันนี้รู้อยู่แล้วนะ", "P2_repeat_known": true}
+CHECK PASS
