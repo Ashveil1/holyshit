@@ -1,0 +1,16 @@
+CASE {"turn": "ทำไม ช้าง เป็น สัตว์", "cls": "honest_engaged", "asked": true, "expected_behavior": "ask", "appropriateness": "misleading-ask", "fabricated_action": false}
+CASE {"turn": "ช้าง เป็น สัตว์ อย่างไร", "cls": "honest_engaged", "asked": true, "expected_behavior": "ask", "appropriateness": "misleading-ask", "fabricated_action": false}
+CASE {"turn": "ช้าง สวย ไหม", "cls": "honest_engaged", "asked": true, "expected_behavior": "ask", "appropriateness": "misleading-ask", "fabricated_action": false}
+CASE {"turn": "ช้าง ดี ไหม", "cls": "honest_engaged", "asked": true, "expected_behavior": "ask", "appropriateness": "misleading-ask", "fabricated_action": false}
+CASE {"turn": "ช้าง ชอบ กิน อะไร", "cls": "honest_engaged", "asked": true, "expected_behavior": "ask", "appropriateness": "misleading-ask", "fabricated_action": false}
+CASE {"turn": "ช้าง อยาก บิน", "cls": "honest_engaged", "asked": true, "expected_behavior": "silent", "appropriateness": "silent-ok", "fabricated_action": false}
+CASE {"turn": "แล้ว ช้าง ล่ะ มี งา ไหม", "cls": "honest_engaged", "asked": true, "expected_behavior": "ask", "appropriateness": "appropriate-ask", "fabricated_action": false}
+CASE {"turn": "ช้าง มี งา หรือเปล่า", "cls": "honest_engaged", "asked": true, "expected_behavior": "ask", "appropriateness": "appropriate-ask", "fabricated_action": false}
+CASE {"turn": "ราคา เท่าไหร่ กัน", "cls": "honest_engaged", "asked": true, "expected_behavior": "silent", "appropriateness": "silent-ok", "fabricated_action": false}
+CASE {"turn": "ฝน ตก หนัก มาก", "cls": "honest_engaged", "asked": false, "expected_behavior": "silent", "appropriateness": "silent-ok", "fabricated_action": false}
+UNFAM {"turn": "สัตว์ ที่ ช้าง เป็น คืออะไร", "cls": "honest_engaged", "asked": true, "note": "composition-1"}
+UNFAM {"turn": "งา ของ ช้าง มี ไหม", "cls": "honest_engaged", "asked": true, "note": "composition-2"}
+UNFAM {"turn": "ช้าง เป็น สัตว์ ใช่ หรือ ไม่", "cls": "honest_engaged", "asked": true, "note": "composition-3"}
+SUMMARY {"asked_by_label": {"misleading-ask": 5, "silent-ok": 2, "appropriate-ask": 2}, "silent_cases": 1, "fabricated": 0, "questions_total": 14}
+RES-FINAL {"peak_rss_mb_overall": 27.0, "wall_seconds": 1.4}
+DONE

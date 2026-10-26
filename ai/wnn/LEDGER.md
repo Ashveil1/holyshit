@@ -4047,3 +4047,48 @@ arguably reasonable, but the preregistered guard said off-topic must stay
 at 0 questions - deviation recorded. The guard needs a why/how exclusion
 and a vague-predicate exclusion before this channel can be called clean.
 Not merged into the unified class; probe-only. 27.0MB.
+
+## B-599 PRE-REGISTERED (2026-10-26, before code) - appropriateness assessment of the UNPATCHED B-598 guard on a broader mix
+
+No guard patch. The B-598 guard (schema-token + known-entity -> low-band
+confirmation) stays as-is; the B-598 result stands. This probe assesses
+WHETHER THE QUESTION ITSELF IS APPROPRIATE on a broader authored mix.
+Appropriateness labels authored HERE, before running:
+- why/how questions (ทำไม/อย่างไร): asking a clarifying question is
+  APPROPRIATE only if it does not force a schema interpretation; the
+  current guard's confirmation WOULD force one -> label: misleading-ask.
+- vague predicates (สวย/ดี): referent-resolved but unanswerable-in-schema;
+  a forced is-a/has-a confirmation is misleading -> misleading-ask.
+- known-entity off-schema questions (ชอบ/อยาก): no schema intent exists;
+  asking is acceptable ONLY as an honest 'I cannot X' - a forced
+  confirmation -> misleading-ask.
+- unfamiliar phrasing of in-schema intents (แล้ว X ล่ะ มี Y ไหม): a
+  confirmation IS the right move -> appropriate-ask.
+- genuine off-topic (weather/price): must stay silent-honest -> silent-ok.
+- pure unknown vocab: vocab question (B-597) is appropriate.
+Metric: per-case behavior vs these labels; burden; report counts per
+appropriateness class. NO score gate - this maps where the supplied
+routing rule helps vs misleads. All rules SUPPLIED (designed), not learned.
+The unfamiliar-composition set (separate, below) is NOT used to choose any
+refinement.
+
+## B-599 FINDINGS (2026-10-26): the unpatched guard asks on 9/10 of the broader mix; 5 of 9 asks are misleading-asks
+
+logs/b599_run1.log. Appropriateness labels authored in the B-599 prereg
+BEFORE running. The unpatched B-598 guard + base shell asked on 9/10 mix
+turns (0 fabricated actions anywhere). Of the 9 asks: 5 MISLEADING-ASKS
+(why/how questions, vague predicates สวย/ดี, off-schema ชอบ-question - a
+schema-confirmation there would force an interpretation the turn does not
+have), 2 APPROPRIATE-ASKS (unfamiliar in-schema phrasings), 2 labeled
+silent-ok that asked anyway via the BASE mid-band path ('ช้าง อยาก บิน',
+'ราคา เท่าไหร่ กัน' - attribution note: those asks come from the B-592
+mid-band guess-confirmation, NOT the B-598 low-band channel; the
+measurement above counts outcomes, not channels). All routing rules are
+SUPPLIED/designed. The unfamiliar-composition set (separate, not used for
+any refinement): all 3 compositions asked and landed honest (no parse, no
+fabrication). Burden: 14 questions over the session (10 mix + 3 unfam +
+1 setup). Conclusion: the channel's value (recovering in-schema unfamiliar
+questions) is real but inseparable from a high misleading-ask rate under
+the current supplied rules; no hand-written exclusion patch applied per
+review instruction - the failed guard result stands and any refinement
+needs a mechanism that distinguishes question TYPE, not token presence.
