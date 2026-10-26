@@ -64,6 +64,23 @@ check('C3 cycle sibling still answers', r['answer'] == 'yes', r)
 h.hear('ไม่ใช่ มิโล เป็น แมว')
 r = h.hear('มิโล เป็น สัตว์ ไหม')
 check('C3 withdrawal breaks chain', r['answer'] == 'unknown', r)
+# negative evidence (pre-registered): no negative is-a store exists, so after a
+# negative correction the answer must be ไม่รู้, never a misleading ใช่/ไม่ใช่
+r = h.hear('มิโล เป็น แมว ไหม')
+check('C3 negative correction -> unknown not false-claim', r['answer'] == 'unknown', r)
+h.hear('ไม่ใช่ มิโล เป็น หมา')  # retracting a pair never stored
+r = h.hear('มิโล เป็น หมา ไหม')
+check('C3 retract-never-stored -> still unknown', r['answer'] == 'unknown', r)
+# conflict after withdrawal: two types taught, one retracted; remaining must be
+# unaffected and the retracted one must not revive through the survivor
+h.hear('บอร์ท เป็น นก'); h.hear('บอร์ท เป็น สัตว์ปีก'); h.hear('นก เป็น สัตว์')
+h.hear('ไม่ใช่ บอร์ท เป็น นก')
+r = h.hear('บอร์ท เป็น นก ไหม')
+check('C3 conflict: retracted branch unknown', r['answer'] == 'unknown', r)
+r = h.hear('บอร์ท เป็น สัตว์ปีก ไหม')
+check('C3 conflict: surviving branch intact', r['answer'] == 'yes', r)
+r = h.hear('บอร์ท เป็น สัตว์ ไหม')
+check('C3 conflict: no path through retracted branch', r['answer'] == 'unknown', r)
 
 # ---------- C4: scoped anaphora ----------
 h = HSML()
