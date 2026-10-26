@@ -2364,3 +2364,30 @@ CORRECTIONS to my own claims (recorded, nothing rewritten):
 Metric clarification: .353 = INTENT-ONLY accuracy (nb, k=8). Slot-F1 .551 on
 correctly-classified items; JOINT intent+all-slots .091 - three separate
 metrics, joint is weak and is the honest end-to-end-relevant number.
+
+## B-563 PRE-REGISTERED (2026-10-26) - diagnosis-only: WHAT drives correction collateral (before code)
+
+Mandate: diagnosis of ONE failure axis (B-562 H3 correction collateral) with
+FROZEN comparisons. No new model arms, no threshold tuning, no routing changes,
+no production integration, no uncertain writes. A null (no single mechanism
+dominates) is a recorded result.
+
+AXIS: when online NB (B-562 winning arm) receives dialogue corrections, sibling
+(uncorrected) intents lose 5.4-12.5 points (3-correction protocol) up to 62.5
+points (mass protocol). WHICH component of the NB update causes it?
+
+FROZEN: b562.py data generation (same 5 seeds, same train/dev/eval items via
+identical rng order), same trained k=8 NB state per seed, same 3-correction
+protocol (first 3 misclassified eval items), same eval. ONLY the correction
+UPDATE varies:
+- A_full: normal NB update (prior doc counts + feature counts) - the reference.
+- A_prior_only: corrections update ONLY doc counts (likelihood frozen).
+- A_feat_only: corrections update ONLY feature counts (prior frozen).
+- A_replay: full update, then replay the original k=8 examples of every
+  UNCORRECTED intent once (tests whether collateral is dilution-remediable
+  vs decision-structure).
+MEASURED per arm: per-intent accuracy delta (points) on uncorrected intents,
+mean/max degradation; and n-gram feature overlap (Jaccard) between each
+corrected intent's correction features and each degraded intent's eval items,
+to test the shared-marker (เป็น) hypothesis with a number.
+No pass/fail bar; the outcome is a mechanism attribution table.
