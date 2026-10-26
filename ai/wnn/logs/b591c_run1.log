@@ -1,0 +1,5 @@
+CHECK {"check": "redefinition", "first_canonical": "กวาง เป็น สัตว์", "latest_canonical": "กวาง เป็น สัตว์ ไหม", "ok": true}
+CHECK {"check": "precedence", "definition_canonical": "วัว มี เขา ไหม", "trained_intent_on_raw": "teach_attr", "shadows_trained": true, "ok": true, "note": "user redefined teach-looking form to mean a question; definition wins (supplied policy)"}
+CHECK {"check": "question_form_not_matched", "hit": null, "ok": true, "note": "teach definition has no ไหม constant; length differs; separate question definition required"}
+RES-FINAL {"peak_rss_mb_overall": 27.1, "wall_seconds": 1.1}
+DONE

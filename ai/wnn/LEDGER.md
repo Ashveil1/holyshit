@@ -3778,3 +3778,25 @@ only. Simulated variable-marking answers are derived from the authored
 definition setup. Variables must appear in the canonical side; canonical-
 side constants not in the surface form are not insertable (disclosed limit).
 Resources: 27.2MB, 1.2s.
+
+## B-591c PRE-REGISTERED (2026-10-26, before code) - definition edge cases (robustness on inspected mechanism, authored)
+
+Checks: (1) REDEFINITION - user redefines a pattern; latest definition must
+win, no silent merge; (2) PRECEDENCE - a definition matching a turn whose
+canonical form the trained grammar also parses: definitions fire FIRST
+(supplied policy); record when this shadows trained behavior; (3) QUESTION
+FORMS - a definition taught on a teach-pattern does NOT fire on the
+corresponding question pattern (different constants); a separate question
+definition is required. PASS: behavior matches stated policy in all cases;
+otherwise record deviation.
+
+## B-591c FINDINGS (2026-10-26): definition edge cases behave per stated policy (3/3)
+
+logs/b591c_run1.log. (1) REDEFINITION: latest definition wins, no silent
+merge. (2) PRECEDENCE: user definitions fire before the trained grammar
+(supplied policy); recorded case where a definition SHADOWS trained behavior
+('วัว มี เขา' redefined as a question overrides the trained teach_attr
+parse) - powerful and dangerous; must be visible in the design. (3) teach
+definitions do NOT fire on question forms (constant/length mismatch);
+questions need their own definitions - per-form teaching cost disclosed.
+Authored robustness checks on an inspected mechanism.
