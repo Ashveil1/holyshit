@@ -1,0 +1,7 @@
+ROW {"seed": 0, "session1_items": 64, "session1_wrong_execution": 24, "s2a_fresh_taught_family_unassisted_joint": 32, "s2a_n": 64, "s2c_after_new_families_joint": 35, "s2c_n": 64}
+ROW {"seed": 1, "session1_items": 64, "session1_wrong_execution": 22, "s2a_fresh_taught_family_unassisted_joint": 48, "s2a_n": 64, "s2c_after_new_families_joint": 39, "s2c_n": 64}
+ROW {"seed": 2, "session1_items": 64, "session1_wrong_execution": 24, "s2a_fresh_taught_family_unassisted_joint": 39, "s2a_n": 64, "s2c_after_new_families_joint": 42, "s2c_n": 64}
+ROW {"seed": 3, "session1_items": 64, "session1_wrong_execution": 16, "s2a_fresh_taught_family_unassisted_joint": 38, "s2a_n": 64, "s2c_after_new_families_joint": 31, "s2c_n": 64}
+ROW {"seed": 4, "session1_items": 64, "session1_wrong_execution": 23, "s2a_fresh_taught_family_unassisted_joint": 41, "s2a_n": 64, "s2c_after_new_families_joint": 42, "s2c_n": 64}
+RES-FINAL {"peak_rss_mb_overall": 29.1, "wall_seconds": 6.5}
+DONE

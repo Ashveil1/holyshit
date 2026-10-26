@@ -1,0 +1,12 @@
+ROW {"seed": 0, "eval": "c21", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.037037037037037035, "n": 64, "wrong_execution": 14, "fully_unassisted": 22, "unassisted_correct_allitem": 19, "burden_h1": 24, "burden_h2": 31, "static_allitem_joint": 1}
+ROW {"seed": 0, "eval": "c22", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.037037037037037035, "n": 64, "wrong_execution": 14, "fully_unassisted": 20, "unassisted_correct_allitem": 15, "burden_h1": 23, "burden_h2": 32, "static_allitem_joint": 20}
+ROW {"seed": 1, "eval": "c21", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.0, "n": 64, "wrong_execution": 19, "fully_unassisted": 23, "unassisted_correct_allitem": 16, "burden_h1": 21, "burden_h2": 30, "static_allitem_joint": 4}
+ROW {"seed": 1, "eval": "c22", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.0, "n": 64, "wrong_execution": 10, "fully_unassisted": 27, "unassisted_correct_allitem": 23, "burden_h1": 24, "burden_h2": 25, "static_allitem_joint": 12}
+ROW {"seed": 2, "eval": "c21", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.0, "n": 64, "wrong_execution": 8, "fully_unassisted": 23, "unassisted_correct_allitem": 21, "burden_h1": 26, "burden_h2": 31, "static_allitem_joint": 3}
+ROW {"seed": 2, "eval": "c22", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.0, "n": 64, "wrong_execution": 14, "fully_unassisted": 18, "unassisted_correct_allitem": 15, "burden_h1": 28, "burden_h2": 31, "static_allitem_joint": 12}
+ROW {"seed": 3, "eval": "c21", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.0, "n": 64, "wrong_execution": 12, "fully_unassisted": 25, "unassisted_correct_allitem": 22, "burden_h1": 22, "burden_h2": 28, "static_allitem_joint": 3}
+ROW {"seed": 3, "eval": "c22", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.0, "n": 64, "wrong_execution": 19, "fully_unassisted": 33, "unassisted_correct_allitem": 22, "burden_h1": 20, "burden_h2": 21, "static_allitem_joint": 20}
+ROW {"seed": 4, "eval": "c21", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.037037037037037035, "n": 64, "wrong_execution": 18, "fully_unassisted": 24, "unassisted_correct_allitem": 17, "burden_h1": 26, "burden_h2": 29, "static_allitem_joint": 3}
+ROW {"seed": 4, "eval": "c22", "slot_tau": 1.1679, "dev_wrong_accept_at_tau": 0.037037037037037035, "n": 64, "wrong_execution": 19, "fully_unassisted": 22, "unassisted_correct_allitem": 16, "burden_h1": 24, "burden_h2": 32, "static_allitem_joint": 12}
+RES-FINAL {"peak_rss_mb_overall": 28.9, "wall_seconds": 6.2}
+DONE

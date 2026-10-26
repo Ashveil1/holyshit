@@ -3382,3 +3382,35 @@ streaming a second cell of NEW families, session-1 families are re-tested
 (interference check). No gate; measurement. Disclosed limits: same
 generators/vocab, so persistence here is not evidence of natural-language
 retention. Resources unchanged.
+
+## B-581 VERDICT (2026-10-26): NULL at G1/G2 - dev-calibrated slot tau does not transfer to unseen templates
+
+Run: logs/b581_run1.log, script b581.py. SLOT_TAU calibrated on authored dev
+(seen templates) to <=5% wrong slot-accepts: tau = 1.1679 in all 5 seeds
+(dev wrong-accept 0-.037). Applied to the INSPECTED unseen-template cells:
+  c21: wrong-execution 71/320 = 22.2% (G1 FAIL <=5%); burden h1 119 ->
+  h2 149 (G2 FAIL, rises); unassisted-correct all-item 95/320 = .297 vs
+  static .044 (G3 PASS); fully-unassisted 36.6%.
+  c22: wrong-execution 76/320 = 23.8% (G1 FAIL); h1 119 -> h2 141 (G2
+  FAIL); unassisted-correct .284 vs static .237 (G3 PASS, modest);
+  fully-unassisted 37.5%.
+Scoped finding: the SAME transfer gap as the intent side - acceptance
+margins calibrated on seen-template dev do not predict correctness on
+unseen templates. Burden does not fall within a session under any tested
+gate; if anything it rises as more families demand confirmations. G3's
+all-item gains are real but modest and bought with ~1.3 questions/utterance
+plus 22-24% wrong executions: not a usable tradeoff as-is.
+
+## B-582 FINDINGS (2026-10-26): learned state persists across a serialized session break; ~40-50% of it is wrong
+
+Run: logs/b582_run1.log, script b582.py (measurement, no gate; B-578 run1
+protocol, margin>=0). Session 1 taught c22 families, state pickled/rebuilt,
+then:
+  s2a (fresh items of TAUGHT families, unassisted): joint .500-.750 per
+  seed (mean .619). Persistence across the break is real - the rebuilt
+  counts carry the learned mappings.
+  s2c (after streaming NEW families with teacher): .484-.656 (mean .590) -
+  mild interference (mean -.03), no catastrophic forgetting.
+Scope: same generators/vocab; this is persistence of counting-scorer state,
+NOT evidence of natural-language retention. ~40-50% of persisted
+unassisted predictions are still wrong (margin>=0 era).
