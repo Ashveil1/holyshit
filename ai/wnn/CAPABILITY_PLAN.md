@@ -61,3 +61,21 @@ D. Definitions-channel feasibility assessment (scenario-based, honest
    supplied-vs-learned).
 E. Integration proposal to main WITH evidence; production integration is
    NOT authorized by this plan.
+
+## Current status correction (B-610/B-611, 2026-10-27)
+
+The opening necessity claim about pretrained models is unsupported and
+withdrawn. No supported path to the conversational target has been found;
+this is not proof that any particular architecture or data scale is required.
+Earlier feasibility statements are tiny authored development checks, not
+broad conversation or safety evidence. High-margin confidence does not
+authorize a semantic interpretation. Current definition containment holds
+lossy rewrites and conflicting canonical results; lossless rewrites only
+propose and retain source/canonical provenance pending confirmation. This
+intentionally breaks the previous lossy น่ะ deletion example. B-611's old
+entry audit is therefore 11/12, not all green. Induced patterns remain
+proposal-only. Text-identical hidden intent still needs clarification.
+B-610 v2 measures only explicit context-label association; it is not natural
+contextual intent acquisition, action correctness, or general language.
+A supported next capability direction beyond these narrow results has not
+yet been identified. Do not add scenarios merely to increase scores.

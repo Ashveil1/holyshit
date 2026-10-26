@@ -4653,3 +4653,208 @@ SCOPE (unchanged): completeness is syntactic coverage, not semantic
 authorization; a surface-identical zero-extra-token quotation or
 hypothetical remains indistinguishable from assertion and is recorded as
 an unresolved failure class, not patched.
+
+## B-610 PRE-REGISTERED (2026-10-27, before code) - learned first-guess discrimination: measurable scope and the identifiability boundary
+
+Bounded probe, EVALUATION-ONLY (no write-confirmation
+containment change; entry behavior untouched). Question: can
+exchange-learned signals reduce teacher burden on unmarked
+question/statement first guesses, and where is the identifiability
+boundary?
+IDENTIFIABILITY (input-identifiability constraint): an unmarked 'X เป็น Y' surface is
+text-identical as statement or question; hidden speaker intent is not
+recoverable from the input. Items with no observable cue are labeled
+INHERENTLY UNRESOLVED and reported descriptively (behavior + burden),
+never counted as learning defects. Gold is never assigned from
+generator family alone for uncued items in accuracy metrics.
+OBSERVABLE CUE TESTED (supplied feature, inventoried here):
+CTX:AFTERUNK - the immediately previous system reply was an
+unknown-answer ('ไม่รู้ว่า ...') sharing a content token with this
+surface; such a surface is very likely a TEACH (statement). No other
+shape-specific trigger is supplied. Session instance counts (learned,
+not supplied) may additionally shift the mapper.
+ARMS: BASE (current marker restriction); NORESTRICT (restriction
+removed, mapper + corrections + CTX feature decide); NCLAR (NORESTRICT
++ abstain-to-clarify ('ถามหรือสอน?') when unmarked and predict margin <
+tau_lo - existing supplied threshold, inventoried); NOCORR (NORESTRICT
+with feedback learning disabled - control, must equal BASE); PERM
+(NORESTRICT with feedback labels deranged - control, cued accuracy must
+collapse).
+ITEMS (all novel entities, unspaced user input): T1-T2 cued statements
+(gold statement, cue present); T3-T4 uncued statements (gold
+statement); T5-T6 uncued questions (gold question, INHERENTLY
+UNRESOLVED - descriptive only); T7 unmarked มี-shape question
+(held-out structure, also inherently unresolved); T8 marked question
+(control, all arms must first-guess question). Learning phase: 4 cued
+statements + 6 uncued questions, each resolved by ใช่/ไม่ใช่ feedback;
+test entities never appear in the learning phase.
+METRICS: per-class first-guess precision/recall (statement vs
+question), mixed accuracy on identifiable items only (T1-T4, T8),
+teacher turns to final success per item, assisted final success
+separately, wrong unassisted answers counted as errors.
+GATE (CHECK PASS): BASE first-guess correct on T1-T4 and T8;
+NOCORR first-guesses identical to BASE on all test items; PERM cued
+first-guess accuracy collapses to 0/2 (proves corrections, not leakage,
+carry the cue); NCLAR teacher burden on T3-T6 <= BASE burden AND zero
+wrong unassisted answers; NORESTRICT trade-offs reported descriptively.
+Authored scripted battery = development evidence only. No pretrained,
+no paid, 1e9-byte watchdog. Version: battery v1.
+AMENDMENT (pre-run, 2026-10-27): NOCORR gate is 'no learned benefit'
+(NOCORR cued accuracy <= BASE cued accuracy, and NOCORR uncued-statement
+first-guess recall >= NORESTRICT's), not exact first-guess identity -
+unrestricted ranking without learning may legitimately differ from the
+marker-restricted ranking on the base mapper alone.
+
+## B-610 v1 AUDIT CORRECTION and v2 PRE-REGISTRATION (before v2 code)
+
+The v1 run aborted on a constructor flag. No measurements resulted.
+Inspection found the context was cleared before encoding, test entities
+overlapped learning, and uncued statements were wrongly classified as
+identifiable while uncued questions were called ambiguous. Both classes
+are ambiguous without an observable intent cue. AFTERUNK is only a weak
+correlate, not a ground-truth intent declaration. The proposed accuracy
+gates did not establish the claimed causal effect. The subclass also
+inherited automatic mutation paths, contrary to a proposal-only probe.
+Preserve v1 source/gates as b610_v1.py; withdraw all v1 capability claims.
+Entry seams are withdrawn; no entry behavior change is needed.
+
+v2 hypothesis: an existing bag/character-feature mapper can learn the
+association between EXPLICIT preceding intent declarations and first
+intent guesses on novel-entity combinations. This is a simpler, different
+hypothesis, not a repaired v1 success. Supply two context strings:
+'ประโยคถัดไปฉันจะสอนข้อเท็จจริง' and 'ประโยคถัดไปฉันจะถามคำถาม'.
+Supply turn boundaries and prefix context-feature names; no shape-specific
+routing trigger is supplied. Base labeled mapper training, encoder,
+lexicon and labeled feedback remain supplied. No claim of understanding
+these declarations independently of supervised examples.
+Train 4 paired X-is-Y examples under EACH context, labels teach_isa vs
+is_a_q; teacher feedback supplies the association. Test 4 disjoint entity
+pairs under BOTH contexts (8 items), plus 2 disjoint pairs on held-out
+X-has-Y structure under BOTH contexts (4 items). Held-out structure here
+means absent from THIS feedback session, not absent from base training.
+Three arms: surface-only; context+feedback; context+NO feedback;
+plus deranged-label (swap question/statement). Use the exact same paired
+inputs in all arms. Uncued identical surfaces are reported as ambiguous,
+with recommended clarification, no hidden-label accuracy. Feedback is
+not applied on test items. All arms are classification/proposal only,
+never instantiate or call Chat._act/_commit. Report confusion matrices,
+per-class precision/recall, first-guess accuracy separately per structure,
+teacher correction burden under a stated binary reviewer model, and no
+claim of real-REPL final success. Gate: context arm improves paired test
+accuracy over both surface-only and feedback-disabled arms AND swapped
+labels lower it. Otherwise NULL. No threshold change or entry integration.
+CPU, no pretrained weights, no spending, 1e9-byte memory watchdog.
+
+B-609 CORRECTION: b609.py's N5 is a normal marked question, not the
+pre-registered definition-fired rewrite. The battery only asserts write
+counter changes and selected positive facts, not store equality on every
+negative; N1 repeated seen statements do not force high-margin acceptance.
+Its PASS is limited to those actual checks. General mutating-path coverage
+was not demonstrated. Definition rewrite coverage remains to be tested.
+
+## B-611 PRE-REGISTERED: actual mutation-path negative controls
+
+Test-only, preserve entry unchanged until failure characterized. Force a
+high-margin teach mapper by adding the exact surface 100 times; verify
+predicted intent and margin before testing. Negative cases: quoted
+surface with extra content; UNKNOWN span; question marker; repeat; restored
+mapper; and a definition which removes a question marker in its canonical
+rewrite. Assert BOTH unchanged fact stores and unchanged write counter.
+For diagnostic comparator only, bypass _unparsed and verify the quoted
+case then writes (the negative check actually exercises the guard).
+Definition case must not write or propose a statement from a question.
+Record failures without changing expectations. These are adversarial
+path tests with supplied mapper dominance, not learning experiments.
+
+## B-611 failure and containment plan (before patch)
+
+run1 FAIL: direct high-margin quoted/UNK/question inputs, repeats and
+restored counterparts blocked, stores unchanged and counter delta 0.
+Bypass diagnostic wrote once. But a taught definition dropping ไหม
+wrote a statement in both live and restored paths (delta +1, store
+changed). Original-surface question information was lost before guards.
+Patch: every definition-fired canonical becomes proposal-only; a
+question-marked source is not allowed to propose/commit a statement from
+its rewritten canonical. Keep original source for this check. Do not
+claim this resolves marker-free ambiguity or semantic correctness.
+Retain run1 and unchanged B611 expectations.
+
+B-611 containment refinement preregistered: source provenance must survive
+rewrite proposals and corrections. Collect all matching definitions; differing
+canonicals clarify rather than last-rule-wins. No recursive rewriting.
+If rewriting drops ANY original token, clarify with both source and canonical
+text, without a confirm pending action. This intentionally disables previous
+lossy filler-deletion definition execution, including the old น่ะ example.
+Record that compatibility loss rather than calling a failed regression green.
+Lossless canonical proposals retain source/canonical/rule provenance in pending
+state, including on a rejected first guess. Count attempted mutating commits
+separately from executed writes; assert both counters on negatives. A blanket
+lossy-rewrite hold is designed containment, not semantic interpretation.
+
+B-611 extended coverage preregistered (v2): retain v1 cases, add dropped
+quote/UNK originals, overlapping incompatible rewrites, nested definitions
+(single-pass hold, no recursion), equivalent overlapping lossless rewrites,
+positive lossless proposal+confirmation, and idempotent repeat execution counter.
+Run original lossy-definition regression unchanged; expect compatibility FAIL
+on def_fired_novel, not an unnoticed execution bypass. Add separate containment
+restart audit instead of changing its expected old behavior.
+
+B-610 metric correction: v2 held-out มี items use teach_isa/is_a_q labels
+as binary MODE codes, not correct action intents (actual attribute intents
+would be teach_attr/ask_attr). Their 4/4 is mode-label association only,
+NOT action/structure transfer. Known เป็น shape 8/8 remains properly typed.
+The binary reviewer-turn metric is hypothetical, not real burden observed.
+
+## B-610 v2 findings: narrow context-label association only
+
+logs/b610_v2_run1.log: context+feedback 12/12; surface-only 4/12;
+context without feedback 4/12; swapped labels 0/12. On known 是/เป็น
+shape new entity combinations: 8/8 vs 4/8, 4/8, 0/8. On session-held-out
+มี shape: binary mode codes 4/4 vs 0/4, 0/4, 0/4; these are NOT correct
+attribute action intents, as the preceding correction notes. Context
+arm per-class precision/recall 1.0 on each 6-item mode class. Hypothetical
+binary-reviewer feedback counts 12 vs 20/20/24, not observed conversation
+burden. Eight supervised feedback examples with fixed explicit context
+strings supplied. No test feedback, no action executor, no REPL final
+success, no integration. Measured process peak 27,054,080 bytes. The
+v1 crash and source remain preserved. No natural contextual intent
+acquisition or broad language result follows.
+
+## B-611 findings: definition write-through contained, compatibility loss explicit
+
+logs/b611_run1.log retains actual writes through a marker-deleting definition
+in live/restored paths. run2 made definition canonicals proposal-only and
+blocked marker originals. Further containment holds every token-deleting
+rewrite, not just question markers. Differing matching canonicals clarify;
+equivalent ones propose only; no recursive rewrite. Proposal pending state
+retains original/canonical/definition text and keeps it on correction.
+This is a designed conservative hold, not semantic verification.
+
+logs/b611_v2_run3.log: 18 negative checks have unchanged fact stores,
+write delta 0, attempted-mutating-commit delta 0, no statement proposal:
+direct quoted/UNK/question with forced margins, repeats/restores, definition
+quote/UNK/question drops, incompatible overlaps, nested lossy hold, and
+independent-interpreter snapshot load. Equivalent lossless overlap proposes
+without writes, then clear yes writes exactly once. Diagnostic bypass of
+completeness writes once; diagnostic idempotent repeated commit leaves
+store equal but increments BOTH counters by 1. Counters measure mutating
+_commit entry, not a semantic classifier's internal candidacy or proposal.
+Original v1 expectations remain; v2 only adds cases/counter assertions.
+The initial v2 overlap fixture used reversed variable order unsupported by
+the supplied LCS compiler; run1 retains that failure. Corrected fixture
+uses differing relation canonicals with unchanged variable order, not a
+relaxed containment expectation. Process peak 30,162,944 bytes; child+parent
+concurrent RSS for this additional subprocess test was NOT measured.
+Earlier existing entry check measured concurrent tree 57.2 MB before the
+final conservative lossy hold; do not attribute that value to the final
+subprocess battery.
+
+Regression summary: b605..b609_post611_final CHECK PASS. Original
+hsml_check_post611_lossy CHECK FAIL: def_fired_novel is false, other 11
+booleans true. The old lossy น่ะ-deletion definition no longer executes;
+this is intentional compatibility loss, not an unchanged regression pass.
+Its attr_answered boolean contains an old 'or True' and is not valid
+answer-relevance evidence; the 11/12 figure includes that vacuous boolean.
+No production merge. No supported new capability direction beyond narrow
+associations has yet been identified; general conversational target remains
+unmet. Status consolidated rather than adding score-improving scenarios.

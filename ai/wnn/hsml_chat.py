@@ -69,6 +69,7 @@ class InteractiveChat(ChatSpeaks):
         self.patterns_proposed = set()
         self.pattern_awaiting = None   # (key, intent) proposed, awaiting yes/no
         self.writes = 0                # every mutating commit (incl. re-writes)
+        self.write_attempts = 0        # mutating _commit entries, including idempotent ones
 
     @staticmethod
     def _shape(toks, sl):
@@ -145,7 +146,9 @@ class InteractiveChat(ChatSpeaks):
     _last_surface = None
 
     def _commit(self, s, d, sl, category):
-        if d in MUTATING: self.writes += 1
+        if d in MUTATING:
+            self.write_attempts += 1
+            self.writes += 1
         self.seen.add(s)
         self._last_surface = s
         sl = [self._clean(x) for x in sl] if sl else sl
@@ -208,7 +211,7 @@ class InteractiveChat(ChatSpeaks):
                 return self._unparsed(s, sl)
         return self._unparsed(s, ())
 
-    def _handle_classified(self, s, via=None):
+    def _handle_classified(self, s, via=None, proposal_only=False):
         cat = via or 'unassisted'
         p, mg = B.predict(self.m, B.encode(s), -1e18)
         if p is not None:
@@ -217,7 +220,7 @@ class InteractiveChat(ChatSpeaks):
             blocked = q and p in MUTATING           # B-605: question-marked -> never write
             if p in MUTATING and sl is not None and self._unparsed(s, sl):
                 blocked = True                      # B-608: unaccounted content words -> no silent write
-            if (not blocked and mg >= self.tau_hi and sl is not None
+            if (not proposal_only and not blocked and mg >= self.tau_hi and sl is not None
                     and len(sl) == B.NSLOTS[p]):
                 return self._commit(s, p, sl, cat)
         d, sl = self._try_confirm(s)
@@ -253,11 +256,30 @@ class InteractiveChat(ChatSpeaks):
                 pass
             self.seen.add(s)
             return 'def_failed', 'นิยามนี้ใช้ไม่ได้ รูปแบบไม่ตรง', 'teacher_assisted'
-        for rule, _src in reversed(self.defs):
-            canon = fire(rule, s)
-            if canon:
-                cls, reply, cat = self._handle_classified(canon, via='taught_pattern')
-                return cls, reply, cat
+        matches = [(fire(rule, s), src) for rule, src in self.defs]
+        matches = [(canon, src) for canon, src in matches if canon]
+        if matches:
+            canonicals = set(canon for canon, src in matches)
+            if len(canonicals) != 1:
+                self.q += 1
+                return ('ask_needed', 'รูปแบบที่สอนให้ความหมายต่างกัน ช่วยบอกใหม่ว่าต้องการอะไร',
+                        'teacher_assisted')
+            canon = matches[0][0]
+            removed = Counter(s.split()) - Counter(canon.split())
+            if removed:
+                self.q += 1
+                return ('ask_needed',
+                        'รูปแบบนี้ตัดข้อความจาก «%s» เป็น «%s» ยังทำตามไม่ได้ ช่วยบอกใหม่ว่าต้องการอะไร' %
+                        (' '.join(self._clean(t) for t in s.split()),
+                         ' '.join(self._clean(t) for t in canon.split())),
+                        'teacher_assisted')
+            cls, reply, cat = self._handle_classified(
+                canon, via='taught_pattern', proposal_only=True)
+            if self.pending is not None:
+                self.pending['provenance'] = {'original': s, 'canonical': canon,
+                                              'definitions': [src for _, src in matches]}
+                reply = 'จากข้อความ «%s»: %s' % (s, reply)
+            return cls, reply, cat
         hits = self._match_patterns(s)
         intents = {h[0] for h in hits}
         if len(intents) > 1:
@@ -335,8 +357,12 @@ class InteractiveChat(ChatSpeaks):
                     if len(p['rejected']) < 2:
                         d, sl = self._try_confirm(p['surface'], exclude=tuple(p['rejected']))
                         if d is not None:
-                            return self._ask('confirm', surface=p['surface'], intent=d,
+                            reply = self._ask('confirm', surface=p['surface'], intent=d,
                                              slots=tuple(sl), rejected=p['rejected'] + [d])
+                            if 'provenance' in p:
+                                self.pending['provenance'] = p['provenance']
+                                reply = 'จากข้อความ «%s»: %s' % (p['provenance']['original'], reply)
+                            return reply
                     return ('ยังเรียนรูปแบบนี้ไม่ได้เลย '
                             'ลองสอนด้วย นิยาม ... เหมือน ... ตัวแปร ... ได้')
             elif p['kind'] == 'clarify':

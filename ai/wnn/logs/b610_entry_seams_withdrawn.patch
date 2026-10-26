@@ -1,0 +1,63 @@
+diff --git a/ai/wnn/hsml_chat.py b/ai/wnn/hsml_chat.py
+index de8b3c2..2b7fa81 100644
+--- a/ai/wnn/hsml_chat.py
++++ b/ai/wnn/hsml_chat.py
+@@ -69,6 +69,8 @@ class InteractiveChat(ChatSpeaks):
+         self.patterns_proposed = set()
+         self.pattern_awaiting = None   # (key, intent) proposed, awaiting yes/no
+         self.writes = 0                # every mutating commit (incl. re-writes)
++        self.learn_from_feedback = True   # B-610 eval seam (control arms)
++        self._feedback_label = lambda d: d  # B-610 eval seam (permutation control)
+ 
+     @staticmethod
+     def _shape(toks, sl):
+@@ -121,8 +123,11 @@ class InteractiveChat(ChatSpeaks):
+         for vs in self.attr.values(): known |= vs
+         return any(x in known for x in (sl or ()))
+ 
++    def _enc(self, s):
++        return B.encode(s)
++
+     def _ranked(self, s):
+-        sc = self.m.scores(B.encode(s))
++        sc = self.m.scores(self._enc(s))
+         return sorted(sc.items(), key=lambda kv: -kv[1])
+ 
+     # ----- acting -----
+@@ -210,7 +215,7 @@ class InteractiveChat(ChatSpeaks):
+ 
+     def _handle_classified(self, s, via=None):
+         cat = via or 'unassisted'
+-        p, mg = B.predict(self.m, B.encode(s), -1e18)
++        p, mg = B.predict(self.m, self._enc(s), -1e18)
+         if p is not None:
+             sl = self._extract(s, p)
+             q = any(t in QMARKERS for t in s.split())
+@@ -324,9 +329,10 @@ class InteractiveChat(ChatSpeaks):
+             if p['kind'] == 'confirm':
+                 if text in YES:
+                     self.yes += 1
+-                    self.m.add(B.encode(p['surface']), p['intent'])
++                    if self.learn_from_feedback:
++                        self.m.add(self._enc(p['surface']), self._feedback_label(p['intent']))
++                        self.instances.append((p['surface'], self._feedback_label(p['intent']), tuple(p['slots'])))
+                     _c, reply, _ = self._commit(p['surface'], p['intent'], list(p['slots']), 'teacher_assisted')
+-                    self.instances.append((p['surface'], p['intent'], tuple(p['slots'])))
+                     prop = self._maybe_propose()
+                     if prop: return reply + '\n' + prop
+                     return reply
+@@ -344,11 +350,12 @@ class InteractiveChat(ChatSpeaks):
+                 if hit:
+                     rw = ' '.join(hit[0] if t in ('มัน', 'ของมัน') else t
+                                   for t in p['original'].split())
+-                    pi, mg = B.predict(self.m, B.encode(rw), -1e18)
++                    pi, mg = B.predict(self.m, self._enc(rw), -1e18)
+                     sl = self._extract(rw, pi) if pi else None
+                     if (pi in ('is_a_q', 'ask_attr') and mg >= self.tau_lo
+                             and sl is not None and len(sl) == B.NSLOTS[pi]):
+-                        self.m.add(B.encode(rw), pi)
++                        if self.learn_from_feedback:
++                            self.m.add(self._enc(rw), self._feedback_label(pi))
+                         _c, reply, _ = self._commit(rw, pi, sl, 'teacher_assisted')
+                         return reply
+                     _c, reply, _cat = self._handle_classified(rw)
