@@ -2233,3 +2233,28 @@ PASS/FAIL (pre-set):
 RESOURCE: whole-process peak RSS (resource.ru_maxrss) of train+eval recorded
 as a number; no headroom claims. Code frozen during controls; sweep results
 script-form only (b562.py + logs/b562_*.log).
+
+B-562 Amendment 1 (2026-10-26, BEFORE code and any result inspection; original entry kept):
+- ADD online naive Bayes (multinomial, Laplace alpha=1, per-example online
+  updates) on IDENTICAL n-gram features and protocol as a substantive
+  baseline. My own earlier research notes recommended online NB and
+  text2prog-style mapping; selecting WNN without reconciling them was the
+  gap. H1 AMENDED: the learned WNN mapping must be >= online NB AND >= 1-NN
+  AND > majority at k<=8 to claim the best useful route; if NB wins, that IS
+  the answer and is reported as such.
+- ADD text2prog arm: run the recovered text2prog learn_lexicon (root
+  text2prog.py, P16 defaults) on the same train/eval split as-is. If it
+  cannot operate at teach-once k (its min-count voting needs occurrence
+  counts above k), that measured failure IS the evaluation - batch
+  statistical mapping vs teach-once - recorded with numbers, not asserted
+  as incompatibility without running.
+- CUT the HDC arm: no new task-specific justification exists for it; WNN +
+  NB + the fixed baselines settle the bounded question. Recorded as a
+  pre-result cut, not a post-hoc omission.
+- Metrics separated: intent accuracy, slot-F1, and JOINT intent+all-slots
+  correctness are three distinct reported metrics.
+- End-to-end arm: wrong execution vs abstention counted separately; any
+  low-confidence prediction routes to a confirmation ask and NEVER writes
+  to the factual store unconfirmed (mirrors the production rule).
+- Validation label: the phrasing-family split is AUTHOR-GENERATED - recorded
+  as authored validation, NOT independent validation, in every report.
