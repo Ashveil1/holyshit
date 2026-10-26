@@ -66,61 +66,62 @@ NEW_EVAL_FAM = {  # authored, first use; same unfamiliar vocab pools (template n
  'confirm_answer': [lambda x, y: f'ขอตอบ {x} ไป', lambda x, y: f'just answer {x}'],
 }
 
-for seed in [0, 1, 2, 3, 4]:
-    rng, train, dev, ev, ev_wrong, arms0, taus0, pred0 = build(seed)
-    newev = [it for d in B.INTENTS for it in B.gen(rng, d, NEW_EVAL_FAM[d], B.EVAL_VOCAB[d], 8)]
-    arms = {'S0': B.NB(B.INTENTS), 'S1': NBu(B.INTENTS), 'S3': NBu(B.INTENTS)}
-    for s, d, _, _ in train:
-        f = B.encode(s)
-        for m in arms.values(): m.add(f, d)
-    # dev-frozen abstention margins per variant (same selection rule as b562)
-    def devtau(m):
-        cands = sorted({round(mg, 4) for s, d, _, _ in dev for _, mg in [B.predict(m, B.encode(s), -1e18)]})
-        best_t, best_r = -1e18, -1
-        for t in cands:
-            ok = 0
-            for s, d, _, _ in dev:
-                p, mg = B.predict(m, B.encode(s), -1e18)
-                p = p if mg >= t else None
-                ok += (p == d) if d != 'NONE' else (p is None)
-            if ok / len(dev) > best_r: best_r, best_t = ok / len(dev), t
-        return best_t
-    frame_v2, pooled_v2 = learn_slots_v2(train)
-    frame_v1, rolepos_v1 = B.learn_slots(train)
-    for name, m in arms.items():
-        t = devtau(m)
-        def predict(s): return B.predict(m, B.encode(s), -1e18)[0]
-        # frozen eval: intent / slotF1 / joint
-        ni = nc = 0; sf1 = 0.0; joint = 0
-        for s, d, gold, _ in ev:
-            p = predict(s); ni += 1
-            if p == d:
-                nc += 1
-                ps = (extract_v2(s, frame_v2, pooled_v2, B.NSLOTS[p]) if name == 'S3'
-                      else B.extract_slots(s, p, frame_v1, rolepos_v1, B.NSLOTS[p]))
-                gs, qs = set(gold), set(ps or ())
-                inter = len(gs & qs)
-                sf1 += (2 * inter / (len(gs) + len(qs))) if gs or qs else 1.0
-                if ps == tuple(gold): joint += 1
-        # new-template eval (intent only; slots share the same mechanism, reported too)
-        nn_ = ncn = 0; jointn = 0
-        for s, d, gold, _ in newev:
-            p = predict(s); nn_ += 1
-            if p == d:
-                ncn += 1
-                ps = (extract_v2(s, frame_v2, pooled_v2, B.NSLOTS[p]) if name == 'S3'
-                      else B.extract_slots(s, p, frame_v1, rolepos_v1, B.NSLOTS[p]))
-                if ps == tuple(gold): jointn += 1
-        # collateral, 3-correction protocol (frozen)
-        mis = [(s, d) for s, d, _, _ in ev if predict(s) != d][:3]
-        before = {d: sum(predict(s) == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
-        for s, d in mis: m.add(B.encode(s), d)
-        after = {d: sum(predict(s) == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
-        corr = {d for _, d in mis}
-        degr = {d: round(100 * max(0, before[d] - after[d]), 1) for d in B.INTENTS if d not in corr}
-        print('ROW ' + json.dumps({'seed': seed, 'variant': name,
-            'frozen': {'intent': round(nc / ni, 3), 'slotf1': round(sf1 / max(nc, 1), 3), 'joint': round(joint / ni, 3)},
-            'newtmpl': {'intent': round(ncn / nn_, 3), 'joint': round(jointn / nn_, 3)},
-            'degr_points': degr, 'mean_degr': round(sum(degr.values()) / max(len(degr), 1), 2),
-            'name_skill_degr': degr.get('name_skill', 0)}, ensure_ascii=False))
-print('DONE')
+if __name__ == '__main__':
+    for seed in [0, 1, 2, 3, 4]:
+        rng, train, dev, ev, ev_wrong, arms0, taus0, pred0 = build(seed)
+        newev = [it for d in B.INTENTS for it in B.gen(rng, d, NEW_EVAL_FAM[d], B.EVAL_VOCAB[d], 8)]
+        arms = {'S0': B.NB(B.INTENTS), 'S1': NBu(B.INTENTS), 'S3': NBu(B.INTENTS)}
+        for s, d, _, _ in train:
+            f = B.encode(s)
+            for m in arms.values(): m.add(f, d)
+        # dev-frozen abstention margins per variant (same selection rule as b562)
+        def devtau(m):
+            cands = sorted({round(mg, 4) for s, d, _, _ in dev for _, mg in [B.predict(m, B.encode(s), -1e18)]})
+            best_t, best_r = -1e18, -1
+            for t in cands:
+                ok = 0
+                for s, d, _, _ in dev:
+                    p, mg = B.predict(m, B.encode(s), -1e18)
+                    p = p if mg >= t else None
+                    ok += (p == d) if d != 'NONE' else (p is None)
+                if ok / len(dev) > best_r: best_r, best_t = ok / len(dev), t
+            return best_t
+        frame_v2, pooled_v2 = learn_slots_v2(train)
+        frame_v1, rolepos_v1 = B.learn_slots(train)
+        for name, m in arms.items():
+            t = devtau(m)
+            def predict(s): return B.predict(m, B.encode(s), -1e18)[0]
+            # frozen eval: intent / slotF1 / joint
+            ni = nc = 0; sf1 = 0.0; joint = 0
+            for s, d, gold, _ in ev:
+                p = predict(s); ni += 1
+                if p == d:
+                    nc += 1
+                    ps = (extract_v2(s, frame_v2, pooled_v2, B.NSLOTS[p]) if name == 'S3'
+                          else B.extract_slots(s, p, frame_v1, rolepos_v1, B.NSLOTS[p]))
+                    gs, qs = set(gold), set(ps or ())
+                    inter = len(gs & qs)
+                    sf1 += (2 * inter / (len(gs) + len(qs))) if gs or qs else 1.0
+                    if ps == tuple(gold): joint += 1
+            # new-template eval (intent only; slots share the same mechanism, reported too)
+            nn_ = ncn = 0; jointn = 0
+            for s, d, gold, _ in newev:
+                p = predict(s); nn_ += 1
+                if p == d:
+                    ncn += 1
+                    ps = (extract_v2(s, frame_v2, pooled_v2, B.NSLOTS[p]) if name == 'S3'
+                          else B.extract_slots(s, p, frame_v1, rolepos_v1, B.NSLOTS[p]))
+                    if ps == tuple(gold): jointn += 1
+            # collateral, 3-correction protocol (frozen)
+            mis = [(s, d) for s, d, _, _ in ev if predict(s) != d][:3]
+            before = {d: sum(predict(s) == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
+            for s, d in mis: m.add(B.encode(s), d)
+            after = {d: sum(predict(s) == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
+            corr = {d for _, d in mis}
+            degr = {d: round(100 * max(0, before[d] - after[d]), 1) for d in B.INTENTS if d not in corr}
+            print('ROW ' + json.dumps({'seed': seed, 'variant': name,
+                'frozen': {'intent': round(nc / ni, 3), 'slotf1': round(sf1 / max(nc, 1), 3), 'joint': round(joint / ni, 3)},
+                'newtmpl': {'intent': round(ncn / nn_, 3), 'joint': round(jointn / nn_, 3)},
+                'degr_points': degr, 'mean_degr': round(sum(degr.values()) / max(len(degr), 1), 2),
+                'name_skill_degr': degr.get('name_skill', 0)}, ensure_ascii=False))
+    print('DONE')

@@ -2545,3 +2545,43 @@ B-564/565 wording corrections (2026-10-26, review-requested, nothing rewritten):
 - B-565+ tracks under ONE protocol (raw argmax, labeled): intent-only,
   slot exactness (ordered roles), joint, wrong-action and abstention counts.
   These raw-argmax numbers are never mixed with the gated B-562 numbers.
+
+## B-565 verdict (2026-10-26) - template-robust slot extraction: G1 PASS, G2 PASS, anatomy recorded (b565.py, logs/b565_run1.log, logs/b565_leaks.log)
+
+Authorization basis for this work: Ash's ทำเลย in the runtime conversation
+context (authenticated channel original) + main's explicit continuation
+direction - NOT the observation-table lookup I cited earlier (that row's
+message-id mapping was also wrong: the id I quoted belonged to a different
+message; corrected, and identifiers stay out of the repo).
+
+Protocol: raw argmax (labeled, separate from gated B-562 numbers); abstention
+reported separately via the dev-frozen gate, never mixed into accuracy.
+Mapper frozen = S1 (uniform-prior NB). Three eval sets labeled by inspection
+count: frozen (INSPECTED, reference), newtmpl (INSPECTED-once), fresh3
+(authored this round + unfamiliar entity set #2).
+
+S4 vs S3 (5 seeds, means):
+- frozen:    joint .219 vs .153 | slot-exact .467 vs .327 | intent .466 (same)
+- newtmpl:   joint .125 vs .000 | slot-exact .271 vs .000 | intent .466
+- fresh3:    joint .231 vs .225 | slot-exact .477 vs .464 | intent .488
+- wrong_action ~29-41/64 both; abstain_gated (separate) 16-40/64.
+
+G1 (newtmpl joint > 0 on >=3/5 seeds): **PASS** - >0 on all 5 (.062-.172).
+G2 (frozen joint not worse by >3 points): **PASS** - improved on 4/5 seeds
+(+.11 mean), one small drop (.172->.156).
+
+G3 leak anatomy (dominant remaining slot errors on fresh3):
+1. ROLE SWAPS on unfamiliar fillers (most errors): slots correctly identified
+   but roles swapped - cross-intent POOLED role stats conflict (teach_attr
+   wants (entity, attr); ask_attr's train family surfaces (attr, entity)), and
+   the fallback used ranking order instead of surface order. Candidate fix
+   (NOT applied - that would be tuning on inspected eval): surface-order
+   fallback + per-intent (not pooled) role stats; needs a fresh eval set.
+2. Unseen-particle leaks (minor): 'มัน' in 'X มัน เป็น Y' picked as slot -
+   particles absent from training are indistinguishable from content by
+   frequency alone.
+
+Honest scope: joint .13-.30 on authored new phrasings remains far from usable;
+these are measured failures in these setups, not the general-language wall.
+Hygiene: b562_diag/b564/b565 now import-safe (main guards added, standalone
+behavior unchanged).

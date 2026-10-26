@@ -51,99 +51,100 @@ def build(seed):
         return p if mg >= t else None
     return rng, train, dev, ev, ev_wrong, arms, taus, pred
 
-for seed in [0, 1, 2, 3, 4]:
-    rng, train, dev, ev, ev_wrong, arms, taus, pred = build(seed)
-    # A) H2 confusion (definitions below) + margins
-    for name in arms:
-        acc_cor = acc_wrg = ab_real = 0
-        margins_ev = []
-        for s, d, _, _ in ev:
-            p = pred(name, s)
-            mg = B.predict(arms[name], B.encode(s), -1e18)[1]
-            margins_ev.append(round(mg, 3))
-            if p is None: ab_real += 1
-            elif p == d: acc_cor += 1
-            else: acc_wrg += 1
-        tn = fp = 0
-        for s, _, _, _ in ev_wrong:
-            if pred(name, s) is None: tn += 1
-            else: fp += 1
-        margins_ev.sort()
-        q = lambda v, p: v[int(p * (len(v) - 1))]
-        print('H2 ' + json.dumps({'seed': seed, 'arm': name,
-            'defs': 'accepted_correct=real eval accepted with gold intent; accepted_wrong=real eval accepted with wrong intent; abstained_real=real eval abstained; NONE_abstained=TN; NONE_forced=FP. precision=NONE_abstained/(NONE_abstained+abstained_real); recall=NONE_abstained/N_total',
-            'accepted_correct': acc_cor, 'accepted_wrong': acc_wrg, 'abstained_real': ab_real,
-            'NONE_abstained': tn, 'NONE_forced': fp, 'N_real': len(ev), 'N_NONE': len(ev_wrong),
-            'precision': round(tn / max(tn + ab_real, 1), 3), 'recall': round(tn / len(ev_wrong), 3),
-            'eval_margin_q': [q(margins_ev, p) for p in (0.25, 0.5, 0.75)]}, ensure_ascii=False))
-    # winner as in run4
-    accs = {n: sum(pred(n, s) == d for s, d, _, _ in ev) / len(ev) for n in arms}
-    winner = max(accs, key=accs.get)
-    kind, wt = taus[winner]
-    # C) confirmation decomposition on winner
-    msrc = arms[winner]
-    margins = sorted(round(B.predict(msrc, B.encode(s), -1e18)[1], 4) for s, d, _, _ in dev if d != 'NONE')
-    conf_t = margins[len(margins) // 4] if margins else 0.0
-    low = [(s, d, fi) for s, d, _, fi in ev if B.predict(msrc, B.encode(s), -1e18)[1] < conf_t]
-    # fresh mapper copy at post-training state
-    m2 = {'wnn': lambda: B.WNN(B.INTENTS, seed, bleach=taus['wnn'][1]), 'nb': lambda: B.NB(B.INTENTS),
-          't2p': lambda: B.T2P(B.INTENTS), 'nn1': lambda: B.NN1(B.INTENTS)}[winner]()
-    for s, d, _, _ in train: m2.add(B.encode(s), d)
-    same_recall = transfer = 0
-    confirmed = []
-    for s, d, fi in low:
-        m2.add(B.encode(s), d)  # one confirmed example
-        same_recall += B.predict(m2, B.encode(s), -1e18)[0] == d
-        confirmed.append((s, d, fi))
-    # fresh transfer: NEW unseen items, same intents + eval families, fresh rng draws
-    tr_ok = tr_n = 0
-    for s, d, fi in confirmed:
-        fam = B.EVAL_FAM[d][fi]
-        xs, ys = B.EVAL_VOCAB[d]
-        fresh_items = []
-        for _ in range(4):
-            x = rng.choice(xs); y = rng.choice(ys) if ys[0] is not None else None
-            fresh_items.append((fam(x, y), tuple(v for v in (x, y) if v is not None)))
-        for fs, _ in fresh_items:
-            tr_ok += B.predict(m2, B.encode(fs), -1e18)[0] == d; tr_n += 1
-    # retention: teach 4 fresh examples of every OTHER intent, re-test confirmed items
-    for d in B.INTENTS:
-        others = [it for it in B.gen(rng, d, B.FAM[d], B.VOCAB[d], 4)]
-        for s2, d2, _, _ in others: m2.add(B.encode(s2), d2)
-    retention = sum(B.predict(m2, B.encode(s), -1e18)[0] == d for s, d, fi in confirmed)
-    print('CONF ' + json.dumps({'seed': seed, 'winner': winner, 'conf_t': conf_t, 'n_confirmed': len(confirmed),
-        'same_item_recall': f'{same_recall}/{len(confirmed)}',
-        'fresh_transfer': f'{tr_ok}/{tr_n}', 'retention_after_more_teaching': f'{retention}/{len(confirmed)}'},
-        ensure_ascii=False))
-    # D) collateral validation on seed 0 only + small-correction variant on every seed
-    if seed == 0:
-        m3 = {'nb': B.NB, 't2p': B.T2P, 'nn1': B.NN1, 'wnn': None}[winner]
-        m3 = m3(B.INTENTS)
-        for s, d, _, _ in train: m3.add(B.encode(s), d)
-        before = {d: sum(B.predict(m3, B.encode(s), -1e18)[0] == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
-        docs_before = dict(m3.docs) if hasattr(m3, 'docs') else {}
-        mis = [(s, d) for s, d, _, _ in ev if B.predict(m3, B.encode(s), -1e18)[0] != d]
-        for s, d in mis: m3.add(B.encode(s), d)
-        after = {d: sum(B.predict(m3, B.encode(s), -1e18)[0] == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
-        docs_after = dict(m3.docs)
-        corrected = {d for _, d in mis}
-        print('COLLATERAL ' + json.dumps({'seed': 0, 'arm': winner, 'n_corrections': len(mis),
-            'corrected_intents': sorted(corrected),
-            'docs_before': docs_before, 'docs_after': docs_after,
-            'acc_before': before, 'acc_after': after,
-            'degr_points_uncorrected': {d: round(100 * max(0, before[d] - after[d]), 1) for d in B.INTENTS if d not in corrected}},
+if __name__ == '__main__':
+    for seed in [0, 1, 2, 3, 4]:
+        rng, train, dev, ev, ev_wrong, arms, taus, pred = build(seed)
+        # A) H2 confusion (definitions below) + margins
+        for name in arms:
+            acc_cor = acc_wrg = ab_real = 0
+            margins_ev = []
+            for s, d, _, _ in ev:
+                p = pred(name, s)
+                mg = B.predict(arms[name], B.encode(s), -1e18)[1]
+                margins_ev.append(round(mg, 3))
+                if p is None: ab_real += 1
+                elif p == d: acc_cor += 1
+                else: acc_wrg += 1
+            tn = fp = 0
+            for s, _, _, _ in ev_wrong:
+                if pred(name, s) is None: tn += 1
+                else: fp += 1
+            margins_ev.sort()
+            q = lambda v, p: v[int(p * (len(v) - 1))]
+            print('H2 ' + json.dumps({'seed': seed, 'arm': name,
+                'defs': 'accepted_correct=real eval accepted with gold intent; accepted_wrong=real eval accepted with wrong intent; abstained_real=real eval abstained; NONE_abstained=TN; NONE_forced=FP. precision=NONE_abstained/(NONE_abstained+abstained_real); recall=NONE_abstained/N_total',
+                'accepted_correct': acc_cor, 'accepted_wrong': acc_wrg, 'abstained_real': ab_real,
+                'NONE_abstained': tn, 'NONE_forced': fp, 'N_real': len(ev), 'N_NONE': len(ev_wrong),
+                'precision': round(tn / max(tn + ab_real, 1), 3), 'recall': round(tn / len(ev_wrong), 3),
+                'eval_margin_q': [q(margins_ev, p) for p in (0.25, 0.5, 0.75)]}, ensure_ascii=False))
+        # winner as in run4
+        accs = {n: sum(pred(n, s) == d for s, d, _, _ in ev) / len(ev) for n in arms}
+        winner = max(accs, key=accs.get)
+        kind, wt = taus[winner]
+        # C) confirmation decomposition on winner
+        msrc = arms[winner]
+        margins = sorted(round(B.predict(msrc, B.encode(s), -1e18)[1], 4) for s, d, _, _ in dev if d != 'NONE')
+        conf_t = margins[len(margins) // 4] if margins else 0.0
+        low = [(s, d, fi) for s, d, _, fi in ev if B.predict(msrc, B.encode(s), -1e18)[1] < conf_t]
+        # fresh mapper copy at post-training state
+        m2 = {'wnn': lambda: B.WNN(B.INTENTS, seed, bleach=taus['wnn'][1]), 'nb': lambda: B.NB(B.INTENTS),
+              't2p': lambda: B.T2P(B.INTENTS), 'nn1': lambda: B.NN1(B.INTENTS)}[winner]()
+        for s, d, _, _ in train: m2.add(B.encode(s), d)
+        same_recall = transfer = 0
+        confirmed = []
+        for s, d, fi in low:
+            m2.add(B.encode(s), d)  # one confirmed example
+            same_recall += B.predict(m2, B.encode(s), -1e18)[0] == d
+            confirmed.append((s, d, fi))
+        # fresh transfer: NEW unseen items, same intents + eval families, fresh rng draws
+        tr_ok = tr_n = 0
+        for s, d, fi in confirmed:
+            fam = B.EVAL_FAM[d][fi]
+            xs, ys = B.EVAL_VOCAB[d]
+            fresh_items = []
+            for _ in range(4):
+                x = rng.choice(xs); y = rng.choice(ys) if ys[0] is not None else None
+                fresh_items.append((fam(x, y), tuple(v for v in (x, y) if v is not None)))
+            for fs, _ in fresh_items:
+                tr_ok += B.predict(m2, B.encode(fs), -1e18)[0] == d; tr_n += 1
+        # retention: teach 4 fresh examples of every OTHER intent, re-test confirmed items
+        for d in B.INTENTS:
+            others = [it for it in B.gen(rng, d, B.FAM[d], B.VOCAB[d], 4)]
+            for s2, d2, _, _ in others: m2.add(B.encode(s2), d2)
+        retention = sum(B.predict(m2, B.encode(s), -1e18)[0] == d for s, d, fi in confirmed)
+        print('CONF ' + json.dumps({'seed': seed, 'winner': winner, 'conf_t': conf_t, 'n_confirmed': len(confirmed),
+            'same_item_recall': f'{same_recall}/{len(confirmed)}',
+            'fresh_transfer': f'{tr_ok}/{tr_n}', 'retention_after_more_teaching': f'{retention}/{len(confirmed)}'},
             ensure_ascii=False))
-    # small-correction variant (dialogue-realistic: 3 corrections)
-    m4 = {'wnn': lambda: B.WNN(B.INTENTS, seed, bleach=taus['wnn'][1]), 'nb': lambda: B.NB(B.INTENTS),
-          't2p': lambda: B.T2P(B.INTENTS), 'nn1': lambda: B.NN1(B.INTENTS)}[winner]()
-    for s, d, _, _ in train: m4.add(B.encode(s), d)
-    mis4 = [(s, d) for s, d, _, _ in ev if B.predict(m4, B.encode(s), -1e18)[0] != d][:3]
-    before4 = {d: sum(B.predict(m4, B.encode(s), -1e18)[0] == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
-    for s, d in mis4: m4.add(B.encode(s), d)
-    after4 = {d: sum(B.predict(m4, B.encode(s), -1e18)[0] == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
-    corr4 = {d for _, d in mis4}
-    degr4 = [max(0, before4[d] - after4[d]) for d in B.INTENTS if d not in corr4]
-    print('SMALLCORR ' + json.dumps({'seed': seed, 'arm': winner, 'n': len(mis4),
-        'degr_points': [round(100 * x, 1) for x in degr4],
-        'mean_degr_points': round(100 * sum(degr4) / max(len(degr4), 1), 2)}, ensure_ascii=False))
-print('DONE')
+        # D) collateral validation on seed 0 only + small-correction variant on every seed
+        if seed == 0:
+            m3 = {'nb': B.NB, 't2p': B.T2P, 'nn1': B.NN1, 'wnn': None}[winner]
+            m3 = m3(B.INTENTS)
+            for s, d, _, _ in train: m3.add(B.encode(s), d)
+            before = {d: sum(B.predict(m3, B.encode(s), -1e18)[0] == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
+            docs_before = dict(m3.docs) if hasattr(m3, 'docs') else {}
+            mis = [(s, d) for s, d, _, _ in ev if B.predict(m3, B.encode(s), -1e18)[0] != d]
+            for s, d in mis: m3.add(B.encode(s), d)
+            after = {d: sum(B.predict(m3, B.encode(s), -1e18)[0] == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
+            docs_after = dict(m3.docs)
+            corrected = {d for _, d in mis}
+            print('COLLATERAL ' + json.dumps({'seed': 0, 'arm': winner, 'n_corrections': len(mis),
+                'corrected_intents': sorted(corrected),
+                'docs_before': docs_before, 'docs_after': docs_after,
+                'acc_before': before, 'acc_after': after,
+                'degr_points_uncorrected': {d: round(100 * max(0, before[d] - after[d]), 1) for d in B.INTENTS if d not in corrected}},
+                ensure_ascii=False))
+        # small-correction variant (dialogue-realistic: 3 corrections)
+        m4 = {'wnn': lambda: B.WNN(B.INTENTS, seed, bleach=taus['wnn'][1]), 'nb': lambda: B.NB(B.INTENTS),
+              't2p': lambda: B.T2P(B.INTENTS), 'nn1': lambda: B.NN1(B.INTENTS)}[winner]()
+        for s, d, _, _ in train: m4.add(B.encode(s), d)
+        mis4 = [(s, d) for s, d, _, _ in ev if B.predict(m4, B.encode(s), -1e18)[0] != d][:3]
+        before4 = {d: sum(B.predict(m4, B.encode(s), -1e18)[0] == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
+        for s, d in mis4: m4.add(B.encode(s), d)
+        after4 = {d: sum(B.predict(m4, B.encode(s), -1e18)[0] == d for s, dd, g, _ in ev if dd == d) / 8 for d in B.INTENTS}
+        corr4 = {d for _, d in mis4}
+        degr4 = [max(0, before4[d] - after4[d]) for d in B.INTENTS if d not in corr4]
+        print('SMALLCORR ' + json.dumps({'seed': seed, 'arm': winner, 'n': len(mis4),
+            'degr_points': [round(100 * x, 1) for x in degr4],
+            'mean_degr_points': round(100 * sum(degr4) / max(len(degr4), 1), 2)}, ensure_ascii=False))
+    print('DONE')
