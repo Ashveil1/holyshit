@@ -2706,9 +2706,10 @@ Per-seed paired deltas M1-M0 intent: frozen +.000/+.031/+.000/+.000/+.016
 +.047/+.031/+.016/+.000/+.046 (mean +.028, 5/5 non-negative).
 G1 FAIL: +.003 and +.028 are far under the +5-point requirement on both
 sets. G2 holds (frozen +.009). Per prereg: null recorded; M0 retained.
-Mechanism reading: weighting cannot create signal that training never
-contained - newtmpl/fresh3 errors are dominated by UNSEEN template function
-words (no learned signal at all), not by mis-weighted seen markers. The
+Mechanism hypothesis (NOT causally isolated - no control run separated
+unseen-function-word errors from other error mass): weighting may fail
+because newtmpl/fresh3 errors are dominated by UNSEEN template function
+words carrying no learned signal; alternative causes are not excluded. The
 teach_isa<->is_a_q confusion class is untouched by reweighting shared
 material; the distinguishing markers are already intent-exclusive and fully
 weighted in both arms.
@@ -2739,8 +2740,8 @@ Numbers (5-seed means, inspected dev sets, raw argmax): intent .466/.466/
 wrong_actions 28-41/64, abstention separate. Resource: full sweeps ~13MB
 peak RSS, seconds of CPU - the <=1GB goal is unstressed by this workload
 (no claim about any conversation-quality target).
-Usability gap, stated plainly: ~1 in 3 to 1 in 2 eval sentences still takes
-a wrong action; joint correctness 19-29% on authored new phrasings. This is
+Usability gap, stated plainly: 44-64% of eval sentences take a wrong action
+(28-41/64 per seed); joint correctness 19-29% on authored new phrasings. This is
 NOT a usable language interface and is not integrated anywhere. The measured
 failures are specific to these bounded setups; they do not prove no
 single-knob fix exists, but every tested single knob (mapper family, prior,
