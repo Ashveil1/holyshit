@@ -2859,3 +2859,30 @@ teach-once scale. Open untested axis: DATA SCALE - real teach-while-chatting
 accumulates examples over time; whether the pointer route crosses the
 baseline at 256+/intent is unknown and is a decision, not an assumption.
 No production integration; no live hsml writes were made.
+
+## B-571 PRE-REGISTERED (2026-10-26, before code) - data-scale probe: does the FIXED pointer arm close on the baseline as authored training data grows?
+
+Question (narrow): with the implementation FROZEN from B-570 (same model,
+hyperparameters, protocol), do PTR-minus-baseline joint deltas improve when
+training data per intent grows 8 -> 32 -> 128 (64 -> 256 -> 1024 sentences)?
+This CANNOT establish data scale as THE binding constraint (other axes are
+frozen, not ruled out), CANNOT isolate pointer-copy causally (encoder,
+intent head, and training differ from baseline together), and says nothing
+about the proposed recurrent arm (MLP encoder deviation stands). Seven
+failed challenger axes are not closure of all mechanisms.
+
+Fixed: b570.py model code unchanged; same seeds 0-4; same four inspected
+2x2 cells; baseline = frozen NBu+S4-selection+positional recomputed inside
+this harness for pairing. Nested-prefix training sets from one rng stream
+per seed (fully paired across scales). Epochs/lr/early-stop identical to
+B-570. No pretrained, no paid resources.
+Resources: 1e9-byte whole-runtime budget, live VmHVM watchdog (this harness
+spawns NO child processes, so single-process VmHWM is the whole tree);
+10-min hard timeout for the entire run; peak RSS + wall reported per scale.
+Gates (fixed before code):
+  G1: mean PTR-BASE joint delta on c12 (unseen-entity cell, B-570's worst)
+      at 128/intent is >= +10 points BETTER than at 8/intent, with >=4/5
+      per-seed paired improvements.
+  G2: same test on c22 (fresh3): mean delta improvement >= +10 points.
+  Both fail -> scale hypothesis NULL in the tested range; closeout, no
+  automatic continuation.
