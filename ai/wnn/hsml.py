@@ -766,7 +766,7 @@ class HSML:
         return d
 
     def _isa_path(self, x, y):
-        """B-559: shortest child->parent path from x to y over the LIVE is-a graph
+        """B-559: shortest child->review path from x to y over the LIVE is-a graph
         (synonyms of x included as starting points, B-553). Cycle-safe (visited set),
         depth-capped at 8 like _parents_any. Returns [x,...,y] or None."""
         seen = set(self._synonyms(x))
@@ -842,7 +842,7 @@ class HSML:
         return groups
 
     def _has_via(self, name, attr):
-        """B-556: ('own', None) | ('inherited', parent) | None. Speakable iff the
+        """B-556: ('own', None) | ('inherited', review) | None. Speakable iff the
         B-554 aggregation says pos and not neged; provenance prefers own, then the
         closest ancestor (BFS order) that holds the attr. Live memory."""
         pos, neged = self._pos_neg_any(name, attr)
