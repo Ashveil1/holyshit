@@ -400,6 +400,30 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL handle operation parity for {value}: {ref!r} != {got!r}")
     print(f"{op_cases} handle operator expressions checked in 3 programs")
 
+    contains_sources = []
+    for value in ['len', 'counter', 'local_fn']:
+        for expr in ['contains(f, 1)', 'contains("abc", f)']:
+            for caught in (False, True):
+                source = 'import counter\ndef local_fn():\n  return 1\nf = ' + value + '\n'
+                if caught:
+                    source += 'try:\n  print ' + expr + '\nexcept as error:\n  print error\n'
+                else:
+                    source += 'print ' + expr + '\n'
+                contains_sources.append(source)
+    contains_sources.append('import counter\ndef local_fn():\n  return 1\nf = local_fn\nprint contains([f, len, counter], f), contains([f, len, counter], len), contains([f, len, counter], counter)\nprint contains([f], len), contains("abc", "b"), contains({"key": f}, "key")\n')
+    for source in contains_sources:
+        prog = os.path.join(module_dir, "handle_contains.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL handle contains parity: {source!r}: {ref!r} != {got!r}")
+    print("13 handle contains error/control programs checked")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')

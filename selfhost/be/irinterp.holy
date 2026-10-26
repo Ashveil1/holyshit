@@ -168,6 +168,11 @@ def call_builtin(name, args, ln):
     if name == "has":
       return has(args[0], args[1])
     if name == "contains":
+      if pyrt.py_type(args[0]) == "func":
+        fail("'in' needs a Str, List or Dict, got " + type_name(args[0]), ln)
+      if pyrt.py_type(args[0]) == "str":
+        if pyrt.py_type(args[1]) == "func":
+          fail("'in <Str>' needs a Str, got " + type_name(args[1]), ln)
       return contains(args[0], args[1])
     if name == "keys":
       return keys(args[0])
