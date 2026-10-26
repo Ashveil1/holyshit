@@ -615,3 +615,9 @@ code; not production.
                                       # check + real process-restart audit
 
 Details, measured limits and burden numbers: LEDGER.md B-603/B-604.
+
+Engineered support (explicitly NOT learned from the teaching exchange):
+bootstrap mapper training, slot-extraction statistics, the ของ-position
+subject/attr routing, question-marker guards and reply templates are
+supplied rules derived from bootstrap gold labels. See LEDGER.md B-604
+audit and B-606 for the unresolved ambiguity failure classes.

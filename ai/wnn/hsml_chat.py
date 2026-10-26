@@ -60,7 +60,7 @@ class InteractiveChat(ChatSpeaks):
         self.vocab = vocab
         self.fn0, self.anchor0, self.offstat0, self.rolepos0 = fn0, anchor0, offstat0, rolepos0
         self.markers = set().union(*frame.values()) | set(anchor0.values())
-        self.grammar = set(self.markers)
+        self.grammar = set(self.markers) | QMARKERS
         self.lex = set(BASE_LEX) | EXTENSION_LEX
         self.pending = None
 
@@ -68,9 +68,23 @@ class InteractiveChat(ChatSpeaks):
     def _extract(self, s, d):
         if d not in B.NSLOTS: return None
         sl = extract_fb(s, d, self.fn0, self.anchor0, self.offstat0,
-                        self.rolepos0, self.frame, self.fillers, self.soff, B.NSLOTS[d])[0]
+                        self.rolepos0, self.frame, self.fillers, self.soff,
+                        B.NSLOTS[d], self.vocab)[0]
         if sl is not None and any(w in self.grammar for w in sl):
             return None
+        if sl is not None and d == 'ask_attr':
+            sl = self._semantic_ask_attr(s, sl)
+        return sl
+
+    @staticmethod
+    def _semantic_ask_attr(s, sl):
+        # Supplied: ask_attr extraction is surface-ordered; the token
+        # after ของ is the subject. Returns (subject, attr).
+        toks = s.split()
+        if 'ของ' in toks:
+            i = toks.index('ของ') + 1
+            if i < len(toks) and toks[i] in sl and sl[0] != toks[i]:
+                return (toks[i],) + tuple(x for x in sl if x != toks[i])
         return sl
 
     def _segment(self, text):
@@ -101,21 +115,24 @@ class InteractiveChat(ChatSpeaks):
     def _act(self, d, sl):
         if d == 'ask_attr' and sl:
             self.subjects.append(sl[0])
-            return 'answer_known' if sl[1] in self.attr.get(sl[0], set()) else 'answer_ok'
+            known = sl[1] in self.attr.get(sl[0], set())
+            if 'คืออะไร' in (self._last_surface or ''):
+                return 'value_known_partial' if known else 'answer_ok'
+            return 'answer_known' if known else 'answer_ok'
         return super()._act(d, sl)
 
     def realize(self, cls, s, gi, gs, meta):
         if cls == 'answer_known' and gs:
             return 'ใช่ %s มี %s' % (gs[0], gs[1])
+        if cls == 'value_known_partial' and gs:
+            return 'รู้ว่า %s มี %s แต่ไม่รู้รายละเอียด' % (gs[0], gs[1])
         return super().realize(cls, s, gi, gs, meta)
 
+    _last_surface = None
+
     def _commit(self, s, d, sl, category):
+        self._last_surface = s
         sl = [self._clean(x) for x in sl] if sl else sl
-        if d == 'ask_attr' and sl and 'ของ' in s.split():
-            toks = s.split()
-            after = toks[toks.index('ของ') + 1] if toks.index('ของ') + 1 < len(toks) else None
-            if after in sl and sl[0] != after:
-                sl = [after] + [x for x in sl if x != after]
         self._grow_lex(sl)
         cls = self._act(d, sl)
         return cls, self.realize(cls, s, d, sl, {'category': category}), category
@@ -137,13 +154,15 @@ class InteractiveChat(ChatSpeaks):
     def _try_confirm(self, s, exclude=()):
         """Offer a guess-confirmation for the best non-excluded intent
         whose slots extract, guarded by marker-word or known-entity.
-        B-605: question-marked surfaces only get question-intent guesses;
-        unmarked surfaces never get question-intent guesses."""
+        B-605: marker-based intent restriction. B-606 escape hatch: the
+        restriction applies only while nothing has been rejected; after a
+        rejection every intent is eligible again."""
         q = any(t in QMARKERS for t in s.split())
+        restrict = not exclude
         for d, _sc in self._ranked(s):
             if d in exclude or d not in RESTATE: continue
-            if q and d not in QINTENTS: continue
-            if not q and d in QINTENTS: continue
+            if restrict and q and d not in QINTENTS: continue
+            if restrict and not q and d in QINTENTS: continue
             sl = self._extract(s, d)
             if sl is None or len(sl) != B.NSLOTS[d]: continue
             if self._known(sl) or any(t in self.markers for t in s.split()):

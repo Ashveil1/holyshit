@@ -4412,3 +4412,34 @@ interpreter + mapper + stores + lexicon included). Peak CONCURRENT
 process-tree RSS (parent+child sampled every 50ms during the child's
 lifetime): 56.8MB. Both far under the 1e9-byte live cap; the watchdog
 stays armed in both processes.
+
+## B-606 PRE-REGISTERED (2026-10-27, before code) - ambiguity independent of markers + answer relevance + convention unification
+
+B-605's marker guard has KNOWN UNRESOLVED FAILURE CLASSES (recorded, not
+patched): unmarked Thai questions exist; question words occur inside
+quoted/taught content; 'unmarked => never question' can silently
+reinterpret a request as a statement. Bounded changes, supplied and
+labeled: (a) ESCAPE HATCH: the marker-based intent restriction applies
+to the FIRST guess only - after a user rejection, all intents become
+eligible again, so an unmarked question can reach is_a_q/ask_attr via
+one ไม่ใช่; (b) CONFIRM-BEFORE-WRITE stands independent of markers: no
+fact write from an uncertain parse without an explicit user yes, marker
+or not; (c) QUOTED CONTENT: a turn like 'ตัวอย่าง คำถาม คือ แมว มี หาง
+ไหม' (question word inside taught content) must NOT write a fact - it
+may clarify or honestly decline; (d) ANSWER RELEVANCE: 'Y ของ X
+คืออะไร' asks for the attribute VALUE - the store holds has-relations
+only, so the honest reply when X has Y is 'รู้ว่า X มี Y
+แต่ไม่รู้รายละเอียด', NOT the bare 'ใช่ X มี Y'; has-questions
+('X มี Y ไหม') keep yes/unknown replies; (e) CONVENTION UNIFICATION:
+all authored slot-order expectations are SEMANTIC (subject, attr) -
+B-604's HELDOUT mistakenly used surface order for two ask_attr items
+(fixed; the frozen eval's gold is semantic, so this aligns both);
+extraction-order vs semantic-order mismatches remain recorded where
+they occur. Battery: unmarked question reaching a question parse via
+escape, unmarked statement teaching normally, quoted-content no-write,
+retraction statement removing a fact on confirm, คืออะไร relevance
+known+unknown. Gates: G1 no fact write without explicit yes anywhere;
+G2 quoted-content turn writes nothing; G3 escape reaches a question
+parse in <=1 rejection; G4 relevance replies match known/unknown state.
+Authored battery = development check. No pretrained, no paid,
+pure-Python, 1e9-byte live watchdog.

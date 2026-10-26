@@ -140,12 +140,12 @@ if __name__ == '__main__' and '--heldout' not in __import__('sys').argv:
 # ---- B-604 audit: matched pre/post contrast on HELD-OUT unfamiliar
 # compositions (authored for evaluation only; never added to runtime) ----
 HELDOUT = [('ควาย มี เขา', 'teach_attr', ('ควาย', 'เขา')),
-           ('เขา ของ ควาย คืออะไร', 'ask_attr', ('เขา', 'ควาย')),  # surface-order convention
+           ('เขา ของ ควาย คืออะไร', 'ask_attr', ('ควาย', 'เขา')),  # semantic (subject, attr)
            ('เป็ด เป็น นก ไหม', 'is_a_q', ('เป็ด', 'นก')),
            ('เสือ มี ขน', 'teach_attr', ('เสือ', 'ขน')),
            ('สัตว์ป่า เป็น สัตว์', 'teach_isa', ('สัตว์ป่า', 'สัตว์')),
            ('นกน้ำ มี ปีก ไหม', 'teach_attr', ('นกน้ำ', 'ปีก')),
-           ('เกล็ด ของ ปลา คืออะไร', 'ask_attr', ('เกล็ด', 'ปลา')),
+           ('เกล็ด ของ ปลา คืออะไร', 'ask_attr', ('ปลา', 'เกล็ด')),  # semantic (subject, attr)
            ('ม้า ไม่มี เขา', 'retract_attr', ('ม้า', 'เขา'))]
 
 def heldout_contrast():
