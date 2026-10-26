@@ -3,6 +3,7 @@ GIVEN glue: digit-tape helpers (pad/strip/broadcast), constant [1], NOT, ITE, an
 (direct, FOLD over digits of y, WHILE cond). LEARNED (level 1): the arithmetic procedures themselves, from examples.
 LEARNED (level 2): which composition solves the task, by enumeration over the library.
 python3 cur2.py"""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, itertools, time, sys, pickle
 import induce as I
 # ---- level-1 learned programs (found by exhaustive search from examples; see cur1.py) ----

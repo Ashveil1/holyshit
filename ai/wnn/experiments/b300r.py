@@ -2,6 +2,7 @@
 Cliff model: wrong rate >0 exactly where shortcuts survive. Selection matters iff it kills shortcuts.
 Conditions: R5 (random 5), B5 (boundary entries as train - oracle informed selection), R25 (random 25).
 NO adv (acceptance off) - selection must do the work. Recipe baselib,simp, cap 3M. Eval: general vs gen."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, json, sys
 import cur7
 from cur7 import gen, search, make_fn, boundary, ADV, EXCL, CAPF, Fail, ev

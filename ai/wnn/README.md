@@ -36,6 +36,13 @@ Known limits: memory is wasteful (640 full 2^16 tables; a hashed or
 packed-counter layout would cut it ~4-16x). Shift augmentation was tested
 in the Python prototype and *hurt* accuracy, so it is not used.
 
+## experiments/ — archived experiment scripts
+
+One-off research scripts cited by LEDGER.md (B-300..B-519 era) live in
+[experiments/](experiments/README.md). Run them from this directory as
+`python3 experiments/<name>.py` (previously `python3 <name>.py`; working
+directory, args and `logs/` outputs unchanged).
+
 ## hsml — dialog-taught conversation system (user-ready entry point)
 
 `hsml.py` + `chat.py`: an experimental system you teach through Thai

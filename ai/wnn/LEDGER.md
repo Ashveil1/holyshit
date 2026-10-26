@@ -2125,3 +2125,8 @@ Pass criteria:
 - ผล unbounded ทั้งสาม: b536 PASS (c5_tried 700,001, c1-c5 ครบตาม run()), b539 PASS (c6_tried 700,001, chunked ผ่าน save/load จริง caches ถูกลบก่อน), b538 PASS (c5_tried 700,001, c1-c8 ครบ) — logs: /tmp/full_b536.log, /tmp/full_b539.log, /tmp/full_b538.log (รอบ bounded ก่อนหน้าเก็บแยกไว้เป็นหลักฐานชั่วคราว ไม่ใช่ฉบับปิดเกณฑ์)
 - การนับ regression ฉบับแก้: 26 harness = 23 full เขียว + 3 ที่ต้อง full-control แยก (ตอนนี้ full เขียวครบแล้ว) — เลข 25 หรือ 33/33 ที่เคยรายงานผิดได้แก้ในบันทึกแล้ว
 - Merge gates ณ เวลา merge: CI quick+arm64-port SUCCESS ที่ head c2606f2 ตรง 3 ทาง (PR head = ls-remote wnn = local wnn), master เคลื่อนจาก d36fa6d เป็น 7b78703 ผ่าน PR #287 (docs/+selfhost/+tests/ เท่านั้น, file-disjoint จาก ai/wnn 100%), merge เป็น 48bc8a1; fresh-clone smoke: บทสนทนา Milo ครบ + b559 36/36 จาก clone สด
+
+## Declutter (26 ตุลาคม 2026) — ย้ายสคริปต์ทดลองเก่า 62 ไฟล์ไป experiments/ (PR #290)
+- ไฟล์ที่ LEDGER อ้างด้วยชื่อเดิม (b504.py, baby4.py, t3lex.py ฯลฯ) ตอนนี้อยู่ที่ experiments/<ชื่อเดิม>.py — คำอ้าง logs/... ไม่เปลี่ยน
+- รันจาก ai/wnn เหมือนเดิม: python3 experiments/<name>.py (cwd/args/logs เหมือนเดิมทุกอย่าง; ไฟล์ที่ import โมดูลที่อยู่ต่อมี bootstrap 1 บรรทัด)
+- ยืนยันการรันซ้ำหลังย้าย: b504 ตรงเลขเดิมใน LEDGER เป๊ะ (0.188/0.163), text2prog P15, cur2_test, b300r เขียน logs ถูกที่; output isolation: เขียน /tmp หรือไฟล์ตัวเองเท่านั้น ไม่แตะ state ของ harness ที่อยู่ต่อ

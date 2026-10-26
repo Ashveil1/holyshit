@@ -4,6 +4,7 @@ GIVEN: WHILE skeleton `state=(s0,s1) <- inits; while cond(state): state <- (u0(s
        level-2 skills (mul = Horner fold, mod = while-subtract; re-learned here by cur2's search), and level 3:
        inits, condition, and the two updates by enumeration (gcd, power).
 python3 cur3.py TASKS [ops-to-remove]"""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import sys, time, random, itertools
 import induce as I, cur2 as C
 from cur2 import n2d, d2n, strip, show

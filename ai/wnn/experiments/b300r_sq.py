@@ -1,6 +1,7 @@
 """B-300R-SQ: square B5 CORRECTED - train-safe boundary cases (cap-cost rule B-523rev: canonical
 square = repeated-addition mul, cost O(product) at x=30 -> 900 steps > search CAP 400 -> NOT FOUND
 artifact). Train = [(0,0),(1,1),(2,4),(3,9),(5,25)] - same info, cap-respecting."""
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import random, json
 import cur7
 from cur7 import gen, search, make_fn, boundary, ADV, EXCL, CAPF, Fail, ev

@@ -1,3 +1,4 @@
+import os as _o, sys as _s; _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))  # experiments/ bootstrap: resolve ai/wnn modules
 import induce as I, cur2 as C, sys
 P={'add':('bwd','bwd','tape+r',I.fn('((x+(r+y))%10)'),I.fn('((x+(r+y))//10)')),
  'sub':('bwd','bwd','tape',I.fn('(((x-y)-r)%10)'),I.fn('(1 if (x-y)<r else 0)')),
