@@ -137,10 +137,14 @@ def call_builtin(name, args, ln):
     fail("split wants split(s) or split(s, sep)", ln)
   try:
     if name == "len":
+      if pyrt.py_type(args[0]) == "func":
+        fail("len of " + type_name(args[0]), ln)
       return len(args[0])
     if name == "str":
       return display(args[0])
     if name == "int":
+      if pyrt.py_type(args[0]) == "func":
+        fail("cannot convert " + type_name(args[0]) + " to Int", ln)
       return int(args[0])
     if name == "float":
       kind = type_name(args[0])

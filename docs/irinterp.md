@@ -134,3 +134,9 @@ the source display name when created. Eight focused cases cover direct and
 nested handles, closures, aliases and ordinary tag-shaped Dicts, for277 parity
 classifications. Cyclic containers, deep recursion and other handle operations
 are not new guarantees of this change.
+
+`len()` and `int()` errors now use the guest handle's kind rather than the host
+closure's Func kind. Builtin and Module errors retain their names and source
+lines, with twelve caught/uncaught cases across Func/Builtin/Module, for289
+parity classifications. Valid conversions and other operation limits are
+unchanged; this does not claim all handle error edges are covered.
