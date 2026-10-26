@@ -3923,3 +3923,29 @@ ast.parse; b592 re-run clean (3/3 summaries). Git history NOT rewritten;
 older commits still contain the pre-scrub text (containment, not erasure).
 NOTE on v1 18/18 (B-592 run2 vs B-588 17/18): attributable to the recorded
 LABELING fix (literal_repeat boundary), not a capability improvement.
+
+## B-595 PRE-REGISTERED (2026-10-26, before code) - segmentation integration reachability
+
+Feed DE-SPACED forms of the v1 scenario turns through the B-589 longest-match
+segmenter (90-word authored lexicon) into the unified B-592 pipeline. Metric:
+ACTION PARITY - fraction of turns whose resulting class equals the spaced-
+form class. Per-turn divergence recorded with cause (unknown word -> UNK,
+ambiguity, segmentation error). Known limits from B-589 stand: unknown
+words degrade to UNK; ambiguity unresolved. No bar - reachability
+measurement. The lexicon contains all v1 content words BY CONSTRUCTION
+(authored from the protocol vocab), so parity here is a best-case plumbing
+check, NOT evidence of general Thai coverage - stated in the verdict.
+
+## B-595 FINDINGS (2026-10-26): segmentation->pipeline plumbing reaches action parity 18/18 (best-case check, not Thai coverage)
+
+logs/b595_run1.log. De-spaced v1 turns through the B-589 longest-match
+segmenter into the unified pipeline: 18/18 action parity with spaced forms.
+Segmentation exactly matched the reference spacing on 15/18; the 3
+mismatches were HARMLESS refinements (แมวตัวนี้ชื่อมิโลนะ -> 5 tokens
+including ตัวนี้/ชื่อ; สอนวิธี -> สอน วิธี split; English turn -> single
+UNK token) - all still routed correctly. STATED LIMIT: the 90-word lexicon
+was authored from this protocol's vocabulary, so every content word is
+in-lexicon BY CONSTRUCTION - this is a plumbing check. General Thai
+coverage is NOT established: B-589's unknown-word and ambiguity failures
+stand, and ordinary chat will hit out-of-lexicon words constantly. 27.0MB,
+1.2s.

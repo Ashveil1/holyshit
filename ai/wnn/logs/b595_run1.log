@@ -1,0 +1,21 @@
+TURN {"turn": "สวัสดี", "segmented": "สวัสดี", "spaced_cls": "honest_engaged", "despaced_cls": "honest_engaged", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "มิโล เป็น แมว", "segmented": "มิโล เป็น แมว", "spaced_cls": "teach_ok", "despaced_cls": "teach_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "แมว เป็น สัตว์", "segmented": "แมว เป็น สัตว์", "spaced_cls": "teach_ok", "despaced_cls": "teach_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "มิโล เป็น สัตว์ ไหม", "segmented": "มิโล เป็น สัตว์ ไหม", "spaced_cls": "inference_ok", "despaced_cls": "inference_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "มิโล มี หาง", "segmented": "มิโล มี หาง", "spaced_cls": "teach_ok", "despaced_cls": "teach_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "หาง ของ มิโล คืออะไร", "segmented": "หาง ของ มิโล คืออะไร", "spaced_cls": "answer_ok", "despaced_cls": "answer_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "แมวตัวนี้ชื่อมิโลนะ", "segmented": "แมว ตัวนี้ ชื่อ มิโล นะ", "spaced_cls": "teach_ok", "despaced_cls": "teach_ok", "parity": true, "seg_matches_ref": false}
+TURN {"turn": "มัน กิน ปลา ไหม", "segmented": "มัน กิน ปลา ไหม", "spaced_cls": "ask_needed", "despaced_cls": "ask_needed", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "วันนี้ อากาศ ดี มาก", "segmented": "วันนี้ อากาศ ดี มาก", "spaced_cls": "honest_engaged", "despaced_cls": "honest_engaged", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "ราคา เท่าไหร่ กัน", "segmented": "ราคา เท่าไหร่ กัน", "spaced_cls": "honest_engaged", "despaced_cls": "honest_engaged", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "สอนวิธี บวก ให้หน่อย", "segmented": "สอน วิธี บวก ให้ หน่อย", "spaced_cls": "teach_ok", "despaced_cls": "teach_ok", "parity": true, "seg_matches_ref": false}
+TURN {"turn": "ตอบ สี่", "segmented": "ตอบ สี่", "spaced_cls": "teach_ok", "despaced_cls": "teach_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "มิโล เป็น นก ไหม", "segmented": "มิโล เป็น นก ไหม", "spaced_cls": "answer_ok", "despaced_cls": "answer_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "นก เป็น สัตว์", "segmented": "นก เป็น สัตว์", "spaced_cls": "teach_ok", "despaced_cls": "teach_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "มิโล ไม่มี หาง", "segmented": "มิโล ไม่มี หาง", "spaced_cls": "teach_ok", "despaced_cls": "teach_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "หาง ของ มิโล คืออะไร รู้ไห", "segmented": "หาง ของ มิโล คืออะไร รู้ไหม", "spaced_cls": "answer_ok", "despaced_cls": "answer_ok", "parity": true, "seg_matches_ref": true}
+TURN {"turn": "good night sleep well", "segmented": "<UNK:goodnightsleepwell>", "spaced_cls": "honest_engaged", "despaced_cls": "honest_engaged", "parity": true, "seg_matches_ref": false}
+TURN {"turn": "เหยี่ยว เป็น สัตว์เลี้ยง ไ", "segmented": "เหยี่ยว เป็น สัตว์เลี้ยง ไหม", "spaced_cls": "honest_engaged", "despaced_cls": "honest_engaged", "parity": true, "seg_matches_ref": true}
+SUMMARY {"parity": 18, "turns": 18, "seg_exact": 15}
+RES-FINAL {"peak_rss_mb_overall": 27.0, "wall_seconds": 1.2}
+DONE
