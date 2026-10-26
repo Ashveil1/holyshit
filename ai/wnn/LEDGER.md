@@ -3048,3 +3048,33 @@ A precision-targeted threshold (dev-chosen for <=5% wrong-action, not max
 accuracy) is the obvious next calibration but is NOT run: prereg says null
 -> no automatic continuation.
 Resources: peak RSS 28.4MB, 8.1s wall, 1e9-byte watchdog, no new deps.
+
+## INTERPRETATION CORRECTION (2026-10-26, on B-573)
+
+The B-573 G2 result is a NARROW proof of acquisition inside this protocol:
+a simulated authored teacher on inspected families. It is NOT evidence that
+an ask channel works as a real user needs, and nothing is 'handled forever':
+retention/interference across successive taught families and genuinely
+independent unfamiliar families remain UNVERIFIED. No universal or perpetual
+claims stand.
+
+## B-574 PRE-REGISTERED (2026-10-26, before code) - precision-targeted gate calibration
+
+Same mechanism, frozen protocol/mapper(NBu)/extractor, same INSPECTED cells
+(development calibration reuse - not independent validation). The simulated
+teacher supplies the INTENT LABEL ONLY; slots still come from the frozen
+extractor. Teacher burden (asks per family) is reported as a first-class
+metric alongside coverage and errors.
+Change vs B-573: the margin threshold tau is chosen on the authored dev
+split for WRONG-ACTION <= 5% (tightest threshold achieving it; if none
+achieves it, the tightest available, and G1 fails) instead of max accuracy.
+Gates (fixed before code):
+  G1: wrong-action on ACTED items <= 5% on EACH of c21, c22 (5-seed totals).
+  G2: coverage (acted/total) >= 50% on each cell - refusing almost
+      everything does not count as meeting G1.
+  G3: acted-item JOINT (intent+slots) >= static-M0 all-item joint on each
+      cell - interaction must not hurt the end-to-end number.
+Fail -> null, no automatic continuation. Reported together: coverage,
+wrong-action, acted intent/joint, asks per family.
+Resources: no pretrained, no paid, pure-Python, 1e9-byte live watchdog,
+10-min timeout, seeds 0-4. No personal-data collection.
