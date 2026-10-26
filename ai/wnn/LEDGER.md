@@ -2984,3 +2984,13 @@ gains are small; word bigrams add ~nothing. The marker-position class is
 partially addressed by designed positional cues, not recovered.
 Resources: peak RSS 28.4MB overall (3 mappers x 4 cells x 5 seeds, no
 children), 6.5s wall, live 1e9-byte watchdog, well under budget.
+
+## CORRECTION + LINE STATE (2026-10-26): learned-language line HELD, no supported next proposal identified
+
+My 11:29 report phrased the outlook as "the remaining gap needs a different
+information source" - that goes further than the evidence. The B-562..B-572
+nulls and the absence of a next proposal establish neither that a different
+information source is NECESSARY nor that possible approaches are exhausted.
+The accurate record: in this bounded pass, NO SUPPORTED NEXT PROPOSAL was
+identified. The line is held: no further automatic arms, nothing integrated
+into production, all previous nulls preserved.
