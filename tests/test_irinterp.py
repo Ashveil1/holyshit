@@ -363,6 +363,22 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL handle error parity: {source!r}: {ref!r} != {got!r}")
     print("12 handle len/int error cases checked")
 
+    for value in ['len', 'counter', 'local_fn']:
+        for span in [':', '0:1', '1:', ':1']:
+            source = 'import counter\ndef local_fn():\n  return 1\nf = ' + value + '\n'
+            source += 'try:\n  print f[' + span + ']\nexcept as error:\n  print error\n'
+            prog = os.path.join(module_dir, "handle_slices.holy")
+            with open(prog, "w") as f:
+                f.write(source)
+            ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+            got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                       [driver, prog], b"", _BASE_ENV)
+            total += 1
+            if ref != got:
+                fails += 1
+                print(f"FAIL handle slice parity: {source!r}: {ref!r} != {got!r}")
+    print("12 handle slice error cases checked")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')
