@@ -105,7 +105,7 @@ Types and inherited answers:
 เหยี่ยว มี ปีก ไหม            ใช่ — inherited through นก, derivation recorded
 เหยี่ยว มี อะไรบ้าง           own attrs first, then inherited ones grouped by source: ' และจาก นก: ...'
 ```
-Retracting the parent's fact removes the inherited answer. Type cycles do not
+Retracting the the reviewer's fact removes the inherited answer. Type cycles do not
 loop. Inheritance walks only links you taught — it is not common-sense inference.
 
 Composing new sentences from taught words (question-conditioned, verified before speaking):

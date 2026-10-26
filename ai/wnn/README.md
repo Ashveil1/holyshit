@@ -165,8 +165,8 @@ cd ai/wnn && /tmp/chat    # or: printf 'hello\nquit\n' | /tmp/chat
   statistically, +8 pts one-shot episodic recall (74%).
 - `facts.holy` - hyperdimensional (HDC) one-shot fact memory: 70 facts
   in a fixed 4KB vector, 70/70 recall both directions, no training loop.
-- `chat_learn.holy` - the chatbot that LEARNS: "learn: my name -> Ash"
-  once, then "what is my name?" or "my name" answers "Ash" forever
+- `chat_learn.holy` - the chatbot that LEARNS: "learn: my name -> the requester"
+  once, then "what is my name?" or "my name" answers "the requester" forever
   (paraphrase-tolerant, 31 facts tested, 9.4MB RAM).
 
 Honest summary: this system learns in one pass, never catastrophically
@@ -560,7 +560,7 @@ P16 drops every 2-step explanation of a training sentence when a single-op expla
 - n=1000: .73 vs .82 (WORSE); .41 vs .44 (worse)
 Mixed result: soft Occam is much better with little data (roughly matches P16's n=1000 performance using 300 sentences) but the categorical rule wins at n=1000, where accumulated soft credit for spurious 2-step readings hurts. A schedule (soft early, categorical late) is an untested option. Priors/experience as in P16.
 
-## P26 (baby2.py): caregiver-baby first-word experiment (Ash's design)
+## P26 (baby2.py): caregiver-baby first-word experiment (the requester's design)
 World: 6 Thai situation types (แม่ พ่อ นม ลูกบอล แมว หมา), one primary + 30% noise co-present object per scene, 100 scenes/day. Two scripted caregivers talk to EACH OTHER about the scene (2-4 word lines, echo replies, correct word 70% of the time); the baby overhears. Baby: from-scratch Hebbian word<->situation association counts, no pretrained anything. Once the baby produces a word, caregivers reply as they reply to each other (echo line; plus association boost/penalty = Turing 1948 pleasure-pain channel). FIRST-WORD criterion (pre-stated): >=80% of 200 held-out mother scenes get แม่ and <=20% of other scenes. 5 seeds.
 Results:
 - Informative words (any feedback mode): first word day 1-4 in 28/30 runs; all-6-word held-out accuracy .84-.88 (chance ~0.17). Dialogue (overheard 2-person speech) works as well as single-word utterances.

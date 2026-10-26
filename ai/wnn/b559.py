@@ -10,7 +10,7 @@ def check(label, cond, detail=''):
     if not cond:
         fails.append(label)
 
-# ---------- C1: Ash's Milo dialogue end-to-end ----------
+# ---------- C1: the requester's Milo dialogue end-to-end ----------
 h = HSML()
 r1 = h.hear('มิโล เป็น แมว และ แมว เป็น สัตว์เลี้ยงลูกด้วยนม')
 check('C1 compound stored', r1['kind'] == 'compound_stored' and len(r1.get('stored', [])) == 2, r1)

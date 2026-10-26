@@ -1,4 +1,4 @@
-"""B-521: attribute<->concept feasibility (Ash's bird question). Reverse-identify an animal from
+"""B-521: attribute<->concept feasibility (the requester's bird question). Reverse-identify an animal from
 an UNORDERED attribute set, and generate NON-VERBATIM combination descriptions (learned frame +
 selected content). Co-occurrence counts only. LEDGER pre-reg 2026-10-24 + Amendment 1."""
 import random, json

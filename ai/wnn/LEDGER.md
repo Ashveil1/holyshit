@@ -182,16 +182,16 @@ Mechanism: cluster tokens on binary "never co-occurs in 500 scenes" profiles.
 - D2 8/14 at f=1.0, 6/14 at f=0.2: FAIL. D3 collapses with the labels (0-6/20, EA 0/0 - merged E/A class yields no (E,A) bigram counts).
 Verdict: class discovery DOUBLE NEGATIVE (P29b word-level NMI .04-.12; P29d token co-occurrence .67-.79; P29e incompatibility .72). Partial structure is real (E/L/T separated in P29d, L/T cleanly split in P29e) but no simple statistic recovers all four classes at this scale. Line CLOSED per pre-commitment; what survives: grounding, comprehension, pair-bigram order (P29a-c), and earned-class order WITH composition given good labels (P29d D3) - i.e. IF classes are (somehow) obtained, order+composition follow; obtaining them from raw distributional statistics at baby scale is the open hard part.
 
-## P30 (2026-10-22) - vocative / call-consequence learning (Ash's question, pre-registered, approved)
+## P30 (2026-10-22) - vocative / call-consequence learning (the requester's question, pre-registered, approved)
 Design: bare-name call lines in two-caregiver scenes; NAMED caregiver turns next tick (selective); 5% spontaneous-turn noise; referential mentions never followed by turning. Learner: temporal-shift Hebbian channel keyed on (bare word, next-tick event tokens). Events opaque tokens V0-V3.
 - V1 call comprehension (predicted turn-event argmax after bare name): 2/2 all seeds, f=1.0 AND f=0.2. CRITERION >=.9: PASS.
 - V2 selective production (instrumental call over full grounded vocabulary): 2/2 all seeds, both f. CRITERION >=.9: PASS.
 - V3 no-consequence control (turn events shuffled w.r.t. calls): V1=0/2, V2=0/2 all cells. CRITERION <=.6/.5: PASS.
 - Learned contingency is strongly selective: แม่->TURN(แม่) +72..74 vs TURN(พ่อ) -18 (Hebbian units); approach events learned too (weaker, p=.5).
 - Design notes: call events are world events independent of dilution f (hence identical numbers at f=1.0/0.2 - dilution does not stress the vocative channel here); the disambiguating cue is LINE BARENESS (single-word utterance), standing in for calling prosody - pre-registered. CAN: acquire call->response contingency, use a name instrumentally. CANNOT: distinguish name from response-triggering signal; no mental-state attribution claimed.
-Answer to Ash's question: yes - if the world responds selectively to bare-name calls, the baby learns exactly which word summons which caregiver, and uses it; shuffled consequences abolish both.
+Answer to the requester's question: yes - if the world responds selectively to bare-name calls, the baby learns exactly which word summons which caregiver, and uses it; shuffled consequences abolish both.
 
-## P31 (2026-10-22) - turn-taking dialogue with contingent feedback (Ash's "converse with mom"; pre-registered)
+## P31 (2026-10-22) - turn-taking dialogue with contingent feedback (the requester's (steering paraphrased); pre-registered)
 Design: caregiver prompt (scene-prompt/greeting) + end-of-turn cue -> baby DECIDES to speak (reward-shaped propensity) and says a scene-evoked grounded word -> competent caregiver praises (word names a present thing) or corrects. Reward modulates word<->token association and speak-propensity. 5 days x 100 episodes, 3 seeds.
 Iteration honesty note: two artifacts were caught and fixed pre-report (END token and praise/filler words entered the production vocabulary and were self-praised through reward amplification; an argmax-in-scene praise criterion was too weak). Final mechanism: production restricted to confidently-grounded words; praise only for conventional names of present things.
 - T1 turn timing (f=1.0): speak-propensity end/noend = .99/.01-.05 all seeds. CRITERION >=.9/<=.2: PASS. NO-FEEDBACK control: .5/.5 (no learning): PASS.
@@ -651,7 +651,7 @@ Runtime unknown (cells near the cap dominate; est. 1-4 h total) - background job
 
 ## B-499 design amendment (2026-10-23) - endpoint-sandwich reduction after a value-of-information check
 
-Amendment recorded BEFORE the remaining cells run, on parent instruction; the reduced grid is NOT presented as the completed original 40-cell experiment.
+Amendment recorded BEFORE the remaining cells run, on review instruction; the reduced grid is NOT presented as the completed original 40-cell experiment.
 Structural fact (proof, not estimate): with nested train prefixes (train[:n] subset of train[:m] for n<m), a fixed per-task enumeration order, and a fixed VALID gate, the found position found(n) is MONOTONE NON-DECREASING in n - weakening the train filter can only let an earlier candidate through, never a later one. Therefore found(2) == found(25) PROVES found(4)==found(8)==found(16) for that task: intermediate cells are determined, not merely likely.
 Measured so far: mod row flat at 2082 for all n in {2,4,8,16,25} (gen 40/40 all scales); mul n=2 at 4,155,513 (1802s).
 Value-of-information check on the 34 remaining cells: mul n=4/8/16 are sandwiched IF mul n=25 lands at 4,155,513 (measured next, in-harness; canonical cross-harness numbers are references only, never mixed into this table). Per-task, only the endpoints (n=2, n=25) carry information: n=2 tests whether the VALID gate alone determines the find; n=25 re-measures the baseline in this harness. Middle cells run ONLY for a task whose endpoints mismatch (contingent, none assumed).
@@ -668,14 +668,14 @@ Run plan (after B-499 DONE): b502.py, absdiff seed 0, same pin/EXCL/VALID protoc
 
 ## B-499 H1 correction (2026-10-23) - the pre-stated H1 is refuted by the amendment's own monotonicity proof
 
-Correction before any verdict, on parent's reconciliation request. H1 as pre-stated ("at least one skill has tried(n) > tried(25) for some n < 25; shortcut traffic through the VALID gate delays the find") is IMPOSSIBLE under the experiment's own premises: with nested prefixes (train[:n] subset of train[:25]), a fixed enumeration order, and deterministic VALID, every candidate passing (train[:25] AND VALID) also passes (train[:n] AND VALID), so found(n) <= found(25) for all n < 25. A LATER tried-position at smaller n cannot occur. The shortcut-traffic mechanism inflates WALL-CLOCK only: at small n many more candidates pass the weak train gate and each burns up to 32 VALID evals (learned-program loops, up to the 400 cap) before rejection - but 'tried' increments per candidate, not per eval, so the position is unaffected. div n=2's >2h pre-restart runtime is consistent with wall-clock inflation and remains TENTATIVE until the cell lands; it is not position evidence.
+Correction before any verdict, on the reviewer's reconciliation request. H1 as pre-stated ("at least one skill has tried(n) > tried(25) for some n < 25; shortcut traffic through the VALID gate delays the find") is IMPOSSIBLE under the experiment's own premises: with nested prefixes (train[:n] subset of train[:25]), a fixed enumeration order, and deterministic VALID, every candidate passing (train[:25] AND VALID) also passes (train[:n] AND VALID), so found(n) <= found(25) for all n < 25. A LATER tried-position at smaller n cannot occur. The shortcut-traffic mechanism inflates WALL-CLOCK only: at small n many more candidates pass the weak train gate and each burns up to 32 VALID evals (learned-program loops, up to the 400 cap) before rejection - but 'tried' increments per candidate, not per eval, so the position is unaffected. div n=2's >2h pre-restart runtime is consistent with wall-clock inflation and remains TENTATIVE until the cell lands; it is not position evidence.
 Adjudication rules (replacing the earlier mismatched conditional): (a) found(2) < found(25) is the only informative endpoint mismatch - weak filtering found an EARLIER VALID-passing candidate that a later train example rejects; middle cells then localize where the shift happens. (b) found(2) > found(25), or n=2 NOT FOUND while n=25 FOUND, flags a premise violation, cap interaction, or harness bug - INVESTIGATE FIRST, never an H1 confirmation. (c) both NOT FOUND (expected for isprime per H3) is consistent. Measured H1-relevant quantities become: position gap found(25) - found(2), and dt wall-clock inflation at n=2.
 
 ## Measurement-integrity note (2026-10-23) - this sandbox suspends and re-anchors its boot clock; treat dt as unreliable, tried as ground truth
 
 Established 08:16 from /proc evidence: PID 3251's /proc ctime (07:45:41, its real creation) vs ps STARTED (08:12:41) vs /proc/uptime (1102s) - the container SUSPENDS (processes frozen, wall clock advances) and the kernel boot-time reference is re-anchored on resume, so ps ELAPSED/STARTED and uptime are artifacts, not process history. Consequences:
 1. All dt (wall-clock) values recorded in B-499 logs (e.g. mul n=2 1802s, mul n=25 1854s) are SUSPENSION-CONTAMINATED: they mix compute with frozen time and overstate compute cost. tried counts are unaffected and remain the primary measure. The earlier "mul took 30 min/cell, grid needs 8-14h" estimate was therefore doubly wrong (also superseded by the endpoint amendment); real CPU per cell is unknown but likely much lower.
-2. Operational incident (correcting my earlier report to parent): at 07:45 I killed PID 2423 believing it was an auto-restarted duplicate after a container reboot. The /proc evidence shows there was NO reboot and NO auto-restart - 2423 was the original 05:15 b499b process, frozen-and-resumed, with etime artifacts from the re-anchored clock. No completed cell was lost (log intact, 7 rows) and the relaunched run is protocol-identical, but the kill discarded 2423's in-flight div n=2 progress unnecessarily. Rule going forward: establish process identity by /proc/<pid>/ creation time and log progress, NEVER by ps etime/uptime in this environment; do not kill a runner on clock evidence alone.
+2. Operational incident (correcting my earlier report to review): at 07:45 I killed PID 2423 believing it was an auto-restarted duplicate after a container reboot. The /proc evidence shows there was NO reboot and NO auto-restart - 2423 was the original 05:15 b499b process, frozen-and-resumed, with etime artifacts from the re-anchored clock. No completed cell was lost (log intact, 7 rows) and the relaunched run is protocol-identical, but the kill discarded 2423's in-flight div n=2 progress unnecessarily. Rule going forward: establish process identity by /proc/<pid>/ creation time and log progress, NEVER by ps etime/uptime in this environment; do not kill a runner on clock evidence alone.
 
 ## B-499 verdict (2026-10-24) - PASS with amended design: the fewest-examples curve is FLAT at n=2 for all 7 learnable curriculum skills; VALID is the sole binding filter
 
@@ -703,7 +703,7 @@ Scope (CAN/CANNOT, pre-stated): these are measured positions for one fixed enume
 
 ## B-499 verdict scope correction (2026-10-24, same day, before any external summary)
 
-Parent caught two overclaims in the verdict wording; corrected in place above and recorded here: (1) endpoint equality shows flat tried-positions across tested n; it does NOT by itself establish that the VALID gate wholly determines the result or that training contributes nothing - that causal attribution needs an ablation/construction proof, which was not run (the r0 gate always consumes train[0]). (2) Total supervision at n=2 is 2 train + 32 answer-bearing VALID acceptance examples (34 answer-bearing examples total); describing the result as learning from two examples, or "25 buy nothing over 2" without the VALID count, misstates the supervision. Both corrected sentences are marked in the verdict body.
+Review caught two overclaims in the verdict wording; corrected in place above and recorded here: (1) endpoint equality shows flat tried-positions across tested n; it does NOT by itself establish that the VALID gate wholly determines the result or that training contributes nothing - that causal attribution needs an ablation/construction proof, which was not run (the r0 gate always consumes train[0]). (2) Total supervision at n=2 is 2 train + 32 answer-bearing VALID acceptance examples (34 answer-bearing examples total); describing the result as learning from two examples, or "25 buy nothing over 2" without the VALID count, misstates the supervision. Both corrected sentences are marked in the verdict body.
 
 ## B-502 verdict (2026-10-24) - PASS via the pre-registered expressivity-proof branch: usage-mined fragments cannot express absdiff
 
@@ -993,7 +993,7 @@ CAN (measured): frames recoverable from co-occurrence alone; content composed ac
 ## B-517 verdict (2026-10-24) - PASS: F-8 one-shot gap table assembled, honest and complete over measured cells
 B-517 (F-8 gap table) | PASS | README.md "F-8 (B-517)" section | all existing few-shot cells assembled into three tables (MNIST B-241R seeded; SNIPS B-495+B-468..483 paired-seed incl. NB row; continual PMNIST B-467..491 shared-arm) with MLP baseline column, per-k orderings (Correction 2026-10-23 carried), WiSARD-not-a-few-shot-readout scoping, and a DECLARED-GAPS list of unmeasured cells (NB on MNIST, non-MLP readouts under continual protocol, single-task PMNIST few-shot, mitigated/larger gradient baselines). No new runs; every number traces to a LEDGER verdict.
 
-## B-523 pre-registration (2026-10-24, before running) - root-cause + fix for impossible-combination lookup (Ash 2026-10-24 13:34 UTC: "มันพังเพราะอะไร จะแก้อย่างไร" = why does it break, how to fix)
+## B-523 pre-registration (2026-10-24, before running) - root-cause + fix for impossible-combination lookup (the requester 2026-10-24 13:34 UTC: why does it break, how to fix)
 B-522 T2 FAILED: impossible attribute pairs still get a clearly positive best-match score (ratio .52-.57 vs <0.5 bar).
 ROOT-CAUSE HYPOTHESIS (to verify by measurement, not assert): the lookup score ADDS co-occurrence credit per probe attribute and never requires conjunctive coverage - an animal matching 1 of 2 demanded attributes keeps half the credit, and nothing in the rule can express "attribute demanded but never taught with this animal". Measured check: for every empty-extension pair, decompose the top animal's score per attribute - prediction: the winner covers exactly 1 of 2 attributes in 100% of cases.
 FIX (architectural decision rule over the SAME learned counts; not new knowledge, not world-knowledge hard-coded): three-way decision - (a) UNKNOWN: a probe word never taught with ANY animal is reported as unknown and excluded from matching (was silently ignored in B-522 T4); (b) NO MATCH: no taught animal has nonzero count for every known probe attribute -> abstain, semantics = "not taught together", NOT "impossible in the world" (the teaching table is not complete world knowledge); (c) AMBIGUOUS: extension >1 -> return the FULL extension, ranked by the old score (was quiet top-1 with weak margin); (d) UNIQUE: exactly one -> answer.
@@ -1017,10 +1017,10 @@ B-523 (impossible-combination fix) | PASS | b523.py logs/b523_abstain.log | ROOT
 - T5 control: shuffled-counts world -> unique-ID accuracy .00-.19 (chance ~.167): the rule reads learned counts, it is not a hard-coded table.
 Honest status: the counts (knowledge) are learned; the three-way decision rule is DESIGNED architecture, same status as the old argmax - not claimed as learned. The learner still has no negative evidence: "no match" means "never taught together", and the teaching table is not complete world knowledge. Ambiguity vs no-match vs unknown are now three distinct, measured outcomes.
 
-## B-523 applied (2026-10-24, Ash: "แก้เลย") - fixed three-way lookup is now the DEFAULT in the maintained harness (b521.py)
+## B-523 applied (2026-10-24, the requester: (steering paraphrased)) - fixed three-way lookup is now the DEFAULT in the maintained harness (b521.py)
 b521.py default lookup = decide() (UNKNOWN / NO MATCH / AMBIGUOUS-full-extension / UNIQUE over the same learned counts); `--legacy` preserves the pre-fix additive argmax. Legacy reproduction verified EXACT: all 10 B-521 rows, every metric key byte-identical (t1_uniq/t1_amb/wing_margin/t2_*/ctrl_*/bird_example). Fixed-path regression (logs/b521_bird_fixed.log): t1_uniq 1.0, t1_amb 1.0 STRENGTHENED to exact-extension equality (was top-in-ext validity), empty-probe abstention 75/75 (r=1..3) at both q, shuffled controls at chance, generation path (t2 metrics) untouched. Caveats carried unchanged: the decision rule is designed architecture over learned counts (not learned); NO MATCH = "not taught together", not world-impossibility; this fixes the animal/attribute lookup ONLY, not the broader conversational learner.
 
-## B-524 pre-registration (2026-10-24, before running) - introspection audit: trace mode + causal lesion battery (Ash 2026-10-24 13:37 UTC: expose the internals, how answers arise, whether it really thinks)
+## B-524 pre-registration (2026-10-24, before running) - introspection audit: trace mode + causal lesion battery (the requester 2026-10-24 13:37 UTC: expose the internals, how answers arise, whether it really thinks)
 Two measured components (the learned-vs-given inventory and the thinking-evidence matrix are assembly, in the audit File):
 - TRACE: an explain mode on the maintained attribute learner (b521.py decide/describe paths) that dumps the ACTUAL recorded state behind each answer: decision branch, per-animal coverage booleans, raw counts for demanded attributes, score table, chosen frame pattern with its corpus count, novelty verdict vs corpus. Criterion: every produced answer is accompanied by the numbers that produced it; no narrative rationalization.
 - LESIONS (causal removal, pre-stated predictions):
@@ -1038,7 +1038,7 @@ B-524 (introspection audit, measured half) | PASS | b524.py logs/b524_audit.log 
 - L4 (shuffled counts): unique-ID .00-.19 (chance ~.167).
 Audit File (inventory + thinking-evidence matrix + integration feasibility) assembles these with existing LEDGER verdicts.
 
-## B-525 pre-registration (2026-10-24, before running) - Link A integration test: P26 grounding feeds the B-521 lookup (Ash 13:39: can the systems be combined?)
+## B-525 pre-registration (2026-10-24, before running) - Link A integration test: P26 grounding feeds the B-521 lookup (the requester 13:39: can the systems be combined?)
 Question: can the baby line (P26 Hebbian grounding from overheard speech + co-present scenes) replace the GIVEN animal-name lexicon in the attribute learner, with no loss on the B-521 battery? Same-corpus arms:
 - ARM GIVEN: B-521 as-is (name lexicon handed to the learner).
 - ARM GROUNDED: no name lexicon given. Scenes have a primary animal present (+30% noise co-present, P26-style); the baby builds (a) word->animal Hebbian associations (+1 co-present / -0.25 absent) and (b) word->attribute co-occurrence counts from the same overheard sentences. Grounded name vocabulary = words with best assoc >= 3 and best >= 2x runner-up (pre-stated threshold, filters function words). decide()/describe() then run on the grounded rows only.
@@ -1052,20 +1052,20 @@ CANNOT claim: this links grounding to lookup only; it is not a general system me
 ## B-525 verdict (2026-10-24) - PASS (after Amendment 1): first implemented cross-system link - grounded vocabulary feeds the fixed lookup at given-lexicon level
 B-525 (Link A: P26 grounding -> B-521/B-523 lookup) | PASS | b525.py logs/b525_linka.log | baby overhears the B-521 corpus with co-present animal scenes (30% noise co-presence), grounds word->animal associations, discovers the name vocabulary WITHOUT a given lexicon; decide() then runs on the baby's own memory. First attempt FAILED (uniq .22, abstain 0/75): grounded vocab admitted attribute/function words, corrupting coverage tables. Amendment 1 (pre-stated before re-run): name-ness = assoc/primary-scene rate (names ~0.9, attributes ~0.3, threshold 0.5). Result 5/5 seeds: grounding 6/6 names; discovered vocabulary = EXACTLY the 6 true names (function words and attributes both rejected by the margin + name-ness filters); unique-ID 1.0; ambiguity extensions exact 1.0; abstention 75/75. Criteria C1 (>=5/6), C2 (>=.90), C3 (13/13 + exact extensions) all PASS. On/off: grounded memory == given lexicon on every B-521 metric. Caveats: co-present scenes given for free (P26 joint-attention caveat); attribute words remain the questioner's vocabulary; name-ness rule is designed over learned counts; this is ONE link, not a merged system (Links B/C planned).
 
-## B-521 pre-registration (2026-10-24, before running) - attribute<->concept feasibility (Ash's bird question, 2026-10-24)
+## B-521 pre-registration (2026-10-24, before running) - attribute<->concept feasibility (the requester's bird question, 2026-10-24)
 
-Ash asked (via main): if taught "a bird has wings, a tail, eyes", can the learner (1) answer "bird" when given attributes - including a MESSY UNORDERED attribute list it must reorganize itself - and (2) produce a NOVEL description (select and order learned words into a sentence it was never taught), rather than copying a taught sentence? Pre-stated honest framing (from main's reply): existing two-word composition does not establish this; ambiguous attributes require COMPETING concepts; naming-from-attributes and description-generation are DISTINCT capabilities needing distinct evidence; no claim of understanding from templates we supplied.
+the requester asked (via the coordinator): if taught (steering paraphrased), can the learner (1) answer (steering paraphrased) when given attributes - including a MESSY UNORDERED attribute list it must reorganize itself - and (2) produce a NOVEL description (select and order learned words into a sentence it was never taught), rather than copying a taught sentence? Pre-stated honest framing (from the coordinator's reply): existing two-word composition does not establish this; ambiguous attributes require COMPETING concepts; naming-from-attributes and description-generation are DISTINCT capabilities needing distinct evidence; no claim of understanding from templates we supplied.
 Design (b521.py), all within the existing associative machinery (baby-style co-occurrence counts, no new learning rule):
 - World: 6 animal concepts with overlapping attribute sets: nok/bird {wing, tail, eye, beak}, khangkhao/bat {wing, fur, eye, ear}, phisuea/butterfly {wing, scale, eye}, ma/dog {fur, leg, eye, tail}, pla/fish {fin, tail, eye, scale}, maeo/cat {fur, leg, eye, tail, ear}. Overlaps by construction: wing shared by 3, tail by 4, eye by all 6, fur by 3, scale by 2, ear by 2. (English glosses here; the harness uses Thai words as in the baby line.)
 - Teaching: co-occurrence sentences from 4 surface frames ("X มี Y", "X นั้น มี Y", "ดู Y ของ X", "Y ของ X สวย"), q sentences per (animal, attribute) pair, q in {3, 8}; sentences drawn per seed. The learner sees ONLY word co-occurrence (no slot labels): count C[name][attr] over sentence tokens.
-- Task 1 (reverse identification, incl. Ash's messy-input case): probe = an UNORDERED SET of attribute words (set input = no syntax to exploit, exactly the "scrambled words" case). Score(name) = sum of C[name][attr] over probe attrs (normalized per name by total name mass - pre-stated); answer = argmax. Metrics over ALL attribute subsets of size 1-3: (a) accuracy on UNIQUELY-identifying sets (true extension = 1 animal): target >= .8 at q=8; (b) validity on AMBIGUOUS sets (extension > 1): top answer inside the true extension, target >= .9; (c) honest ambiguity behavior: on the probe {wing} alone the answer must NOT be reported as uniquely bird - measured as top-2 margin, reported, no threshold claim.
+- Task 1 (reverse identification, incl. the requester's messy-input case): probe = an UNORDERED SET of attribute words (set input = no syntax to exploit, exactly the  case). Score(name) = sum of C[name][attr] over probe attrs (normalized per name by total name mass - pre-stated); answer = argmax. Metrics over ALL attribute subsets of size 1-3: (a) accuracy on UNIQUELY-identifying sets (true extension: 1 animal): target >= .8 at q=8; (b) validity on AMBIGUOUS sets (extension > 1): top answer inside the true extension, target >= .9; (c) honest ambiguity behavior: on the probe {wing} alone the answer must NOT be reported as uniquely bird - measured as top-2 margin, reported, no threshold claim.
 - Task 2 (novel description): per animal, produce a description = highest-count frame for that animal FILLED WITH the top-3 associated attribute words (selection by C, order by association rank inside a frame with multiple slots; single-slot frames iterated). Metrics: content precision/recall of selected attributes vs the true set (target >= .8 / >= .6 at q=8, 5-seed means); NOVELTY = fraction of produced sentences not verbatim in the training corpus (target >= .8 - proves non-copying at the sentence level); and a NEGATIVE control: a shuffled-counts learner (co-occurrence matrix permuted per seed) must score at chance on both tasks.
 - 5 seeds. Baselines: chance top-1 = 1/6; single-attribute lookup baseline (answer only from the single most discriminative attribute) reported for contrast with the joint-set scorer.
 Criterion (pre-stated): PASS = T1(a) >= .8 AND T1(b) >= .9 AND T2 precision >= .8 with novelty >= .8 AND shuffled control at chance (< .3 accuracy on T1(a)). Anything less = honest FAIL/partial.
 CAN show: attribute<->concept association with competing concepts, set-input reverse identification, and selected-content generation with learned frames. CANNOT: understanding, referential meaning, or description of NOVEL concepts; the attribute vocabulary and frames are given in the data.
-Amendment 1 (2026-10-24, pre-verdict, after smoke run): T2's single-slot frames saturate novelty at q=8 (every single-attribute frame+content sentence is verbatim in a dense corpus - honest finding: single-attribute "generation" is copying once the corpus is dense). Ash's novelty question is about COMBINATIONS, so the corpus is extended with 2-attribute frames ("X มี Y และ Z", "Y และ Z ของ X") covering a random 60% of each animal's attribute PAIRS and a 3-attribute frame ("X มี Y และ Z และ W") covering a random 30% of TRIPLES (coverage subsets drawn per seed). T2 generation = fill the 2-slot frame with the top-2 and the 3-slot frame with the top-3 associated attributes; novelty = produced (frame, content-combination) verbatim-absent from the corpus. All other elements unchanged.
+Amendment 1 (2026-10-24, pre-verdict, after smoke run): T2's single-slot frames saturate novelty at q=8 (every single-attribute frame+content sentence is verbatim in a dense corpus - honest finding: single-attribute  is copying once the corpus is dense). the requester's novelty question is about COMBINATIONS, so the corpus is extended with 2-attribute frames (, ) covering a random 60% of each animal's attribute PAIRS and a 3-attribute frame () covering a random 30% of TRIPLES (coverage subsets drawn per seed). T2 generation = fill the 2-slot frame with the top-2 and the 3-slot frame with the top-3 associated attributes; novelty: produced (frame, content-combination) verbatim-absent from the corpus. All other elements unchanged.
 
-## B-522 pre-registration (2026-10-24, before running) - decisive learned-vs-copied tests (Ash 2026-10-24 12:37 UTC, via parent: "ลองทดสอบใหม่ๆ ที่ทำให้เห็นผลชัดเจนกว่านี้" = new tests with clearer evidence of what is learned vs copied)
+## B-522 pre-registration (2026-10-24, before running) - decisive learned-vs-copied tests (the requester 2026-10-24 12:37 UTC, via review: new tests with clearer evidence of what is learned vs copied)
 Follow-up to B-521. Upgrade over B-521: sentence frames are INDUCED from the corpus by slot-replacement pattern counting (name token -> X, attribute tokens -> A), not hard-coded; a retrieval-copier baseline arm (best corpus sentence containing the animal name, ranked by attribute-set overlap) separates composition from copying. q=8, 5 seeds, same 6-animal world as B-521.
 - T1 compositional gap: per animal one attribute pair is FULLY held out (no corpus sentence contains both). Task: describe that animal with exactly the gap pair (content given; frame must be supplied by the learner). CAN criterion: model exact-correct (name + exactly the target pair as an induced-pattern sentence) >= 27/30 (6 animals x 5 seeds); copier full-set-correct = 0/30 by construction, report its mean coverage. Separation on both = decisive.
 - T2 impossible conjunction: all attribute pairs with empty extension (no animal has both). Criterion: median normalized top score on empty probes < 0.5x median top score on uniquely-identifying probes. CANNOT caveat: this is a score-attenuation signal only; the learner emits no explicit "I don't know".
@@ -1076,12 +1076,12 @@ Overall CAN claims if passed: frames recoverable from co-occurrence alone; compo
 ## B-521 verdict (2026-10-24) - PARTIAL PASS: reverse identification perfect incl. messy unordered input; novel-combination generation works (~70% novel, 100% correct content) but below the pre-stated .8 novelty bar
 
 logs/b521_bird.log (5 seeds, q in {3,8}; co-occurrence counts only; 6 competing animal concepts with overlapping attributes).
-- T1 reverse identification (UNORDERED attribute sets = Ash's scrambled-input case): uniquely-identifying sets 1.0 at both q (target .8); ambiguous sets: top answer inside the true extension 1.0 (target .9). Shuffled-counts control: .21/.23 (chance 1/6 = .167, < .3 bar). Single shared attribute {ปีก}: top-2 margin .20-.22 - measured and reported as NOT uniquely identifying (3 winged animals), the honest ambiguous behavior.
+- T1 reverse identification (UNORDERED attribute sets = the requester's scrambled-input case): uniquely-identifying sets 1.0 at both q (target .8); ambiguous sets: top answer inside the true extension 1.0 (target .9). Shuffled-counts control: .21/.23 (chance 1/6 = .167, < .3 bar). Single shared attribute {ปีก}: top-2 margin .20-.22 - measured and reported as NOT uniquely identifying (3 winged animals), the honest ambiguous behavior.
 - T2 generation (learned frame + association-selected content): content precision 1.0, recall .767 (target .8/.6 PASS at q=8; recall capped by design at top-3 for 4-5-attribute animals). Example productions (seed 0, q=8): "นก มี จะงอยปาก และ หาง" / "นก มี จะงอยปาก และ หาง และ ตา".
 - NOVELTY: .667 (q=3) / .717 (q=8) - FAILS the pre-stated .8 bar. Mechanism: the learner picks its strongest-associated attributes whether or not that exact combination was taught; with 60%/30% pair/triple teaching coverage, ~70% of its top-ranked descriptions are genuinely novel combinations and ~30% happen to replicate a taught sentence. It CAN produce correct novel descriptions; it does not PREFER them (it has no representation of novelty). The .8 bar conflated capability with preference - recorded as measured.
-Bottom line for Ash's question: (1) attribute->name inference works at 100% under competing concepts, including unordered/messy attribute input; (2) description generation produces correct, majority-novel sentences from learned words + learned frames, but is not novelty-seeking. NOT shown (scope): understanding, referential meaning, describing novel concepts, free word-order invention (the frame "X มี Y และ Z" is learned from data; content selection is the novel part).
+Bottom line for the requester's question: (1) attribute->name inference works at 100% under competing concepts, including unordered/messy attribute input; (2) description generation produces correct, majority-novel sentences from learned words + learned frames, but is not novelty-seeking. NOT shown (scope): understanding, referential meaning, describing novel concepts, free word-order invention (the frame (steering paraphrased) is learned from data; content selection is the novel part).
 
-## B-526 pre-registration (2026-10-24, before running) - Link B: HDC one-shot attribute memory backend, on/off vs count tables (first link of the hsml unified-integration plan; Ash 2026-10-24: "ทำให้ทุกอย่างรวมเป็นหนึ่งอย่างสมบูรณ์")
+## B-526 pre-registration (2026-10-24, before running) - Link B: HDC one-shot attribute memory backend, on/off vs count tables (first link of the hsml unified-integration plan; the requester 2026-10-24: (steering paraphrased))
 Goal: the B-521/B-523 answer path gets a SWAPPABLE memory backend (real data flow: corpus -> memory -> decide()), and the hyperdimensional (HDC) backend is measured against the exact-count backend on the same battery. Integration criterion: not a renamed wrapper - decide() must read all its evidence through the backend interface in both arms.
 Design (b526.py):
 - Backend interface: observe(sentence_tokens); score(name, attr) evidence; totals. ARM COUNT = current tables (control). ARM HDC: D=10000-bit binary hypervectors, random per word (seeded); sentence record = XOR-bind of word vectors BUNDLED (per-name majority) - one-shot superposition memory; evidence(name, attr) = Hamming similarity of (bind(name,attr) probe) vs the name's bundle, normalized.
@@ -1089,7 +1089,7 @@ Design (b526.py):
 - One-shot axis (the pre-stated place HDC could actually win): teaching budget q=1 sentence per (animal,attribute) pair. Measure T1 accuracy for both arms on identical corpora.
 Criteria (5 seeds):
 - C1 parity: HDC arm passes abstain 13/13, ambiguity 22/22, unknown 32/32, and T1 >= .95 at q=8.
-- C2 value: HDC T1 at q=1 >= count-arm T1 at q=1 + .10 (a real one-shot advantage), OR HDC shows no measured advantage anywhere -> verdict NO-VALUE and the HDC backend is CUT from the answer path (Ash's rule: cut what does not help; recorded honestly either way).
+- C2 value: HDC T1 at q=1 >= count-arm T1 at q=1 + .10 (a real one-shot advantage), OR HDC shows no measured advantage anywhere -> verdict NO-VALUE and the HDC backend is CUT from the answer path (the requester's rule: cut what does not help; recorded honestly either way).
 - C3 control: shuffled HDC memory at chance (< .3).
 CAN claim if PASS: the answer path runs on an interchangeable memory substrate, measured. CANNOT: neural/biological plausibility, robustness beyond the tested battery, any intelligence gain from the swap itself (integration != intelligence).
 Amendment 1 to B-526 (2026-10-24, pre-run, before any HDC result exists): C2 as pre-registered is UNREACHABLE - count tables are lossless for presence, so at q=1 the count arm is already at ceiling and no substrate can beat it by .10. Replacing the value axis with one where exact-match counts are genuinely weak:
@@ -1106,9 +1106,9 @@ b526.py logs/b526_linkb.log logs/b526_linkb_item.log | tau_bind=0.518 (cal J=1.0
 - C2 value axis (corruption robustness): BIND +0.00 vs count arm (count .027 mean, bind .027 mean) - mechanism as amended: XOR binding decorrelates, word similarity cannot survive bind(). ITEM arm's corrupt numbers (0-.2) are uninterpretable given C1 failure.
 - C3 shuffled controls at chance (bind 0-.19, item 0-.22, bar .3). Memory (descriptive): count 192B vs HDC 7500B at this scale - HDC loses on footprint too at small vocabulary.
 - Harness bugs caught pre-verdict by calibration sanity outputs (pos/neg sim overlap): (1) majority-bundling REPEATED observations dilutes every true pair below threshold - fixed by deduping observed pairs; (2) XOR composition destroys set-overlap similarity - fixed to majority composition for the item arm. Both recorded.
-Decision (Ash's cut rule, applied): HDC is CUT from the hsml answer path. What ships from Link B: the backend interface (observe/taught) with decide() reading all evidence through it - the actual integration artifact - with exact counts as the measured-correct default backend. No neural-plausibility claim was made or is salvageable here; HDC may be retried only if a future task has (a) large vocabulary and (b) a measured need exact tables cannot serve.
+Decision (the requester's cut rule, applied): HDC is CUT from the hsml answer path. What ships from Link B: the backend interface (observe/taught) with decide() reading all evidence through it - the actual integration artifact - with exact counts as the measured-correct default backend. No neural-plausibility claim was made or is salvageable here; HDC may be retried only if a future task has (a) large vocabulary and (b) a measured need exact tables cannot serve.
 
-## B-527 pre-registration (2026-10-24, before running) - Link C: program-skill memory -> dialog answer path (Ash: "รวมทุกอย่างเข้าด้วยกัน")
+## B-527 pre-registration (2026-10-24, before running) - Link C: program-skill memory -> dialog answer path (the requester: (steering paraphrased))
 Goal: the dialog answer path gains a SKILL STORE: procedures induced by the cur7 engine are stored with provenance and EXECUTED to answer novel queries through the same sentence-in/sentence-out path as attribute questions. This is the second real cross-system link (after Link A), not a renamed demo: the query arrives as a Thai sentence, the answer is produced by executing a stored induced program, and the same memory still serves the B-521/B-523 attribute battery without interference.
 Honest scoping: induction COST is not re-measured here (b515/F-6 owns that); the skill store is seeded with the programs b515's runs already found (verbatim from logs/b515_oops.log, with seed/tried provenance), each re-validated inside this harness on the b515 unseen-scale protocol before use. Tasks = exactly those with a logged generalizing program: even, sumto, square, choose2.
 Design (b527.py):
@@ -1123,9 +1123,9 @@ Criteria (pre-stated):
 - C5 garbage control: cur7 induction on shuffled (x -> random y) examples with the same per-task budget finds NO program -> the store stays empty -> abstain. (Guards against a pipeline that "finds skills" in noise.)
 CAN claim if PASS: stored induced procedures are executed through the dialog path on novel inputs, with abstention when no skill exists, and no degradation of the attribute answer path. CANNOT: in-dialog teaching of procedures (skills are seeded from b515 logs with provenance, not taught by conversation); any understanding of numbers (the numeric parse/format is designed); general programming beyond cur7's primitive set.
 
-## B-528 pre-registration (2026-10-24, before running) - engineered-connectome arm 1: STD recency gate for novelty-aware generation (hsml connectome, Ash's free-redesign scope)
+## B-528 pre-registration (2026-10-24, before running) - engineered-connectome arm 1: STD recency gate for novelty-aware generation (hsml connectome, the requester's free-redesign scope)
 Grounded in two measured facts: B-521's novelty gap (the generator picks strongest associations whether or not the combination was taught; novelty .667-.717, fails the .8 bar) and B-505's root cause (the connectome line's only reproduced behavioral effect, +18%, is mediated by short-term depression dynamics - STD is a recency signal). Design: an ENGINEERED component derived from the connectome line (not worm wiring, no biological claim): per-(name,attribute) count rows get STD-style recency adaptation - recently USED (name,attr,frame) combinations depress, so the generator's selection shifts toward correct-but-unused combinations. Arms: STD-gate ON vs OFF (identical everything else) on the B-521 T2 battery, 5 seeds, q=8; plus a SHAM gate (random depressions, same count) to assign credit to the dynamics, not the noise (B-505 lesson).
-Criteria (pre-stated): PASS = ON-arm T2 novelty >= .8 AND content precision >= .8 AND recall >= .6 AND B-523 battery unchanged (abstain/unique/ambig/unknown all exact) AND sham-arm novelty < ON-arm - .1. FAIL/NO-VALUE -> the STD gate is cut and the connectome line is recorded as contributing nothing to the answer path (Ash's cut rule).
+Criteria (pre-stated): PASS = ON-arm T2 novelty >= .8 AND content precision >= .8 AND recall >= .6 AND B-523 battery unchanged (abstain/unique/ambig/unknown all exact) AND sham-arm novelty < ON-arm - .1. FAIL/NO-VALUE -> the STD gate is cut and the connectome line is recorded as contributing nothing to the answer path (the requester's cut rule).
 CAN claim if PASS: one engineered connectome-derived mechanism (recency adaptation) has a measured, ablation-credited function in the answer path. CANNOT: biological fidelity, memory like a human, novelty PREFERENCE as understanding - it is a designed depletion dynamic over learned counts.
 
 ## B-515 verdict (2026-10-24) - PASS with two recorded caveats: OOPS doubling scheduler passes the pre-stated bar (mean tried 9.8% of baseline), but the even leg regresses 4.9x on tried while finding the better-generalizing program
@@ -1143,9 +1143,9 @@ b528.py logs/b528_std.log, 5 seeds q=8, beta=1 pre-set. ON arm = strength/(1+P[n
 - Credit assignment: ON - SHAM = +.53 > .1 - the gain comes from depressing TAUGHT combinations, not from adding noise.
 - Tie-break note: OFF-arm novelty here (.42) differs from B-521's .717 because combo-argmax breaks count ties in combinations() order vs B-521's ATTRS order; both are below the .8 bar, so the gap being closed is the same gap.
 - Honesty: the novelty preference is now DESIGNED-IN (depletion over learned co-occurrence counts), not emergent novelty-seeking; the component is engineered, named STD-style for its depletion dynamics, no biological claim. What it shows: one connectome-derived mechanism has a measured, ablation-credited function. Mechanism caveat: with 60%/30% teaching coverage an untaught correct combo always exists, so novelty 1.0 is partly by construction; the informative numbers are the sham separation and the prec/rec cost.
-CORRECTION 1 to the B-528 verdict framing (2026-10-24, parent review): "novelty gap closed" was over-claimed - ON-arm novelty 1.0 came with a correctness cost (precision 1.0->.944, recall .767->.711). Mechanism of the precision drop: selection scores combos by SUM of member counts, so a combo containing an UNSUPPORTED attribute (C=0) can outrank a taught all-supported combo once the latter is depressed - the gate trades unsupported content for novelty. The STD-inspired depletion heuristic is an engineered heuristic over counts, NOT a contribution of the connectome graph itself; the comparison establishes the heuristic's effect under this coverage protocol only, and novelty != understanding. B-528 ON arm is EXPERIMENTAL evidence, not the default answer path; the accurate OFF baseline stays default.
+CORRECTION 1 to the B-528 verdict framing (2026-10-24, review review): "novelty gap closed" was over-claimed - ON-arm novelty 1.0 came with a correctness cost (precision 1.0->.944, recall .767->.711). Mechanism of the precision drop: selection scores combos by SUM of member counts, so a combo containing an UNSUPPORTED attribute (C=0) can outrank a taught all-supported combo once the latter is depressed - the gate trades unsupported content for novelty. The STD-inspired depletion heuristic is an engineered heuristic over counts, NOT a contribution of the connectome graph itself; the comparison establishes the heuristic's effect under this coverage protocol only, and novelty != understanding. B-528 ON arm is EXPERIMENTAL evidence, not the default answer path; the accurate OFF baseline stays default.
 Amendment 1 to B-528 (2026-10-24, pre-run): add arm GATED-CONSTRAINED - candidates restricted to combos whose members are ALL supported (C[name][a] > 0) BEFORE novelty ranking; if every supported combo is taught, fall back to the strongest supported combo (accept non-novel rather than go unsupported). Criteria: precision == OFF arm (1.0), recall >= OFF - .02, novelty >= .8 where coverage permits (report per-seed when impossible), battery unchanged, sham separation maintained vs the same constrained ranking with random depressions.
-Amendment-1 result (2026-10-24): PASS. GATED-CONSTRAINED restores exact content (precision 1.0, recall .767 = OFF arm on all seeds) while keeping novelty .833-.917 (mean .875 >= .8); gc_sham .5-.667 (mean .533) preserves credit separation (+.34 > .1). Novelty < 1.0 is the honest coverage cost: when every supported combo was taught (e.g. ผีเสื้อ's only triple) the fallback picks the strongest supported combo instead of going unsupported. Status per parent review: ON/gc arms remain EXPERIMENTAL; OFF (accurate baseline) is the default generation path; all three arms' evidence and costs are retained for the audit/integration status. The engineered STD-inspired depletion heuristic now has measured value WITHOUT a correctness tradeoff under this coverage protocol; it remains a heuristic over counts, not a connectome-graph contribution, and novelty != understanding.
+Amendment-1 result (2026-10-24): PASS. GATED-CONSTRAINED restores exact content (precision 1.0, recall .767 = OFF arm on all seeds) while keeping novelty .833-.917 (mean .875 >= .8); gc_sham .5-.667 (mean .533) preserves credit separation (+.34 > .1). Novelty < 1.0 is the honest coverage cost: when every supported combo was taught (e.g. ผีเสื้อ's only triple) the fallback picks the strongest supported combo instead of going unsupported. Status per review review: ON/gc arms remain EXPERIMENTAL; OFF (accurate baseline) is the default generation path; all three arms' evidence and costs are retained for the audit/integration status. The engineered STD-inspired depletion heuristic now has measured value WITHOUT a correctness tradeoff under this coverage protocol; it remains a heuristic over counts, not a connectome-graph contribution, and novelty != understanding.
 
 ## B-527 verdict (2026-10-24) - PASS: Link C - induced-program skill store answers through the dialog sentence path, 160/160 per skill, with abstain and zero interference
 b527.py logs/b527_linkc.log | one HSMLMemory serves the B-523 attribute battery AND the cur7 skill store; skills re-derived deterministically from b515's oops config and verified show_prog == logged string per task (even's provenance: the followup leg in logs/b515_progs.log; the original oops.log even leg recorded no prog string - noted).
@@ -1156,7 +1156,7 @@ b527.py logs/b527_linkc.log | one HSMLMemory serves the B-523 attribute battery 
 - C5 garbage control: induction on shuffled examples found NOTHING within 611,365 tried (cap = largest successful b515 oops leg, implementation note) - no skill hallucinated from noise; store stays empty -> abstain.
 CAN claim: stored induced procedures execute through the sentence path on novel inputs; abstain when no skill; no degradation of the attribute path; no skills from noise. CANNOT (carried): in-dialog teaching of procedures (skills seeded from b515 logs with provenance); number understanding (parse/format designed); anything beyond cur7's primitive set. Integration != intelligence: this is one more real data-flow link, not a merged-mind claim.
 ## B-529 pre-registration (2026-10-24, before running) - Link D: in-dialog procedure teaching (closes B-527's seeded-skills gap)
-Goal: a NEW procedure enters the skill store entirely through conversation - the teacher uses only sentences, never code or a seeding API. B-527's skills were seeded from b515 induction logs; this is the human-facing teaching path the integration audit marks as not yet done (Ash: "ทำให้ทุกอย่างรวมเป็นหนึ่งอย่างสมบูรณ์").
+Goal: a NEW procedure enters the skill store entirely through conversation - the teacher uses only sentences, never code or a seeding API. B-527's skills were seeded from b515 induction logs; this is the human-facing teaching path the integration audit marks as not yet done (the requester: (steering paraphrased)).
 Design (b529.py):
 - Scripted teacher, sentences only, DESIGNED frames (named as such): a naming statement ("วิธีนี้ชื่อ สองเท่า"), example statements ("ถ้า n เป็น 3 ตอบ 6") and confirmation answers ("ตอบ 6"). The system parses (x -> y) pairs, runs cur7/OOPS induction under a bounded tried budget on the accumulated pairs, then CONFIRMS the candidate by querying the teacher on held-out inputs ("ถ้า n เป็น 7 ตอบอะไร"); only a teacher-confirmed program enters the store, with provenance (dialog, examples, tried, confirmation transcript).
 - Teaching target: one new procedure not among the 4 seeded skills (double, 2n). Validation: 40 unseen inputs through the b527 sentence path.
@@ -1177,7 +1177,7 @@ Pre-reg 2026-10-24 (above). Harness b529.py, log logs/b529_teach.log. Verdict js
 - C4 noise control: garbage teacher (memoized random mapping, same budget) -> induction exhausted at tried=700,001, NO skill stored.
 Claim per pre-reg: a procedure was taught through conversation alone, with bounded supervision and noise control, and is answered through the same path as pre-existing skills. Still CANNOT claim: understanding of the procedure's meaning (frames designed); procedures beyond cur7's primitive set; human-like teaching flexibility (scripted teacher, designed frames; teaching of multi-step conditional procedures untested).
 Note: the taught program generalizes behaviorally - 40/40 on unseen x in 40..2000 after only 8 dialog pairs (x <= 40 examples, confirmations x < 400); it is not a memorized table. Mechanism of the found schema not further analyzed.
-## B-529 Correction 1 (2026-10-24, parent review) - claim scope narrowed
+## B-529 Correction 1 (2026-10-24, review review) - claim scope narrowed
 B-529 establishes ONE implemented conversation-to-induction link under the stated designed frames and numeric DSL. It does NOT close "the last artificial step" and does not establish complete integration of all systems: sentence parsing, routing, the search space/primitive set, the confirmation protocol and the teacher remain designed. These boundaries persist in integration status and future audit revisions until separately measured.
 ## B-530 pre-registration (2026-10-24, before running) - compositional dialog teaching: taught skills accumulate as reusable primitives
 Goal: extend Link D (B-529) from one taught skill to an ACCUMULATING library: teach 'double' then 'quad' (4n) through conversation only, and measure whether the previously taught skill makes the later teaching cheaper. This tests the OOPS/library claim at the dialog level: knowledge taught earlier is reused by later induction, not just stored.
@@ -1224,7 +1224,7 @@ Pre-reg 2026-10-24. Harness b531.py, log logs/b531_reuse.log. Verdict json: PASS
 COST RECORDED HONESTLY: 'tried' counts only the search_oops phase. The unbudgeted capture phase (capture_lists full enumeration) grows with library size: ~800s CPU ablated vs ~7000s with three primitives (utime deltas, sandbox clocks unreliable - treat as approximate). For THIS task the tried metric favors reuse 23.7x while total compute favored the ablated arm; the claim is therefore scoped: accumulated knowledge makes deeper targets REACHABLE within the tried budget (16n was unreachable without it) and cuts search-phase tried 23.7x - it does not yet claim lower total compute. Future protocols should budget the capture phase (B-530/B-531 lesson).
 CAN claim: dialog-taught procedures accumulate as reusable primitives; a target unreachable by direct search within budget becomes reachable via the taught library, ablation-credited, with the primitive visibly called in the found program. CANNOT: semantic understanding; designed frames + numeric DSL; total-compute superiority (see cost note); B-529 Correction 1 boundaries stand.
 ## B-532 pre-registration (2026-10-25, before running) - engineered-connectome arm 2: does WIRING contribute anything behaviorally distinct from isomorphic count tables?
-Parent question (2026-10-24 17:08): distinguish an engineered depletion heuristic inspired by STD (arm 1) from a contribution of the connectome graph itself. Analysis before pre-reg: the T2 battery has no headroom for a wiring effect (gc precision 1.0; recall .767 is the structural ceiling of selecting 3 attrs against 3-4 true ones; B-523 battery exact). So arm 2 tests the graph on a capability the flat path lacks - multi-hop relational chain queries - and asks whether the GRAPH implementation differs behaviorally from the ISOMORPHIC count-table implementation of the same queries.
+Review question (2026-10-24 17:08): distinguish an engineered depletion heuristic inspired by STD (arm 1) from a contribution of the connectome graph itself. Analysis before pre-reg: the T2 battery has no headroom for a wiring effect (gc precision 1.0; recall .767 is the structural ceiling of selecting 3 attrs against 3-4 true ones; B-523 battery exact). So arm 2 tests the graph on a capability the flat path lacks - multi-hop relational chain queries - and asks whether the GRAPH implementation differs behaviorally from the ISOMORPHIC count-table implementation of the same queries.
 Design (b532.py):
 - Small DESIGNED relational corpus (named as designed): ~10 Thai sentences forming entity-relation chains (e.g. นก กิน หนอน / หนอน อาศัย ดิน / ดิน อยู่ สวน) with branches, so 1..3-hop queries have ground-truth answer sets.
 - Same information stored TWO ways: (G) explicit edge graph + traversal; (T) count/relation tables + designed multi-step lookup. Query frames designed and named.
@@ -1247,14 +1247,14 @@ Pre-reg + Amendment 1 (2026-10-25). Harness b532.py. Verdict json: PASS-NULL (c1
 - C2 content credit: G-vs-truth Jaccard = 1.0 vs SHAM-rewired mean 0.3077 (margin .692 >= .5) - G's correct answers come from the wiring's CONTENT, not the traversal code.
 - C3 cost (engineering fact only): graph 24 candidate-visits vs tables 83 over the query set - adjacency is cheaper per query at this scale; no capability difference.
 - C4 existing system unchanged: battery exact, skills 160/160.
-Conclusion for the connectome line (answering the 2026-10-24 17:08 steering question): at current scope the ONLY measured connectome-derived contribution to the answer path is arm 1's STD-inspired depletion DYNAMICS over counts (experimental). The graph wiring itself is an implementation choice with no measured behavioral contribution - recorded honestly; it stays out of the answer path and out of capability claims. Ash's cut rule applied to claims, not to the code: the engineered graph remains available as an engineering structure (cheaper associative lookups, C3) but earns no intelligence-adjacent language.
+Conclusion for the connectome line (answering the 2026-10-24 17:08 steering question): at current scope the ONLY measured connectome-derived contribution to the answer path is arm 1's STD-inspired depletion DYNAMICS over counts (experimental). The graph wiring itself is an implementation choice with no measured behavioral contribution - recorded honestly; it stays out of the answer path and out of capability claims. the requester's cut rule applied to claims, not to the code: the engineered graph remains available as an engineering structure (cheaper associative lookups, C3) but earns no intelligence-adjacent language.
 Also recorded (Amendment 1): reverse-walk harness bug (both arms), LIB-pinning /tmp provenance dependency (TODO: repo-backed pinning), sham bar miscalibration -> margin criterion.
 ## Provenance fix (2026-10-25) - LIB pinning is now repo-backed
 B-532 Amendment 1 found skill execution silently depended on /tmp/c7_prog_0_base.json. Fix: the pinned base library (12 programs: mod/mul/div/power/gcd/max/min/fact/sumto/square/choose2/dblfact) is committed as ai/wnn/logs/baselib_pin.json; cur7.search and b532 pin repo-first, /tmp as fallback. Fresh-clone skill execution no longer depends on a sandbox /tmp artifact.
 
-## Hardening: repo-backed skill pinning + clean-process regression (2026-10-25, parent direction 00:37)
+## Hardening: repo-backed skill pinning + clean-process regression (2026-10-25, review direction 00:37)
 Context: B-532 Amendment 1 found cached skills could not execute in a fresh process without
-the transient /tmp/c7_prog_0_base.json artifact. Parent directed: fix before deeper curriculum,
+the transient /tmp/c7_prog_0_base.json artifact. Review directed: fix before deeper curriculum,
 add clean-process/rebuilt-workspace regression coverage, explicit missing/corrupt dependency
 handling, retain skill provenance.
 - 8d3e4db: logs/baselib_pin.json (12 pinned programs) committed; cur7.search + b532 pin
@@ -1281,7 +1281,7 @@ handling, retain skill provenance.
   not a correctness defect (found programs are train-trace-verified either way; the original
   oops-mode speedups in b515 came from the library-growth protocol of that experiment).
 ## B-533 pre-registration (2026-10-25, before running) - capture-budgeted curriculum accounting: does B-531's reuse advantage survive TOTAL-tried accounting?
-Context: B-531's honest cost note recorded that 'tried' counts only the search_oops phase; the capture phase (capture_lists) evaluates one full first (comb,init) block as a side effect of reusing cur7.search for list materialization, and that block grows ~quadratically with library size (B-531 clock estimates ~800s CPU ablated vs ~7000s reuse; sandbox clocks unreliable). Parent direction 2026-10-25 00:37: continue with capture-budgeted experiments.
+Context: B-531's honest cost note recorded that 'tried' counts only the search_oops phase; the capture phase (capture_lists) evaluates one full first (comb,init) block as a side effect of reusing cur7.search for list materialization, and that block grows ~quadratically with library size (B-531 clock estimates ~800s CPU ablated vs ~7000s reuse; sandbox clocks unreliable). Review direction 2026-10-25 00:37: continue with capture-budgeted experiments.
 Source analysis (pre-registered, from cur7.search): the only tried_cap check is per (comb,init) block, so a tried_cap=0 capture evaluates EXACTLY the first block = len(conds) x len(bases) x len(steps_pair) candidates; the captured lists are fully materialized BEFORE any evaluation, so those evaluations are pure harness overhead (search_oops re-enumerates every candidate from the lists anyway).
 Design (b533.py); same arms/target as B-531 (ablated vs reuse [double+quad dialog-taught in-run, sumto seeded], target hexdec 16n fixed by B-531's selection rule - no re-selection):
 - Fix under test: zero-eval capture (tried_cap=-1: materialize lists, evaluate nothing). Harness-only change; no protocol change.
@@ -1303,8 +1303,8 @@ Pre-reg + Amendment 1 (2026-10-25). Harness b533.py, log logs/b533_capture.log.
 - C5 no interference: 160/160 x4 seeded skills, double+quad 40/40.
 - Harness change following: b515.capture_lists default becomes zero-eval (harness-only; tried counts in b529/b530/b531 were never affected since capture tried was discarded, and C2 shows outcomes identical).
 CAN claim (upgrades B-531's scoped claim for THIS task): accumulated dialog-taught knowledge makes an unreachable target reachable and cuts total program-search tried 23.7x, with exact capture accounting. CANNOT: anything beyond B-531's boundaries (no semantic understanding; designed frames + numeric DSL; single-task evidence; not a general compute law). General warning recorded: any future reuse/curriculum experiment must budget capture, because capture cost grows ~quadratically with library size and can silently reverse total-cost comparisons.
-## B-533 Addendum 1 (2026-10-25, parent-directed claim qualification)
-Parent 2026-10-25 04:59: cap-qualify the comparison and state teaching-inclusive totals.
+## B-533 Addendum 1 (2026-10-25, review-directed claim qualification)
+Review 2026-10-25 04:59: cap-qualify the comparison and state teaching-inclusive totals.
 1. CAP-QUALIFIED: the ablated arm EXHAUSTED the 700,001 budget without finding any program.
    The comparison is success-vs-not-found-within-budget, NOT an exact speedup against a
    completed baseline; the true ablated cost is unknown (> 700,001).
@@ -1321,9 +1321,9 @@ Parent 2026-10-25 04:59: cap-qualify the comparison and state teaching-inclusive
    confirmation/accuracy verifications are counted separately (9 confirmation evals in the
    reuse learning sequence; post-hoc accuracy spots are reporting, not learning).
    No wall/CPU claims (sandbox clocks unreliable, B-531 lesson).
-## Integration gap analysis (2026-10-25, parent direction 04:59: prioritize the fully integrated usable hsml over another isolated curriculum layer)
+## Integration gap analysis (2026-10-25, review direction 04:59: prioritize the fully integrated usable hsml over another isolated curriculum layer)
 Grounded in BACKLOG.md integration status + current code:
-- G1 (CORE): teaching and answering live in SEPARATE entry points. HSMLMemory.answer() handles queries; b529.teach() is a harness function driving a scripted Teacher; each experiment builds its own memory. There is no single conversation flow where one incoming sentence can name/exemplify/confirm (teach), state (observe), or ask (answer) against ONE memory object. Ash's bar ("one system, real data flow end-to-end, no stub routing") is not met while teach and answer are separate doors into separate memories.
+- G1 (CORE): teaching and answering live in SEPARATE entry points. HSMLMemory.answer() handles queries; b529.teach() is a harness function driving a scripted Teacher; each experiment builds its own memory. There is no single conversation flow where one incoming sentence can name/exemplify/confirm (teach), state (observe), or ask (answer) against ONE memory object. the requester's bar ((steering paraphrased)) is not met while teach and answer are separate doors into separate memories.
 - G2: no full-memory persistence story (taught skills, attrs) across processes; only seeded-skill cache + baselib_pin exist.
 - G3: relation/graph store (B-532) sits outside the unified memory; engineering-only status (isomorphic to tables, cheaper per query).
 B-534 (below) takes G1 as the highest-value bounded step: one conversation entry point over one memory, teaching and answering interleaved in one conversation.
@@ -1423,7 +1423,7 @@ Amendment-2 horizon finding (recorded): 16n via double∘double∘double∘doubl
 CAN claim: HSML memory accumulates across real processes through save/load; a skill LOADED from an earlier session is reusable as a component in a later session's induction, and the load-time LIB registration (hsml.py) is the mechanism that enables it. CANNOT: anything beyond cross-session persistence + component reuse; no claim about composition depth beyond ~2 levels at this budget.
 
 ## B-538 pre-registration (2026-10-25, before running) - conversational REVISION of a taught skill
-Gap (next end-to-end integration gap after G1/G2 closed, parent 04:59 steering): a usable continually-taught system must let the teacher CORRECT a mistake through conversation. Current hsml.py ground truth: the naming frame always opens a fresh context; _confirm silently dict-overwrites mem.skills[word] and C7.LIB[word] on store. No revision provenance, no test that queries follow the NEW behavior and the OLD behavior is gone, no test that a FAILED re-teach preserves the original, no test that a revision survives save/load.
+Gap (next end-to-end integration gap after G1/G2 closed, review 04:59 steering): a usable continually-taught system must let the teacher CORRECT a mistake through conversation. Current hsml.py ground truth: the naming frame always opens a fresh context; _confirm silently dict-overwrites mem.skills[word] and C7.LIB[word] on store. No revision provenance, no test that queries follow the NEW behavior and the OLD behavior is gone, no test that a FAILED re-teach preserves the original, no test that a revision survives save/load.
 Design (hsml.py extension, named as DESIGNED): naming a word that is already a DIALOG-taught/loaded skill opens a revision context (response kind 'revision_opened'); completing teaching stores the new program WITH revision provenance (revision count + replaced program string recorded) and updates the induction LIB registration. Naming a SEEDED pinned-baselib word abstains 'reserved' (provenance protection); a failed revision (teach_failed) leaves the original skill fully intact.
 Test (b538.py, one conversation + real subprocess persistence):
 - C1 teach double (สองเท่า) via the standard dialog protocol; probe 10/10.
@@ -1451,10 +1451,10 @@ Accounting: search-candidate tried - initial teach 549, revision teach 613, C5 c
 Post-verdict regression: b534.py and b535.py re-run under the revision-aware hsml.py - both PASS with identical measurements (549/870, C6 teach_failed at its amended cap; persistence checks unchanged).
 CAN claim: a dialog-taught skill can be corrected through conversation; the correction propagates to answering, the induction reuse path, and save/load persistence; failed corrections leave the original intact; seeded baselib skills are protected from naming collisions. CANNOT: semantic understanding of the correction; natural-language generality (designed frames + numeric DSL); B-529 Correction 1 boundaries stand.
 
-### B-538 Addendum 1 (2026-10-25, parent-directed claim scoping)
-Parent 2026-10-25: keep the B-538 claim scoped to the tested DIRECT revised skill until dependent behavior is verified. B-538 tested revision of a skill with NO dialog-taught dependents (C6 verified only the revised word's own LIB entry). It did NOT test what happens to a composed caller (e.g., สิบหกเท่า calling สี่เท่า calling สองเท่า) when a callee is revised: dependents may silently change behavior, retain stale closures, or break on reload. B-538's claim is hereby scoped: CAN claim correction of the direct revised skill propagates to its own answering, its own induction-LIB registration, and persistence. CANNOT claim anything about dependent learned skills under revision - that is B-539's question, grounded and pre-registered before any policy claim.
+### B-538 Addendum 1 (2026-10-25, review-directed claim scoping)
+Review 2026-10-25: keep the B-538 claim scoped to the tested DIRECT revised skill until dependent behavior is verified. B-538 tested revision of a skill with NO dialog-taught dependents (C6 verified only the revised word's own LIB entry). It did NOT test what happens to a composed caller (e.g., สิบหกเท่า calling สี่เท่า calling สองเท่า) when a callee is revised: dependents may silently change behavior, retain stale closures, or break on reload. B-538's claim is hereby scoped: CAN claim correction of the direct revised skill propagates to its own answering, its own induction-LIB registration, and persistence. CANNOT claim anything about dependent learned skills under revision - that is B-539's question, grounded and pre-registered before any policy claim.
 
-## B-539 pre-registration (2026-10-25, before running; parent-directed 10:02) - dependent-skill semantics under revision: explicit invalidation/revalidation policy
+## B-539 pre-registration (2026-10-25, before running; review-directed 10:02) - dependent-skill semantics under revision: explicit invalidation/revalidation policy
 Grounded current behavior (measured 2026-10-25, scratch scripts, not the experiment): dependents reference callees BY NAME and resolve through C7.LIB at call time (cur7.run comb op; make_fn captures only the spec). Measured: teach double(549)/quad(870)/16n(27,430, prog calls สี่เท่า); revise quad 4n->5n; dependent 16n SILENTLY REBOUNDS - answers 25n in-session on previously-asked inputs (12,500 for n=500) and fresh inputs, and 25n again after save/load in a fresh process (17,500 for n=700). No provenance, no warning: a previously confirmed skill changes behavior silently when its callee is revised. (Note: quad's stored program does NOT call double - B-530 enumeration-order lesson; the only live dialog dependency in the chain is 16n -> quad.)
 Design (hsml.py, DESIGNED and named): 
 - Dependency provenance: at store time scan the stored program for references to other stored skills; record prov['deps'] and prov['dep_rev'] (each dependency's revision count at store).
@@ -1493,7 +1493,7 @@ Run-1 FAIL on C5 only (recorded): harness protocol bug, not an hsml defect - the
 - C9 transitive (Amendment 1): 256n (deps [16n] only, no direct quad dep) marked stale by the fixpoint when quad was revised; querying it returns the explicit stale_skill response (no crash); still stale after 16n's revalidation until its own (explicit per-skill policy).
 CAN claim: revision of a taught skill invalidates its learned dependents EXPLICITLY (visible stale state, explicit response, induction-LIB exclusion, no silent behavior change), dependency/version provenance is recorded, a measured confirmation-only revalidation path exists (accept AND reject->revision), failed callee revisions mark nothing, and the marks persist across save/load. CANNOT: semantic understanding; natural-language generality (designed frames + numeric DSL); anything beyond; B-529 Correction 1 boundaries stand. Accounting: search-candidate tried recorded per teach/revision/control above; revalidations are confirmation-only (zero induction tried); probes are execution.
 
-## B-540 pre-registration (2026-10-25, before running) - mixed-dialog end-to-end integration battery (parent 04:59 steering: usable integrated system over another isolated layer)
+## B-540 pre-registration (2026-10-25, before running) - mixed-dialog end-to-end integration battery (review 04:59 steering: usable integrated system over another isolated layer)
 Question: every integration experiment so far ran one activity in a clean sequence (B-534's interleave was small: two teachings + one attr block + battery). Does the ONE-system claim hold under ONE sustained MIXED conversation that interleaves every connected subsystem - observations, attr probes, teachings, abandonment, revision, stale/revalidation, unknown abstains - and continues across a mid-conversation save/load into a fresh process? The B-538->B-539 lesson: isolated tests miss composed behavior; this measures the composition across subsystems.
 Design (b540.py, scripted harness; all frames DESIGNED and named): one HSML object, fixed interleaved script, save, fresh-process load, continue. Script: observe animal corpus -> attr probe -> teach double -> teach quad WITH interleaved attr observation + attr probe + double query between its examples -> abandonment probe (name ห้าเท่า, 2 examples, switch name to แปดเท่า, complete) -> teach 16n (quad in LIB) -> unknown-word abstains -> revise quad 4n->5n -> stale checks -> revalidate 16n (25n) -> revalidate any other newly-stale taught skill to its recomposed behavior (recorded) -> attr battery -> log integrity -> save. Fresh process: load -> all probes at recorded final behaviors -> attr battery -> abstains -> teach สามเท่า 3n -> bounded garbage control (cap 60,000/round, B-534 Amendment 1 lesson) -> log integrity.
 Criteria:
@@ -1513,7 +1513,7 @@ Recorded: แปดเท่า found as double∘double∘double (deps [สอ�
 Regressions post-router-fix: b534 PASS, b535 PASS, b539 PASS (chunked s1a/s1b/s1c/s2 via the supported save/load path, load == in-session state per B-535/537; s1a tried match the merged run exactly (549/870/27,430/31,526); C6 re-run BOUNDED at 60,001 with all behavioral assertions holding (sandbox per-call ceiling; merged full-cap C6 stands from the original run; the router diff is attr-routing only, disjoint from every b539 sentence frame); s1c quad-revision tried 52,006 vs 47,910 differs only because the chunked load resets the confirmation-sampling rng).
 CAN claim: within designed frames, the integrated system holds every measured behavior under sustained MIXED use (observations, probes, teachings, abandonment, revision, stale/revalidation, unknowns interleaved) and across a mid-conversation save/load; abandonment discards partial teachings; every utterance is logged with provenance. CANNOT: NLU; beyond designed frames; unmeasured interleavings; B-529 Correction 1 boundaries stand.
 
-## B-541 pre-registration (2026-10-25, before running; parent-directed 12:42 after the fresh eval_ash baseline found the defect) - no acknowledgement without persisted learning: dynamic name/attr vocabulary vs honest rejection
+## B-541 pre-registration (2026-10-25, before running; review-directed 12:42 after the fresh eval_ash baseline found the defect) - no acknowledgement without persisted learning: dynamic name/attr vocabulary vs honest rejection
 Grounded defect (eval_ash_20261025.json, preserved untouched): 'เหยี่ยว มี ปีก' -> 'จำไว้แล้ว' but CountBackend.observe counts only names in the hardcoded B-521 ANIMALS x ATTRS - the new name was silently dropped; the ack was dishonest.
 Design (DESIGNED, named): statement frames from B-521 (7 frames: X มี Y / X นั้น มี Y / ดู Y ของ X / Y ของ X สวย / X มี Y และ Z / Y และ Z ของ X / X มี Y และ Z และ W) are PARSED for (name, attrs) positions; CountBackend gains observe_pairs (dynamic names AND dynamic attr words - the frame position grounds the role) and vocab() = seed ATTRS + every attr ever stored; the probe path filters by vocab() (dynamic); a sentence with attr content but no designed frame now abstains HONESTLY instead of being token-scavenged. Legacy observe(toks) kept for old harnesses. Dialog/skill frames match before attr routing as before.
 Criteria (b541.py + fresh-process s2):
@@ -1525,7 +1525,7 @@ Criteria (b541.py + fresh-process s2):
 - C6 no-ack-without-store invariant: over a batch of new-name/new-attr statements, every 'observed' response is followed by probe-retrievable pairs (harness checks each).
 Verdict PASS iff C1-C6. CAN claim: within the designed statement frames, acknowledged observations are always persisted and retrievable (including new names/attrs), and unsupported input is honestly rejected; CANNOT: free-form statement understanding - the frames are designed; B-529 Correction 1 boundaries stand.
 
-## B-541 - unlimited name+attribute vocabulary (Ash steering 2026-10-25 12:43: "ทำให้ไม่จำกัดไม่ได้หรอ")
+## B-541 - unlimited name+attribute vocabulary (the requester steering 2026-10-25 12:43: (steering paraphrased))
 Pre-registered 2026-10-25 (commit on wnn-checkpoints before code). Goal: remove the fixed-world limit found by the fresh eval (B-540/eval_ash): dynamic name+attribute learning from designed-frame role parsing, with honest rejection for frameless/unknown input.
 Criteria:
 - C1: a taught new name+attribute is acknowledged AND retrievable by probe in-session (no ack without persisted learning)
@@ -1541,7 +1541,7 @@ Regressions: b534 PASS, b535 PASS, b540 PASS (caches cleared first), b539 PASS c
 Scope honesty: vocabulary growth is via DESIGNED statement-frame role parsing (name/attribute roles in 'X มี Y'), not induced structure; frameless input is honestly rejected, not guessed.
 
 ## B-542 - attribute retraction (negation frame 'X ไม่มี Y')
-Pre-registered 2026-10-25 (before implementation). Gap: taught attribute facts can be added (B-541) but never corrected - the skill world has revision (B-538/539) but the attribute world has no honest retraction. Same unified-system direction as Ash's steering.
+Pre-registered 2026-10-25 (before implementation). Gap: taught attribute facts can be added (B-541) but never corrected - the skill world has revision (B-538/539) but the attribute world has no honest retraction. Same unified-system direction as the requester's steering.
 Design (DESIGNED, named): negation frame 'X ไม่มี Y' (and 'X ไม่มี Y และ Z') parsed with grounded roles; CountBackend.unobserve(name, attrs) deletes the association (explicit retraction semantics, mirroring skill revision's replace); response 'ลบแล้ว' only when something was actually retracted, honest 'nothing to retract' otherwise. No silent no-ops acknowledged as done.
 Criteria:
 - C1: teach name+attr then retract -> probe no longer returns that name for the attr
@@ -1573,7 +1573,7 @@ Run-2: PASS C1-C6 (logs/b543_run.log). The reverse frame is checked BEFORE state
 Scope honesty: the reverse query is a designed frame over the same count store - no new inference; unknown names and fully-retracted names abstain honestly (attr_reverse_unknown / attr_reverse_empty); the frame reserves 'อะไรบ้าง' from ever being an attribute (designed reservation, named).
 
 ## B-544 - storage safety: questions are not facts + honest yes/no questions
-Pre-registered 2026-10-25 (parent greenlight after eval_ash3 baseline recorded the
+Pre-registered 2026-10-25 (review greenlight after eval_ash3 baseline recorded the
 over-acceptance defect: 'นก มี กี่ลักษณะ' was stored as an attribute of นก).
 Design (DESIGNED, named - a FINITE guard list is not general Thai understanding):
 1. Guard: question/particle words (ไหม มั้ย หรือ ใช่ไหม กี่ อะไร เท่าไหร่ ทำไม เมื่อไหร่ ที่ไหน ใคร อย่างไร ครับ ค่ะ จ้า นะ ล่ะ สิ) in name OR attr position of a parsed statement -> NOT stored; honest unsupported response. Nonmutation is verified by probing afterward.
@@ -1610,7 +1610,7 @@ save/reload persistence, retraction + negative evidence, corrupt load exit 2.
 Verdict: PASS
 
 ## B-546 - Thai number words at the designed frame boundary
-Pre-registered 2026-10-25 (Ash: "มาพัฒนา hsml ต่อ"; parent: safe language intake,
+Pre-registered 2026-10-25 (the requester: (steering paraphrased); review: safe language intake,
 then Thai numeral words/varied phrasing; eval_ash3 baseline recorded the failure:
 'เลขคู่ ของ สี่ คืออะไร' abstained while digits and Thai glyphs answered).
 Design (DESIGNED, named - a finite number-word parser is NOT learned language
@@ -1645,8 +1645,8 @@ frame boundary only - not learned language understanding; classifier phrasing
 ('นก มี สอง ปีก') remains out of scope by design.
 
 ## B-547 - bilingual slice: English frames sharing ONE attribute memory
-Pre-registered 2026-10-25 (Ash: Thai+English in parallel with shared knowledge;
-parent: cross-language testing, no human-like/all-word claim, ambiguity tests).
+Pre-registered 2026-10-25 (the requester: Thai+English in parallel with shared knowledge;
+review: cross-language testing, no human-like/all-word claim, ambiguity tests).
 Design (ALL DESIGNED, named - finite frames and stopwords are not learned
 understanding, and a taught link pair is not a claim the words are always
 interchangeable):
@@ -1678,13 +1678,13 @@ b542/b543/b544/b546, regress_skills, b539 chunked (bounded c6) all PASS
 (logs/b539_regress7.log). Scope named: finite designed English frames +
 taught link pairs; a link is taught data, not a claim of always-interchangeable
 meaning; English answers render canonical (Thai) attr words - the system does
-not translate. Toward Ash's stated goal (compose NEW sentences to answer):
+not translate. Toward the requester's stated goal (compose NEW sentences to answer):
 current answers are still template-rendered from memory, NOT free composition -
 that gap is the next design question, recorded here honestly.
 
 ## B-548 - bounded two-hop composition: question-conditioned sentence assembly, verified before speaking
-Pre-registered 2026-10-25 (Ash's stated goal via WhatsApp originals: the system
-composes NEW sentences from words to answer questions; parent: preserve his
+Pre-registered 2026-10-25 (the requester's stated goal via message: the system
+composes NEW sentences from words to answer questions; review: preserve his
 wording as the goal, distinguish learned-frame composition from broader ability,
 held-out sentence/question tests, factual correctness, no canned-demo shortcut).
 This is a BOUNDED slice, honestly named: two-hop composition over the taught
@@ -1734,13 +1734,13 @@ taught() at speak time. Noninterference (C7): b534/b535/b540/b541/b542/b543/
 b544/b546/b547 + regress_skills PASS; b539 chunked bounded-c6 regression PASS
 (logs/b539_regress8.log, bounded-aware merge as regress7). Scope named
 honestly: bounded TWO-HOP composition over the มี-graph with finite designed
-frames - a real step toward Ash's compose-new-sentences goal (content
+frames - a real step toward the requester's compose-new-sentences goal (content
 selection is question-conditioned and the emitted string is novel), but still
 NOT free sentence composition; deeper hops and freer realization are open.
 
 ## B-549 - learn-while-chatting separation: uncertain statements never become facts; natural 'ไม่ใช่' corrections
-Pre-registered 2026-10-25 (Ash via WhatsApp, 2026-10-25:
-"ทำให้มันเป็นแบบเรียนรู้ไปด้วยระหว่างคุยไปด้วยได้ไหม"; parent: preserve the
+Pre-registered 2026-10-25 (the requester via message, 2026-10-25:
+"ทำให้มันเป็นแบบเรียนรู้ไปด้วยระหว่างคุยไปด้วยได้ไหม"; review: preserve the
 distinction between existing in-chat fact teaching and learning from ordinary
 dialogue; separate explicit teaching/corrections from questions and uncertain
 statements). Already-true scope named: in-chat learning EXISTS but only through
@@ -1786,7 +1786,7 @@ finite designed marker lists and frames - confidence separation for in-chat
 learning, NOT learning from free ordinary dialogue (that remains open).
 
 ## Licensing decision (2026-10-25) - hsml component -> AGPL-3.0-only
-Ash's explicit approval (WhatsApp, 2026-10-25): initial "ตามนั้นเปลี่ยนเป็น
+the requester's explicit approval (message channel, 2026-10-25): initial "ตามนั้นเปลี่ยนเป็น
 AGPLV3 ฉบับเต็มครบทุกตัวอักษร",
 reconsidered GPLv3 ("หรือ gplv3 ธรรมดาดี"), then confirmed after the AGPL-vs-GPL
 tradeoff (cloud-hosted modified services must offer source) with "ใช่"
@@ -1799,10 +1799,10 @@ character-complete). ai/wnn/NOTICE scopes AGPL-3.0-only to the hsml source,
 excludes third-party data (MNIST, Cook 2019 wormwiring-derived connectome -
 reuse license not established, SNIPS CC0), keeps the rest of the repo
 Apache-2.0, and states prior Apache releases remain valid/irrevocable.
-Rights check: git authors of ai/wnn are all Ash's own identities; provenance
+Rights check: git authors of ai/wnn are all the requester's own identities; provenance
 grep found no copyright headers or vendored-source markers (residual: cannot
 prove a negative - a headerless copied file would not be caught). No "or
-later" wording added (Ash chose v3 only). No release/tag; root LICENSE and
+later" wording added (the requester chose v3 only). No release/tag; root LICENSE and
 non-hsml dirs untouched.
 
 ## B-551 (pre-registered 2026-10-25): bounded three-hop verified composition
@@ -1873,7 +1873,7 @@ wings answer was 'yes'; the literal log says unknown, which is the honest
 answer for an untaught attribute.
 
 ## B-553 (pre-registered 2026-10-25): Thai synonym intake while chatting
-Ash's steering: learn while chatting. ALL DESIGNED frames, named; query-time
+the requester's steering: learn while chatting. ALL DESIGNED frames, named; query-time
 resolution only (no memory rewrite, mirrors B-547 link design).
 Frames (single-token Thai words):
 - teach: 'X กับ Y คือคำเดียวกัน' -> symmetric link stored (ack จำไว้แล้ว)
@@ -1912,7 +1912,7 @@ clean, regress_skills PASS. Compat: pre-B-553 memory pickle
 First second relation type after มี; toward category conversation. ALL
 DESIGNED, named. Thai single-token only this chunk (English is-a: out of scope).
 Frames:
-- teach: 'X เป็น Y' (directed child->parent; cycles allowed, visited-set BFS)
+- teach: 'X เป็น Y' (directed child->review; cycles allowed, visited-set BFS)
 - retract: 'ไม่ใช่ X เป็น Y' (link removed; honest nothing-to-retract)
 - uncertain: marker + is-a sentence -> uncertain_not_stored (B-549 path extended)
 Semantics (predeclared): inheritance applies to YES/NO questions only, via BFS
@@ -1954,15 +1954,15 @@ Extends B-554: 'X มี อะไรบ้าง' now also lists attributes inh
 is-a, each group WITH its source named ('และจาก P: attrs') - no silent
 inheritance. ALL DESIGNED, named. Own(+synonym) attrs first; inherited groups
 in BFS order, deduped against already-listed attrs; live memory at answer
-time (retracted parent attr disappears). If X has no own attrs but inherits,
+time (retracted review attr disappears). If X has no own attrs but inherits,
 it answers (was: abstain) - flagged in the record. EN twin: 'X has own ... and
 from P: ...'. Composition frames unchanged this chunk.
 Pass criteria:
 - C1: own + inherited listed, source named
 - C2: no own attrs, only inherited -> answers with from-group only
-- C3: parent attr equal to own attr -> listed once (as own)
+- C3: review attr equal to own attr -> listed once (as own)
 - C4: two ancestors -> two from-groups in BFS order
-- C5: retract parent attr -> inherited group gone on re-ask
+- C5: retract review attr -> inherited group gone on re-ask
 - C6: EN twin
 - C7: is-a via synonym surface counts
 - C8 noninterference: b534-b554 + regress_skills PASS unchanged
@@ -2030,8 +2030,8 @@ Pass criteria:
   C7: noninterference รูปแบบสคริปต์จริง b534-b557 + regress_skills ทุกตัว exit=0
 ขอบเขตตั้งใจ: ไม่เพิ่มไวยากรณ์คำถามรูปแบบอื่น ไม่ใช่การแต่งประโยคเสรี ไม่อ้างความเข้าใจความหมาย; เกณฑ์ผ่าน = ครบทุกข้อ + sweep เขียว + บันทึก run-1 FAIL ถ้ามีตามปกติ
 
-## B-558 pre-registration: ชั้นเชื่อมโยงแบบตารางนับเหนือหน่วยความจำสด (Ash เลือกเส้นทาง A, 26 ตุลาคม 2026) — ยังไม่เขียนโค้ด
-- ที่มา: Ash อนุมัติการทดลองแบบผสมแบบมีขอบ (WhatsApp 26 ต.ค. 05:31) — ชั้นเรียนรู้ความคล้ายของถ้อยคำ "เหนือ" หน่วยความจำเชิงโครงสร้างที่ตรวจย้อนได้ ไม่แทนที่ ไม่ใช้ weight ที่ฝึกมาจากที่อื่น ไม่อ้างการสนทนาทั่วไป
+## B-558 pre-registration: ชั้นเชื่อมโยงแบบตารางนับเหนือหน่วยความจำสด (the requester เลือกเส้นทาง A, 26 ตุลาคม 2026) — ยังไม่เขียนโค้ด
+- ที่มา: the requester อนุมัติการทดลองแบบผสมแบบมีขอบ (message channel 26 ต.ค. 05:31) — ชั้นเรียนรู้ความคล้ายของถ้อยคำ (steering paraphrased) หน่วยความจำเชิงโครงสร้างที่ตรวจย้อนได้ ไม่แทนที่ ไม่ใช้ weight ที่ฝึกมาจากที่อื่น ไม่อ้างการสนทนาทั่วไป
 - กลไก (ออกแบบ ตั้งชื่อ): ตารางนับจำนวนเต็มจาก char n-gram (3-5) ของประโยคที่ "สอนผ่านกรอบเดิมเท่านั้น" → เมื่อประโยคใหม่ไม่เข้ากรอบใดเลย ชั้นนี้เสนอข้อเท็จจริงที่เคยสอนซึ่งคล้ายสุดเกินเกณฑ์งดตอบ แล้ว "ตรวจข้อที่เสนอกับหน่วยความจำสดอีกครั้งก่อนพูด" ตามปรัชญา B-548 — ต่ำกว่าเกณฑ์หรือตรวจไม่ผ่าน → ไม่รู้ เหมือนเดิม
 - การลบ: หน่วยความจำสดเป็นแม่; ชั้นนี้เก็บบันทึกการเขียนต่อข้อที่สอน เมื่อมีการลบ (ไม่ใช่) จะลดค่านับตามบันทึกนั้น (หรือสร้างใหม่จาก store) — วัดให้เห็น ไม่สมมติ
 - ชุดโพรบถ้อยคำแปรผัน (held-out) จะ "แช่แข็งใน harness ก่อนเขียนโค้ด" และต้องมาจากแม่แบบที่ parser ไม่รองรับและไม่ปรากฏในข้อมูลสอน เพื่อแยกการถ่ายโอนจริงออกจากการทับซ้อนของ feature/parser
@@ -2057,7 +2057,7 @@ Pass criteria:
 - กลไกสุดท้าย (v3): name-anchored ด้วยการจับแบบ exact-substring (ผิวยาวสุดชนะ เสมอ→งดตอบ) + จัดอันดับ attr ด้วย n-gram coverage; ดัชนี = derived view สร้างใหม่จาก store สดที่เวลาเสนอ (lazy rebuild — ต่างจากข้อความ pre-register ที่ว่า "สร้างใหม่หลังทุก mutation" ในเชิงกลไก แต่ semantics เหมือนกัน: ดัชนีไม่มีทางเก่ากว่า store; วัด 3.3ms ที่ 200 ข้อ); ทุกข้อที่เสนอตรวจกับหน่วยความจำสดก่อนพูด; คำตอบติด kind 'assoc_answer' แยกจากคำตอบกรอบตรง
 - run-1 dev FAIL บันทึกตามจริง (ไม่ได้แตะโพรบ): C2 7/10 — โพรบ 3 ตัวถูกดักโดยกรอบ 'ยังไม่รองรับคำถามแบบนี้' ก่อนถึงจุด unrouted (ปัญหาลำดับ dispatch ไม่ใช่กลไก) แก้โดยให้จุดงดตอบนั้นผ่าน assoc fallback ด้วย; C3 มี 1 การแต่งคำตอบ — 'เบอร์ต มี อะไร บ้าง' (ไม่เคยสอน) ถูกเสนอ 'บอร์ท มี ฟลิบ' เพราะกลไก v2 ใช้ n-gram coverage แบบ fuzzy บนชื่อ กลไกผิด ไม่ใช่เกณฑ์ผิด: เปลี่ยนเป็น exact-substring anchor (v3) และประกาศชัดว่าการทนต่อชื่อสะกดคลาด "อยู่นอกขอบเขต B-558"
 - run-2 dev เขียว 8/8 (logs/b558_run.log): C2 10/10, C3 ไม่แต่งคำตอบเลย, การลบสะอาด, เก็บ 200 ข้อ: store recall 100/100 + assoc ถูก 100/100 ผิด 0; ทรัพยากรวัดจริง: rebuild 3.3ms, 2.83ms/คำถาม, peak RSS 12.1 MiB (ตัวเลขวัด ไม่อ้างประหยัดสุด)
-- ชุดประเมินสุดท้ายแบบ sealed (ตามระเบียบการของผู้ปกครอง: โพรบ dev 15 ตัวถูกมองแล้ว จึงเป็น dev เท่านั้น): probe_gen.py แช่แข็ง seed 55800 ตระกูลแม่แบบแยกจาก dev — ข้อจำกัดบันทึกตรงๆ: ตระกูลแม่แบบเป็นของมนุษย์เขียนและมองเห็นได้ เฉพาะ realization เท่านั้นที่ไม่เคยเห็นก่อนรัน; การยืนยันที่แข็งแกร่งกว่าในอนาคต = ถ้อยคำที่ Ash เขียนเอง
+- ชุดประเมินสุดท้ายแบบ sealed (ตามระเบียบการของผู้ปกครอง: โพรบ dev 15 ตัวถูกมองแล้ว จึงเป็น dev เท่านั้น): probe_gen.py แช่แข็ง seed 55800 ตระกูลแม่แบบแยกจาก dev — ข้อจำกัดบันทึกตรงๆ: ตระกูลแม่แบบเป็นของมนุษย์เขียนและมองเห็นได้ เฉพาะ realization เท่านั้นที่ไม่เคยเห็นก่อนรัน; การยืนยันที่แข็งแกร่งกว่าในอนาคต = ถ้อยคำที่ the requester เขียนเอง
 - sealed run (logs/b558_sealed_run1.log): ผ่านทุกแถ — paraphrase 9/9 ข้อมีชีวิต, unanswerable ไม่แต่งเลย, conflict ไม่อ้างผู้อื่นเลย, ข้อที่ถูกลบไม่ถูกเสนอเลย (หมายเหตุซื่อตรง: รันแรกถูกเรียกโดยไม่ตั้งใจผ่าน import ตอนเช็ก syntax — บันทึกแล้วรันอย่างเป็นทางการซ้ำหลัง commit ด้วยผลเหมือนกันทุกประการ ไม่มีการแก้กลไกหลังเห็นผล)
 - noninterference: สแกนสคริปต์จริง b534-b558 + regress_skills (ผลอยู่ใน logs/b558_noninterference.log)
 - ขอบเขตตั้งใจยืนยัน: การ "ดึงข้อเท็จจริงที่เคยสอน" ใต้ถ้อยคำแปรผันเท่านั้น — ไม่ใช่การสร้างภาษา ไม่ใช่การตามบทสนทนา ไม่ใช่การคุยทั่วไป ไม่ใช่การทนต่อการสะกดชื่อผิด
@@ -2085,7 +2085,7 @@ Pass criteria:
 
 ## B-559 pre-registration: บทสนทนามิโลแบบครบเส้นทาง (แก้ parser/dialogue แบบวิศวกรรม ไม่ใช่การเรียนรู้) — 26 ตุลาคม 2026, ยังไม่เขียนโค้ด
 
-ที่มา: ตัวอย่างบทสนทนาของ Ash (สอน "มิโลเป็นแมว และแมวเป็นสัตว์เลี้ยงลูกด้วยนม" แล้วถามต่อ) และโพรบวัดจริงบน master วันนี้ พบ 4 ช่องว่าง (ทุกข้อ abstain ตอนนี้): (A) ประโยคสอนแบบรวมไม่ถูกแยกเก็บ (B) ไม่มีเฟรมถาม is-a แบบใช่/ไม่เลย (C) ไม่มีการอ้างอิง มัน/เขา/หล่อน (D) 'อะไร บ้าง' เว้นวรรคแล้วหลุดเฟรม สิ่งที่ทำงานอยู่แล้วและห้ามเสีย: is-a เดี่ยว, สืบทอดลักษณ์ผ่าน is-a, รายการสืบทอดพร้อมที่มา, ตอบ ไม่รู้ เมื่อไม่เคยสอน
+ที่มา: ตัวอย่างบทสนทนาของ the requester (สอน (steering paraphrased) แล้วถามต่อ) และโพรบวัดจริงบน master วันนี้ พบ 4 ช่องว่าง (ทุกข้อ abstain ตอนนี้): (A) ประโยคสอนแบบรวมไม่ถูกแยกเก็บ (B) ไม่มีเฟรมถาม is-a แบบใช่/ไม่เลย (C) ไม่มีการอ้างอิง มัน/เขา/หล่อน (D) 'อะไร บ้าง' เว้นวรรคแล้วหลุดเฟรม สิ่งที่ทำงานอยู่แล้วและห้ามเสีย: is-a เดี่ยว, สืบทอดลักษณ์ผ่าน is-a, รายการสืบทอดพร้อมที่มา, ตอบ ไม่รู้ เมื่อไม่เคยสอน
 
 ขอบเขตตั้งใจ (ประกาศก่อนลงมือ): นี่คือการแก้ parser/บริบทบทสนทนาแบบออกแบบเอง (engineered) ไม่ใช่การเรียนเข้าใจภาษา และการผ่านบทสนทนามิโลคือเกณฑ์ยอมรับแบบเจาะจงที่เขียนเอง (narrow authored acceptance) ไม่ใช่หลักฐานการเข้าใจทั่วไป ไม่เกี่ยวกับ Transformer หรือ weights ใดๆ
 
@@ -2096,7 +2096,7 @@ Pass criteria:
 4. การทนเว้นวรรค 'อะไร บ้าง' เทียบ 'อะไรบ้าง': normalize ที่ชั้นแมตช์เฟรมเท่านั้น ห้ามแตะเนื้อหาหลายคำ (ชื่อ/ลักษณะหลายคำต้องเหมือนเดิมทุกกรณี)
 
 เกณฑ์ยอมรับ (ต้องผ่านทุกข้อ วัดแบบสคริปต์):
-- C1: บทสนทนามิโลของ Ash ผ่านครบเส้นทาง (สอนรวม → ตรวจว่าเก็บครบทั้งสองข้อเท็จจริง → ถามสืบทอด → ถามต่อด้วยคำอ้างอิง → คำตอบมีที่มา)
+- C1: บทสนทนามิโลของ the requester ผ่านครบเส้นทาง (สอนรวม → ตรวจว่าเก็บครบทั้งสองข้อเท็จจริง → ถามสืบทอด → ถามต่อด้วยคำอ้างอิง → คำตอบมีที่มา)
 - C2: แบตเตอรีขั้ว/ความไม่แน่นอน/atomicity: อนุประโยคปฏิเสธไม่ถูกเก็บเป็นบวก, อนุประโยคไม่แน่นอนไม่ถูกเก็บ, อนุประโยคพังไม่มีการเก็บเศษ
 - C3: แบตเตอรี is-a: ตรง/ข้ามชั้น/เชิงลบ/ไม่รู้/ขัดแย้งหลังถอน/วงแหวน
 - C4: แบตเตอรีการอ้างอิง: ผูกถูกเมื่อมี entity เดียว, abstain+ถามกลับเมื่อสอง entity, ห้ามผูกกับชื่อหมวด (ตรวจเป้าหมายการผูกเป็น มิโล ไม่ใช่ แมว)
@@ -2121,7 +2121,7 @@ Pass criteria:
 - เหตุที่ต้อง bounded: เพดานเวลาต่อ bash call ของ sandbox ไม่ใช่ขีดจำกัดของตัว harness (run เต็มเคยผ่านใน PR ก่อนๆ ผ่าน subprocess ต่อเนื่อง)
 
 ## B-559 full controls + merge (26 ตุลาคม 2026) — PR #288 → master 48bc8a1
-- ก่อน merge parent สั่งรัน full controls แบบไม่ bound สำหรับ 3 harness ที่รอบแรกรันแบบ bounded: b536 (c5 garbage), b538 (c5), b539 (c6) — รันบนโค้ด head c2606f2 ที่ freeze ไว้ ผ่าน runner แบบ detached (setsid) เพราะ sandbox หยุดช่วงไม่มี turn
+- ก่อน merge review สั่งรัน full controls แบบไม่ bound สำหรับ 3 harness ที่รอบแรกรันแบบ bounded: b536 (c5 garbage), b538 (c5), b539 (c6) — รันบนโค้ด head c2606f2 ที่ freeze ไว้ ผ่าน runner แบบ detached (setsid) เพราะ sandbox หยุดช่วงไม่มี turn
 - ผล unbounded ทั้งสาม: b536 PASS (c5_tried 700,001, c1-c5 ครบตาม run()), b539 PASS (c6_tried 700,001, chunked ผ่าน save/load จริง caches ถูกลบก่อน), b538 PASS (c5_tried 700,001, c1-c8 ครบ) — logs: /tmp/full_b536.log, /tmp/full_b539.log, /tmp/full_b538.log (รอบ bounded ก่อนหน้าเก็บแยกไว้เป็นหลักฐานชั่วคราว ไม่ใช่ฉบับปิดเกณฑ์)
 - การนับ regression ฉบับแก้: 26 harness = 23 full เขียว + 3 ที่ต้อง full-control แยก (ตอนนี้ full เขียวครบแล้ว) — เลข 25 หรือ 33/33 ที่เคยรายงานผิดได้แก้ในบันทึกแล้ว
 - Merge gates ณ เวลา merge: CI quick+arm64-port SUCCESS ที่ head c2606f2 ตรง 3 ทาง (PR head = ls-remote wnn = local wnn), master เคลื่อนจาก d36fa6d เป็น 7b78703 ผ่าน PR #287 (docs/+selfhost/+tests/ เท่านั้น, file-disjoint จาก ai/wnn 100%), merge เป็น 48bc8a1; fresh-clone smoke: บทสนทนา Milo ครบ + b559 36/36 จาก clone สด
@@ -2183,7 +2183,7 @@ LEARNED (must come ONLY from training dialogues, measured):
 - Slot extraction: which tokens are slot values and their roles.
 
 DATA PROTOCOL (separation enforced before any tuning):
-- Train: k examples/intent, Ash-style Thai+English phrasing, code-switching.
+- Train: k examples/intent, the requester-style Thai+English phrasing, code-switching.
 - Dev: disjoint phrasings, used ONLY for threshold/hyperparameter choice.
 - Eval: family-disjoint from train+dev - unseen phrasing families AND
   unfamiliar entity names (words never present in any training example).
@@ -2447,7 +2447,7 @@ confirmation is near-trivial (the confirmed sentence itself was added).
 
 ## B-564 PRE-REGISTERED (2026-10-26) - bounded fixes for the two diagnosed collateral channels + joint-slot leg (before code)
 
-Ash: ทำเลย (after honest not-usable report). Mandate: bounded improvement
+the requester: ทำเลย (after honest not-usable report). Mandate: bounded improvement
 grounded in B-563 diagnosis; NOT frame proliferation; no production integration;
 no pretrained. FROZEN: b562 data/eval/protocol via identical rng (b562_diag.build),
 same k=8, same 3-correction protocol, same metrics. Baselines frozen from B-562/3.
@@ -3201,7 +3201,7 @@ awaits direction.
 
 ## B-578 PRE-REGISTERED (2026-10-26, before code) - slot-teaching feasibility prototype
 
-Bounded standalone feasibility prototype of SLOT_TEACHING_DESIGN.md (parent-
+Bounded standalone feasibility prototype of SLOT_TEACHING_DESIGN.md (review-
 authorized 2026-10-26). NOT production integration. Streamed INSPECTED
 cells c21/c22, authored SIMULATED teacher (establishes correctness only
 inside the stated simulation), frozen NBu intent mapper + frozen extractor
@@ -3484,7 +3484,7 @@ firing with a differing gold value). Measured, not assumed.
 - No single-bottleneck wording: data semantics, representation, retention
   and gate validity all remain potential limitations.
 
-## OVERNIGHT TARGET (2026-10-26 23:07, user-set via main)
+## OVERNIGHT TARGET (2026-10-26 23:07, user-set via the coordinator)
 
 User's stated target: a conversational hsml he can talk to like the
 assistant, very low resources (<=1GB whole runtime), running locally. Main
@@ -3801,7 +3801,7 @@ definitions do NOT fire on question forms (constant/length mismatch);
 questions need their own definitions - per-form teaching cost disclosed.
 Authored robustness checks on an inspected mechanism.
 
-## B-592 PRE-REGISTERED (2026-10-26, before code) - unified conversational prototype (parent-approved bounded build)
+## B-592 PRE-REGISTERED (2026-10-26, before code) - unified conversational prototype (bounded standalone feasibility build)
 
 Integrates B-588 shell + B-590 recency + B-591 definitions into ONE class
 (supplied wiring; learned = WNN mapper + taught facts/rules). PARENT-
@@ -3884,3 +3884,42 @@ honest limit; the persisted definition fired and taught. DISCLOSED LIMIT:
 definitions persist as source strings and are RECOMPILED by the supplied
 compiler on load (not snapshot-serialized compiled rules); mapper + facts
 are true snapshots. Resources: 27MB, ~1s per process.
+
+## B-594 PRE-REGISTERED (2026-10-26, before code) - slot-aware mid-band confirmation
+
+Hypothesis: decomposing the mid-band guess-confirmation converts full
+corrections into cheaper partial ones. Mid-band turn, three supplied cases:
+intent+slots exactly right -> yes (1 user word); intent right, slots wrong
+-> SLOT-TARGETED question, simulated user supplies only the slot value
+(count: partial correction, fields supplied = wrong slots only); intent
+wrong -> full correction (user supplies intent + all slots). Metric vs
+B-592 run2 baseline on the SAME v1 scenario with SAME gold/answers:
+yes/partial/full split and total user-supplied fields. Baseline: 1 yes,
+13 full corrections (each = intent + up to 2 slots supplied). No accuracy
+gate - burden accounting only. Simulated answers derived from gold, not
+authored per turn.
+
+## B-594 FINDINGS (2026-10-26): slot-aware confirmation cuts user-supplied fields ~33%; questions unchanged
+
+logs/b594_run1.log. Same v1 scenario, same gold/answers as B-592 run2.
+Match 18/18, 0 fabricated. Burden decomposition: 14 questions (unchanged -
+one per mid-band turn either way), split: 1 yes, 5 slot-targeted partial
+corrections (user supplies only the wrong slots), 7 full corrections (vs 13
+full at baseline). Total user-supplied fields: 27 vs ~40 equivalent-full
+baseline. The yes-rate did NOT improve (1/14) - the gain is cheaper
+corrections, not better guesses; no leading confirmations added; the
+full-correction path remains when the intent itself is wrong, so a wrong
+compound parse stays corrigible. Simulated answers derived from gold.
+
+## Record hygiene pass (2026-10-26)
+
+Coordination narration and requester-identifying excerpts removed from
+research records (LEDGER, BACKLOG, HSML, planning docs, experiment
+docstrings): review-attribution normalized, requester steering paraphrased
+without quotes, channel references removed. Technical content, Thai
+scenario/sentence data, and all numbers unchanged. Four docstrings damaged
+by the mechanical pass were repaired and every .py re-verified with
+ast.parse; b592 re-run clean (3/3 summaries). Git history NOT rewritten;
+older commits still contain the pre-scrub text (containment, not erasure).
+NOTE on v1 18/18 (B-592 run2 vs B-588 17/18): attributable to the recorded
+LABELING fix (literal_repeat boundary), not a capability improvement.

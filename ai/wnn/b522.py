@@ -1,4 +1,4 @@
-"""B-522: decisive learned-vs-copied tests (Ash follow-up to B-521). Frames INDUCED from corpus
+"""B-522: decisive learned-vs-copied tests (the requester follow-up to B-521). Frames INDUCED from corpus
 (slot replacement: name->X, attr->A, pattern counting), retrieval-copier baseline arm.
 LEDGER pre-reg 2026-10-24. T1 compositional gap, T2 impossible conjunction, T3 novel-animal
 composition, T4 unknown-word distractor."""

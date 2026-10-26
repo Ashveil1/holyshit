@@ -1,0 +1,3 @@
+SUMMARY {"match": 18, "turns": 18, "questions_total": 14, "yes": 1, "partial_corrections": 5, "full_corrections": 7, "fields_supplied_total": 27, "fabricated": 0, "baseline_b592": {"yes": 1, "full_corrections": 13}}
+RES-FINAL {"peak_rss_mb_overall": 27.1, "wall_seconds": 1.4}
+DONE

@@ -1,4 +1,4 @@
-"""BABY (Ash's caregiver experiment, small honest version).
+"""BABY (the requester's caregiver experiment, small honest version).
 World: 6 situation types (mother, father, milk, ball, cat, dog). Each interaction: a scene (one situation present,
 plus noise: a second random situation co-present with p=0.3) and a caregiver utterance. Learner: from scratch,
 no pretrained anything - Hebbian word<->situation association counts + production by best association.

@@ -57,7 +57,7 @@ deliver correct actions.
 ## Known risks / honest limits
 
 - Simulated-teacher evaluation can only use gold slots as the oracle; that
-  is authored validation, and Ash's real willingness to answer per-slot
+  is authored validation, and the requester's real willingness to answer per-slot
   questions is UNTESTED by any of this.
 - Span supervision per family may not transfer across families; retention
   and interference of learned span scorers are unverified.

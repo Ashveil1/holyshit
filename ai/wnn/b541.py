@@ -1,5 +1,5 @@
 """B-541: no acknowledgement without persisted learning - dynamic name/attr vocabulary
-vs honest rejection. LEDGER pre-reg 2026-10-25 (parent-directed after eval_ash baseline).
+vs honest rejection. LEDGER pre-reg 2026-10-25 (review-directed after eval_ash baseline).
 S1: dynamic learning + rejection + invariant + save. S2: fresh-process round-trip.
 C5: separate fresh memory noninterference (standard corpus battery + seeded skills)."""
 import json, random, re, subprocess, sys, os
