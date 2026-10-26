@@ -2994,3 +2994,32 @@ information source is NECESSARY nor that possible approaches are exhausted.
 The accurate record: in this bounded pass, NO SUPPORTED NEXT PROPOSAL was
 identified. The line is held: no further automatic arms, nothing integrated
 into production, all previous nulls preserved.
+
+## B-573 PRE-REGISTERED (2026-10-26, before code) - new mechanism: interactive teach-once acquisition
+
+New direction (distinct from all 9 failed static-learner axes): an
+INTERACTIVE acquisition channel, grounded in Sida Wang et al., "Naturalizing
+a Programming Language via Interactive Learning" (ACL 2017,
+aclanthology.org/P17-1086) and "Learning Language Games through Interaction"
+(ACL 2016, aclanthology.org/P16-1224): users define new language in terms of
+what the system already knows, and the interface's usable language grows
+through interaction (their community reached 85.9% naturalized-utterance use
+in 3 days). Our formulation matches the stated user goal of teach-once
+learning while chatting.
+Mechanism: frozen NBu mapper + dev-calibrated margin threshold tau (same
+selection procedure as b562_diag.build, recomputed for NBu). Streaming each
+INSPECTED unseen-template cell item-by-item: if margin < tau the system
+ASKS the (SIMULATED) teacher instead of acting; the (utterance, gold intent)
+pair is folded into the mapper and the item is EXCLUDED from all metrics.
+Acted items are scored right/wrong on intent and joint.
+Gates (fixed before code): G1: wrong-action rate on ACTED c21+c22 items
+<= 5% AND acted-item intent >= static M0 + 30 points on each cell. G2:
+median asks per unseen intent-family <= 2 (teach-once). Fail -> null, no
+automatic continuation.
+DISCLOSURES: the simulated teacher is AUTHORED validation, never
+independent; tau comes from the same authored dev split; taught items are
+excluded from metrics; this tests an interactive acquisition channel, not
+open-ended language learning; no production integration; no user dialogue
+used as data.
+Resources: no pretrained, no paid; pure-Python; 1e9-byte live watchdog;
+10-min hard timeout; seeds 0-4.
