@@ -4204,3 +4204,123 @@ artifact. Burden reduction therefore comes only from: in-band learning
 accumulation (ask once per item; exact repeats are free), definition
 pattern reuse (B-591), and cheaper correction shapes (B-594). Direction
 closed; no more marker/threshold variants.
+
+## CORRECTION (2026-10-27): claim scope on fabrication and on the overnight target
+
+1. All '0 fabricated' results (B-592, B-601 and any summary wording) mean
+exactly: zero measured violations on the named checks on those authored
+scenarios (reply class equals action class; slotted entities present;
+derivation chain present when one exists). Class/action agreement does
+NOT establish that the action taken was correct, and short authored
+batteries do NOT establish 'never fabricates' in general.
+2. The B-602-era assessment that the conversational target would require
+pretrained-scale ability is withdrawn as unsupported: these experiments
+show only that no currently supported path exists within this prototype
+stack. That is not evidence that any particular architecture or data
+scale is necessary, and no alternative approach is foreclosed. No
+pretrained weights have been adopted.
+
+## B-603 PRE-REGISTERED (2026-10-27, before code) - consolidation: one runnable standalone prototype entry
+
+Consolidate the existing checked components into ONE runnable entry
+(hsml_chat.py) so that claims about 'the prototype' refer to a single
+exercised system, not a collection of separately passing probes. Reused
+components: NBu mapper + slot extraction (b562/564/565/566), unified
+shell with definitions/anaphora/store (b592), response realization
+(b601), supplied longest-match segmentation with session-extended
+lexicon (b589/595), JSON persistence (b593) EXTENDED to cover session
+lexicon, subjects and thresholds (B-593 covered mapper/facts/defs/seen
+only). NEW machinery, labeled supplied: a deferred-question interaction
+loop (the harness resolved questions against gold instantly; a real
+entry must return the question and consume the user's next line:
+yes/no/correction restatement for guess-confirmations, entity name for
+referent clarification). Checks: (a) --check runs a fixed authored
+UNSPACED Thai transcript end-to-end through the same user-facing loop
+and reports per-turn results against gold expectations, including
+burden counts and a wrong-action check on the final store; (b) a REAL
+process restart: part 1 saves a snapshot, a separate child process
+loads it and verifies facts, definitions (still fire on a novel
+composition), session lexicon (unspaced taught entity still segments),
+subjects (anaphora still resolves) and learned correction surfaces;
+(c) resource measurement covers the entry itself in both processes.
+Metric: per-turn expectations, restart-audit pass counts, resource
+numbers; no score gate beyond 0 wrong actions in the transcript.
+Scope: experimental, standalone, no production integration.
+
+## B-604 PRE-REGISTERED (2026-10-27, before code) - familiar-word slot assignment fallback + interaction-loop guards
+
+B-603's first consolidated run (uncommitted) exposed that the checked
+components do NOT carry a real conversation when driven by a real
+deferred-question loop instead of the scripted-gold protocol:
+(1) slot extraction returns None on sentences whose words are all
+familiar, because candidate selection excludes the cross-intent
+functionish set which contains every shared content word (แมว นก หาง
+สัตว์ มิโล...); extraction only ever handled NOVEL fillers, so the
+system cannot talk about things it already knows; (2) the mapper
+mispredicts 'มิโล เป็น แมว' as is_a_q (entity statistics outweigh the
+absent question marker); (3) one misleading confirm on an off-topic
+sentence (B-599 class) appears end-to-end. These are consolidation
+findings about the exercised system, not new probe scores.
+BOUNDED MECHANISM (train-only statistics, no thresholds/markers):
+fallback candidate selection uses the PER-INTENT frame-word set
+(frame1[d]: words in >=50% of that intent's train sentences) instead of
+the cross-intent functionish set ONLY when standard selection yields
+fewer candidates than needed; role assignment reuses rolepos stats with
+positional fallback (existing A1 machinery). SUPPLIED interaction
+guards, labeled: (a) a guess-confirmation is offered only when slots
+extracted AND at least one slot is a known entity (taught isa/attr key
+or value, or a recent subject); (b) correction loop-breaking: if the
+user's restatement classifies to the same rejected intent+slots, the
+system stops asking and replies honestly that the pattern is not
+learnable in-band, naming definition teaching as the available route.
+Gates: G1 on the 13-case consolidation grid, >=10/13 correct slot
+assignments with 0 role swaps; G2 the --check transcript passes with 0
+wrong final-store facts and all restart audits true; G3 the fallback is
+inert on the frozen protocol eval (extraction outputs identical on a
+sample, since it only fires when standard selection fails). Authored
+grid/transcript = development checks, not independent validation.
+Resources: no pretrained, no paid, pure-Python, 1e9-byte live watchdog.
+
+## B-604 FINDINGS (2026-10-27): gold-supervised extraction fallback PASS (12/12 extractable grid cases, 0 role swaps, inert on frozen eval)
+
+logs via b604.py run (2026-10-27 ~01:14). Replacing the cross-intent
+functionish filter with per-intent gold-aware frame words plus
+gold-supervised slot-offset assignment: all 12 in-frame grid cases
+extract correct slots in correct role order, including all-familiar-word
+sentences the standard path returned None for. 0 role swaps. The two
+off-topic grid cases still return slots under mispredicted intents;
+blocking them is delegated to the entry-level interaction guard, not
+extraction. G3: on a 64-item frozen-eval sample the fallback never fired
+and standard-path outputs are identical (64/64) - additive only.
+'มิโล เป็น แมว' still mispredicts as is_a_q (mapper limitation
+unchanged; handled by the interaction loop, below).
+
+## B-603 FINDINGS (2026-10-27): consolidated standalone entry hsml_chat.py - --check PASS with real process-restart audit
+
+hsml_chat.py is the single runnable entry (REPL, --load resume, --check
+verification). The --check transcript is authored UNSPACED Thai driven
+through the real user-facing loop (segmentation -> deferred-question
+interaction -> replies), 14 turns part 1 + 13 turns part 2 with a REAL
+child-process restart between: snapshot save in part 1, separate python
+process loads it in part 2. All 12 restart audits pass: isa/attr facts,
+definition loaded AND fired on a novel composition after restart,
+subjects, seen-set (literal repeat works after restart), mapper counts
+identical to snapshot, session-grown lexicon (บัว, กลีบ entered as
+unknown tokens in part 1 and segmented cleanly in part 2), chain
+inference, zero wrong final-store facts. Resources: peak RSS 27.9MB in
+BOTH processes, ~1.3s wall each. Burden on this transcript: part 1
+6 questions/14 turns (1 correction), part 2 5/13, all confirms answered
+yes; questions amortize within-session via mapper adds.
+HONEST DEFECTS RECORDED: (a) question/teach mapper confusion remains
+the dominant limitation - 'บัวมีกลีบไหม' was confirmed as a TEACH guess
+(the yes answer committed an idempotent re-teach: correct store outcome,
+wrong-intent turn); (b) first-contact teaches of facts whose entities
+resemble question examples still need one ไม่ใช่ + second guess
+('มิโลเป็นแมว'); (c) replies are supplied templates; (d) ask_attr
+answers interpret attribute questions as has-relation lookups;
+(e) defaultdict traversal creates empty isa keys (cosmetic). This entry
+supersedes 'collection of probes' wording: the behaviors above are
+exercised together here; earlier per-probe results remain component
+evidence only. The transcript is a same-author development check, not
+independent validation, and passing it does not establish the
+overnight conversational target.

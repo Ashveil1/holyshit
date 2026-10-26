@@ -601,3 +601,17 @@ Same protocol as the program search: 25 training examples (scales 1-2, y distrac
 - Every regression baseline collapses at scales 3-4 (0-4/40 on all 18 tasks). Scale-1 "wins" are answer-distribution artifacts (div 18/40 because many x//y=0; power 22/40 because outputs pile at 0/1).
 - Chance reference points: yes/no tasks = 50% (even); isprime majority-class rate is 66%/70%/81%/87% at scales 1-4 (primes thin out) - a no-knowledge predictor scores that high; exact-number chance is ~1/answer-range (~1% or less).
 - evalpack_v1.json freezes the seed-0 train/eval rows for all future comparisons.
+
+## Standalone experimental prototype (ai/wnn/hsml_chat.py)
+
+One runnable entry wiring the checked components (WNN intent mapper,
+gold-supervised slot extraction, definitions, anaphora, fact store,
+Thai replies, segmentation, JSON persistence). Experimental research
+code; not production.
+
+    python3 hsml_chat.py              # interactive Thai REPL; 'save' persists
+    python3 hsml_chat.py --load logs/hsml_snapshot.json
+    python3 hsml_chat.py --check      # end-to-end unspaced-Thai transcript
+                                      # check + real process-restart audit
+
+Details, measured limits and burden numbers: LEDGER.md B-603/B-604.
