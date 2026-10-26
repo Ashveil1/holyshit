@@ -2444,3 +2444,34 @@ Confirmation-transfer disclosure: "fresh" transfer items share the SAME eval
 family template and the SAME unfamiliar vocab pools - only slot substitution
 is fresh; no new-template transfer was measured. Same-item recall after
 confirmation is near-trivial (the confirmed sentence itself was added).
+
+## B-564 PRE-REGISTERED (2026-10-26) - bounded fixes for the two diagnosed collateral channels + joint-slot leg (before code)
+
+Ash: ทำเลย (after honest not-usable report). Mandate: bounded improvement
+grounded in B-563 diagnosis; NOT frame proliferation; no production integration;
+no pretrained. FROZEN: b562 data/eval/protocol via identical rng (b562_diag.build),
+same k=8, same 3-correction protocol, same metrics. Baselines frozen from B-562/3.
+
+Variants (ONLY these; anything else is a future prereg):
+- S0 = NB-full, frozen reference (numbers already recorded; re-measured for control).
+- S1 = NB with UNIFORM prior (likelihood-only scoring). Targets channel 1
+  (prior dominance flipping feature-poor items).
+- S3 = S1 + slot extraction v2: slot = token not in the UNION of ALL intents'
+  learned frame words (was: only the predicted intent's); filler role via
+  position statistics POOLED across intents (was: per-intent only).
+  Learned/supplied disclosure unchanged otherwise (NSLOTS + role order still
+  supplied). Channel-2 (feature-mass via shared EN markers) has NO variant in
+  this round - deferred, recorded; avoids arm proliferation.
+- NEW-TEMPLATE eval (authored, labeled; never used in any prior round): two
+  fresh surface families per intent, SAME unfamiliar entity pools (isolates
+  template novelty from slot substitution). Reported SEPARATELY from the
+  frozen eval; no bar (first measurement).
+
+Improvement hypotheses (pre-set; nulls are results):
+- G1: S1 mean collateral (3-corr) <= 2 points on >=4/5 seeds AND name_skill
+  collateral <= 2 points on all seeds, with frozen-eval k=8 intent accuracy
+  within 3 points of S0's .353.
+- G2: S3 joint (k=8, frozen eval) >= .25 (from .091) with intent accuracy drop
+  <= 3 points vs S0.
+- G3: none (new-template numbers reported as-is).
+No production routing, no uncertain writes, no quality guarantee.
