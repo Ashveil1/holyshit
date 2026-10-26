@@ -1,0 +1,22 @@
+TURN {"turn": "สวัสดี", "expected": "honest_engaged", "got": "honest_engaged", "ok": true}
+TURN {"turn": "มิโล เป็น แมว", "expected": "teach_ok", "got": "teach_ok", "ok": true}
+TURN {"turn": "แมว เป็น สัตว์", "expected": "teach_ok", "got": "teach_ok", "ok": true}
+TURN {"turn": "มิโล เป็น สัตว์ ไหม", "expected": "inference_ok", "got": "inference_ok", "ok": true}
+TURN {"turn": "มิโล มี หาง", "expected": "teach_ok", "got": "teach_ok", "ok": true}
+TURN {"turn": "หาง ของ มิโล คืออะไร", "expected": "answer_ok", "got": "answer_ok", "ok": true}
+TURN {"turn": "แมวตัวนี้ชื่อมิโลนะ", "expected": "teach_ok", "got": "teach_ok", "ok": true}
+TURN {"turn": "มัน กิน ปลา ไหม", "expected": "ask_needed", "got": "honest_engaged", "ok": false}
+TURN {"turn": "วันนี้ อากาศ ดี มาก", "expected": "honest_engaged", "got": "honest_engaged", "ok": true}
+TURN {"turn": "ราคา เท่าไหร่ กัน", "expected": "honest_engaged", "got": "honest_engaged", "ok": true}
+TURN {"turn": "สอนวิธี บวก ให้หน่อย", "expected": "teach_ok", "got": "teach_ok", "ok": true}
+TURN {"turn": "ตอบ สี่", "expected": "teach_ok", "got": "teach_ok", "ok": true}
+TURN {"turn": "มิโล เป็น นก ไหม", "expected": "answer_ok", "got": "answer_ok", "ok": true}
+TURN {"turn": "นก เป็น สัตว์", "expected": "teach_ok", "got": "teach_ok", "ok": true}
+TURN {"turn": "มิโล ไม่มี หาง", "expected": "teach_ok", "got": "teach_ok", "ok": true}
+TURN {"turn": "หาง ของ มิโล คืออะไร รู้ไหม", "expected": "answer_ok", "got": "answer_ok", "ok": true}
+TURN {"turn": "good night sleep well", "expected": "honest_engaged", "got": "honest_engaged", "ok": true}
+TURN {"turn": "เหยี่ยว เป็น สัตว์เลี้ยง ไหม", "expected": "answer_ok", "got": "answer_ok", "ok": true}
+SUMMARY {"pass": "first", "match": 17, "turns": 18, "questions_total": 14, "yes": 1, "corrections": 13, "fabricated": 0}
+SUMMARY {"pass": "repeat", "match": 17, "turns": 18, "questions_total": 14, "yes": 1, "corrections": 13, "fabricated": 0}
+RES-FINAL {"peak_rss_mb_overall": 27.4, "wall_seconds": 1.2}
+DONE

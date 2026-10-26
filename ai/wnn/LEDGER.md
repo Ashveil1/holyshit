@@ -3626,3 +3626,53 @@ generators, NOT independent validation.
 Selection rule: NO candidate passes both. The threshold direction is closed
 at this representation: margin gating cannot give conversational coverage
 AND safety. Recorded with the other nulls; no further threshold sweeps.
+
+## B-588 PRE-REGISTERED (2026-10-26, before code) - per-turn confirmation shell v2 (guess-confirmation UX)
+
+The per-turn design that replaces the global gate: margin >= tau_dev
+(per-seed precision tau) -> ACT; margin < 1.0 (fixed a priori - near-zero
+margin means no signal) -> out-of-scope honest engagement, NO question;
+between -> ask a GUESS-CONFIRMATION (top-1 intent + extracted slots
+rendered as a natural yes/no question via GLUE). The SIMULATED user answers
+'yes' iff the guess EXACTLY equals gold (intent+slots), else supplies the
+gold correction - answers are DERIVED from gold, not authored per turn.
+On yes/correction: learn the (utterance, intent) pair + confirmed slots,
+act. Metrics: final behavior-class match on the B-584/B-585 18-turn
+scenario, questions asked, yes vs correction split, fabricated actions
+(must be 0 - verified), and a SECOND run of the scenario immediately after
+(repetition pass: taught pairs should make repeats question-free).
+Development evidence; no success claim; single seed 0 (paired seeds only
+if this shape survives).
+
+## B-588 FINDINGS (2026-10-26): per-turn confirmation shell 17/18 - but 14 questions, 13 of them CORRECTIONS
+
+Run: logs/b588_run1.log, script b588.py. Authored scenario (development
+evidence), sim-user answers DERIVED from gold (yes iff guess==gold exactly).
+First pass: 17/18 behavior matches, 0 fabricated actions (verified),
+repeat pass 17/18 with ZERO new questions (taught store covers repeats).
+THE BURDEN IS THE STORY (kept visible, not counted as autonomous success):
+14 questions in 18 turns; the guess-confirmation guessed exactly right only
+1/14 - 13 needed full corrections. The mapper+extractor's top-1 guess is
+almost never exactly right on first encounter, even on trained templates
+(the precision tau forces the question, then the guess itself is usually
+incomplete/wrong). The single miss: the anaphora turn routed to
+honest_engaged instead of the named-limit ask (routing detail).
+TARGET ALIGNMENT (per review): this is CONTAINMENT with heavy user burden
+plus engineered context handling - useful components, NOT demonstrated
+learned conversation comparable to the user's request. The 17/18 is what a
+perfectly patient user gets; the 14 questions are what it costs.
+Resources: 27.4MB peak, 1.2s (capacity left ON THIS WORKLOAD, not proof of
+scalable headroom - B-587-era phrasing corrected).
+
+## B-589 PRE-REGISTERED (2026-10-26, before code) - Thai segmentation probe
+
+Natural Thai has no spaces; the whole protocol assumes them. Probe a
+SUPPLIED longest-match segmenter + small AUTHORED Thai lexicon
+(~60 protocol/common words; user-taught additions simulated by adding
+entities after their first confirmed occurrence) on (a) DE-SPACED
+train-family utterances, (b) DE-SPACED c22 utterances, (c) a handful of
+authored ordinary Thai sentences including ambiguity/unknown-word cases.
+Metrics: exact gold-token recovery rate per set; unknown-span fallbacks;
+ambiguity failures inspected manually. Authored lexicon + authored
+sentences = MANUAL development evidence, not validation; one probe of a
+major untested risk, not a sufficiency proof.
