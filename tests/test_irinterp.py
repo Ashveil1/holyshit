@@ -339,6 +339,30 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL handle display parity: {source!r}: {ref!r} != {got!r}")
     print("8 callable/module display cases checked")
 
+    handle_error_sources = []
+    for value in ['len', 'counter', 'local_fn']:
+        for operation in ['len', 'int']:
+            for caught in (False, True):
+                source = 'import counter\ndef local_fn():\n  return 1\nf = ' + value + '\n'
+                expr = 'print ' + operation + '(f)'
+                if caught:
+                    source += 'try:\n  ' + expr + '\nexcept as error:\n  print error\n'
+                else:
+                    source += expr + '\n'
+                handle_error_sources.append(source)
+    for source in handle_error_sources:
+        prog = os.path.join(module_dir, "handle_errors.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL handle error parity: {source!r}: {ref!r} != {got!r}")
+    print("12 handle len/int error cases checked")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')
