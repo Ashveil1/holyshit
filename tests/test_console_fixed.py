@@ -220,9 +220,9 @@ with tempfile.TemporaryDirectory() as temp:
         cursor_at(1)
         assert 'FIXED SUBMITTED 1\n'in content,content
         assert 'FIXED SUBMITTED 6\n'in content,content
-        sock.sendall(('screendump '+str(screen)+'\n').encode())
-        deadline=time.monotonic()+5
-        while time.monotonic()<deadline and (not screen.exists() or screen.stat().st_size<640*480*3):time.sleep(.1)
+        # Reuse the synchronous capture: remove stale file, await monitor prompt,
+        # then read a complete frame. An extra asynchronous dump races truncation.
+        cursor_at(1)
         with screen.open('rb') as f:
             assert f.readline().strip()==b'P6';dims=f.readline()
             while dims.startswith(b'#'):dims=f.readline()
