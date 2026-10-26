@@ -2698,3 +2698,53 @@ Gates (fixed before code):
       per-seed deltas non-negative on each.
   G2: frozen mean intent not worse than M0 by >3 points.
   G1 fail or G2 fail -> null recorded; line closes at the consolidated state.
+
+## B-567 verdict (2026-10-26) - discriminative feature weighting: G1 FAIL, null recorded, line closes (b567.py, logs/b567_run1.log)
+
+Per-seed paired deltas M1-M0 intent: frozen +.000/+.031/+.000/+.000/+.016
+(mean +.009); newtmpl +.000/+.000/+.000/+.000/+.015 (mean +.003); fresh3
++.047/+.031/+.016/+.000/+.046 (mean +.028, 5/5 non-negative).
+G1 FAIL: +.003 and +.028 are far under the +5-point requirement on both
+sets. G2 holds (frozen +.009). Per prereg: null recorded; M0 retained.
+Mechanism reading: weighting cannot create signal that training never
+contained - newtmpl/fresh3 errors are dominated by UNSEEN template function
+words (no learned signal at all), not by mis-weighted seen markers. The
+teach_isa<->is_a_q confusion class is untouched by reweighting shared
+material; the distinguishing markers are already intent-exclusive and fully
+weighted in both arms.
+Disclosures: M1's unseen-feature weight = ln(9) (treated as df=1, maximally
+exclusive); abstention gate recomputed per arm (gate belongs to the mapper),
+abstain counts 16-41/64 reported separately per row.
+
+## LINE CLOSEOUT (2026-10-26) - learned sentence->intent+slots under the <=1GB CPU mandate: consolidated state
+
+Frozen protocol: 8 intents, 64 train/seed, 3 inspected dev eval sets (64
+each), raw-argmax vs gated numbers never mixed, all prereg in this file.
+What was established, in order:
+- B-562: gated sentence->intent+slots; WNN fails H1; best cheap arm nb k=8
+  joint .091; H2/H3/H4 fail; joint is the honest metric.
+- B-563: confirmation-transfer collateral attributed (prior + feature
+  channels each independently sufficient in tested ablations; replay null).
+- B-564: slots are template-bound (newtmpl joint .000 under S3); intent
+  transfers .466 raw-argmax.
+- B-565: cross-intent function-ness + anchor-offset SELECTION lifts newtmpl
+  joint .000->.125; gains from selection, not role assignment.
+- B-566: role assignment - learned == positional exactly; pooled role stats
+  actively hurt; positional retained (simpler, better).
+- B-567: discriminative feature weighting null; unseen-template words, not
+  marker dilution, bind.
+Best honest configuration: NBu mapper + S4 selection + positional roles.
+Numbers (5-seed means, inspected dev sets, raw argmax): intent .466/.466/
+.488, joint .259/.191/.285, slot_exact_on_correct up to .63/.49/.82,
+wrong_actions 28-41/64, abstention separate. Resource: full sweeps ~13MB
+peak RSS, seconds of CPU - the <=1GB goal is unstressed by this workload
+(no claim about any conversation-quality target).
+Usability gap, stated plainly: ~1 in 3 to 1 in 2 eval sentences still takes
+a wrong action; joint correctness 19-29% on authored new phrasings. This is
+NOT a usable language interface and is not integrated anywhere. The measured
+failures are specific to these bounded setups; they do not prove no
+single-knob fix exists, but every tested single knob (mapper family, prior,
+selection, roles, weighting) has now failed its preregistered gate.
+No production route chosen. Further progress needs a mechanism that
+addresses unseen-phrasing intent evidence itself, not another knob on the
+tested axes.
