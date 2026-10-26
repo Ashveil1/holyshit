@@ -84,7 +84,7 @@ def plan(fn):
           return null
         if ins["binop"] in ["<", "<=", ">", ">=", "==", "!="]:
           ty = "Bool"
-        elif ins["binop"] not in ["+", "-", "*", "&", "|", "^"]:
+        elif ins["binop"] not in ["+", "-", "*", "&", "|", "^", "<<", ">>"]:
           return null
       elif op == "un":
         if ins["v"] not in have:
@@ -173,6 +173,17 @@ def compile_leaf(fn, p):
             asm.sub_rr("rax", "rcx")
           elif ins["binop"] == "*":
             asm.imul_rr("rax", "rcx")
+          elif ins["binop"] == "<<" or ins["binop"] == ">>":
+            # Never expose x64's masked count or wrap a wide left shift.
+            # Int30 shifted by at most 29 fits a signed 64-bit intermediate.
+            asm.cmp_ri32("rcx", 0)
+            asm.jcc("l", "fallback")
+            asm.cmp_ri32("rcx", 29)
+            asm.jcc("g", "fallback")
+            if ins["binop"] == "<<":
+              asm.shl_cl("rax")
+            else:
+              asm.sar_cl("rax")
           elif ins["binop"] == "&":
             asm.and_rr("rax", "rcx")
           elif ins["binop"] == "|":
