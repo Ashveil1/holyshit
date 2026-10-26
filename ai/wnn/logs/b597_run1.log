@@ -1,0 +1,8 @@
+CASE {"raw": "ช้างเป็นสัตว์", "seg": "ช้าง เป็น สัตว์", "cls": "teach_ok", "expect": "teach_ok", "vocab_asked": true, "questions_this_turn": 2, "ok": true, "note": "unknown word, teacher confirms"}
+CASE {"raw": "ช้างมีงา", "seg": "ช้าง มี งา", "cls": "teach_ok", "expect": "teach_ok", "vocab_asked": false, "questions_this_turn": 1, "ok": true, "note": "SAME word, new predicate: no vocab question expected"}
+CASE {"raw": "ช้างเป็นสัตว์ไหม", "seg": "ช้าง เป็น สัตว์ ไหม", "cls": "honest_engaged", "expect": "inference_ok", "vocab_asked": false, "questions_this_turn": 0, "ok": false, "note": "SAME word, inference question: no vocab question, answered from taught facts"}
+CASE {"raw": "เสือเป็นสัตว์", "seg": "เสือ เป็น สัตว์", "cls": "teach_ok", "expect": "teach_ok", "vocab_asked": true, "questions_this_turn": 2, "ok": true, "note": "NEW unknown word: one vocab question"}
+CASE {"raw": "มิโลเป็นแมว", "seg": "มิโล เป็น แมว", "cls": "teach_ok", "expect": "teach_ok", "vocab_asked": false, "questions_this_turn": 1, "ok": true, "note": "control: all in-lexicon"}
+SUMMARY {"ok": 4, "cases": 5, "questions_total": 6, "vocab_learned": ["ช้าง", "เสือ"], "lexicon_growth_recorded": true, "fabricated": 0}
+RES-FINAL {"peak_rss_mb_overall": 27.6, "wall_seconds": 1.3}
+DONE

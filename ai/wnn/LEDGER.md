@@ -3977,3 +3977,45 @@ turn was recovered by the mapper path instead. Compound unknowns degrade
 to one large UNK (เพกวินบินไม่ได้), losing internal structure. This
 confirms B-595's stated limit: plumbing works, lexicon coverage is the
 binding constraint for ordinary Thai. 27.0MB, 1.2s.
+
+## B-597 PRE-REGISTERED (2026-10-26, before code) - vocabulary bootstrapping: teach-once for unknown words
+
+Gap from B-596: UNK islands are teachable as facts but the LEXICON never
+learns them, so every future sentence with the same word re-degrades.
+Probe: when segmentation yields an UNK island adjacent to known tokens,
+the system asks ONE supplied clarification (is '<unk>' a new word/entity?);
+on the simulated teacher's yes, the word enters the SESSION lexicon and the
+entity store. Then: (a) a NEW de-spaced sentence using the word in a
+different predicate must segment and parse with NO further question about
+the word; (b) before the teacher's yes, no action on the unknown word
+(safety); (c) lexicon additions appear in the B-593-style snapshot.
+Metric: recovery rate, questions, wrong actions (bar: 0 wrong).
+
+## B-597 FINDINGS (2026-10-26): teach-once vocabulary bootstrapping works (4/5); the miss is the mapper confidence gap, not segmentation
+
+logs/b597_run1.log. Session lexicon starts from B-589's 90 words; an UNK
+island triggers ONE supplied clarification; on the teacher's yes the word
+enters the session lexicon. Results: unknown word taught after 1
+clarification (2 questions total incl. the mapper confirmation); the SAME
+word in a new predicate needs NO vocab question (1 mapper confirmation
+only); a NEW unknown word costs its own clarification; control all-in-
+lexicon turn normal. Lexicon growth is recorded in state (snapshot-able).
+0 fabricated/wrong actions.
+MISS (honest): 'ช้างเป็นสัตว์ไหม' AFTER ช้าง was bootstrapped and
+ช้าง->สัตว์ taught returned honest_engaged instead of inference_ok: the
+MAPPER's low margin on the unseen-entity question form falls below tau_lo
+and the low-band path has no clarification channel (known gap from B-592).
+The taught fact exists; retrieval is blocked by intent confidence, NOT by
+segmentation or vocabulary. Separation of mechanisms holds: teacher-
+supplied word boundaries (the clarification) are distinct from any induced
+segmentation; no hidden gold boundaries were used - the simulated teacher
+only confirmed the UNK string the segmenter itself produced.
+Burden: 6 questions / 5 turns.
+
+## Correction to B-596 wording (2026-10-26)
+
+"lexicon coverage is the binding constraint for ordinary Thai" OVERSTATED:
+B-596 establishes a lexicon-related failure ON THESE TESTED CASES. Semantic,
+context, generation and teacher-burden limits remain independently binding.
+Corrected here; the B-596 entry's number claims stand, its scope claim is
+narrowed accordingly.
