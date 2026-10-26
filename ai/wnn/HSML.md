@@ -7,9 +7,10 @@ committed, verified logs), an attribute memory you teach facts into, and a
 dialog teaching protocol that searches for a program matching your examples.
 It answers exactly inside what it was taught and abstains honestly outside it.
 
-**Status:** research code. Master is CI-validated; the latest committed work
-lives on the development branch (see "Which version" below). No package, no
-service, no release — you run it from source.
+**Status:** research code. Master is CI-validated and carries the full
+dialog feature set; experiment harnesses and the research record live on the
+development branch (see "Which version" below). No package, no service, no
+release — you run it from source.
 
 ## Requirements
 
@@ -35,15 +36,11 @@ and exit. Your memory autosaves every turn.
 
 | path | what you get | validation |
 |---|---|---|
-| `master` branch | the CI-validated system | quick CI + recorded test suites (LEDGER.md) |
-| `wnn-checkpoints` branch | latest committed work (newest fixes/features, e.g. dynamic vocabulary, retraction, reverse queries, storage-safety guards) | each change passes its own pre-registered harness and regressions (LEDGER.md), but lands on master only after its PR's CI goes green |
+| `master` branch | the CI-validated system with the full dialog feature set (dynamic vocabulary, retraction, reverse queries, storage-safety guards, compound teaching, is-a yes/no, scoped anaphora, spacing tolerance) | quick CI + recorded test suites (LEDGER.md) |
+| `wnn-checkpoints` branch | the same system, plus the experiment harnesses, run logs and LEDGER research record (B-562..B-571 learned-NLU line) | each experiment has its own pre-registered harness; results including failures in LEDGER.md |
 
-To run the latest committed development state:
-
-```sh
-git checkout wnn-checkpoints
-python3 chat.py --demo-world
-```
+There are no user-facing features on the development branch that master
+lacks; you only need it to inspect or reproduce the research record.
 
 `LEDGER.md` in this directory records every experiment: pre-registered
 criteria, failures, corrections, and verdicts. Read it before trusting any
