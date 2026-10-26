@@ -2326,3 +2326,41 @@ low-margin input (which it does safely) and its corrections can hurt sibling
 intents at scale. WNN is not the route. Next questions (not started): why NB
 drift concentrates on teach_attr/teach_isa; whether per-intent calibration or
 example replay cuts correction collateral.
+
+B-562 reconciliation addendum (2026-10-26, review-requested; logs/b562_diag.log, b562_diag.py):
+CORRECTIONS to my own claims (recorded, nothing rewritten):
+1. "NB is the useful route" was overstated - all pre-set main gates FAIL and
+   wrong execution is nonzero (0-4.7%); NB-over-frames is a HYPOTHESIS under
+   test, not a deployment recommendation. No integration proposed or started.
+2. Withdraw "covers what frame-engineering can't" - the .353 vs .072 contrast
+   compares the learned mapper against CURRENT frames on AUTHOR-GENERATED
+   families only; it is not an impossibility claim about frame engineering.
+3. Shuffled-label 0.0625 <= chance is a sanity check, not proof of no leakage.
+4. H2 failure is NOT solely over-abstention (my earlier reading was wrong).
+   Exact k=8 counts (defs: accepted_correct/accepted_wrong = real eval items
+   accepted with gold/wrong intent; abstained_real; NONE_abstained=TN;
+   NONE_forced=FP; precision=TN/(TN+abstained_real); recall=TN/12):
+   - nb: accepted_correct 18-27, accepted_wrong 6-17, abstained_real 20-40,
+     TN 4-8, FP 4-8 -> it BOTH over-abstains real items AND forces 33-67% of
+     chit-chat into intents. Margin distributions overlap (nb eval margin
+     quartiles ~[0.2-0.5, 0.5-3.6, 6.1-9.0]).
+   - wnn seed 0: accepted_wrong 59/64, abstains nothing, forces 12/12 NONE.
+   - nn1 margin scale tiny (quartiles ~[.004,.011,.073]) - thresholds fragile.
+5. "96-100% after one confirmation" conflated recall with transfer.
+   Decomposed (one confirmed example per low-margin item): same-item recall
+   96-100%; FRESH unseen items of same family+intent 88-95% (168/184, 204/232,
+   221/240, 178/188, 128/144); retention after teaching 4 fresh examples of
+   every other intent 94-100% (46/46, 58/58, 60/60, 47/47, 34/36).
+6. Collateral .625 VALIDATED with units: seed-0 give_example dropped
+   1.0 -> 0.375 = 62.5 accuracy POINTS (the only uncorrected intent); doc
+   counts show corrections concentrated on 7/8 intents (teach_isa 8->16);
+   corrected intents improved (teach_isa 0->1.0). Mechanism: NB prior +
+   feature-mass shift plus shared Thai marker n-grams (เป็น leaks between
+   teach_isa and give_example families). Real, explained, not an artifact.
+7. Dialogue-realistic SMALL corrections (3 per seed): collateral still
+   5.4-12.5 points mean on uncorrected intents - the pre-set 2-point bar
+   fails even at realistic scale. Online NB corrections are NOT locally
+   contained at 8-way scale.
+Metric clarification: .353 = INTENT-ONLY accuracy (nb, k=8). Slot-F1 .551 on
+correctly-classified items; JOINT intent+all-slots .091 - three separate
+metrics, joint is weak and is the honest end-to-end-relevant number.
