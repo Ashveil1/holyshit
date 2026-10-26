@@ -3100,3 +3100,37 @@ steep safety/coverage tradeoff - accuracy-optimal tau releases 32-42% wrong
 actions; precision tau is safe but covers only ~41-45% of unseen-template
 items with 4-5x the teacher burden. Margin does not separate safe from
 unsafe at usable coverage IN THIS PROTOCOL (scoped, not a universal claim).
+
+## B-575 PRE-REGISTERED (2026-10-26, before code) - descriptive analysis: safety/coverage frontier + retention probe
+
+NOT a success-gated arm: a measurement pass over the frozen B-574 setup to
+characterize (a) the full tau tradeoff frontier (coverage vs wrong-action)
+on the INSPECTED c21/c22 cells, and (b) RETENTION/INTERFERENCE - flagged as
+unverified in the B-573 correction: after the interactive stream teaches
+some families, re-predict taught items and previously-seen family items to
+measure whether taught knowledge survives later teaching. No gate; findings
+recorded as-is. Same disclosures: authored teacher, intent labels only,
+inspected cells, no production, no personal data. Resources unchanged.
+
+## B-575 FINDINGS (2026-10-26): frontier mapped; in-session retention clean
+
+Run: logs/b575_run1.log, script b575.py. Descriptive, no gate. INSPECTED
+cells, static frozen NBu for the frontier, interactive stream (precision
+tau, intent-label-only teacher) for retention. Scoped to this protocol.
+(a) FRONTIER (seed-mean, static mapper on unseen-template cells): the
+wrong-action rate falls smoothly with tau while coverage collapses -
+zero-wrong is only reachable at coverage <=~25% (c21) / <=~19% (c22)
+STATICALLY; the B-574 interactive stream reached 0-1.5% wrong at 41-45%
+coverage because taught items expand the mapper mid-stream. Representative
+points (tau, coverage, wrong): c21 (0, 1.0, .39) (2.0, ~.75, ~.33)
+(4.3, ~.45, .24) (9.1, .22, 0) ; c22 (0, 1.0, .56) (2.2, ~.4-.5, ~.36-.4)
+(5.0, .16, 0). NBu margin is a usable but coarse safety signal here.
+(b) RETENTION/INTERFERENCE: after streaming each full 96-item cell with
+29-45 taught items, taught-item recall = 1.000 in all 10 seed x cell runs;
+previously-right acted items stayed right (drift 0; one seed had 2 acted
+items right-then-unscored, after-stream acted recall .943-1.000). NO
+interference observed - but scope: same session, immediate re-prediction,
+<=45 added examples. Long-term retention and cross-session persistence are
+still UNVERIFIED.
+Teacher burden at the precision gate stands at median 4-5 asks per family
+(~35-45 per 96 unseen-template items) - the main open cost of the channel.
