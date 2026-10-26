@@ -2962,3 +2962,25 @@ handling. The B-562..571 failures establish only that THESE tested
 implementations did not generalize on THESE examples; same-distribution
 scaling (B-571) does not isolate causes. Class-A recovery is scoped to the
 measured before/after tests, not a universal diagnosis.
+
+## B-572 VERDICT (2026-10-26): NULL - order-sensitive features fall short of the +5-point gate; M0 retained
+
+Run: logs/b572_run1.log, script b572.py. INSPECTED development/debug cells
+only (not independent validation); no deployability or general-language
+claim follows. Arms separated as preregistered; the edge-position cue is a
+deliberately supplied REPRESENTATION DESIGN CHOICE, not autonomous grammar
+discovery.
+Mean intent (5 seeds), paired deltas vs M0_NBu:
+  c11 seen/seen:  M0 .884 | M-BI .891 (+.006) | M-POS .906 (+.022)
+  c12 seenT/unseenE: M0 .834 | M-BI .834 (+.000) | M-POS .884 (+.050)
+  c21 unseenT/seenE: M0 .562 | M-BI .566 (+.003) | M-POS .585 (+.022)
+  c22 fresh3:     M0 .488 | M-BI .494 (+.006) | M-POS .537 (+.050)
+G1 FAIL: no arm reaches +5 points on BOTH unseen-template cells (best
+M-POS: c21 +.022, c22 +.050). G2 holds (no cell worse by >3 points).
+Per prereg: null recorded, M0 retained, no automatic continuation.
+Interpretation (scoped): edge-relative position helps a little everywhere
+(M-POS 4/5-5/5 non-negative per-seed deltas, c12 +.050/c22 +.050) but the
+gains are small; word bigrams add ~nothing. The marker-position class is
+partially addressed by designed positional cues, not recovered.
+Resources: peak RSS 28.4MB overall (3 mappers x 4 cells x 5 seeds, no
+children), 6.5s wall, live 1e9-byte watchdog, well under budget.
