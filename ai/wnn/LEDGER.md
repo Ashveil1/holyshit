@@ -2161,3 +2161,75 @@ all unmoved). Eight LEDGER verdict citations name moved files as file+log
 records (b300r, b503, b519, cur2_test, t3grid, t3lex, t5dim2, t5grid16k) -
 historical result records, not published command lines; the files remain
 in-repo at experiments/<name>.py under the migration note.
+
+## B-562 PRE-REGISTERED (2026-10-26) - learned sentence-to-intent+slot mapping from dialogue teaching (before code)
+
+Question: can hsml LEARN to map a natural sentence to (intent, slots) from
+teaching examples alone, using this repo's own machinery, instead of
+hand-written frames? Bounded, separable experiment. No pretrained models.
+Hypotheses may fail; a null is a recorded result.
+
+SUPPLIED (designed, not learned - named honestly):
+- Tokenizer + sentence encoder: Thai char n-grams + whitespace tokens (EN),
+  fixed n-gram count vector; identical for all methods and baselines.
+- The teaching dialogue protocol itself (how examples and corrections are
+  delivered), the intent inventory per scenario, and the confirmation/
+  correction dialogue acts.
+- Method hyperparameters (chosen on dev only).
+
+LEARNED (must come ONLY from training dialogues, measured):
+- The sentence-features -> intent-label mapping, online, teach-once (k in
+  {1,2,4,8} examples per intent).
+- Slot extraction: which tokens are slot values and their roles.
+
+DATA PROTOCOL (separation enforced before any tuning):
+- Train: k examples/intent, Ash-style Thai+English phrasing, code-switching.
+- Dev: disjoint phrasings, used ONLY for threshold/hyperparameter choice.
+- Eval: family-disjoint from train+dev - unseen phrasing families AND
+  unfamiliar entity names (words never present in any training example).
+- Wrong-intent controls: sentences matching no taught intent - the mapper
+  must abstain, not force-classify (precision/recall recorded).
+- Shuffled-label sanity control: training on shuffled labels must stay at
+  chance on eval (guards against pipeline leakage).
+
+BASELINES (simple, same features/protocol):
+- Majority-intent baseline.
+- 1-NN cosine on identical n-gram features.
+- Current designed-frame router on the same eval items (contrast arm: shows
+  what learning adds over frames; frames expected to fail unfamiliar
+  phrasings/entities by design).
+
+METHODS (own-system, replicated from this repo's lineage):
+- Bleached WNN discriminator over the count features (digits/mnist/intent
+  lineage; ai/wnn/intent.holy + prepare_snips.py are the offline-benchmark
+  prior art - B-562 differs: ONLINE teach-once inside dialogue, with
+  correction/confirmation retention).
+- HDC prototype arm (t5 lineage: n-gram hypervector binding + superposition)
+  if the WNN arm leaves budget; both compared to 1-NN.
+
+RETENTION + CORRECTION (measured, not asserted):
+- Teach-once retention: eval intent X after interleaved teaching of all other
+  intents; per-intent accuracy delta recorded.
+- Correction: after a misclassification + user correction, the corrected
+  example updates the mapping; the same sentence re-scored; other intents
+  re-evaled for collateral degradation (threshold pre-set below).
+- Confirmation: low-confidence outputs route to a confirmation ask; confirmed
+  labels retained and re-used.
+
+END-TO-END SEMANTICS: the learned mapper's (intent, slots) drives the actual
+hsml dialogue act the designed frame would trigger; success = correct system
+response on eval dialogues, not only classification metrics.
+
+PASS/FAIL (pre-set):
+- H1: learned mapper intent accuracy >= 1-NN baseline AND > majority baseline
+  on the family-disjoint eval at k<=8 (each k reported separately).
+- H2: wrong-intent abstention precision >= 0.9 at recall >= 0.5 (dev-chosen
+  threshold frozen before eval).
+- H3: after correction, corrected-sentence accuracy >= 4/5 seeds AND mean
+  collateral degradation on other intents <= 2 accuracy points.
+- H4 (end-to-end): correct hsml dialogue act on >= H1 accuracy - 5 points.
+- Any H failing is recorded as the result; no criterion edits after code.
+
+RESOURCE: whole-process peak RSS (resource.ru_maxrss) of train+eval recorded
+as a number; no headroom claims. Code frozen during controls; sweep results
+script-form only (b562.py + logs/b562_*.log).
