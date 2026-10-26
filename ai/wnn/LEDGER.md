@@ -4917,3 +4917,75 @@ no-feedback, permuted-feedback, flat/memorization and oracle-candidate
 controls. This is a narrower research candidate, not a supported path to
 the complete conversational target. Target remains unmet. No implementation
 started during this review; no integration or release.
+
+## B-613 PRE-REGISTERED: standalone typed-AST outcome-supervised feasibility
+
+b613_spec.json v1 freezes finite Set grammar, 5-node AST cap, 2200 total
+candidate cap, 64 per-size beam, one update per teacher interaction,
+60-second aggregate wall cap, live whole-tree <=1e9 bytes. Fresh standard
+library implementation, no reviewed third-party code copied, no production
+entry/action/fact writes. Grammar, pure set executor, curriculum and spaced
+bilingual tokenization are supplied. Thai dictionary is evaluator data for
+constructing the Thai curriculum, not a learned bilingual lexicon. Both
+languages receive training; no zero-shot cross-language claim.
+
+Train atoms, unary atom negation, binary atom conjunction/disjunction.
+Test binary-with-unary-child and unary-with-binary-child trees, neither
+structural shape occurs in training. Leaf/order-specific exact ASTs are
+checked separately from denotation equivalence; commutative/spurious ASTs
+must not count as exact. Six tests per language, no test updates. Teacher
+exposes ONE full denotation signature over all 16 membership combinations
+of four independent atom predicates per training utterance, not AST labels.
+This is unusually strong multi-state supervision: count 24 selections and
+384 state observations. Learner marginalizes all signature-consistent ASTs,
+report their count. Complete Boolean states discriminate functions but
+cannot separate commutative/De Morgan-equivalent programs.
+
+Learn lexical unigram/bigram x semantic-operator features, plus lexical x
+parent-child operator features, log-linear one-step supervised denotation
+updates. Compare whole-utterance memorization, no feedback, cyclically
+permuted outcome signatures, on same candidate space. Oracle AST inclusion
+is enumerated independently; ranker beam coverage separately measured.
+Gate fixed in spec; NULL if oracle fails or learned exact nested-structure
+accuracy does not exceed all controls. Development evidence only; no
+interpretation as general conversation or safe natural language handling.
+
+## B-613 findings: NULL at frozen bounds, no scope expansion
+
+logs/b613_run1.log, spec SHA emitted in log. Exactly 852 candidate ASTs
+within node/candidate caps; all 12 gold ASTs are in oracle enumeration.
+This implementation enumerates the finite capped candidate space first,
+then applies a per-size 64 ranking beam. It does NOT establish feasibility
+of a bottom-up pruned search on a larger grammar. No external code or
+pretrained weights used; no entry changes/fact writes.
+
+Learned fragment arm exact 0/12, denotation 0/12 (English 0/6, Thai 0/6),
+although all 12 gold ASTs survived its ranking beam. Memorization,
+no-feedback and cyclic outcome-permutation arms also 0/12 exact and
+0/12 denotation. Beam gold coverage controls 8/12, 8/12, 2/12 respectively.
+No teacher-cost reduction or semantic transfer is demonstrated. Teacher
+exposes 24 selected full signatures over 16 states (384 state outcomes),
+not 24 ordinary yes/no messages. Signature-consistent candidate counts
+are 43 for atoms, 6 for negated atoms, and 24 for trained binary meanings.
+Even complete truth-table supervision leaves semantically equivalent ASTs,
+and repeated operator features may reward redundant nested negation.
+Test guesses frequently repeated negation of an atom instead of intended
+binary composition. This is learner-ranking failure in this finite setup,
+not oracle enumeration failure, not proof that the general method fails.
+
+Wall 1.2901 seconds, measured aggregate supervisor+experiment concurrent
+RSS 33,185,792 bytes under enforced 1e9-byte cap, no exceed. No test-time
+updates, grammar/search expansion, epoch tuning or expectation changes.
+No independent parser/segmenter, natural-language context interpretation
+or shared bilingual fact acquisition tested. Modeled teacher selections
+are observed in this simulated protocol, not real-user burden evidence.
+
+Next supported conclusion: this specific weak fragment/tree count learner
+with one update and denotation-only ambiguity does not justify building
+it into the entry. A future route would need evidence for identifying
+compositional lexical alignments despite equivalent programs, without
+silently supplying gold trees/lexicon or replacing teach-once with large
+annotation/repetition costs. No such improved implementation is supported
+by this result alone. Stop at frozen bounds, preserve NULL, report blocker.
+General conversational target remains unmet; existing entry answer and
+lossy-definition failures unchanged. No production integration.

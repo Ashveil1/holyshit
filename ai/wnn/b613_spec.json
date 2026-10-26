@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "kind": "authored development split frozen before run",
+  "grammar": {"type": "Set", "atoms": ["red", "blue", "square", "circle"], "unary": ["not"], "binary": ["and", "or"], "max_nodes": 5, "beam": 64, "candidate_limit": 2200},
+  "limits": {"wall_seconds": 60, "memory_bytes": 1000000000, "updates_per_interaction": 1},
+  "training": [
+    ["red", ["red"]], ["blue", ["blue"]], ["square", ["square"]], ["circle", ["circle"]],
+    ["not red", ["not", ["red"]]], ["not blue", ["not", ["blue"]]],
+    ["not square", ["not", ["square"]]], ["not circle", ["not", ["circle"]]],
+    ["red and square", ["and", ["red"], ["square"]]],
+    ["blue and circle", ["and", ["blue"], ["circle"]]],
+    ["red or square", ["or", ["red"], ["square"]]],
+    ["blue or circle", ["or", ["blue"], ["circle"]]]
+  ],
+  "test": [
+    ["not red and square", ["and", ["not", ["red"]], ["square"]]],
+    ["blue and not circle", ["and", ["blue"], ["not", ["circle"]]]],
+    ["not blue or circle", ["or", ["not", ["blue"]], ["circle"]]],
+    ["square or not red", ["or", ["square"], ["not", ["red"]]]],
+    ["not ( red and circle )", ["not", ["and", ["red"], ["circle"]]]],
+    ["not ( blue or square )", ["not", ["or", ["blue"], ["square"]]]]
+  ],
+  "thai_tokens": {"red": "แดง", "blue": "น้ำเงิน", "square": "สี่เหลี่ยม", "circle": "วงกลม", "not": "ไม่", "and": "และ", "or": "หรือ", "(": "(", ")": ")"},
+  "teacher": "one selected denotation signature per utterance across complete 16 Boolean-attribute states; no gold AST supplied to learner; ambiguity sets and exact AST checks evaluator-only",
+  "arms": ["fragment", "memorization", "no_feedback", "permuted_feedback"],
+  "gate": "oracle includes every gold AST within frozen limits; fragment exact AST test accuracy exceeds all controls on nested structures. Report NULL if not. No gate modification."
+}
