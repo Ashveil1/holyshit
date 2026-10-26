@@ -2510,3 +2510,24 @@ isolated (function-word leakage in unseen templates). Next candidate question
 (NOT started): can slot extraction be made template-robust by learning
 function/content word separation from cross-intent statistics rather than
 per-template frequency - needs its own prereg.
+
+## B-565 PRE-REGISTERED (2026-10-26) - template-robust slot extraction via cross-intent statistics (before code)
+
+Direct continuation on the B-564-isolated wall (joint intent+slots). Mandate:
+Ash's ทำเลย (verified original, wamid on file) + bounded-improvement direction.
+FROZEN: b562/b564 data, eval, protocol, S1 mapper. ONLY slot extraction varies.
+
+- S4 = cross-intent function-word separation + anchor-relative slot ranking:
+  function-ness of a token = number of DISTINCT intents whose training examples
+  contain it (learned); a token seen in >=2 intents is function-like and never
+  a slot. Anchor = the predicted intent's most frequent training token
+  (learned). Slot candidates = non-function tokens, ranked by the LEARNED
+  slot-likelihood of their token-offset relative to the anchor across training
+  examples; top NSLOTS (supplied) taken, roles by pooled position stats.
+  All statistics learned from training data ONLY; supplied = tokenizer,
+  NSLOTS, role-order semantics (unchanged disclosure).
+- G1: new-template joint > 0 on at least 3/5 seeds (from .000 - any signal
+  counts; bar deliberately minimal because the wall was absolute).
+- G2: frozen-eval joint must not drop more than 3 points vs S3's .153.
+- G3: report which tokens leak on new-template items when G1 fails (null
+  anatomy, recorded either way).
