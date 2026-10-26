@@ -3078,3 +3078,25 @@ Fail -> null, no automatic continuation. Reported together: coverage,
 wrong-action, acted intent/joint, asks per family.
 Resources: no pretrained, no paid, pure-Python, 1e9-byte live watchdog,
 10-min timeout, seeds 0-4. No personal-data collection.
+
+## B-574 VERDICT (2026-10-26): NULL at G2 (coverage); G1 passes; G3 mixed
+
+Run: logs/b574_run1.log, script b574.py. INSPECTED cells reused as
+development calibration, simulated AUTHORED teacher supplying INTENT LABEL
+ONLY; taught items excluded; not independent validation; no production
+integration; no personal data.
+5-seed means (per-seed in log):
+  c21: tau 21.2-34.5 (dev wrong-rate 0 at tau) | coverage .450 (FAIL >=.5)
+    wrong-action 0/144 (PASS <=5%) | acted intent 1.0 | acted joint .036-.111
+    vs static all-item joint .016-.062 (PASS per-seed)
+  c22: same taus | coverage .409 (FAIL >=.5)
+    wrong-action 2/131 = 1.5% (PASS) | acted intent .943-1.0 |
+    acted joint mean .242 vs static .238 (seed2 .053 vs .188 FAILS; 4/5 pass)
+Teacher burden REGRESSED vs B-573: asks/family median 4-5, max 8 (29-45
+asks per 96-item cell per seed) - the precision gate asks on ~55-60% of
+unseen-template items, so teach-once no longer holds at this threshold.
+Combined B-573/B-574 finding: NBu margin on this feature space traces a
+steep safety/coverage tradeoff - accuracy-optimal tau releases 32-42% wrong
+actions; precision tau is safe but covers only ~41-45% of unseen-template
+items with 4-5x the teacher burden. Margin does not separate safe from
+unsafe at usable coverage IN THIS PROTOCOL (scoped, not a universal claim).
