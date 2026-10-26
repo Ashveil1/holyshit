@@ -1,0 +1,4 @@
+PROTOCOL {"base": {"dev": 0.475, "eval": 0.516, "ev_wrong": 0.0}, "canon_union": {"dev": 0.4, "eval": 0.516, "ev_wrong": 0.0}}
+BATTERY {"raw": {"unassisted_correct": 0, "needs_confirmation": 9, "wrong": 2, "honest_offtopic": 1}, "canon": {"unassisted_correct": 1, "needs_confirmation": 6, "wrong": 4, "honest_offtopic": 1}}
+RES-FINAL {"peak_rss_mb_overall": 27.3, "wall_seconds": 1.4}
+DONE

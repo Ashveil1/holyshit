@@ -4167,3 +4167,40 @@ equals the action taken (0 anti-fabrication violations by construction,
 checked). SUPPLIED templates + learned content (entities/chains from the
 taught store); richness is design-limited - the replies are formulaic by
 construction. Burden counters untouched (realization is post-action).
+
+## B-602 PRE-REGISTERED (2026-10-27, before code) - entity canonicalization for unassisted correctness on unfamiliar input
+
+Burden root cause: the mapper scores unseen entities low, so in-frame
+sentences with bootstrapped/taught entities still need confirmation.
+SUPPLIED canonicalization (designed generalization, not learned
+abstraction): tokens that are KNOWN ENTITIES (train gold slots at train
+time; taught subjects + session vocab at chat time) are ALSO emitted as an
+<ENT> placeholder feature - union of raw + canonical features at both
+train and chat encode time. Slot extraction still runs on RAW tokens.
+Metrics: (1) frozen b562 protocol: dev/eval/ev_wrong vs the S1 baseline
+already in LEDGER - ev_wrong must NOT rise above baseline+1pt, eval must
+not drop >1pt; (2) a 12-sentence battery of BOOTSTRAPPED-entity in-frame
+sentences (entities taught this session: ช้าง/เสือ/หมู; frames from train
+templates): UNASSISTED-correct rate before vs after canonicalization (the
+burden number that matters); (3) off-topic honest rate unchanged on the
+v1 off-topic turns. Deviation rule: if ev_wrong rises, the probe FAILS and
+canonicalization is reported as unsafe regardless of the unassisted gain.
+
+## B-602 FINDINGS (2026-10-27): entity canonicalization NULL in both variants - unassisted correctness on unfamiliar entities is not reachable at the precision bar via this mapper family
+
+logs/b602_run1.log + inline canon-only run (2026-10-27 01:09, same script
+family, canonical-ONLY encoding with tau recalibrated on canonical dev).
+Union variant: protocol dev .475 -> .400 (dilution), eval .516 flat,
+ev_wrong 0.0; battery unassisted 0 -> 1 but wrong 2 -> 4. Canon-only
+variant: protocol eval .516 -> .562 (up, not the target metric), ev_wrong
+0.0, tau_hi 41.7; battery unassisted STILL 0/10 (needs_confirmation 9,
+wrong 1), and the off-topic turn no longer lands honest at the raw 1.0
+gate (honest 0/1 - canonical features give middling margins everywhere).
+Per the preregistered deviation rule the probe FAILS: no unassisted gain,
+added risk in both variants. CONCLUSION (with B-587): NB margin cannot
+certify unseen-entity in-frame sentences at the precision bar; per-turn
+confirmation is what this mapper family supports, not a threshold
+artifact. Burden reduction therefore comes only from: in-band learning
+accumulation (ask once per item; exact repeats are free), definition
+pattern reuse (B-591), and cheaper correction shapes (B-594). Direction
+closed; no more marker/threshold variants.
