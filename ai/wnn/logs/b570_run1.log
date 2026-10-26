@@ -1,0 +1,52 @@
+ROW {"seed": 0, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.828, "slot_exact_on_correct": 0.113, "joint": 0.094, "wrong_action": 11, "n": 64}
+ROW {"seed": 0, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.859, "slot_exact_on_correct": 0.764, "joint": 0.656, "wrong_action": 9, "n": 64}
+ROW {"seed": 0, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.562, "slot_exact_on_correct": 0.028, "joint": 0.016, "wrong_action": 28, "n": 64}
+ROW {"seed": 0, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.547, "slot_exact_on_correct": 0.629, "joint": 0.344, "wrong_action": 29, "n": 64}
+ROW {"seed": 0, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.578, "slot_exact_on_correct": 0.811, "joint": 0.469, "wrong_action": 27, "n": 64}
+ROW {"seed": 0, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.5, "slot_exact_on_correct": 0.438, "joint": 0.219, "wrong_action": 32, "n": 64}
+ROW {"seed": 0, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.344, "slot_exact_on_correct": 0.545, "joint": 0.188, "wrong_action": 42, "n": 64}
+ROW {"seed": 0, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.281, "slot_exact_on_correct": 0.222, "joint": 0.062, "wrong_action": 46, "n": 64}
+RET {"seed": 0, "c11_joint_before": 0.469, "c11_joint_after_interference": 0.516, "c11_joint_after_control": 0.688, "retention_gap_control_minus_interference": 0.172}
+RES {"seed": 0, "train_seconds": 1.5, "peak_rss_mb_train_phase": 41.3, "peak_rss_mb_pre_train": 27.1}
+ROW {"seed": 1, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.812, "slot_exact_on_correct": 0.231, "joint": 0.188, "wrong_action": 12, "n": 64}
+ROW {"seed": 1, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.766, "slot_exact_on_correct": 0.735, "joint": 0.562, "wrong_action": 15, "n": 64}
+ROW {"seed": 1, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.5, "slot_exact_on_correct": 0.094, "joint": 0.047, "wrong_action": 32, "n": 64}
+ROW {"seed": 1, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.453, "slot_exact_on_correct": 0.586, "joint": 0.266, "wrong_action": 35, "n": 64}
+ROW {"seed": 1, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.562, "slot_exact_on_correct": 0.5, "joint": 0.281, "wrong_action": 28, "n": 64}
+ROW {"seed": 1, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.578, "slot_exact_on_correct": 0.27, "joint": 0.156, "wrong_action": 27, "n": 64}
+ROW {"seed": 1, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.266, "slot_exact_on_correct": 0.353, "joint": 0.094, "wrong_action": 47, "n": 64}
+ROW {"seed": 1, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.344, "slot_exact_on_correct": 0.136, "joint": 0.047, "wrong_action": 42, "n": 64}
+RET {"seed": 1, "c11_joint_before": 0.281, "c11_joint_after_interference": 0.594, "c11_joint_after_control": 0.391, "retention_gap_control_minus_interference": -0.203}
+RES {"seed": 1, "train_seconds": 1.4, "peak_rss_mb_train_phase": 41.8, "peak_rss_mb_pre_train": 41.8}
+ROW {"seed": 2, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.938, "slot_exact_on_correct": 0.167, "joint": 0.156, "wrong_action": 4, "n": 64}
+ROW {"seed": 2, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.812, "slot_exact_on_correct": 0.731, "joint": 0.594, "wrong_action": 12, "n": 64}
+ROW {"seed": 2, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.609, "slot_exact_on_correct": 0.026, "joint": 0.016, "wrong_action": 25, "n": 64}
+ROW {"seed": 2, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.453, "slot_exact_on_correct": 0.414, "joint": 0.188, "wrong_action": 35, "n": 64}
+ROW {"seed": 2, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.219, "slot_exact_on_correct": 0.5, "joint": 0.109, "wrong_action": 50, "n": 64}
+ROW {"seed": 2, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.141, "slot_exact_on_correct": 0.111, "joint": 0.016, "wrong_action": 55, "n": 64}
+ROW {"seed": 2, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.141, "slot_exact_on_correct": 0.222, "joint": 0.031, "wrong_action": 55, "n": 64}
+ROW {"seed": 2, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.141, "slot_exact_on_correct": 0.0, "joint": 0.0, "wrong_action": 55, "n": 64}
+RET {"seed": 2, "c11_joint_before": 0.109, "c11_joint_after_interference": 0.328, "c11_joint_after_control": 0.516, "retention_gap_control_minus_interference": 0.188}
+RES {"seed": 2, "train_seconds": 0.9, "peak_rss_mb_train_phase": 43.7, "peak_rss_mb_pre_train": 43.7}
+ROW {"seed": 3, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.938, "slot_exact_on_correct": 0.15, "joint": 0.141, "wrong_action": 4, "n": 64}
+ROW {"seed": 3, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.859, "slot_exact_on_correct": 0.782, "joint": 0.672, "wrong_action": 9, "n": 64}
+ROW {"seed": 3, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.547, "slot_exact_on_correct": 0.029, "joint": 0.016, "wrong_action": 29, "n": 64}
+ROW {"seed": 3, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.547, "slot_exact_on_correct": 0.486, "joint": 0.266, "wrong_action": 29, "n": 64}
+ROW {"seed": 3, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.312, "slot_exact_on_correct": 0.9, "joint": 0.281, "wrong_action": 44, "n": 64}
+ROW {"seed": 3, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.125, "slot_exact_on_correct": 0.0, "joint": 0.0, "wrong_action": 56, "n": 64}
+ROW {"seed": 3, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.156, "slot_exact_on_correct": 0.5, "joint": 0.078, "wrong_action": 54, "n": 64}
+ROW {"seed": 3, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.094, "slot_exact_on_correct": 0.5, "joint": 0.047, "wrong_action": 58, "n": 64}
+RET {"seed": 3, "c11_joint_before": 0.281, "c11_joint_after_interference": 0.484, "c11_joint_after_control": 0.453, "retention_gap_control_minus_interference": -0.031}
+RES {"seed": 3, "train_seconds": 1.4, "peak_rss_mb_train_phase": 43.7, "peak_rss_mb_pre_train": 43.7}
+ROW {"seed": 4, "arm": "BASE_NBu_S4sel_pos", "eval": "c11_seen_seen_INSPECTED", "intent": 0.906, "slot_exact_on_correct": 0.207, "joint": 0.188, "wrong_action": 6, "n": 64}
+ROW {"seed": 4, "arm": "BASE_NBu_S4sel_pos", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.875, "slot_exact_on_correct": 0.714, "joint": 0.625, "wrong_action": 8, "n": 64}
+ROW {"seed": 4, "arm": "BASE_NBu_S4sel_pos", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.594, "slot_exact_on_correct": 0.105, "joint": 0.062, "wrong_action": 26, "n": 64}
+ROW {"seed": 4, "arm": "BASE_NBu_S4sel_pos", "eval": "c22_fresh3_INSPECTED", "intent": 0.438, "slot_exact_on_correct": 0.821, "joint": 0.359, "wrong_action": 36, "n": 64}
+ROW {"seed": 4, "arm": "PTR", "eval": "c11_seen_seen_INSPECTED", "intent": 0.328, "slot_exact_on_correct": 0.571, "joint": 0.188, "wrong_action": 43, "n": 64}
+ROW {"seed": 4, "arm": "PTR", "eval": "c12_seenT_unseenE_INSPECTED", "intent": 0.188, "slot_exact_on_correct": 0.833, "joint": 0.156, "wrong_action": 52, "n": 64}
+ROW {"seed": 4, "arm": "PTR", "eval": "c21_unseenT_seenE_INSPECTED", "intent": 0.188, "slot_exact_on_correct": 0.5, "joint": 0.094, "wrong_action": 52, "n": 64}
+ROW {"seed": 4, "arm": "PTR", "eval": "c22_fresh3_INSPECTED", "intent": 0.094, "slot_exact_on_correct": 0.333, "joint": 0.031, "wrong_action": 58, "n": 64}
+RET {"seed": 4, "c11_joint_before": 0.188, "c11_joint_after_interference": 0.281, "c11_joint_after_control": 0.469, "retention_gap_control_minus_interference": 0.188}
+RES {"seed": 4, "train_seconds": 1.1, "peak_rss_mb_train_phase": 43.7, "peak_rss_mb_pre_train": 43.7}
+RES-FINAL {"peak_rss_mb_overall": 43.7, "budget_bytes": 1000000000, "resource_fail": false, "wall_seconds": 25.2}
+DONE

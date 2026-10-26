@@ -2806,3 +2806,56 @@ Gates (fixed before code; fail -> null + closeout, NO automatic new arms):
   G2: no cell mean joint worse than baseline by >3 points.
   G3: retention gap < 5 points; and full run completes inside the 1e9-byte
       budget and 10-min timeout (RESOURCE FAIL otherwise, reported as such).
+
+## B-570 verdict (2026-10-26) - pointer-copy prototype: G1/G2/G3 FAIL, null recorded, no new arms (b570.py, logs/b570_run1.log)
+
+Reproducibility: stable crc32 feature hashing (Python's randomized hash()
+made early runs non-reproducible across processes - caught and fixed; two
+full runs byte-identical on all ROW/RET lines; only wall-clock/RSS RES lines
+differ, as expected).
+
+Model as preregistered: NumPy from scratch, word+char-ngram encoder
+(position-wise MLP + attention pool, NO recurrence - disclosed deviation
+from the GRU in the cited evidence; the tested mechanism is pointer-copy +
+targeted dropout), intent softmax head + per-role pointer over input
+positions. Backprop verified numerically (max rel err 1e-10) before the run.
+~90K params. Train 64/seed; all four cells 64/seed, inspected dev only.
+
+Per-seed paired joint deltas PTR - BASE (baseline = NBu + S4-selection +
+positional, the frozen best):
+- c11 seen/seen:        +.375 +.093 -.047 +.140 +.000 (mean +.113)
+- c12 seenT/unseenE:    -.437 -.406 -.578 -.672 -.469 (mean -.513)
+- c21 unseenT/seenE:    +.172 +.047 +.015 +.062 +.032 (mean +.066)
+- c22 fresh3:           -.282 -.219 -.188 -.219 -.328 (mean -.248)
+Means: intent BASE .884/.834/.562/.488 vs PTR .400/.306/.219/.191;
+joint BASE .153/.622/.031/.285 vs PTR .266/.109/.097/.037;
+PTR slot_exact_on_correct .656/.330/.424/.238.
+
+G1 FAIL (unseen-template cells need +5pts both: c21 +.066, c22 -.248).
+G2 FAIL (c12 worse by 51 points). G3 FAIL (retention gap mean +.063 > 5pts,
+noisy: -.203..+.188 across seeds; n=64 cells make single-gap reads unstable).
+Resources: PASS by a wide measured margin - peak RSS 43.6MB overall
+(includes interpreter+numpy+model+stores), 28s wall for the full 5-seed
+run, no timeout, no RESOURCE FAIL. This is a measurement of THIS workload
+only, not a general assurance.
+
+Causal reading (2x2): the pointer arm wins where template AND entities are
+seen (c11 +11pts), ties-to-slightly-wins on unseen templates with seen
+entities (c21 +7pts), and COLLAPSES wherever entities are unseen (c12 -51,
+c22 -25). The reviewed evidence's core promise - copy handles unknown
+values (P18-1134/2068, at ~600-12K training utterances) - did NOT transfer
+at 64 training sentences: slot_exact_on_correct on unseen-entity cells is
+.24-.33 even when intent is right. Hypothesis (not causally isolated):
+copy distributions need more supervised position signal than 64 examples
+provide; targeted dropout p=0.5 did not compensate at this scale. PTR's
+intent head also underperforms frozen NBu everywhere (.19-.40 vs .49-.88) -
+the joint intent+slot neural head at 64 examples is weak on both outputs.
+
+Line status: the frozen counting baseline (NBu + S4-selection + positional)
+remains the best honest measured state. Every preregistered attempt to beat
+it (weightless NN, 1-NN, text2prog, pooled/learned roles, discriminative
+weights, pointer-copy neural) has failed its gates at the 64-sentence
+teach-once scale. Open untested axis: DATA SCALE - real teach-while-chatting
+accumulates examples over time; whether the pointer route crosses the
+baseline at 256+/intent is unknown and is a decision, not an assumption.
+No production integration; no live hsml writes were made.
