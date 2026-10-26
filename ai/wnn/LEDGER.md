@@ -2475,3 +2475,38 @@ Improvement hypotheses (pre-set; nulls are results):
   <= 3 points vs S0.
 - G3: none (new-template numbers reported as-is).
 No production routing, no uncertain writes, no quality guarantee.
+
+## B-564 verdict (2026-10-26) - improvement hypotheses tested: G1 NULL, G2 FAIL, one informative positive (b564.py, logs/b564_run1.log)
+
+PROTOCOL NOTE (named): B-564 measures raw argmax WITHOUT the abstention gate,
+so its frozen-eval intent numbers are higher than B-562's (abstentions counted
+wrong there). S0 re-measured under this protocol = .466 (the correct reference
+for all B-564 comparisons), not B-562's .353.
+
+G1 (uniform prior cuts collateral): **NULL/FAIL** - S1 name_skill collateral
+unchanged (37.5-62.5 pts, identical per seed to S0); mean degr 13.2 -> 11.8
+(trivial). Combined with B-563 (prior_only alone reproduced 100% of the
+name_skill loss), the conclusion sharpens: prior shift AND feature-mass shift
+are EACH INDEPENDENTLY SUFFICIENT for the collateral. Removing one channel
+leaves the other. No single-knob fix exists in NB's update rule.
+
+G2 (pooled slot extraction raises joint to >=.25): **FAIL** - joint .153
+(unchanged vs S0/S1 under this protocol); slot-F1 .564 -> .603 (small gain on
+correctly-classified items only). The pooled-stats change does not move joint
+correctness.
+
+G3 (new-template eval, first measurement, authored families, same unfamiliar
+entities): intent .466 (mean equals frozen eval by coincidence - per-seed
+scatter .36-.56); joint = .000 ON EVERY SEED AND VARIANT. Unseen templates'
+new function words leak into the slot sets and destroy extraction completely.
+**The wall for joint correctness is slot extraction on unseen templates, not
+intent classification.** Intent markers transfer across templates; the learned
+slot extractor is template-bound.
+
+State: all pre-set bars failed or null; nothing integrated; the two real
+positives to carry forward: (1) intent transfer across truly new templates
+holds at frozen-eval level; (2) the exact failure surface for slots is now
+isolated (function-word leakage in unseen templates). Next candidate question
+(NOT started): can slot extraction be made template-robust by learning
+function/content word separation from cross-intent statistics rather than
+per-template frequency - needs its own prereg.
