@@ -48,13 +48,17 @@ def arm(mode, cap16=None):
     return out
 
 def garbage():
+    import os
     h = HSML(seed=1, induction_lib='separated')
+    bounded = bool(os.environ.get('B536_BOUNDED_C5'))
+    if bounded:
+        h.induce_cap = 60000  # sandbox per-call ceiling; full-cap stands from prior merged runs
     grng = __import__('random').Random(555); memo = {}
     def gtruth(x):
         if x not in memo: memo[x] = grng.randrange(0, 1000)
         return memo[x]
     r = teach_via_dialog(h, 'สามเท่า', gtruth)
-    return {'c5_final_kind': r['kind'], 'c5_tried': r.get('tried'), 'cap': 700001}
+    return {'c5_final_kind': r['kind'], 'c5_tried': r.get('tried'), 'cap': h.induce_cap, 'c5_bounded': bounded}
 
 def run():
     b = subprocess.run([sys.executable, '-u', 'b536.py', 'armB'], capture_output=True, text=True)

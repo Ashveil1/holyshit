@@ -36,7 +36,10 @@ def probe(h, word, truth, n=10, seed=7):
     return f'{ok}/{n}'
 
 def s1():
+    import os
     h = HSML(seed=0)
+    if os.environ.get('B538_BOUNDED_C5'):
+        h.induce_cap = 60000  # sandbox per-call ceiling; full-cap stands from prior merged runs
     out = {}
     # C1: teach double, probe
     r = teach_via_dialog(h, 'สองเท่า', OLD)
