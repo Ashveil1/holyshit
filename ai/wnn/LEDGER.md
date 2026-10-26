@@ -2749,3 +2749,60 @@ selection, roles, weighting) has now failed its preregistered gate.
 No production route chosen. Further progress needs a mechanism that
 addresses unseen-phrasing intent evidence itself, not another knob on the
 tested axes.
+
+## B-570 PRE-REGISTERED (2026-10-26, before code) - pointer-copy slot extraction with joint intent head (one mechanism, bounded)
+
+Scope: ONE mechanism from the reviewed evidence - pointer-based slot copying
+(P18-2068 BiGRU seq2seq + pointer over input positions, embeddings learned
+from scratch, hidden 128; P18-1134 targeted feature dropout for unknown slot
+values) with a clearly defined intent path (attention-pooled classification
+head on the same encoder, trained jointly). Narrow evidence claim only: the
+cited results used DSTC2 (~11.7K train utterances, English, word-segmented);
+our protocol trains 64 sentences/seed, ~9x below their smallest ablation
+cell - stated as risk, NOT a floor. No Transformer claim either way; a
+tiny-Transformer encoder variant stays OPEN for a later round if the copy
+mechanism proves out and capacity is the measured bottleneck.
+
+Model (NumPy from scratch, no framework - a dependency-heavy framework would
+itself eat much of the RAM budget and is disclosed as the reason): word +
+char-ngram hybrid encoder (Thai is unsegmented; char features load-bearing),
+single BiGRU encoder, attention pool -> intent softmax head; pointer decoder
+over input positions per slot; targeted dropout (zero slot-value embeddings
+with p=0.5 during training, per P18-1134). All parameters learned from the
+64-sentence train split ONLY; no pretrained anything, no paid resources.
+
+RESOURCE ENFORCEMENT (during run, not after): decimal 1,000,000,000-byte
+process-tree budget. A watchdog samples /proc VmHWM (peak-to-date resident)
+of the experiment process tree every 2s INCLUDING interpreter + numpy +
+model + stores; on exceed: abort, record peak, verdict = RESOURCE FAIL.
+Peak RSS reported separately for training vs inference phases.
+Instrumentation limitations stated honestly: 2s sampling can miss transient
+peaks; VmHWM is per-process peak-to-date; RUSAGE_CHILDREN covers only reaped
+children. Hard wall-clock timeout 10 min per run (kill + report). Bound:
+5 seeds x 4 cells x (1 arm + frozen baseline) = one run, then closeout.
+
+Tokenizer/OOV disclosure: space-split words + char n-grams, IDENTICAL to the
+frozen protocol for comparability. The synthetic probes are space-delimited;
+Thai has no spaces in real text - results do NOT support a real-language
+Thai transfer claim. Pointer copies input POSITIONS, so OOV surface forms
+are copiable by construction, but intent correctness and slot-ROLE
+correctness remain learned and are measured jointly (joint metric primary).
+
+Causal 2x2 eval, NO new authoring (existing families + vocabs only):
+  (seen tmpl, seen ent): fresh draws from train FAM + train VOCAB
+  (seen tmpl, unseen ent): train FAM x EVAL_VOCAB2
+  (unseen tmpl, seen ent): NEW_EVAL_FAM x train VOCAB
+  (unseen tmpl, unseen ent): fresh3 as-is
+All cells are INSPECTED development comparisons, never held-out validation.
+Split sizes identical to frozen protocol: train 64/seed (8/intent), 64/cell
+eval, 5 seeds, paired per-seed rows, wrong_action + gated abstention separate.
+Retention sub-test: after training on the standard split, continue training
+on an interfering relabeled split; re-measure cell-1 joint; report retention
+gap vs a no-interference control (same total updates).
+
+Gates (fixed before code; fail -> null + closeout, NO automatic new arms):
+  G1: pointer arm mean joint >= frozen baseline (NBu+S4-selection+positional)
+      +5 points on BOTH unseen-template cells, >=4/5 per-seed deltas >= 0.
+  G2: no cell mean joint worse than baseline by >3 points.
+  G3: retention gap < 5 points; and full run completes inside the 1e9-byte
+      budget and 10-min timeout (RESOURCE FAIL otherwise, reported as such).
