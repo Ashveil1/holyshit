@@ -3232,3 +3232,28 @@ first-half (learning happens). G3 unassisted-executed joint >= static-M0
 all-item joint, each cell. Fail -> null, no automatic continuation.
 Resources: pure-Python, 1e9-byte live watchdog, 10-min timeout, seeds 0-4,
 no pretrained, no paid, no personal dialogue.
+
+## B-578 VERDICT (2026-10-26): NULL at G1/G2; G3 passes strongly - first positive slot-transfer signal
+
+Run: logs/b578_run1.log, script b578.py. RUN DEVIATION recorded: the prereg
+specified a dev-calibrated slot tau; run1 hardcoded margin >= 0 (accept any
+non-negative top-1 margin after 1 confirmed example). Consequences below;
+the calibrated variant is a separate future round, not silently substituted.
+INSPECTED cells, authored teacher, exact denominators, n=320/cell.
+  c21: wrong-execution 125/320 executed (39.1%) - G1 FAIL (<=5%).
+    unassisted-executed joint .554 vs static-M0 all-item joint .044 - G3
+    PASS. burden h1 40.4 avg vs h2 42.4 - G2 FAIL (flat). retention .55-.64.
+    burden 1.29 questions/utterance (intent 36.4, slot 36.4, retype 11).
+  c22: wrong-execution 112/320 (35.0%) - G1 FAIL. unassisted joint .600 vs
+    static .237 - G3 PASS. burden h1 38.4 vs h2 42.6 - G2 FAIL. retention
+    .55-.70. burden 1.25/utterance (intent 37.8, slot 33.2, retype 9.4).
+Interpretation (scoped to protocol+simulation): learned span-to-role
+transfer from confirmation labels REAL and large relative to the designed
+extractor (unassisted joint .55-.60 vs .04-.24 static), but the margin>=0
+acceptance rule is far too lax (35-39% wrong executions - unassisted
+accepts are frequently wrong), burden does NOT fall within a session
+(h1~h2), and taught-span retention is only .55-.70 under unassisted
+re-prediction. Consistent with the intent-side pattern: the signal is
+present; the GATE is the hard part. Retypes (~10/64) are mostly spans the
+candidate generator ranked below top-3, not absent spans (gold spans are
+<=5 tokens in these families).
