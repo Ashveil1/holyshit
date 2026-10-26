@@ -2119,3 +2119,45 @@ Pass criteria:
 - b538 PASS แบบ chunked s1/s2: c1-c8 ตรง run() เดิมทุกข้อ, c5 BOUNDED 60,001 ด้วย flag ใหม่ B538_BOUNDED_C5 (เช่นเดียวกัน) — เส้นทางสอน/แก้ทักษะผ่านบทสนทนา + save/load จริงรันบน routing ที่เปลี่ยนแล้ว
 - ชุด noninterference ฉบับสมบูรณ์ตอนนี้ตรงกับ convention เดิม (b534-b558 + regress_skills): 25 harness เขียว โดย b536/b538/b539 แบบ chunked+bounded ตาม precedent ที่บันทึกไว้
 - เหตุที่ต้อง bounded: เพดานเวลาต่อ bash call ของ sandbox ไม่ใช่ขีดจำกัดของตัว harness (run เต็มเคยผ่านใน PR ก่อนๆ ผ่าน subprocess ต่อเนื่อง)
+
+## B-559 full controls + merge (26 ตุลาคม 2026) — PR #288 → master 48bc8a1
+- ก่อน merge parent สั่งรัน full controls แบบไม่ bound สำหรับ 3 harness ที่รอบแรกรันแบบ bounded: b536 (c5 garbage), b538 (c5), b539 (c6) — รันบนโค้ด head c2606f2 ที่ freeze ไว้ ผ่าน runner แบบ detached (setsid) เพราะ sandbox หยุดช่วงไม่มี turn
+- ผล unbounded ทั้งสาม: b536 PASS (c5_tried 700,001, c1-c5 ครบตาม run()), b539 PASS (c6_tried 700,001, chunked ผ่าน save/load จริง caches ถูกลบก่อน), b538 PASS (c5_tried 700,001, c1-c8 ครบ) — logs: /tmp/full_b536.log, /tmp/full_b539.log, /tmp/full_b538.log (รอบ bounded ก่อนหน้าเก็บแยกไว้เป็นหลักฐานชั่วคราว ไม่ใช่ฉบับปิดเกณฑ์)
+- การนับ regression ฉบับแก้: 26 harness = 23 full เขียว + 3 ที่ต้อง full-control แยก (ตอนนี้ full เขียวครบแล้ว) — เลข 25 หรือ 33/33 ที่เคยรายงานผิดได้แก้ในบันทึกแล้ว
+- Merge gates ณ เวลา merge: CI quick+arm64-port SUCCESS ที่ head c2606f2 ตรง 3 ทาง (PR head = ls-remote wnn = local wnn), master เคลื่อนจาก d36fa6d เป็น 7b78703 ผ่าน PR #287 (docs/+selfhost/+tests/ เท่านั้น, file-disjoint จาก ai/wnn 100%), merge เป็น 48bc8a1; fresh-clone smoke: บทสนทนา Milo ครบ + b559 36/36 จาก clone สด
+
+## Declutter (26 ตุลาคม 2026) — ย้ายสคริปต์ทดลองเก่า 62 ไฟล์ไป experiments/ (PR #290)
+- ไฟล์ที่ LEDGER อ้างด้วยชื่อเดิม (b504.py, baby4.py, t3lex.py ฯลฯ) ตอนนี้อยู่ที่ experiments/<ชื่อเดิม>.py — คำอ้าง logs/... ไม่เปลี่ยน
+- รันจาก ai/wnn เหมือนเดิม: python3 experiments/<name>.py (cwd/args/logs เหมือนเดิมทุกอย่าง; ไฟล์ที่ import โมดูลที่อยู่ต่อมี bootstrap 1 บรรทัด)
+- ยืนยันการรันซ้ำหลังย้าย: b504 ตรงเลขเดิมใน LEDGER เป๊ะ (0.188/0.163), text2prog P15, cur2_test, b300r เขียน logs ถูกที่; output isolation: เขียน /tmp หรือไฟล์ตัวเองเท่านั้น ไม่แตะ state ของ harness ที่อยู่ต่อ
+
+## Migration note update (2026-10-26, PR #290 rev 2) - compatibility scope chosen per review
+
+After review, the 19 moved scripts that carry a documented invocation line in
+their docstring (baby, baby2, baby3, baby3c, baby3h, baby4, cur1-cur6,
+text2prog, text2prog2/3/5/6/7/8) were moved BACK to the ai/wnn root: their
+documented commands (e.g. `python3 cur6.py 0`, `python3 baby4.py`) run
+verbatim, byte-identical files. The remaining 43 scripts (no documented
+invocation; LEDGER citations are verdict records, not command lines) stay in
+experiments/ with a one-line sys.path bootstrap each; run as
+`python3 experiments/<name>.py [args]` from ai/wnn, same cwd/args/outputs.
+Verification after the split: b504 EXACT (wnn 0.188 | tf 0.163); baby4 full
+run CRITERION MET (chance-level arms 13/20, 12/20 vs documented 11/20, 10/20 -
+both ~chance-10, hash-order wobble, qualitative verdict unchanged, recorded
+honestly); baby.py full (true .84/.87 vs shuffled .06/.16); text2prog.py 1
+P15 complete; cur6.py 0 bounded start (mul FOUND 43s; full sweep long, not
+re-run); cur2_test.py add,sub runs; b300r logs/ write unchanged; t5chain
+import+bounded start only (full 1000-link sweep long, NOT re-run - labeled as
+such). baby3 needs OR_KEY (external API): not executed, no secrets in repo.
+regress_skills PASS and b559 36/36 (RSS 11.3 MB) on the split head; staying
+tree outside experiments/ byte-identical to 48bc8a1 except HSML.md/README.md/
+LEDGER.md docs.
+
+Cross-reference sweep (same head): searched every repo markdown file for
+reproduction command lines (python invocations and run/reproduce instructions
+naming moved scripts). Result: zero documented commands reference any of the
+43 moved files (root README command lines cover hs.py/interp.py/prepare_*.py,
+all unmoved). Eight LEDGER verdict citations name moved files as file+log
+records (b300r, b503, b519, cur2_test, t3grid, t3lex, t5dim2, t5grid16k) -
+historical result records, not published command lines; the files remain
+in-repo at experiments/<name>.py under the migration note.

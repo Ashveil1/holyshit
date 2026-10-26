@@ -148,6 +148,17 @@ a single measurement, not a hardware guarantee).
   you typed. There is currently no supported safe-export format for sharing
   taught state with strangers.
 
+## Experimental associative layer (default OFF)
+
+- An optional fallback layer (B-558) can suggest an answer when a question
+  matches no designed frame, using a counting table (char n-gram coverage +
+  exact-substring anchor) over facts you already taught.
+- It is OFF by default and changes nothing unless explicitly enabled in code:
+  `HSML(assoc_fallback=True)`. There is no chat.py/CLI flag for it.
+- Answers from this layer are labeled separately (`kind='assoc_answer'`) so
+  they never mix with answers from live memory. It is a phrasing-similarity
+  mechanism, not understanding.
+
 ## Honest limits
 
 - Narrow Thai coverage + a small English frame set; finite designed frames;
