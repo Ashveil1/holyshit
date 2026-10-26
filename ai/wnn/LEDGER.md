@@ -5025,3 +5025,71 @@ new support-one/teacher-cost evidence or verified minimal implementation
 with runtime/license clarity, not automatic B613 expansion. Narrow local
 alignment remains a hypothesis requiring recurring contexts; general
 conversational goal active but unmet, existing failures unchanged.
+
+## B-614 pre-registration: original local contrast, matched ambiguous outcomes
+
+Development reuse of B613's frozen grammar, 852 AST enumeration, 12 nested
+tests and 24 English/Thai supervised utterances. Same selected 16-state
+signatures, no new teacher alignments. Local candidate-subtree evidence
+will be expected subtree presence under UNIFORM signature-consistent ASTs;
+not gold subtree presence. This makes a valid original comparison possible,
+though it is not SGOLL (which sees perceptual graphs). Runtime only receives
+utterance/signature; gold AST used by evaluator only. No program execution
+outside pure Set truth tables; no entry or fact writes.
+
+For each phrase unigram/bigram, accumulate weighted compatible-subtree
+co-occurrence. Rank candidate by summed local p(subtree|phrase) minus
+p(subtree|phrase absent), unique candidate subtrees (no repetition bonus).
+No hidden word/operator dictionary supplied. Include expected root-label
+features as subtree atoms. Learning curve: snapshots after 1, 4, 12, 24,
+48 and 96 selected examples (1, 4, 12 partial first pass; 24 complete pass;
+48/96 repeated SAME contexts, not new evidence). Each selection exposes
+16 state outcomes. Compare frozen B613 global final baseline, zero feedback,
+cyclically permuted outcomes, and whole-utterance memorization. Denotation
+and exact syntax scored separately, truth-table equivalence explicit.
+No post-run tuning. Cap 60s wall, 1e9 aggregate RSS, max 852 candidates,
+64 per-size beam; no grammar/split expansion. PASS hypothesis only if final
+local denotation exceeds frozen global/no-feedback/permuted controls;
+otherwise NULL. Report all intermediate counts, not pick best checkpoint.
+
+## B-614 findings: NULL local contrast, no bound expansion
+
+logs/b614_run1.log: exact 0/12 at ALL checkpoints and arms. Local
+denotation learning curve at 1,4,12,24,48,96 presentations is 0,1,0,0,0,0
+out of 12. Permuted/no-feedback/memorization controls are 0/12 throughout.
+Frozen B613 global result remains 0/12 exact/denotation at 24 selections;
+it was NOT rerun or trained to 96. Thus comparison to that frozen baseline
+is anchored at 24, not a matched repeated-update global learning curve.
+Local repeated counts after 24 examples leave estimates unchanged; repeated
+contexts do not add discriminating information. No favorable intermediate
+checkpoint selection: final gate NULL. Learned beam gold coverage at 24+
+is 12/12, so ranking still fails despite oracle/rank-beam inclusion.
+
+Runtime local features are computed over uniform averages of ALL candidate
+ASTs compatible with selected outcome signature, never evaluator gold ASTs.
+This is an original expected-subtree contrast, NOT SGOLL's graph-observation
+algorithm. Same B613 development split reused. No claim of independent
+validation, identified cause, general method failure or general conversation.
+At final 96 selections, 1536 state observations have been presented but only
+24 distinct language-context selections/384 state outcomes exist. No-feedback
+receives 0 teacher observations. Signature ambiguity remains as in B613.
+Wall 1.1549s; live supervisor+experiment concurrent RSS 25,235,456 bytes,
+no 1e9-byte breach. No new grammar/search/data or test-time updates.
+
+## Lotus attribute defect root cause (no patch)
+
+logs/lotus_root_cause.log reproduces original context and wrong answer.
+Segmentation is correct: บัว มี กลีบ ไหม. Mapper's top is teach_attr at
+margin 4.7644 < tau_hi 26.0716. Question-marker restriction removes that
+intent from confirmation candidacy; the next allowed rank is is_a_q above
+ask_attr. Both slot extractors return (บัว,กลีบ); completeness regards มี
+as grammar and therefore fails to constrain the relation choice. Result
+proposes 'บัว เป็น กลีบ', and yes then executes the wrong ISA query, yielding
+unknown despite stored attribute กลีบ for บัว. No lost memory or tokenization
+failure. This is intent/relation selection error, not fixed by a fact-store
+check. No expectation edits, added phrase mapping or marker patch applied.
+
+Supported next work is bounded diagnosis of relation-sensitive parse scoring
+from existing evidence, if a general mechanism is justified; no new capability
+claim or automatic build follows from these NULLs. Current conversational
+entry failures and target remain unresolved. Stop this feasibility probe.

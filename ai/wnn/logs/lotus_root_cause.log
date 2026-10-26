@@ -1,0 +1,5 @@
+DIAGNOSIS {"surface": "บัว มี กลีบ ไหม", "predicted": "teach_attr", "margin": 4.764429588801704, "tau_hi": 26.0716, "ranked": [["teach_attr", -354.698192034007], ["is_a_q", -359.4626216228087], ["retract_attr", -363.56387326112673], ["ask_attr", -366.0504431551449], ["teach_isa", -366.75033837581833], ["name_skill", -367.89013707474265]]}
+REPLY เดาว่า: ถามว่า บัว เป็น กลีบ ใช่ไหม
+PENDING {"kind": "confirm", "surface": "บัว มี กลีบ ไหม", "intent": "is_a_q", "slots": ["บัว", "กลีบ"], "rejected": ["is_a_q"]}
+CONFIRMED ไม่รู้ว่า บัว เป็น กลีบ ยังไม่เคยถูกสอน
+ATTRIBUTE-STORE {"มิโล": ["หาง"], "บัว": ["กลีบ"], "หมู": ["งา"]}
