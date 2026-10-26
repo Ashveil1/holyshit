@@ -3593,3 +3593,36 @@ Conclusion (scoped): margin-based gating has an intrinsic
 coverage/safety overlap (seen spread crosses unseen spread), but the
 specific tau=26 operating point was also a calibration-objective artifact.
 Both things are true; neither alone explains the conversational failure.
+
+## B-587 PRE-REGISTERED (2026-10-26, before code) - paired-seed operating-point validation
+
+Validates the B-586 seed-0 sweep observation with paired seeds 0-4, gates
+fixed before run. Candidate intent gates (FIXED): tau in {5, 10,
+26.07-style dev-calibrated precision (recomputed per seed)}. METRIC NAMING
+(B-577 discipline): this is an INTENT-side gate eval; metrics are
+wrong-INTENT among acted items (not 'wrong-action'); end-to-end
+wrong-EXECUTION is not claimed by this arm. Cells: seen train-family (c11-
+style), c21, c22 (INSPECTED, development robustness check - NOT independent
+validation), plus off-topic WRONG_INTENT items. Metrics per tau per seed:
+seen acted/right, c21+c22 acted/wrong-intent, off-topic acted. Selection
+rule (fixed): a candidate passes if unseen+off-topic wrong-intent among
+acted <=5% (5-seed totals) AND seen coverage >= 75%; the passing candidate
+with highest seen coverage wins. This informs the shell operating point
+only; it is not a conversational success claim.
+
+## B-587 VERDICT (2026-10-26): NULL - no margin operating point passes; seed-0 tau~10 observation does NOT replicate
+
+Run: logs/b587_run1.log, script b587.py. Paired seeds 0-4, candidates fixed
+before run. 5-seed totals (seen n=320, unseen n=640, off-topic n=100).
+METRIC: wrong-INTENT among acted (intent-side gate eval; no end-to-end
+wrong-execution claim). Development robustness check on inspected authored
+generators, NOT independent validation.
+  tau5:  seen cov .847 | unseen acted 246, wrong-intent 22.4% | off-topic
+         acted 8 -> FAIL safety (<=5%).
+  tau10: seen cov .753 | unseen acted 172, wrong-intent 14.5% | off-topic
+         0 -> FAIL safety. The B-586 seed-0 '0 wrong' was single-seed luck.
+  tau_dev (21.2-34.5/seed): seen cov .497 | unseen acted 62, wrong-intent
+         0% | off-topic 0 -> passes safety, FAILS coverage (>=75%).
+Selection rule: NO candidate passes both. The threshold direction is closed
+at this representation: margin gating cannot give conversational coverage
+AND safety. Recorded with the other nulls; no further threshold sweeps.

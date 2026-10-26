@@ -1,0 +1,5 @@
+ROW {"gate": "tau5", "seen_act": 271, "seen_right": 252, "un_act": 246, "un_wrong": 55, "off_act": 8, "seen_n": 320, "un_n": 640, "off_n": 100, "seen_cov": 0.847, "unseen_wrong_intent_rate_of_acted": 0.224}
+ROW {"gate": "tau10", "seen_act": 241, "seen_right": 233, "un_act": 172, "un_wrong": 25, "off_act": 0, "seen_n": 320, "un_n": 640, "off_n": 100, "seen_cov": 0.753, "unseen_wrong_intent_rate_of_acted": 0.145}
+ROW {"gate": "tau_dev", "seen_act": 159, "seen_right": 159, "un_act": 62, "un_wrong": 0, "off_act": 0, "seen_n": 320, "un_n": 640, "off_n": 100, "seen_cov": 0.497, "unseen_wrong_intent_rate_of_acted": 0.0}
+RES-FINAL {"peak_rss_mb_overall": 28.0, "wall_seconds": 6.3}
+DONE
