@@ -5010,3 +5010,18 @@ No new build justified yet. Concrete next review: SGOLL feature/training/
 grammar assumptions, implementation availability/license, support-one and
 memory evidence. Outcome target remains active but unmet; this is an
 internal research blocker, not a request for user action or completion.
+
+## SGOLL bounded review closeout
+
+SGOLL_REVIEW.md records primary algorithm assumptions, exact linked archive
+inspection and license/pretrained exclusions. Defaults minSup=10; no
+support-one result found. Actual downloadable August 2011 MARCO artifact
+is not a verified SGOLL implementation; includes pretrained POS/sense/PCFG
+models, unclear root/data reuse license and old dependencies. Download
+inspected read-only outside project; no execution/import/source/data copy.
+No measured sub-1GB evidence. No reproduction/build justified from this
+review. Stop literature loop at this evidence gap. Future checkpoint is
+new support-one/teacher-cost evidence or verified minimal implementation
+with runtime/license clarity, not automatic B613 expansion. Narrow local
+alignment remains a hypothesis requiring recurring contexts; general
+conversational goal active but unmet, existing failures unchanged.
