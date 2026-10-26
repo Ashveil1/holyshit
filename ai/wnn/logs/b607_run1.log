@@ -1,0 +1,3 @@
+RESULTS {"questions_during_3_teaches": 4, "pattern_pending": true, "proposal_reply": "จำรูปแบบแล้ว ครั้งต่อไปจะจำให้ทันที", "new_replies": [{"in": "วัวเป็นสัตว์เลี้ยง", "out": "จำแล้ว: วัว เป็น สัตว์เลี้ยง", "q": 0}, {"in": "แพะเป็นสัตว์เลี้ยง", "out": "จำแล้ว: แพะ เป็น สัตว์เลี้ยง", "q": 0}, {"in": "ควายเป็นสัตว์ป่า", "out": "จำแล้ว: ควาย เป็น สัตว์ป่า", "q": 0}], "new_unassisted_correct": 3, "new_wrong": 0, "new_questions": 0, "near_miss_writes": [], "control_questions_on_new": 3, "post_restore_unassisted": true, "post_restore_reply": "จำแล้ว: ลิง เป็น สัตว์ป่า", "final_isa": [["ควาย", "สัตว์ป่า"], ["ช้าง", "สัตว์ป่า"], ["บัว", "ดอกไม้"], ["มิโล", "แมว"], ["วัว", "สัตว์เลี้ยง"], ["แพะ", "สัตว์เลี้ยง"]]}
+CHECK PASS
+RES {"peak_rss_mb": 27.7, "wall_seconds": 3.8}

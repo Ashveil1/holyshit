@@ -63,6 +63,18 @@ class InteractiveChat(ChatSpeaks):
         self.grammar = set(self.markers) | QMARKERS
         self.lex = set(BASE_LEX) | EXTENSION_LEX
         self.pending = None
+        self.instances = []        # user-validated (tokens, intent, slots)
+        self.patterns = {}         # shape_key -> {'intent':.., 'status':'active'|'rejected'}
+        self.patterns_proposed = set()
+        self.pattern_awaiting = None   # (key, intent) proposed, awaiting yes/no
+
+    @staticmethod
+    def _shape(toks, sl):
+        key = []
+        for t in toks:
+            if t in sl: key.append(('VAR', sl.index(t)))
+            else: key.append(('TOK', t))
+        return tuple(key)
 
     # ----- extraction -----
     def _extract(self, s, d):
@@ -211,6 +223,11 @@ class InteractiveChat(ChatSpeaks):
                 cls, reply, cat = self._handle_classified(canon, via='taught_pattern')
                 self.seen.add(s)
                 return cls, reply, cat
+        pd, psl = self._fire_patterns(s)
+        if pd is not None:
+            self.seen.add(s)
+            cls, reply, cat = self._commit(s, pd, list(psl), 'induced_pattern')
+            return cls, reply, cat
         rw, status = self._resolve(s)
         self.seen.add(s)
         if status in ('clarify', 'plural'):
@@ -221,6 +238,37 @@ class InteractiveChat(ChatSpeaks):
             reply = self._ask('clarify', original=rw, candidates=cands)
             return 'ask_needed', reply, 'teacher_assisted'
         return self._handle_classified(rw)
+
+    def _maybe_propose(self):
+        from collections import Counter
+        shapes = Counter()
+        exemplars = {}
+        for s, d, sl in self.instances:
+            key = (d, self._shape(s.split(), list(sl)))
+            shapes[key] += 1; exemplars[key] = (s, d, sl)
+        for (d, key), n in shapes.items():
+            if n >= 3 and key not in self.patterns_proposed and self.patterns.get(key, {}).get('status') != 'rejected':
+                self.patterns_proposed.add(key)
+                sample = ' '.join('X%d' % (v[1] + 1) if v[0] == 'VAR' else v[1] for v in key)
+                gloss = RESTATE[d](['X%d' % (i+1) for i in range(B.NSLOTS[d])])
+                self.pattern_awaiting = (key, d)
+                self.q += 1
+                return 'สังเกตว่ารูปแบบ «%s» %s ใช่ไหม' % (sample, gloss)
+        return None
+
+    def _fire_patterns(self, s):
+        toks = s.split()
+        for key, st in self.patterns.items():
+            if st['status'] != 'active' or len(key) != len(toks): continue
+            d = st['intent']
+            slots = [None] * B.NSLOTS[d]
+            ok = True
+            for (kind, v), t in zip(key, toks):
+                if kind == 'TOK' and v != t: ok = False; break
+                if kind == 'VAR': slots[v] = t
+            if ok and all(x is not None for x in slots):
+                return d, tuple(slots)
+        return None, None
 
     # ----- user-facing loop -----
     def user_turn(self, text):
@@ -235,6 +283,9 @@ class InteractiveChat(ChatSpeaks):
                     self.yes += 1
                     self.m.add(B.encode(p['surface']), p['intent'])
                     _c, reply, _ = self._commit(p['surface'], p['intent'], list(p['slots']), 'teacher_assisted')
+                    self.instances.append((p['surface'], p['intent'], tuple(p['slots'])))
+                    prop = self._maybe_propose()
+                    if prop: return reply + '\n' + prop
                     return reply
                 if text in NO:
                     self.corr += 1
@@ -259,6 +310,14 @@ class InteractiveChat(ChatSpeaks):
                         return reply
                     _c, reply, _cat = self._handle_classified(rw)
                     return reply
+        if self.pattern_awaiting and text in YES | NO:
+            key, d = self.pattern_awaiting
+            self.pattern_awaiting = None
+            if text in YES:
+                self.patterns[key] = {'intent': d, 'status': 'active'}
+                return 'จำรูปแบบแล้ว ครั้งต่อไปจะจำให้ทันที'
+            self.patterns[key] = {'intent': d, 'status': 'rejected'}
+            return 'รับทราบ จะถามทีละครั้งเหมือนเดิม'
         _cls, reply, _cat = self._handle_new(text)
         return reply
 
@@ -274,6 +333,8 @@ class InteractiveChat(ChatSpeaks):
             'subjects': self.subjects[-50:],
             'lex_extra': sorted(self.lex - BASE_LEX - EXTENSION_LEX),
             'tau_hi': self.tau_hi, 'tau_lo': self.tau_lo,
+            'patterns': [[st['intent'] + '|' + '|'.join('%s:%s' % (k, v) for k, v in key), st['status']]
+                         for key, st in self.patterns.items()],
         }
 
     def restore(self, snap):
@@ -292,6 +353,12 @@ class InteractiveChat(ChatSpeaks):
         self.subjects = list(snap['subjects'])
         self.lex = set(BASE_LEX) | EXTENSION_LEX | set(snap['lex_extra'])
         self.tau_hi = snap['tau_hi']; self.tau_lo = snap['tau_lo']
+        self.patterns = {}
+        for enc, status in snap.get('patterns', []):
+            d, ks = enc.split('|', 1)
+            key = tuple(tuple(p.split(':', 1)) for p in ks.split('|'))
+            key = tuple((k, int(v) if k == 'VAR' else v) for k, v in key)
+            self.patterns[key] = {'intent': d, 'status': status}
 
 def fresh_chat():
     rng, train, dev, ev, ev_wrong, arms0, taus0, pred0 = build(0)

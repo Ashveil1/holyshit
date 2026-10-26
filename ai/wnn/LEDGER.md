@@ -4443,3 +4443,75 @@ G2 quoted-content turn writes nothing; G3 escape reaches a question
 parse in <=1 rejection; G4 relevance replies match known/unknown state.
 Authored battery = development check. No pretrained, no paid,
 pure-Python, 1e9-byte live watchdog.
+
+## FRAMING CORRECTIONS (2026-10-27)
+
+1. B-605/B-606 containment is bounded ENGINEERED containment, not learned
+conversation. An explicit yes authorizes only the proposition actually
+shown; it cannot validate a silently different parse. The quoted-content
+case remains an UNSAFE PROPOSAL by design (a yes would write from
+quoted content); two scripted rejections are not a general fix.
+2. DATASET VERSIONING: b604 HELDOUT v1 (surface-order labels, pre 4/8)
+was superseded by v2 (semantic labels, pre 3/8, post 7/8) after the
+convention correction. The v1 baseline is not comparable; no
+improvement claim spans the label change. Current checks remain
+corrective engineering on inspected tiny scenarios.
+
+## B-607 PRE-REGISTERED (2026-10-27, before code) - LEARNED teacher-dependence reduction: pattern induction from confirmed instances
+
+Code/source review conclusion: NB-margin certification of novel
+compositions is out (B-587, B-602); threshold variants are out
+(steering); extraction statistics are engineered and static (B-604
+audit). The one UNUSED learned signal in the exchange itself: every
+confirm-yes commit is a user-validated (surface, intent, slots)
+instance. HYPOTHESIS: shapes recur - after k>=3 user-validated
+instances of the same surface shape (same tokens modulo slot
+positions, same intent), an induced rewrite rule (shape -> intent +
+slot positions) lets NEW instances with all-novel entities be acted on
+UNASSISTED with correct slots. Mechanism REUSES the checked definition
+machinery (compile/match by token positions, b591b) but the rule is
+INDUCED FROM THE EXCHANGE (learned), not taught via นิยาม syntax.
+Safety, supplied and explicit: induction only from confirm-yes
+instances; the induced pattern is PROPOSED ONCE ('สังเกตว่ารูปแบบ ...
+หมายถึง ... ใช่ไหม') and activates only on user yes (a pattern-level
+teach-once, replacing per-instance questions); a no blacklists the
+shape; every firing echoes the committed fact (visible, retractable).
+Discriminating test (b607.py): teach 3 novel-entity instances of
+'<E1> เป็น <E2>' via confirms; approve the proposal; then 3 NEW
+novel-entity instances must commit UNASSISTED with correct slots and 0
+questions, while near-misses ('X เป็น Y ไหม' marked question, 'X เป็น'
+degenerate, 'X เป็น Y มาก' extra token) cause NO writes; a paired
+control chat without induction must still ask >=1 question per new
+instance. Gates: G1 3/3 unassisted-correct; G2 0 near-miss writes; G3
+control asks on every new instance; G4 regression: hsml --check, b605,
+b606 all pass. SUPPLIED information made explicit: shape representation
+(token positions), the k=3 trigger, the proposal step, near-miss by
+exact-length match. LEARNED: the pattern's existence, intent label and
+slot positions come from user-validated instances. Authored battery =
+development check. No pretrained, no paid, pure-Python, 1e9-byte
+watchdog.
+
+## B-607 FINDINGS (2026-10-27): LEARNED teacher-dependence reduction PASS - pattern induction from confirmed instances
+
+logs/b607_run1.log (CHECK PASS, all gates). After 3 user-validated
+confirm-yes instances of '<E1> เป็น <E2>' with all-novel entities
+(มิโล/แมว, บัว/ดอกไม้, ช้าง/สัตว์ป่า; 4 questions during teaching), the
+system PROPOSED the induced pattern once ('สังเกตว่ารูปแบบ «X1 เป็น X2»
+สอนว่า X1 เป็น X2 ใช่ไหม'); on approval, 3 NEW novel-entity instances
+(วัว/แพะ/ควาย compositions) committed UNASSISTED with correct slots and
+0 questions (control chat without the induced pattern asked 3 questions
+on the same inputs). Near-misses wrote nothing: 'ม้าเป็นสัตว์ไหม'
+(marked question), 'ม้าเป็น' (degenerate), 'เป็ดเป็นนกมาก' (extra
+token). The induced pattern SURVIVES snapshot/restore: post-restore,
+'ลิงเป็นสัตว์ป่า' committed unassisted with 0 questions. Burden shape
+changes from per-instance to per-pattern: k confirms + 1 proposal per
+shape, then free. WHAT IS LEARNED vs SUPPLIED (explicit): the pattern's
+existence, intent label and slot positions are induced from
+user-validated exchange instances (learned); the shape representation,
+k=3 trigger, proposal step and exact-length near-miss matching are
+supplied. LIMITS recorded: pattern firing commits immediately
+(echoed, retractable via ไม่จริง) - an approved pattern over a
+misunderstood shape would commit wrong facts until retracted;
+single-shape evidence only (isa shape); composed/multi-shape sessions
+untested; battery is authored development check. Regressions:
+hsml_check run4 (12/12 audits), b605 run3, b606 run2 all PASS.
