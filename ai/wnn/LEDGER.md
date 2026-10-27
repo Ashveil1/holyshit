@@ -5208,3 +5208,33 @@ unambiguous exact entity vs substring overlap before committing any query;
 currently substring membership can match several names and pick first.
 Do not extend learned-language claims from this engineered defect repair.
 General conversational target remains unmet, alignment NULLs unchanged.
+
+## B-617 pre-registration: exact antecedent selection, not substring-first
+
+Bounded B616 continuation. With candidates 'มิโล' and 'มิโลน้อย', test
+reply exactly 'มิโลน้อย' when short candidate is listed first. Distinct
+attributes ensure actual chosen query answer exposes wrong antecedent.
+Also test an utterance naming BOTH candidates, an unmatched reply and
+an exact short candidate. Multiple/unknown selections must clarify with
+no query/mapper/store/write/attempt change. Live/restored variants; no
+new language data. First preserve current behavior. Correction, if needed,
+uses exact candidate equality only; natural paraphrases clarify rather
+than guessing. No semantic understanding claim. 1e9 live tree cap, <=60s.
+
+## B-617 findings: exact antecedents, preserve ambiguity
+
+run1 FAIL: substring-first selected มิโล when reply was exactly มิโลน้อย,
+and when both names appeared; unknown reply lost pending clarification.
+Live/restored forms reproduced wrong query answers without fact writes.
+Patch requires exact equality with one offered entity. Unknown/paraphrased/
+multiple-name selections re-ask the pending clarification, no query or mapper
+update. This intentionally does not understand free-form antecedent replies.
+run2 PASS 8/8 fixed cases with unchanged stores/write/attempt counters;
+B616/B615/B611 regressions pass. Original entry 12/13, intentional lossy
+compatibility failure stays visible. Live aggregate B617 38,809,600 bytes;
+entry 67,809,280 bytes, no 1e9 breach. No language capability claim.
+
+Next concrete entry audit is repeated-question answer relevance: current
+literal-repeat shortcut returns 'already known' instead of actual requested
+answer (visible original PART2). Five-minute gated continuation replaces
+long idle backstop, while unblocked audit executes now. No empty work loop.

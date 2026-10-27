@@ -406,7 +406,11 @@ class InteractiveChat(ChatSpeaks):
                     return ('ยังเรียนรูปแบบนี้ไม่ได้เลย '
                             'ลองสอนด้วย นิยาม ... เหมือน ... ตัวแปร ... ได้')
             elif p['kind'] == 'clarify':
-                hit = [c for c in p['candidates'] if c in text]
+                hit = [c for c in p['candidates'] if c == text]
+                if len(hit) != 1:
+                    self.pending = p
+                    self.q += 1
+                    return self.pending_question()
                 if hit:
                     rw = ' '.join(hit[0] if t in ('มัน', 'ของมัน') else t
                                   for t in p['original'].split())
