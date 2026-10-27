@@ -5238,3 +5238,38 @@ Next concrete entry audit is repeated-question answer relevance: current
 literal-repeat shortcut returns 'already known' instead of actual requested
 answer (visible original PART2). Five-minute gated continuation replaces
 long idle backstop, while unblocked audit executes now. No empty work loop.
+
+## B-618 preregistration: repeat queries must answer current knowledge
+
+Original PART2 repeats answered ISA question and gets 'already known', not
+its answer. Add executed-query interpretation record keyed by resolved
+surface, storing intent/slots (not answer text), re-execute read query on
+repeat so fact changes are reflected. Query-only entries, no learned new
+parse or write grant. Persist record alongside existing snapshot, old
+snapshots default empty. Test ISA/HAS same-answer repeats, unknown->known
+and known->unknown after store edits, restart persistence. Unresolved
+pronoun source surfaces must not cache a selected antecedent. Assertions
+retain old literal-repeat no-write behavior. Fresh bounded tests, same
+1e9 aggregate cap; no claim of general dialogue or integration.
+
+## B-618 findings: repeat queries re-evaluate knowledge
+
+run1 preserves all 8 wrong 'already known' query responses (ISA/HAS,
+unknown/known/restored/retracted). run2 PASS: executed query interpretations
+store intent/slots only; repeat performs the read query on current facts,
+not cached answer. Snapshot persistence supports existing query parses;
+old snapshots default empty. No fact write or new parse learning is inferred.
+Actual standalone REPL followed by independent --load also answers repeated
+ISA question correctly (b618_real_repl CHECK PASS). B605..609, B611/612,
+B615..617 regressions PASS; original entry remains CHECK FAIL solely on
+old lossy definition example, answer relevance true. Assertion repeat behavior
+preserved in B609. Pronoun source is not stored as the resolved query key.
+Live aggregate B618 37,650,432 bytes; entry/restart 67,776,512 bytes,
+no 1e9 breach. This correction does not cover interpretation invalidation
+when later definitions change meaning or indefinite cache growth. General
+conversational target unmet, alignment NULLs unchanged.
+
+Concrete next bounded review is interpretation-cache invalidation on taught
+definition changes: a previously answered surface must not bypass a newly
+conflicting/lossy definition. Check precedence before claiming repeat safety;
+no unsupported capability experiment or new surface data.

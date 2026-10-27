@@ -64,6 +64,7 @@ class InteractiveChat(ChatSpeaks):
         self.grammar = set(self.markers) | QMARKERS
         self.lex = set(BASE_LEX) | EXTENSION_LEX
         self.pending = None
+        self.query_interpretations = {}  # executed query parses, never cached answer text
         self.instances = []        # user-validated (tokens, intent, slots)
         self.patterns = {}         # shape_key -> {'intent':.., 'status':'active'|'rejected'}
         self.patterns_proposed = set()
@@ -160,6 +161,8 @@ class InteractiveChat(ChatSpeaks):
             self.writes += 1
         self.seen.add(s)
         self._last_surface = s
+        if d in QINTENTS:
+            self.query_interpretations[s] = (d, tuple(sl))
         sl = [self._clean(x) for x in sl] if sl else sl
         self._grow_lex(sl)
         cls = self._act(d, sl)
@@ -279,6 +282,9 @@ class InteractiveChat(ChatSpeaks):
         if s.split() and all(t in GREETINGS for t in s.split()):
             self.seen.add(s)
             return 'honest_engaged', 'สวัสดี สอนอะไรก็ได้เลย', 'unassisted'
+        if s in self.query_interpretations:
+            intent, slots = self.query_interpretations[s]
+            return self._commit(s, intent, slots, 'repeated_query')
         if s in self.seen:
             return 'literal_repeat', 'อันนี้รู้อยู่แล้วนะ', 'literal_repeat'
         if s.startswith('นิยาม '):
@@ -448,6 +454,7 @@ class InteractiveChat(ChatSpeaks):
             'mapper_tot': dict(self.m.tot),
             'defs': [src for _r, src in self.defs],
             'seen': sorted(self.seen),
+            'query_interpretations': self.query_interpretations,
             'subjects': self.subjects[-50:],
             'lex_extra': sorted(self.lex - BASE_LEX - EXTENSION_LEX),
             'tau_hi': self.tau_hi, 'tau_lo': self.tau_lo,
@@ -468,6 +475,8 @@ class InteractiveChat(ChatSpeaks):
             rule = compile_def(lhs.split(), canon.split(), [int(x) - 1 for x in varstr.split(',')])
             if rule: self.defs.append((rule, src))
         self.seen = set(snap['seen'])
+        self.query_interpretations = {s: (d, tuple(sl)) for s, (d, sl)
+                                      in snap.get('query_interpretations', {}).items()}
         self.subjects = list(snap['subjects'])
         self.lex = set(BASE_LEX) | EXTENSION_LEX | set(snap['lex_extra'])
         self.tau_hi = snap['tau_hi']; self.tau_lo = snap['tau_lo']

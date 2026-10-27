@@ -1,0 +1,2 @@
+{"first": "hsml prototype (experimental) - พิมพ์ save เพื่อบันทึก, Ctrl-D เพื่อจบ\n> เดาว่า: สอนว่า มิโล เป็น แมว ใช่ไหม\n> จำแล้ว: มิโล เป็น แมว\n> เดาว่า: ถามว่า มิโล เป็น แมว ใช่ไหม\n> ใช่ มิโล เป็น แมว\n> ใช่ มิโล เป็น แมว\n> บันทึกแล้ว logs/hsml_snapshot.json\n> ", "restart": "โหลดความจำแล้ว\nhsml prototype (experimental) - พิมพ์ save เพื่อบันทึก, Ctrl-D เพื่อจบ\n> ใช่ มิโล เป็น แมว\n> "}
+CHECK PASS
