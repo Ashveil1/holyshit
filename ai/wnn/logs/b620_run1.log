@@ -1,0 +1,5 @@
+CHECKS {"cache_capped": true, "no_query_seen_growth": true, "no_fact_writes": true, "evicted_not_false_known": true, "known": true, "retracted": true, "invalid_atomic_rejection": true, "restored_answer": true, "definition_invalidates": true, "zero_disabled": true, "actual_restart": true}
+MALFORMED [["legacy", true], ["version", true], ["abi", true], ["query_write", true], ["bad_counts", true], ["bad_definition", true], ["bad_pattern", true]]
+SYNTHETIC {"query_commits": 2000, "cache_cap": 2, "cache_entries": 2, "note": "knowledge/lexicon/subjects also grow; only interpretation cache is capped"}
+CHECK PASS
+LIVE-TREE {"command": ["python3", "b620.py"], "peak_concurrent_rss_bytes": 68460544, "budget_bytes": 1000000000, "exceeded": false, "samples": 540, "sample_interval_seconds": 0.01, "includes": "supervisor plus all descendants", "pids_at_peak": [8772, 8773, 8775], "child_exit": 0}

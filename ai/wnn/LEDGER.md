@@ -5303,3 +5303,50 @@ semantics are not a general durable migration guarantee. Existing broad
 language/teach-once target and alignment NULLs remain, with no supported
 new capability implementation proposal. Hand unresolved whole-target
 research back explicitly rather than maintain an empty five-minute loop.
+
+## B-620 preregistration: bounded query interpretations and explicit snapshots
+
+Configurable cache cap default 128, environment HSML_QUERY_CACHE_CAP in
+0..4096; zero disables. FIFO eviction drops corresponding seen shortcut,
+no cached answer text; eviction may ask confirmation again but cannot say
+already known. Bounded cache is not a bound on all session knowledge.
+Query entries no longer added to general seen set. Snapshot schema v1
+and parse-cache ABI identifier; unversioned snapshots are explicitly
+incompatible (no claimed migration); malformed/version mismatch rejected
+before state mutation. Clear pending interactions on accepted restore.
+Persist only validated query intent/two-string-slot tuples at current cap;
+old schema requires explicit conversion, not silent acceptance.
+Test real restart, fact change, definition change, cap zero/eviction,
+malformed and unknown-version rejection with unchanged state, and 2000
+synthetic query commits with bounded cache/seen size. Diagnostic direct
+query commits are supplied parses, not learned conversational load.
+60s workload, live total RSS <=1e9, no production integration. Retain all
+known failures. Finish with runnable-entry gap assessment, no new scenarios
+for capability scores.
+
+## B-620 findings: conservative bounded cache and explicit incompatibility
+
+run2 CHECK PASS,11 checks: cap2 retained after2000 supplied query commits,
+no query seen growth/write attempts, evicted surface not false known,
+known/retracted/corrected facts re-read, restored answer, changed definition
+hold, cap0 disabled, actual REPL restart. Seven malformed/version variants
+reject atomically. Existing B611/612/615-619 regression logs PASS. Original
+entry final12/13, CHECK FAIL on unchanged intentional lossy definition.
+
+Schema1 and parse-cache ABI required; old unversioned fixtures now explicitly
+unsupported, not silently migrated. Validation constructs detached state and
+swaps only after acceptance. Restored pending/proposed in-session exchanges
+cleared; valid cached query tuples restricted to QINTENTS/relation agreement.
+This is structural validation, not semantic authenticity of arbitrary files.
+Cache refresh-order eviction (not strict FIFO as prereg wording suggested)
+keeps newest128 by default; env config0..4096. Cache is the only capped
+store. A test sweep hit shell120s limit after its test output landed; read
+logs before narrow reruns, no repeated commits/sends.
+
+Final B620 live concurrent aggregate68,780,032 bytes including restart child;
+entry68,841,472 bytes, no1e9 breach. Sampling10ms/shared-page caveats apply.
+Synthetic2000 query commits bypass language parsing and do not demonstrate
+long-session conversational competence. ENTRY_GAPS.md consolidates actual
+runnable state, supplied/learned boundary, known failures, NULLs and remaining
+uncapped structures. No supported broad build identified; concrete task
+complete, overall goal unmet. No production integration or user update.

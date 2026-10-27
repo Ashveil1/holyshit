@@ -13,7 +13,7 @@ Commands:
   python3 hsml_chat.py --check      end-to-end unspaced-Thai transcript
                                     check + real process-restart audit
 """
-import json, subprocess, sys, time
+import json, subprocess, sys, time, os, copy, math
 from collections import defaultdict, Counter
 import b562 as B
 from b562_diag import build
@@ -64,6 +64,9 @@ class InteractiveChat(ChatSpeaks):
         self.grammar = set(self.markers) | QMARKERS
         self.lex = set(BASE_LEX) | EXTENSION_LEX
         self.pending = None
+        self.query_cache_cap = int(os.environ.get('HSML_QUERY_CACHE_CAP', '128'))
+        if not 0 <= self.query_cache_cap <= 4096:
+            raise ValueError('HSML_QUERY_CACHE_CAP must be 0..4096')
         self.query_interpretations = {}  # executed query parses, never cached answer text
         self.instances = []        # user-validated (tokens, intent, slots)
         self.patterns = {}         # shape_key -> {'intent':.., 'status':'active'|'rejected'}
@@ -159,10 +162,16 @@ class InteractiveChat(ChatSpeaks):
         if d in MUTATING:
             self.write_attempts += 1
             self.writes += 1
-        self.seen.add(s)
+        if d not in QINTENTS:
+            self.seen.add(s)
         self._last_surface = s
-        if d in QINTENTS:
+        if d in QINTENTS and self.query_cache_cap:
+            self.query_interpretations.pop(s, None)
             self.query_interpretations[s] = (d, tuple(sl))
+            while len(self.query_interpretations) > self.query_cache_cap:
+                old = next(iter(self.query_interpretations))
+                del self.query_interpretations[old]
+                self.seen.discard(old)
         sl = [self._clean(x) for x in sl] if sl else sl
         self._grow_lex(sl)
         cls = self._act(d, sl)
@@ -451,6 +460,7 @@ class InteractiveChat(ChatSpeaks):
     # ----- persistence -----
     def snapshot(self):
         return {
+            'schema_version': 1, 'parse_cache_abi': 'relation-family-v1',
             'isa': {k: sorted(v) for k, v in self.isa.items()},
             'attr': {k: sorted(v) for k, v in self.attr.items()},
             'mapper_fc': {d: dict(c) for d, c in self.m.fc.items()},
@@ -466,6 +476,69 @@ class InteractiveChat(ChatSpeaks):
         }
 
     def restore(self, snap):
+        """Validate first, build detached state, then replace atomically.
+        Unversioned experimental snapshots are explicitly unsupported."""
+        def require(ok, message):
+            if not ok:
+                raise ValueError('Incompatible or malformed snapshot: ' + message)
+        def strings(xs):
+            return isinstance(xs, list) and all(isinstance(x, str) for x in xs)
+        require(isinstance(snap, dict), 'object required')
+        require(type(snap.get('schema_version')) is int and snap['schema_version'] == 1,
+                'schema_version 1 required; legacy migration is not implemented')
+        require(snap.get('parse_cache_abi') == 'relation-family-v1', 'parse cache ABI')
+        required = {'isa','attr','mapper_fc','mapper_tot','defs','seen','subjects',
+                    'lex_extra','tau_hi','tau_lo','patterns','query_interpretations'}
+        require(required <= snap.keys(), 'missing fields')
+        for field in ['isa','attr']:
+            v = snap[field]
+            require(isinstance(v, dict) and all(isinstance(k,str) and strings(xs)
+                                               for k,xs in v.items()), field)
+        for field in ['defs','seen','subjects','lex_extra']:
+            require(strings(snap[field]), field)
+        for field in ['tau_hi','tau_lo']:
+            v = snap[field]
+            require(type(v) in (int,float) and math.isfinite(v), field)
+        counts = snap['mapper_tot']; fc = snap['mapper_fc']
+        require(isinstance(counts,dict) and set(counts)==set(B.INTENTS), 'mapper intents')
+        require(isinstance(fc,dict) and set(fc)==set(B.INTENTS), 'mapper features')
+        for d in B.INTENTS:
+            require(type(counts[d]) is int and counts[d]>=0, 'mapper total')
+            require(isinstance(fc[d],dict) and all(isinstance(k,str) and type(v) is int
+                    and v>=0 for k,v in fc[d].items()), 'mapper counts')
+        q = snap['query_interpretations']
+        require(isinstance(q,dict), 'query cache')
+        for surface, value in q.items():
+            require(isinstance(surface,str) and isinstance(value,(list,tuple)) and len(value)==2,
+                    'query record')
+            d,slots = value
+            require(isinstance(d,str) and d in QINTENTS and isinstance(slots,(list,tuple)) and len(slots)==2
+                    and all(isinstance(x,str) for x in slots), 'query intent/slots')
+            require(self._relation_compatible(surface,d), 'query relation mismatch')
+        require(isinstance(snap['patterns'],list), 'patterns')
+        for record in snap['patterns']:
+            require(isinstance(record,(list,tuple)) and len(record)==2 and
+                    isinstance(record[0],str) and isinstance(record[1],str) and record[1] in ('active','rejected'), 'pattern record')
+        try:
+            detached = copy.deepcopy(self)
+            detached._restore_unchecked(snap)
+            require(len(detached.defs)==len(snap['defs']), 'invalid definition')
+            for key,st in detached.patterns.items():
+                require(st['intent'] in RESTATE, 'pattern intent')
+                for kind,val in key:
+                    require((kind=='TOK' and isinstance(val,str)) or
+                            (kind=='VAR' and type(val) is int and 0<=val<B.NSLOTS[st['intent']]),
+                            'pattern slot')
+        except (KeyError,TypeError,ValueError,IndexError) as exc:
+            raise ValueError('Incompatible or malformed snapshot: '+str(exc)) from exc
+        detached.pending = None
+        detached.pattern_awaiting = None
+        detached.instances = []
+        detached.patterns_proposed = set()
+        self.__dict__.clear()
+        self.__dict__.update(detached.__dict__)
+
+    def _restore_unchecked(self, snap):
         self.isa = defaultdict(set, {k: set(v) for k, v in snap['isa'].items()})
         self.attr = defaultdict(set, {k: set(v) for k, v in snap['attr'].items()})
         self.m.fc = {d: Counter(c) for d, c in snap['mapper_fc'].items()}
@@ -475,11 +548,15 @@ class InteractiveChat(ChatSpeaks):
             body = src[6:]
             lhs, rest = body.split(' เหมือน ', 1)
             canon, varstr = rest.split(' ตัวแปร ', 1)
-            rule = compile_def(lhs.split(), canon.split(), [int(x) - 1 for x in varstr.split(',')])
+            positions = [int(x) - 1 for x in varstr.split(',')]
+            if not src.startswith('นิยาม ') or not positions or any(i < 0 or i >= len(lhs.split()) for i in positions):
+                raise ValueError('invalid definition positions')
+            rule = compile_def(lhs.split(), canon.split(), positions)
             if rule: self.defs.append((rule, src))
         self.seen = set(snap['seen'])
         self.query_interpretations = {s: (d, tuple(sl)) for s, (d, sl)
-                                      in snap.get('query_interpretations', {}).items()}
+                                      in list(snap['query_interpretations'].items())[-self.query_cache_cap:]} if self.query_cache_cap else {}
+        self.seen.difference_update(snap['query_interpretations'])
         self.subjects = list(snap['subjects'])
         self.lex = set(BASE_LEX) | EXTENSION_LEX | set(snap['lex_extra'])
         self.tau_hi = snap['tau_hi']; self.tau_lo = snap['tau_lo']
