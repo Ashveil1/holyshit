@@ -1,0 +1,118 @@
+{
+  "even": {
+    "prog": [
+      "one",
+      [
+        [
+          "lt",
+          "a",
+          "b"
+        ],
+        "a",
+        "a",
+        [
+          "add",
+          "a",
+          "a"
+        ],
+        [
+          "mod",
+          [
+            "add",
+            "b",
+            "b"
+          ],
+          1
+        ]
+      ],
+      "iszero"
+    ],
+    "tried": 611365,
+    "logged": "init b=one; if (lt a b) -> a; else step (a,(add a a)); comb=('mod', '(add b b)', 1); post=iszero"
+  },
+  "sumto": {
+    "prog": [
+      "one",
+      [
+        [
+          "lt",
+          "a",
+          "b"
+        ],
+        "a",
+        [
+          "sub",
+          "a",
+          "b"
+        ],
+        "b",
+        [
+          "add",
+          "a",
+          0
+        ]
+      ],
+      "id"
+    ],
+    "tried": 537,
+    "logged": "init b=one; if (lt a b) -> a; else step ((sub a b),b); comb=('add', 'a', 0); post=id"
+  },
+  "square": {
+    "prog": [
+      "one",
+      [
+        [
+          "lt",
+          "a",
+          "b"
+        ],
+        "zero",
+        "a",
+        [
+          "add",
+          "b",
+          "one"
+        ],
+        [
+          "add",
+          "a",
+          0
+        ]
+      ],
+      "id"
+    ],
+    "tried": 747,
+    "logged": "init b=one; if (lt a b) -> zero; else step (a,(add b one)); comb=('add', 'a', 0); post=id"
+  },
+  "choose2": {
+    "prog": [
+      "one",
+      [
+        [
+          "lt",
+          "a",
+          "b"
+        ],
+        "a",
+        [
+          "sub",
+          "a",
+          "b"
+        ],
+        "b",
+        [
+          "add",
+          [
+            "sub",
+            "a",
+            "b"
+          ],
+          0
+        ]
+      ],
+      "id"
+    ],
+    "tried": 43545,
+    "logged": "init b=one; if (lt a b) -> a; else step ((sub a b),b); comb=('add', '(sub a b)', 0); post=id"
+  }
+}

@@ -8,6 +8,23 @@ on:
   workflow_dispatch:
 
 jobs:
+  hsml-learning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: bounded learning, persistence and uncertainty regressions
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python3 ai/wnn/test_learning.py
+          python3 ai/wnn/test_adversarial.py
+          python3 ai/wnn/test_revision.py
+          python3 ai/wnn/test_review_findings.py
+          python3 ai/wnn/test_failed_resume.py
+          python3 ai/wnn/profile_latency.py
   quick:
     runs-on: ubuntu-latest
     steps:
