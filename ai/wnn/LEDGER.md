@@ -5421,3 +5421,42 @@ architecture expansion, GRU, entry integration or user message. Supported
 next diagnostic would require genuinely independent data/controlled token
 representation to test robustness; no such new data or build supplied by
 this result. Broad target remains unmet. Report bounded outcome and limits.
+
+## B621 integrity correction and v2 preregistered transform repair
+
+The preceding all-input multiset equality claim is FALSE for seeds1/2;
+actual distribution audit logged false. Do not interpret run2 gate as a
+clean controlled comparison. Original repeated gold slots share the first
+input position; the v1 transform overwrote that position twice while
+counting two output names, invalidating input/label consistency. This also
+compromises the matched-update claim if target words disappear. Preserve
+v1 source/run2 and withdraw causal evidence from that result.
+
+v2 changes transformation only: assign names once per DISTINCT supervised
+input position, derive every slot label from its replaced position. Duplicate
+slot roles may point to the same token, as original B570 first-occurrence
+supervision does. Shuffle the exact multiset across distinct positions;
+assert every gold target exists and ALL input hashed-feature multisets
+match static/shuffled before training. Same fixed architecture, seeds,
+12 epochs, cells, gate,64 examples; no metric-driven changes. This is a
+versioned correction, not comparable improvement across dataset versions.
+
+## B621 v2 findings: controlled comparison NULL
+
+logs/b621_v2_run1.log: ordinary unseenE intent85/384 joint36/384;
+static rename140/384 joint40/384; entity shuffle139/384 joint29/384.
+Fixed gate NULL. Both improved intent relative to ordinary may be surface
+representation effects; shuffling does not exceed distribution-matched
+static control and joint is lower than both. No robust augmentation gain,
+no cause isolated. This supersedes v1's compromised favorable gate, not
+an improvement trajectory. All-input hashed-feature occurrence multiset
+asserted equal in EACH seed before training, every gold target present,
+64 valid examples/768 updates each. Exact target roles sharing input
+positions retain original pointer-supervision ambiguity, disclosed.
+
+Wall13.2007s, live whole-tree51,372,032 bytes, no1e9 breach. Per-cell and
+seed metrics remain full log; inspected development templates, no independent
+paraphrase or MLC/episodic-binding claim. No GRU/new build authorized by
+this NULL. Concrete completed hypothesis is entity-name association in this
+frozen weak architecture; data transform correction removes initial signal.
+Original nulls remain. General conversation target unmet; report blocker.

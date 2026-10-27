@@ -15,10 +15,13 @@ def transform(rows,mapping=None,shuffle=None):
  out=[];cursor=0
  for s,d,slots,fi in rows:
   ts=s.split();positions=P.gold_positions(s,slots);new=[]
+  replacements={}
   for old,pos in zip(slots,positions):
    if pos<0:raise ValueError('gold slot missing')
-   val=shuffle[cursor] if shuffle is not None else mapping.get(old,old)
-   cursor+=1;ts[pos]=val;new.append(val)
+   if pos not in replacements:
+    val=shuffle[cursor] if shuffle is not None else mapping.get(old,old)
+    cursor+=1;replacements[pos]=val;ts[pos]=val
+   new.append(replacements[pos])
   out.append((' '.join(ts),d,tuple(new),fi))
  return out
 
@@ -36,16 +39,15 @@ if __name__=='__main__':
   words=sorted({v for _,_,sl,_ in tr for v in sl})
   mapping={w:f'Ent{i:03d}' for i,w in enumerate(words)}
   renamed=transform(tr,mapping)
-  bag=[v for _,_,sl,_ in renamed for v in sl];shuf=list(bag)
-  shuffle_rng=random.Random(seed+789)
-  for attempt in range(100):
-   shuffle_rng.shuffle(shuf);randomized=transform(tr,shuffle=shuf)
-   if all(len(sl)==len(set(sl)) for _,_,sl,_ in randomized):break
-  else:raise ValueError('no unique-slot permutation within frozen100 trials')
-  assert collections.Counter(bag)==collections.Counter(v for _,_,sl,_ in randomized for v in sl)
+  bag=[s.split()[pos] for s,d,sl,fi in renamed for pos in dict.fromkeys(P.gold_positions(s,sl))]
+  shuf=list(bag);random.Random(seed+789).shuffle(shuf)
+  randomized=transform(tr,shuffle=shuf)
+  def allhash(rows):return collections.Counter(fid for s,d,sl,fi in rows for ids in P.tok_feats(s) for fid in ids)
+  assert allhash(renamed)==allhash(randomized)
+  assert all(-1 not in P.gold_positions(s,sl) for s,d,sl,fi in randomized)
   hashes=[f for w in mapping.values() for ids in P.tok_feats(w) for f in ids]
   audits.append({'seed':seed,'slot_occurrences':len(bag),'synthetic_feature_occurrences':len(hashes),
-                 'unique_hash_buckets':len(set(hashes)),'same_entity_multiset':True})
+                 'unique_hash_buckets':len(set(hashes)),'same_entity_multiset':True,'all_input_hash_multiset_equal':True,'valid_examples':len(randomized),'updates_each':len(randomized)*12})
   cells={}
   for t,newtemplate in [('seenT',False),('unseenT',True)]:
    for e,unseen in [('seenE',False),('unseenE',True)]:
