@@ -190,3 +190,10 @@ error. Ten programs compare56 caught expressions plus three uncaught bound
 errors, including callable/module, scalar and valid List/Str controls, for404
 parity classifications. This covers bound typing/error precedence, not every
 slice value or width edge.
+
+Subtraction, multiplication and division now share modulo's guest numeric-kind
+check. Invalid operands keep the source operator and guest kinds instead of
+host helper errors naming a different operator with a corrupted left kind.
+Seven programs compare48 caught type errors, three uncaught errors and valid
+numeric/zero-divisor controls, for411 parity classifications. Numeric execution
+and the ordinary addition path are unchanged.
