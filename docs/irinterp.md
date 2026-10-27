@@ -182,3 +182,11 @@ correct guest type names, instead of leaking a malformed division error.
 Thirty-three caught/uncaught, operand-order and numeric/zero-divisor control
 programs bring parity to394 classifications. Valid Int/Float modulo still
 uses the existing host helper; this is a type-error fix, not new arithmetic.
+
+Slice instructions distinguish omitted bounds from explicit Null values and
+validate each supplied bound as Int before rejecting the object's kind.
+Non-List/Str objects report `cannot slice <kind>` rather than an implicit len
+error. Ten programs compare56 caught expressions plus three uncaught bound
+errors, including callable/module, scalar and valid List/Str controls, for404
+parity classifications. This covers bound typing/error precedence, not every
+slice value or width edge.

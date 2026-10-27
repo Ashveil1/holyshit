@@ -524,6 +524,27 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL modulo type parity: {source!r}: {ref!r} != {got!r}")
     print("33 modulo type/error/control programs checked")
 
+    slice_bound_sources = []
+    for value in ['len', 'counter', 'local_fn', '1', 'null', '[1,2]', '"ab"']:
+        source = 'import counter\ndef local_fn():\n  return 1\nf = ' + value + '\n'
+        for span in ['true:', ':"x"', 'null:', ':null', 'null:"x"', '0:', ':1', ':']:
+            source += 'try:\n  print f[' + span + ']\nexcept as error:\n  print error\n'
+        slice_bound_sources.append(source)
+    for span in ['null:', ':null', 'true:']:
+        slice_bound_sources.append('print [1,2][' + span + ']\n')
+    for source in slice_bound_sources:
+        prog = os.path.join(module_dir, "slice_bounds.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL slice bound parity: {source!r}: {ref!r} != {got!r}")
+    print("10 slice-bound/type/order/control programs checked")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')
