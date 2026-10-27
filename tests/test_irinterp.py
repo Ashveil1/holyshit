@@ -363,6 +363,27 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL numeric range parity: {source!r}: {ref!r} != {got!r}")
     print("12 numeric range/alias/rejection cases checked")
 
+    index_sources = []
+    for value in ['null', 'true', '1', '1.5', 'len', 'counter', 'local_fn']:
+        source = 'import counter\ndef local_fn():\n  return 1\nf = ' + value + '\n'
+        for index in ['null', 'true', '0', '1.5', '"x"', '[]', '{}', 'len']:
+            source += 'try:\n  print f[' + index + ']\nexcept as error:\n  print error\n'
+        index_sources.append(source)
+    index_sources.append('print "ab"[0]\nprint [1,2][-1]\nprint {1:2}[1]\n')
+    index_sources.append('print null[true]\n')
+    for source in index_sources:
+        prog = os.path.join(module_dir, "index_kinds.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL index kind parity: {source!r}: {ref!r} != {got!r}")
+    print("9 index container-kind/error-order/control programs checked")
+
     handle_error_sources = []
     for value in ['len', 'counter', 'local_fn']:
         for operation in ['len', 'int']:
