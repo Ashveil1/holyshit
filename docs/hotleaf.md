@@ -77,4 +77,4 @@ before native division. Int30 operands exclude machine signed-division overflow.
 Eight programs cover all sign combinations, zero remainder, Int30 boundaries,
 zero-divisor replay, Float/wide fallback, Bool refusal, multiple modulo sites
 and earlier-intermediate overflow, for77 focused cases. Invalid Bool-modulo error
-wording in the ordinary interpreter remains a separate known parity gap.
+wording is checked by the separate interpreter type-error parity gate.
