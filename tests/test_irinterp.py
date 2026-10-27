@@ -545,6 +545,31 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL slice bound parity: {source!r}: {ref!r} != {got!r}")
     print("10 slice-bound/type/order/control programs checked")
 
+    numeric_sources = []
+    numeric_expressions = 0
+    for op in ['-', '*', '/']:
+        source = 'import counter\ndef local_fn():\n  return 1\n'
+        for value in ['true', 'null', '"s"', '[]', '{}', 'len', 'counter', 'local_fn']:
+            for expr in [value + ' ' + op + ' 3', '3 ' + op + ' ' + value]:
+                source += 'try:\n  print ' + expr + '\nexcept as error:\n  print error\n'
+                numeric_expressions += 1
+        source += 'print 7 ' + op + ' 3, 7.5 ' + op + ' 3\n'
+        numeric_sources.append(source)
+        numeric_sources.append('print true ' + op + ' 3\n')
+    numeric_sources.append('try:\n  print 1 / 0\nexcept as error:\n  print error\n')
+    for source in numeric_sources:
+        prog = os.path.join(module_dir, "numeric_types.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL numeric type parity: {source!r}: {ref!r} != {got!r}")
+    print(f"{numeric_expressions} numeric type errors and controls checked in 7 programs")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')

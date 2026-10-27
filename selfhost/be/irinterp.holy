@@ -392,6 +392,10 @@ def type_name(v):
     return "Dict"
   return "?"
 def do_binop(op, l, r, ln):
+  # Keep guest numeric rejection out of host helpers with malformed errors.
+  if op in ["-", "*", "/", "%"]:
+    if pyrt.py_type(l) not in ["int", "float"] or pyrt.py_type(r) not in ["int", "float"]:
+      fail("operator '" + op + "' needs numbers, got " + type_name(l) + " and " + type_name(r), ln)
   try:
     if op == "+":
       return l + r
@@ -402,10 +406,6 @@ def do_binop(op, l, r, ln):
     if op == "/":
       return l / r
     if op == "%":
-      # Host modulo errors may name division and corrupt the left kind.
-      # Preserve guest type rejection before entering that helper.
-      if pyrt.py_type(l) not in ["int", "float"] or pyrt.py_type(r) not in ["int", "float"]:
-        fail("operator '%' needs numbers, got " + type_name(l) + " and " + type_name(r), ln)
       return l % r
     if op == "<<":
       return l << r
