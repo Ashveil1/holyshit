@@ -9,7 +9,7 @@ function identities. No performance claim is made.
 
 Eligibility is deliberately narrow: an acyclic CFG of up to 16 blocks, up to six
 parameters, constants/parameter loads, integer + - * % & | ^ << >> or unary minus/complement, integer comparisons for conditions, and statically uniform Int or Bool return.
-No calls, globals/captures, mutation, allocation, print, loops, phi nodes or exceptions
+No calls, globals/captures, mutation, allocation, print, loops or exceptions
 are compiled. Bool, objects and values outside signed 30-bit fall back before
 native entry. Every native intermediate is range-guarded; a guard failure
 returns a private sentinel and interprets the original function. Replay is safe
@@ -86,3 +86,12 @@ comparisons, Bool ordering and Bool arithmetic remain interpreted. Eight
 programs cover equality truth tables, literals, branch conditions, mixed-kind
 refusal, ordering refusal and Float-argument fallback, for85 focused cases.
 Bool parameters are still outside native entry.
+
+Acyclic scalar phi joins now support short-circuit `and`/`or` expressions.
+Every predecessor must supply exactly one available value, all of the same
+static Int/Bool kind. Native edges record their predecessor in a private
+register; joins select the corresponding scalar slot. The existing purity and
+range guards still apply, so replay cannot repeat guest effects. Nine programs
+cover Int/Bool joins, nested joins, downstream use, skipped overflow paths,
+actual overflow replay, mixed-kind refusal and type fallback, for94 focused
+cases. Cycles, mutable locals, shared objects and general deopt remain excluded.
