@@ -84,6 +84,16 @@ cases.extend([
  ('shift-bool-fallback','def f(n,k):\n  return n >> k\nprint f(8,1)\ntry:\n  print f(1,true)\nexcept as e:\n  print e\n',1,1,1,1),
  ('shift-intermediate','def f(n):\n  return (n << 29) >> 29\nprint f(2)\nprint f(-2)\nprint f(-1)\n',1,1,1,2),
 ])
+cases.extend([
+ ('mod-signs','def f(a,b):\n  return a % b\nprint f(7,3)\nprint f(-7,3)\nprint f(7,-3)\nprint f(-7,-3)\n',1,1,4,0),
+ ('mod-zero-remainder','def f(a,b):\n  return a % b\nprint f(0,3)\nprint f(6,-3)\nprint f(-6,3)\n',1,1,3,0),
+ ('mod-boundaries','def f(a,b):\n  return a % b\nprint f(-536870912,-1)\nprint f(536870911,-536870912)\nprint f(-536870912,536870911)\n',1,1,3,0),
+ ('mod-zero-divisor','def f(a,b):\n  return a % b\nprint f(7,3)\ntry:\n  print f(1,0)\nexcept as e:\n  print e\nprint f(-7,3)\n',1,1,2,1),
+ ('mod-type-fallback','def f(a,b):\n  return a % b\nprint f(7,3)\nprint f(7.5,3)\nprint f(536870912,3)\n',1,1,1,2),
+ ('mod-bool-refused','def f(n):\n  return n % true\ntry:\n  print f(1)\nexcept:\n  print "caught"\n',1,0,0,0),
+ ('mod-multiple','def f(n):\n  return (n % 7) + (n % -3)\nprint f(20)\nprint f(-20)\n',1,1,2,0),
+ ('mod-overflow-replay','def f(n):\n  return (n * n) % 3\nprint f(2)\nprint f(536870911)\n',1,1,1,1),
+])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
  source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'

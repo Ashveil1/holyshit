@@ -84,7 +84,7 @@ def plan(fn):
           return null
         if ins["binop"] in ["<", "<=", ">", ">=", "==", "!="]:
           ty = "Bool"
-        elif ins["binop"] not in ["+", "-", "*", "&", "|", "^", "<<", ">>"]:
+        elif ins["binop"] not in ["+", "-", "*", "%", "&", "|", "^", "<<", ">>"]:
           return null
       elif op == "un":
         if ins["v"] not in have:
@@ -173,6 +173,22 @@ def compile_leaf(fn, p):
             asm.sub_rr("rax", "rcx")
           elif ins["binop"] == "*":
             asm.imul_rr("rax", "rcx")
+          elif ins["binop"] == "%":
+            asm.cmp_ri32("rcx", 0)
+            asm.jcc("e", "fallback")
+            asm.cqo()
+            asm.idiv_r("rcx")
+            asm.mov_rr("rax", "rdx")
+            # x64 truncates toward zero; guest modulo has divisor's sign.
+            same = "mod_done_" + str(p[1][ins["dest"]])
+            asm.cmp_ri32("rax", 0)
+            asm.jcc("e", same)
+            asm.mov_rr("rdx", "rax")
+            asm.xor_rr("rdx", "rcx")
+            asm.cmp_ri32("rdx", 0)
+            asm.jcc("ge", same)
+            asm.add_rr("rax", "rcx")
+            asm.label(same)
           elif ins["binop"] == "<<" or ins["binop"] == ">>":
             # Never expose x64's masked count or wrap a wide left shift.
             # Int30 shifted by at most 29 fits a signed 64-bit intermediate.
