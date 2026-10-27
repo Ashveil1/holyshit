@@ -460,7 +460,7 @@ def do_unop(op, v, ln):
     raise conv(e, ln)
   fail("IR: bad unop '" + op + "'", ln)
 def do_slice(obj, lo, hi, ln):
-  if pyrt.py_type(obj) == "func":
+  if pyrt.py_type(obj) not in ["list", "str"]:
     fail("cannot slice " + type_name(obj), ln)
   try:
     if lo == null and hi == null:
@@ -532,8 +532,12 @@ def step(st, ins, temps, frame, prev):
     hi = null
     if ins["start"] != null:
       lo = temps[ins["start"]]
+      if pyrt.py_type(lo) != "int":
+        fail("slice index must be Int", ln)
     if ins["stop"] != null:
       hi = temps[ins["stop"]]
+      if pyrt.py_type(hi) != "int":
+        fail("slice index must be Int", ln)
     temps[ins["dest"]] = do_slice(temps[ins["obj"]], lo, hi, ln)
   elif op == "setindex":
     if pyrt.py_type(temps[ins["obj"]]) == "func":
