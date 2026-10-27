@@ -5,7 +5,7 @@ answered by executing stored programs or by the attribute lookup - real data flo
 Skills are seeded from b515's oops legs: re-derived deterministically (same seed/config)
 and verified show_prog == logged string in logs/b515_oops.log before use (provenance).
 LEDGER pre-reg 2026-10-24. Number parse/format and sentence frames are DESIGNED (named)."""
-import random, json, sys, re, os, pickle
+import random, json, sys, re, os, pickle, hashlib
 from collections import defaultdict
 from itertools import combinations
 from b521 import ANIMALS, ATTRS, gen_corpus
@@ -13,6 +13,14 @@ from b526 import CountBackend, decide
 import cur7 as C
 from cur7 import gen as cgen, show_prog, make_fn
 from b515 import setup, capture_lists, search_oops, CAP
+
+PINNED_STARTUP = {'logs/baselib_pin.json': 'ee588ef9500f3550f9b579da4640690189b73316cd81461c36719182f1c49aa3', 'logs/seed_programs.json': '71b65b713f917c5c43ac08d780d2f595d44f9b1228c753f27676791e813ebabb', 'logs/b515_oops.log': '041df473788fbf289ff9ba3b37f9f8b6ef0c017a3e73e7a99eeb7e8e60cb64aa', 'logs/b515_progs.log': '379ef1e9607ba7b14cf27cad5893f262b2397f3625211f413feb153194e90b37'}
+def verify_startup():
+    for name,expected in PINNED_STARTUP.items():
+        path=os.path.join(_HERE,name)
+        if not os.path.isfile(path):raise RuntimeError('required startup data missing: '+name)
+        with open(path,'rb')as f:actual=hashlib.sha256(f.read()).hexdigest()
+        if actual!=expected:raise RuntimeError('startup integrity mismatch: '+name)
 
 SKILLS = {'even': 'เลขคู่', 'sumto': 'ผลบวกถึง', 'square': 'กำลังสอง', 'choose2': 'จับคู่สอง'}
 SKILL_BY_WORD = {v: k for k, v in SKILLS.items()}
@@ -104,8 +112,17 @@ def derive_skills(logged):
     """Re-derive b515 oops programs deterministically; verify against the log strings.
     Cached per task (pickle): on every use the cached program's show_prog MUST still
     equal the current log string - provenance is re-verified, not just remembered."""
+    verify_startup()
     cache = {}
-    if os.path.exists(CACHE):
+    packed=os.path.join(_HERE,'logs','seed_programs.json')
+    if os.path.exists(packed):
+        def tup(v):return tuple(tup(x)for x in v)if isinstance(v,list)else v
+        with open(packed)as f:records=json.load(f)
+        for task,v in records.items():
+            p=tup(v['prog'])
+            if show_prog(p)!=logged.get(task)or v['logged']!=logged.get(task):raise RuntimeError('seed program provenance mismatch')
+            cache[task]=(p,v['tried'])
+    if not cache and os.path.exists(CACHE):
         try:
             cache = pickle.load(open(CACHE, 'rb'))
         except Exception as e:
@@ -140,9 +157,11 @@ def derive_skills(logged):
             raise RuntimeError(f'skill {task} failed to execute after LIB pinning: {e} '
                                f'(dependency logs/baselib_pin.json missing/corrupt?)')
         assert got == pr, f'skill {task} self-check: {px} -> {got}, expected {pr}'
+    if store['even'][1](97,1)!=0:raise RuntimeError('odd parity startup probe failed')
     return store
 
 def pin_lib():
+    verify_startup()
     # Repo-backed base-library pinning (same wrapping as cur7.search); /tmp fallback.
     # Clear error if neither source exists.
     import json as _json, os as _os

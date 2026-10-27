@@ -168,3 +168,8 @@ a single measurement, not a hardware guarantee).
 - Single-user, local, no concurrency, no access control.
 ---
 License: hsml source in this directory is AGPL-3.0-only (see LICENSE and NOTICE). The rest of the repository remains Apache-2.0. Prior Apache-2.0 releases remain valid.
+
+## Bounded learning repair candidate
+New example-driven add/sub expression predictions are conditional on the declared finite grammar, not proof of unrestricted intent or general language understanding. An ambiguous query can ask for another input; reply with `ตอบ <number>`. Fresh procedures outside the fast grammar can use the original recursive program-search and confirmation path after five examples. Search has a finite time budget; a budget reply keeps examples and the old confirmed method. This is not an LLM or new arithmetic discovery.
+
+Complete learning state is saved before the CLI acknowledges a turn. Each memory file is limited to16MiB, each new example record to256pairs, and retained turn provenance to10000entries. At the provenance cap, supported read-only queries remain available but new teaching is refused. This does not promise every stored dataset fits inference or that quotas may be silently dropped. Missing or modified required startup data fails loudly; restore the matching checkout rather than waiting for silent re-training. Only load memory files you trust.

@@ -4,7 +4,8 @@ dialog teaching (b529 induction protocol, zero-eval capture default post-B-533);
 observe into attribute memory; queries go through the existing answer path; anything else
 abstains. Frames + number parsing are DESIGNED (named). A skill taught mid-conversation is
 stored in the SAME memory the query path reads and is immediately queryable."""
-import os, pickle, random, re
+import os, pickle, random, re, time, tempfile, signal, threading
+import learner
 import assoc
 from cur7 import make_fn, show_prog
 import cur7 as C7
@@ -88,12 +89,14 @@ class HSML:
         self.mem = HSMLMemory()
         self.mem.skills = derive_skills(load_logged())
         self.rng = random.Random(seed)
+        self.learning = {}
+        self.turn_provenance = []
         self.ctx = None        # {'word':..., 'pairs':[...], 'rounds':int}
         self.pending = None    # {'prog':..., 'fn':..., 'checks':[cx,...], 'passed':int}
         self.log = []          # (sentence, response-kind, source)
         self.assoc = assoc.Assoc()  # B-558: derived index, rebuilt from live store at proposal time
         self.assoc_fallback = assoc_fallback  # B-558 v4: opt-in only; default keeps pre-B-558 exact-frame + abstain behavior
-        self.induce_cap = None  # None -> b529 default; B-534 Amendment 1 sets a bounded cap for C6
+        self.induce_cap = 700000  # None -> b529 default; B-534 Amendment 1 sets a bounded cap for C6
         # B-559 (DESIGNED, named): dialogue referent state for pronoun resolution.
         # current_topic = the single subject of the most recent unambiguous turn;
         # last_turn_topics = distinct subjects mentioned in the immediately previous turn
@@ -113,6 +116,76 @@ class HSML:
                 self._turn_subjects.append(subj)
 
     def hear(self, sentence):
+        if len(self.turn_provenance)>=10000:
+            if re.fullmatch(r'\S+ (?:มี \S+ ไหม|มี อะไร ?บ้าง|ของ \S+ คืออะไร)' ,sentence.strip()):
+                r=self._learn_hear(sentence,readonly=True)
+                if r is None:r=self._original_hear(sentence)
+                return r
+            return {'kind':'memory_quota','text':'บันทึกประวัติครบ 10000 รายการ ยังรับการสอนเพิ่มไม่ได้ แต่ยังถามความรู้เดิมได้','source':'quota'}
+        started=time.perf_counter()
+        r=self._learn_hear(sentence)
+        if r is None:r=self._original_hear(sentence)
+        r=dict(r);r['latency_seconds']=time.perf_counter()-started
+        self.turn_provenance.append({'input':sentence,'kind':r.get('kind'),'source':r.get('source'),'seconds':r['latency_seconds']})
+        return r
+
+    def _learn_hear(self, sentence, readonly=False):
+        s=sentence.strip()
+        mreply=re.fullmatch(r'ตอบ (\S+)',s)
+        if mreply and self.ctx and self.ctx['word']in self.learning and self.learning[self.ctx['word']].get('clarify')is not None:
+            q=self.learning[self.ctx['word']].pop('clarify')
+            return self._learn_hear(f'ถ้า n เป็น {q} ตอบ {mreply.group(1)}')
+        m=NAME_RE.fullmatch(s)
+        if m:
+            word=m.group(1)
+            # Existing confirmed procedural skills retain original revision safety.
+            if word in self.mem.skills or word in SKILL_BY_WORD:return None
+            if word in self.learning:
+                self.ctx={'word':word,'pairs':list(self.learning[word]['pairs']),'rounds':0,'tried_tot':0}
+                return {'kind':'learning_resumed','text':f'ต่อวิธี {word} จาก {len(self.learning[word]["pairs"])} ตัวอย่างเดิม ไม่ลบตัวอย่าง','source':'examples'}
+            self.learning[word]={'pairs':[],'revision':1,'result':None}
+            self.ctx={'word':word,'pairs':[],'rounds':0,'tried_tot':0}
+            return {'kind':'learning_open','text':f'รับทราบ วิธี {word} สอนตัวอย่างได้','source':'examples'}
+        m=re.fullmatch(r'ถ้า n เป็น (\S+) ตอบ (\S+)',s)
+        if m and self.ctx and self.ctx['word']in self.learning and self.pending is None:
+            def number(t):
+                if re.fullmatch(r'-?[0-9]+',t):return int(t)
+                return frame_num(t)
+            x,y=number(m.group(1)),number(m.group(2))
+            if x is None or y is None:return {'kind':'outside_domain','text':'ยังรับตัวเลขรูปแบบนี้ไม่ได้','source':'parser'}
+            d=self.learning[self.ctx['word']]
+            if len(d['pairs'])>=256:return {'kind':'example_quota','text':'เต็มขอบเขตตัวอย่าง ยังไม่รับตัวอย่างนี้','source':'quota'}
+            d['pairs'].append([x,y]);d['result']=None;self.ctx['pairs']=list(d['pairs'])
+            if len(d['pairs'])>=5:
+                d['result']=learner.infer(d['pairs'])
+                if d['result']['status']=='no_candidate_within_budget':return self._try_induce(s)
+            return {'kind':'example','text':f'เก็บไว้แล้ว {len(d["pairs"])} ตัวอย่าง จะค้นหากฎเมื่อถาม','source':'examples'}
+        m=re.fullmatch(r'(\S+) ของ (\S+) คืออะไร',s)
+        if m and m.group(1)in self.learning:
+            word=m.group(1);t=m.group(2);x=int(t)if re.fullmatch(r'-?[0-9]+',t)else frame_num(t)
+            if x is None:return {'kind':'outside_domain','text':'ยังรับตัวเลขรูปแบบนี้ไม่ได้','source':'parser'}
+            if abs(x)>10**9:return {'kind':'outside_domain','text':'นอกขอบเขตจำนวนที่ทดสอบ','source':'bounded_grammar'}
+            d=self.learning[word]
+            if d['result']is None:
+                if readonly:return {'kind':'memory_quota','text':'ยังไม่มีกฎที่ค้นไว้ ต้องจัดการประวัติก่อนค้นใหม่','source':'quota'}
+                d['result']=learner.infer(d['pairs'])
+            if d['result']['status']=='no_candidate_within_budget' and not readonly and len(d['pairs'])>=5:
+                self.ctx={'word':word,'pairs':list(d['pairs']),'rounds':0,'tried_tot':0}
+                return self._try_induce(s)
+            a=learner.answer(d['result'],x);kind=a['status']
+            if kind=='conditional_prediction':text=f'{word} ของ {t} น่าจะเป็น {a["value"]} (ตามกฎในขอบเขตที่ค้นหา ยังไม่ยืนยันเจตนา)'
+            elif kind=='ambiguous':
+                if not readonly and 'ask_input'in a:d['clarify']=a['ask_input'];self.ctx={'word':word,'pairs':list(d['pairs']),'rounds':0,'tried_tot':0}
+                text='ยังมีกฎได้หลายแบบ'+(f' ถ้า n เป็น {a["ask_input"]} ตอบอะไร'if'ask_input'in a else' ขออีกตัวอย่าง')
+            elif kind=='conflicting_examples':text='ตัวอย่างขัดกัน ขอแก้ตัวอย่างก่อน'
+            elif kind=='example_quota':text='ตัวอย่างเกินขอบเขต 256 คู่ ยังไม่ค้นหากฎ ต้องแบ่งหรือจัดการตัวอย่างก่อน'
+            elif kind=='outside_domain':text='ตัวอย่างหรือตัวเลขอยู่นอกขอบเขตที่รองรับ'
+            elif kind=='needs_examples':text='ยังไม่มีตัวอย่าง ขออย่างน้อยหนึ่งตัวอย่าง'
+            else:text='ยังหากฎที่ใช้ได้ในงบค้นหานี้ไม่ได้ ไม่ใช่ข้อพิสูจน์ว่าไม่มีกฎ'
+            return {'kind':kind,'text':text,'source':'bounded_grammar','prediction':a,'evidence_pairs':len(d['pairs']),'search':{k:v for k,v in d['result'].items()if k!='candidates'}}
+        return None
+
+    def _original_hear(self, sentence):
         # B-559 (ALL DESIGNED, named): wrapper handling discourse particle + pronouns.
         s = sentence.strip()
         if s.startswith('แล้ว '):  # B-559: discourse particle
@@ -923,9 +996,9 @@ class HSML:
     def _try_induce(self, s):
         self.ctx['rounds'] += 1
         if self.ctx['rounds'] > 3:
-            word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
+            word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx['rounds'] = 0
             self._rec(s, 'teach_failed', 'induction', word=word, tried=tried)
-            return {'kind': 'teach_failed', 'text': None, 'source': 'induction', 'tried': tried}
+            return {'kind': 'teach_failed', 'text': 'ยังหากฎในงบนี้ไม่ได้ ตัวอย่างยังอยู่ สอนตัวอย่างต่อได้ ไม่ต้องตั้งชื่อใหม่', 'source': 'induction', 'tried': tried}
         heavy = ('fact', 'sumto', 'square', 'choose2', 'dblfact')  # B-536: pinned recursive baselib
         popped = {}
         if self.induction_lib == 'separated':
@@ -937,15 +1010,30 @@ class HSML:
             # being replaced (also keeps save/load rebuild safe: no self-reference).
             w0 = self.ctx['word']
             if w0 in C7.LIB: popped[w0] = C7.LIB.pop(w0)
+        # Preserve original recursive grammar and confirmation protocol, bound only search time.
+        def timed_out(*_):raise TimeoutError('bounded recursive induction')
+        if threading.current_thread()is not threading.main_thread():
+            C7.LIB.update(popped);self.ctx['rounds']-=1
+            return {'kind':'search_budget','text':'เส้นทางนี้ยังค้นหากฎแบบมีเวลาจำกัดในเธรดนี้ไม่ได้ ตัวอย่างและวิธีเดิมยังอยู่','source':'embedded_search_guard'}
+        previous=signal.getsignal(signal.SIGALRM)
+        previous_timer=signal.getitimer(signal.ITIMER_REAL)
+        if previous_timer[0]>0:
+            C7.LIB.update(popped);self.ctx['rounds']-=1
+            return {'kind':'search_budget','text':'มีงานจับเวลาอื่นอยู่ ยังไม่ค้นหาเพิ่ม ตัวอย่างและวิธีเดิมยังอยู่','source':'embedded_search_guard'}
+        signal.signal(signal.SIGALRM,timed_out);signal.setitimer(signal.ITIMER_REAL,.5)
         try:
             p, tried = induce(self.ctx['pairs'], **({} if self.induce_cap is None else {'cap': self.induce_cap}))
+        except TimeoutError:
+            self.ctx['rounds']-=1
+            return {'kind':'search_budget','text':'ค้นหาครบงบรอบนี้แล้ว ยังไม่เปลี่ยนวิธีเดิม ตัวอย่างยังอยู่','source':'bounded_recursive_search','budget_seconds':.5}
         finally:
+            signal.setitimer(signal.ITIMER_REAL,0);signal.signal(signal.SIGALRM,previous)
             C7.LIB.update(popped)
         self.ctx['tried_tot'] += tried
         if p is None:
-            word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx = None
+            word = self.ctx['word']; tried = self.ctx['tried_tot']; self.ctx['rounds'] = 0
             self._rec(s, 'teach_failed', 'induction', word=word, tried=tried)
-            return {'kind': 'teach_failed', 'text': None, 'source': 'induction', 'tried': tried}
+            return {'kind': 'teach_failed', 'text': 'ยังหากฎในงบนี้ไม่ได้ ตัวอย่างยังอยู่ สอนตัวอย่างต่อได้ ไม่ต้องตั้งชื่อใหม่', 'source': 'induction', 'tried': tried}
         fn = make_fn(p)
         import cur7 as C; C.CAPF[0] = 20000
         checks = self.rng.sample(range(40, 400), 3)
@@ -1028,6 +1116,7 @@ class HSML:
                                             'to_revision': r_new}
                             C7.LIB.pop(t, None)
                             changed = True
+            self.learning.pop(word,None)  # confirmed recursive program now owns query path
             C7.ev.cache_clear()  # B-539: no stale-cache residue after any successful store
             self._rec(s, 'skill_stored', 'induction', word=word, tried=tot,
                       prog=show_prog(pend['prog']))
@@ -1046,8 +1135,20 @@ class HSML:
                    'attrs_N': {n: sorted(v) for n, v in getattr(self.mem.attrs, 'N', {}).items()},
                    'words': dict(SKILL_BY_WORD),
                    'links': {k: sorted(v) for k, v in self.mem.links.items()}}
+        payload['full_state']={'schema':2,'grammar_ops':list(learner.GRAMMAR['ops']),'learning':self.learning,'ctx':self.ctx,'pending':{k:v for k,v in self.pending.items()if k!='fn'}if self.pending else None,'rng':self.rng.getstate(),'isa':getattr(self.mem,'isa',{}),'syn':getattr(self.mem,'syn',{}),'current_topic':self.current_topic,'last_turn_topics':self.last_turn_topics,'turn_provenance':self.turn_provenance,'assoc_fallback':self.assoc_fallback,'induction_lib':self.induction_lib}
         if extra: payload.update(extra)
-        with open(path, 'wb') as f: pickle.dump(payload, f)
+        raw=pickle.dumps(payload,protocol=4)
+        if len(raw)>16*1024*1024:raise ValueError('memory quota exceeded; not saved')
+        parent=os.path.dirname(os.path.abspath(path));fd,tmp=tempfile.mkstemp(prefix='.hsml-',dir=parent)
+        try:
+            with os.fdopen(fd,'wb')as f:f.write(raw);f.flush();os.fsync(f.fileno())
+            with open(tmp,'rb')as f:check=pickle.load(f)
+            if check!=payload:raise RuntimeError('save verification failed')
+            os.replace(tmp,path);d=os.open(parent,os.O_DIRECTORY)
+            try:os.fsync(d)
+            finally:os.close(d)
+        finally:
+            if os.path.exists(tmp):os.unlink(tmp)
 
     @classmethod
     def load(cls, path, seed=0):
@@ -1080,4 +1181,11 @@ class HSML:
         for k, v in payload.get('links', {}).items():
             h.mem.links[k] = set(v)
         SKILL_BY_WORD.update(payload['words'])
+        v=payload.get('full_state')
+        if v is not None:
+            h.learning=v['learning']
+            for record in h.learning.values():record['result']=None
+            h.ctx=v['ctx'];h.pending=v['pending']
+            if h.pending:h.pending['fn']=make_fn(h.pending['prog'])
+            h.rng.setstate(v['rng']);h.mem.isa=v['isa'];h.mem.syn=v['syn'];h.current_topic=v['current_topic'];h.last_turn_topics=v['last_turn_topics'];h.turn_provenance=v['turn_provenance'];h.assoc_fallback=v['assoc_fallback'];h.induction_lib=v['induction_lib']
         return h
