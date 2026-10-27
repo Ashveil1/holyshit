@@ -169,9 +169,14 @@ def call_builtin(name, args, ln):
         fail("cannot convert " + kind + " to Float", ln)
       return float(args[0])
     if name == "range":
+      # The guest reference accepts numeric endpoints and truncates Float.
+      # Validate both kinds before conversion; Bool is not a guest number.
+      for endpoint in args:
+        if pyrt.py_type(endpoint) not in ["int", "float"]:
+          fail("range wants range(n) or range(a, b) with Ints", ln)
       if n == 1:
-        return range(args[0])
-      return range(args[0], args[1])
+        return range(int(args[0]))
+      return range(int(args[0]), int(args[1]))
     if name == "append":
       return append(args[0], args[1])
     if name == "split":
