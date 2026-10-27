@@ -5273,3 +5273,33 @@ Concrete next bounded review is interpretation-cache invalidation on taught
 definition changes: a previously answered surface must not bypass a newly
 conflicting/lossy definition. Check precedence before claiming repeat safety;
 no unsupported capability experiment or new surface data.
+
+## B-619 preregistration: definition changes invalidate repeated query parses
+
+B618 precedence defect test, live/restored. Execute 'แมว มี หาง ไหม',
+then teach a definition dropping ไหม from this surface. Repeat must reach
+lossy-definition hold, not cached query answer; no write/attempt/store
+change. Also introduce conflicting definition canonicals and require hold.
+If reproduced, successful definition insertion invalidates all cached query
+interpretations and their seen-set shortcut entries. Subsequent repeats
+must run current definition logic, not an old interpretation. Failed
+new definition does not invalidate. No language mechanism or expectation
+change; total live RSS 1e9 cap, <=60 seconds; no production integration.
+
+## B-619 findings and bounded closeout
+
+run1 FAIL: cached HAS answer bypassed newly taught lossy definition, live
+and restored. Patch successful definition insertion clears interpreted
+query cache AND its literal-seen entries. Old facts untouched; failed
+definition path unchanged. run2 lossy cases pass; run3 includes predeclared
+conflicting-canonical cases, 4/4 live/restored holds with store/write/attempt
+equality and no pending fact confirmation. B618/B611 pass. Original entry
+CHECK FAIL still intentional lossy-definition example; answer checks true.
+Live aggregate final B619 and entry recorded in logs under enforced 1e9.
+
+No further broad capability claim follows. Concrete audits B617-619 now
+resolved; query cache remains unbounded with session size and old snapshot
+semantics are not a general durable migration guarantee. Existing broad
+language/teach-once target and alignment NULLs remain, with no supported
+new capability implementation proposal. Hand unresolved whole-target
+research back explicitly rather than maintain an empty five-minute loop.

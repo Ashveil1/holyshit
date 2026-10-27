@@ -295,6 +295,9 @@ class InteractiveChat(ChatSpeaks):
                 rule = compile_def(lhs.split(), canon.split(), varpos)
                 if rule:
                     self.defs.append((rule, s))
+                    # New definitions may conflict with any previous parse.
+                    self.seen.difference_update(self.query_interpretations)
+                    self.query_interpretations.clear()
                     for t in lhs.split(): self.lex.add(t)
                     self.seen.add(s)
                     return 'def_taught', 'จำรูปแบบใหม่แล้ว', 'teacher_assisted'

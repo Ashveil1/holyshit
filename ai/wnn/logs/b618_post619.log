@@ -1,0 +1,2 @@
+RESULTS [{"intent": "is_a_q", "replies": ["ไม่รู้ว่า มิโล เป็น แมว ยังไม่เคยถูกสอน", "ใช่ มิโล เป็น แมว", "ใช่ มิโล เป็น แมว", "ไม่รู้ว่า มิโล เป็น แมว ยังไม่เคยถูกสอน"], "unknown": true, "known": true, "restart": true, "retracted": true, "no_write": true}, {"intent": "ask_attr", "replies": ["ไม่รู้ว่า บัว มี กลีบ ยังไม่เคยถูกสอน", "ใช่ บัว มี กลีบ", "ใช่ บัว มี กลีบ", "ไม่รู้ว่า บัว มี กลีบ ยังไม่เคยถูกสอน"], "unknown": true, "known": true, "restart": true, "retracted": true, "no_write": true}]
+CHECK PASS
