@@ -80,7 +80,9 @@ def plan(fn):
       elif op == "bin":
         if ins["l"] not in have or ins["r"] not in have:
           return null
-        if types[ins["l"]] != "Int" or types[ins["r"]] != "Int":
+        both_int = types[ins["l"]] == "Int" and types[ins["r"]] == "Int"
+        bool_eq = types[ins["l"]] == "Bool" and types[ins["r"]] == "Bool" and ins["binop"] in ["==", "!="]
+        if not both_int and not bool_eq:
           return null
         if ins["binop"] in ["<", "<=", ">", ">=", "==", "!="]:
           ty = "Bool"

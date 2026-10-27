@@ -94,6 +94,16 @@ cases.extend([
  ('mod-multiple','def f(n):\n  return (n % 7) + (n % -3)\nprint f(20)\nprint f(-20)\n',1,1,2,0),
  ('mod-overflow-replay','def f(n):\n  return (n * n) % 3\nprint f(2)\nprint f(536870911)\n',1,1,1,1),
 ])
+cases.extend([
+ ('bool-equality','def f(a,b):\n  return (a < 0) == (b < 0)\nprint json_str([f(-1,-2), f(-1,2), f(1,2)])\n',1,1,3,0),
+ ('bool-inequality','def f(a,b):\n  return (a < 0) != (b < 0)\nprint json_str([f(-1,-2), f(-1,2), f(1,2)])\n',1,1,3,0),
+ ('bool-eq-literal','def f(n):\n  return (n < 3) == false\nprint f(2)\nprint f(4)\n',1,1,2,0),
+ ('bool-eq-branch','def f(n):\n  if (n < 3) != true:\n    return 7\n  return 2\nprint f(1)\nprint f(4)\n',1,1,2,0),
+ ('bool-mixed-eq-refused','def f(n):\n  return (n < 3) == 1\nprint f(1)\nprint f(4)\n',1,0,0,0),
+ ('bool-mixed-ne-refused','def f(n):\n  return 0 != (n < 3)\nprint f(1)\nprint f(4)\n',1,0,0,0),
+ ('bool-order-refused','def f(n):\n  return (n < 3) < false\ntry:\n  print f(1)\nexcept as e:\n  print e\n',1,0,0,0),
+ ('bool-eq-type-fallback','def f(n):\n  return (n < 3) == true\nprint f(1)\nprint f(1.5)\nprint f(4)\n',1,1,2,1),
+])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
  source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'

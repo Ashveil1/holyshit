@@ -78,3 +78,11 @@ Eight programs cover all sign combinations, zero remainder, Int30 boundaries,
 zero-divisor replay, Float/wide fallback, Bool refusal, multiple modulo sites
 and earlier-intermediate overflow, for77 focused cases. Invalid Bool-modulo error
 wording is checked by the separate interpreter type-error parity gate.
+
+Equality/inequality between two statically Bool temporaries now stays native,
+including comparison results and Bool literals. It uses the existing machine
+0/1 representation and reconstructs guest Bool at return. Mixed Bool/Int
+comparisons, Bool ordering and Bool arithmetic remain interpreted. Eight
+programs cover equality truth tables, literals, branch conditions, mixed-kind
+refusal, ordering refusal and Float-argument fallback, for85 focused cases.
+Bool parameters are still outside native entry.
