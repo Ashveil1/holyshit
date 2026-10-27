@@ -69,7 +69,25 @@ def plan(fn):
         return null
       op = ins["op"]
       ty = "Int"
-      if op == "load":
+      if op == "phi":
+        # Each incoming edge supplies one available scalar of the same kind.
+        if len(ins["arms"]) != len(preds[lab]) or len(ins["arms"]) == 0:
+          return null
+        seen_arms = {}
+        phi_type = null
+        for arm in ins["arms"]:
+          parent = arm[0]
+          if parent not in preds[lab] or parent in seen_arms:
+            return null
+          seen_arms[parent] = true
+          if arm[1] not in available[parent]:
+            return null
+          arm_type = types[arm[1]]
+          if phi_type != null and phi_type != arm_type:
+            return null
+          phi_type = arm_type
+        ty = phi_type
+      elif op == "load":
         if ins["name"] not in fn["params"]:
           return null
       elif op == "const":
@@ -145,11 +163,26 @@ def compile_leaf(fn, p):
     asm.mov_rr("rbp", "rsp")
     asm.sub_ri32("rsp", (len(p[1]) * 8 + 15) & (0 - 16))
     asm.mov_ri64("rdi", ptr + 4096)
+    block_ids = {}
+    for i in range(len(p[0])):
+      block_ids[p[0][i]["label"]] = i
     for block in p[0]:
       asm.label("block_" + block["label"])
       for ins in block["instrs"]:
         op = ins["op"]
-        if op == "load":
+        if op == "phi":
+          done_phi = "phi_done_" + str(p[1][ins["dest"]])
+          for i in range(len(ins["arms"])):
+            arm = ins["arms"][i]
+            next_arm = "phi_next_" + str(p[1][ins["dest"]]) + "_" + str(i)
+            asm.cmp_ri32("r8", block_ids[arm[0]])
+            asm.jcc("ne", next_arm)
+            asm.mov_rm("rax", "rbp", 0 - p[1][arm[1]])
+            asm.jmp(done_phi)
+            asm.label(next_arm)
+          asm.jmp("fallback")
+          asm.label(done_phi)
+        elif op == "load":
           idx = 0
           while fn["params"][idx] != ins["name"]:
             idx = idx + 1
@@ -216,6 +249,7 @@ def compile_leaf(fn, p):
         guard()
         asm.mov_mr("rbp", "rax", 0 - p[1][ins["dest"]])
       tm = block["term"]
+      asm.mov_ri32("r8", block_ids[block["label"]])
       if tm["term"] == "ret":
         asm.mov_rm("rax", "rbp", 0 - p[1][tm["val"]])
         asm.jmp("done")

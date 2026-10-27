@@ -104,6 +104,17 @@ cases.extend([
  ('bool-order-refused','def f(n):\n  return (n < 3) < false\ntry:\n  print f(1)\nexcept as e:\n  print e\n',1,0,0,0),
  ('bool-eq-type-fallback','def f(n):\n  return (n < 3) == true\nprint f(1)\nprint f(1.5)\nprint f(4)\n',1,1,2,1),
 ])
+cases.extend([
+ ('phi-int-and','def f(a,b):\n  return a and b\nprint f(0,7)\nprint f(2,7)\nprint f(-2,-7)\n',1,1,3,0),
+ ('phi-int-or','def f(a,b):\n  return a or b\nprint f(0,7)\nprint f(2,7)\nprint f(0,0)\n',1,1,3,0),
+ ('phi-bool-and','def f(a,b):\n  return (a < 3) and (b < 3)\nprint json_str([f(1,2), f(1,4), f(4,1)])\n',1,1,3,0),
+ ('phi-bool-or','def f(a,b):\n  return (a < 3) or (b < 3)\nprint json_str([f(1,4), f(4,1), f(4,4)])\n',1,1,3,0),
+ ('phi-nested','def f(a,b,c):\n  return (a and b) or c\nprint f(0,2,3)\nprint f(1,2,3)\nprint f(1,0,3)\n',1,1,3,0),
+ ('phi-result-use','def f(a,b):\n  return (a or b) * 2\nprint f(0,3)\nprint f(2,3)\n',1,1,2,0),
+ ('phi-short-guard','def f(a,b):\n  return a or (b * b)\nprint f(2,536870911)\nprint f(0,536870911)\nprint f(0,3)\n',1,1,2,1),
+ ('phi-mixed-refused','def f(n):\n  return n or false\nprint f(0)\nprint f(2)\n',1,0,0,0),
+ ('phi-type-fallback','def f(a,b):\n  return a or b\nprint f(0,3)\nprint f("", "x")\nprint f(2,3)\n',1,1,2,1),
+])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
  source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'
