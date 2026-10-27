@@ -175,3 +175,10 @@ output, embedded zero/high bytes, alias calls, argument counts, invalid paths
 and preservation of an existing file on validation failure, for361 parity
 classifications. Unsafe memory and network builtins remain refused; this is
 binary file output, not broader unsafe or FFI support.
+
+Modulo checks numeric guest kinds before calling the host helper. Invalid
+Bool/Null/Str/List/Dict/Func/Builtin/Module operands now report `%` and the
+correct guest type names, instead of leaking a malformed division error.
+Thirty-three caught/uncaught, operand-order and numeric/zero-divisor control
+programs bring parity to394 classifications. Valid Int/Float modulo still
+uses the existing host helper; this is a type-error fix, not new arithmetic.

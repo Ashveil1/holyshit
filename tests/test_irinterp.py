@@ -500,6 +500,30 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
                 print(f"FAIL write_bytes error {source!r}: {ref!r} != {got!r}")
     print("17 write_bytes value/error/file-content programs checked")
 
+    modulo_sources = []
+    for value in ['true', 'null', '"s"', '[]', '{}', 'len', 'counter', 'local_fn']:
+        for expr in [value + ' % 3', '3 % ' + value]:
+            for caught in (False, True):
+                source = 'import counter\ndef local_fn():\n  return 1\n'
+                if caught:
+                    source += 'try:\n  print ' + expr + '\nexcept as error:\n  print error\n'
+                else:
+                    source += 'print ' + expr + '\n'
+                modulo_sources.append(source)
+    modulo_sources.append('print 7 % 3, -7 % 3, 7 % -3, -7 % -3\nprint 7.5 % 3\ntry:\n  print 1 % 0\nexcept as error:\n  print error\n')
+    for source in modulo_sources:
+        prog = os.path.join(module_dir, "modulo_types.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL modulo type parity: {source!r}: {ref!r} != {got!r}")
+    print("33 modulo type/error/control programs checked")
+
     unit = os.path.join(d, "states.holy")
     with open(unit, "w") as f:
         f.write('import normalize\nimport irbuild\nimport irinterp\n')
