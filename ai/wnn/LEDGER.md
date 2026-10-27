@@ -5350,3 +5350,74 @@ long-session conversational competence. ENTRY_GAPS.md consolidates actual
 runnable state, supplied/learned boundary, known failures, NULLs and remaining
 uncapped structures. No supported broad build identified; concrete task
 complete, overall goal unmet. No production integration or user update.
+
+## B-621 preregistered: paired entity-randomization augmentation diagnostic
+
+Frozen B570 architecture/encoder/backprop/Adam, fixed12 epochs (disable
+original dev early-stop/best-state selection for equal updates, disclosed
+training-protocol change).3 paired seeds,64 examples,768 updates each arm.
+No support examples/in-context binding, no MLC/episodic claim. Gold slot
+positions used for supervised pointer loss AND original train-time targeted
+dropout; no masks/types or gold slot data passed during prediction.
+
+Ordinary vs static renaming vs per-occurrence entity shuffle. Static maps
+each original slot token to unique synthetic token; shuffle permutes this
+EXACT multiset over all slot positions, preserving input token count,
+synthetic token marginals and feature/hash multiset while destroying original
+entity/intent association. Gold slot outputs transformed with inputs.
+Static vs shuffle isolates association better than ordinary vs synthetic
+because character distribution changes. Report hash collisions and lexical
+marginals; no new encoder/hash or architecture arms.
+Cells: seen templates/entities; seen templates/unseen entities; unseen
+existing NEW_EVAL_FAM templates/seen entities; unseen template/unseen
+entities. Generated families already inspected: DEVELOPMENT evidence only.
+No claim independently authored heldout paraphrases: none available here
+without author contamination; new template generation isn't independent.
+Freeze spec before run; gate pooled unseen-entity intent AND joint counts
+shuffle > BOTH controls, else NULL. Intent, all-item slots, joint metrics
+per seed/cell; no improvement cherry-pick.90s wall aggregate,1e9 live tree.
+No pretrained/spending/actions/entry integration; preserve original NULLs.
+
+B621 run1 aborted before training: entity permutation assigned duplicate
+slot values within one utterance, making original first-occurrence pointer
+supervision ambiguous. Pre-run amendment for completed run: at most100 fixed
+RNG permutations to obtain unique slot values per utterance, preserve exact
+marginal token multiset and examples, else abort. This conditional sampling
+constraint is supplied. No outcome results inspected/tuned.
+
+## B-621 findings: pooled gate pass, heterogeneous and low absolute accuracy
+
+run2: pooled unseen-entity cells n384 per arm, ordinary intent85 joint36;
+static rename intent140 joint40; entity shuffle intent154 joint55. Fixed
+pooled gate PASS, but absolute intent40.1%/joint14.3% for shuffle, not useful
+conversation. Entire per-seed/cell results remain in log; seed0 shuffle
+unseen-template joint0/64, seed2 shuffle seen-template intent15/64 vs
+static44/64. No robust per-seed improvement claim. Original B570/B571
+nulls unchanged; fixed12-epoch protocol is not original best-dev-selected
+training and must not be compared as a reproduction improvement.
+
+All-item slot and joint metrics distinct. Exact train slot-token marginals
+and ALL input hashed-feature occurrence multisets equal static vs shuffled
+(logs/b621_distribution_audit.log), not just same vocabulary. Hash collision
+statistics explicitly reported. Association/context placement changes are
+intended; occurrence-position distributions and optimizer trajectories change.
+Ordinary-vs-synthetic contrast changes surface/character distribution; static
+control isolates that partially. Finite3-seed result cannot identify a unique
+cause. Randomized arm is static per-occurrence augmentation across training
+examples, not new permutation per epoch or in-context support learning.
+
+Initial run1 aborted before training when two slots received same name;
+conditional permutations within100 trials preserved marginals. Completed
+run uses same64 examples/768 updates per arm,3 seeds, unchanged architecture.
+Gold slot positions train pointers and original targeted dropout; no privileged
+slots/types at inference. Evaluation cells reuse inspected generator families,
+not independently authored paraphrases. 'seenE' means source vocabulary split,
+not guaranteed every sampled entity occurred in64-example training; missing
+synthetic mappings explicitly get Missing identifiers. UnseenE uses held-out
+source vocabulary and synthetic Novel identifiers; no role-binding claim.
+
+Wall11.8007s; live aggregate51,380,224 bytes, no1e9 breach. No test feedback,
+architecture expansion, GRU, entry integration or user message. Supported
+next diagnostic would require genuinely independent data/controlled token
+representation to test robustness; no such new data or build supplied by
+this result. Broad target remains unmet. Report bounded outcome and limits.

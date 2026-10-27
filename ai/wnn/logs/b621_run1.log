@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/sandbox/holyshit/ai/wnn/b621.py", line 42, in <module>
+    assert all(len(sl)==len(set(sl)) for _,_,sl,_ in randomized)
+AssertionError
+LIVE-TREE {"command": ["python3", "b621.py"], "peak_concurrent_rss_bytes": 54919168, "budget_bytes": 1000000000, "exceeded": false, "samples": 425, "sample_interval_seconds": 0.01, "includes": "supervisor plus all descendants", "pids_at_peak": [9077, 9078], "child_exit": 1}
