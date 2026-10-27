@@ -8,7 +8,7 @@ and resumes the hs interpreter. Source rebinding and aliases keep their normal
 function identities. No performance claim is made.
 
 Eligibility is deliberately narrow: an acyclic CFG of up to 16 blocks, up to six
-parameters, constants/parameter loads, integer + - * & | ^ << >> or unary minus/complement, integer comparisons for conditions, and statically uniform Int or Bool return.
+parameters, constants/parameter loads, integer + - * % & | ^ << >> or unary minus/complement, integer comparisons for conditions, and statically uniform Int or Bool return.
 No calls, globals/captures, mutation, allocation, print, loops, phi nodes or exceptions
 are compiled. Bool, objects and values outside signed 30-bit fall back before
 native entry. Every native intermediate is range-guarded; a guard failure
@@ -70,3 +70,11 @@ before the Int30 guard, and right shift is arithmetic for negative operands.
 No x64 masked count is exposed. Eight programs check count and value boundaries,
 Bool refusal/type fallback, negative arithmetic shift and intermediate overflow
 replay, for69 focused cases. This is guarded scalar replay, not general deopt.
+
+Int modulo now uses signed division plus a remainder-sign correction to match
+the guest divisor-sign rule. A zero divisor replays the interpreted function
+before native division. Int30 operands exclude machine signed-division overflow.
+Eight programs cover all sign combinations, zero remainder, Int30 boundaries,
+zero-divisor replay, Float/wide fallback, Bool refusal, multiple modulo sites
+and earlier-intermediate overflow, for77 focused cases. Invalid Bool-modulo error
+wording in the ordinary interpreter remains a separate known parity gap.
