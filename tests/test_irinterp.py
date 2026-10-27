@@ -339,6 +339,30 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL handle display parity: {source!r}: {ref!r} != {got!r}")
     print("8 callable/module display cases checked")
 
+    # Reference range accepts Float endpoints with truncation toward zero.
+    range_sources = [
+        'print range(3.9)\nprint range(-3.9)\nprint range(-0.9)\n',
+        'print range(-2.9, 3.9)\nprint range(2.9, -3.9)\n',
+        'print range(-2, 2.9)\nprint range(-2.9, 2)\n',
+        'r = range\nprint r(3.9)\nprint r(-2.9, 2.9)\n',
+    ]
+    for expr in ['range(true)', 'range(false, 2.5)', 'range(2.5, true)',
+                 'range("3")', 'range(2.5, null)', 'range(len, 2.5)',
+                 'range()', 'range(1.5, 2.5, 3.5)']:
+        range_sources.append('try:\n  print ' + expr + '\nexcept as error:\n  print error\n')
+    for source in range_sources:
+        prog = os.path.join(module_dir, "range_numeric.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL numeric range parity: {source!r}: {ref!r} != {got!r}")
+    print("12 numeric range/alias/rejection cases checked")
+
     handle_error_sources = []
     for value in ['len', 'counter', 'local_fn']:
         for operation in ['len', 'int']:

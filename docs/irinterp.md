@@ -197,3 +197,10 @@ host helper errors naming a different operator with a corrupted left kind.
 Seven programs compare48 caught type errors, three uncaught errors and valid
 numeric/zero-divisor controls, for411 parity classifications. Numeric execution
 and the ordinary addition path are unchanged.
+
+`range()` now accepts Int/Float endpoints like the reference interpreter,
+truncating Float endpoints toward zero before building the range. Both endpoint
+kinds are checked before conversion; Bool and other non-numeric values retain
+the existing error. Twelve direct/alias, positive/negative/fractional, mixed-kind
+and rejection programs bring parity to423 classifications. This does not claim
+unbounded ranges or Float conversions beyond the hosted Int width.
