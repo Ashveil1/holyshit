@@ -81,8 +81,9 @@ def main():
         text = r.get('text')
         if text is None:
             text = '(ไม่มีคำตอบ - hsml has no honest answer for that)'
+        h.save(a.memory)  # persist before acknowledging accepted learning
         print(f'hsml> {text}')
-        h.save(a.memory)  # autosave every turn: taught content survives a crash
+        # h.save(a.memory)  # autosave every turn: taught content survives a crash
 
     h.save(a.memory)
     print(f'[memory saved: {a.memory}]')
