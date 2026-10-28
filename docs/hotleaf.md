@@ -96,12 +96,14 @@ cover Int/Bool joins, nested joins, downstream use, skipped overflow paths,
 actual overflow replay, mixed-kind refusal and type fallback, for94 focused
 cases. Cycles, mutable locals, shared objects and general deopt remain excluded.
 
-Write-once local scalar aliases now extend across the acyclic CFG. A local
-store records an existing Int/Bool temporary available at the store, and a
-later load copies its private native slot only when that temporary is
-available on every incoming path. No guest frame or heap object is mutated.
-Branch-confined stores read after a join, a second store to the same local,
-parameter writes, reads before binding and effectful functions remain
-interpreted. Seventeen programs cover chained and cross-block Int/Bool locals,
-joins, overflow replay, type fallback and refusals, for111 focused cases. This
-is not mutable-local, phi-local or loop compilation.
+Write-once local scalar aliases now extend across the acyclic CFG and
+through joins. A local store records an existing Int/Bool temporary available
+at the store; a load copies its private native slot only when the local is
+bound on every incoming path. When each arm binds the local once to a
+different available temporary of one static kind, the loads resolve through a
+synthetic phi lowered like any other join. No guest frame or heap object is
+mutated. A second store on any path, mixed-kind join arms, a local bound on
+only some incoming paths, parameter writes, reads before binding and effectful
+functions remain interpreted. Twenty-three programs cover chained, cross-block
+and diamond Int/Bool locals, overflow replay, type fallback and refusals,
+for117 focused cases. This is not mutable-local or loop compilation.

@@ -44,10 +44,12 @@ def plan(fn):
   queue = [fn["entry"]]
   order = []
   available = {}
+  lavailable = {}
   slots = {}
   types = {}
-  local_values = {}
   local_loads = {}
+  local_phis = {}
+  lp_count = 0
   count = 0
   result_type = null
   qi = 0
@@ -56,6 +58,7 @@ def plan(fn):
     qi = qi + 1
     b = by[lab]
     have = {}
+    lhave = {}
     if len(preds[lab]) > 0:
       first = available[preds[lab][0]]
       for temp in first:
@@ -65,6 +68,40 @@ def plan(fn):
             common = false
         if common:
           have[temp] = true
+      # A write-once local bound on every incoming path stays visible. Arms
+      # that bind one local to different available temps of one static kind
+      # meet in a synthetic phi, lowered like any other join.
+      first_l = lavailable[preds[lab][0]]
+      for name in first_l:
+        common = true
+        for parent in preds[lab]:
+          if name not in lavailable[parent]:
+            common = false
+        if common:
+          src0 = first_l[name]
+          same = true
+          arms = []
+          for parent in preds[lab]:
+            src = lavailable[parent][name]
+            if src != src0:
+              same = false
+            append(arms, [parent, src])
+          if same:
+            lhave[name] = src0
+          else:
+            ty0 = types[src0]
+            for arm in arms:
+              if types[arm[1]] != ty0:
+                return null
+            lp_count = lp_count + 1
+            tmp = "lphi" + str(lp_count)
+            slots[tmp] = (len(slots) + 1) * 8
+            types[tmp] = ty0
+            have[tmp] = true
+            lhave[name] = tmp
+            if lab not in local_phis:
+              local_phis[lab] = []
+            append(local_phis[lab], {"op": "phi", "dest": tmp, "arms": arms})
     for ins in b["instrs"]:
       count = count + 1
       if count > 128:
@@ -72,13 +109,12 @@ def plan(fn):
       op = ins["op"]
       ty = "Int"
       if op == "stvar":
-        # Write-once locals are private scalar aliases only. The stored
-        # temporary must be available at the store, and each later load
-        # needs it on every incoming path, so branch-confined stores read
-        # after a join remain refused.
-        if ins["name"] in fn["params"] or ins["name"] in local_values or ins["src"] not in have:
+        # Write-once locals are private scalar aliases on every path. The
+        # stored temporary must be available at the store, and a name bound
+        # on any incoming path or earlier in this block refuses a second store.
+        if ins["name"] in fn["params"] or ins["name"] in lhave or ins["src"] not in have:
           return null
-        local_values[ins["name"]] = ins["src"]
+        lhave[ins["name"]] = ins["src"]
         continue
       if op == "phi":
         # Each incoming edge supplies one available scalar of the same kind.
@@ -100,9 +136,9 @@ def plan(fn):
         ty = phi_type
       elif op == "load":
         if ins["name"] not in fn["params"]:
-          if ins["name"] not in local_values:
+          if ins["name"] not in lhave:
             return null
-          src = local_values[ins["name"]]
+          src = lhave[ins["name"]]
           if src not in have:
             return null
           local_loads[ins["dest"]] = src
@@ -155,6 +191,7 @@ def plan(fn):
         return null
       targets = [tm["then"], tm["els"]]
     available[lab] = have
+    lavailable[lab] = lhave
     append(order, b)
     for target in targets:
       remaining[target] = remaining[target] - 1
@@ -163,7 +200,7 @@ def plan(fn):
   # A cycle or an unreachable block cannot enter this topological walk.
   if len(order) != len(fn["blocks"]):
     return null
-  return [order, slots, types, result_type, local_loads]
+  return [order, slots, types, result_type, local_loads, local_phis]
 def guard():
   asm.cmp_ri32("rax", 0 - 536870912)
   asm.jcc("l", "fallback")
@@ -185,7 +222,10 @@ def compile_leaf(fn, p):
       block_ids[p[0][i]["label"]] = i
     for block in p[0]:
       asm.label("block_" + block["label"])
-      for ins in block["instrs"]:
+      instrs = []
+      if block["label"] in p[5]:
+        instrs = p[5][block["label"]]
+      for ins in instrs + block["instrs"]:
         op = ins["op"]
         if op == "stvar":
           continue
