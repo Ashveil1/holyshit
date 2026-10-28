@@ -109,10 +109,11 @@ def plan(fn):
       op = ins["op"]
       ty = "Int"
       if op == "stvar":
-        # Write-once locals are private scalar aliases on every path. The
-        # stored temporary must be available at the store, and a name bound
-        # on any incoming path or earlier in this block refuses a second store.
-        if ins["name"] in fn["params"] or ins["name"] in lhave or ins["src"] not in have:
+        # Local stores bind a new private scalar version of the name. The
+        # stored temporary must be available; an earlier version is shadowed,
+        # and paths that diverge meet again through the join phis. Parameter
+        # writes stay refused because parameter loads bypass local versions.
+        if ins["name"] in fn["params"] or ins["src"] not in have:
           return null
         lhave[ins["name"]] = ins["src"]
         continue
