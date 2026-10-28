@@ -1,0 +1,193 @@
+# Experimental x86-64 Linux write/exit personality, deliberately separate
+# from kuser/ksyscall. Only bounded high-address static ET_EXEC images.
+import kmb
+import kpage
+import kpmm
+import ksyscall
+import kuser
+LOW = ksyscall.USER_BIAS
+HIGH = LOW + 0x08000000
+STACK = LOW + 0x09000000
+PAGE = 4096
+spans = []
+entry_point = 0
+exit_code = 0
+n_calls = 0
+stopped = false
+ready = false
+def byte(base, i):
+  unsafe:
+    return load8(as_ptr(base + i))
+def u16(base):
+  return byte(base, 0) + byte(base, 1) * 256
+def validate(base, size):
+  # All header/table/file bounds checked before reading referenced bytes.
+  if base == 0 or size < 64:
+    return false
+  if not kuser.elf_magic_ok(base):
+    return false
+  if byte(base, 4) != 2 or byte(base, 5) != 1 or byte(base, 6) != 1:
+    return false
+  if u16(base + 16) != 2 or u16(base + 18) != 62:
+    return false
+  if kmb.rd32(base + 20) != 1 or u16(base + 52) != 64:
+    return false
+  count = u16(base + 56)
+  offset = kmb.rd64(base + 32)
+  if count < 1 or count > 8 or u16(base + 54) != 56:
+    return false
+  if offset < 64 or offset > size:
+    return false
+  if count * 56 > size - offset:
+    return false
+  ranges = []
+  total = 0
+  executable = false
+  rip = kmb.rd64(base + 24)
+  i = 0
+  while i < count:
+    p = base + offset + i * 56
+    kind = kmb.rd32(p)
+    # No interpreter, dynamic relocation, TLS, or unknown program headers.
+    if kind != 1 and kind != 0 and kind != 0x6474E551:
+      return false
+    if kind == 1:
+      flags = kmb.rd32(p + 4)
+      off = kmb.rd64(p + 8)
+      va = kmb.rd64(p + 16)
+      filesz = kmb.rd64(p + 32)
+      memsz = kmb.rd64(p + 40)
+      align = kmb.rd64(p + 48)
+      if va < LOW or va >= HIGH or memsz <= 0 or memsz > HIGH - va:
+        return false
+      if filesz < 0 or filesz > memsz or off < 0 or off > size:
+        return false
+      if filesz > size - off:
+        return false
+      if flags != 4 and flags != 5 and flags != 6:
+        return false
+      if align != PAGE or va % PAGE != off % PAGE:
+        return false
+      first = va - va % PAGE
+      end = ksyscall.round_up(va + memsz)
+      for old in ranges:
+        if first < old[1] and end > old[0]:
+          return false
+      append(ranges, [first, end])
+      total = total + end - first
+      if total > 0x1000000:
+        return false
+      if flags == 5 and rip >= va and rip < va + filesz:
+        executable = true
+    i = i + 1
+  return executable
+def load_image(base, size):
+  global ready, spans, entry_point
+  ready = false
+  if not validate(base, size):
+    return false
+  # Refuse already mapped ranges. No replacing a live image or kernel pages.
+  i = 0
+  while i < u16(base + 56):
+    p = base + kmb.rd64(base + 32) + i * 56
+    if kmb.rd32(p) == 1:
+      va = kmb.rd64(p + 16)
+      at = va - va % PAGE
+      end = ksyscall.round_up(va + kmb.rd64(p + 40))
+      while at < end:
+        if kpage.is_mapped(cr3(), at):
+          return false
+        at = at + PAGE
+    i = i + 1
+  if kpage.is_mapped(cr3(), STACK):
+    return false
+  spans = []
+  i = 0
+  while i < u16(base + 56):
+    p = base + kmb.rd64(base + 32) + i * 56
+    if kmb.rd32(p) == 1:
+      va = kmb.rd64(p + 16)
+      memsz = kmb.rd64(p + 40)
+      first = va - va % PAGE
+      length = ksyscall.round_up(va + memsz) - first
+      if ksyscall.map_user_pages(first, length, 7) * PAGE != length:
+        return false
+      at = first
+      while at < first + length:
+        kuser.poke(at, 0)
+        at = at + 8
+      kuser.copy_in(va, base + kmb.rd64(p + 8), kmb.rd64(p + 32))
+      append(spans, [va, va + memsz])
+      if kmb.rd32(p + 4) == 5 or kmb.rd32(p + 4) == 4:
+        at = first
+        while at < first + length:
+          kpage.protect(cr3(), at, 5)
+          at = at + PAGE
+    i = i + 1
+  if ksyscall.map_user_pages(STACK, PAGE, 7) != 1:
+    return false
+  at = STACK
+  while at < STACK + PAGE:
+    kuser.poke(at, 0)
+    at = at + 8
+  append(spans, [STACK, STACK + PAGE])
+  entry_point = kmb.rd64(base + 24)
+  ready = true
+  return true
+def readable(address, count):
+  if count < 0 or count > 65536:
+    return false
+  for r in spans:
+    if address >= r[0] and address <= r[1]:
+      if count <= r[1] - address:
+        return true
+  return false
+def write(fd, address, count):
+  if fd != 1 and fd != 2:
+    return -9
+  if count == 0:
+    return 0
+  if not readable(address, count):
+    return -14
+  i = 0
+  while i < count:
+    while ioport_in(0x3FD, 1) & 32 == 0:
+      pass
+    value = byte(address, i)
+    ioport_out(0x3F8, value, 1)
+    i = i + 1
+  return count
+def dispatch(nr, a1, a2, a3, a4, a5, a6):
+  global n_calls, exit_code, stopped
+  n_calls = n_calls + 1
+  if nr == 1:
+    return write(a1, a2, a3)
+  if nr == 60 or nr == 231:
+    exit_code = a1 & 255
+    stopped = true
+    user_stop()
+    return 0
+  return -38
+def run():
+  global n_calls, exit_code, stopped
+  if not ready:
+    return false
+  n_calls = 0
+  exit_code = 0
+  stopped = false
+  # Minimal empty process stack, not libc startup support. 16-byte aligned.
+  top = STACK + PAGE - 48
+  i = 0
+  while i < 48:
+    kuser.poke(top + i, 0)
+    i = i + 8
+  frame = top - 40
+  kuser.poke(frame, entry_point)
+  kuser.poke(frame + 8, kuser.CS_USER)
+  kuser.poke(frame + 16, kuser.RFLAGS_USER)
+  kuser.poke(frame + 24, top)
+  kuser.poke(frame + 32, kuser.SS_USER)
+  ksyscall.register(dispatch)
+  enter_user(entry_point, frame)
+  ksyscall.start()
+  return stopped
