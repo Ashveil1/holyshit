@@ -8,10 +8,10 @@ and resumes the hs interpreter. Source rebinding and aliases keep their normal
 function identities. No performance claim is made.
 
 Eligibility is deliberately narrow: a CFG of up to 16 blocks whose only
-cycles are disjoint natural loops, up to six
+cycles are natural loops, nested or disjoint, up to six
 parameters, constants/parameter loads, integer + - * % & | ^ << >> or unary minus/complement, integer comparisons for conditions, and statically uniform Int or Bool return.
 No calls, globals/captures, mutation, allocation, print or exceptions
-are compiled. Nested or overlapping loops and side entries into a loop
+are compiled. Partially overlapping loops and side entries into a loop
 remain interpreted. Bool, objects and values outside signed 30-bit fall back before
 native entry. Every native intermediate is range-guarded; a guard failure
 returns a private sentinel and interprets the original function. Replay is safe
@@ -32,8 +32,8 @@ interpreter-to-native-to-interpreter hot-leaf experiment, not a general method
 JIT: no shared heap objects/roots/exception ABI, recursion in native code,
 on-stack replacement, type-specialized object operations or general deopt.
 
-The CFG admission walk is topological, admits disjoint natural loops and
-rejects other cycles and unreachable blocks.
+The CFG admission walk is topological, admits natural loops, nested or
+disjoint, and rejects other cycles and unreachable blocks.
 Each use must be available on every incoming path; definitions are unique.
 Internal comparison values are Bool and may steer branches or return as a Bool,
 but cannot enter integer arithmetic. All return paths must agree on one static
@@ -134,7 +134,18 @@ by header into one loop per header; a continue edge is a second latch of the
 same loop, and loop phis resolve one kind-checked arm per latch, including the
 self-arm that keeps a local unchanged on a continue path. Sequential loops,
 independent accumulators, loops after branches and continues all compile.
-Loops that share a block (nested or overlapping) refuse. Seven programs cover
+Loops that partially overlap refuse. Seven programs cover
 continue, continue with a loop-carried Bool, two and three sequential loops,
 independent accumulators, a loop after a branch and mixed-kind latch refusal,
 for142 focused cases.
+
+Nested natural loops now stay native. A loop inside another loop shares its
+blocks with the containing loop's body; the admission walk permits that when
+one loop's blocks lie entirely inside the other's, while partially overlapping
+loops still refuse. Each header keeps its own loop phis filled from its own
+latches: a name stored in the inner loop counts as stored in the containing
+loop, so both headers version it, while a name stored only in the outer body
+flows through the inner header unchanged. Eight programs cover a nested
+countdown, a multiplication-table sum, a zero-trip inner loop, inner
+break/continue, triple nesting, inner-overflow replay and inner mixed-kind
+latch refusal, for149 focused cases.

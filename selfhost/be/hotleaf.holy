@@ -94,7 +94,7 @@ def plan(fn):
   loop_headers = {}
   preheaders = {}
   latches = {}
-  all_loop_blocks = {}
+  loop_block_sets = {}
   for b in fn["blocks"]:
     lab = b["label"]
     my_latches = []
@@ -150,23 +150,45 @@ def plan(fn):
       for parent in preds[cand]:
         if parent not in blocks:
           return null
-    # Loops never share a block: nested or overlapping loops refuse.
-    for cand in blocks:
-      if cand in all_loop_blocks:
-        return null
-      all_loop_blocks[cand] = true
     loop_headers[lab] = true
     preheaders[lab] = preheader
     latches[lab] = my_latches
+    loop_block_sets[lab] = blocks
     remaining[lab] = remaining[lab] - len(my_latches)
+  # Loops may share blocks only by nesting: for every pair that shares a
+  # block, the smaller loop's blocks must lie entirely inside the larger's.
+  # Partial overlap cannot come from structured control flow and refuses.
+  hdrs = []
+  for h in loop_block_sets:
+    append(hdrs, h)
+  for i in range(len(hdrs)):
+    for j in range(i + 1, len(hdrs)):
+      shared = false
+      for cand in loop_block_sets[hdrs[i]]:
+        if cand in loop_block_sets[hdrs[j]]:
+          shared = true
+      if shared:
+        a_in_b = true
+        for cand in loop_block_sets[hdrs[i]]:
+          if cand not in loop_block_sets[hdrs[j]]:
+            a_in_b = false
+        b_in_a = true
+        for cand in loop_block_sets[hdrs[j]]:
+          if cand not in loop_block_sets[hdrs[i]]:
+            b_in_a = false
+        if not a_in_b and not b_in_a:
+          return null
   stored = {}
-  stored_loop = {}
+  stored_in = {}
   for b in fn["blocks"]:
     for ins in b["instrs"]:
       if ins["op"] == "stvar":
         stored[ins["name"]] = true
-        if b["label"] in all_loop_blocks:
-          stored_loop[ins["name"]] = true
+        for h in loop_block_sets:
+          if b["label"] in loop_block_sets[h]:
+            if h not in stored_in:
+              stored_in[h] = {}
+            stored_in[h][ins["name"]] = true
   queue = [fn["entry"]]
   order = []
   available = {}
@@ -205,11 +227,14 @@ def plan(fn):
       # stored inside the loop become loop phis whose latch arms are filled
       # once the latch blocks have been walked; other names flow through.
       preheader = preheaders[lab]
+      hstored = {}
+      if lab in stored_in:
+        hstored = stored_in[lab]
       for temp in available[preheader]:
         have[temp] = true
       for name in lavailable[preheader]:
         src = lavailable[preheader][name]
-        if name not in stored_loop:
+        if name not in hstored:
           lhave[name] = src
         else:
           lp_count = lp_count + 1
