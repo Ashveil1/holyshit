@@ -37,7 +37,7 @@ cases.extend([
  ('branch-overflow','def f(n):\n  if n < 0:\n    return -n\n  return n * n\nprint f(536870911)\nprint f(-536870912)\nprint f(3)\n',1,1,1,2),
  ('bool-return','def f(n):\n  return n < 3\nprint f(2)\nprint f(4)\n',1,1,2,0),
  ('bool-arithmetic','def f(n):\n  return (n < 3) + 1\ntry:\n  print f(2)\nexcept:\n  print "caught"\n',1,0,0,0),
- ('loop-rejected','def f(n):\n  while n > 0:\n    n = n - 1\n  return n\nprint f(3)\n',1,0,0,0),
+ ('loop-admitted','def f(n):\n  while n > 0:\n    n = n - 1\n  return n\nprint f(3)\n',1,1,1,0),
  ('branch-effects','def f(n):\n  if n < 0:\n    print "effect"\n    return -n\n  return n\nprint f(-3)\nprint f(4)\n',1,0,0,0),
 ])
 cases.extend([
@@ -150,6 +150,16 @@ cases.extend([
  ('local-mutable-type-fallback','def f(n):\n  x = n + n\n  x = x + x\n  return x\nprint f(2)\nprint f("a")\n',1,1,1,1),
  ('local-before-bind-refused','x = 7\ndef f(n):\n  y = x + n\n  x = n + 1\n  return y + x\nprint f(2)\n',1,0,0,0),
  ('local-effect-refused','def f(n):\n  x = n + 1\n  print x\n  return x\nprint f(2)\n',1,0,0,0),
+])
+cases.extend([
+ ('loop-countdown-sum','def f(n):\n  s = 0\n  while n > 0:\n    s = s + n\n    n = n - 1\n  return s\nprint f(5)\nprint f(10)\n',1,1,2,0),
+ ('loop-zero-iterations','def f(n):\n  s = 0\n  while n > 0:\n    s = s + n\n    n = n - 1\n  return s\nprint f(0)\nprint f(-3)\n',1,1,2,0),
+ ('loop-carried-bool','def f(n):\n  ok = false\n  while n > 0:\n    ok = true\n    n = n - 1\n  return ok\nprint f(3)\nprint f(0)\n',1,1,2,0),
+ ('loop-overflow-fallback','def f(n):\n  s = 1\n  while n > 0:\n    s = s * 536870911\n    n = n - 1\n  return s\nprint f(2)\n',1,1,0,1),
+ ('loop-type-fallback','def f(n):\n  while n > 0:\n    n = n - 1\n  return n\nprint f(3)\ntry:\n  print f("x")\nexcept:\n  print "caught"\nprint f(2)\n',1,1,2,1),
+ ('loop-break','def f(n):\n  while n > 0:\n    if n < 3:\n      break\n    n = n - 1\n  return n\nprint f(5)\nprint f(2)\n',1,1,2,0),
+ ('loop-nested-refused','def f(n):\n  while n > 0:\n    m = 2\n    while m > 0:\n      m = m - 1\n    n = n - 1\n  return n\nprint f(3)\n',1,0,0,0),
+ ('loop-two-refused','def f(n):\n  while n > 0:\n    n = n - 1\n  m = 2\n  while m > 0:\n    m = m - 1\n  return n\nprint f(3)\n',1,0,0,0),
 ])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
