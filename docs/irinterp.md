@@ -204,3 +204,9 @@ kinds are checked before conversion; Bool and other non-numeric values retain
 the existing error. Twelve direct/alias, positive/negative/fractional, mixed-kind
 and rejection programs bring parity to423 classifications. This does not claim
 unbounded ranges or Float conversions beyond the hosted Int width.
+
+Index reads reject non-container values before checking the index kind, matching
+the reference's `cannot index <kind>` error for Null/Bool/Int/Float and opaque
+Func/Builtin/Module values. Nine programs cover56 caught combinations, an
+uncaught error and valid Str/List/Dict controls, for432 parity classifications.
+Container indexing and index assignment behavior are unchanged.

@@ -526,7 +526,8 @@ def step(st, ins, temps, frame, prev):
         raise conv(e, ln)
     temps[ins["dest"]] = d
   elif op == "index":
-    if pyrt.py_type(temps[ins["obj"]]) == "func":
+    # Container kind wins over index typing, as in the guest reference.
+    if pyrt.py_type(temps[ins["obj"]]) not in ["str", "list", "dict"]:
       fail("cannot index " + type_name(temps[ins["obj"]]), ln)
     try:
       temps[ins["dest"]] = temps[ins["obj"]][temps[ins["idx"]]]
