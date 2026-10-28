@@ -546,7 +546,7 @@ def step(st, ins, temps, frame, prev):
         fail("slice index must be Int", ln)
     temps[ins["dest"]] = do_slice(temps[ins["obj"]], lo, hi, ln)
   elif op == "setindex":
-    if pyrt.py_type(temps[ins["obj"]]) == "func":
+    if pyrt.py_type(temps[ins["obj"]]) not in ["list", "dict"]:
       fail("cannot assign into " + type_name(temps[ins["obj"]]), ln)
     try:
       temps[ins["obj"]][temps[ins["idx"]]] = temps[ins["val"]]

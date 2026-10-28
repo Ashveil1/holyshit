@@ -384,6 +384,28 @@ with tempfile.TemporaryDirectory(prefix="hs-irinterp.") as d:
             print(f"FAIL index kind parity: {source!r}: {ref!r} != {got!r}")
     print("9 index container-kind/error-order/control programs checked")
 
+    setindex_sources = []
+    for value in ['null', 'true', '1', '1.5', '"ab"', 'len', 'counter', 'local_fn']:
+        source = 'import counter\ndef local_fn():\n  return 1\nf = ' + value + '\n'
+        for index in ['null', 'true', '0', '1.5', '"x"', '[]', '{}', 'len']:
+            source += 'try:\n  f[' + index + '] = 9\nexcept as error:\n  print error\n'
+        setindex_sources.append(source)
+    setindex_sources.append('a = [1,2]\na[-1] = 9\nd = {1:2}\nd["x"] = a\nprint a, d\n')
+    setindex_sources.append('x = null\nx[true] = 1\n')
+    setindex_sources.append('def value():\n  print "rhs evaluated"\n  return 9\nx = null\ntry:\n  x[true] = value()\nexcept as error:\n  print error\n')
+    for source in setindex_sources:
+        prog = os.path.join(module_dir, "setindex_kinds.holy")
+        with open(prog, "w") as f:
+            f.write(source)
+        ref = _run([sys.executable, os.path.join(ROOT, "interp.py"), prog], b"", _BASE_ENV)
+        got = _run(([OPTIONS.arm64_qemu] if OPTIONS.arm64_qemu else []) +
+                   [driver, prog], b"", _BASE_ENV)
+        total += 1
+        if ref != got:
+            fails += 1
+            print(f"FAIL setindex kind parity: {source!r}: {ref!r} != {got!r}")
+    print("11 index assignment kind/order/evaluation/control programs checked")
+
     handle_error_sources = []
     for value in ['len', 'counter', 'local_fn']:
         for operation in ['len', 'int']:

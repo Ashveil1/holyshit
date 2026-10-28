@@ -210,3 +210,9 @@ the reference's `cannot index <kind>` error for Null/Bool/Int/Float and opaque
 Func/Builtin/Module values. Nine programs cover56 caught combinations, an
 uncaught error and valid Str/List/Dict controls, for432 parity classifications.
 Container indexing and index assignment behavior are unchanged.
+
+Index assignment now rejects values other than List/Dict before checking index
+kind, preserving `cannot assign into <kind>` for Str and scalar/opaque values.
+Eleven programs cover64 caught combinations, an uncaught error, valid mutations
+and RHS evaluation before the error, for443 parity classifications. List/Dict
+mutation rules and expression evaluation order are unchanged.
