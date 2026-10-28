@@ -1,0 +1,89 @@
+# Bounded ASCII command dispatch shared by console and future internal callers.
+# Trusted spans only: the caller owns the input memory for the complete call.
+# No processes, filesystem effects, network, model or ambient system authority.
+def create(capacity):
+  capacity = capacity | 0
+  if capacity < 16 or capacity > 256:
+    raise "command output capacity must be 16..256"
+  unsafe:
+    address = as_int(alloc(capacity))
+  return [address, capacity, 0, 0]
+def byte(address, index):
+  unsafe:
+    return load8(as_ptr(address + index))
+def put(state, index, value):
+  address = state[0] + index
+  unsafe:
+    store8(as_ptr(address), value)
+def text(state, value):
+  unsafe:
+    source = as_int(as_ptr(value)) + 16
+  i = 0
+  while i < len(value):
+    put(state, i, byte(source, i))
+    i = i + 1
+  state[2] = i
+def matches(address, start, end, word):
+  if end - start != len(word):
+    return false
+  unsafe:
+    source = as_int(as_ptr(word)) + 16
+  i = 0
+  while i < len(word):
+    if byte(address, start + i) != byte(source, i):
+      return false
+    i = i + 1
+  return true
+def execute(state, address, count):
+  count = count | 0
+  if count < 0 or count > 256:
+    raise "command input length must be 0..256"
+  # Validate all bytes before publishing a new result, even beyond output cap.
+  i = 0
+  while i < count:
+    value = byte(address, i)
+    if value < 32 or value > 126:
+      raise "command input must be printable ASCII"
+    i = i + 1
+  start = 0
+  end = count
+  while start < end:
+    if byte(address, start) != 32:
+      break
+    start = start + 1
+  while end > start:
+    if byte(address, end - 1) != 32:
+      break
+    end = end - 1
+  state[2] = 0
+  state[3] = 0
+  if start == end:
+    return 0
+  split_at = start
+  while split_at < end:
+    if byte(address, split_at) == 32:
+      break
+    split_at = split_at + 1
+  body = split_at
+  while body < end:
+    if byte(address, body) != 32:
+      break
+    body = body + 1
+  if matches(address, start, split_at, "help") and body == end:
+    text(state, "HELP ECHO")
+    state[3] = 1
+  elif matches(address, start, split_at, "echo"):
+    length = end - body
+    state[3] = 2
+    if length > state[1]:
+      length = state[1]
+      state[3] = 4
+    i = 0
+    while i < length:
+      put(state, i, byte(address, body + i))
+      i = i + 1
+    state[2] = length
+  else:
+    text(state, "UNKNOWN COMMAND")
+    state[3] = 3
+  return state[3]

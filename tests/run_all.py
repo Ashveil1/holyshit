@@ -57,6 +57,8 @@ SUITES = [
     ("test_fbinfo.py", "strict direct RGB framebuffer tag decoding"),
     ("test_kfont_bytes.py", "raw-byte framebuffer font spans and finite allocation proof"),
     ("test_kfont.py", "direct framebuffer font guarded RGB24/32 QEMU oracle"),
+    ("test_kcommand.py", "bounded shared OS command API on QEMU"),
+    ("test_command_console.py", "separate command console actual GRUB/PS2 result pixels"),
     ("test_console_buffer.py", "fixed OS console storage and repeated edits"),
     ("test_console_state.py", "bounded display-only multi-line transcript model"),
     ("test_console_fixed.py", "fixed byte console actual GRUB keyboard/display"),
