@@ -41,11 +41,103 @@ def plan(fn):
       remaining[target] = remaining[target] + 1
   if remaining[fn["entry"]] != 0:
     return null
+  # Dominators, by fixpoint on this small bounded CFG. An edge X->Y is a
+  # back edge only when the header Y dominates the latch X; plain cycle
+  # edges do not qualify.
+  dom = {}
+  for b in fn["blocks"]:
+    dom[b["label"]] = {}
+    for other in fn["blocks"]:
+      dom[b["label"]][other["label"]] = true
+  dom[fn["entry"]] = {}
+  dom[fn["entry"]][fn["entry"]] = true
+  changed = true
+  while changed:
+    changed = false
+    for b in fn["blocks"]:
+      if b["label"] == fn["entry"]:
+        continue
+      if len(preds[b["label"]]) == 0:
+        continue
+      newd = {}
+      for other in fn["blocks"]:
+        common = true
+        for parent in preds[b["label"]]:
+          if other["label"] not in dom[parent]:
+            common = false
+        if common:
+          newd[other["label"]] = true
+      newd[b["label"]] = true
+      for key in by:
+        if (key in newd) != (key in dom[b["label"]]):
+          changed = true
+      dom[b["label"]] = newd
+  # At most one back edge: a single natural loop. The latch must jump
+  # unconditionally to a header whose only other predecessor is the
+  # preheader, and no path may enter the loop body from outside it.
+  back_from = null
+  back_to = null
+  for b in fn["blocks"]:
+    tm = b["term"]
+    targets = []
+    if tm["term"] == "jmp":
+      targets = [tm["to"]]
+    elif tm["term"] == "br":
+      targets = [tm["then"], tm["els"]]
+    for target in targets:
+      if target in dom[b["label"]] and target != b["label"]:
+        if back_from != null:
+          return null
+        back_from = b["label"]
+        back_to = target
+  loop_blocks = {}
+  preheader = null
+  if back_from != null:
+    if by[back_from]["term"]["term"] != "jmp":
+      return null
+    if len(preds[back_to]) != 2:
+      return null
+    for parent in preds[back_to]:
+      if parent != back_from:
+        preheader = parent
+    # Loop blocks reach the latch without passing through the header.
+    for lab in by:
+      if lab == back_to:
+        continue
+      seen = {}
+      stack = [lab]
+      while len(stack) > 0:
+        cur = stack[len(stack) - 1]
+        stack = stack[:len(stack) - 1]
+        if cur in seen or cur == back_to:
+          continue
+        seen[cur] = true
+        tm = by[cur]["term"]
+        if tm["term"] == "jmp":
+          append(stack, tm["to"])
+        elif tm["term"] == "br":
+          append(stack, tm["then"])
+          append(stack, tm["els"])
+      if back_from in seen:
+        loop_blocks[lab] = true
+    loop_blocks[back_to] = true
+    if preheader in loop_blocks:
+      return null
+    for lab in loop_blocks:
+      if lab == back_to:
+        continue
+      for parent in preds[lab]:
+        if parent not in loop_blocks:
+          return null
+    remaining[back_to] = remaining[back_to] - 1
   stored = {}
+  stored_loop = {}
   for b in fn["blocks"]:
     for ins in b["instrs"]:
       if ins["op"] == "stvar":
         stored[ins["name"]] = true
+        if b["label"] in loop_blocks:
+          stored_loop[ins["name"]] = true
   queue = [fn["entry"]]
   order = []
   available = {}
@@ -55,6 +147,7 @@ def plan(fn):
   local_loads = {}
   local_phis = {}
   lp_count = 0
+  pending_arms = []
   count = 0
   result_type = null
   qi = 0
@@ -78,7 +171,29 @@ def plan(fn):
           if lab not in local_phis:
             local_phis[lab] = []
           append(local_phis[lab], {"op": "load", "dest": tmp, "name": name})
-    if len(preds[lab]) > 0:
+    if lab == back_to:
+      # Header: only the preheader edge has a processed version state. Names
+      # stored inside the loop become loop phis whose latch arm is filled
+      # once the latch block has been walked; other names flow through.
+      for temp in available[preheader]:
+        have[temp] = true
+      for name in lavailable[preheader]:
+        src = lavailable[preheader][name]
+        if name not in stored_loop:
+          lhave[name] = src
+        else:
+          lp_count = lp_count + 1
+          tmp = "lphi" + str(lp_count)
+          slots[tmp] = (len(slots) + 1) * 8
+          types[tmp] = types[src]
+          have[tmp] = true
+          lhave[name] = tmp
+          if lab not in local_phis:
+            local_phis[lab] = []
+          ins = {"op": "phi", "dest": tmp, "arms": [[preheader, src]]}
+          append(local_phis[lab], ins)
+          append(pending_arms, [ins, name])
+    elif len(preds[lab]) > 0:
       first = available[preds[lab][0]]
       for temp in first:
         common = true
@@ -87,9 +202,9 @@ def plan(fn):
             common = false
         if common:
           have[temp] = true
-      # A write-once local bound on every incoming path stays visible. Arms
-      # that bind one local to different available temps of one static kind
-      # meet in a synthetic phi, lowered like any other join.
+      # A local bound on every incoming path stays visible. Arms that bind
+      # one local to different available temps of one static kind meet in a
+      # synthetic phi, lowered like any other join.
       first_l = lavailable[preds[lab][0]]
       for name in first_l:
         common = true
@@ -213,12 +328,24 @@ def plan(fn):
     lavailable[lab] = lhave
     append(order, b)
     for target in targets:
+      if lab == back_from and target == back_to:
+        continue
       remaining[target] = remaining[target] - 1
       if remaining[target] == 0:
         append(queue, target)
-  # A cycle or an unreachable block cannot enter this topological walk.
+  # An unresolved cycle or an unreachable block cannot enter this walk.
   if len(order) != len(fn["blocks"]):
     return null
+  # Loop phis resolve their latch arm from the latch's final version state.
+  for pending in pending_arms:
+    ins = pending[0]
+    name = pending[1]
+    if name not in lavailable[back_from]:
+      return null
+    latch_src = lavailable[back_from][name]
+    if types[latch_src] != types[ins["dest"]]:
+      return null
+    append(ins["arms"], [back_from, latch_src])
   return [order, slots, types, result_type, local_loads, local_phis]
 def guard():
   asm.cmp_ri32("rax", 0 - 536870912)
