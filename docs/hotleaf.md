@@ -94,16 +94,17 @@ register; joins select the corresponding scalar slot. The existing purity and
 range guards still apply, so replay cannot repeat guest effects. Nine programs
 cover Int/Bool joins, nested joins, downstream use, skipped overflow paths,
 actual overflow replay, mixed-kind refusal and type fallback, for94 focused
-cases. Cycles, mutable locals, shared objects and general deopt remain excluded.
+cases. Cycles, shared objects and general deopt remain excluded.
 
-Write-once local scalar aliases now extend across the acyclic CFG and
-through joins. A local store records an existing Int/Bool temporary available
-at the store; a load copies its private native slot only when the local is
-bound on every incoming path. When each arm binds the local once to a
-different available temporary of one static kind, the loads resolve through a
-synthetic phi lowered like any other join. No guest frame or heap object is
-mutated. A second store on any path, mixed-kind join arms, a local bound on
-only some incoming paths, parameter writes, reads before binding and effectful
-functions remain interpreted. Twenty-three programs cover chained, cross-block
-and diamond Int/Bool locals, overflow replay, type fallback and refusals,
-for117 focused cases. This is not mutable-local or loop compilation.
+Local scalar bindings now extend across the acyclic CFG, through joins and
+across reassignment. A local store records an existing Int/Bool temporary
+available at the store as a new private version of the name; a load copies
+the slot of the version visible on every incoming path. When arms bind the
+local to different available temporaries of one static kind, loads resolve
+through a synthetic phi lowered like any other join. No guest frame or heap
+object is mutated: reassignment only shadows a private version. Mixed-kind
+join arms, a local bound on only some incoming paths, parameter writes, reads
+before binding and effectful functions remain interpreted. Twenty-nine programs
+cover chained, cross-block, diamond and reassigned Int/Bool locals, overflow
+replay, type fallback and refusals, for123 focused cases. Cyclic control flow
+(loop compilation) and shared objects remain outside admission.
