@@ -1,0 +1,51 @@
+{
+  "files": [
+    {
+      "step": 100,
+      "final": false,
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/generative-v1/step-100-full.pt",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/generative-v1/step-100-full.pt",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/320dd66b7e8147b534233360486fab7600daa3b3",
+      "sha256": "5c33bcc520a702bb1df39b9eeea20bbfc42071f9552a549de297c33d4925cf27",
+      "bytes": 3987678
+    },
+    {
+      "step": 300,
+      "final": false,
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/generative-v1/step-300-full.pt",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/generative-v1/step-300-full.pt",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/391d0daceab7e6dd3c0a55615db043e5f5bd427e",
+      "sha256": "915137f170a53862d45f49546d385634f7414e0836b9448f3604bb4870a1144b",
+      "bytes": 3987678
+    },
+    {
+      "step": 600,
+      "final": false,
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/generative-v1/step-600-full.pt",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/generative-v1/step-600-full.pt",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/fa2cbf648bf80fc85d111d014dbfbef331a8ebad",
+      "sha256": "eb898ea76f1ff65ab256714144dbc24e205593af68182bb3926397401f76106d",
+      "bytes": 3987678
+    },
+    {
+      "step": 1000,
+      "final": true,
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/generative-v1/step-1000-full.pt",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/generative-v1/step-1000-full.pt",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/31bb5975b18798be1f5b62f1dd0ca3769324868b",
+      "sha256": "3570180a6675bbca672cd9d86c106a232351ae3dd416f3c67b8ef79d1ced3f8f",
+      "bytes": 3987713
+    },
+    {
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/generative-v1/source_protocol.zip",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/generative-v1/source_protocol.zip",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/e726d9cda5d6b711773cb0f0f77cbdd0dd301196",
+      "sha256": "3f9ab7705e2f74ba96abc46c6b263058f2e5268c285c398e91ac5f7d85190d31",
+      "bytes": 8050
+    }
+  ],
+  "final_step": 1000,
+  "evaluation_pending": true,
+  "attribution_notice": "See DATA_NOTICE.txt in source_protocol.zip",
+  "limitations": "Tiny25prefixpilot,nochat/Thai/correctionclaim; public-trained-weight rights/privacy not guaranteed"
+}
