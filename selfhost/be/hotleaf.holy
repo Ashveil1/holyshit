@@ -72,8 +72,11 @@ def plan(fn):
       op = ins["op"]
       ty = "Int"
       if op == "stvar":
-        # Single-block, write-once locals are private scalar aliases only.
-        if len(fn["blocks"]) != 1 or ins["name"] in fn["params"] or ins["name"] in local_values or ins["src"] not in have:
+        # Write-once locals are private scalar aliases only. The stored
+        # temporary must be available at the store, and each later load
+        # needs it on every incoming path, so branch-confined stores read
+        # after a join remain refused.
+        if ins["name"] in fn["params"] or ins["name"] in local_values or ins["src"] not in have:
           return null
         local_values[ins["name"]] = ins["src"]
         continue
@@ -100,6 +103,8 @@ def plan(fn):
           if ins["name"] not in local_values:
             return null
           src = local_values[ins["name"]]
+          if src not in have:
+            return null
           local_loads[ins["dest"]] = src
           ty = types[src]
       elif op == "const":
