@@ -41,6 +41,11 @@ def plan(fn):
       remaining[target] = remaining[target] + 1
   if remaining[fn["entry"]] != 0:
     return null
+  stored = {}
+  for b in fn["blocks"]:
+    for ins in b["instrs"]:
+      if ins["op"] == "stvar":
+        stored[ins["name"]] = true
   queue = [fn["entry"]]
   order = []
   available = {}
@@ -59,6 +64,20 @@ def plan(fn):
     b = by[lab]
     have = {}
     lhave = {}
+    if len(preds[lab]) == 0:
+      # A stored parameter starts from a synthetic entry version of the raw
+      # argument, so later versions and the argument itself can meet in phis.
+      for i in range(len(fn["params"])):
+        name = fn["params"][i]
+        if name in stored:
+          tmp = "lpar" + str(i)
+          slots[tmp] = (len(slots) + 1) * 8
+          types[tmp] = "Int"
+          have[tmp] = true
+          lhave[name] = tmp
+          if lab not in local_phis:
+            local_phis[lab] = []
+          append(local_phis[lab], {"op": "load", "dest": tmp, "name": name})
     if len(preds[lab]) > 0:
       first = available[preds[lab][0]]
       for temp in first:
@@ -109,11 +128,10 @@ def plan(fn):
       op = ins["op"]
       ty = "Int"
       if op == "stvar":
-        # Local stores bind a new private scalar version of the name. The
-        # stored temporary must be available; an earlier version is shadowed,
-        # and paths that diverge meet again through the join phis. Parameter
-        # writes stay refused because parameter loads bypass local versions.
-        if ins["name"] in fn["params"] or ins["src"] not in have:
+        # Local and parameter stores bind a new private scalar version of the
+        # name. The stored temporary must be available; an earlier version is
+        # shadowed, and paths that diverge meet again through the join phis.
+        if ins["src"] not in have:
           return null
         lhave[ins["name"]] = ins["src"]
         continue
@@ -136,14 +154,14 @@ def plan(fn):
           phi_type = arm_type
         ty = phi_type
       elif op == "load":
-        if ins["name"] not in fn["params"]:
-          if ins["name"] not in lhave:
-            return null
+        if ins["name"] in lhave:
           src = lhave[ins["name"]]
           if src not in have:
             return null
           local_loads[ins["dest"]] = src
           ty = types[src]
+        elif ins["name"] not in fn["params"]:
+          return null
       elif op == "const":
         if pyrt.py_type(ins["val"]) == "bool":
           ty = "Bool"
