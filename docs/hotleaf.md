@@ -102,9 +102,11 @@ available at the store as a new private version of the name; a load copies
 the slot of the version visible on every incoming path. When arms bind the
 local to different available temporaries of one static kind, loads resolve
 through a synthetic phi lowered like any other join. No guest frame or heap
-object is mutated: reassignment only shadows a private version. Mixed-kind
-join arms, a local bound on only some incoming paths, parameter writes, reads
-before binding and effectful functions remain interpreted. Twenty-nine programs
-cover chained, cross-block, diamond and reassigned Int/Bool locals, overflow
-replay, type fallback and refusals, for123 focused cases. Cyclic control flow
-(loop compilation) and shared objects remain outside admission.
+object is mutated: reassignment only shadows a private version. Parameter
+writes start from a synthetic entry version of the raw argument, so rewritten
+parameters and untouched arguments join through the same phis. Mixed-kind
+join arms, a local bound on only some incoming paths, reads before binding
+and effectful functions remain interpreted. Thirty-four programs cover
+chained, cross-block, diamond, reassigned and parameter Int/Bool locals,
+overflow replay, type fallback and refusals, for128 focused cases. Cyclic
+control flow (loop compilation) and shared objects remain outside admission.
