@@ -1,0 +1,42 @@
+# Separate command-enabled experiment. kconsole_fixed remains display-only.
+import kframebuffer
+import kfont
+import kconsole_buffer
+import kconsole_recall
+import kconsole_view
+import kcommand
+frame = kframebuffer.descriptor()
+kframebuffer.map(frame)
+kfont.fill(frame, 0, 0, frame[2], frame[3], 0x16324f)
+kfont.fill(frame, 24, 24, 576, 64, 0x386fa4)
+kfont.draw(frame, 40, 40, "HS COMMAND CONSOLE", 0xffffff, 3)
+kfont.fill(frame, 24, 104, 576, 320, 0xe8edf2)
+session = kconsole_buffer.create(42, 4)
+navigation = kconsole_recall.create(session)
+view = kconsole_view.create(frame, session, 32, 136, 24, 280, 512)
+result = kcommand.create(42)
+kfont.draw(frame, 32, 112, "RECENT COMMANDS", 0x16324f, 2)
+kfont.draw(frame, 32, 248, "INPUT:", 0x16324f, 2)
+kfont.draw(frame, 32, 328, "RESULT:", 0x16324f, 2)
+kfont.draw(frame, 32, 392, "HELP / ECHO ONLY - NO SHELL", 0x16324f, 2)
+kconsole_view.active(view)
+print "COMMAND CONSOLE READY"
+while true:
+  key = readkey_event()
+  if key != null:
+    if key == 128:
+      kconsole_recall.previous(navigation)
+    elif key == 129:
+      kconsole_recall.next(navigation)
+    else:
+      kconsole_recall.detach(navigation)
+      if key == 10:
+        status = kcommand.execute(result, session[0], session[3])
+        kfont.fill(frame, 32, 352, 512, 16, 0xe8edf2)
+        kfont.draw_bytes(frame, 32, 352, result[0], result[2], 0x16324f, 2)
+        print "COMMAND RESULT", status, result[2]
+      submitted = kconsole_buffer.feed(session, key)
+      if submitted:
+        kconsole_view.history(view)
+    kconsole_view.active(view)
+    print "COMMAND EDIT", session[3]
