@@ -115,6 +115,18 @@ cases.extend([
  ('phi-mixed-refused','def f(n):\n  return n or false\nprint f(0)\nprint f(2)\n',1,0,0,0),
  ('phi-type-fallback','def f(a,b):\n  return a or b\nprint f(0,3)\nprint f("", "x")\nprint f(2,3)\n',1,1,2,1),
 ])
+cases.extend([
+ ('local-int','def f(n):\n  x = n + 1\n  return x * 2\nprint f(2)\nprint f(-3)\n',1,1,2,0),
+ ('local-chain','def f(n):\n  x = n + 1\n  y = x * 2\n  return x + y\nprint f(2)\nprint f(-3)\n',1,1,2,0),
+ ('local-bool','def f(n):\n  x = n < 3\n  y = not x\n  return x != y\nprint json_str([f(1), f(4)])\n',1,1,2,0),
+ ('local-overflow','def f(n):\n  x = n * n\n  return x - x\nprint f(536870911)\nprint f(2)\n',1,1,1,1),
+ ('local-type-fallback','def f(n):\n  x = n + n\n  return x\nprint f(2)\nprint f("a")\n',1,1,1,1),
+ ('local-reassign-refused','def f(n):\n  x = n + 1\n  x = x + 2\n  return x\nprint f(2)\n',1,0,0,0),
+ ('local-param-refused','def f(n):\n  n = n + 1\n  return n\nprint f(2)\n',1,0,0,0),
+ ('local-branch-refused','def f(n):\n  x = n + 1\n  if n < 0:\n    return x\n  return x * 2\nprint f(-2)\nprint f(2)\n',1,0,0,0),
+ ('local-before-bind-refused','x = 7\ndef f(n):\n  y = x + n\n  x = n + 1\n  return y + x\nprint f(2)\n',1,0,0,0),
+ ('local-effect-refused','def f(n):\n  x = n + 1\n  print x\n  return x\nprint f(2)\n',1,0,0,0),
+])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))
  source=f'def f(a,b):\n  if a {op} b:\n    return a + 1\n  return b - 1\n'

@@ -46,6 +46,8 @@ def plan(fn):
   available = {}
   slots = {}
   types = {}
+  local_values = {}
+  local_loads = {}
   count = 0
   result_type = null
   qi = 0
@@ -69,6 +71,12 @@ def plan(fn):
         return null
       op = ins["op"]
       ty = "Int"
+      if op == "stvar":
+        # Single-block, write-once locals are private scalar aliases only.
+        if len(fn["blocks"]) != 1 or ins["name"] in fn["params"] or ins["name"] in local_values or ins["src"] not in have:
+          return null
+        local_values[ins["name"]] = ins["src"]
+        continue
       if op == "phi":
         # Each incoming edge supplies one available scalar of the same kind.
         if len(ins["arms"]) != len(preds[lab]) or len(ins["arms"]) == 0:
@@ -89,7 +97,11 @@ def plan(fn):
         ty = phi_type
       elif op == "load":
         if ins["name"] not in fn["params"]:
-          return null
+          if ins["name"] not in local_values:
+            return null
+          src = local_values[ins["name"]]
+          local_loads[ins["dest"]] = src
+          ty = types[src]
       elif op == "const":
         if pyrt.py_type(ins["val"]) == "bool":
           ty = "Bool"
@@ -146,7 +158,7 @@ def plan(fn):
   # A cycle or an unreachable block cannot enter this topological walk.
   if len(order) != len(fn["blocks"]):
     return null
-  return [order, slots, types, result_type]
+  return [order, slots, types, result_type, local_loads]
 def guard():
   asm.cmp_ri32("rax", 0 - 536870912)
   asm.jcc("l", "fallback")
@@ -170,6 +182,8 @@ def compile_leaf(fn, p):
       asm.label("block_" + block["label"])
       for ins in block["instrs"]:
         op = ins["op"]
+        if op == "stvar":
+          continue
         if op == "phi":
           done_phi = "phi_done_" + str(p[1][ins["dest"]])
           for i in range(len(ins["arms"])):
@@ -183,10 +197,13 @@ def compile_leaf(fn, p):
           asm.jmp("fallback")
           asm.label(done_phi)
         elif op == "load":
-          idx = 0
-          while fn["params"][idx] != ins["name"]:
-            idx = idx + 1
-          asm.mov_rm("rax", "rdi", idx * 8)
+          if ins["dest"] in p[4]:
+            asm.mov_rm("rax", "rbp", 0 - p[1][p[4][ins["dest"]]])
+          else:
+            idx = 0
+            while fn["params"][idx] != ins["name"]:
+              idx = idx + 1
+            asm.mov_rm("rax", "rdi", idx * 8)
         elif op == "const":
           asm.mov_ri64("rax", int(ins["val"]))
         elif op == "un":
