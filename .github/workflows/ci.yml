@@ -26,8 +26,6 @@ jobs:
           python3 ai/wnn/test_failed_resume.py
           python3 ai/wnn/profile_latency.py
   quick:
-    env:
-      IRBUILD_DIAG_DIR: ${{ runner.temp }}/irbuild-diag
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +37,8 @@ jobs:
       - name: tests write scratch files under /tmp/opencode
         run: mkdir -p /tmp/opencode
       - name: all suites except the QEMU kernel suite
+        env:
+          IRBUILD_DIAG_DIR: ${{ runner.temp }}/irbuild-diag
         run: python3 tests/run_all.py --quick
       - name: IR builder failure diagnostics
         uses: actions/upload-artifact@v4
