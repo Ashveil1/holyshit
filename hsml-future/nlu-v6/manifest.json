@@ -1,0 +1,43 @@
+{
+  "checkpoints": [
+    {
+      "step": 100,
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/nlu-v6/step-100-full.pt",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/nlu-v6/step-100-full.pt",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/8b5c10194a67328ebbb61785b75e933d233da6b1",
+      "sha256": "f31ea8c63f5945288a52aef578cd9a59b7606c7f3cdfcdcb536fdb82cc60f392",
+      "bytes": 1003511
+    },
+    {
+      "step": 300,
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/nlu-v6/step-300-full.pt",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/nlu-v6/step-300-full.pt",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/3fe94ff3a47502a3a564009cc320ee237679089a",
+      "sha256": "640e2377376c4b9a2883e80d5159c7224a543e60662048bf423d976b46d372bc",
+      "bytes": 1003511
+    },
+    {
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/nlu-v6/source_protocol.zip",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/nlu-v6/source_protocol.zip",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/0bca9acdb87c152ccf5d42cdbd1691e6a5cdbd6f",
+      "sha256": "84d0905cd2d7c2922601f8f72cd225d31a0f9ac279d1c0616a26c557ea27bb9b",
+      "bytes": 36003
+    }
+  ],
+  "local_snapshots": [
+    {
+      "file": "snapshot_f31ea8c63f5945288a52aef578cd9a59b7606c7f3cdfcdcb536fdb82cc60f392.pt",
+      "sha256": "f31ea8c63f5945288a52aef578cd9a59b7606c7f3cdfcdcb536fdb82cc60f392",
+      "bytes": 1003511,
+      "step": 100,
+      "load_verified": true
+    },
+    {
+      "file": "snapshot_640e2377376c4b9a2883e80d5159c7224a543e60662048bf423d976b46d372bc.pt",
+      "sha256": "640e2377376c4b9a2883e80d5159c7224a543e60662048bf423d976b46d372bc",
+      "bytes": 1003511,
+      "step": 300,
+      "load_verified": true
+    }
+  ]
+}
