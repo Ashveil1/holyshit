@@ -1,0 +1,43 @@
+{
+  "checkpoints_and_source": [
+    {
+      "step": 100,
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/nlu-v8/step-100-full.pt",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/nlu-v8/step-100-full.pt",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/31e4cbfb900727c0d33d91becfce58788e8700cd",
+      "sha256": "b7d04667ae26d8697caaf9791e2b32888d0b64f56dcf70c74c50d163519c6fcd",
+      "bytes": 1011703
+    },
+    {
+      "step": 300,
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/nlu-v8/step-300-full.pt",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/nlu-v8/step-300-full.pt",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/2c6d6c10f8e54ec00629514f0a7f7b2fa0a8840c",
+      "sha256": "0d7a224db9488fcdd73725c5b405b2a6fd60a305ed350c1d0a5c8f162953db51",
+      "bytes": 1013303
+    },
+    {
+      "url": "https://github.com/Ashveil1/holyshit/blob/hsml-future-checkpoints/hsml-future/nlu-v8/source_protocol.zip",
+      "download_url": "https://raw.githubusercontent.com/Ashveil1/holyshit/hsml-future-checkpoints/hsml-future/nlu-v8/source_protocol.zip",
+      "commit_url": "https://github.com/Ashveil1/holyshit/commit/1ccd5c79b7319a2c85fe5334f0f36e8c84ecd50a",
+      "sha256": "fdf9420089738ffb2d9e417950ee9ff1d5cdcf75357eeb239a104679fb0fd569",
+      "bytes": 193020
+    }
+  ],
+  "local_snapshots": [
+    {
+      "file": "snapshot_b7d04667ae26d8697caaf9791e2b32888d0b64f56dcf70c74c50d163519c6fcd.pt",
+      "sha256": "b7d04667ae26d8697caaf9791e2b32888d0b64f56dcf70c74c50d163519c6fcd",
+      "bytes": 1011703,
+      "step": 100,
+      "load_verified": true
+    },
+    {
+      "file": "snapshot_0d7a224db9488fcdd73725c5b405b2a6fd60a305ed350c1d0a5c8f162953db51.pt",
+      "sha256": "0d7a224db9488fcdd73725c5b405b2a6fd60a305ed350c1d0a5c8f162953db51",
+      "bytes": 1013303,
+      "step": 300,
+      "load_verified": true
+    }
+  ]
+}
