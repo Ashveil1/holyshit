@@ -159,7 +159,15 @@ cases.extend([
  ('loop-type-fallback','def f(n):\n  while n > 0:\n    n = n - 1\n  return n\nprint f(3)\ntry:\n  print f("x")\nexcept:\n  print "caught"\nprint f(2)\n',1,1,2,1),
  ('loop-break','def f(n):\n  while n > 0:\n    if n < 3:\n      break\n    n = n - 1\n  return n\nprint f(5)\nprint f(2)\n',1,1,2,0),
  ('loop-nested-refused','def f(n):\n  while n > 0:\n    m = 2\n    while m > 0:\n      m = m - 1\n    n = n - 1\n  return n\nprint f(3)\n',1,0,0,0),
- ('loop-two-refused','def f(n):\n  while n > 0:\n    n = n - 1\n  m = 2\n  while m > 0:\n    m = m - 1\n  return n\nprint f(3)\n',1,0,0,0),
+ ('loop-two-admitted','def f(n):\n  while n > 0:\n    n = n - 1\n  m = 2\n  while m > 0:\n    m = m - 1\n  return n\nprint f(3)\n',1,1,1,0),
+])
+cases.extend([
+ ('loop-continue','def f(n):\n  s = 0\n  while n > 0:\n    n = n - 1\n    if n % 2 == 0:\n      continue\n    s = s + n\n  return s\nprint f(6)\nprint f(1)\n',1,1,2,0),
+ ('loop-continue-bool','def f(n):\n  ok = false\n  while n > 0:\n    n = n - 1\n    if n % 2 != 0:\n      continue\n    ok = true\n  return ok\nprint f(3)\nprint f(2)\nprint f(1)\n',1,1,3,0),
+ ('loop-two-independent','def f(n):\n  a = 0\n  while n > 0:\n    a = a + n\n    n = n - 1\n  b = 1\n  m = 3\n  while m > 0:\n    b = b * 2\n    m = m - 1\n  return a + b\nprint f(3)\nprint f(0)\n',1,1,2,0),
+ ('loop-three-sequential','def f(n):\n  a = 0\n  while a < n:\n    a = a + 1\n  b = 0\n  while b < n:\n    b = b + 2\n  c = 0\n  while c < n:\n    c = c + 3\n  return a + b + c\nprint f(6)\n',1,1,1,0),
+ ('loop-inside-branch','def f(n):\n  if n < 0:\n    m = 0 - n\n  else:\n    m = n\n  s = 0\n  while m > 0:\n    s = s + m\n    m = m - 1\n  return s\nprint f(-3)\nprint f(2)\n',1,1,2,0),
+ ('loop-latch-mixed-kind-refused','def f(n):\n  x = 0\n  while n > 0:\n    x = n < 2\n    n = n - 1\n  return x\nprint f(3)\n',1,0,0,0),
 ])
 for op in ('<','<=','>','>=','==','!='):
  cases.append(('bool-compare-'+op,f'def f(a,b):\n  return a {op} b\nprint f(-2,3)\nprint f(3,-2)\nprint f(4,4)\n',1,1,3,0))

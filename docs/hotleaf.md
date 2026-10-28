@@ -7,11 +7,11 @@ compiles an eligible leaf only at its threshold, calls generated machine code
 and resumes the hs interpreter. Source rebinding and aliases keep their normal
 function identities. No performance claim is made.
 
-Eligibility is deliberately narrow: a CFG of up to 16 blocks with at most one
-natural loop, up to six
+Eligibility is deliberately narrow: a CFG of up to 16 blocks whose only
+cycles are disjoint natural loops, up to six
 parameters, constants/parameter loads, integer + - * % & | ^ << >> or unary minus/complement, integer comparisons for conditions, and statically uniform Int or Bool return.
 No calls, globals/captures, mutation, allocation, print or exceptions
-are compiled. Nested loops, multiple back edges and side entries into a loop
+are compiled. Nested or overlapping loops and side entries into a loop
 remain interpreted. Bool, objects and values outside signed 30-bit fall back before
 native entry. Every native intermediate is range-guarded; a guard failure
 returns a private sentinel and interprets the original function. Replay is safe
@@ -32,8 +32,8 @@ interpreter-to-native-to-interpreter hot-leaf experiment, not a general method
 JIT: no shared heap objects/roots/exception ABI, recursion in native code,
 on-stack replacement, type-specialized object operations or general deopt.
 
-The CFG admission walk is topological, admits one natural loop and rejects
-other cycles and unreachable blocks.
+The CFG admission walk is topological, admits disjoint natural loops and
+rejects other cycles and unreachable blocks.
 Each use must be available on every incoming path; definitions are unique.
 Internal comparison values are Bool and may steer branches or return as a Bool,
 but cannot enter integer arithmetic. All return paths must agree on one static
@@ -121,10 +121,20 @@ enters the loop body from outside it. A loop-carried Int/Bool local resolves
 through a deferred-arm loop phi: the preheader arm records the version live on
 entry, and the latch arm is filled from the version live at the latch and
 kind-checked only after the latch block walks. Mixed-kind or unbound latch
-arms, nested loops, multiple back edges, side entries and a preheader inside
-its own loop all refuse. Every intermediate inside the loop keeps the same
+arms, nested loops, back edges outside a single-header loop, side entries
+and a preheader inside its own loop all refuse. Every intermediate inside the loop keeps the same
 range guard, so overflow still replays the whole call in the interpreter. Nine
 programs cover countdown, accumulation, zero iterations, loop-carried Bool,
 break exit, in-loop overflow replay, argument type fallback and nested/two-loop
 refusal, for136 focused cases. General cycles and shared objects remain
 outside admission.
+
+Disjoint natural loops and multi-latch loops now stay native. Back edges group
+by header into one loop per header; a continue edge is a second latch of the
+same loop, and loop phis resolve one kind-checked arm per latch, including the
+self-arm that keeps a local unchanged on a continue path. Sequential loops,
+independent accumulators, loops after branches and continues all compile.
+Loops that share a block (nested or overlapping) refuse. Seven programs cover
+continue, continue with a loop-carried Bool, two and three sequential loops,
+independent accumulators, a loop after a branch and mixed-kind latch refusal,
+for142 focused cases.
