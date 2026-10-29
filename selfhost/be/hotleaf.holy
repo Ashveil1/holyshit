@@ -394,13 +394,16 @@ def plan(fn, kinds):
         both_int = types[ins["l"]] == "Int" and types[ins["r"]] == "Int"
         bool_eq = types[ins["l"]] == "Bool" and types[ins["r"]] == "Bool" and ins["binop"] in ["==", "!="]
         both_float = types[ins["l"]] == "Float" and types[ins["r"]] == "Float"
-        if not both_int and not bool_eq and not both_float:
+        mixed_num = (types[ins["l"]] == "Float" or types[ins["r"]] == "Float") and (types[ins["l"]] == "Int" or types[ins["r"]] == "Int")
+        if not both_int and not bool_eq and not both_float and not mixed_num:
           return null
         if ins["binop"] in ["<", "<=", ">", ">=", "==", "!="]:
           ty = "Bool"
-        elif both_float:
-          # No float modulo: the x87 remainder and sign fix-ups are not
-          # worth the risk here. Mixed Int/Float arithmetic refuses.
+        elif both_float or mixed_num:
+          # Mixed Int/Float arithmetic converts the Int operand exactly:
+          # every admitted Int is Int30, far below 2^53, so the conversion
+          # never rounds and IEEE arithmetic matches the interpreter. No
+          # float modulo here yet.
           if ins["binop"] not in ["+", "-", "*", "/"]:
             return null
           ty = "Float"
@@ -553,11 +556,18 @@ def compile_leaf(fn, p):
             asm.xor_rr("rax", "rcx")
           else:
             asm.neg_r("rax")
-        elif op == "bin" and p[2][ins["l"]] == "Float":
+        elif op == "bin" and (p[2][ins["l"]] == "Float" or p[2][ins["r"]] == "Float"):
           asm.mov_rm("rax", "rbp", 0 - p[1][ins["l"]])
           asm.mov_rm("rcx", "rbp", 0 - p[1][ins["r"]])
-          asm.movq_xr(0, "rax")
-          asm.movq_xr(1, "rcx")
+          if p[2][ins["l"]] == "Float":
+            asm.movq_xr(0, "rax")
+          else:
+            # Int30 converts exactly; the guest's mixed arithmetic matches.
+            asm.cvtsi2sd(0, "rax")
+          if p[2][ins["r"]] == "Float":
+            asm.movq_xr(1, "rcx")
+          else:
+            asm.cvtsi2sd(1, "rcx")
           if ins["binop"] == "+":
             asm.addsd(0, 1)
           elif ins["binop"] == "-":
@@ -565,10 +575,13 @@ def compile_leaf(fn, p):
           elif ins["binop"] == "*":
             asm.mulsd(0, 1)
           elif ins["binop"] == "/":
-            # The guest raises on division by ±0.0, so replay instead.
-            asm.mov_rr("r11", "rcx")
-            asm.shl_ri8("r11", 1)
-            asm.test_rr("r11", "r11")
+            # The guest raises on a zero divisor of either kind, so replay.
+            if p[2][ins["r"]] == "Float":
+              asm.mov_rr("r11", "rcx")
+              asm.shl_ri8("r11", 1)
+              asm.test_rr("r11", "r11")
+            else:
+              asm.cmp_ri32("rcx", 0)
             asm.jcc("e", "fallback")
             asm.divsd(0, 1)
           else:
