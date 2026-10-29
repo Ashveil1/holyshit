@@ -9,7 +9,7 @@ function identities. No performance claim is made.
 
 Eligibility is deliberately narrow: a CFG of up to 16 blocks whose only
 cycles are natural loops, nested or disjoint, up to six
-parameters, constants/parameter loads, integer + - * % & | ^ << >> or unary minus/complement, finite-float + - * / and negation, integer and float comparisons for conditions, and statically uniform Int, Bool or Float return.
+parameters, constants/parameter loads, integer + - * % & | ^ << >> or unary minus/complement, finite-float and mixed Int/Float + - * / and negation, integer, float and mixed comparisons for conditions, and statically uniform Int, Bool or Float return.
 No calls, globals/captures, mutation, allocation, print or exceptions
 are compiled. Partially overlapping loops and side entries into a loop
 remain interpreted. Bool, objects, non-finite floats and values outside signed 30-bit fall back
@@ -161,9 +161,22 @@ so an unordered (NaN) intermediate is false everywhere except !=, division
 by ±0.0 replays the guest's error, and only ±0.0 are falsey in conditions
 and `not`. Results cross as raw bits in a private slot after a finiteness
 check, so inf/NaN results replay while finite values round-trip bit-exact,
-including -0.0 and subnormals. Mixed Int/Float arithmetic, float modulo and
-Bool parameters remain refused. Twenty-two programs cover arithmetic,
+including -0.0 and subnormals. Float modulo and Bool parameters remain refused.
+Twenty-two programs cover arithmetic,
 constants, negation, division, comparisons, NaN mapping through overflow
 intermediates, truthiness, branches, joins, a loop-carried Float accumulator,
 division-by-zero replay, inf/NaN argument and result replay, the -0.0 round
 trip, signature-mismatch replay and mixed-kind refusal, for171 focused cases.
+
+Mixed Int/Float arithmetic and comparisons now stay native. The Int operand
+converts with a signed integer-to-double instruction; every admitted Int is
+signed 30-bit, far below 2^53, so the conversion never rounds and IEEE
+arithmetic and ordered comparisons match the interpreter exactly. A zero
+divisor of either kind replays the guest error, mixed products that reach
+inf replay through the same finiteness guard, and -0.0 multiplication and
+comparison behave as the guest does. Bool mixing, mixed modulo and a loop
+phi whose arms change kind remain refused. Thirteen programs cover both
+operand orders for + - * /, all six comparisons in both orders, Int and
+Float zero-divisor replay, -0.0 multiplication and equality, inf-result
+replay, Bool refusal, mixed modulo refusal, a mixed accumulator loop and
+kind-change refusal, for184 focused cases.
