@@ -185,6 +185,31 @@ for op in ('<','<=','>','>=','==','!='):
 # must preserve execution and release the partially allocated mapping.
 long_expr = ' + '.join(['n'] * 50)
 cases.append(('code-budget', f'def f(n):\n  return {long_expr}\nprint f(1)\nprint f(2)\n',1,0,0,0))
+cases.extend([
+ ('float-add','def f(a,b):\n  return a + b\nprint f(1.5,2.25)\nprint f(-0.5,0.25)\nprint f(2.0,3.0)\n',1,1,3,0),
+ ('float-const','def f(n):\n  return n * 1.5\nprint f(2.0)\nprint f(-3.0)\n',1,1,2,0),
+ ('float-neg','def f(a):\n  return -a\nprint f(1.5)\nprint f(-0.0)\nprint f(2.5)\n',1,1,3,0),
+ ('float-div','def f(a,b):\n  return a / b\nprint f(7.0,2.0)\nprint f(-1.0,4.0)\n',1,1,2,0),
+ ('float-compare','def f(a,b):\n  return a < b\nprint f(1.5,2.0)\nprint f(2.5,2.5)\nprint f(-1.0,-2.0)\n',1,1,3,0),
+ ('float-compare-all','def lt(a,b):\n  return a < b\ndef le(a,b):\n  return a <= b\ndef gt(a,b):\n  return a > b\ndef ge(a,b):\n  return a >= b\ndef eq(a,b):\n  return a == b\ndef ne(a,b):\n  return a != b\nprint json_str([lt(1.5,2.0),le(2.0,2.0),gt(2.5,2.0),ge(2.0,2.0),eq(2.0,2.0),ne(1.5,2.0)])\nprint json_str([lt(2.0,2.0),le(2.5,2.0),gt(2.0,2.0),ge(1.5,2.0),eq(1.5,2.0),ne(2.0,2.0)])\n',1,6,12,0),
+ ('float-not','def f(a):\n  return not a\nprint f(0.0)\nprint f(-0.0)\nprint f(1.5)\n',1,1,3,0),
+ ('float-branch','def f(a):\n  if a:\n    return 1.0\n  return 2.0\nprint f(0.5)\nprint f(0.0)\nprint f(-0.0)\n',1,1,3,0),
+ ('float-join','def f(a):\n  if a > 0.0:\n    x = 1.5\n  else:\n    x = 2.5\n  return x\nprint f(1.0)\nprint f(-1.0)\n',1,1,2,0),
+ ('float-loop','def f(n):\n  total = 0.0\n  while n > 0:\n    total = total + 0.5\n    n = n - 1\n  return total\nprint f(3)\nprint f(5)\n',1,1,2,0),
+ ('float-div-zero-fallback','def f(a,b):\n  return a / b\ntry:\n  print f(1.0,0.0)\nexcept:\n  print "caught"\ntry:\n  print f(1.0,-0.0)\nexcept:\n  print "caught"\nprint f(4.0,2.0)\n',1,1,1,2),
+ ('float-result-inf-fallback','def f(a,b):\n  return a * b\nprint f(1e308,10.0)\nprint f(2.0,3.0)\n',1,1,1,1),
+ ('float-neg-zero','def f(a):\n  return a\nprint f(-0.0)\nprint f(0.0)\nprint str(f(-0.0))\n',1,1,3,0),
+ ('float-sig-mismatch-fallback','def f(n):\n  return n + n\nprint f(1.5)\nprint f(2)\nprint f(3.5)\n',1,1,2,1),
+ ('float-inf-arg-fallback','def f(a):\n  return a + 1.0\ninf = 1e308 * 10.0\nprint f(inf)\nprint f(1.0)\n',1,1,1,1),
+ ('float-nan-arg-fallback','def f(a):\n  return a + 1.0\ninf = 1e308 * 10.0\nnan = inf * 0.0\nprint f(nan)\nprint f(1.0)\n',1,1,1,1),
+ ('float-nan-compare-lt','def f(a,b):\n  c = a * b\n  return c - c < 1.0\nprint f(1e308,10.0)\nprint f(1.0,2.0)\n',1,1,2,0),
+ ('float-nan-compare-ne','def f(a,b):\n  c = a * b\n  return c - c != 0.0\nprint f(1e308,10.0)\nprint f(1.0,2.0)\n',1,1,2,0),
+ ('float-mixed-refused','def f(n):\n  return n + 1\nprint f(1.5)\nprint f(2.5)\n',1,0,0,0),
+ ('float-mod-refused','def f(a,b):\n  return a % b\nprint f(5.5,2.0)\n',1,0,0,0),
+ ('float-int-replay','def f(n):\n  return n + 1\nprint f(2)\nprint f(1.5)\nprint f(3)\n',1,1,2,1),
+ ('float-nan-result-fallback','def f(a,b):\n  return a * b - a * b\nprint f(1e308,10.0)\nprint f(2.0,3.0)\n',1,1,1,1),
+])
+
 with tempfile.TemporaryDirectory(prefix='hs-hotleaf.') as d:
  d=Path(d);exe=d/'runner'
  r=run([ROOT/'bootstrap/hs-hosted-x86_64',ROOT/'selfhost/be/hotleaf_run.holy',exe]);assert r.returncode==0,r.stderr

@@ -9,18 +9,20 @@ function identities. No performance claim is made.
 
 Eligibility is deliberately narrow: a CFG of up to 16 blocks whose only
 cycles are natural loops, nested or disjoint, up to six
-parameters, constants/parameter loads, integer + - * % & | ^ << >> or unary minus/complement, integer comparisons for conditions, and statically uniform Int or Bool return.
+parameters, constants/parameter loads, integer + - * % & | ^ << >> or unary minus/complement, finite-float + - * / and negation, integer and float comparisons for conditions, and statically uniform Int, Bool or Float return.
 No calls, globals/captures, mutation, allocation, print or exceptions
 are compiled. Partially overlapping loops and side entries into a loop
-remain interpreted. Bool, objects and values outside signed 30-bit fall back before
-native entry. Every native intermediate is range-guarded; a guard failure
-returns a private sentinel and interprets the original function. Replay is safe
-only because the admitted leaf has no effects. A sentinel cannot be an admitted
-result. Products of two admitted operands fit signed 64-bit intermediates.
+remain interpreted. Bool, objects, non-finite floats and values outside signed 30-bit fall back
+before native entry. Every native Int intermediate is range-guarded; a guard
+failure records a private status in the data page and interprets the original
+function. Replay is safe only because the admitted leaf has no effects. The
+result never carries a sentinel, so every 64-bit result pattern, including
+Float bits, is unambiguous. Products of two admitted operands fit signed
+64-bit intermediates.
 
 Code uses RW-to-RX pages; argument slots remain in a separate RW page. The
 native body does not allocate, call a runtime, retain values or expose pointers.
-Only copied immediate integers cross the boundary. Contexts bound sites/images;
+Only copied immediate integers and float bit patterns cross the boundary. Contexts bound sites/images;
 image-cap overflow interprets instead of evicting live code. Release occurs in
 finally on controlled success/error; released contexts reject use. Fatal signals,
 unsafe corruption and process termination remain outside cleanup guarantees.
@@ -149,3 +151,19 @@ flows through the inner header unchanged. Eight programs cover a nested
 countdown, a multiplication-table sum, a zero-trip inner loop, inner
 break/continue, triple nesting, inner-overflow replay and inner mixed-kind
 latch refusal, for149 focused cases.
+
+Finite Float parameters, constants and arithmetic now stay native. A call
+site records the argument-kind signature seen at compile time, and a later
+call of a different shape replays; inf and NaN arguments never enter native
+code. Float + - * /, negation and all six comparisons compile through SSE
+scalar doubles. Ordered comparisons follow the guest's IEEE mapping exactly,
+so an unordered (NaN) intermediate is false everywhere except !=, division
+by ±0.0 replays the guest's error, and only ±0.0 are falsey in conditions
+and `not`. Results cross as raw bits in a private slot after a finiteness
+check, so inf/NaN results replay while finite values round-trip bit-exact,
+including -0.0 and subnormals. Mixed Int/Float arithmetic, float modulo and
+Bool parameters remain refused. Twenty-two programs cover arithmetic,
+constants, negation, division, comparisons, NaN mapping through overflow
+intermediates, truthiness, branches, joins, a loop-carried Float accumulator,
+division-by-zero replay, inf/NaN argument and result replay, the -0.0 round
+trip, signature-mismatch replay and mixed-kind refusal, for171 focused cases.

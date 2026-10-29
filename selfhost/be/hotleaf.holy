@@ -10,9 +10,57 @@ def small(v):
   if pyrt.py_type(v) != "int":
     return false
   return v >= (0 - 536870912) and v <= 536870911
-def plan(fn):
+def finite(v):
+  # inf and NaN fail this; both signed zeros pass.
+  return pyrt.py_type(v) == "float" and v * 0.0 == 0.0
+def f64bytes(v):
+  # Eight little-endian bytes of a finite double. py_f64bits loses the
+  # negative-zero sign, which the str spelling still carries.
+  if v == 0 and str(v)[0:1] == "-":
+    return [0, 0, 0, 0, 0, 0, 0, 128]
+  return pyrt.py_f64bits(v)
+def f64frombytes(bs):
+  # Exact inverse of f64bytes for finite values: every step (mantissa over
+  # 2^52, doubling, halving) is exact in doubles, so the round trip keeps
+  # every bit, including subnormals and -0.0.
+  sign = 1.0
+  if bs[7] >= 128:
+    sign = -1.0
+  exp = (bs[7] & 127) * 16 + (bs[6] >> 4)
+  if exp == 2047:
+    raise "hotleaf: non-finite native result"
+  m = bs[6] & 15
+  m = m * 256 + bs[5]
+  m = m * 256 + bs[4]
+  m = m * 256 + bs[3]
+  m = m * 256 + bs[2]
+  m = m * 256 + bs[1]
+  m = m * 256 + bs[0]
+  frac = m / 4503599627370496.0
+  if exp == 0:
+    v = frac
+    k = 1022
+    while k > 0:
+      v = v / 2.0
+      k = k - 1
+    return v * sign
+  v = 1.0 + frac
+  e = exp - 1023
+  while e > 0:
+    v = v * 2.0
+    e = e - 1
+  while e < 0:
+    v = v / 2.0
+    e = e + 1
+  return v * sign
+def plan(fn, kinds):
   if len(fn["blocks"]) < 1 or len(fn["blocks"]) > 16 or len(fn["params"]) > 6 or len(fn["globals"]) != 0:
     return null
+  if len(kinds) != len(fn["params"]):
+    return null
+  pkind = {}
+  for i in range(len(fn["params"])):
+    pkind[fn["params"][i]] = kinds[i]
   by = {}
   preds = {}
   remaining = {}
@@ -72,9 +120,6 @@ def plan(fn):
         if (key in newd) != (key in dom[b["label"]]):
           changed = true
       dom[b["label"]] = newd
-  # At most one back edge: a single natural loop. The latch must jump
-  # unconditionally to a header whose only other predecessor is the
-  # preheader, and no path may enter the loop body from outside it.
   # Every edge X->Y where the header Y dominates the latch X is a back edge.
   # Back edges group by header into natural loops: one loop per header, with
   # one or more latches each (a continue edge is a second latch).
@@ -216,7 +261,7 @@ def plan(fn):
         if name in stored:
           tmp = "lpar" + str(i)
           slots[tmp] = (len(slots) + 1) * 8
-          types[tmp] = "Int"
+          types[tmp] = pkind[name]
           have[tmp] = true
           lhave[name] = tmp
           if lab not in local_phis:
@@ -332,20 +377,33 @@ def plan(fn):
           ty = types[src]
         elif ins["name"] not in fn["params"]:
           return null
+        else:
+          ty = pkind[ins["name"]]
       elif op == "const":
         if pyrt.py_type(ins["val"]) == "bool":
           ty = "Bool"
-        elif not small(ins["val"]):
+        elif small(ins["val"]):
+          ty = "Int"
+        elif finite(ins["val"]):
+          ty = "Float"
+        else:
           return null
       elif op == "bin":
         if ins["l"] not in have or ins["r"] not in have:
           return null
         both_int = types[ins["l"]] == "Int" and types[ins["r"]] == "Int"
         bool_eq = types[ins["l"]] == "Bool" and types[ins["r"]] == "Bool" and ins["binop"] in ["==", "!="]
-        if not both_int and not bool_eq:
+        both_float = types[ins["l"]] == "Float" and types[ins["r"]] == "Float"
+        if not both_int and not bool_eq and not both_float:
           return null
         if ins["binop"] in ["<", "<=", ">", ">=", "==", "!="]:
           ty = "Bool"
+        elif both_float:
+          # No float modulo: the x87 remainder and sign fix-ups are not
+          # worth the risk here. Mixed Int/Float arithmetic refuses.
+          if ins["binop"] not in ["+", "-", "*", "/"]:
+            return null
+          ty = "Float"
         elif ins["binop"] not in ["+", "-", "*", "%", "&", "|", "^", "<<", ">>"]:
           return null
       elif op == "un":
@@ -353,6 +411,8 @@ def plan(fn):
           return null
         if ins["unop"] == "not":
           ty = "Bool"
+        elif ins["unop"] == "neg" and types[ins["v"]] == "Float":
+          ty = "Float"
         elif ins["unop"] not in ["neg", "unot"] or types[ins["v"]] != "Int":
           return null
       else:
@@ -368,7 +428,7 @@ def plan(fn):
       if tm["val"] not in have:
         return null
       # One statically known scalar result kind crosses the native boundary.
-      # Mixed Int/Bool returns remain interpreted, without truth coercion.
+      # Mixed-kind returns remain interpreted, without truth coercion.
       kind = types[tm["val"]]
       if result_type != null and result_type != kind:
         return null
@@ -421,9 +481,25 @@ def compile_leaf(fn, p):
     asm.mov_rr("rbp", "rsp")
     asm.sub_ri32("rsp", (len(p[1]) * 8 + 15) & (0 - 16))
     asm.mov_ri64("rdi", ptr + 4096)
+    # Status slot after the six argument slots: 0 success, 1 replay. The
+    # result itself never carries a sentinel, so every 64-bit result
+    # pattern, including Float bits, is unambiguous.
+    asm.mov_ri32("rax", 0)
+    asm.mov_mr("rdi", "rax", 48)
     block_ids = {}
     for i in range(len(p[0])):
       block_ids[p[0][i]["label"]] = i
+    # Finite float constants live in the data page past the status and
+    # result slots; the leaf loads their raw bits from there.
+    fconst_off = {}
+    fconst_bytes = []
+    fnext = 64
+    for block in p[0]:
+      for ins in block["instrs"]:
+        if ins["op"] == "const" and p[2][ins["dest"]] == "Float":
+          fconst_off[ins["dest"]] = fnext
+          append(fconst_bytes, [fnext, f64bytes(ins["val"])])
+          fnext = fnext + 8
     for block in p[0]:
       asm.label("block_" + block["label"])
       instrs = []
@@ -454,17 +530,63 @@ def compile_leaf(fn, p):
               idx = idx + 1
             asm.mov_rm("rax", "rdi", idx * 8)
         elif op == "const":
-          asm.mov_ri64("rax", int(ins["val"]))
+          if ins["dest"] in fconst_off:
+            asm.mov_rm("rax", "rdi", fconst_off[ins["dest"]])
+          else:
+            asm.mov_ri64("rax", int(ins["val"]))
         elif op == "un":
           asm.mov_rm("rax", "rbp", 0 - p[1][ins["v"]])
           if ins["unop"] == "not":
+            if p[2][ins["v"]] == "Float":
+              # ±0.0 are the only falsey doubles; NaN stays truthy.
+              asm.shl_ri8("rax", 1)
             asm.cmp_ri32("rax", 0)
             asm.setcc_al("e")
             asm.movzx_eax_al()
           elif ins["unop"] == "unot":
             asm.not_r("rax")
+          elif p[2][ins["v"]] == "Float":
+            # IEEE negation is a sign-bit flip.
+            asm.mov_rr("rcx", "rax")
+            asm.mov_ri64("rax", 1)
+            asm.shl_ri8("rax", 63)
+            asm.xor_rr("rax", "rcx")
           else:
             asm.neg_r("rax")
+        elif op == "bin" and p[2][ins["l"]] == "Float":
+          asm.mov_rm("rax", "rbp", 0 - p[1][ins["l"]])
+          asm.mov_rm("rcx", "rbp", 0 - p[1][ins["r"]])
+          asm.movq_xr(0, "rax")
+          asm.movq_xr(1, "rcx")
+          if ins["binop"] == "+":
+            asm.addsd(0, 1)
+          elif ins["binop"] == "-":
+            asm.subsd(0, 1)
+          elif ins["binop"] == "*":
+            asm.mulsd(0, 1)
+          elif ins["binop"] == "/":
+            # The guest raises on division by ±0.0, so replay instead.
+            asm.mov_rr("r11", "rcx")
+            asm.shl_ri8("r11", 1)
+            asm.test_rr("r11", "r11")
+            asm.jcc("e", "fallback")
+            asm.divsd(0, 1)
+          else:
+            # Ordered comparisons follow the guest's IEEE mapping exactly:
+            # unordered (NaN) is false everywhere except !=, which is true.
+            asm.ucomisd(0, 1)
+            fcc = {"<": "b", ">": "a", "<=": "be", ">=": "ae", "==": "e", "!=": "ne"}
+            asm.setcc_al(fcc[ins["binop"]])
+            asm.movzx_eax_al()
+            fnan = "fnan_" + str(p[1][ins["dest"]])
+            asm.jcc("np", fnan)
+            if ins["binop"] == "!=":
+              asm.mov_ri32("rax", 1)
+            else:
+              asm.mov_ri32("rax", 0)
+            asm.label(fnan)
+          if ins["binop"] in ["+", "-", "*", "/"]:
+            asm.movq_rx("rax", 0)
         else:
           asm.mov_rm("rax", "rbp", 0 - p[1][ins["l"]])
           asm.mov_rm("rcx", "rbp", 0 - p[1][ins["r"]])
@@ -512,22 +634,41 @@ def compile_leaf(fn, p):
             cc = {"<": "l", "<=": "le", ">": "g", ">=": "ge", "==": "e", "!=": "ne"}
             asm.setcc_al(cc[ins["binop"]])
             asm.movzx_eax_al()
-        guard()
+        if p[2][ins["dest"]] == "Int":
+          guard()
         asm.mov_mr("rbp", "rax", 0 - p[1][ins["dest"]])
       tm = block["term"]
       asm.mov_ri32("r8", block_ids[block["label"]])
       if tm["term"] == "ret":
         asm.mov_rm("rax", "rbp", 0 - p[1][tm["val"]])
+        if p[2][tm["val"]] == "Float":
+          # inf and NaN results replay in the interpreter; only finite
+          # doubles cross, as raw bits in the result slot.
+          asm.mov_rr("rdx", "rax")
+          asm.mov_ri64("rcx", 2047)
+          asm.shl_ri8("rcx", 52)
+          asm.and_rr("rdx", "rcx")
+          asm.cmp_rr("rdx", "rcx")
+          asm.jcc("e", "fallback")
+          asm.mov_mr("rdi", "rax", 56)
+          # The bits cross in the result slot only; rax would not fit the
+          # 62-bit Int that call0 wraps.
+          asm.mov_ri32("rax", 0)
         asm.jmp("done")
       elif tm["term"] == "jmp":
         asm.jmp("block_" + tm["to"])
       else:
         asm.mov_rm("rax", "rbp", 0 - p[1][tm["cond"]])
+        if p[2][tm["cond"]] == "Float":
+          # Match the guest: only ±0.0 are falsey.
+          asm.shl_ri8("rax", 1)
         asm.cmp_ri32("rax", 0)
         asm.jcc("ne", "block_" + tm["then"])
         asm.jmp("block_" + tm["els"])
     asm.label("fallback")
-    asm.mov_ri32("rax", 1073741824)
+    asm.mov_ri32("rax", 1)
+    asm.mov_mr("rdi", "rax", 48)
+    asm.mov_ri32("rax", 0)
     asm.label("done")
     asm.mov_rr("rsp", "rbp")
     asm.pop_r("rbp")
@@ -539,6 +680,13 @@ def compile_leaf(fn, p):
       b = code[i]
       unsafe:
         store8(as_ptr(ptr) + i, b)
+    for fc in fconst_bytes:
+      foff = fc[0]
+      fbs = fc[1]
+      for k in range(8):
+        fb = fbs[k]
+        unsafe:
+          store8(as_ptr(ptr + 4096 + foff + k), fb)
     if scall(10, ptr, 4096, 5, 0, 0, 0) != 0:
       raise "hotleaf: mprotect failed"
   except as e:
@@ -559,12 +707,33 @@ def dispatch(ctx, key, fn, args):
     site["count"] = site["count"] + 1
   if site["rejected"] or site["count"] < ctx["threshold"]:
     return [false, null]
+  kinds = []
+  bad = false
   for value in args:
-    if not small(value):
+    if small(value):
+      append(kinds, "Int")
+    elif finite(value):
+      append(kinds, "Float")
+    else:
+      bad = true
+  if bad:
+    ctx["fallbacks"] = ctx["fallbacks"] + 1
+    return [false, null]
+  if site["image"] != null:
+    # One argument-kind signature per site; a later call of a different
+    # shape replays in the interpreter.
+    sig = site["sig"]
+    match = len(sig) == len(kinds)
+    i = 0
+    while match and i < len(sig):
+      if sig[i] != kinds[i]:
+        match = false
+      i = i + 1
+    if not match:
       ctx["fallbacks"] = ctx["fallbacks"] + 1
       return [false, null]
   if site["image"] == null:
-    p = plan(fn)
+    p = plan(fn, kinds)
     if p == null or len(ctx["images"]) >= ctx["max_images"]:
       site["rejected"] = true
       ctx["rejected"] = ctx["rejected"] + 1
@@ -579,24 +748,44 @@ def dispatch(ctx, key, fn, args):
       ctx["rejected"] = ctx["rejected"] + 1
       return [false, null]
     site["image"] = image
+    site["sig"] = kinds
     append(ctx["images"], site["image"])
     ctx["compiled"] = ctx["compiled"] + 1
   image = site["image"]
   for i in range(len(args)):
     v = args[i]
     address = image["data"] + i * 8
-    unsafe:
-      store64(as_ptr(address), v)
+    if kinds[i] == "Int":
+      unsafe:
+        store64(as_ptr(address), v)
+    else:
+      bs = f64bytes(v)
+      for k in range(8):
+        b = bs[k]
+        unsafe:
+          store8(as_ptr(address + k), b)
   address = image["ptr"]
   value = null
   unsafe:
     value = call0(as_ptr(address))
-  if value == 1073741824:
+  status = 0
+  data = image["data"]
+  unsafe:
+    status = load64(as_ptr(data + 48))
+  if status != 0:
     ctx["fallbacks"] = ctx["fallbacks"] + 1
     return [false, null]
   ctx["calls"] = ctx["calls"] + 1
   if image["result_type"] == "Bool":
     return [true, value != 0]
+  if image["result_type"] == "Float":
+    rbs = []
+    for k in range(8):
+      rb = 0
+      unsafe:
+        rb = load8(as_ptr(data + 56 + k))
+      append(rbs, rb)
+    return [true, f64frombytes(rbs)]
   return [true, value]
 def release(ctx):
   if not ctx["live"]:
