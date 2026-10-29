@@ -1,0 +1,7 @@
+inf = 1e308 * 10.0
+print inf - inf
+print inf * 0.0
+print inf % 2.0
+print inf / inf
+print 0.0 - inf
+print inf
