@@ -168,19 +168,72 @@ def dispatch(nr, a1, a2, a3, a4, a5, a6):
     user_stop()
     return 0
   return -38
-def run():
+# Bounded explicit startup vectors. Kernel-internal callers supply Str lists.
+def vector_bytes(args, env):
+  if len(args) > 16 or len(env) > 16:
+    return -1
+  total = 0
+  for group in [args, env]:
+    for value in group:
+      n = len(value)
+      if n > 255:
+        return -1
+      unsafe:
+        source = as_int(as_ptr(value)) + 16
+      j = 0
+      while j < n:
+        if byte(source, j) == 0:
+          return -1
+        j = j + 1
+      total = total + n + 1
+  if total > 2048:
+    return -1
+  return total
+def initial_stack(args, env):
+  # Validation precedes all stack writes. Strings/pointers stay in one page.
+  if vector_bytes(args, env) < 0:
+    return 0
+  cursor = STACK + PAGE
+  vectors = []
+  for group in [args, env]:
+    addresses = []
+    for value in group:
+      cursor = cursor - len(value) - 1
+      unsafe:
+        source = as_int(as_ptr(value)) + 16
+      kuser.copy_in(cursor, source, len(value))
+      end = cursor + len(value)
+      unsafe:
+        store8(as_ptr(end), 0)
+      append(addresses, cursor)
+    append(vectors, addresses)
+  # argc, argv[], NULL, envp[], NULL, then supported auxv key/value pairs.
+  words = [len(args)]
+  for address in vectors[0]:
+    append(words, address)
+  append(words, 0)
+  for address in vectors[1]:
+    append(words, address)
+  append(words, 0)
+  for word in [6, PAGE, 9, entry_point, 0, 0]:
+    append(words, word)
+  top = cursor - len(words) * 8
+  top = top - top % 16
+  i = 0
+  while i < len(words):
+    kuser.poke(top + i * 8, words[i])
+    i = i + 1
+  return top
+def run_with(args, env):
   global n_calls, exit_code, stopped
   if not ready:
+    return false
+  top = initial_stack(args, env)
+  if top == 0:
     return false
   n_calls = 0
   exit_code = 0
   stopped = false
-  # Minimal empty process stack, not libc startup support. 16-byte aligned.
-  top = STACK + PAGE - 48
-  i = 0
-  while i < 48:
-    kuser.poke(top + i, 0)
-    i = i + 8
   frame = top - 40
   kuser.poke(frame, entry_point)
   kuser.poke(frame + 8, kuser.CS_USER)
@@ -191,3 +244,5 @@ def run():
   enter_user(entry_point, frame)
   ksyscall.start()
   return stopped
+def run():
+  return run_with([], [])

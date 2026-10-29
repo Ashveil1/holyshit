@@ -30,10 +30,16 @@ checked before referenced reads; newly mapped pages are zeroed before copy.
 Tests mutate/restore real boot-module headers to check rejection paths.
 
 Important limits:
-- No low-address Linux layout, dynamic loader, shared libraries, TLS, argv,
-  environment, auxv, libc startup, filesystem, memory syscalls, signals,
+- No low-address Linux layout, dynamic loader, shared libraries, TLS,
+  libc startup, filesystem, memory syscalls, signals,
   threads, process management, networking or GUI.
-- The minimal aligned stack is empty, not a complete Linux process stack.
+- `run_with(args, env)` accepts at most 16 argument and 16 environment
+  strings, each at most 255 bytes with no embedded NUL, and at most 2048
+  combined string bytes including terminators. The one-page stack holds
+  aligned argc, argv and envp with NULL boundaries, plus AT_PAGESZ, AT_ENTRY
+  and AT_NULL only. Validation finishes before any stack writes.
+  `run()` preserves the empty-vector default. No AT_RANDOM, PHDR, identity,
+  platform, vDSO or other libc-required startup contract is claimed.
 - This uses the existing shared page tables. It is not a sandbox for hostile
   programs. Execute-disable protection, per-process address spaces and
   resource lifetime are not implemented here.
