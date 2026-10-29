@@ -338,8 +338,19 @@ Val v_mod(Val a, Val b, int line) {
     need_nums("%", a, b, line);
     if (to_f(b) == 0.0)
         hs_err(line, "division by zero");
-    if (a.tag == T_FLOAT || b.tag == T_FLOAT)
-        return v_float(to_f(a) - floor(to_f(a) / to_f(b)) * to_f(b));
+    if (a.tag == T_FLOAT || b.tag == T_FLOAT) {
+        /* Python float %: C remainder, then the divisor's sign.
+           An exact-zero remainder takes the divisor's sign bit. */
+        double fa = to_f(a), fb = to_f(b);
+        double r = fmod(fa, fb);
+        if (r != 0.0) {
+            if ((fb < 0) != (r < 0))
+                r += fb;
+        } else {
+            r = copysign(0.0, fb);
+        }
+        return v_float(r);
+    }
     int64_t r = a.u.i % b.u.i;
     if (r != 0 && ((r < 0) != (b.u.i < 0)))
         r += b.u.i;
