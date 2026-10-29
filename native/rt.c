@@ -767,7 +767,8 @@ Val v_seq(Val v, int line) {
 // interp/Python never do: 0.1 must be "0.1", not "0.10000000000000001".
 static void fmt_repr(double x, char *out, size_t cap) {
     if (isnan(x)) {
-        snprintf(out, cap, "%snan", signbit(x) ? "-" : "");
+        /* interp and the x64 backend print NaN without a sign; match them. */
+        snprintf(out, cap, "nan");
         return;
     }
     if (isinf(x)) {
