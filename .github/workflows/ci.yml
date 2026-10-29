@@ -111,6 +111,8 @@ jobs:
           path: |
             ${{ runner.temp }}/hs-gui-evidence
             ${{ runner.temp }}/hs-command-evidence
+      - name: private low mapping CR3 round trips (required)
+        run: HS_REQUIRE_KSPACE=1 python3 tests/test_address_space.py
       - name: bounded static Linux write/exit personality (required)
         run: HS_REQUIRE_LINUX_STATIC=1 python3 tests/test_linux_static.py
       - name: every suite including xkernel on QEMU
