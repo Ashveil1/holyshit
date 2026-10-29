@@ -13,8 +13,17 @@ It checks zero initialization, supervisor-only neighbor/kernel leaves,
 invalid address/alignment/active-root rejection, and complete native versus
 reference kernel image equality. Full CI requires QEMU, not an optional skip.
 
-This is not yet a Linux loader integration, user-process switcher or hostile
-program sandbox. The CR3 test executes at ring 0. Existing Holyshit and Linux
+The same test also maps identical machine-code bytes and separate user stack
+pages at the same virtual addresses in both roots. Each actual ring-3 run
+checks CS.RPL is 3, reads that root's marker and passes it through an exit
+syscall. The handler checks the active CR3, then the test restores the boot
+root and verifies the kernel and both frame values remain intact. Code leaves
+are user-read-only and stack leaves are user-writable. No new kernel runtime
+or loader implementation is introduced by this extension.
+
+This is not yet a Linux loader integration, production user-process switcher
+or hostile program sandbox. The earlier data checks execute at ring 0; the
+new instruction and syscall checks execute in ring 3. Existing Holyshit and Linux
 personality loaders remain unchanged. No low-address Linux program support
 is claimed from this test.
 
