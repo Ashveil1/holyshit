@@ -53,6 +53,24 @@ def f64frombytes(bs):
     v = v / 2.0
     e = e + 1
   return v * sign
+def fmod_scratch(o8, o16, o24, retry):
+  # [rbp-o24] = truncating remainder of [rbp-o8] by [rbp-o16] via x87 fprem.
+  # fprem is exact; the C2 retry loop covers huge quotients. rax clobbered.
+  asm.mov_rr("rax", "rbp")
+  asm.sub_ri32("rax", o16)
+  asm.fld_m64("rax", 0)
+  asm.mov_rr("rax", "rbp")
+  asm.sub_ri32("rax", o8)
+  asm.fld_m64("rax", 0)
+  asm.label(retry)
+  asm.fprem()
+  asm.fnstsw_ax()
+  asm.sahf()
+  asm.jcc("p", retry)
+  asm.fstp_st1()
+  asm.mov_rr("rax", "rbp")
+  asm.sub_ri32("rax", o24)
+  asm.fstp_m64("rax", 0)
 def plan(fn, kinds):
   if len(fn["blocks"]) < 1 or len(fn["blocks"]) > 16 or len(fn["params"]) > 6 or len(fn["globals"]) != 0:
     return null
@@ -402,9 +420,8 @@ def plan(fn, kinds):
         elif both_float or mixed_num:
           # Mixed Int/Float arithmetic converts the Int operand exactly:
           # every admitted Int is Int30, far below 2^53, so the conversion
-          # never rounds and IEEE arithmetic matches the interpreter. No
-          # float modulo here yet.
-          if ins["binop"] not in ["+", "-", "*", "/"]:
+          # never rounds and IEEE arithmetic matches the interpreter.
+          if ins["binop"] not in ["+", "-", "*", "/", "%"]:
             return null
           ty = "Float"
         elif ins["binop"] not in ["+", "-", "*", "%", "&", "|", "^", "<<", ">>"]:
@@ -480,9 +497,17 @@ def compile_leaf(fn, p):
     raise "hotleaf: mmap failed"
   try:
     asm.reset()
+    has_fmod = false
+    for block in p[0]:
+      for ins in block["instrs"]:
+        if ins["op"] == "bin" and ins["binop"] == "%" and (p[2][ins["l"]] == "Float" or p[2][ins["r"]] == "Float"):
+          has_fmod = true
     asm.push_r("rbp")
     asm.mov_rr("rbp", "rsp")
-    asm.sub_ri32("rsp", (len(p[1]) * 8 + 15) & (0 - 16))
+    frame_extra = 0
+    if has_fmod:
+      frame_extra = 24
+    asm.sub_ri32("rsp", (len(p[1]) * 8 + frame_extra + 15) & (0 - 16))
     asm.mov_ri64("rdi", ptr + 4096)
     # Status slot after the six argument slots: 0 success, 1 replay. The
     # result itself never carries a sentinel, so every 64-bit result
@@ -584,6 +609,56 @@ def compile_leaf(fn, p):
               asm.cmp_ri32("rcx", 0)
             asm.jcc("e", "fallback")
             asm.divsd(0, 1)
+          elif ins["binop"] == "%":
+            # Python modulo: the exact x87 remainder, then the divisor's
+            # sign. A zero divisor of either kind replays the guest error.
+            if p[2][ins["r"]] == "Float":
+              asm.mov_rr("r11", "rcx")
+              asm.shl_ri8("r11", 1)
+              asm.test_rr("r11", "r11")
+            else:
+              asm.cmp_ri32("rcx", 0)
+            asm.jcc("e", "fallback")
+            # The x87 path needs doubles; take the converted operands, not
+            # the raw Int/Float bit patterns still in rax/rcx.
+            asm.movq_rx("rax", 0)
+            asm.movq_rx("rcx", 1)
+            fs8 = len(p[1]) * 8 + 8
+            fs16 = len(p[1]) * 8 + 16
+            fs24 = len(p[1]) * 8 + 24
+            asm.mov_mr("rbp", "rax", 0 - fs8)
+            asm.mov_mr("rbp", "rcx", 0 - fs16)
+            fretry = "fmod_" + str(p[1][ins["dest"]])
+            fmod_scratch(fs8, fs16, fs24, fretry)
+            asm.mov_rm("rax", "rbp", 0 - fs24)
+            # Sign mask 0x8000000000000000 built without a wide immediate.
+            asm.mov_ri64("rdx", 1)
+            asm.shl_ri8("rdx", 63)
+            fzero = "fmodz_" + str(p[1][ins["dest"]])
+            fdone = "fmodd_" + str(p[1][ins["dest"]])
+            asm.mov_rr("r11", "rax")
+            asm.shl_ri8("r11", 1)
+            asm.test_rr("r11", "r11")
+            asm.jcc("e", fzero)
+            # Nonzero remainder: keep it when the signs agree, else add the
+            # divisor once (the guest's divisor-sign rule).
+            asm.mov_rr("r11", "rax")
+            asm.and_rr("r11", "rdx")
+            asm.mov_rm("r10", "rbp", 0 - fs16)
+            asm.and_rr("r10", "rdx")
+            asm.cmp_rr("r11", "r10")
+            asm.jcc("e", fdone)
+            asm.movq_xr(0, "rax")
+            asm.mov_rm("rax", "rbp", 0 - fs16)
+            asm.movq_xr(1, "rax")
+            asm.addsd(0, 1)
+            asm.movq_rx("rax", 0)
+            asm.jmp(fdone)
+            # Exact zero takes the divisor's sign: +-0.0 of b's sign bit.
+            asm.label(fzero)
+            asm.mov_rm("rax", "rbp", 0 - fs16)
+            asm.and_rr("rax", "rdx")
+            asm.label(fdone)
           else:
             # Ordered comparisons follow the guest's IEEE mapping exactly:
             # unordered (NaN) is false everywhere except !=, which is true.
