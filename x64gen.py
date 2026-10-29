@@ -7139,7 +7139,7 @@ class Gen:
         a.mov_rr("r11", "rax")
         a.shl_ri8("r11", 1)
         a.test_rr("r11", "r11")
-        a.jcc("e", "fmod_done")         # exact zero stays zero
+        a.jcc("e", "fmod_zero")         # exact zero takes the divisor's sign
         a.mov_rm("rcx", "rbp", -16)     # b bits
         a.mov_rr("r11", "rax")
         a.mov_rr("r10", "rcx")
@@ -7153,6 +7153,12 @@ class Gen:
         a.movq_xr(1, "rax")
         a.addsd(0, 1)
         a.movq_rx("rax", 0)
+        a.jmp("fmod_done")
+        a.label("fmod_zero")
+        # Python gives an exact-zero remainder the divisor's sign.
+        a.mov_rm("rax", "rbp", -16)
+        a.mov_ri64("rcx", 0x8000000000000000 & ((1 << 64) - 1))
+        a.and_rr("rax", "rcx")
         a.label("fmod_done")
         a.mov_rr("rsp", "rbp")
         a.pop_r("rbp")
