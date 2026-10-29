@@ -1,0 +1,53 @@
+# Experimental private low user mappings. Trusted kernel-internal roots only.
+# Boot identity mappings are cloned, never shared as writable page tables.
+import kpage
+import kpmm
+PAGE = 4096
+LOW = 0x10000000
+HIGH = 0x20000000
+def clone_table(source, level):
+  target = kpage.new_table()
+  i = 0
+  while i < 512:
+    entry = kpage.entry_get(source, i)
+    if entry & 1 != 0:
+      if level > 1 and entry & 0x80 == 0:
+        child = clone_table(entry & kpage.PAGE_MASK, level - 1)
+        entry = child | (entry & 0xFFF)
+    kpage.entry_set(target, i, entry)
+    i = i + 1
+  return target
+def create():
+  # Only boot-like slot0 supervisor layout: don't clone arbitrary user roots.
+  # The low virtual window must not overlap usable physical frame aliases.
+  # This first experiment is deliberately limited to a small-memory guest.
+  if kpmm.pool_base + kpmm.pool_frames * PAGE > LOW:
+    return 0
+  source = cr3()
+  i = 1
+  while i < 512:
+    if kpage.entry_get(source, i) != 0:
+      return 0
+    i = i + 1
+  return clone_table(source, 4)
+def map_user(root, address):
+  # Caller supplies a root returned by create, not the active kernel root.
+  if root == 0 or root == cr3() or root % PAGE != 0:
+    return 0
+  if address < LOW or address >= HIGH or address % PAGE != 0:
+    return 0
+  old = kpage.pte_get(root, address)
+  if old & kpage.PAGE_USER != 0:
+    return 0
+  frame = kpmm.alloc(1)
+  if frame == 0:
+    return 0
+  at = 0
+  while at < PAGE:
+    unsafe:
+      store64(as_ptr(frame + at), 0)
+    at = at + 8
+  if not kpage.map_user(root, address, frame):
+    kpmm.free(frame)
+    return 0
+  return frame
