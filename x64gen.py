@@ -1440,7 +1440,8 @@ class Gen:
         ln = e["line"]
         a = self.a
         fn = e["fn"]
-        if fn["t"] == "var" and fn["name"] not in Gen.XBUILTINS:
+        if fn["t"] == "var" and (fn["name"] not in Gen.XBUILTINS or
+                                  fn["name"] in ("byte_len", "byte_find", "byte_at")):
             # a `def` in scope shadows the builtin of the same name (interp
             # and native agree); plain variable slots do not, so initializers
             # like `cr3 = cr3()` still reach the builtin

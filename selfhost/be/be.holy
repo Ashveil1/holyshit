@@ -1277,7 +1277,7 @@ class Gen:
   def _base_ev_call(self, e, sc, mod):
     ln = e["line"]
     fn = e["fn"]
-    if fn["t"] == "var" and not (fn["name"] in Gen_XBUILTINS):
+    if fn["t"] == "var" and (not (fn["name"] in Gen_XBUILTINS) or fn["name"] in ["byte_len", "byte_find", "byte_at"]):
       if self.is_user_def(fn["name"], sc, mod):
         self.ev_user_call(e, sc, mod, ln)
         return null
