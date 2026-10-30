@@ -647,7 +647,8 @@ Val v_builtin(const char *name) {
         {b_ticks, "ticks"}, {b_readkey, "readkey"},
         {b_pmm_alloc, "pmm_alloc"}, {b_meminfo, "meminfo"},
         {b_append, "append"}, {b_split, "split"},
-        {b_find, "find"}, {b_join, "join"}, {b_has, "has"}, {b_keys, "keys"}, {b_values, "values"}, {b_contains, "contains"},
+        {b_find, "find"}, {b_join, "join"},
+        {b_byte_len, "byte_len"}, {b_byte_find, "byte_find"}, {b_byte_at, "byte_at"}, {b_has, "has"}, {b_keys, "keys"}, {b_values, "values"}, {b_contains, "contains"},
         {b_argv, "argv"}, {b_env, "env"}, {b_system, "system"},
         {b_tcp_connect, "tcp_connect"}, {b_tcp_send, "tcp_send"},
         {b_tcp_recv, "tcp_recv"}, {b_tcp_close, "tcp_close"},
@@ -2290,6 +2291,36 @@ Val b_find(Val *args, int nargs, int line) {
         if (memcmp(s->data + i, sub->data, (size_t)sub->len) == 0)
             return v_int(i);
     return v_int(-1);
+}
+
+Val b_byte_len(Val *args, int nargs, int line) {
+    if (nargs != 1 || args[0].tag != T_STR)
+        hs_err(line, "byte_len wants byte_len(s)");
+    return v_int(AS_STR(args[0])->len);
+}
+
+Val b_byte_find(Val *args, int nargs, int line) {
+    if (nargs != 2 || args[0].tag != T_STR || args[1].tag != T_STR)
+        hs_err(line, "byte_find wants byte_find(s, sub)");
+    Str *s = AS_STR(args[0]), *sub = AS_STR(args[1]);
+    if (sub->len == 0)
+        return v_int(0);
+    for (int64_t i = 0; i + sub->len <= s->len; i++)
+        if (memcmp(s->data + i, sub->data, (size_t)sub->len) == 0)
+            return v_int(i);
+    return v_int(-1);
+}
+
+Val b_byte_at(Val *args, int nargs, int line) {
+    if (nargs != 2 || args[0].tag != T_STR || args[1].tag != T_INT)
+        hs_err(line, "byte_at wants byte_at(s, i)");
+    Str *s = AS_STR(args[0]);
+    int64_t i = args[1].u.i;
+    if (i < 0)
+        i += s->len;
+    if (i < 0 || i >= s->len)
+        hs_err(line, "index out of range");
+    return v_int((unsigned char)s->data[i]);
 }
 
 Val b_has(Val *args, int nargs, int line) {

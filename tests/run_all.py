@@ -41,6 +41,7 @@ SUITES = [
     ("test_ir_profile.py", "bounded opt-in IR execution profiling, not JIT"),
     ("test_ir.py", "IR (build/verify/exec)"),
     ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
+    ("test_byteops.py", "byte_len/byte_find/byte_at parity and errors on interp/native/x64"),
     ("test_irx64.py", "IR->x64 differential"),
     ("test_xkernel.py", "kernel on QEMU"),
     ("test_keycode_native.py", "native keyboard integer code image and finite polling allocations"),

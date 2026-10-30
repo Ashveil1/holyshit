@@ -17,6 +17,12 @@
 | | Ptr -> Int value (unsafe only) |||||
 | `as_ptr` | `as_ptr(x)` | ✓ | ✓ | ✓ | ✓ |
 | | Int value -> Ptr (unsafe only) |||||
+| `byte_at` | `byte_at(s, i)` | ✓ | ✓ | ✓ | ✓ |
+| | byte value 0..255 at byte index i (negative wraps) |||||
+| `byte_find` | `byte_find(s, sub)` | ✓ | ✓ | ✓ | ✓ |
+| | byte index of sub or -1 |||||
+| `byte_len` | `byte_len(s)` | ✓ | ✓ | ✓ | ✓ |
+| | byte length of Str |||||
 | `close` | `close(f)` | ✓ | ✓ | ✓ |   |
 | | close a file (hosted only) |||||
 | `contains` | `contains(c, x)` | ✓ | ✓ | ✓ | ✓ |
