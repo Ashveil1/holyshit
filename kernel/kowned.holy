@@ -1,0 +1,213 @@
+# Bounded owned address spaces, separate from existing experimental loaders.
+import kpage
+import kpmm
+import std.bitmap
+PAGE = 4096
+LOW = 0x10000000
+HIGH = LOW + 0x200000
+SLOTS = 2
+TABLES = 16
+USERS = 512
+STRIDE = 4608
+metadata = 0
+budget = -1
+def rd(address):
+  unsafe:
+    return load64(as_ptr(address))
+def wr(address, value):
+  unsafe:
+    store64(as_ptr(address), value)
+def zero(address, size):
+  i = 0
+  while i < size:
+    wr(address + i, 0)
+    i = i + 8
+def init():
+  global metadata
+  if metadata != 0:
+    return true
+  unsafe:
+    metadata = as_int(alloc(SLOTS * STRIDE))
+  zero(metadata, SLOTS * STRIDE)
+  return true
+def set_budget(value):
+  global budget
+  budget = value
+def frame():
+  global budget
+  if budget == 0:
+    return 0
+  if budget > 0:
+    budget = budget - 1
+  p = kpmm.alloc(1)
+  if p != 0:
+    zero(p, PAGE)
+  return p
+def record(slot):
+  return metadata + slot * STRIDE
+def owned_table(rec):
+  count = rd(rec + 24)
+  if count >= TABLES:
+    return 0
+  p = frame()
+  if p == 0:
+    return 0
+  wr(rec + 64 + count * 8, p)
+  wr(rec + 24, count + 1)
+  return p
+def clone(rec, source, level):
+  target = owned_table(rec)
+  if target == 0:
+    return 0
+  i = 0
+  while i < 512:
+    entry = kpage.entry_get(source, i)
+    if entry & 1 != 0:
+      # Every inherited mapping must remain supervisor-only.
+      if entry & 4 != 0:
+        return 0
+      if level > 1 and entry & 128 == 0:
+        child = clone(rec, entry & kpage.PAGE_MASK, level - 1)
+        if child == 0:
+          return 0
+        entry = child | (entry & 4095)
+    kpage.entry_set(target, i, entry)
+    i = i + 1
+  return target
+def free_owned(p):
+  # Called only for ledger-recorded frames. Avoid kpmm.free's Float division
+  # allocation on this repeated path; alignment and pool checks fail closed.
+  if p % PAGE != 0 or p < kpmm.pool_base:
+    return false
+  index = (p - kpmm.pool_base) >> 12
+  if index >= kpmm.pool_frames:
+    return false
+  if std.bitmap.bit_get(kpmm.bitmap_addr, index) == 0:
+    return false
+  std.bitmap.bit_clear(kpmm.bitmap_addr, index)
+  return true
+def release(rec):
+  # Only ledger frames are owned. Identity leaf mappings are borrowed.
+  i = rd(rec + 32)
+  while i > 0:
+    i = i - 1
+    free_owned(rd(rec + 192 + i * 8))
+    wr(rec + 192 + i * 8, 0)
+  i = rd(rec + 24)
+  while i > 0:
+    i = i - 1
+    free_owned(rd(rec + 64 + i * 8))
+    wr(rec + 64 + i * 8, 0)
+  wr(rec + 8, 0)
+  wr(rec + 16, 0)
+  wr(rec + 24, 0)
+  wr(rec + 32, 0)
+def lookup(handle):
+  if metadata == 0 or handle <= 0:
+    return 0
+  slot = handle % SLOTS
+  rec = record(slot)
+  if rd(rec + 8) != handle:
+    return 0
+  return rec
+def root(handle):
+  rec = lookup(handle)
+  if rec == 0:
+    return 0
+  return rd(rec + 16)
+def create():
+  init()
+  if not kpmm.ready_flag:
+    return 0
+  if kpmm.pool_base + kpmm.pool_frames * PAGE > LOW:
+    return 0
+  source = cr3()
+  i = 1
+  while i < 512:
+    if kpage.entry_get(source, i) != 0:
+      return 0
+    i = i + 1
+  slot = 0
+  while slot < SLOTS:
+    rec = record(slot)
+    if rd(rec + 8) == 0:
+      generation = rd(rec) + 1
+      if generation > 1000000:
+        return 0
+      wr(rec, generation)
+      p = clone(rec, source, 4)
+      if p == 0:
+        release(rec)
+        return 0
+      handle = generation * SLOTS + slot
+      wr(rec + 16, p)
+      wr(rec + 8, handle)
+      return handle
+    slot = slot + 1
+  return 0
+def destroy(handle):
+  rec = lookup(handle)
+  if rec == 0:
+    return false
+  if rd(rec + 16) == cr3():
+    return false
+  release(rec)
+  return true
+def map_user(handle, address):
+  rec = lookup(handle)
+  if rec == 0:
+    return 0
+  pml4 = rd(rec + 16)
+  if pml4 == cr3():
+    return 0
+  if address < LOW or address >= HIGH or address % PAGE != 0:
+    return 0
+  count = rd(rec + 32)
+  if count >= USERS:
+    return 0
+  # Boot clone must cover this window with a supervisor 2MiB identity leaf,
+  # or a private split made by this routine. No general table creation path.
+  pdpt_entry = kpage.entry_get(pml4, 0)
+  if pdpt_entry & 129 != 1:
+    return 0
+  pdpt = pdpt_entry & kpage.PAGE_MASK
+  pd_entry = kpage.entry_get(pdpt, 0)
+  if pd_entry & 129 != 1:
+    return 0
+  pd = pd_entry & kpage.PAGE_MASK
+  index = address >> 21 & 511
+  old = kpage.entry_get(pd, index)
+  if old & 1 == 0:
+    return 0
+  split = old & 128 != 0
+  if split:
+    if old & kpage.MB_MASK != LOW or old & 4 != 0:
+      return 0
+    if rd(rec + 24) >= TABLES:
+      return 0
+  else:
+    pt = old & kpage.PAGE_MASK
+    leaf = kpage.entry_get(pt, address >> 12 & 511)
+    if leaf & 4 != 0:
+      return 0
+  # Transaction: no page-table entry changes until all needed frames exist.
+  data = frame()
+  if data == 0:
+    return 0
+  if split:
+    pt = owned_table(rec)
+    if pt == 0:
+      free_owned(data)
+      return 0
+    i = 0
+    while i < 512:
+      kpage.entry_set(pt, i, (LOW + i * PAGE) | 3)
+      i = i + 1
+  kpage.entry_set(pt, address >> 12 & 511, data | 7)
+  if split:
+    kpage.entry_set(pd, index, pt | 7)
+  kpage.entry_set(pdpt, 0, pd_entry | 4)
+  kpage.entry_set(pml4, 0, pdpt_entry | 4)
+  wr(rec + 192 + count * 8, data)
+  wr(rec + 32, count + 1)
+  return data

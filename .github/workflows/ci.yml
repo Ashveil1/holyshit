@@ -111,6 +111,8 @@ jobs:
           path: |
             ${{ runner.temp }}/hs-gui-evidence
             ${{ runner.temp }}/hs-command-evidence
+      - name: owned address-space allocation rollback and 100-cycle reclamation (required)
+        run: HS_REQUIRE_KOWNED=1 python3 tests/test_owned_space.py
       - name: private-root static ELF load and ring3 run (required)
         run: HS_REQUIRE_LOWELF=1 python3 tests/test_low_elf.py
       - name: private low mapping CR3 round trips (required)
