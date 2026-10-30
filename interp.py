@@ -2821,6 +2821,31 @@ def b_find(args, ln):
     return args[0].find(args[1])
 
 
+def b_byte_len(args, ln):
+    if len(args) != 1 or not isinstance(args[0], str):
+        raise HSErr("byte_len wants byte_len(s)", ln)
+    return len(args[0].encode("utf-8"))
+
+
+def b_byte_find(args, ln):
+    if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], str):
+        raise HSErr("byte_find wants byte_find(s, sub)", ln)
+    return args[0].encode("utf-8").find(args[1].encode("utf-8"))
+
+
+def b_byte_at(args, ln):
+    if (len(args) != 2 or not isinstance(args[0], str)
+            or not is_num(args[1]) or isinstance(args[1], float)):
+        raise HSErr("byte_at wants byte_at(s, i)", ln)
+    b = args[0].encode("utf-8")
+    i = int(args[1])
+    if i < 0:
+        i += len(b)
+    if i < 0 or i >= len(b):
+        raise HSErr("index out of range", ln)
+    return b[i]
+
+
 def b_has(args, ln):
     if len(args) != 2 or not isinstance(args[0], dict):
         raise HSErr("has wants has(dict, key)", ln)
@@ -3237,7 +3262,8 @@ BUILTINS = {
     "as_ptr": b_as_ptr, "as_int": b_as_int,
     "ticks": b_ticks, "readkey": b_readkey,
     "pmm_alloc": b_pmm_alloc, "meminfo": b_meminfo,
-    "append": b_append, "split": b_split, "find": b_find, "join": b_join, "has": b_has, "keys": b_keys, "values": b_values, "contains": b_contains,
+    "append": b_append, "split": b_split, "find": b_find,
+    "byte_len": b_byte_len, "byte_find": b_byte_find, "byte_at": b_byte_at, "join": b_join, "has": b_has, "keys": b_keys, "values": b_values, "contains": b_contains,
     "argv": b_argv, "env": b_env, "system": b_system,
     "tcp_connect": b_tcp_connect, "tcp_send": b_tcp_send,
     "tcp_recv": b_tcp_recv, "tcp_close": b_tcp_close,

@@ -405,6 +405,9 @@ class Gen:
         "append": (2, 2, "append wants append(list, x)"),
         "split": (1, 2, "split wants split(s) or split(s, sep)"),
         "find": (2, 2, "find wants find(s, sub)"),
+        "byte_len": (1, 1, "byte_len wants byte_len(s)"),
+        "byte_find": (2, 2, "byte_find wants byte_find(s, sub)"),
+        "byte_at": (2, 2, "byte_at wants byte_at(s, i)"),
         "join": (2, 2, "join wants join(sep, list)"),
         "has": (2, 2, "has wants has(dict, key)"),
         "contains": (2, 2, "contains wants contains(container, x)"),
@@ -427,6 +430,7 @@ class Gen:
 
     XBUILTINS = {"print", "int", "len", "str", "range", "append",
                  "split", "find", "join", "has", "contains", "keys", "values", "read_mem",
+                 "byte_len", "byte_find", "byte_at",
                  "alloc", "load8", "load32", "load64", "store8",
                  "store32", "store64", "as_ptr", "as_int"}
 
@@ -852,6 +856,7 @@ class Gen:
             if name in ("print", "len", "range", "str", "int", "float", "input",
                         "open", "read", "write", "close", "argv", "env", "system",
                         "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event",
+                        "byte_len", "byte_find", "byte_at",
                         "pmm_alloc", "meminfo", "tcp_connect", "tcp_send",
                         "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
                         "http_get", "json_parse", "json_str", "read_text",
@@ -1694,6 +1699,92 @@ class Gen:
             self.raise_static("find wants find(s, sub)", ln)
             a.label(lab_fok)
             a.call("x_find")
+            return
+        if fn["t"] == "var" and fn["name"] == "byte_len":
+            if len(e["args"]) != 1:
+                raise HSErr("byte_len wants byte_len(s)", ln)
+            self.ev(e["args"][0], sc, mod)
+            lab_blok, lab_blbad = self.new_tmp("bl"), self.new_tmp("bl")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_blbad)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_blok)
+            a.label(lab_blbad)
+            self.raise_static("byte_len wants byte_len(s)", ln)
+            a.label(lab_blok)
+            a.mov_rm("rax", "rax", 8)
+            a.shl_ri8("rax", 2)
+            a.or_ri8("rax", 1)
+            return
+        if fn["t"] == "var" and fn["name"] == "byte_find":
+            if len(e["args"]) != 2:
+                raise HSErr("byte_find wants byte_find(s, sub)", ln)
+            self.ev(e["args"][0], sc, mod)
+            a.push_r("rax")
+            self.ev(e["args"][1], sc, mod)
+            a.mov_rr("rsi", "rax")
+            a.pop_r("rdi")
+            lab_bfok, lab_bfbad = self.new_tmp("bf"), self.new_tmp("bf")
+            for rr in ("rdi", "rsi"):
+                a.mov_rr("r11", rr)
+                a.and_ri32("r11", 3)
+                a.test_rr("r11", "r11")
+                a.jcc("ne", lab_bfbad)
+                a.mov_rm("r11", rr, 0)
+                a.cmp_ri32("r11", Gen.K_STR)
+                a.jcc("ne", lab_bfbad)
+            a.jmp(lab_bfok)
+            a.label(lab_bfbad)
+            self.raise_static("byte_find wants byte_find(s, sub)", ln)
+            a.label(lab_bfok)
+            a.call("x_find")
+            return
+        if fn["t"] == "var" and fn["name"] == "byte_at":
+            if len(e["args"]) != 2:
+                raise HSErr("byte_at wants byte_at(s, i)", ln)
+            self.ev(e["args"][0], sc, mod)
+            a.push_r("rax")
+            self.ev(e["args"][1], sc, mod)
+            a.mov_rr("rcx", "rax")       # idx
+            a.pop_r("rax")               # s
+            lab_ba_ok, lab_ba_bad = self.new_tmp("ba"), self.new_tmp("ba")
+            a.mov_rr("r11", "rax")
+            a.and_ri32("r11", 3)
+            a.test_rr("r11", "r11")
+            a.jcc("ne", lab_ba_bad)
+            a.mov_rm("r11", "rax", 0)
+            a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("ne", lab_ba_bad)
+            a.mov_rr("r11", "rcx")
+            a.and_ri32("r11", 3)
+            a.cmp_ri32("r11", Gen.TAG_INT)
+            a.jcc("ne", lab_ba_bad)
+            a.jmp(lab_ba_ok)
+            a.label(lab_ba_bad)
+            self.raise_static("byte_at wants byte_at(s, i)", ln)
+            a.label(lab_ba_ok)
+            a.sar_ri8("rcx", 2)          # untag idx
+            a.mov_rm("r11", "rax", 8)    # byte length
+            a.cmp_ri32("rcx", 0)
+            lab_ba_pos = self.new_tmp("ba")
+            a.jcc("ge", lab_ba_pos)
+            a.add_rr("rcx", "r11")       # negative wraps in byte space
+            a.label(lab_ba_pos)
+            lab_ba_oob, lab_ba_done = self.new_tmp("ba"), self.new_tmp("ba")
+            a.cmp_ri32("rcx", 0)
+            a.jcc("l", lab_ba_oob)
+            a.cmp_rr("rcx", "r11")
+            a.jcc("ae", lab_ba_oob)
+            a.movzx_eax_mx("rax", "rcx", 1, 16)
+            a.shl_ri8("rax", 2)
+            a.or_ri8("rax", 1)
+            a.jmp(lab_ba_done)
+            a.label(lab_ba_oob)
+            self.raise_static("index out of range", ln)
+            a.label(lab_ba_done)
             return
         if fn["t"] == "var" and fn["name"] in ("keys", "values"):
             nm = fn["name"]

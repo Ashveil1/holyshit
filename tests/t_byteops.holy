@@ -1,0 +1,25 @@
+s = "สวัสดี"
+print byte_len("hello")
+print byte_len("")
+print byte_len(s)
+print byte_len("🙂")
+print byte_find("hello", "ll")
+print byte_find("hello", "")
+print byte_find("hello", "z")
+print byte_find(s, "ว")
+print byte_find(s, "ดี")
+print byte_at("hello", 0)
+print byte_at("hello", -1)
+print byte_at("hello", 4)
+print byte_at(s, 0)
+print byte_at(s, 2)
+print byte_at(s, -1)
+print byte_at("🙂", 3)
+def bl(x):
+  return byte_len(x)
+print bl(s)
+print bl("abc")
+f = byte_find
+print f("abcabc", "bc")
+g = byte_at
+print g("abc", 1)

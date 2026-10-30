@@ -28,7 +28,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 | `E011` | `json_parse not in x64 subset` | using `json_*` on the x64 side | see `x64-subset.md` |
 | `E012` | `cannot find module '<m>'` | `import` cannot find the file | set `HSPATH` to point at the module's directory |
 
-## interp.py - interpreter + parser (every language error) (241)
+## interp.py - interpreter + parser (every language error) (244)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -77,6 +77,9 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `bad struct name '{nm.v}'`
 - `bad unsafe call {name}`
 - `bad unsafe expr {t}`
+- `byte_at wants byte_at(s, i)`
+- `byte_find wants byte_find(s, sub)`
+- `byte_len wants byte_len(s)`
 - `call0 needs Ptr`
 - `call0 needs foreign executable memory`
 - `call0 needs non-null Ptr`
@@ -358,7 +361,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py - direct x86-64 backend (xbuild/xkernel) (112)
+## x64gen.py - direct x86-64 backend (xbuild/xkernel) (115)
 
 - `'{n}' already defined in this scope`
 - `Int literal {v} is outside the 62-bit range of the x64 backend`
@@ -386,6 +389,9 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `builtin '{fn['name']}' not in x64 subset`
 - `builtin '{name}' is not a value (call it)`
 - `builtin '{name}' not in x64 subset`
+- `byte_at wants byte_at(s, i)`
+- `byte_find wants byte_find(s, sub)`
+- `byte_len wants byte_len(s)`
 - `call0 not in kernel`
 - `call0 wants call0(p)`
 - `cannot access field of dynamic '{obj['name']}'`
@@ -654,4 +660,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-608 messages total - duplicates across files are counted once per file
+614 messages total - duplicates across files are counted once per file

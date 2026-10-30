@@ -168,6 +168,36 @@
     "xkernel"
    ]
   },
+  "byte_len": {
+   "sig": "byte_len(s)",
+   "desc": "byte length of Str",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "byte_find": {
+   "sig": "byte_find(s, sub)",
+   "desc": "byte index of sub or -1",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
+  "byte_at": {
+   "sig": "byte_at(s, i)",
+   "desc": "byte value 0..255 at byte index i (negative wraps)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild",
+    "xkernel"
+   ]
+  },
   "contains": {
    "sig": "contains(c, x)",
    "desc": "what `x in c` means: Str substring, List element or Dict key",
