@@ -2705,7 +2705,6 @@ class Gen:
         asm.mov_ri64("rax", Gen_HS_NULL)
         return null
       asm.label(lab_uret)
-      asm.sti()
       asm.mov_ri64("rax", Gen_HS_NULL)
       return null
     raise pyrt.py_err("bad kdev " + str(name), ln)
