@@ -2911,6 +2911,8 @@ def b_read_text(args, ln):
             return f.read()
     except OSError as e:
         raise HSErr(f"read_text failed: {e.strerror or e}", ln)
+    except UnicodeDecodeError as e:
+        raise HSErr(f"read_text failed: {e}", ln)
 
 
 def b_read_mem(args, ln):
