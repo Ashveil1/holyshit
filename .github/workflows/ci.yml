@@ -115,6 +115,8 @@ jobs:
         run: HS_REQUIRE_KOWNED=1 python3 tests/test_owned_space.py
       - name: private-root static ELF load and ring3 run (required)
         run: HS_REQUIRE_LOWELF=1 python3 tests/test_low_elf.py
+      - name: owned ELF lifecycle 100-cycle load/run/exit/cleanup (required)
+        run: HS_REQUIRE_OWNEDELF=1 python3 tests/test_owned_elf.py
       - name: private low mapping CR3 round trips (required)
         run: HS_REQUIRE_KSPACE=1 python3 tests/test_address_space.py
       - name: bounded static Linux write/exit personality (required)

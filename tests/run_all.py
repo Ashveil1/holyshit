@@ -61,6 +61,7 @@ SUITES = [
     ("test_kfont.py", "direct framebuffer font guarded RGB24/32 QEMU oracle"),
     ("test_owned_space.py", "owned frame/table rollback and 100-cycle reclamation"),
     ("test_low_elf.py", "bounded ELF load and ring3 execution in private root"),
+    ("test_owned_elf.py", "owned ELF load/run/exit/cleanup 100-cycle lifecycle"),
     ("test_address_space.py", "private low virtual mapping CR3 round trips"),
     ("test_linux_static.py", "experimental separate static Linux write/exit personality"),
     ("test_kcommand.py", "bounded shared OS command API on QEMU"),
