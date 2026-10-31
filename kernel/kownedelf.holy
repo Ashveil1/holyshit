@@ -1,0 +1,333 @@
+# Bounded owned one-program ELF lifecycle: prepare -> run -> exit -> reclaim,
+# repeatable. Built on kowned generation handles instead of raw kspace roots,
+# so every cycle reclaims its frames, tables and metadata and a stale handle
+# to a dead program is rejected. Existing kuser/klinux/klowelf/kspace loaders
+# and their APIs are unchanged; this is a separate experiment, not a generic
+# Linux or sandbox claim.
+import kmb
+import kowned
+import kpage
+import kpmm
+import ksyscall
+import kuser
+PAGE = 4096
+LOW = kowned.LOW
+HIGH = kowned.HIGH
+STACK = HIGH - 4096
+CODE_HIGH = HIGH - 8192
+MAX_LOADS = 8
+MAX_SPANS = 9
+EMPTY = 0
+PREPARING = 1
+READY = 2
+RUNNING = 3
+OFF_STATE = 0
+OFF_HANDLE = 8
+OFF_ENTRY = 16
+OFF_EXIT = 24
+OFF_CALLS = 32
+OFF_STOPPED = 40
+OFF_SEEN = 48
+OFF_NSPANS = 56
+OFF_SPANS = 64
+OFF_LOADS = 208
+OFF_NLOADS = 528
+META_BYTES = 576
+metadata = 0
+def rd(address):
+  unsafe:
+    return load64(as_ptr(address))
+def wr(address, value):
+  unsafe:
+    store64(as_ptr(address), value)
+def byte(base, i):
+  unsafe:
+    return load8(as_ptr(base + i))
+def u16(base):
+  return byte(base, 0) + byte(base, 1) * 256
+def init():
+  # One fixed metadata block for the life of the kernel. Per-cycle work must
+  # not allocate: lists/strings grow the bump heap and would make a repeated
+  # load/run/exit leak indistinguishable from heap growth.
+  global metadata
+  if metadata != 0:
+    return true
+  unsafe:
+    metadata = as_int(alloc(META_BYTES))
+  i = 0
+  while i < META_BYTES:
+    wr(metadata + i, 0)
+    i = i + 8
+  return true
+def state():
+  init()
+  return rd(metadata + OFF_STATE)
+def active_handle():
+  init()
+  return rd(metadata + OFF_HANDLE)
+def exit_code():
+  init()
+  return rd(metadata + OFF_EXIT)
+def calls():
+  init()
+  return rd(metadata + OFF_CALLS)
+def seen_root():
+  init()
+  return rd(metadata + OFF_SEEN)
+def load_addr(i):
+  return metadata + OFF_LOADS + i * 40
+def span_first(i):
+  return rd(metadata + OFF_SPANS + i * 16)
+def span_end(i):
+  return rd(metadata + OFF_SPANS + i * 16 + 8)
+def validate(base, size):
+  # Same static ELF64/x86-64 acceptance rules as klowelf, constrained to the
+  # owned window with the stack and gap pages reserved. Allocation-free: the
+  # load descriptors go to fixed scratch, never to a list. Header/table/file
+  # bounds are checked before reading referenced bytes.
+  init()
+  if base == 0 or size < 64:
+    return false
+  if not kuser.elf_magic_ok(base):
+    return false
+  if byte(base, 4) != 2 or byte(base, 5) != 1 or byte(base, 6) != 1:
+    return false
+  if u16(base + 16) != 2 or u16(base + 18) != 62:
+    return false
+  if kmb.rd32(base + 20) != 1 or u16(base + 52) != 64:
+    return false
+  count = u16(base + 56)
+  offset = kmb.rd64(base + 32)
+  if count < 1 or count > MAX_LOADS or u16(base + 54) != 56:
+    return false
+  if offset < 64 or offset > size:
+    return false
+  if count * 56 > size - offset:
+    return false
+  total = 0
+  executable = false
+  rip = kmb.rd64(base + 24)
+  loads = 0
+  i = 0
+  while i < count:
+    p = base + offset + i * 56
+    kind = kmb.rd32(p)
+    # No interpreter, dynamic relocation, TLS, or unknown program headers.
+    if kind != 1 and kind != 0 and kind != 0x6474E551:
+      return false
+    if kind == 1:
+      flags = kmb.rd32(p + 4)
+      off = kmb.rd64(p + 8)
+      va = kmb.rd64(p + 16)
+      filesz = kmb.rd64(p + 32)
+      memsz = kmb.rd64(p + 40)
+      align = kmb.rd64(p + 48)
+      if va < LOW or va >= CODE_HIGH or memsz <= 0 or memsz > CODE_HIGH - va:
+        return false
+      if filesz < 0 or filesz > memsz or off < 0 or off > size:
+        return false
+      if filesz > size - off:
+        return false
+      if flags != 4 and flags != 5 and flags != 6:
+        return false
+      if align != PAGE or va % PAGE != off % PAGE:
+        return false
+      first = va - va % PAGE
+      end = ksyscall.round_up(va + memsz)
+      j = 0
+      while j < loads:
+        ova = rd(load_addr(j))
+        omem = rd(load_addr(j) + 8)
+        ofirst = ova - ova % PAGE
+        oend = ksyscall.round_up(ova + omem)
+        if first < oend and end > ofirst:
+          return false
+        j = j + 1
+      o = load_addr(loads)
+      wr(o, va)
+      wr(o + 8, memsz)
+      wr(o + 16, filesz)
+      wr(o + 24, off)
+      wr(o + 32, flags)
+      loads = loads + 1
+      total = total + end - first
+      if total > CODE_HIGH - LOW:
+        return false
+      if flags == 5 and rip >= va and rip < va + filesz:
+        executable = true
+    i = i + 1
+  wr(metadata + OFF_NLOADS, loads)
+  return executable
+def map_segment(base, handle, root, o):
+  # Map and fill one validated segment. kowned.map_user zeroes each fresh
+  # frame, so only file-backed bytes are copied. Failure leaves the partial
+  # work on the handle ledger; the caller destroys the handle to unwind.
+  va = rd(o)
+  memsz = rd(o + 8)
+  filesz = rd(o + 16)
+  off = rd(o + 24)
+  flags = rd(o + 32)
+  first = va - va % PAGE
+  end = ksyscall.round_up(va + memsz)
+  at = first
+  while at < end:
+    frame = kowned.map_user(handle, at)
+    if frame == 0:
+      return false
+    lo = at
+    if lo < va:
+      lo = va
+    hi = at + PAGE
+    if hi > va + filesz:
+      hi = va + filesz
+    if hi > lo:
+      kuser.copy_in(frame + lo - at, base + off + lo - va, hi - lo)
+    if flags == 4 or flags == 5:
+      if not kpage.protect(root, at, 5):
+        return false
+    at = at + PAGE
+  return true
+def prepare(base, size):
+  # Validate, create an owned space, publish all segments and the stack, then
+  # become READY. Every failure path destroys the inactive handle and returns
+  # to EMPTY with no partial state published.
+  init()
+  if rd(metadata + OFF_STATE) != EMPTY:
+    return false
+  wr(metadata + OFF_STATE, PREPARING)
+  if not validate(base, size):
+    wr(metadata + OFF_STATE, EMPTY)
+    return false
+  handle = kowned.create()
+  if handle == 0:
+    wr(metadata + OFF_STATE, EMPTY)
+    return false
+  root = kowned.root(handle)
+  spans = 0
+  ok = true
+  loads = rd(metadata + OFF_NLOADS)
+  i = 0
+  while ok and i < loads:
+    o = load_addr(i)
+    if map_segment(base, handle, root, o):
+      wr(metadata + OFF_SPANS + spans * 16, rd(o))
+      wr(metadata + OFF_SPANS + spans * 16 + 8, rd(o) + rd(o + 8))
+      spans = spans + 1
+    else:
+      ok = false
+    i = i + 1
+  if ok:
+    if kowned.map_user(handle, STACK) == 0:
+      ok = false
+    else:
+      wr(metadata + OFF_SPANS + spans * 16, STACK)
+      wr(metadata + OFF_SPANS + spans * 16 + 8, STACK + PAGE)
+      spans = spans + 1
+  if not ok:
+    kowned.destroy(handle)
+    wr(metadata + OFF_STATE, EMPTY)
+    return false
+  wr(metadata + OFF_HANDLE, handle)
+  wr(metadata + OFF_ENTRY, kmb.rd64(base + 24))
+  wr(metadata + OFF_NSPANS, spans)
+  wr(metadata + OFF_STATE, READY)
+  return true
+def discard():
+  # Explicit teardown of a prepared program that was never run.
+  init()
+  if rd(metadata + OFF_STATE) != READY:
+    return false
+  handle = rd(metadata + OFF_HANDLE)
+  wr(metadata + OFF_HANDLE, 0)
+  wr(metadata + OFF_NSPANS, 0)
+  wr(metadata + OFF_STATE, EMPTY)
+  return kowned.destroy(handle)
+def readable(address, count):
+  if count < 0 or count > 65536:
+    return false
+  n = rd(metadata + OFF_NSPANS)
+  i = 0
+  while i < n:
+    lo = span_first(i)
+    hi = span_end(i)
+    if address >= lo and address <= hi:
+      if count <= hi - address:
+        return true
+    i = i + 1
+  return false
+def write(fd, address, count):
+  if fd != 1 and fd != 2:
+    return -9
+  if count == 0:
+    return 0
+  if not readable(address, count):
+    return -14
+  i = 0
+  while i < count:
+    while ioport_in(0x3FD, 1) & 32 == 0:
+      pass
+    value = byte(address, i)
+    ioport_out(0x3F8, value, 1)
+    i = i + 1
+  return count
+def dispatch(nr, a1, a2, a3, a4, a5, a6):
+  # Bounded ABI, same errno behavior as klowelf: write(1/2) to the serial
+  # line, exit/exit_group, everything else -ENOSYS. No allocation here: this
+  # runs on the user root inside the syscall path.
+  wr(metadata + OFF_SEEN, cr3())
+  wr(metadata + OFF_CALLS, rd(metadata + OFF_CALLS) + 1)
+  if nr == 1:
+    return write(a1, a2, a3)
+  if nr == 60 or nr == 231:
+    wr(metadata + OFF_EXIT, a1 & 255)
+    wr(metadata + OFF_STOPPED, 1)
+    user_stop()
+    return 0
+  return -38
+def run():
+  # Enter the prepared program, wait for its exit syscall, then reclaim:
+  # restore the boot root and the normal syscall handler BEFORE destroying
+  # the owned handle. The entry stub re-enables IRQs on its return path
+  # (x64gen lab_uret sti, verified) before this code regains control, so
+  # mask them again before touching roots; kernel identity mappings keep
+  # that brief window supervisor-only in the owned clone.
+  init()
+  if rd(metadata + OFF_STATE) != READY:
+    return false
+  handle = rd(metadata + OFF_HANDLE)
+  root = kowned.root(handle)
+  if root == 0:
+    return false
+  previous = cr3()
+  if previous == root:
+    return false
+  wr(metadata + OFF_STATE, RUNNING)
+  wr(metadata + OFF_EXIT, 0)
+  wr(metadata + OFF_CALLS, 0)
+  wr(metadata + OFF_STOPPED, 0)
+  wr(metadata + OFF_SEEN, 0)
+  irq_off()
+  set_cr3(root)
+  top = STACK + PAGE - 48
+  i = 0
+  while i < 48:
+    kuser.poke(top + i, 0)
+    i = i + 8
+  frame = top - 40
+  kuser.poke(frame, rd(metadata + OFF_ENTRY))
+  kuser.poke(frame + 8, kuser.CS_USER)
+  kuser.poke(frame + 16, kuser.RFLAGS_USER)
+  kuser.poke(frame + 24, top)
+  kuser.poke(frame + 32, kuser.SS_USER)
+  ksyscall.register(dispatch)
+  enter_user(rd(metadata + OFF_ENTRY), frame)
+  irq_off()
+  set_cr3(previous)
+  ksyscall.start()
+  stopped = rd(metadata + OFF_STOPPED)
+  kowned.destroy(handle)
+  wr(metadata + OFF_HANDLE, 0)
+  wr(metadata + OFF_NSPANS, 0)
+  wr(metadata + OFF_STATE, EMPTY)
+  irq_on()
+  return stopped == 1
