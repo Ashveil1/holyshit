@@ -243,6 +243,9 @@ def run_with(args, env):
   ksyscall.register(dispatch)
   enter_user(entry_point, frame)
   ksyscall.start()
+  # enter_user returns with IF clear; restore kernel interrupts after the
+  # syscall handler loop has drained and the user session has stopped.
+  irq_on()
   return stopped
 def run():
   return run_with([], [])

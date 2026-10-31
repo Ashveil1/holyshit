@@ -36,15 +36,15 @@ fail cleanly at every create/split/segment/stack boundary with the baseline
 restored, malformed images are rejected, discard/stale/double-teardown are
 rejected, and the native image is byte-identical to the reference image.
 
-Known boundary, verified from source: the ring-3 entry stub re-enables IRQs
+Earlier boundary, now fixed: the ring-3 entry stub used to re-enable IRQs
 on its return path (`lab_uret` `sti` in `x64gen.py`) before the loader
-regains control, so a few instructions run with IRQs on while the owned root
-is still active. The loader masks IRQs again before touching roots and the
-window touches only supervisor identity mappings in this bounded test; no
-isolation or safety property is claimed beyond the tested cycles. The stub
-does not match the "no IRQ work in the transition"
-comment in `klowelf.run`. A stub-level fix is shared-backend work outside
-this change.
+regained control, so a few instructions ran with IRQs on while the owned
+root was still active. The stub now returns with IF clear and every
+`enter_user` caller manages interrupts explicitly: the loaders mask IRQs
+before touching roots and re-enable them only after restoring the boot
+root, and the direct `kuser`/`klinux` runners re-enable them after the
+user session has stopped. No IRQ can fire between the user stopping and
+the boot root being restored.
 
 Not proven: ELF lifetimes beyond one program at a time, concurrent programs,
 fault recovery, NX enforcement, sandboxing, hardware, or general heap

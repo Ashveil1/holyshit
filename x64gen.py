@@ -2997,11 +2997,12 @@ class Gen:
             # Reached when the syscall stub stops the user. enter_user is
             # inlined, so there is no return address to pop: the stub has
             # already restored the caller's rsp and we simply fall through
-            # with Null, exactly like the normal end of the builtin. The
-            # syscall path runs with IF clear, but the kernel runs with IF
-            # set, so re-enable interrupts (same lesson as the preemption
-            # switch path, which must sti before jumping).
-            a.sti()
+            # with Null, exactly like the normal end of the builtin. Return
+            # with IF still clear (FMASK masked it at syscall entry): callers
+            # that restore a private root or the syscall handler must be able
+            # to do so before any IRQ can fire in the transition; each caller
+            # re-enables interrupts explicitly when its post-run state is
+            # ready.
             a.mov_ri64("rax", Gen.HS_NULL)
             return
         raise HSErr(f"bad kdev {name}", ln)

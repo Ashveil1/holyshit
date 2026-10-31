@@ -201,6 +201,8 @@ def run():
   kuser.poke(frame + 32, kuser.SS_USER)
   ksyscall.register(dispatch)
   enter_user(entry_point, frame)
+  # enter_user now returns with IF clear; mask again defensively so no IRQ
+  # can run in the transition before restoring the boot root.
   irq_off()
   set_cr3(previous)
   ksyscall.start()

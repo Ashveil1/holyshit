@@ -145,7 +145,12 @@ def build_frame(rip, rsp):
   poke(frame + 32, SS_USER)
   return frame
 def run():
-  return enter_user(entry_point, build_frame(entry_point, stack_top))
+  # enter_user returns with IF clear; restore kernel interrupts once the
+  # user session has stopped and no user frame is in flight, so shell and
+  # exec-resume code after run keeps the kernel's normal IF-set state.
+  result = enter_user(entry_point, build_frame(entry_point, stack_top))
+  irq_on()
+  return result
 
 def payload_addr(s):
   # heap address of a Str payload (header [kind][len] is 16 bytes)
