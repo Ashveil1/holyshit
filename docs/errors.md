@@ -28,7 +28,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 | `E011` | `json_parse not in x64 subset` | using `json_*` on the x64 side | see `x64-subset.md` |
 | `E012` | `cannot find module '<m>'` | `import` cannot find the file | set `HSPATH` to point at the module's directory |
 
-## interp.py - interpreter + parser (every language error) (244)
+## interp.py - interpreter + parser (every language error) (245)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -218,6 +218,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `read_mem length must be >= 0`
 - `read_mem wants read_mem(ptr, nbytes)`
 - `read_text failed: {e.strerror or e}`
+- `read_text failed: {e}`
 - `readkey takes no args`
 - `scalar type '{ft.v}' cannot use '*'`
 - `shift count {b} out of range (0..63)`
@@ -660,4 +661,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-614 messages total - duplicates across files are counted once per file
+615 messages total - duplicates across files are counted once per file
