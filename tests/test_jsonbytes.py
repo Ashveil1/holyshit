@@ -36,6 +36,9 @@ CASES = [
     ("roundtrip_mixed",
      'v = json_parse("{\\"s\\": \\"สวัสดี\\", \\"n\\": 42}")\nprint json_str(v)\nprint v["n"]\n',
      '{"s": "\\u0e2a\\u0e27\\u0e31\\u0e2a\\u0e14\\u0e35", "n": 42}\n42\n', None),
+    ("bytelen_values",
+     't = json_parse("{\\"t\\": \\"สวัสดีครับ\\", \\"e\\": \\"🙂\\"}")\nprint byte_len(t["t"])\nprint byte_len(t["e"])\nn = json_parse("\\"\\\\u0000abc\\"")\nprint byte_len(n)\n',
+     "30\n4\n4\n", None, "all"),
     ("trailing_data", 'print json_parse("\\"ไทย\\" x")\n', None,
      {"interp": "Extra data", "x64": "Extra data", "x64-ast": "Extra data",
       "native": "trailing data"}),
@@ -51,11 +54,15 @@ ALL_BACKENDS = ["interp", "native", "x64", "x64-ast"]
 fails = 0
 total = 0
 with tempfile.TemporaryDirectory() as d:
-    for name, src, want_out, want_err in CASES:
+    for case in CASES:
+        name, src, want_out, want_err = case[0], case[1], case[2], case[3]
         p = os.path.join(d, name + ".holy")
         with open(p, "w", encoding="utf-8") as f:
             f.write(src)
-        backends = ALL_BACKENDS if want_err is not None else ESC_BACKENDS
+        if want_err is not None or (len(case) > 4 and case[4] == "all"):
+            backends = ALL_BACKENDS
+        else:
+            backends = ESC_BACKENDS
         for backend in backends:
             total += 1
             if backend == "x64-ast":

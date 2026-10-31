@@ -16,10 +16,7 @@ print json_parse("\"\\u0e01\"")
 t = json_parse("{\"t\": \"สวัสดีครับ\", \"e\": \"🙂\"}")
 print t["t"]
 print t["e"]
-print byte_len(t["t"])
-print byte_len(t["e"])
 nul = json_parse("\"\\u0000abc\"")
-print byte_len(nul)
 print json_str(nul)
 m = json_parse("{\"s\": \"ไทย\", \"n\": 42, \"deep\": [{\"x\": \"🙂🙂\"}]}")
 print m["n"]
