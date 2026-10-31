@@ -12,3 +12,17 @@ print json_str([1, "a", true, null])
 print json_parse("[1, 2]")
 print json_str({})
 print json_parse("\"\\u0e01\"")
+# non-ASCII byte-offset regressions (json.holy counts bytes via byte_len)
+t = json_parse("{\"t\": \"สวัสดีครับ\", \"e\": \"🙂\"}")
+print t["t"]
+print t["e"]
+print byte_len(t["t"])
+print byte_len(t["e"])
+nul = json_parse("\"\\u0000abc\"")
+print byte_len(nul)
+print json_str(nul)
+m = json_parse("{\"s\": \"ไทย\", \"n\": 42, \"deep\": [{\"x\": \"🙂🙂\"}]}")
+print m["n"]
+print m["deep"][0]["x"]
+k = json_parse("{\"ผู้ใช้\": 1}")
+print k["ผู้ใช้"]

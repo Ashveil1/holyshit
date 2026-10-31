@@ -19,7 +19,9 @@
 #                        builtin wrapper can raise it at the caller's line
 #
 # Strings are handled as bytes (an x64 Str is a UTF-8 buffer): `s[i]` is one
-# byte and `len(s)` is a byte count. Multi-byte sequences are decoded to
+# byte. Length sites use `byte_len` explicitly, so a future flip of
+# `len(Str)` to code points cannot move the JSON byte offsets. Multi-byte
+# sequences are decoded to
 # code points before being escaped, so the output matches CPython for the
 # same logical string.
 #
@@ -106,7 +108,7 @@ def js_codepoint(cp):
 def js_quote(s):
   out = "\""
   i = 0
-  n = len(s)
+  n = byte_len(s)
   while i < n:
     b = byte_at(s, i)
     if b == 34:
@@ -209,7 +211,7 @@ def js_ws(c):
   return c == 32 or c == 9 or c == 10 or c == 13
 
 def js_skip(s, i):
-  n = len(s)
+  n = byte_len(s)
   while js_at(s, i, n) != -1 and js_ws(js_at(s, i, n)):
     i = i + 1
   return i
@@ -229,8 +231,8 @@ def js_bad(msg):
 def js_lit(s, i, word):
   # match a bare word at i; returns the index after it or -1
   k = 0
-  n = len(word)
-  m = len(s)
+  n = byte_len(word)
+  m = byte_len(s)
   while k < n:
     if i + k >= m:
       return -1
@@ -266,7 +268,7 @@ def js_string(s, i):
   # s[i] is '"'; returns [null, [Str, next]] or a failure
   out = []
   i = i + 1
-  n = len(s)
+  n = byte_len(s)
   while i < n:
     b = byte_at(s, i)
     if b == 34:
@@ -333,7 +335,7 @@ def js_string(s, i):
 
 def js_number(s, i):
   # -?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)? with CPython's messages
-  n = len(s)
+  n = byte_len(s)
   start = i
   if byte_at(s, i) == 45:
     i = i + 1
@@ -370,7 +372,7 @@ def js_value(s, i, depth):
   # one complete JSON value at i (whitespace already skipped on entry)
   if depth > 200:
     return js_bad("json too deeply nested")
-  n = len(s)
+  n = byte_len(s)
   if i >= n:
     return js_bad("Expecting value")
   c = byte_at(s, i)
@@ -447,6 +449,6 @@ def js_decode(s):
   if r[0] != null:
     return r
   i = js_skip(s, r[1][1])
-  if i < len(s):
+  if i < byte_len(s):
     return js_bad("Extra data")
   return [null, r[1][0]]
