@@ -4082,7 +4082,9 @@ class Gen:
       if pyrt.py_isinstance(node, ["dict"]):
         t = pyrt.py_get(node, "t", null)
         if t == "call":
-          fn = pyrt.py_get(node, "fn", null) or {}
+          fn = pyrt.py_get(node, "fn", null)
+          if fn == null:
+            fn = {}
           if pyrt.py_get(fn, "t", null) == "var" and pyrt.py_get(fn, "name", null) in Gen_BYTES_PRODUCERS and not shadowed:
             return true
         if t == "def":
@@ -4095,13 +4097,13 @@ class Gen:
           if walk(pyrt.py_get(node, "body", null), sh):
             return true
           for k, v in pyrt.py_items(node):
-            if not (k in ["body"]) and walk(v, shadowed):
+            if not (k in ["body"]) and not (k in ["_fs", "_mods"]) and walk(v, shadowed):
               return true
           return false
         if t == "assign" and pyrt.py_get(node, "name", null) in Gen_BYTES_PRODUCERS:
           shadowed = true
         for k, v in pyrt.py_items(node):
-          if walk(v, shadowed):
+          if not (k in ["_fs", "_mods"]) and walk(v, shadowed):
             return true
         return false
       if pyrt.py_isinstance(node, ["list"]):
