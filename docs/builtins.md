@@ -18,11 +18,11 @@
 | `as_ptr` | `as_ptr(x)` | ✓ | ✓ | ✓ | ✓ |
 | | Int value -> Ptr (unsafe only) |||||
 | `byte_at` | `byte_at(s, i)` | ✓ | ✓ | ✓ | ✓ |
-| | byte value 0..255 at byte index i (negative wraps) |||||
+| | byte value 0..255 at byte index i (negative wraps; Str or Bytes) |||||
 | `byte_find` | `byte_find(s, sub)` | ✓ | ✓ | ✓ | ✓ |
-| | byte index of sub or -1 |||||
+| | byte index of sub or -1 (Str or Bytes) |||||
 | `byte_len` | `byte_len(s)` | ✓ | ✓ | ✓ | ✓ |
-| | byte length of Str |||||
+| | byte length of Str or Bytes |||||
 | `close` | `close(f)` | ✓ | ✓ | ✓ |   |
 | | close a file (hosted only) |||||
 | `contains` | `contains(c, x)` | ✓ | ✓ | ✓ | ✓ |
@@ -83,6 +83,8 @@
 | | Int list [0..n) or [a..b) |||||
 | `read` | `read(f, n)` | ✓ | ✓ | ✓ |   |
 | | read n bytes (hosted only) |||||
+| `read_bytes` | `read_bytes(path)` | ✓ |   |   |   |
+| | whole file as raw Bytes (interp only; other backends pending) |||||
 | `read_mem` | `read_mem(ptr, n)` | ✓ | ✓ | ✓ | ✓ |
 | | n raw bytes as Str (all backends) |||||
 | `read_text` | `read_text(path)` | ✓ | ✓ | ✓ |   |
