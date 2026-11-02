@@ -32,7 +32,7 @@ BUILTINS = {"print", "len", "range", "str", "int", "float",
             "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
             "tcp_listen", "tcp_accept", "http_get",
             "json_parse", "json_str",
-            "read_text", "read_mem", "write_text", "write_bytes", "append_text", "exists", "ls",
+            "read_text", "read_bytes", "read_mem", "write_text", "write_bytes", "append_text", "exists", "ls",
             "mkdir", "json_load", "json_save"}
 
 
