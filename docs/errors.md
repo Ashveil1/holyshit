@@ -609,7 +609,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-## irx64.py - IR to x86-64 (50)
+## irx64.py - IR to x86-64 (51)
 
 - `'{ins['name']}' already defined in this scope`
 - `'{name}' already defined in this scope`
@@ -625,6 +625,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `append wants append(list, x)`
 - `array field '{name}' needs an index`
 - `bad module name '{name}'`
+- `builtin '{name}' not in x64 subset`
 - `builtin '{ref}' is not a value (call it)`
 - `call0 not in kernel`
 - `call0 wants call0(p)`
@@ -662,4 +663,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-616 messages total - duplicates across files are counted once per file
+617 messages total - duplicates across files are counted once per file

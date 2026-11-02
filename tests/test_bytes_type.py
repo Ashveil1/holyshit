@@ -164,5 +164,107 @@ b = read_bytes("__D__/bin.dat")
 print b + 1
 """, want_err="Bytes", files={"bin.dat": bytes([1])})
 
+# --- emission-neutrality and closed-world producer pins (x64 backends) ---
+
+def build_img(src, files=None, ir=False, freestanding=False):
+    """Compile src to an image; returns (rc, image_bytes_or_None, err)."""
+    with tempfile.TemporaryDirectory() as d:
+        for name, data in (files or {}).items():
+            mode = "wb" if isinstance(data, bytes) else "w"
+            with open(os.path.join(d, name), mode) as f:
+                f.write(data)
+        p = os.path.join(d, "prog.holy")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(src.replace("__D__", d))
+        out = os.path.join(d, "prog-bin")
+        err = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(err):
+                if freestanding:
+                    rc = x64gen.build_xkernel(p, out)
+                elif ir:
+                    rc = x64gen.build_x64(p, out)
+                else:
+                    rc = x64gen.build_x64_ast(p, out)
+        except Exception as e:          # freestanding subset refusal
+            return 1, None, str(e)
+        if rc != 0:
+            return rc, None, err.getvalue()
+        with open(out, "rb") as f:
+            return 0, f.read(), ""
+
+
+def check_img(name, src, want_rodata, files=None, ir=False):
+    """want_rodata=True: image must carry the Bytes rodata (flag on)."""
+    global fails, total
+    total += 1
+    rc, img, err = build_img(src, files, ir=ir)
+    ok = rc == 0 and img is not None and ((b"Bytes" in img) == want_rodata)
+    print(("ok  " if ok else "FAIL") + f" {name}")
+    if not ok:
+        fails += 1
+        print(f"  rc={rc} err={err[-160:]!r} rodata_want={want_rodata}")
+
+
+# producer pin: BYTES_PRODUCERS is exactly {"read_bytes"}, and across both
+# x64 generators the only K_BYTES tag WRITES are the two read_bytes
+# re-tag sites (every other use is a comparison).
+def check_producer_pin():
+    global fails, total
+    total += 1
+    ok = x64gen.Gen.BYTES_PRODUCERS == frozenset({"read_bytes"})
+    writes = 0
+    for path in ("x64gen.py", "irx64.py"):
+        with open(os.path.join(ROOT, path), encoding="utf-8") as f:
+            src = f.read()
+        n = src.count('mov_ri32("r11", Gen.K_BYTES)')
+        ok = ok and src.count("K_BYTES") > 0
+        writes += n
+    ok = ok and writes == 2
+    print(("ok  " if ok else "FAIL") + " producer_pin")
+    if not ok:
+        fails += 1
+        print(f"  producers={x64gen.Gen.BYTES_PRODUCERS!r} tag_writes={writes}")
+
+
+check_producer_pin()
+
+# Str-only program: Bytes runtime is not emitted at all (byte-identical
+# to the pre-Bytes emitter; the oracle/seed suites pin the full images).
+for ir in (False, True):
+    check_img(f"emission_gating_str_only[{'ir' if ir else 'ast'}]",
+              'print byte_len("hi")\n', want_rodata=False, ir=ir)
+
+# import-only: the read_bytes call lives in an imported module; the scan
+# must still turn the flag on (image carries the runtime, program works).
+for ir in (False, True):
+    check_img(f"emission_gating_import[{'ir' if ir else 'ast'}]",
+              'import helper\nb = helper.load()\nprint byte_len(b)\n',
+              want_rodata=True, ir=ir,
+              files={"helper.holy": 'def load():\n    return read_bytes("__D__/bin.dat")\n',
+                     "bin.dat": bytes([1, 2, 3])})
+
+# shadowed: a user def named read_bytes shadows the builtin; the call
+# resolves to user code, so no Bytes can exist and the flag stays off.
+for ir in (False, True):
+    check_img(f"emission_gating_shadowed[{'ir' if ir else 'ast'}]",
+              'def read_bytes(path):\n    return 41\nprint read_bytes("x") + 1\n',
+              want_rodata=False, ir=ir)
+
+# freestanding reject: read_bytes is refused with the x64-subset error,
+# exactly like the other hosted-only helpers.
+def check_freestanding_reject():
+    global fails, total
+    total += 1
+    rc, img, err = build_img('b = read_bytes("/x")\n', freestanding=True)
+    ok = rc != 0 and "not in x64 subset" in err
+    print(("ok  " if ok else "FAIL") + " freestanding_reject")
+    if not ok:
+        fails += 1
+        print(f"  rc={rc} err={err[-160:]!r}")
+
+
+check_freestanding_reject()
+
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)

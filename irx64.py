@@ -2448,8 +2448,9 @@ class GenIR(Gen):
             a.mov_rm("r11", "rax", 0)
             a.cmp_ri32("r11", Gen.K_STR)
             a.jcc("e", lab_lok)
-            a.cmp_ri32("r11", Gen.K_BYTES)
-            a.jcc("e", lab_lok)
+            if self.uses_bytes:
+                a.cmp_ri32("r11", Gen.K_BYTES)
+                a.jcc("e", lab_lok)
             a.cmp_ri32("r11", Gen.K_LIST)
             a.jcc("e", lab_lok)
             a.cmp_ri32("r11", Gen.K_DICT)
@@ -2645,7 +2646,7 @@ class GenIR(Gen):
 
     def _inline_file(self, fr, dest, name, args, ln):
         # transliterated ev_call whole-file-helper arm (hosted only;
-        # irx64 never builds freestanding, so no subset gate needed).
+        # freestanding builds refuse, exactly like Gen's fs group).
         a = self.a
         want = {"read_text": (1, "read_text wants read_text(path)"),
                 "read_bytes": (1, "read_bytes wants read_bytes(path)"),
@@ -2659,6 +2660,8 @@ class GenIR(Gen):
         lab_fsbad, lab_fsret = self.new_tmp("fs"), self.new_tmp("fs")
         if len(args) != n_want:
             raise HSErr(msg, ln)
+        if self.freestanding:
+            raise HSErr(f"builtin '{name}' not in x64 subset", ln)
         for ar in args:
             self._load(fr, ar, ln)
             a.push_r("rax")
@@ -3637,6 +3640,17 @@ class GenIR(Gen):
     def build_ir_image(self):
         self.a.data_label("gc_data_lo")
         self._plan()
+        # Closed-world Bytes scan (mirrors Gen.scan_uses_bytes): the IR is
+        # fully parsed and classified by _plan, before any emission. Any
+        # read_bytes reference that does not resolve to a user binding
+        # ("bound"/"cap"/"global") can only mean the builtin - the sole
+        # K_BYTES producer - so enable the Bytes runtime conservatively.
+        for _key, _fr in self.frames.items():
+            _res = _fr.get("res", {})
+            if any(_res.get(_p) in ("builtin", "novalue", "auto")
+                   for _p in Gen.BYTES_PRODUCERS):
+                self.uses_bytes = True
+                break
         for nm in sorted(self.mglob):
             self._glabel(nm, "")
         inits = {ek for mp, ek in self.mod_entries.items() if mp != ""}
