@@ -91,6 +91,7 @@ class Gen:
     TAG_HEAP, TAG_INT, TAG_BOOL, TAG_NULL = 0, 1, 2, 3
     HS_FALSE, HS_TRUE, HS_NULL, HS_UNBOUND = 0x02, 0x0A, 0x03, 0x0B
     K_STR, K_FUNC, K_LIST, K_FILE, K_DICT, K_FLOAT = 0, 1, 2, 3, 4, 5
+    K_BYTES = 6
 
     class Scope:
         def __init__(self, parent=None, is_func=False):
@@ -860,6 +861,7 @@ class Gen:
                         "pmm_alloc", "meminfo", "tcp_connect", "tcp_send",
                         "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
                         "http_get", "json_parse", "json_str", "read_text",
+                        "read_bytes",
                         "write_text", "append_text", "exists", "ls", "mkdir",
                         "json_load", "json_save", "write_bytes", "alloc", "load8", "load32",
                         "load64", "store8", "store32", "store64",
@@ -1571,6 +1573,8 @@ class Gen:
                 a.mov_rm("r11", "rax", 0)
                 a.cmp_ri32("r11", Gen.K_STR)
                 a.jcc("e", lab_lok)
+                a.cmp_ri32("r11", Gen.K_BYTES)
+                a.jcc("e", lab_lok)
                 a.cmp_ri32("r11", Gen.K_LIST)
                 a.jcc("e", lab_lok)
                 a.cmp_ri32("r11", Gen.K_DICT)
@@ -1713,6 +1717,8 @@ class Gen:
             a.mov_rm("r11", "rax", 0)
             a.cmp_ri32("r11", Gen.K_STR)
             a.jcc("e", lab_blok)
+            a.cmp_ri32("r11", Gen.K_BYTES)
+            a.jcc("e", lab_blok)
             a.label(lab_blbad)
             self.raise_static("byte_len wants byte_len(s)", ln)
             a.label(lab_blok)
@@ -1735,8 +1741,12 @@ class Gen:
                 a.test_rr("r11", "r11")
                 a.jcc("ne", lab_bfbad)
                 a.mov_rm("r11", rr, 0)
+                lab_bf_kok = self.new_tmp("bf")
                 a.cmp_ri32("r11", Gen.K_STR)
+                a.jcc("e", lab_bf_kok)
+                a.cmp_ri32("r11", Gen.K_BYTES)
                 a.jcc("ne", lab_bfbad)
+                a.label(lab_bf_kok)
             a.jmp(lab_bfok)
             a.label(lab_bfbad)
             self.raise_static("byte_find wants byte_find(s, sub)", ln)
@@ -1757,8 +1767,12 @@ class Gen:
             a.test_rr("r11", "r11")
             a.jcc("ne", lab_ba_bad)
             a.mov_rm("r11", "rax", 0)
+            lab_ba_kok = self.new_tmp("ba")
             a.cmp_ri32("r11", Gen.K_STR)
+            a.jcc("e", lab_ba_kok)
+            a.cmp_ri32("r11", Gen.K_BYTES)
             a.jcc("ne", lab_ba_bad)
+            a.label(lab_ba_kok)
             a.mov_rr("r11", "rcx")
             a.and_ri32("r11", 3)
             a.cmp_ri32("r11", Gen.TAG_INT)
@@ -2130,12 +2144,13 @@ class Gen:
             a.call("file_close")
             return
         if fn["t"] == "var" and fn["name"] in (
-                "read_text", "write_text", "append_text", "exists", "ls",
-                "mkdir"):
+                "read_text", "read_bytes", "write_text", "append_text",
+                "exists", "ls", "mkdir"):
             # hosted only: the whole-file helpers, built on the File
             # runtime (openat/read/write/close) plus access/mkdir/getdents
             args = e["args"]
             want = {"read_text": (1, "read_text wants read_text(path)"),
+                    "read_bytes": (1, "read_bytes wants read_bytes(path)"),
                     "write_text": (2, "write_text wants write_text(path, str)"),
                     "append_text": (2, "append_text wants append_text(path, str)"),
                     "exists": (1, "exists wants exists(path)"),
@@ -2158,6 +2173,24 @@ class Gen:
                 a.cmp_ri32("rax", Gen.K_STR)
                 a.jcc("ne", lab_fsbad)
                 a.push_r("rcx")
+            if fn["name"] == "read_bytes":
+                a.pop_r("rdi")            # path (the only argument)
+                a.mov_ri32("rsi", 0)
+                a.mov_ri32("rdx", ln)
+                a.call("file_open")
+                a.push_r("rax")           # the File
+                a.mov_rr("rdi", "rax")
+                a.mov_ri32("rdx", ln)
+                a.call("file_read_all")
+                a.push_r("rax")           # the content on top
+                a.mov_rm("rdi", "rsp", 8)  # the File, read without popping
+                a.call("file_close")      # clobbers rax, so the content
+                a.pop_r("rax")            # comes back off the stack
+                a.add_ri32("rsp", 8)      # now drop the File slot
+                # re-tag the fresh, exclusively-owned content as Bytes
+                a.mov_ri32("r11", Gen.K_BYTES)
+                a.mov_mr("rax", "r11", 0)
+                a.jmp(lab_fsret)
             if fn["name"] == "read_text":
                 a.pop_r("rdi")            # path (the only argument)
                 a.mov_ri32("rsi", 0)
@@ -5709,6 +5742,7 @@ class Gen:
         lab_tfl, lab_tdc = self.new_tmp("tn"), self.new_tmp("tn")
         lab_tft = self.new_tmp("tn")
         lab_tbi, lab_tfn = self.new_tmp("tn"), self.new_tmp("tn")
+        lab_tby = self.new_tmp("tn")
         a.cmp_ri32("rax", Gen.K_STR)
         a.jcc("e", lab_ts)
         a.cmp_ri32("rax", Gen.K_LIST)
@@ -5721,6 +5755,8 @@ class Gen:
         a.jcc("e", lab_tdc)
         a.cmp_ri32("rax", Gen.K_FLOAT)
         a.jcc("e", lab_tft)
+        a.cmp_ri32("rax", Gen.K_BYTES)
+        a.jcc("e", lab_tby)
         a.lea_rip("rdi", self.rstr("?"))
         a.mov_ri32("rsi", 1)
         a.call("x_str_at")
@@ -5738,7 +5774,8 @@ class Gen:
                             (lab_tu, "Unbound"), (lab_ts, "Str"),
                             (lab_tl, "List"), (lab_tf, "Func"),
                             (lab_tfl, "File"), (lab_tdc, "Dict"),
-                            (lab_tbi, "Builtin"), (lab_tft, "Float")):
+                            (lab_tbi, "Builtin"), (lab_tft, "Float"),
+                            (lab_tby, "Bytes")):
             a.label(lab_nm)
             a.lea_rip("rdi", self.rstr(txt))
             a.mov_ri32("rsi", len(txt))
@@ -10302,6 +10339,8 @@ class Gen:
         a.mov_rm("rax", "rdi", 0)       # kind
         a.cmp_ri32("rax", KS)
         a.jcc("e", lab_heap_len)
+        a.cmp_ri32("rax", Gen.K_BYTES)
+        a.jcc("e", lab_heap_len)
         a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("e", lab_heap_len)
         a.cmp_ri32("rax", Gen.K_FLOAT)
@@ -10341,6 +10380,7 @@ class Gen:
         lab_pv_list = self.new_tmp("pv")
         lab_pv_file, lab_pv_dict = self.new_tmp("pv"), self.new_tmp("pv")
         lab_pv_float = self.new_tmp("pv")
+        lab_pv_bytes = self.new_tmp("pv")
         a.cmp_ri32("rax", I)
         a.jcc("e", lab_pv_int)
         a.cmp_ri32("rax", B)
@@ -10387,10 +10427,17 @@ class Gen:
         a.jcc("e", lab_pv_dict)
         a.cmp_ri32("rax", Gen.K_FLOAT)
         a.jcc("e", lab_pv_float)
+        a.cmp_ri32("rax", Gen.K_BYTES)
+        a.jcc("e", lab_pv_bytes)
         a.cmp_ri32("rax", Gen.K_FUNC)
         a.jcc("ne", lab_pv_bad)
         a.mov_rr("rdi", "r10")
         a.call("x_str")            # "<builtin NAME>" (or a type error)
+        a.mov_rr("r10", "rax")
+        a.jmp(lab_pv_str)
+        a.label(lab_pv_bytes)
+        a.mov_rr("rdi", "r10")
+        a.call("x_bytes_str")      # CPython-style b'...' repr
         a.mov_rr("r10", "rax")
         a.jmp(lab_pv_str)
         a.label(lab_pv_dict)
@@ -10677,6 +10724,8 @@ class Gen:
         a.jcc("ne", "eq_raw")
         a.cmp_ri32("rax", KS)
         a.jcc("e", "eq_str")
+        a.cmp_ri32("rax", Gen.K_BYTES)   # Bytes equality is the payload
+        a.jcc("e", "eq_str")             # memcmp, like Str (kinds matched)
         a.cmp_ri32("rax", Gen.K_LIST)
         a.jcc("e", "eq_list")
         a.cmp_ri32("rax", Gen.K_DICT)
@@ -10777,6 +10826,179 @@ class Gen:
         a.label(lab_len_bad)
         a.jmp("type_err")
         # x_str: rdi = any tagged value -> rax = Str
+        # x_bytes_str: rdi = Bytes obj -> rax = new Str with the CPython
+        # bytes-repr form b'...' (quote rule: " only when the data has a
+        # single quote and no double quote; \\t/\\n/\\r shortcuts; \\xNN else).
+        a.label("x_bytes_str")
+        a.push_r("rbp")
+        a.mov_rr("rbp", "rsp")
+        a.sub_ri32("rsp", 80)
+        a.mov_mr("rbp", "rdi", -8)       # obj
+        a.mov_rm("rax", "rdi", 8)
+        a.mov_mr("rbp", "rax", -16)      # len
+        a.mov_rr("rax", "rdi")
+        a.add_ri32("rax", 16)
+        a.mov_mr("rbp", "rax", -24)      # data ptr
+        # scan: r8 = has '\'', r9 = has '"'
+        a.xor_rr("r8", "r8")
+        a.xor_rr("r9", "r9")
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -56)      # i = 0
+        lab_scan, lab_scdone = self.new_tmp("bs"), self.new_tmp("bs")
+        lab_sq, lab_sq2 = self.new_tmp("bs"), self.new_tmp("bs")
+        a.label(lab_scan)
+        a.mov_rm("rax", "rbp", -56)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_scdone)
+        a.mov_rm("rdx", "rbp", -24)
+        a.movzx_rm8x("rax", "rdx", "rax", 1, 0)
+        a.cmp_ri32("rax", 0x27)
+        a.jcc("ne", lab_sq)
+        a.mov_ri32("r8", 1)
+        a.label(lab_sq)
+        a.cmp_ri32("rax", 0x22)
+        a.jcc("ne", lab_sq2)
+        a.mov_ri32("r9", 1)
+        a.label(lab_sq2)
+        a.mov_rm("rax", "rbp", -56)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -56)
+        a.jmp(lab_scan)
+        a.label(lab_scdone)
+        # q = (has_sq && !has_dq) ? '"' : '\''
+        a.mov_ri32("rax", 0x27)
+        a.test_rr("r8", "r8")
+        lab_qdone = self.new_tmp("bs")
+        a.jcc("e", lab_qdone)
+        a.test_rr("r9", "r9")
+        a.jcc("ne", lab_qdone)
+        a.mov_ri32("rax", 0x22)
+        a.label(lab_qdone)
+        a.mov_mr("rbp", "rax", -32)      # q
+        # buf = x_malloc(4*len + 8); n = 0
+        a.mov_rm("rdi", "rbp", -16)
+        a.shl_ri8("rdi", 2)
+        a.add_ri32("rdi", 8)
+        a.call("x_malloc")
+        a.mov_mr("rbp", "rax", -40)      # buf
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -48)      # n = 0
+
+        def emit_rax():
+            a.mov_rm("rdx", "rbp", -40)
+            a.mov_rm("rcx", "rbp", -48)
+            a.add_rr("rdx", "rcx")
+            a.mov_mr8("rdx", 0, 0)         # al
+            a.mov_rm("rcx", "rbp", -48)
+            a.add_ri32("rcx", 1)
+            a.mov_mr("rbp", "rcx", -48)
+
+        # leading: 'b' then q
+        a.mov_ri32("rax", 0x62)
+        emit_rax()
+        a.mov_rm("rax", "rbp", -32)
+        emit_rax()
+        a.mov_ri32("rax", 0)
+        a.mov_mr("rbp", "rax", -56)      # i = 0 for the emit loop
+        # main loop
+        lab_loop, lab_ldone = self.new_tmp("bs"), self.new_tmp("bs")
+        lab_escq, lab_esct, lab_escn, lab_escr = (self.new_tmp("bs"),
+            self.new_tmp("bs"), self.new_tmp("bs"), self.new_tmp("bs"))
+        lab_plain, lab_hex, lab_next = (self.new_tmp("bs"),
+            self.new_tmp("bs"), self.new_tmp("bs"))
+        lab_dig1, lab_dig2 = self.new_tmp("bs"), self.new_tmp("bs")
+        a.label(lab_loop)
+        a.mov_rm("rax", "rbp", -56)
+        a.mov_rm("rcx", "rbp", -16)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("ae", lab_ldone)
+        a.mov_rm("rdx", "rbp", -24)
+        a.movzx_rm8x("rax", "rdx", "rax", 1, 0)
+        a.mov_mr("rbp", "rax", -64)      # ch
+        # ch == q?
+        a.mov_rm("rcx", "rbp", -32)
+        a.cmp_rr("rax", "rcx")
+        a.jcc("e", lab_escq)
+        a.cmp_ri32("rax", 0x5c)
+        a.jcc("e", lab_escq)
+        a.cmp_ri32("rax", 9)
+        a.jcc("e", lab_esct)
+        a.cmp_ri32("rax", 10)
+        a.jcc("e", lab_escn)
+        a.cmp_ri32("rax", 13)
+        a.jcc("e", lab_escr)
+        a.cmp_ri32("rax", 0x20)
+        a.jcc("l", lab_hex)
+        a.cmp_ri32("rax", 0x7f)
+        a.jcc("l", lab_plain)
+        a.jmp(lab_hex)
+        a.label(lab_escq)
+        a.mov_ri32("rax", 0x5c)
+        emit_rax()
+        a.mov_rm("rax", "rbp", -64)
+        emit_rax()
+        a.jmp(lab_next)
+        a.label(lab_esct)
+        a.mov_ri32("rax", 0x5c)
+        emit_rax()
+        a.mov_ri32("rax", 0x74)
+        emit_rax()
+        a.jmp(lab_next)
+        a.label(lab_escn)
+        a.mov_ri32("rax", 0x5c)
+        emit_rax()
+        a.mov_ri32("rax", 0x6e)
+        emit_rax()
+        a.jmp(lab_next)
+        a.label(lab_escr)
+        a.mov_ri32("rax", 0x5c)
+        emit_rax()
+        a.mov_ri32("rax", 0x72)
+        emit_rax()
+        a.jmp(lab_next)
+        a.label(lab_plain)
+        a.mov_rm("rax", "rbp", -64)
+        emit_rax()
+        a.jmp(lab_next)
+        a.label(lab_hex)
+        a.mov_ri32("rax", 0x5c)
+        emit_rax()
+        a.mov_ri32("rax", 0x78)
+        emit_rax()
+        a.mov_rm("rax", "rbp", -64)      # high nibble
+        a.shr_ri8("rax", 4)
+        a.and_ri32("rax", 15)
+        a.add_ri32("rax", 0x30)
+        a.cmp_ri32("rax", 0x3a)
+        a.jcc("l", lab_dig1)
+        a.add_ri32("rax", 0x27)
+        a.label(lab_dig1)
+        emit_rax()
+        a.mov_rm("rax", "rbp", -64)      # low nibble
+        a.and_ri32("rax", 15)
+        a.add_ri32("rax", 0x30)
+        a.cmp_ri32("rax", 0x3a)
+        a.jcc("l", lab_dig2)
+        a.add_ri32("rax", 0x27)
+        a.label(lab_dig2)
+        emit_rax()
+        a.label(lab_next)
+        a.mov_rm("rax", "rbp", -56)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rbp", "rax", -56)
+        a.jmp(lab_loop)
+        a.label(lab_ldone)
+        # trailing q
+        a.mov_rm("rax", "rbp", -32)
+        emit_rax()
+        # x_str_at(rdi = buf, rsi = n)
+        a.mov_rm("rdi", "rbp", -40)
+        a.mov_rm("rsi", "rbp", -48)
+        a.call("x_str_at")
+        a.mov_rr("rsp", "rbp")
+        a.pop_r("rbp")
+        a.ret()
         a.label("x_str")
         a.mov_rr("r10", "rdi")
         a.mov_rr("rax", "r10")
@@ -10800,6 +11022,8 @@ class Gen:
         a.jcc("e", "st_dict")
         a.cmp_ri32("rax", Gen.K_FLOAT)
         a.jcc("e", "st_float")
+        a.cmp_ri32("rax", Gen.K_BYTES)
+        a.jcc("e", "st_bytes")
         a.cmp_ri32("rax", Gen.K_FUNC)
         a.jcc("ne", "st_bad")
         a.mov_rm("rax", "r10", 16)     # nparams == -1 marks a builtin
@@ -10820,6 +11044,10 @@ class Gen:
         a.mov_rr("rsi", "rax")
         a.pop_r("rdi")
         a.call("x_str_cat")
+        a.ret()
+        a.label("st_bytes")
+        a.mov_rr("rdi", "r10")
+        a.call("x_bytes_str")
         a.ret()
         a.label("st_dict")
         a.mov_rr("rdi", "r10")

@@ -9,15 +9,20 @@ separate Bytes). Interp-only and purely additive:
   and test_rawbytes.py).
 - len(Bytes) is the byte count; print/str render Bytes as Python b'...'.
 
-The x64/be.holy backends do not know Bytes yet; that is the planned
-shared-backend stage with the OS-coordinated seed protocol. Keep this
-suite gated to interp+native until then. The invalid-byte boundary policy
-for tcp_recv/http_get/read_text stays explicitly undecided and untouched.
+be.holy (the self-hosted backend) does not know Bytes yet; that is the
+final stage with the seed regen and fixed-point gates. The invalid-byte
+boundary policy for tcp_recv/http_get/read_text stays explicitly
+undecided and untouched.
 """
+import contextlib
+import io
 import os
 import subprocess
 import sys
 import tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import x64gen
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INTERP = os.path.join(ROOT, "interp.py")
@@ -27,7 +32,7 @@ total = 0
 
 
 HS = os.path.join(ROOT, "hs.py")
-BACKENDS = ("interp", "native")
+BACKENDS = ("interp", "native", "x64", "x64-ast")
 
 
 def run(src, files, backend):
@@ -42,6 +47,14 @@ def run(src, files, backend):
             f.write(src.replace("__D__", d))
         if backend == "interp":
             cmd = [sys.executable, INTERP, p]
+        elif backend == "x64-ast":
+            out = os.path.join(d, "prog-bin")
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                rc = x64gen.build_x64_ast(p, out)
+            if rc != 0:
+                return rc, "", err.getvalue()
+            cmd = [out]
         else:
             cmd = [sys.executable, HS, "run", p, "--backend", backend]
         r = subprocess.run(cmd, capture_output=True, timeout=120)
@@ -49,26 +62,31 @@ def run(src, files, backend):
             r.stderr.decode("utf-8", "replace")
 
 
-def check(name, src, want_out=None, want_err=None, files=None):
+def check(name, src, want_out=None, want_err=None, files=None, backends=None):
+    """want_err is one substring for every backend, or a per-backend dict
+    (error surfaces legitimately differ per backend convention, pinned
+    here like tests/test_rawbytes.py does)."""
     global fails, total
-    for backend in BACKENDS:
+    for backend in (backends or BACKENDS):
         total += 1
         rc, out, err = run(src, files or {}, backend)
         if want_out is not None:
             ok = rc == 0 and out == want_out and not err
             detail = f"want_out={want_out!r} got={out!r} rc={rc} err={err[-200:]!r}"
         else:
-            ok = rc != 0 and want_err in err
-            detail = f"want_err={want_err!r} got_err={err[-200:]!r} rc={rc} out={out!r}"
+            want = want_err[backend] if isinstance(want_err, dict) else want_err
+            ok = rc != 0 and want in err
+            detail = f"want_err={want!r} got_err={err[-200:]!r} rc={rc} out={out!r}"
         print(("ok  " if ok else "FAIL") + f" {name} [{backend}]")
         if not ok:
             fails += 1
             print("  " + detail)
 
 
-# raw roundtrip through write_bytes/read_bytes: invalid UTF-8 bytes survive
+# fixtures are written by the harness: x64-ast (the legacy AST-direct
+# build kept for differential triage) has no write_bytes. The write->read
+# roundtrip stays pinned where write_bytes exists (write_roundtrip below).
 check("roundtrip_raw", """
-write_bytes("__D__/bin.dat", [72, 105, 128, 255, 10])
 b = read_bytes("__D__/bin.dat")
 print byte_len(b)
 print len(b)
@@ -77,7 +95,18 @@ print byte_at(b, 1)
 print byte_at(b, 2)
 print byte_at(b, 3)
 print byte_at(b, 4)
-""", want_out="5\n5\n72\n105\n128\n255\n10\n")
+""", want_out="5\n5\n72\n105\n128\n255\n10\n",
+      files={"bin.dat": bytes([72, 105, 128, 255, 10])})
+
+# write_bytes -> read_bytes roundtrip: invalid UTF-8 bytes survive.
+# x64-ast is excluded: it never grew write_bytes (INLINE_ONLY in irx64).
+check("write_roundtrip", """
+write_bytes("__D__/out.dat", [0, 159, 146, 150])
+b = read_bytes("__D__/out.dat")
+print byte_len(b)
+print byte_at(b, 0)
+print byte_at(b, 3)
+""", want_out="4\n0\n150\n", backends=("interp", "native", "x64"))
 
 # valid UTF-8 file read as Bytes: raw byte view, Str needles encode UTF-8
 check("utf8_bytes_view", """
@@ -94,11 +123,11 @@ print byte_at(b, -1)
 
 # Bytes print/str render as Python b'...'
 check("display_form", """
-write_bytes("__D__/bin.dat", [72, 105, 128, 255, 10])
 b = read_bytes("__D__/bin.dat")
 print b
 print str(b)
-""", want_out="b'Hi\\x80\\xff\\n'\nb'Hi\\x80\\xff\\n'\n")
+""", want_out="b'Hi\\x80\\xff\\n'\nb'Hi\\x80\\xff\\n'\n",
+      files={"bin.dat": bytes([72, 105, 128, 255, 10])})
 
 # Str byte_* behavior unchanged (pins existing UTF-8 re-encode semantics)
 check("str_semantics_unchanged", """
@@ -109,31 +138,31 @@ print byte_find("héllo", "ll")
 
 # Bytes equality is by payload and never equals Str
 check("equality", """
-write_bytes("__D__/bin.dat", [65, 66])
 a = read_bytes("__D__/bin.dat")
 b = read_bytes("__D__/bin.dat")
 print a == b
 print a != b
 print a == "AB"
-""", want_out="true\nfalse\nfalse\n")
+""", want_out="true\nfalse\nfalse\n", files={"bin.dat": bytes([65, 66])})
 
 # error surfaces
 check("read_bytes_no_arg", "read_bytes()\n",
       want_err="read_bytes wants read_bytes(path)")
 check("read_bytes_missing", 'b = read_bytes("__D__/nope.bin")\n',
-      want_err="read_bytes failed:")
+      want_err={"interp": "read_bytes failed:",
+                "native": "read_bytes failed:",
+                "x64": "open failed: errno 2",
+                "x64-ast": "open failed: errno 2"})
 check("byte_at_oob", """
-write_bytes("__D__/bin.dat", [1])
 b = read_bytes("__D__/bin.dat")
 print byte_at(b, 9)
-""", want_err="index out of range")
+""", want_err="index out of range", files={"bin.dat": bytes([1])})
 check("byte_len_int", "print byte_len(5)\n",
       want_err="byte_len wants byte_len(s)")
 check("bytes_in_arith", """
-write_bytes("__D__/bin.dat", [1])
 b = read_bytes("__D__/bin.dat")
 print b + 1
-""", want_err="Bytes")
+""", want_err="Bytes", files={"bin.dat": bytes([1])})
 
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
