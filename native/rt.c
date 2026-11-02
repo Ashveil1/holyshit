@@ -116,6 +116,14 @@ Val v_strn(const char *s, int64_t n) {
 
 Val v_str(const char *s) { return v_strn(s, (int64_t)strlen(s)); }
 
+Val v_bytesn(const char *s, int64_t n) {
+    Str *o = GC_MALLOC(sizeof(Str) + (size_t)n + 1);
+    o->len = n;
+    memcpy(o->data, s, (size_t)n);
+    o->data[n] = '\0';
+    return (Val){T_BYTES, {.p = o}};
+}
+
 Val v_list(void) {
     List *o = GC_MALLOC(sizeof(List));
     o->len = 0;
@@ -225,6 +233,7 @@ int v_truthy(Val v) {
     case T_FLOAT:
         return v.u.f != 0.0;
     case T_STR:
+    case T_BYTES:
         return AS_STR(v)->len != 0;
     case T_LIST:
         return AS_LIST(v)->len != 0;
@@ -249,6 +258,8 @@ const char *hs_tname(Val v) {
         return "Float";
     case T_STR:
         return "Str";
+    case T_BYTES:
+        return "Bytes";
     case T_LIST:
         return "List";
     case T_DICT:
@@ -424,6 +435,10 @@ Val v_eq(Val a, Val b) {
     if (is_num(a) && is_num(b))
         return v_bool(to_f(a) == to_f(b));
     if (a.tag == T_STR && b.tag == T_STR) {
+        Str *x = AS_STR(a), *y = AS_STR(b);
+        return v_bool(x->len == y->len && memcmp(x->data, y->data, (size_t)x->len) == 0);
+    }
+    if (a.tag == T_BYTES && b.tag == T_BYTES) {
         Str *x = AS_STR(a), *y = AS_STR(b);
         return v_bool(x->len == y->len && memcmp(x->data, y->data, (size_t)x->len) == 0);
     }
@@ -655,7 +670,7 @@ Val v_builtin(const char *name) {
         {b_tcp_listen, "tcp_listen"}, {b_tcp_accept, "tcp_accept"},
         {b_http_get, "http_get"},
         {b_json_parse, "json_parse"}, {b_json_str, "json_str"},
-        {b_read_text, "read_text"}, {b_read_mem, "read_mem"},
+        {b_read_text, "read_text"}, {b_read_bytes, "read_bytes"}, {b_read_mem, "read_mem"},
         {b_write_text, "write_text"}, {b_write_bytes, "write_bytes"},
         {b_append_text, "append_text"}, {b_exists, "exists"},
         {b_ls, "ls"}, {b_mkdir, "mkdir"},
@@ -854,6 +869,40 @@ const char *v_disp(Val v) {
         break;
     case T_STR:
         return AS_STR(v)->data;
+    case T_BYTES: {
+        Str *s = AS_STR(v);
+        int has_sq = 0, has_dq = 0;
+        for (int64_t i = 0; i < s->len; i++) {
+            if (s->data[i] == '\'') has_sq = 1;
+            if (s->data[i] == '"') has_dq = 1;
+        }
+        char q = (has_sq && !has_dq) ? '"' : '\'';
+        size_t cap = (size_t)s->len * 4 + 4, n = 0;
+        char *buf = GC_MALLOC(cap);
+        buf[n++] = 'b';
+        buf[n++] = q;
+        for (int64_t i = 0; i < s->len; i++) {
+            unsigned char ch = (unsigned char)s->data[i];
+            if (ch == q || ch == '\\') {
+                buf[n++] = '\\';
+                buf[n++] = (char)ch;
+            } else if (ch == '\t') {
+                buf[n++] = '\\'; buf[n++] = 't';
+            } else if (ch == '\n') {
+                buf[n++] = '\\'; buf[n++] = 'n';
+            } else if (ch == '\r') {
+                buf[n++] = '\\'; buf[n++] = 'r';
+            } else if (ch >= 0x20 && ch < 0x7f) {
+                buf[n++] = (char)ch;
+            } else {
+                snprintf(buf + n, cap - n, "\\x%02x", ch);
+                n += 4;
+            }
+        }
+        buf[n++] = q;
+        buf[n] = '\0';
+        return buf;
+    }
     case T_LIST: {
         List *l = AS_LIST(v);
         size_t cap = 64, n = 0;
@@ -1001,7 +1050,7 @@ Val b_len(Val *args, int nargs, int line) {
     if (nargs != 1)
         hs_err(line, "len wants 1 arg, got %d", nargs);
     Val a = args[0];
-    if (a.tag == T_STR)
+    if (a.tag == T_STR || a.tag == T_BYTES)
         return v_int(AS_STR(a)->len);
     if (a.tag == T_LIST)
         return v_int(AS_LIST(a)->len);
@@ -2080,6 +2129,27 @@ Val b_read_text(Val *args, int nargs, int line) {
     return v_strn(o, (int64_t)n);
 }
 
+Val b_read_bytes(Val *args, int nargs, int line) {
+    if (nargs != 1)
+        hs_err(line, "read_bytes wants read_bytes(path)");
+    const char *path = hs_fs_str(args[0], "read_bytes", line);
+    FILE *f = fopen(path, "rb");
+    if (!f)
+        hs_err(line, "read_bytes failed: cannot open '%s'", path);
+    size_t cap = 4096, n = 0;
+    char *o = GC_MALLOC(cap);
+    size_t r;
+    while ((r = fread(o + n, 1, cap - n - 1, f)) > 0) {
+        n += r;
+        if (n + 1 >= cap) {
+            cap *= 2;
+            o = GC_REALLOC(o, cap);
+        }
+    }
+    fclose(f);
+    return v_bytesn(o, (int64_t)n);
+}
+
 Val b_read_mem(Val *args, int nargs, int line) {
     if (nargs != 2)
         hs_err(line, "read_mem wants read_mem(ptr, nbytes)");
@@ -2294,13 +2364,15 @@ Val b_find(Val *args, int nargs, int line) {
 }
 
 Val b_byte_len(Val *args, int nargs, int line) {
-    if (nargs != 1 || args[0].tag != T_STR)
+    if (nargs != 1 || (args[0].tag != T_STR && args[0].tag != T_BYTES))
         hs_err(line, "byte_len wants byte_len(s)");
     return v_int(AS_STR(args[0])->len);
 }
 
 Val b_byte_find(Val *args, int nargs, int line) {
-    if (nargs != 2 || args[0].tag != T_STR || args[1].tag != T_STR)
+    if (nargs != 2
+            || (args[0].tag != T_STR && args[0].tag != T_BYTES)
+            || (args[1].tag != T_STR && args[1].tag != T_BYTES))
         hs_err(line, "byte_find wants byte_find(s, sub)");
     Str *s = AS_STR(args[0]), *sub = AS_STR(args[1]);
     if (sub->len == 0)
@@ -2312,7 +2384,8 @@ Val b_byte_find(Val *args, int nargs, int line) {
 }
 
 Val b_byte_at(Val *args, int nargs, int line) {
-    if (nargs != 2 || args[0].tag != T_STR || args[1].tag != T_INT)
+    if (nargs != 2 || (args[0].tag != T_STR && args[0].tag != T_BYTES)
+            || args[1].tag != T_INT)
         hs_err(line, "byte_at wants byte_at(s, i)");
     Str *s = AS_STR(args[0]);
     int64_t i = args[1].u.i;

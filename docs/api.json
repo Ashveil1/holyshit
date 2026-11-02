@@ -372,9 +372,10 @@
   },
   "read_bytes": {
    "sig": "read_bytes(path)",
-   "desc": "whole file as raw Bytes (interp only; other backends pending)",
+   "desc": "whole file as raw Bytes (interp/native only; x64 pending)",
    "backends": [
-    "interp"
+    "interp",
+    "native"
    ]
   },
   "write_text": {

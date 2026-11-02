@@ -9,9 +9,9 @@ separate Bytes). Interp-only and purely additive:
   and test_rawbytes.py).
 - len(Bytes) is the byte count; print/str render Bytes as Python b'...'.
 
-The compiled backends (native/x64/be.holy) do not know Bytes yet; that is
-the planned shared-backend stage with the OS-coordinated seed protocol.
-Keep this suite interp-only until then. The invalid-byte boundary policy
+The x64/be.holy backends do not know Bytes yet; that is the planned
+shared-backend stage with the OS-coordinated seed protocol. Keep this
+suite gated to interp+native until then. The invalid-byte boundary policy
 for tcp_recv/http_get/read_text stays explicitly undecided and untouched.
 """
 import os
@@ -26,7 +26,11 @@ fails = 0
 total = 0
 
 
-def run(src, files):
+HS = os.path.join(ROOT, "hs.py")
+BACKENDS = ("interp", "native")
+
+
+def run(src, files, backend):
     global fails, total
     with tempfile.TemporaryDirectory() as d:
         for name, data in files.items():
@@ -36,26 +40,30 @@ def run(src, files):
         p = os.path.join(d, "prog.holy")
         with open(p, "w", encoding="utf-8") as f:
             f.write(src.replace("__D__", d))
-        r = subprocess.run([sys.executable, INTERP, p],
-                           capture_output=True, timeout=60)
+        if backend == "interp":
+            cmd = [sys.executable, INTERP, p]
+        else:
+            cmd = [sys.executable, HS, "run", p, "--backend", backend]
+        r = subprocess.run(cmd, capture_output=True, timeout=120)
         return r.returncode, r.stdout.decode("utf-8", "replace"), \
             r.stderr.decode("utf-8", "replace")
 
 
 def check(name, src, want_out=None, want_err=None, files=None):
     global fails, total
-    total += 1
-    rc, out, err = run(src, files or {})
-    if want_out is not None:
-        ok = rc == 0 and out == want_out and not err
-        detail = f"want_out={want_out!r} got={out!r} rc={rc} err={err[-200:]!r}"
-    else:
-        ok = rc != 0 and want_err in err
-        detail = f"want_err={want_err!r} got_err={err[-200:]!r} rc={rc} out={out!r}"
-    print(("ok  " if ok else "FAIL") + f" {name}")
-    if not ok:
-        fails += 1
-        print("  " + detail)
+    for backend in BACKENDS:
+        total += 1
+        rc, out, err = run(src, files or {}, backend)
+        if want_out is not None:
+            ok = rc == 0 and out == want_out and not err
+            detail = f"want_out={want_out!r} got={out!r} rc={rc} err={err[-200:]!r}"
+        else:
+            ok = rc != 0 and want_err in err
+            detail = f"want_err={want_err!r} got_err={err[-200:]!r} rc={rc} out={out!r}"
+        print(("ok  " if ok else "FAIL") + f" {name} [{backend}]")
+        if not ok:
+            fails += 1
+            print("  " + detail)
 
 
 # raw roundtrip through write_bytes/read_bytes: invalid UTF-8 bytes survive
@@ -98,6 +106,16 @@ print byte_len("é")
 print byte_at("é", 0)
 print byte_find("héllo", "ll")
 """, want_out="2\n195\n3\n")
+
+# Bytes equality is by payload and never equals Str
+check("equality", """
+write_bytes("__D__/bin.dat", [65, 66])
+a = read_bytes("__D__/bin.dat")
+b = read_bytes("__D__/bin.dat")
+print a == b
+print a != b
+print a == "AB"
+""", want_out="true\nfalse\nfalse\n")
 
 # error surfaces
 check("read_bytes_no_arg", "read_bytes()\n",

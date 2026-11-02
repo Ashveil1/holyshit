@@ -21,7 +21,8 @@ typedef enum {
     T_FILE,
     T_BUILTIN,
     T_MOD,
-    T_SOCK
+    T_SOCK,
+    T_BYTES
 } Tag;
 
 typedef struct {
@@ -102,6 +103,7 @@ Val v_int(int64_t i);
 Val v_float(double f);
 Val v_str(const char *s);
 Val v_strn(const char *s, int64_t n);
+Val v_bytesn(const char *s, int64_t n);
 Val v_list(void);
 Val v_dict(void);
 Val v_func(Val (*fn)(Val *, int, int), const char *name, int arity);
@@ -208,6 +210,7 @@ Val b_http_get(Val *args, int nargs, int line);
 Val b_json_parse(Val *args, int nargs, int line);
 Val b_json_str(Val *args, int nargs, int line);
 Val b_read_text(Val *args, int nargs, int line);
+Val b_read_bytes(Val *args, int nargs, int line);
 Val b_read_mem(Val *args, int nargs, int line);
 Val b_write_text(Val *args, int nargs, int line);
 Val b_write_bytes(Val *args, int nargs, int line);
