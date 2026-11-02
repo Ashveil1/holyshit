@@ -41,4 +41,5 @@ PATCHES = [
     ("(pyrt.py_get(loads, ins[\"fn\"], null) in GenIR_JSON_CALLS)", "pyrt.py_has_key(pyrt.py_get(loads, ins[\"fn\"], null), GenIR_JSON_CALLS)"),
     ("if ((pname in GenIR_JSON_CALLS) and", "if (pyrt.py_has_key(pname, GenIR_JSON_CALLS) and"),
     ("asm.data_qword(((bits - (1 << 64)) if (bits >= (1 << 63)) else bits))", "asm.data_qword(bits)"),
+    ("frozenset(pyrt.py_set([\"read_bytes\"]))", "pyrt.py_set([\"read_bytes\"])"),
 ]
