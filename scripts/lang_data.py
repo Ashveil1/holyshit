@@ -92,8 +92,8 @@ BUILTINS = {
                  ALL),
     "read_text": ("read_text(path)", "whole file as Str (hosted only)",
                   HOSTED),
-    "read_bytes": ("read_bytes(path)", "whole file as raw Bytes (interp/native only; x64 pending)",
-                   NET),
+    "read_bytes": ("read_bytes(path)", "whole file as raw Bytes (hosted only)",
+                   HOSTED),
     "write_text": ("write_text(path, s)", "write file (hosted only)", HOSTED),
     "write_bytes": ("write_bytes(path, xs)",
                     "write a binary file from a List of Ints 0..255, mode 0755 "

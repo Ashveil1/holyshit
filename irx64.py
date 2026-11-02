@@ -34,7 +34,7 @@ NOT_A_VALUE = {
     "float", "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "meminfo",
     "tcp_connect", "tcp_send", "tcp_recv", "tcp_close", "tcp_listen",
     "tcp_accept", "http_get", "json_parse", "json_str", "read_text",
-    "write_text", "append_text", "exists", "ls", "mkdir", "json_load",
+    "read_bytes", "write_text", "append_text", "exists", "ls", "mkdir", "json_load",
     "json_save", "write_bytes", "alloc", "load8", "load32", "load64", "store8",
     "store32", "store64", "as_ptr", "as_int", "asm",
 }
@@ -48,7 +48,7 @@ INLINE_ONLY = {"float", "write_bytes"}
 # lines) while first-class uses go through the value/stub protocol
 # (whose type errors carry the stub's line 0, like x64gen-today).
 INLINE_DIRECT = {"write_bytes", "float", "len", "str", "int", "range", "append",
-                 "read_text", "write_text", "append_text", "exists", "ls",
+                 "read_text", "read_bytes", "write_text", "append_text", "exists", "ls",
                  "mkdir", "read_mem", "has", "contains",
                  "keys", "values"}
 # NOTE: split/find/join also have inline arms in ev_call but are not in
@@ -2226,7 +2226,7 @@ class GenIR(Gen):
                 self._inline_append(fr, dest, args, ln)
             elif name == "write_bytes":
                 self._inline_write_bytes(fr, dest, args, ln)
-            elif name in ("read_text", "write_text", "append_text",
+            elif name in ("read_text", "read_bytes", "write_text", "append_text",
                           "exists", "ls", "mkdir"):
                 self._inline_file(fr, dest, name, args, ln)
             elif name == "read_mem":
@@ -2448,6 +2448,9 @@ class GenIR(Gen):
             a.mov_rm("r11", "rax", 0)
             a.cmp_ri32("r11", Gen.K_STR)
             a.jcc("e", lab_lok)
+            if self.uses_bytes:
+                a.cmp_ri32("r11", Gen.K_BYTES)
+                a.jcc("e", lab_lok)
             a.cmp_ri32("r11", Gen.K_LIST)
             a.jcc("e", lab_lok)
             a.cmp_ri32("r11", Gen.K_DICT)
@@ -2456,7 +2459,7 @@ class GenIR(Gen):
             self.raise_unop(0, ln)
             a.label(lab_lok)
         if name == "len":
-            # kind already guarded above (Str/List/Dict): length is the
+            # kind already guarded above (Str/Bytes/List/Dict): length is the
             # qword at +8, boxed as a tagged Int inline (same as x_len)
             a.mov_rm("rax", "rax", 8)
             a.shl_ri8("rax", 2)
@@ -2643,9 +2646,10 @@ class GenIR(Gen):
 
     def _inline_file(self, fr, dest, name, args, ln):
         # transliterated ev_call whole-file-helper arm (hosted only;
-        # irx64 never builds freestanding, so no subset gate needed).
+        # freestanding builds refuse, exactly like Gen's fs group).
         a = self.a
         want = {"read_text": (1, "read_text wants read_text(path)"),
+                "read_bytes": (1, "read_bytes wants read_bytes(path)"),
                 "write_text": (2, "write_text wants write_text(path, str)"),
                 "append_text": (2,
                                 "append_text wants append_text(path, str)"),
@@ -2656,6 +2660,8 @@ class GenIR(Gen):
         lab_fsbad, lab_fsret = self.new_tmp("fs"), self.new_tmp("fs")
         if len(args) != n_want:
             raise HSErr(msg, ln)
+        if self.freestanding:
+            raise HSErr(f"builtin '{name}' not in x64 subset", ln)
         for ar in args:
             self._load(fr, ar, ln)
             a.push_r("rax")
@@ -2667,7 +2673,7 @@ class GenIR(Gen):
             a.cmp_ri32("rax", Gen.K_STR)
             a.jcc("ne", lab_fsbad)
             a.push_r("rcx")
-        if name == "read_text":
+        if name in ("read_text", "read_bytes"):
             a.pop_r("rdi")
             a.mov_ri32("rsi", 0)
             a.mov_ri32("rdx", ln)
@@ -2681,6 +2687,10 @@ class GenIR(Gen):
             a.call("file_close")
             a.pop_r("rax")
             a.add_ri32("rsp", 8)
+            if name == "read_bytes":
+                # re-tag the fresh, exclusively-owned content as Bytes
+                a.mov_ri32("r11", Gen.K_BYTES)
+                a.mov_mr("rax", "r11", 0)
             a.jmp(lab_fsret)
         if name in ("write_text", "append_text"):
             a.pop_r("rsi")
@@ -3630,6 +3640,17 @@ class GenIR(Gen):
     def build_ir_image(self):
         self.a.data_label("gc_data_lo")
         self._plan()
+        # Closed-world Bytes scan (mirrors Gen.scan_uses_bytes): the IR is
+        # fully parsed and classified by _plan, before any emission. Any
+        # read_bytes reference that does not resolve to a user binding
+        # ("bound"/"cap"/"global") can only mean the builtin - the sole
+        # K_BYTES producer - so enable the Bytes runtime conservatively.
+        for _key, _fr in self.frames.items():
+            _res = _fr.get("res", {})
+            if any(_res.get(_p) in ("builtin", "novalue", "auto")
+                   for _p in Gen.BYTES_PRODUCERS):
+                self.uses_bytes = True
+                break
         for nm in sorted(self.mglob):
             self._glabel(nm, "")
         inits = {ek for mp, ek in self.mod_entries.items() if mp != ""}
