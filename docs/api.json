@@ -170,7 +170,7 @@
   },
   "byte_len": {
    "sig": "byte_len(s)",
-   "desc": "byte length of Str",
+   "desc": "byte length of Str or Bytes",
    "backends": [
     "interp",
     "native",
@@ -180,7 +180,7 @@
   },
   "byte_find": {
    "sig": "byte_find(s, sub)",
-   "desc": "byte index of sub or -1",
+   "desc": "byte index of sub or -1 (Str or Bytes)",
    "backends": [
     "interp",
     "native",
@@ -190,7 +190,7 @@
   },
   "byte_at": {
    "sig": "byte_at(s, i)",
-   "desc": "byte value 0..255 at byte index i (negative wraps)",
+   "desc": "byte value 0..255 at byte index i (negative wraps; Str or Bytes)",
    "backends": [
     "interp",
     "native",
@@ -368,6 +368,13 @@
     "interp",
     "native",
     "xbuild"
+   ]
+  },
+  "read_bytes": {
+   "sig": "read_bytes(path)",
+   "desc": "whole file as raw Bytes (interp only; other backends pending)",
+   "backends": [
+    "interp"
    ]
   },
   "write_text": {

@@ -343,6 +343,8 @@ def tname(v):
         return "Float"
     if isinstance(v, str):
         return "Str"
+    if isinstance(v, bytes):
+        return "Bytes"
     if v is None:
         return "Null"
     if isinstance(v, list):
@@ -377,6 +379,8 @@ def disp(v):
         return repr(v)
     if isinstance(v, str):
         return v
+    if isinstance(v, bytes):
+        return repr(v)
     if isinstance(v, list):
         return "[" + ", ".join(disp(x) for x in v) + "]"
     if isinstance(v, dict):
@@ -2629,7 +2633,7 @@ def b_len(args, ln):
     if len(args) != 1:
         raise HSErr(f"len wants 1 arg, got {len(args)}", ln)
     a = args[0]
-    if isinstance(a, (str, list, dict)):
+    if isinstance(a, (str, list, dict, bytes)):
         return len(a)
     raise HSErr(f"len of {tname(a)}", ln)
 
@@ -2822,22 +2826,27 @@ def b_find(args, ln):
 
 
 def b_byte_len(args, ln):
-    if len(args) != 1 or not isinstance(args[0], str):
+    if len(args) != 1 or not isinstance(args[0], (str, bytes)):
         raise HSErr("byte_len wants byte_len(s)", ln)
+    if isinstance(args[0], bytes):
+        return len(args[0])
     return len(args[0].encode("utf-8"))
 
 
 def b_byte_find(args, ln):
-    if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], str):
+    if (len(args) != 2 or not isinstance(args[0], (str, bytes))
+            or not isinstance(args[1], (str, bytes))):
         raise HSErr("byte_find wants byte_find(s, sub)", ln)
-    return args[0].encode("utf-8").find(args[1].encode("utf-8"))
+    hay = args[0] if isinstance(args[0], bytes) else args[0].encode("utf-8")
+    sub = args[1] if isinstance(args[1], bytes) else args[1].encode("utf-8")
+    return hay.find(sub)
 
 
 def b_byte_at(args, ln):
-    if (len(args) != 2 or not isinstance(args[0], str)
+    if (len(args) != 2 or not isinstance(args[0], (str, bytes))
             or not is_num(args[1]) or isinstance(args[1], float)):
         raise HSErr("byte_at wants byte_at(s, i)", ln)
-    b = args[0].encode("utf-8")
+    b = args[0] if isinstance(args[0], bytes) else args[0].encode("utf-8")
     i = int(args[1])
     if i < 0:
         i += len(b)
@@ -2913,6 +2922,15 @@ def b_read_text(args, ln):
         raise HSErr(f"read_text failed: {e.strerror or e}", ln)
     except UnicodeDecodeError as e:
         raise HSErr(f"read_text failed: {e}", ln)
+
+
+def b_read_bytes(args, ln):
+    _fs_args(args, ln, "read_bytes wants read_bytes(path)", 1)
+    try:
+        with open(args[0], "rb") as f:
+            return f.read()
+    except OSError as e:
+        raise HSErr(f"read_bytes failed: {e.strerror or e}", ln)
 
 
 def b_read_mem(args, ln):
@@ -3272,7 +3290,7 @@ BUILTINS = {
     "tcp_listen": b_tcp_listen, "tcp_accept": b_tcp_accept,
     "http_get": b_http_get,
     "json_parse": b_json_parse, "json_str": b_json_str,
-    "read_text": b_read_text, "read_mem": b_read_mem,
+    "read_text": b_read_text, "read_bytes": b_read_bytes, "read_mem": b_read_mem,
     "write_text": b_write_text, "write_bytes": b_write_bytes,
     "append_text": b_append_text, "exists": b_exists, "ls": b_ls,
     "mkdir": b_mkdir, "json_load": b_json_load, "json_save": b_json_save,
