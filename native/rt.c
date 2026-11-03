@@ -672,7 +672,8 @@ Val v_builtin(const char *name) {
         {b_json_parse, "json_parse"}, {b_json_str, "json_str"},
         {b_read_text, "read_text"}, {b_read_bytes, "read_bytes"}, {b_read_mem, "read_mem"},
         {b_write_text, "write_text"}, {b_write_bytes, "write_bytes"},
-        {b_append_text, "append_text"}, {b_exists, "exists"},
+        {b_append_text, "append_text"}, {b_append_bytes, "append_bytes"},
+        {b_exists, "exists"},
         {b_ls, "ls"}, {b_mkdir, "mkdir"},
         {b_json_load, "json_load"}, {b_json_save, "json_save"},
     };
@@ -2215,6 +2216,48 @@ Val b_write_bytes(Val *args, int nargs, int line) {
         fclose(f);
         free(owned);
         hs_err(line, "write_bytes failed: cannot write '%s'", path);
+    }
+    fclose(f);
+    free(owned);
+    return v_null();
+}
+
+Val b_append_bytes(Val *args, int nargs, int line) {
+    if (nargs != 2 || (args[1].tag != T_LIST && args[1].tag != T_BYTES))
+        hs_err(line, "append_bytes wants append_bytes(path, [Int 0..255]|bytes)");
+    const char *path = hs_fs_str(args[0], "append_bytes", line);
+    const unsigned char *buf;
+    size_t n;
+    unsigned char *owned = NULL;
+    if (args[1].tag == T_BYTES) {
+        /* Bytes payload is borrowed, never freed here */
+        Str *bs = AS_STR(args[1]);
+        buf = (const unsigned char *)bs->data;
+        n = (size_t)bs->len;
+    } else {
+        List *l = AS_LIST(args[1]);
+        owned = (unsigned char *)malloc(l->len ? (size_t)l->len : 1);
+        for (int64_t i = 0; i < l->len; i++) {
+            Val x = l->items[i];
+            if (x.tag != T_INT || x.u.i < 0 || x.u.i > 255) {
+                free(owned);
+                hs_err(line, "append_bytes wants a list of Ints 0..255");
+            }
+            owned[i] = (unsigned char)x.u.i;
+        }
+        buf = owned;
+        n = (size_t)l->len;
+    }
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd < 0) {
+        free(owned);
+        hs_err(line, "append_bytes failed: cannot open '%s'", path);
+    }
+    FILE *f = fdopen(fd, "ab");
+    if (n > 0 && fwrite(buf, 1, n, f) != n) {
+        fclose(f);
+        free(owned);
+        hs_err(line, "append_bytes failed: cannot write '%s'", path);
     }
     fclose(f);
     free(owned);

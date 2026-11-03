@@ -144,6 +144,25 @@ except as e:
       files={"bin.dat": bytes([72, 105, 128, 255, 10]), "empty.dat": b""},
       backends=("interp", "native", "x64", "be"))
 
+# append_bytes accepts Bytes directly: verbatim append, prefix preserved.
+check("append_bytes_bytes_arg", """
+write_bytes("__D__/app.dat", [65, 66])
+append_bytes("__D__/app.dat", read_bytes("__D__/bin.dat"))
+append_bytes("__D__/app.dat", [67])
+r = read_bytes("__D__/app.dat")
+print byte_len(r)
+print byte_at(r, 0)
+print byte_at(r, 4)
+print byte_at(r, 7)
+try:
+  append_bytes("__D__/x2.dat", "s")
+except as e:
+  print e
+print exists("__D__/x2.dat")
+""", want_out="8\n65\n128\n67\nappend_bytes wants append_bytes(path, [Int 0..255]|bytes) at line 11\nfalse\n",
+      files={"bin.dat": bytes([72, 105, 128, 255, 10])},
+      backends=("interp", "native", "x64", "be"))
+
 # valid UTF-8 file read as Bytes: raw byte view, Str needles encode UTF-8
 check("utf8_bytes_view", """
 write_text("__D__/t.txt", "héllo")

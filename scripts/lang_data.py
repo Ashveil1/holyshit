@@ -46,7 +46,7 @@ ALL = {"interp", "native", "xbuild", "xkernel"}
 # (its File runtime is the same openat/read/write/getdents machinery)
 HOSTED = {"interp", "native", "xbuild"}
 NO_XBUILD = {"interp", "native", "xkernel"}  # kernel-surface via xkernel
-# tcp_* / http_get / write_bytes: interp and native only (not in x64 yet)
+# tcp_* / http_get: interp and native only (not in x64 yet)
 NET = {"interp", "native"}
 
 # name -> (signature, description, support set)
@@ -100,6 +100,10 @@ BUILTINS = {
                     "verbatim, mode 0755 (hosted only)", HOSTED),
     "append_text": ("append_text(path, s)", "append file (hosted only)",
                     HOSTED),
+    "append_bytes": ("append_bytes(path, xs|bytes)",
+                     "append to a binary file from a List of Ints 0..255 or "
+                     "Bytes verbatim, mode 0644 on create (hosted only)",
+                     HOSTED),
     "exists": ("exists(path)", "path exists? (hosted only)", HOSTED),
     "ls": ("ls(path)", "dir entries List (hosted only)", HOSTED),
     "mkdir": ("mkdir(path)", "make directory (hosted only)", HOSTED),

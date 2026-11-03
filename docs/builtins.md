@@ -9,6 +9,8 @@
 | | zeroed n bytes (unsafe only) |||||
 | `append` | `append(list, x)` | ✓ | ✓ | ✓ | ✓ |
 | | push x, returns Null |||||
+| `append_bytes` | `append_bytes(path, xs|bytes)` | ✓ | ✓ | ✓ |   |
+| | append to a binary file from a List of Ints 0..255 or Bytes verbatim, mode 0644 on create (hosted only) |||||
 | `append_text` | `append_text(path, s)` | ✓ | ✓ | ✓ |   |
 | | append file (hosted only) |||||
 | `argv` | `argv()` | ✓ | ✓ | ✓ |   |
