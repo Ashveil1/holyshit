@@ -271,6 +271,14 @@ detour. `test_write_bytes_x64.py` compares exact file bytes and catchable
 failures with interp, including invalid elements and non-list non-Bytes
 inputs. First-class write_bytes values remain outside the x64 subset.
 
+The x64 IR path now supports direct `append_bytes(path, [Int 0..255] | Bytes)`.
+Validation runs before opening the file; appending creates a missing file
+with mode 0644 (the append_text convention; write_bytes keeps 0755), and
+Bytes payloads are appended verbatim without an int-list detour.
+`test_append_bytes_x64.py` compares exact file bytes and catchable failures
+with interp, including invalid elements and non-list non-Bytes inputs.
+First-class append_bytes values remain outside the x64 subset.
+
 Source-to-ELF driver checkpoint: `selfhost/be/compile.holy SOURCE OUTPUT`
 connects normalized parsing, optimized IR, verification, module loading,
 JSON helper compilation and static/dynamic ELF emission. Its interp-run
@@ -303,6 +311,14 @@ are preserved, and Bytes payloads are written verbatim without an int-list
 detour. `test_write_bytes_x64.py` compares exact file bytes and catchable
 failures with interp, including invalid elements and non-list non-Bytes
 inputs. First-class write_bytes values remain outside the x64 subset.
+
+The x64 IR path now supports direct `append_bytes(path, [Int 0..255] | Bytes)`.
+Validation runs before opening the file; appending creates a missing file
+with mode 0644 (the append_text convention; write_bytes keeps 0755), and
+Bytes payloads are appended verbatim without an int-list detour.
+`test_append_bytes_x64.py` compares exact file bytes and catchable failures
+with interp, including invalid elements and non-list non-Bytes inputs.
+First-class append_bytes values remain outside the x64 subset.
 
 ### S8 experimental kernel IR lowering
 The IR kernel lowering passed the existing QEMU behavioral corpus

@@ -14,7 +14,8 @@ HS_RESERVED = {"def", "if", "elif", "else", "while", "for", "in", "return",
                "extern", "raise", "lambda", "class", "assert", "module",
                "print", "finally", "unsafe", "self_"}
 # hs builtins that a Python local/param name must not shadow
-HS_BUILTINS = {"alloc", "append", "append_text", "argv", "as_int", "as_ptr",
+HS_BUILTINS = {"alloc", "append", "append_bytes", "append_text",
+               "argv", "as_int", "as_ptr",
                "close", "contains", "env", "exists", "find", "float", "has",
                "http_get", "input", "int", "join", "json_load", "json_parse",
                "json_save", "json_str", "keys", "len", "load32", "load64",

@@ -110,6 +110,18 @@ for be in ("interp", "native", "auto"):
     rc, out, err = run(WB, {"HS_BACKEND": be})
     check(f"write_bytes writes exact bytes, mode 755 ({be})",
           rc == 0 and out == WB_OUT, (rc, out, err))
+AB = 'append_bytes("/tmp/_hs_ab.bin", [0, 1, 127, 128, 200, 255, 10])\nappend_bytes("/tmp/_hs_ab.bin", [65])\nprint system("test $(wc -c < /tmp/_hs_ab.bin) -eq 8")\nprint system("test \\"$(od -An -tu1 /tmp/_hs_ab.bin | xargs)\\" = \\"0 1 127 128 200 255 10 65\\"")\nprint system("test ! -x /tmp/_hs_ab.bin")\ntry:\n  append_bytes("/tmp/_hs_ab.bin", [256])\nexcept as e:\n  print e\ntry:\n  append_bytes("/tmp/_hs_ab.bin", "x")\nexcept as e:\n  print e\nsystem("rm -f /tmp/_hs_ab.bin")\n'
+AB_OUT = '0\n0\n0\nappend_bytes wants a list of Ints 0..255 at line 7\nappend_bytes wants append_bytes(path, [Int 0..255]|bytes) at line 11\n'
+for be in ("interp", "native", "auto"):
+    rc, out, err = run(AB, {"HS_BACKEND": be})
+    check(f"append_bytes appends exact bytes, mode 644 on create ({be})",
+          rc == 0 and out == AB_OUT, (rc, out, err))
+import re as _re
+_m = _re.search(r"_SIDE_EFFECT_WORDS = \(([^)]*)\)",
+                open(os.path.join(ROOT, "hs.py")).read(), _re.S)
+check("append_bytes is a run-cache side-effect word",
+      _m is not None and '"append_bytes"' in _m.group(1),
+      _m.group(1) if _m else "no _SIDE_EFFECT_WORDS")
 with tempfile.TemporaryDirectory() as d:
     env = dict(os.environ, HS_CC_CACHE=os.path.join(d, "cache"))
     src = os.path.join(d, "p.holy")

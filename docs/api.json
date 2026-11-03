@@ -406,6 +406,15 @@
     "xbuild"
    ]
   },
+  "append_bytes": {
+   "sig": "append_bytes(path, xs|bytes)",
+   "desc": "append to a binary file from a List of Ints 0..255 or Bytes verbatim, mode 0644 on create (hosted only)",
+   "backends": [
+    "interp",
+    "native",
+    "xbuild"
+   ]
+  },
   "exists": {
    "sig": "exists(path)",
    "desc": "path exists? (hosted only)",

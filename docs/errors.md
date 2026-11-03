@@ -28,7 +28,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 | `E011` | `json_parse not in x64 subset` | using `json_*` on the x64 side | see `x64-subset.md` |
 | `E012` | `cannot find module '<m>'` | `import` cannot find the file | set `HSPATH` to point at the module's directory |
 
-## interp.py - interpreter + parser (every language error) (246)
+## interp.py - interpreter + parser (every language error) (249)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -41,6 +41,9 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `alloc of negative size {n}`
 - `alloc wants alloc(n)`
 - `append wants append(list, x)`
+- `append_bytes failed: {e.strerror or e}`
+- `append_bytes wants a list of Ints 0..255`
+- `append_bytes wants append_bytes(path, [Int 0..255]|bytes)`
 - `append_text failed: {e.strerror or e}`
 - `append_text wants append_text(path, str)`
 - `argv takes no args`
@@ -663,4 +666,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-617 messages total - duplicates across files are counted once per file
+620 messages total - duplicates across files are counted once per file
