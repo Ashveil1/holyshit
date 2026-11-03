@@ -6,7 +6,7 @@ METHODS = ["split", "find", "join", "append"]
 FFTYPE = ["U0", "I64", "U64", "F64", "Str", "Ptr"]
 UTYPES = ["I64", "U64", "Ptr"]
 # names a struct may not take (keep in sync with interp.BUILTINS)
-BUILTINS = ["alloc", "append", "append_bytes", "append_text", "argv", "as_int", "as_ptr", "close", "contains", "env", "exists", "find", "float", "has", "http_get", "input", "int", "join", "json_load", "json_parse", "json_save", "json_str", "keys", "len", "load32", "load64", "load8", "ls", "meminfo", "mkdir", "open", "pmm_alloc", "print", "range", "read", "read_mem", "read_text", "readkey", "split", "store32", "store64", "store8", "str", "system", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "values", "write", "write_text"]
+BUILTINS = ["alloc", "append", "append_bytes", "append_text", "argv", "as_int", "as_ptr", "byte_at", "byte_find", "byte_len", "close", "contains", "env", "exists", "find", "float", "has", "http_get", "input", "int", "join", "json_load", "json_parse", "json_save", "json_str", "keys", "len", "load32", "load64", "load8", "ls", "meminfo", "mkdir", "open", "pmm_alloc", "print", "range", "read", "read_bytes", "read_mem", "read_text", "readkey", "split", "store32", "store64", "store8", "str", "system", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "values", "write", "write_bytes", "write_text"]
 P = {"unsafe": 0, "structs": {}, "t": [], "i": 0, "mods": {}, "hoist": [], "nlam": 0, "classes": {}}
 
 def N(t, line, d):

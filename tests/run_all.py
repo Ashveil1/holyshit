@@ -43,6 +43,7 @@ SUITES = [
     ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),
+    ("test_parselib_builtins.py", "parselib BUILTINS reserved-name sync with interp"),
     ("test_byteops.py", "byte_len/byte_find/byte_at parity and errors on interp/native/x64"),
     ("test_jsonbytes.py", "JSON non-ASCII byte offsets, escaping and error surfaces"),
     ("test_rawbytes.py", "read_mem raw-byte path pins current per-backend divergence"),
