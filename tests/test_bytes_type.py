@@ -12,9 +12,11 @@ separate Bytes). Interp-only and purely additive:
 be.holy (the self-hosted backend, stage 3b) knows Bytes too: the "be"
 backend rows below compile with the pinned seed compiler, and the be
 emission-gating fixtures pin its uses_bytes scan (same closed-world
-producer rule as the x64 backends). The invalid-byte
-boundary policy for tcp_recv/http_get/read_text stays explicitly
-undecided and untouched.
+producer rule as the x64 backends). Stage 4 flips tcp_recv/http_get to
+lossless Bytes on the hosted backends (interp + native): no decoding
+happens at the boundary, so no invalid-byte policy is decided there.
+read_mem keeps its documented latin-1 Str bridge; read_text keeps its
+pinned strict language error on invalid UTF-8.
 """
 import contextlib
 import io
@@ -223,13 +225,14 @@ def check_img(name, src, want_rodata, files=None, ir=False):
         print(f"  rc={rc} err={err[-160:]!r} rodata_want={want_rodata}")
 
 
-# producer pin: BYTES_PRODUCERS is exactly {"read_bytes"}, and across both
-# x64 generators the only K_BYTES tag WRITES are the two read_bytes
-# re-tag sites (every other use is a comparison).
+# producer pin: BYTES_PRODUCERS is exactly {"read_bytes", "tcp_recv",
+# "http_get"} (stage 4), and across both x64 generators the only K_BYTES
+# tag WRITES are the two read_bytes re-tag sites (every other use is a
+# comparison; tcp_recv/http_get tag inside native/rt.c, not in asm).
 def check_producer_pin():
     global fails, total
     total += 1
-    ok = x64gen.Gen.BYTES_PRODUCERS == frozenset({"read_bytes"})
+    ok = x64gen.Gen.BYTES_PRODUCERS == frozenset({"read_bytes", "tcp_recv", "http_get"})
     writes = 0
     for path in ("x64gen.py", "irx64.py"):
         with open(os.path.join(ROOT, path), encoding="utf-8") as f:
@@ -266,6 +269,16 @@ for ir in (False, True):
 for ir in (False, True):
     check_img(f"emission_gating_shadowed[{'ir' if ir else 'ast'}]",
               'def read_bytes(path):\n    return 41\nprint read_bytes("x") + 1\n',
+              want_rodata=False, ir=ir)
+
+# stage-4 producers: tcp_recv/http_get are hosted-only builtins (not in the
+# x64 subset), so a raw call cannot appear in x64/be-compiled code; the
+# widened producer set is pinned by check_producer_pin plus the shadow
+# fixtures below, and the value-level flip is pinned by t_sock. A user def
+# named after a stage-4 producer shadows it: gate off.
+for ir in (False, True):
+    check_img(f"emission_gating_shadowed_tcp[{'ir' if ir else 'ast'}]",
+              'def tcp_recv(s, n):\n    return 41\nprint tcp_recv("x", 1) + 1\n',
               want_rodata=False, ir=ir)
 
 # freestanding reject: read_bytes is refused with the x64-subset error,
@@ -340,6 +353,10 @@ check_be_img("be_emission_gating_def_body",
              True)
 check_be_img("be_emission_gating_shadowed",
              'def read_bytes(p):\n  return "s"\nprint read_bytes("x")\n',
+             False)
+# same shadow rule for a stage-4 producer name through be
+check_be_img("be_emission_gating_shadowed_tcp",
+             'def tcp_recv(s, n):\n  return "s"\nprint tcp_recv("x", 1)\n',
              False)
 def check_be_img_import():
     """import fixture needs the module dir on HSPATH."""

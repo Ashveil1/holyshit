@@ -1,4 +1,8 @@
-hello www
-
-HTTP/1.0 200 OK
+b'hello www\n'
+b'hi\x00\x80A'
+b''
+b'HTTP/1.0 200 OK'
+6
+550863071337
+b''
 done
