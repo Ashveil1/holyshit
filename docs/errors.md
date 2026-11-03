@@ -247,7 +247,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `tcp_recv failed: {e.strerror or e}`
 - `tcp_recv wants tcp_recv(sock, n)`
 - `tcp_send failed: {e.strerror or e}`
-- `tcp_send wants tcp_send(sock, str)`
+- `tcp_send wants tcp_send(sock, str|bytes)`
 - `ticks takes no args`
 - `try not allowed in unsafe (wrap the unsafe block instead)`
 - `try without except or finally`

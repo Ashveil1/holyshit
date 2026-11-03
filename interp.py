@@ -3158,11 +3158,12 @@ def b_tcp_connect(args, ln):
 
 
 def b_tcp_send(args, ln):
-    if len(args) != 2 or not isinstance(args[1], str):
-        raise HSErr("tcp_send wants tcp_send(sock, str)", ln)
+    if len(args) != 2 or not isinstance(args[1], (str, bytes)):
+        raise HSErr("tcp_send wants tcp_send(sock, str|bytes)", ln)
     s = _sock_arg(args[0], ln, "tcp_send")
+    data = args[1].encode() if isinstance(args[1], str) else args[1]
     try:
-        return s.sendall(args[1].encode()) or len(args[1].encode())
+        return s.sendall(data) or len(data)
     except OSError as e:
         raise HSErr(f"tcp_send failed: {e.strerror or e}", ln)
 
