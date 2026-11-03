@@ -99,7 +99,7 @@ class Gen:
     K_STR, K_FUNC, K_LIST, K_FILE, K_DICT, K_FLOAT = 0, 1, 2, 3, 4, 5
     K_BYTES = 6
     # Closed-world producer set: these builtins are the ONLY way a
-    # K_BYTES value can come to exist (write_bytes takes a List;
+    # K_BYTES value can come to exist (write_bytes takes a List or Bytes;
     # read_mem keeps Str as the documented latin-1 bridge; the flip of
     # tcp_recv/http_get to lossless Bytes is stage 4; producer-as-a-value
     # is a compile error; hs has no eval/getattr). Pinned by
@@ -6625,7 +6625,7 @@ class Gen:
         a.mov_ri32("rax", 257)  # sys_openat
         a.mov_ri32("rdi", -100)  # AT_FDCWD
         a.mov_rm("rsi", "rbp", -32)
-        a.mov_ri32("r10", 420)  # 0644; write_bytes mode 3 uses 0755
+        a.mov_ri32("r10", 420)  # 0644; write_bytes mode 3 uses 0755 (list or Bytes data)
         a.mov_rm("rax", "rbp", -16)
         a.cmp_ri32("rax", 3)
         mode_ok = self.new_tmp("fh")

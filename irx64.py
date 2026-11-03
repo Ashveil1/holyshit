@@ -2726,10 +2726,13 @@ class GenIR(Gen):
 
     def _inline_write_bytes(self, fr, dest, args, ln):
         a = self.a
-        msg = "write_bytes wants write_bytes(path, [Int 0..255])"
+        msg = "write_bytes wants write_bytes(path, [Int 0..255]|bytes)"
         if len(args) != 2:
             raise HSErr(msg, ln)
         bad, bytebad, loop, done = (self.new_tmp("wb") for _ in range(4))
+        listpath = self.new_tmp("wb")
+        bytespath = self.new_tmp("wb")
+        end2 = self.new_tmp("wb")
         self._load(fr, args[0], ln)
         a.push_r("rax")
         a.mov_rr("r11", "rax")
@@ -2750,7 +2753,32 @@ class GenIR(Gen):
         a.jcc("e", bad)
         a.mov_rm("r11", "rax", 0)
         a.cmp_ri32("r11", Gen.K_LIST)
-        a.jcc("ne", bad)
+        a.jcc("e", listpath)
+        if self.uses_bytes:
+            a.cmp_ri32("r11", Gen.K_BYTES)
+            a.jcc("e", bytespath)
+        a.jmp(bad)
+        if self.uses_bytes:
+            a.label(bytespath)
+            # Bytes consumer: no malloc, no packing, no list validation -
+            # the object layout matches what file_write_all reads (len at
+            # +8, payload at +16), so it goes straight through.
+            a.push_r("rax")  # [rsp]=bytes, [rsp+8]=path
+            a.mov_rm("rdi", "rsp", 8)
+            a.mov_ri32("rsi", 3)
+            a.mov_ri32("rdx", ln)
+            a.call("file_open")
+            a.push_r("rax")  # [rsp]=file, [rsp+8]=bytes, [rsp+16]=path
+            a.mov_rr("rdi", "rax")
+            a.mov_rm("rsi", "rsp", 8)
+            a.mov_ri32("rdx", ln)
+            a.call("file_write_all")
+            a.mov_rm("rdi", "rsp", 0)
+            a.call("file_close")
+            a.add_ri32("rsp", 24)
+            a.mov_ri32("rax", Gen.HS_NULL)
+            a.jmp(end2)
+        a.label(listpath)
         a.push_r("rax")
         a.mov_rm("rdi", "rax", 8)
         a.add_ri32("rdi", 24)
@@ -2802,6 +2830,7 @@ class GenIR(Gen):
         a.label(bad)
         self.raise_static(msg, ln)
         a.label(end)
+        a.label(end2)
         a.mov_mr("rbp", "rax", fr["slots"][dest])
 
     def _inline_read_mem(self, fr, dest, args, ln):

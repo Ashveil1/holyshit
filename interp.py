@@ -2959,15 +2959,19 @@ def b_write_text(args, ln):
 
 
 def b_write_bytes(args, ln):
-    if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], list):
-        raise HSErr("write_bytes wants write_bytes(path, [Int 0..255])", ln)
-    for b in args[1]:
-        if not is_int(b) or b < 0 or b > 255:
-            raise HSErr("write_bytes wants a list of Ints 0..255", ln)
+    if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], (list, bytes)):
+        raise HSErr("write_bytes wants write_bytes(path, [Int 0..255]|bytes)", ln)
+    if isinstance(args[1], list):
+        for b in args[1]:
+            if not is_int(b) or b < 0 or b > 255:
+                raise HSErr("write_bytes wants a list of Ints 0..255", ln)
+        data = bytes(args[1])
+    else:
+        data = args[1]
     try:
         fd = _os.open(args[0], _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC, 0o755)
         with _os.fdopen(fd, "wb") as f:
-            f.write(bytes(args[1]))
+            f.write(data)
     except OSError as e:
         raise HSErr(f"write_bytes failed: {e.strerror or e}", ln)
     return None

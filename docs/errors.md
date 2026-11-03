@@ -266,7 +266,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `write wants write(f, str)`
 - `write_bytes failed: {e.strerror or e}`
 - `write_bytes wants a list of Ints 0..255`
-- `write_bytes wants write_bytes(path, [Int 0..255])`
+- `write_bytes wants write_bytes(path, [Int 0..255]|bytes)`
 - `write_text failed: {e.strerror or e}`
 - `write_text wants write_text(path, str)`
 - `{fn.name} wants {len(fn.params)} args, got {len(args)}`

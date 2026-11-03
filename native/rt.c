@@ -2180,32 +2180,44 @@ Val b_write_text(Val *args, int nargs, int line) {
 }
 
 Val b_write_bytes(Val *args, int nargs, int line) {
-    if (nargs != 2 || args[1].tag != T_LIST)
-        hs_err(line, "write_bytes wants write_bytes(path, [Int 0..255])");
+    if (nargs != 2 || (args[1].tag != T_LIST && args[1].tag != T_BYTES))
+        hs_err(line, "write_bytes wants write_bytes(path, [Int 0..255]|bytes)");
     const char *path = hs_fs_str(args[0], "write_bytes", line);
-    List *l = AS_LIST(args[1]);
-    unsigned char *buf = (unsigned char *)malloc(l->len ? (size_t)l->len : 1);
-    for (int64_t i = 0; i < l->len; i++) {
-        Val x = l->items[i];
-        if (x.tag != T_INT || x.u.i < 0 || x.u.i > 255) {
-            free(buf);
-            hs_err(line, "write_bytes wants a list of Ints 0..255");
+    const unsigned char *buf;
+    size_t n;
+    unsigned char *owned = NULL;
+    if (args[1].tag == T_BYTES) {
+        /* Bytes payload is borrowed, never freed here */
+        Str *bs = AS_STR(args[1]);
+        buf = (const unsigned char *)bs->data;
+        n = (size_t)bs->len;
+    } else {
+        List *l = AS_LIST(args[1]);
+        owned = (unsigned char *)malloc(l->len ? (size_t)l->len : 1);
+        for (int64_t i = 0; i < l->len; i++) {
+            Val x = l->items[i];
+            if (x.tag != T_INT || x.u.i < 0 || x.u.i > 255) {
+                free(owned);
+                hs_err(line, "write_bytes wants a list of Ints 0..255");
+            }
+            owned[i] = (unsigned char)x.u.i;
         }
-        buf[i] = (unsigned char)x.u.i;
+        buf = owned;
+        n = (size_t)l->len;
     }
     int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0755);
     if (fd < 0) {
-        free(buf);
+        free(owned);
         hs_err(line, "write_bytes failed: cannot open '%s'", path);
     }
     FILE *f = fdopen(fd, "wb");
-    if (l->len > 0 && fwrite(buf, 1, (size_t)l->len, f) != (size_t)l->len) {
+    if (n > 0 && fwrite(buf, 1, n, f) != n) {
         fclose(f);
-        free(buf);
+        free(owned);
         hs_err(line, "write_bytes failed: cannot write '%s'", path);
     }
     fclose(f);
-    free(buf);
+    free(owned);
     return v_null();
 }
 
