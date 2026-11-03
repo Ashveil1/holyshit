@@ -41,6 +41,8 @@ SUITES = [
     ("test_ir_profile.py", "bounded opt-in IR execution profiling, not JIT"),
     ("test_ir.py", "IR (build/verify/exec)"),
     ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
+    ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
+    ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),
     ("test_byteops.py", "byte_len/byte_find/byte_at parity and errors on interp/native/x64"),
     ("test_jsonbytes.py", "JSON non-ASCII byte offsets, escaping and error surfaces"),
     ("test_rawbytes.py", "read_mem raw-byte path pins current per-backend divergence"),
@@ -153,11 +155,14 @@ SUITES = [
 ]
 
 
+QUICK_SKIP = ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py")
+
+
 def main(argv):
     quick = "--quick" in argv
     failed = []
     for script, label in SUITES:
-        if quick and script in ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py"):
+        if quick and script in QUICK_SKIP:
             print(f"skip {script:18s} ({label}) -- quick mode")
             continue
         p = subprocess.run([sys.executable, os.path.join(HERE, script)],
