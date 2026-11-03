@@ -20,4 +20,35 @@ tcp_close(raw)
 print n
 print acc
 print r
+e = tcp_connect("127.0.0.1", int(env("HS_ECHO_PORT")))
+b = read_bytes(env("HS_BIN"))
+print tcp_send(e, b)
+n = 0
+acc = 0
+while n < 5:
+  r = tcp_recv(e, 3)
+  if byte_len(r) == 0:
+    raise "unexpected EOF from echo server (bin payload)"
+  for i in range(byte_len(r)):
+    acc = acc * 256 + byte_at(r, i)
+    n = n + 1
+print n
+print acc
+print tcp_send(e, "ping")
+n = 0
+acc = 0
+while n < 4:
+  r = tcp_recv(e, 3)
+  if byte_len(r) == 0:
+    raise "unexpected EOF from echo server (ping)"
+  for i in range(byte_len(r)):
+    acc = acc * 256 + byte_at(r, i)
+    n = n + 1
+print acc
+print tcp_send(e, read_bytes(env("HS_EMPTY")))
+try:
+  tcp_send(e, 5)
+except as x:
+  print x
+tcp_close(e)
 print "done"

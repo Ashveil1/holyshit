@@ -79,7 +79,7 @@ BUILTINS = {
                HOSTED),
     "tcp_connect": ("tcp_connect(host, port)", "open TCP (hosted only)",
                     NET),
-    "tcp_send": ("tcp_send(sock, s)", "send bytes (hosted only)", NET),
+    "tcp_send": ("tcp_send(sock, s|bytes)", "send Str (UTF-8 encoded) or Bytes verbatim (hosted only)", NET),
     "tcp_recv": ("tcp_recv(sock, n)", "recv bytes as Bytes (hosted only)", NET),
     "tcp_close": ("tcp_close(sock)", "close socket (hosted only)", NET),
     "tcp_listen": ("tcp_listen(port)", "listen socket (hosted only)", NET),

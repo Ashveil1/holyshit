@@ -5,4 +5,11 @@ b'HTTP/1.0 200 OK'
 6
 550863071337
 b''
+5
+5
+448438239297
+4
+1885957735
+0
+tcp_send wants tcp_send(sock, str|bytes) at line 50
 done

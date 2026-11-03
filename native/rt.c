@@ -1602,8 +1602,8 @@ Val b_tcp_connect(Val *args, int nargs, int line) {
 }
 
 Val b_tcp_send(Val *args, int nargs, int line) {
-    if (nargs != 2 || args[1].tag != T_STR)
-        hs_err(line, "tcp_send wants tcp_send(sock, str)");
+    if (nargs != 2 || (args[1].tag != T_STR && args[1].tag != T_BYTES))
+        hs_err(line, "tcp_send wants tcp_send(sock, str|bytes)");
     HSock *o = hs_sock_arg(args[0], "tcp_send", line);
     Str *s = AS_STR(args[1]);
     size_t left = (size_t)s->len;

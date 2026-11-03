@@ -50,12 +50,56 @@ def _start_raw():
     return srv
 
 _WWW = _start_www()
+
+
+def _start_echo():
+    # echo fixture for t_sock: returns whatever it receives, verbatim.
+    import socketserver
+    import threading
+
+    class H(socketserver.BaseRequestHandler):
+        def handle(self):
+            # bounded recv: a dead client must not block this thread forever
+            self.request.settimeout(30)
+            while True:
+                try:
+                    data = self.request.recv(65536)
+                except OSError:  # includes socket.timeout
+                    return
+                if not data:
+                    return
+                self.request.sendall(data)
+
+    class S(socketserver.ThreadingTCPServer):
+        # handler threads must not block interpreter exit on a failed client
+        daemon_threads = True
+
+    srv = S(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+
+    def _cleanup():
+        # one callback: shutdown must precede server_close (atexit is LIFO,
+        # so two registers would run server_close while serve_forever is
+        # still running)
+        try:
+            srv.shutdown()
+        finally:
+            srv.server_close()
+
+    import atexit
+    atexit.register(_cleanup)
+    return srv
+
 _RAW = _start_raw()
+_ECHO = _start_echo()
 _PORT = _WWW.server_address[1]
 _CHILD_ENV = dict(os.environ)
 _CHILD_ENV["HS_WWW"] = f"http://127.0.0.1:{_PORT}"
 _CHILD_ENV["HS_WWW_PORT"] = str(_PORT)
 _CHILD_ENV["HS_RAW_PORT"] = str(_RAW.server_address[1])
+_CHILD_ENV["HS_ECHO_PORT"] = str(_ECHO.server_address[1])
+_CHILD_ENV["HS_BIN"] = os.path.join(HERE, "www", "bin.dat")
+_CHILD_ENV["HS_EMPTY"] = os.path.join(HERE, "www", "empty.txt")
 
 # t_fs uses a fixed scratch dir: start clean so ls() is deterministic.
 import shutil

@@ -284,8 +284,8 @@
    ]
   },
   "tcp_send": {
-   "sig": "tcp_send(sock, s)",
-   "desc": "send bytes (hosted only)",
+   "sig": "tcp_send(sock, s|bytes)",
+   "desc": "send Str (UTF-8 encoded) or Bytes verbatim (hosted only)",
    "backends": [
     "interp",
     "native"

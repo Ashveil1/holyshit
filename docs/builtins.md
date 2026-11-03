@@ -115,8 +115,8 @@
 | | listen socket (hosted only) |||||
 | `tcp_recv` | `tcp_recv(sock, n)` | ✓ | ✓ |   |   |
 | | recv bytes as Bytes (hosted only) |||||
-| `tcp_send` | `tcp_send(sock, s)` | ✓ | ✓ |   |   |
-| | send bytes (hosted only) |||||
+| `tcp_send` | `tcp_send(sock, s|bytes)` | ✓ | ✓ |   |   |
+| | send Str (UTF-8 encoded) or Bytes verbatim (hosted only) |||||
 | `ticks` | `ticks()` | ✓ | ✓ |   | ✓ |
 | | ms ticks hosted, 100Hz timer on kernel |||||
 | `values` | `values(dict)` | ✓ | ✓ | ✓ | ✓ |
