@@ -123,8 +123,8 @@
 | | List of the dict values in insertion order |||||
 | `write` | `write(f, s)` | ✓ | ✓ | ✓ |   |
 | | write Str (hosted only) |||||
-| `write_bytes` | `write_bytes(path, xs)` | ✓ | ✓ |   |   |
-| | write a binary file from a List of Ints 0..255, mode 0755 (interp/native only) |||||
+| `write_bytes` | `write_bytes(path, xs|bytes)` | ✓ | ✓ | ✓ |   |
+| | write a binary file from a List of Ints 0..255 or Bytes verbatim, mode 0755 (hosted only) |||||
 | `write_text` | `write_text(path, s)` | ✓ | ✓ | ✓ |   |
 | | write file (hosted only) |||||
 

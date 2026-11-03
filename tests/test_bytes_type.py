@@ -126,6 +126,24 @@ print byte_at(b, 0)
 print byte_at(b, 3)
 """, want_out="4\n0\n150\n", backends=("interp", "native", "x64", "be"))
 
+# write_bytes accepts Bytes directly: verbatim persist, no int-list detour.
+check("write_bytes_bytes_arg", """
+b = read_bytes("__D__/bin.dat")
+write_bytes("__D__/out2.dat", b)
+r = read_bytes("__D__/out2.dat")
+print byte_len(r)
+print byte_at(r, 2)
+print byte_at(r, 4)
+write_bytes("__D__/empty2.dat", read_bytes("__D__/empty.dat"))
+print byte_len(read_bytes("__D__/empty2.dat"))
+try:
+  write_bytes("__D__/x.dat", "s")
+except as e:
+  print e
+""", want_out="5\n128\n10\n0\nwrite_bytes wants write_bytes(path, [Int 0..255]|bytes) at line 11\n",
+      files={"bin.dat": bytes([72, 105, 128, 255, 10]), "empty.dat": b""},
+      backends=("interp", "native", "x64", "be"))
+
 # valid UTF-8 file read as Bytes: raw byte view, Str needles encode UTF-8
 check("utf8_bytes_view", """
 write_text("__D__/t.txt", "héllo")

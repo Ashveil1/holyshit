@@ -264,10 +264,11 @@ successful hosted fixed point does not cover the separate kernel backend,
 all 64-bit unsafe values, or the missing x64 write_bytes helper. No binary
 seed is yet committed. The Python source remains the reference/test oracle.
 
-The x64 IR path now supports direct `write_bytes(path, [Int 0..255])`.
+The x64 IR path now supports direct `write_bytes(path, [Int 0..255] | Bytes)`.
 Validation runs before opening the file; empty data and embedded zero bytes
-are preserved. `test_write_bytes_x64.py` compares exact file bytes and
-catchable failures with interp, including invalid elements and non-list
+are preserved, and Bytes payloads are written verbatim without an int-list
+detour. `test_write_bytes_x64.py` compares exact file bytes and catchable
+failures with interp, including invalid elements and non-list non-Bytes
 inputs. First-class write_bytes values remain outside the x64 subset.
 
 Source-to-ELF driver checkpoint: `selfhost/be/compile.holy SOURCE OUTPUT`
@@ -296,10 +297,11 @@ corpus modules and deliberately malformed modules are checked against the
 Python verifier, through interp and x64. Out-of-width IR constants remain
 interp-only. This is a compiler-stage check, not a full bootstrap claim.
 
-The x64 IR path now supports direct `write_bytes(path, [Int 0..255])`.
+The x64 IR path now supports direct `write_bytes(path, [Int 0..255] | Bytes)`.
 Validation runs before opening the file; empty data and embedded zero bytes
-are preserved. `test_write_bytes_x64.py` compares exact file bytes and
-catchable failures with interp, including invalid elements and non-list
+are preserved, and Bytes payloads are written verbatim without an int-list
+detour. `test_write_bytes_x64.py` compares exact file bytes and catchable
+failures with interp, including invalid elements and non-list non-Bytes
 inputs. First-class write_bytes values remain outside the x64 subset.
 
 ### S8 experimental kernel IR lowering

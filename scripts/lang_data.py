@@ -95,9 +95,9 @@ BUILTINS = {
     "read_bytes": ("read_bytes(path)", "whole file as raw Bytes (hosted only)",
                    HOSTED),
     "write_text": ("write_text(path, s)", "write file (hosted only)", HOSTED),
-    "write_bytes": ("write_bytes(path, xs)",
-                    "write a binary file from a List of Ints 0..255, mode 0755 "
-                    "(interp/native only)", NET),
+    "write_bytes": ("write_bytes(path, xs|bytes)",
+                    "write a binary file from a List of Ints 0..255 or Bytes "
+                    "verbatim, mode 0755 (hosted only)", HOSTED),
     "append_text": ("append_text(path, s)", "append file (hosted only)",
                     HOSTED),
     "exists": ("exists(path)", "path exists? (hosted only)", HOSTED),

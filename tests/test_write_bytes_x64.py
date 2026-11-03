@@ -8,9 +8,16 @@ import tempfile
 ROOT=Path(__file__).resolve().parent.parent
 passed=failed=0
 with tempfile.TemporaryDirectory() as d:
-    for ix,expr in enumerate(['[]','[0, 1, 127, 128, 255]','[256]','[-1]','[true]','["x"]','1','null']):
+    binpath=str(Path(d)/'in.bin')
+    Path(binpath).write_bytes(b'\x00\x80A\xffhi')
+    emptypath=str(Path(d)/'empty.bin')
+    Path(emptypath).write_bytes(b'')
+    q=lambda s: repr(s).replace("'",'"')
+    exprs=['[]','[0, 1, 127, 128, 255]','[256]','[-1]','[true]','["x"]','1','null',
+           'read_bytes('+q(binpath)+')','read_bytes('+q(emptypath)+')']
+    for ix,expr in enumerate(exprs):
         expected=None
-        for backend in ['interp','x64']:
+        for backend in ['interp','x64','native']:
             target=str(Path(d)/f'bytes-{backend}.bin')
             source=Path(d)/'test.holy'
             source.write_text('try:\n  write_bytes('+repr(target).replace("'",'"')+', '+expr+')\n  print "ok"\nexcept as e:\n  print "caught"\n')
