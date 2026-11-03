@@ -9,8 +9,10 @@ separate Bytes). Interp-only and purely additive:
   and test_rawbytes.py).
 - len(Bytes) is the byte count; print/str render Bytes as Python b'...'.
 
-be.holy (the self-hosted backend) does not know Bytes yet; that is the
-final stage with the seed regen and fixed-point gates. The invalid-byte
+be.holy (the self-hosted backend, stage 3b) knows Bytes too: the "be"
+backend rows below compile with the pinned seed compiler, and the be
+emission-gating fixtures pin its uses_bytes scan (same closed-world
+producer rule as the x64 backends). The invalid-byte
 boundary policy for tcp_recv/http_get/read_text stays explicitly
 undecided and untouched.
 """
@@ -33,6 +35,10 @@ total = 0
 
 HS = os.path.join(ROOT, "hs.py")
 BACKENDS = ("interp", "native", "x64", "x64-ast")
+SEED = os.path.join(ROOT, "bootstrap", "hs-hosted-x86_64")
+# the hosted (be) compiler joins the matrix when the pinned seed exists
+if os.path.exists(SEED):
+    BACKENDS = BACKENDS + ("be",)
 
 
 def run(src, files, backend):
@@ -54,6 +60,16 @@ def run(src, files, backend):
                 rc = x64gen.build_x64_ast(p, out)
             if rc != 0:
                 return rc, "", err.getvalue()
+            cmd = [out]
+        elif backend == "be":
+            out = os.path.join(d, "prog-bin")
+            env = dict(os.environ, HSROOT=ROOT,
+                       HSPATH=os.path.join(ROOT, "selfhost") + ":" +
+                       os.path.join(ROOT, "selfhost", "be"))
+            c = subprocess.run([SEED, p, out], capture_output=True,
+                               timeout=120, env=env)
+            if c.returncode != 0:
+                return c.returncode, "", c.stderr.decode("utf-8", "replace")
             cmd = [out]
         else:
             cmd = [sys.executable, HS, "run", p, "--backend", backend]
@@ -106,7 +122,7 @@ b = read_bytes("__D__/out.dat")
 print byte_len(b)
 print byte_at(b, 0)
 print byte_at(b, 3)
-""", want_out="4\n0\n150\n", backends=("interp", "native", "x64"))
+""", want_out="4\n0\n150\n", backends=("interp", "native", "x64", "be"))
 
 # valid UTF-8 file read as Bytes: raw byte view, Str needles encode UTF-8
 check("utf8_bytes_view", """
@@ -152,7 +168,8 @@ check("read_bytes_missing", 'b = read_bytes("__D__/nope.bin")\n',
       want_err={"interp": "read_bytes failed:",
                 "native": "read_bytes failed:",
                 "x64": "open failed: errno 2",
-                "x64-ast": "open failed: errno 2"})
+                "x64-ast": "open failed: errno 2",
+                "be": "open failed: errno 2"})
 check("byte_at_oob", """
 b = read_bytes("__D__/bin.dat")
 print byte_at(b, 9)
@@ -265,6 +282,108 @@ def check_freestanding_reject():
 
 
 check_freestanding_reject()
+
+
+
+# --- be (hosted compiler) emission gating: the translated uses_bytes scan ---
+
+def be_compile(src, files=None, extra_path=None):
+    """Compile src with the pinned hosted (be) compiler; returns
+    (rc, image_bytes_or_None, err)."""
+    with tempfile.TemporaryDirectory() as d:
+        for name, data in (files or {}).items():
+            mode = "wb" if isinstance(data, bytes) else "w"
+            with open(os.path.join(d, name), mode) as f:
+                f.write(data)
+        p = os.path.join(d, "prog.holy")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(src.replace("__D__", d))
+        out = os.path.join(d, "prog-bin")
+        env = dict(os.environ, HSROOT=ROOT,
+                   HSPATH=(extra_path or "") + os.path.join(ROOT, "selfhost") +
+                   ":" + os.path.join(ROOT, "selfhost", "be"))
+        r = subprocess.run([SEED, p, out], capture_output=True, timeout=120,
+                           env=env)
+        img = None
+        if r.returncode == 0 and os.path.exists(out):
+            with open(out, "rb") as f:
+                img = f.read()
+        return r.returncode, img, r.stderr.decode("utf-8", "replace")
+
+
+def check_be_img(name, src, want_bytes_rodata, files=None, extra_path=None):
+    global fails, total
+    if not os.path.exists(SEED):
+        return
+    total += 1
+    rc, img, err = be_compile(src, files, extra_path)
+    ok = rc == 0 and img is not None and ((b"Bytes" in img) == want_bytes_rodata)
+    print(("ok  " if ok else "FAIL") + f" {name} [be]")
+    if not ok:
+        fails += 1
+        print(f"  rc={rc} has_Bytes={(img is not None and b'Bytes' in img)} "
+              f"want={want_bytes_rodata} err={err[-200:]!r}")
+
+
+check_be_img("be_emission_gating_str_only",
+             'print byte_len("abc")\n', False)
+check_be_img("be_emission_gating_bytes",
+             'b = read_bytes("/etc/hostname")\nprint byte_len(b)\n', True)
+# producer-named PARAMETER is the true param-shadow case: gate must stay OFF
+# (x64gen: Gen.BYTES_PRODUCERS & set(params) non-empty -> body scan suppressed)
+check_be_img("be_emission_gating_param_shadowed",
+             'def f(read_bytes):\n  return read_bytes("/etc/hostname")\nprint "ok"\n',
+             False)
+# and a def WITHOUT shadowing that calls the producer: gate must turn ON
+check_be_img("be_emission_gating_def_body",
+             'def go():\n  return byte_len(read_bytes("/etc/hostname"))\nprint go()\n',
+             True)
+check_be_img("be_emission_gating_shadowed",
+             'def read_bytes(p):\n  return "s"\nprint read_bytes("x")\n',
+             False)
+def check_be_img_import():
+    """import fixture needs the module dir on HSPATH."""
+    global fails, total
+    if not os.path.exists(SEED):
+        return
+    total += 1
+    with tempfile.TemporaryDirectory() as d:
+        with open(os.path.join(d, "helper.holy"), "w") as f:
+            f.write('def go():\n  return byte_len(read_bytes("/etc/hostname"))\n')
+        p = os.path.join(d, "prog.holy")
+        with open(p, "w") as f:
+            f.write("import helper\nprint helper.go()\n")
+        out = os.path.join(d, "prog-bin")
+        env = dict(os.environ, HSROOT=ROOT,
+                   HSPATH=d + ":" + os.path.join(ROOT, "selfhost") + ":" +
+                   os.path.join(ROOT, "selfhost", "be"))
+        r = subprocess.run([SEED, p, out], capture_output=True, timeout=120,
+                           env=env)
+        img = open(out, "rb").read() if r.returncode == 0 else None
+        ok = img is not None and b"Bytes" in img
+        print(("ok  " if ok else "FAIL") + " be_emission_gating_import [be]")
+        if not ok:
+            fails += 1
+            print(f"  rc={r.returncode} err={r.stderr[-200:]!r}")
+
+
+check_be_img_import()
+
+# read_bytes as a value is a compile error through be as well
+def check_be_not_a_value():
+    global fails, total
+    if not os.path.exists(SEED):
+        return
+    total += 1
+    rc, img, err = be_compile("f = read_bytes\n")
+    ok = rc != 0 and "not a value" in err
+    print(("ok  " if ok else "FAIL") + " be_read_bytes_not_a_value [be]")
+    if not ok:
+        fails += 1
+        print(f"  rc={rc} err={err[-200:]!r}")
+
+
+check_be_not_a_value()
 
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
