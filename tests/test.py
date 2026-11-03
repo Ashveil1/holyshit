@@ -30,11 +30,31 @@ def _start_www():
     return srv
 
 
+
+
+def _start_raw():
+    # raw TCP fixture for t_sock: sends one fixed binary payload (NUL, 0x80,
+    # 0xff included) then closes; ephemeral port.
+    import socketserver
+    import threading
+
+    PAYLOAD = b"\x00\x80A\xffhi"
+
+    class H(socketserver.BaseRequestHandler):
+        def handle(self):
+            self.request.sendall(PAYLOAD)
+
+    srv = socketserver.ThreadingTCPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
 _WWW = _start_www()
+_RAW = _start_raw()
 _PORT = _WWW.server_address[1]
 _CHILD_ENV = dict(os.environ)
 _CHILD_ENV["HS_WWW"] = f"http://127.0.0.1:{_PORT}"
 _CHILD_ENV["HS_WWW_PORT"] = str(_PORT)
+_CHILD_ENV["HS_RAW_PORT"] = str(_RAW.server_address[1])
 
 # t_fs uses a fixed scratch dir: start clean so ls() is deterministic.
 import shutil

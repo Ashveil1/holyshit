@@ -1631,13 +1631,7 @@ Val b_tcp_recv(Val *args, int nargs, int line) {
     ssize_t r = recv(o->fd, buf, (size_t)n, 0);
     if (r < 0)
         hs_err(line, "tcp_recv failed");
-    if (r == 0)
-        return v_str("");
-    // decode errors replaced (same as interpreter)
-    for (ssize_t i = 0; i < r; i++)
-        if ((buf[i] & 0x80) && (i + 1 >= r || (buf[i + 1] & 0xC0) != 0x80))
-            buf[i] = '?';
-    return v_strn(buf, r);
+    return v_bytesn(buf, r);
 }
 
 Val b_tcp_close(Val *args, int nargs, int line) {
@@ -1746,7 +1740,7 @@ Val b_http_get(Val *args, int nargs, int line) {
         hs_err(line, "http_get got a bad response");
     if (status < 200 || status > 299)
         hs_err(line, "http status %d", status);
-    return v_str(sep + 4);
+    return v_bytesn(sep + 4, len - (size_t)(sep + 4 - raw));
 }
 
 // ---------- json ----------

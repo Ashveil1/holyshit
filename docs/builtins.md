@@ -38,7 +38,7 @@
 | `has` | `has(dict, key)` | ✓ | ✓ | ✓ | ✓ |
 | | true when the dict has the key |||||
 | `http_get` | `http_get(url)` | ✓ | ✓ |   |   |
-| | http GET body as Str (hosted only) |||||
+| | http GET body as Bytes (hosted only) |||||
 | `input` | `input()` | ✓ | ✓ | ✓ |   |
 | | read one line from stdin (hosted only) |||||
 | `int` | `int(x)` | ✓ | ✓ | ✓ | ✓ |
@@ -114,7 +114,7 @@
 | `tcp_listen` | `tcp_listen(port)` | ✓ | ✓ |   |   |
 | | listen socket (hosted only) |||||
 | `tcp_recv` | `tcp_recv(sock, n)` | ✓ | ✓ |   |   |
-| | recv bytes (hosted only) |||||
+| | recv bytes as Bytes (hosted only) |||||
 | `tcp_send` | `tcp_send(sock, s)` | ✓ | ✓ |   |   |
 | | send bytes (hosted only) |||||
 | `ticks` | `ticks()` | ✓ | ✓ |   | ✓ |

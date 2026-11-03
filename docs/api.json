@@ -293,7 +293,7 @@
   },
   "tcp_recv": {
    "sig": "tcp_recv(sock, n)",
-   "desc": "recv bytes (hosted only)",
+   "desc": "recv bytes as Bytes (hosted only)",
    "backends": [
     "interp",
     "native"
@@ -325,7 +325,7 @@
   },
   "http_get": {
    "sig": "http_get(url)",
-   "desc": "http GET body as Str (hosted only)",
+   "desc": "http GET body as Bytes (hosted only)",
    "backends": [
     "interp",
     "native"

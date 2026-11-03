@@ -3175,7 +3175,7 @@ def b_tcp_recv(args, ln):
         data = s.recv(max(1, args[1]))
     except OSError as e:
         raise HSErr(f"tcp_recv failed: {e.strerror or e}", ln)
-    return data.decode("utf-8", errors="replace")
+    return data
 
 
 def b_tcp_close(args, ln):
@@ -3269,7 +3269,7 @@ def b_http_get(args, ln):
         raise HSErr("http_get got a bad response", ln)
     if not (200 <= status < 300):
         raise HSErr(f"http status {status}", ln)
-    return body.decode("utf-8", errors="replace")
+    return body
 
 
 BUILTINS = {

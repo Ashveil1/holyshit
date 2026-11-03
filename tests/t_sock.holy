@@ -1,8 +1,23 @@
 base = env("HS_WWW")
 print http_get(base + "/hello.txt")
+print http_get(base + "/bin.dat")
+print http_get(base + "/empty.txt")
 port = int(env("HS_WWW_PORT"))
 s = tcp_connect("127.0.0.1", port)
 tcp_send(s, "GET /hello.txt HTTP/1.0\r\nHost: x\r\n\r\n")
 print tcp_recv(s, 15)
 tcp_close(s)
+raw = tcp_connect("127.0.0.1", int(env("HS_RAW_PORT")))
+n = 0
+acc = 0
+r = tcp_recv(raw, 3)
+while byte_len(r) > 0:
+  for i in range(byte_len(r)):
+    acc = acc * 256 + byte_at(r, i)
+    n = n + 1
+  r = tcp_recv(raw, 3)
+tcp_close(raw)
+print n
+print acc
+print r
 print "done"

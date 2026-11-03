@@ -100,10 +100,11 @@ class Gen:
     K_BYTES = 6
     # Closed-world producer set: these builtins are the ONLY way a
     # K_BYTES value can come to exist (write_bytes takes a List;
-    # read_mem/tcp_recv/http_get keep Str under the explicitly-undecided
-    # invalid-byte policy; producer-as-a-value is a compile error; hs has
-    # no eval/getattr). Pinned by tests/test_bytes_type.py.
-    BYTES_PRODUCERS = frozenset({"read_bytes"})
+    # read_mem keeps Str as the documented latin-1 bridge; the flip of
+    # tcp_recv/http_get to lossless Bytes is stage 4; producer-as-a-value
+    # is a compile error; hs has no eval/getattr). Pinned by
+    # tests/test_bytes_type.py.
+    BYTES_PRODUCERS = frozenset({"read_bytes", "tcp_recv", "http_get"})
 
     class Scope:
         def __init__(self, parent=None, is_func=False):
