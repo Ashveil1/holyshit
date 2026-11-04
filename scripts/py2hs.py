@@ -518,6 +518,12 @@ class T:
     def st(self, s, ind):
         t = type(s)
         if t is ast.FunctionDef:
+            # ind==0 <=> direct top-level def. Container-nested module-level
+            # bindings (def inside top-level if/try/while) arrive at ind>=1
+            # and are NOT covered: this diagnostic does not claim universal
+            # module-scope safety.
+            if ind == 0 and s.name in (HS_RESERVED | HS_BUILTINS):
+                self.warn.append("name-collision: top-level def '%s' (line %d) shadows an hs reserved/builtin name; emitted name unchanged (warning only)" % (s.name, s.lineno))
             ps = []
             defs = s.args.defaults
             nd = len(s.args.args) - len(defs)
@@ -534,6 +540,10 @@ class T:
             self.curfn = prev
             return
         if t is ast.ClassDef:
+            # Emitted name (top-level or hoisted Outer_Inner) binds module
+            # scope and would silently shadow an hs reserved/builtin name.
+            if ind == 0 and s.name in (HS_RESERVED | HS_BUILTINS):
+                self.warn.append("name-collision: class '%s' binds module scope and shadows an hs reserved/builtin name; emitted name unchanged (warning only)" % s.name)
             base = "(" + s.bases[0].id + ")" if s.bases else ""
             nested = [m for m in s.body if isinstance(m, ast.ClassDef)]
             consts = [m for m in s.body if isinstance(m, ast.Assign)]
@@ -752,7 +762,7 @@ def asm_method_names(path):
     return out
 
 
-def translate(srcs, dst, asm_path):
+def translate(srcs, dst, asm_path, warn=None):
     tree = ast.Module(body=[], type_ignores=[])
     for src in srcs:
         tree.body.extend(ast.parse(open(src).read()).body)
@@ -819,11 +829,16 @@ def translate(srcs, dst, asm_path):
             del t.out[mark:]
             errs.append("%s:%d %s" % (type(s).__name__, getattr(s, "lineno", 0), ex))
     open(dst, "w").write("\n".join(t.out) + "\n")
+    if warn is not None:
+        warn.extend(t.warn)
     return errs + t.fails
 
 
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
-    errs = translate(sys.argv[1].split(","), sys.argv[2], os.path.join(here, "..", "x64.py"))
+    warns = []
+    errs = translate(sys.argv[1].split(","), sys.argv[2], os.path.join(here, "..", "x64.py"), warns)
+    for w in warns:
+        print("WARNING", w)
     for e in errs:
         print("UNSUPPORTED", e)
