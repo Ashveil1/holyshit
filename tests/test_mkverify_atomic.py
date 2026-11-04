@@ -23,7 +23,7 @@ class AtomicTests(unittest.TestCase):
         self.target = self.root / 'selfhost/be/verify.holy'
         self.target.parent.mkdir(parents=True)
         (self.root / 'scripts').mkdir()
-        (self.root / 'ir.py').write_text('def fake():\n    pass\n')
+        (self.root / 'ir.py').write_text('\n' * 831 + 'def verify_module():\n    pass\ndef _verify_func():\n    need_naive = any(p not in reach for l in reach for p in preds[l])\n' + '\n' * 210 + 'def _need(by, lab, tm):\n    pass\n')
         self.target.write_bytes(b'maintained sentinel\n')
         self.target.chmod(0o640)
         self.intermediates = []
@@ -55,6 +55,7 @@ class AtomicTests(unittest.TestCase):
     def run_fake(self, translator=None, adapter=None, formatter=None, replacer=None):
         with mock.patch.object(mkverify, '__file__', str(self.root / 'scripts/mkverify.py')), \
              mock.patch.object(mkverify, 'translate', side_effect=translator or self.translate), \
+             mock.patch.object(mkverify, 'adapt_dominance', side_effect=lambda m: m), \
              mock.patch.object(mkverify, 'adapt', side_effect=adapter or (lambda s: s)), \
              mock.patch.object(mkverify.subprocess, 'run', side_effect=formatter or self.fmt), \
              mock.patch.object(mkverify.os, 'replace', wraps=os.replace) as replace:

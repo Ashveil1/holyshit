@@ -44,6 +44,7 @@ SUITES = [
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),
     ("test_parselib_builtins.py", "parselib BUILTINS reserved-name sync with interp"),
+    ("test_mkverify_semantics.py", "disposable mkverify semantic differential and exact adaptation guards"),
     ("test_mkverify_atomic.py", "mkverify failure-atomic maintainer output plumbing"),
     ("test_py2hs_builtins.py", "py2hs HS_BUILTINS/HS_RESERVED cover interp builtins; nm collision renaming"),
     ("test_byteops.py", "byte_len/byte_find/byte_at parity and errors on interp/native/x64"),
