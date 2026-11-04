@@ -14,15 +14,17 @@ HS_RESERVED = {"def", "if", "elif", "else", "while", "for", "in", "return",
                "extern", "raise", "lambda", "class", "assert", "module",
                "print", "finally", "unsafe", "self_"}
 # hs builtins that a Python local/param name must not shadow
-HS_BUILTINS = {"alloc", "append", "append_bytes", "append_text",
-               "argv", "as_int", "as_ptr",
+HS_BUILTINS = {"alloc", "append", "append_bytes", "append_text", "argv",
+               "as_int", "as_ptr", "byte_at", "byte_find", "byte_len",
                "close", "contains", "env", "exists", "find", "float", "has",
                "http_get", "input", "int", "join", "json_load", "json_parse",
                "json_save", "json_str", "keys", "len", "load32", "load64",
                "load8", "ls", "meminfo", "mkdir", "open", "pmm_alloc",
-               "range", "read", "read_mem", "read_text", "readkey", "split",
-               "store32", "store64", "store8", "str", "system", "ticks",
-               "values", "write", "write_bytes", "write_text"}
+               "range", "read", "read_bytes", "read_mem", "read_text",
+               "readkey", "split", "store32", "store64", "store8", "str",
+               "system", "tcp_accept", "tcp_close", "tcp_connect",
+               "tcp_listen", "tcp_recv", "tcp_send", "ticks", "values",
+               "write", "write_bytes", "write_text"}
 BIN = {ast.Add: "+", ast.Sub: "-", ast.Mult: "*", ast.BitAnd: "&",
        ast.BitOr: "|", ast.BitXor: "^", ast.LShift: "<<", ast.RShift: ">>"}
 CMP = {ast.Eq: "==", ast.NotEq: "!=", ast.Lt: "<", ast.Gt: ">",
