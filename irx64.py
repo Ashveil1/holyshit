@@ -52,12 +52,9 @@ INLINE_DIRECT = {"write_bytes", "append_bytes", "float", "len", "str", "int",
                  "range", "append",
                  "read_text", "read_bytes", "write_text", "append_text", "exists", "ls",
                  "mkdir", "read_mem", "has", "contains",
-                 "keys", "values"}
-# NOTE: split/find/join also have inline arms in ev_call but are not in
-# INLINE_DIRECT yet: no corpus program triggers their error paths, and
-# their success paths work through the stubs. Same for the other
-# BI_VALUES builtins (argv/input/env/...). Add on demand with a failing
-# differential case in hand.
+                 "keys", "values", "split", "find", "join"}
+# Text calls use source-line inline checks only at valid arity. Invalid
+# counts retain the runtime-catchable builtin stub and its existing message.
 
 
 class GenIR(Gen):
@@ -392,7 +389,17 @@ class GenIR(Gen):
                          (self.freestanding and ins["name"] in KERNEL_BUILTINS and
                           ins["name"] in self.mod_globals.get(fr["mod"], set()))):
                     ds = ins["dest"]
-                    if fr["uses"].get(ds, []) and \
+                    # Do not turn text-builtin arity errors into build errors.
+                    # A load used by any invalid-count call must keep its value.
+                    text_arity_ok = True
+                    if ins["name"] in ("split", "find", "join"):
+                        for callblock in fdef["blocks"]:
+                            for callins in callblock["instrs"]:
+                                if callins["op"] == "call" and callins["fn"] == ds:
+                                    argc = len(callins["args"])
+                                    if argc != 2 and (ins["name"] != "split" or argc != 1):
+                                        text_arity_ok = False
+                    if text_arity_ok and fr["uses"].get(ds, []) and \
                             all(u == ("call", "fn") for u in fr["uses"][ds]):
                         fr["floattemps"].add(ds)
         # import-alias loads feeding chain positions exclusively (attr
@@ -2226,6 +2233,14 @@ class GenIR(Gen):
                 self._inline_range(fr, dest, args, ln)
             elif name == "append":
                 self._inline_append(fr, dest, args, ln)
+            elif name in ("split", "find", "join"):
+                # IR already evaluated every argument, including side effects.
+                # Reuse the checks/runtime calls, not AST evaluation or scope.
+                nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
+                self._kernel_frame = fr
+                Gen.ev_call(self, {"fn": {"t": "var", "name": name},
+                                   "args": nodes, "line": ln}, None, None)
+                self.a.mov_mr("rbp", "rax", fr["slots"][dest])
             elif name == "write_bytes":
                 self._inline_write_bytes(fr, dest, args, ln)
             elif name == "append_bytes":

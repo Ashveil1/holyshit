@@ -53,6 +53,7 @@ SUITES = [
     ("test_jsonbytes.py", "JSON non-ASCII byte offsets, escaping and error surfaces"),
     ("test_rawbytes.py", "read_mem raw-byte path pins current per-backend divergence"),
     ("test_bytes_type.py", "Bytes stage 1: read_bytes and byte_* on Bytes (interp only)"),
+    ("test_irx64_text_errors.py", "IR direct text errors keep source lines; alias/arity/native gaps pinned"),
     ("test_irx64.py", "IR->x64 differential"),
     ("test_xkernel.py", "kernel on QEMU"),
     ("test_keycode_native.py", "native keyboard integer code image and finite polling allocations"),
