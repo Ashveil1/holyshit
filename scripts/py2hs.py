@@ -311,6 +311,12 @@ class T:
         return isinstance(v, ast.Attribute) and v.attr == "a"
 
     def comp(self, elt, gens):
+        if len(gens) != 1:
+            raise Unsupported("multiple comprehension generators")
+        if gens[0].is_async:
+            raise Unsupported("async comprehension")
+        if len(gens[0].ifs) > 1:
+            raise Unsupported("multiple comprehension filters")
         saved = dict(self.alias)
         clauses = []
         for gi, g in enumerate(gens):
