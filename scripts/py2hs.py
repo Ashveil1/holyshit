@@ -222,6 +222,8 @@ class T:
         if t is ast.Subscript:
             sl = x.slice
             if isinstance(sl, ast.Slice):
+                if sl.step is not None:
+                    raise Unsupported("slice step")
                 lo = self.e(sl.lower) if sl.lower else "0"
                 if sl.upper:
                     hi = self.e(sl.upper)
