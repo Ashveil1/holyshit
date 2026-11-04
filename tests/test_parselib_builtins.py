@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """parselib reserved-name sync gate: the selfhost parser's BUILTINS list must
-equal the reference interpreter's BUILTINS exactly, so a struct field name is
+equal the reference interpreter's BUILTINS exactly, so a struct name is
 reserved identically by both parsers."""
 import os
 import re
