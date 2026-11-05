@@ -15,6 +15,7 @@ import contextlib
 import io
 import traceback
 import time
+import resource
 from x64gen import build_x64
 
 
@@ -120,6 +121,8 @@ for f in sorted(files):
     native_started = None
     native_elapsed = None
     failure_evidence = None
+    native_usage_before = None
+    native_metrics = None
     try:
         got = json.loads(r.stdout)
         diag['hs-interp'] = got
@@ -135,8 +138,25 @@ for f in sorted(files):
             stage = 'native-run'
             native_command = [exe, astfile.name]
             native_started = time.monotonic()
-            native = subprocess.run(native_command, capture_output=True, text=True, timeout=60)
-            native_elapsed = time.monotonic() - native_started
+            if Path(f).name == "be.holy":
+                native_usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
+            try:
+                native = subprocess.run(native_command, capture_output=True, text=True, timeout=60)
+            finally:
+                native_elapsed = time.monotonic() - native_started
+                if native_usage_before is not None:
+                    usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+                    native_metrics = {
+                        "input": "be.holy", "wall_seconds": native_elapsed,
+                        "child_cpu_seconds": (usage.ru_utime + usage.ru_stime -
+                                              native_usage_before.ru_utime - native_usage_before.ru_stime),
+                        # Cumulative child high-water mark, not this invocation's
+                        # RSS and not proof of scheduling contention.
+                        "cumulative_child_maxrss_KiB_linux": usage.ru_maxrss,
+                        "timeout_seconds": 60,
+                        "returncode": None if native is None else native.returncode,
+                    }
+                    print("NATIVE_METRICS " + json.dumps(native_metrics), flush=True)
             stage = 'native-parse'
             snippet = native.stdout[:150] + ' stderr:' + native.stderr[:150]
             ngot = json.loads(native.stdout)
@@ -153,6 +173,8 @@ for f in sorted(files):
         ok = False
         failure_evidence = exception_evidence(
             exc, stage, native, native_command, native_started, native_elapsed)
+        if native_metrics is not None:
+            failure_evidence["native_metrics"] = native_metrics
         fail_stage = stage + ' exception_class=' + type(exc).__name__ + ' exception:' + traceback.format_exc(limit=3).replace('\n', ' | ')[:400]
         if not snippet:
             snippet = r.stdout[:150] + ' stderr:' + r.stderr[:150]
