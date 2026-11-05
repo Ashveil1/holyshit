@@ -128,8 +128,26 @@ assert (kpage.pte_get(root, 0x10003000) & 7) == 7
 assert (kpage.pte_get(root, kownedelf.STACK) & 7) == 7
 assert (kpage.pte_get(root, 0x101FE000) & 4) == 0
 assert kpage.pte_get(original, kowned.LOW) == original_low_pte
+# Teardown rejection must not lose the loader's ownership record. An active
+# root cannot be destroyed; after restoring the boot root, discard can retry.
+prepared_frames = kpmm.available()
+prepared_spans = kownedelf.rd(kownedelf.metadata + kownedelf.OFF_NSPANS)
+irq_off()
+set_cr3(root)
+assert not kownedelf.discard()
+assert cr3() == root
+assert kownedelf.state() == kownedelf.READY
+assert kownedelf.active_handle() == h
+assert kownedelf.rd(kownedelf.metadata + kownedelf.OFF_NSPANS) == prepared_spans
+assert kowned.root(h) == root
+assert kpmm.available() == prepared_frames
+set_cr3(original)
+irq_on()
 assert kownedelf.discard()
 assert kownedelf.state() == kownedelf.EMPTY
+assert kownedelf.active_handle() == 0
+assert kownedelf.rd(kownedelf.metadata + kownedelf.OFF_NSPANS) == 0
+assert kpmm.available() == frames_base
 assert not kowned.destroy(h)
 assert not kownedelf.discard()
 assert not kownedelf.run()

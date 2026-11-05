@@ -238,10 +238,14 @@ def discard():
   if rd(metadata + OFF_STATE) != READY:
     return false
   handle = rd(metadata + OFF_HANDLE)
+  # A selected root cannot be destroyed. Keep READY and its ownership record
+  # intact on rejection so the caller can restore its root and retry.
+  if not kowned.destroy(handle):
+    return false
   wr(metadata + OFF_HANDLE, 0)
   wr(metadata + OFF_NSPANS, 0)
   wr(metadata + OFF_STATE, EMPTY)
-  return kowned.destroy(handle)
+  return true
 def readable(address, count):
   if count < 0 or count > 65536:
     return false
