@@ -12,6 +12,8 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import interp
@@ -110,7 +112,7 @@ class Doc:
     def from_module_doc(cls, path, mdoc):
         """Wrap an already-parsed module (load_module_doc) without re-parsing."""
         d = cls.__new__(cls)
-        d.uri = "file://" + path
+        d.uri = path_to_uri(path)
         d.text = mdoc["text"]
         d.version = 0
         d.path = path
@@ -123,9 +125,23 @@ class Doc:
 
 
 def uri_to_path(uri):
-    if uri.startswith("file://"):
-        return uri[len("file://"):]
-    return None
+    """Decode a local file URI, never a remote authority or another scheme."""
+    try:
+        parts = urlsplit(uri)
+        if (parts.scheme != "file" or parts.netloc.lower() not in ("", "localhost")
+                or parts.query or parts.fragment):
+            return None
+        path = unquote(parts.path, errors="strict")
+        if not os.path.isabs(path) or "\0" in path:
+            return None
+        return path
+    except (ValueError, UnicodeError):
+        return None
+
+
+def path_to_uri(path):
+    """Encode local paths for LSP locations without losing URI delimiters."""
+    return Path(os.path.abspath(path)).as_uri()
 
 
 def _walk(node, visit):
@@ -767,11 +783,11 @@ class Server:
                     continue
                 rng = self.word_range(d, u["line"] - 1, u["occ"], u["name"])
                 if rng:
-                    out.append({"uri": "file://" + d.path, "range": rng})
+                    out.append({"uri": path_to_uri(d.path), "range": rng})
         if include_declaration:
             rng = self.word_range_file(path, sym["line"] - 1, sym["name"])
             if rng:
-                decl = {"uri": "file://" + path, "range": rng}
+                decl = {"uri": path_to_uri(path), "range": rng}
                 if decl not in out:
                     out.append(decl)
         # de-dup
@@ -904,7 +920,7 @@ class Server:
                     "start": {"line": ln, "character": 0},
                     "end": {"line": ln, "character": 0}}
                 out.append({"name": s["name"], "kind": kind,
-                            "location": {"uri": "file://" + d.path,
+                            "location": {"uri": path_to_uri(d.path),
                                          "range": rng},
                             "containerName": os.path.basename(d.path)})
         return out[:500]
@@ -948,7 +964,7 @@ class Server:
         return None
 
     def loc(self, path, line0, name=""):
-        uri = "file://" + path if path else None
+        uri = path_to_uri(path) if path else None
         if path and os.path.isfile(path):
             try:
                 with open(path, encoding="utf-8") as f:

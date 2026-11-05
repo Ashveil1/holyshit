@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -77,7 +78,7 @@ class Client:
         self.p.stdin.flush()
 
     def open(self, path, text):
-        uri = "file://" + path
+        uri = Path(path).as_uri()
         self.request("initialize", {"capabilities": {}})
         self.notify("initialized", {})
         self.notify("textDocument/didOpen",
@@ -326,6 +327,59 @@ with tempfile.TemporaryDirectory() as d:
     check("didSave republishes diagnostics",
           any("expression expected" in m for m in msgs), msgs)
     c.close()
+
+# Real editor URIs escape paths, unlike the old test client's raw concatenation.
+# Keep literal percent-escapes in names to catch accidental double decoding.
+for folder in ("with spaces", "hash#name", "percent%20name", "question?name", "ไทย😀"):
+    with tempfile.TemporaryDirectory() as root:
+        d = Path(root) / folder
+        d.mkdir()
+        mod = d / "mymod.holy"
+        mod.write_text("def twice(x):\n  return x * 2\n", encoding="utf-8")
+        main = d / "main.holy"
+        src = "import mymod\nprint mymod.twice(4)\n"
+        main.write_text(src, encoding="utf-8")
+        c = Client()
+        try:
+            uri = c.open(str(main), src)
+            params = {"textDocument": {"uri": uri},
+                      "position": {"line": 1, "character": 15}}
+            loc = c.request("textDocument/definition", params)
+            check("encoded folder definition " + folder,
+                  loc and loc["uri"] == mod.as_uri(), loc)
+            refs = c.request("textDocument/references", dict(
+                params, context={"includeDeclaration": True}))
+            check("encoded folder references " + folder,
+                  {r["uri"] for r in refs} == {main.as_uri(), mod.as_uri()}, refs)
+            syms = c.request("workspace/symbol", {"query": "twice"})
+            check("encoded folder workspace symbol " + folder,
+                  len(syms) == 1 and syms[0]["location"]["uri"] == mod.as_uri(), syms)
+            # Exercise the shipped one-shot client too, not only this test client.
+            run = subprocess.run([sys.executable,
+                                  os.path.join(ROOT, "scripts", "lsp_client.py"),
+                                  "--def", str(main), "2", "16"],
+                                 capture_output=True, text=True, timeout=15)
+            result = json.loads(run.stdout) if run.returncode == 0 else None
+            check("encoded folder CLI definition " + folder,
+                  result and result["uri"] == mod.as_uri(), run.stdout + run.stderr)
+        finally:
+            c.close()
+
+sys.path.insert(0, ROOT)
+import lsp
+for uri, expected in (
+        ("file:///tmp/a%20b%23c%25d.holy", "/tmp/a b#c%d.holy"),
+        ("file://localhost/tmp/a%2520.holy", "/tmp/a%20.holy"),
+        ("file://other-host/tmp/a.holy", None),
+        ("https://example.com/a.holy", None),
+        ("untitled:buffer", None),
+        ("file:relative.holy", None),
+        ("file:///tmp/a.holy?query", None),
+        ("file:///tmp/a.holy#fragment", None),
+        ("file:///tmp/%00.holy", None),
+        ("file:///tmp/%FF.holy", None),
+        ("file://[invalid/tmp/a.holy", None)):
+    check("file URI decode " + uri, lsp.uri_to_path(uri) == expected)
 
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
