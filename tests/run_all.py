@@ -99,6 +99,7 @@ SUITES = [
     ("test_pipeline.py", "source-to-optimized-CFG pipeline in hs vs Python"),
     ("test_iropt_hs.py", "CFG optimizer in hs vs iropt.py (interp + x64)"),
     ("test_verify_hs.py", "CFG verifier in hs vs ir.py (valid + malformed modules)"),
+    ("test_irbuild_diagnostics.py", "IR builder exception evidence preserves original failure details"),
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
     ("test_ffi_variadic.py", "typed C variadic declaration and promoted ABI arguments"),
     ("test_ffi_u64.py", "negative U64 extern conversion before C side effect"),

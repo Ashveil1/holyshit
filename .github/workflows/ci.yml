@@ -122,7 +122,15 @@ jobs:
       - name: bounded static Linux write/exit personality (required)
         run: HS_REQUIRE_LINUX_STATIC=1 python3 tests/test_linux_static.py
       - name: every suite including xkernel on QEMU
+        env:
+          IRBUILD_DIAG_DIR: ${{ runner.temp }}/irbuild-diag
         run: python3 tests/run_all.py
+      - name: IR builder failure diagnostics (full)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: irbuild-diag-full
+          path: ${{ runner.temp }}/irbuild-diag
       - name: benchmarks vs CPython
         run: python3 bench/run.py | tee bench-result.txt
       - uses: actions/upload-artifact@v4

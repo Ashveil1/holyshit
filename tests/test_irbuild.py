@@ -14,6 +14,8 @@ import ir
 import contextlib
 import io
 import traceback
+import time
+import resource
 from x64gen import build_x64
 
 
@@ -42,6 +44,30 @@ def first_diff(a, b, path='$'):
     if a != b:
         return f'{path}: {repr(a)[:200]} vs {repr(b)[:200]}'
     return None
+def exception_evidence(exc, stage, native, command, started, elapsed):
+    """Keep the full failure, including partial output on subprocess timeouts."""
+    def text(value):
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="backslashreplace")
+        return value
+    result = {
+        "stage": stage,
+        "exception_class": type(exc).__name__,
+        "traceback": traceback.format_exc(),
+        "command": command,
+        "elapsed_seconds": (elapsed if elapsed is not None else
+                            None if started is None else time.monotonic() - started),
+        "timeout_seconds": 60 if command is not None else None,
+        "returncode": None if native is None else native.returncode,
+        "stdout": text(getattr(exc, "stdout", None)),
+        "stderr": text(getattr(exc, "stderr", None)),
+    }
+    if native is not None:
+        result["stdout"] = native.stdout
+        result["stderr"] = native.stderr
+    return result
+
+
 passed = failed = skipped = native_skipped = 0
 env = dict(os.environ, HSPATH=str(ROOT/'selfhost')+':'+str(ROOT/'selfhost/be'))
 work = tempfile.TemporaryDirectory()
@@ -90,6 +116,13 @@ for f in sorted(files):
     fail_stage = None
     diag = {}
     snippet = ''
+    native = None
+    native_command = None
+    native_started = None
+    native_elapsed = None
+    failure_evidence = None
+    native_usage_before = None
+    native_metrics = None
     try:
         got = json.loads(r.stdout)
         diag['hs-interp'] = got
@@ -103,7 +136,27 @@ for f in sorted(files):
             fail_stage = 'interp-compare-mismatch'
         if fits62(prog):
             stage = 'native-run'
-            native = subprocess.run([exe, astfile.name], capture_output=True, text=True, timeout=60)
+            native_command = [exe, astfile.name]
+            native_started = time.monotonic()
+            if Path(f).name == "be.holy":
+                native_usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
+            try:
+                native = subprocess.run(native_command, capture_output=True, text=True, timeout=60)
+            finally:
+                native_elapsed = time.monotonic() - native_started
+                if native_usage_before is not None:
+                    usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+                    native_metrics = {
+                        "input": "be.holy", "wall_seconds": native_elapsed,
+                        "child_cpu_seconds": (usage.ru_utime + usage.ru_stime -
+                                              native_usage_before.ru_utime - native_usage_before.ru_stime),
+                        # Cumulative child high-water mark, not this invocation's
+                        # RSS and not proof of scheduling contention.
+                        "cumulative_child_maxrss_KiB_linux": usage.ru_maxrss,
+                        "timeout_seconds": 60,
+                        "returncode": None if native is None else native.returncode,
+                    }
+                    print("NATIVE_METRICS " + json.dumps(native_metrics), flush=True)
             stage = 'native-parse'
             snippet = native.stdout[:150] + ' stderr:' + native.stderr[:150]
             ngot = json.loads(native.stdout)
@@ -116,9 +169,13 @@ for f in sorted(files):
                 fail_stage = 'native-compare-mismatch'
         else:
             native_skipped += 1
-    except Exception:
+    except Exception as exc:
         ok = False
-        fail_stage = stage + ' exception:' + traceback.format_exc(limit=3).replace('\n', ' | ')[:400]
+        failure_evidence = exception_evidence(
+            exc, stage, native, native_command, native_started, native_elapsed)
+        if native_metrics is not None:
+            failure_evidence["native_metrics"] = native_metrics
+        fail_stage = stage + ' exception_class=' + type(exc).__name__ + ' exception:' + traceback.format_exc(limit=3).replace('\n', ' | ')[:400]
         if not snippet:
             snippet = r.stdout[:150] + ' stderr:' + r.stderr[:150]
     os.unlink(astfile.name)
@@ -133,6 +190,9 @@ for f in sorted(files):
         base = str(Path(diagdir)/Path(f).name)
         try:
             Path(base + '.ast.json').write_text(json.dumps(prog))
+            if failure_evidence is not None:
+                Path(base + '.exception.json').write_text(
+                    json.dumps(failure_evidence, ensure_ascii=True, indent=2))
             for tag, mod in diag.items():
                 Path(f'{base}.{tag}.json').write_text(json.dumps(mod, sort_keys=True))
         except Exception:
