@@ -1088,10 +1088,10 @@
        for key in self.allorder:
          f = self.frames[key]
          iv0 = self._compute_ivars(key, self.allfuncs[key], f["is_entry"])
--        _t11660 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, false)
--        iraw = _t11660[0]
--        ivars = _t11660[1]
--        rawcalls = _t11660[2]
+-        _t11668 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, false)
+-        iraw = _t11668[0]
+-        ivars = _t11668[1]
+-        rawcalls = _t11668[2]
 -        f["iraw"] = iraw
 -        f["ivars"] = ivars
 -        f["rawcalls"] = rawcalls
@@ -1100,10 +1100,10 @@
 +        f["ivars"] = r[1]
 +        f["rawcalls"] = r[2]
          if key in cand:
--          _t11668 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, true)
--          iraw_r = _t11668[0]
--          ivars_r = _t11668[1]
--          rawcalls_r = _t11668[2]
+-          _t11676 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, true)
+-          iraw_r = _t11676[0]
+-          ivars_r = _t11676[1]
+-          rawcalls_r = _t11676[2]
 -          f["iraw_r"] = iraw_r
 -          f["ivars_r"] = ivars_r
 -          f["rawcalls_r"] = rawcalls_r
@@ -1199,11 +1199,11 @@
        self.emit_add(ln)
        return null
      if op in ["==", "!="]:
--      _t11920 = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
--      lab_eq_ne = _t11920[0]
--      lab_eq_slow = _t11920[1]
--      lab_eq_done = _t11920[2]
--      lab_eq_noteq = _t11920[3]
+-      _t11928 = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
+-      lab_eq_ne = _t11928[0]
+-      lab_eq_slow = _t11928[1]
+-      lab_eq_done = _t11928[2]
+-      lab_eq_noteq = _t11928[3]
 +      _teqf = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
 +      lab_eq_ne = _teqf[0]
 +      lab_eq_slow = _teqf[1]
@@ -1221,9 +1221,9 @@
          asm.xor_rax_8()
        return null
      if op in ["<", ">", "<=", ">="]:
--      _t11968 = [self.new_tmp("ii"), self.new_tmp("ii")]
--      lab_ii = _t11968[0]
--      lab_iidone = _t11968[1]
+-      _t11976 = [self.new_tmp("ii"), self.new_tmp("ii")]
+-      lab_ii = _t11976[0]
+-      lab_iidone = _t11976[1]
 +      _tii = [self.new_tmp("ii"), self.new_tmp("ii")]
 +      lab_ii = _tii[0]
 +      lab_iidone = _tii[1]
@@ -1253,7 +1253,7 @@
        ft = f[0]
        return pyrt.py_tail(ft, 4) if pyrt.py_startswith(ft, "Ptr:") else null
      if op == "phi":
--      xs = pyrt.py_set([self._struct_of(fr, _p12333_0[1], seen) for _p12333_0 in ins["arms"]])
+-      xs = pyrt.py_set([self._struct_of(fr, _p12341_0[1], seen) for _p12341_0 in ins["arms"]])
 -      xs[null] = false
 -      return pyrt.py_pop(xs) if len(xs) == 1 else null
 +      xs = []
@@ -1285,7 +1285,7 @@
 +    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
      if f == null:
        raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-     _t12404 = f
+     _t12412 = f
 @@ -12577,9 +12675,9 @@
      asm.mov_mr("rbp", "rax", fr["slots"][dest])
    def _sfield(self, fr, dest, obj, name, idx, ln):
@@ -1297,7 +1297,7 @@
 +    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
      if f == null:
        raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-     _t12610 = f
+     _t12618 = f
 @@ -12974,7 +13072,7 @@
    def _call(self, fr, dest, fn, args, ln):
      p = pyrt.py_get(fr["prov"], fn, null)
@@ -1331,6 +1331,15 @@
        finally:
          self._kernel_raw_dynamic = false
        if pname == "as_int":
+@@ -13060,7 +13158,7 @@
+       elif name in ["split", "find", "join"]:
+         nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
+         self._kernel_frame = fr
+-        Gen.ev_call(self, {"fn": {"t": "var", "name": name}, "args": nodes, "line": ln}, null, null)
++        self._base_ev_call({"fn": {"t": "var", "name": name}, "args": nodes, "line": ln}, null, null)
+         asm.mov_mr("rbp", "rax", fr["slots"][dest])
+       elif name == "write_bytes":
+         self._inline_write_bytes(fr, dest, args, ln)
 @@ -13069,14 +13167,14 @@
          raise pyrt.py_err("IR: '" + str(name) + "' not in irx64 subset yet", ln)
        return null
@@ -1460,10 +1469,10 @@
 -    if key in pyrt.py_getattr(self, "rawabi", []):
 +    if key in pyrt.py_getattr(self, "rawabi", pyrt.py_set(null)):
        saved = [fr["iraw"], fr["ivars"], fr["rawcalls"]]
--      _t14450 = [fr["iraw_r"], fr["ivars_r"], fr["rawcalls_r"]]
--      fr["iraw"] = _t14450[0]
--      fr["ivars"] = _t14450[1]
--      fr["rawcalls"] = _t14450[2]
+-      _t14463 = [fr["iraw_r"], fr["ivars_r"], fr["rawcalls_r"]]
+-      fr["iraw"] = _t14463[0]
+-      fr["ivars"] = _t14463[1]
+-      fr["rawcalls"] = _t14463[2]
 +      fr["iraw"] = fr["iraw_r"]
 +      fr["ivars"] = fr["ivars_r"]
 +      fr["rawcalls"] = fr["rawcalls_r"]
@@ -1471,10 +1480,10 @@
        asm.label(self.rawlabel[key])
        self._emit_frame_body(key, fdef, fr)
        self._rawabi_emit = false
--      _t14458 = saved
--      fr["iraw"] = _t14458[0]
--      fr["ivars"] = _t14458[1]
--      fr["rawcalls"] = _t14458[2]
+-      _t14471 = saved
+-      fr["iraw"] = _t14471[0]
+-      fr["ivars"] = _t14471[1]
+-      fr["rawcalls"] = _t14471[2]
 +      fr["iraw"] = saved[0]
 +      fr["ivars"] = saved[1]
 +      fr["rawcalls"] = saved[2]
@@ -1508,7 +1517,7 @@
 -      return Gen.emit_main(self, mod)
 +      return self._base_emit_main(mod)
      self.emit_longmode_tail(mod)
-     inits = pyrt.py_set([_p14491_0[1] for _p14491_0 in pyrt.py_items(self.mod_entries) if _p14491_0[0] != ""])
+     inits = pyrt.py_set([_p14504_0[1] for _p14504_0 in pyrt.py_items(self.mod_entries) if _p14504_0[0] != ""])
      for key in self.allorder:
 @@ -14344,7 +14442,7 @@
      for nm in pyrt.py_sorted(self.mglob, null):

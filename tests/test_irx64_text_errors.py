@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Direct valid-arity IR text calls keep source locations and eager arguments.
-Aliases/invalid arity and the native hs compiler gap are pinned, not repaired.
+Aliases/invalid arity remain pinned; Python and native hs direct calls agree.
 """
 from pathlib import Path
 import sys,os,subprocess,tempfile,io,contextlib,re
@@ -74,13 +74,13 @@ with tempfile.TemporaryDirectory(prefix='hs-split-parity-') as td:
     assert ast['phase']=='build' and ast['rc']==1, (name,ast)
    else:assert ast==want, (name,ast)
   if group in ('types','function'):
-   # Honest temporary pin: the native hs compiler still lacks this repair.
-   assert native==no_location(ref), (name,'native-hs known gap changed',native,ref)
+   expected_native = no_location(ref) if group=='types' and '_aliasTrue_' in name else ref
+   assert native==expected_native, (name,'native-hs contract',native,expected_native)
   if group=='success':assert ast==ir==native==ref, (name,row)
-  if group=='eval':assert native==no_location(ref), (name,row)
+  if group=='eval':assert native==ref, (name,row)
   if group=='types' and '_aliasFalse_' in name:assert ast==ref, (name,ast,ref)
   if group=='eval' and name=='split_eval_invalidTrue':
    want=dict(ref);want['stdout']=want['stdout'].replace('arg2\n','');assert ast==want, (name,ast,want)
   elif group=='eval':assert ast==ref, (name,ast,ref)
   passed+=1
-print(f'{passed}/{len(cases)} text builtin error-location and preserved-contract cases (4 drivers; native-hs gap pinned)')
+print(f'{passed}/{len(cases)} text builtin error-location and preserved-contract cases (4 drivers; Python/native direct parity)')
