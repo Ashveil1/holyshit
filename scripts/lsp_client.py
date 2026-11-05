@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -77,7 +78,7 @@ class Client:
     def open(self, path):
         with open(path, encoding="utf-8") as f:
             text = f.read()
-        uri = "file://" + os.path.abspath(path)
+        uri = Path(os.path.abspath(path)).as_uri()
         self.request("initialize", {"rootUri": None, "capabilities": {}})
         self.notify("initialized", {})
         self.notify("textDocument/didOpen",

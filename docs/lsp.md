@@ -18,6 +18,11 @@ Run it with `python3 hs.py lsp` or `python3 lsp.py` directly.
 | workspace symbols | search names across the whole project |
 | formatting | `hs fmt` for the whole file |
 
+Local file URIs are decoded once and returned locations are URI-escaped, so
+projects in folders containing spaces, `#`, `%`, `?`, or Unicode work with
+editor navigation. Empty authority and `localhost` are supported; remote
+file authorities are not mapped to local paths.
+
 Known limitations: multiple references on one line resolve to the occurrence
 nearest the cursor; hover/completion do not know types (dynamic language).
 
