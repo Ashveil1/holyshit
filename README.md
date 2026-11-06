@@ -18,17 +18,19 @@ sh scripts/install-native.sh "$HOME/holyshit-native"
 
 No Python or gcc is needed to install or use this route. It needs Linux
 x86-64, `/bin/sh`, standard shell/checksum utilities and host libc/shared
-libraries for FFI. Installation builds the eager driver once and can take
-time. Move the whole installed directory together; no checkout is needed
-after installation. The installer does not edit PATH/shell profiles, use sudo
+libraries for FFI. Installation builds the eager driver and IR interpreter
+once and can take time and extra disk space. Move the whole installed
+directory together; no checkout is needed after installation. The installer does not edit PATH/shell profiles, use sudo
 or overwrite an existing directory. Use a new directory for each update;
 keep the old one until the new version is checked. Removing an install means
 removing only its chosen directory, not any source checkout.
 
-The native launcher currently provides only `run SOURCE [args...]` and
-`build SOURCE OUTPUT`. It reports unsupported hosted-subset programs rather
-than silently falling back. It does not provide the Python CLI's check, fmt,
-test, REPL, LSP or kernel commands. `run` compiles eagerly in memory, not on
+The native launcher provides `run SOURCE [args...]`, `build SOURCE OUTPUT`
+and explicit `interpret SOURCE [args...]`. `interpret` runs the hs-written IR
+interpreter, with its own documented subset and refusals; it is not a fallback
+for `run` or `build`. Those commands report unsupported hosted-subset programs
+rather than silently switching execution modes. It does not provide the Python
+CLI's check, fmt, test, REPL, LSP or kernel commands. `run` compiles eagerly in memory, not on
 first call or in tiers. The installed prebuilt driver is not rebuilt per run.
 See [native install details](docs/native-install.md).
 
