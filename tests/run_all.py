@@ -50,6 +50,7 @@ SUITES = [
     ("test_py2hs_slice_step.py", "py2hs explicit slice steps fail closed"),
     ("test_py2hs_builtins.py", "py2hs HS_BUILTINS/HS_RESERVED cover interp builtins; nm collision renaming"),
     ("test_byteops.py", "byte_len/byte_find/byte_at parity and errors on interp/native/x64"),
+    ("test_json_chunks.py", "JSON shared-chunk encoder byte and depth boundaries"),
     ("test_jsonbytes.py", "JSON non-ASCII byte offsets, escaping and error surfaces"),
     ("test_rawbytes.py", "read_mem raw-byte path pins current per-backend divergence"),
     ("test_bytes_type.py", "Bytes stage 1: read_bytes and byte_* on Bytes (interp only)"),

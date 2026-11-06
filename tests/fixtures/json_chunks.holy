@@ -1,0 +1,33 @@
+print json_str(json_parse("\"\""))
+print json_str(json_parse("\"plain ASCII\""))
+print json_str(json_parse("\"\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000b\\f\\r\\u000e\\u000f\\u0010\\u0011\\u0012\\u0013\\u0014\\u0015\\u0016\\u0017\\u0018\\u0019\\u001a\\u001b\\u001c\\u001d\\u001e\\u001f !\\\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\\u007f\""))
+print json_str(json_parse("\"\\u0e44\\u0e17\\u0e22\\ud83d\\ude42\""))
+print json_str(json_parse("\"a\\\"\\\\\\n\\t\\u0000z\""))
+print json_str(json_parse("[]"))
+print json_str(json_parse("{}"))
+print json_str(json_parse("[1, true, null, 1.5, {\"z\": \"\\u0e44\\u0e17\\u0e22\", \"a\": [\"\\ud83d\\ude42\", \"x\"]}]"))
+print json_str(json_parse("{\"b\": 1, \"a\": 2}"))
+def wrap(n):
+  v = "leaf"
+  i = 0
+  while i < n:
+    v = [v]
+    i = i + 1
+  return v
+for n in [199, 200, 201]:
+  try:
+    print json_str(wrap(n))
+  except as e:
+    print e
+cycle = []
+append(cycle, cycle)
+try:
+  print json_str(cycle)
+except as e:
+  print e
+def f():
+  return 1
+try:
+  print json_str(f)
+except as e:
+  print e

@@ -156,37 +156,46 @@ def js_nan_inf(v):
     return ["json_str failed: Out of range float values are not JSON compliant: " + t, null]
   return [null, t]
 
-def js_str_of(v, depth):
+def js_chunks(v, depth, parts):
   if depth > 200:
-    return ["json too deeply nested", null]
+    return "json too deeply nested"
   t = type_name(v)
   if t == "Null":
-    return [null, "null"]
+    append(parts, "null")
+    return null
   if t == "Bool":
     if v:
-      return [null, "true"]
-    return [null, "false"]
+      append(parts, "true")
+    else:
+      append(parts, "false")
+    return null
   if t == "Int":
-    return [null, str(v)]
+    append(parts, str(v))
+    return null
   if t == "Float":
-    return js_nan_inf(v)
+    r = js_nan_inf(v)
+    if r[0] != null:
+      return r[0]
+    append(parts, r[1])
+    return null
   if t == "Str":
-    return [null, js_quote(v)]
+    append(parts, js_quote(v))
+    return null
   if t == "List":
-    parts = []
+    append(parts, "[")
     i = 0
     n = len(v)
     while i < n:
       if i > 0:
         append(parts, ", ")
-      r = js_str_of(v[i], depth + 1)
-      if r[0] != null:
-        return r
-      append(parts, r[1])
+      error = js_chunks(v[i], depth + 1, parts)
+      if error != null:
+        return error
       i = i + 1
-    return [null, "[" + join("", parts) + "]"]
+    append(parts, "]")
+    return null
   if t == "Dict":
-    parts = []
+    append(parts, "{")
     first = true
     for k in v:
       if first:
@@ -195,12 +204,20 @@ def js_str_of(v, depth):
         append(parts, ", ")
       append(parts, js_quote(k))
       append(parts, ": ")
-      r = js_str_of(v[k], depth + 1)
-      if r[0] != null:
-        return r
-      append(parts, r[1])
-    return [null, "{" + join("", parts) + "}"]
-  return ["not JSON-serializable: " + t, null]
+      error = js_chunks(v[k], depth + 1, parts)
+      if error != null:
+        return error
+    append(parts, "}")
+    return null
+  return "not JSON-serializable: " + t
+
+def js_str_of(v, depth):
+  # Share chunks across recursive containers; materialize the output once.
+  parts = []
+  error = js_chunks(v, depth, parts)
+  if error != null:
+    return [error, null]
+  return [null, join("", parts)]
 
 def js_encode(v):
   return js_str_of(v, 0)
