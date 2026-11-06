@@ -31,6 +31,8 @@ export HSPATH="$WORK/selfhost:$WORK/selfhost/be:$WORK/std"
 (cd "$WORK" && sha256sum bin/hs-eager > EAGER_SHA256SUMS)
 "$WORK/bootstrap/hs-hosted-x86_64" "$WORK/selfhost/be/irinterp_run.holy" "$WORK/bin/hs-interp"
 (cd "$WORK" && sha256sum bin/hs-interp > INTERP_SHA256SUMS)
+"$WORK/bootstrap/hs-hosted-x86_64" "$WORK/selfhost/fmt.holy" "$WORK/bin/hs-fmt"
+(cd "$WORK" && sha256sum bin/hs-fmt > FMT_SHA256SUMS)
 # No pre-existing destination is replaced. Build is staged on the same filesystem.
 if [ -e "$OUTPUT" ]; then
   printf '%s\n' "output appeared during build: $OUTPUT" >&2

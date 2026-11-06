@@ -7,17 +7,18 @@ sh scripts/install-native.sh "$HOME/holyshit-native"
 "$HOME/holyshit-native/bin/hs" run examples/hello.holy
 "$HOME/holyshit-native/bin/hs" build examples/hello.holy /tmp/hello-hs
 "$HOME/holyshit-native/bin/hs" interpret examples/hello.holy
+"$HOME/holyshit-native/bin/hs" fmt examples/hello.holy
 ```
 
 The parent must already exist and the destination must not. Paths with spaces
 work. The installer checks the host and delegates to the audited bundle
 builder: verify pinned compiler checksum, stage a separate directory, build
-the eager driver and the existing hs-written IR interpreter with the native
-compiler, then publish without overwriting. Both drivers must build before
+the eager driver, existing hs-written IR interpreter and hs formatter with
+the native compiler, then publish without overwriting. All three must build before
 the staged directory is published; failure leaves no partial installation.
 It downloads nothing, uses no Python/gcc, changes no profile/PATH, creates no
-system-wide link and needs no sudo. Building both drivers takes additional
-installation time and disk space; neither is rebuilt for each invocation.
+system-wide link and needs no sudo. Building three drivers takes additional
+installation time and disk space; none is rebuilt for each invocation.
 
 Keep the whole installed directory together. The launcher resolves compiler,
 source/runtime data and driver relative to itself; it does not rely on the
@@ -53,7 +54,24 @@ checksum file reports an incomplete install; install a new complete bundle.
 An older bundle has no `interpret` command and must also be replaced with a
 new install, rather than copying a launcher into it.
 
-Check/fmt/test/REPL/LSP and source/bootstrap audits remain development tools
-that use Python. Kernel building has its existing separate native script;
+`fmt SOURCE` prints comment-preserving formatted text to stdout without running
+or editing the source. It always selects the existing formatter's `--comments`
+mode. Exactly one source is required: missing source or any extra argument
+(including `-w`, `--check`, `--comments` or another file) returns status 2.
+This is not recursive formatting, a canonical-format check or write-in-place.
+Do not redirect stdout to the same source file: the shell would truncate it
+before the formatter reads it. Blank lines are dropped and comments can move,
+including to the end for some headers/declarations. See the
+[formatter placement limits](cheatsheet.md#optional-hs-source-formatter-comments).
+UTF-8 comment text is covered, not general Unicode/parser/newline parity.
+A successful checksum check adds no stdout/stderr. Parse/read failures retain
+the source formatter's status 1 and diagnostic streams, which can include an
+error line on stdout as well as stderr, not the Python CLI's error contract.
+Missing formatter binary/manifest or checksum corruption refuses with status 1.
+Old bundles without `fmt` require a new complete install, not a copied launcher.
+Formatter corruption does not block `run`, `build` or `interpret`.
+
+Check/test/REPL/LSP and source/bootstrap audits remain development tools
+that use Python. The Python formatter remains available for `-w`/`--check`. Kernel building has its existing separate native script;
 it is not an installed launcher command. Python reference/testing tools are
 kept deliberately and are not being deleted in this stage.

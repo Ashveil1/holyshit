@@ -3,6 +3,8 @@
 from pathlib import Path
 import os,shutil,subprocess,sys,tempfile,time
 ROOT=Path(__file__).resolve().parent.parent
+sys.path.insert(0,str(ROOT))
+import fmt,interp as reference_interp
 passed=failed=0
 def check(ok,label):
     global passed,failed
@@ -26,6 +28,12 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     failed_install=d/'failed install'
     r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_install)],env=env,capture_output=True,text=True,timeout=240)
     check(r.returncode!=0 and not failed_install.exists() and not list(d.glob('.holyshit-bundle.*')),'interpreter build failure cleans staging without publishing')
+    # The third build must also fail without publishing the first two drivers.
+    shutil.copyfile(ROOT/'selfhost/be/irinterp_run.holy',broken/'selfhost/be/irinterp_run.holy')
+    (broken/'selfhost/fmt.holy').write_text('def broken(:\n')
+    failed_fmt_install=d/'failed formatter install'
+    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_fmt_install)],env=env,capture_output=True,text=True,timeout=240)
+    check(r.returncode!=0 and not failed_fmt_install.exists() and not list(d.glob('.holyshit-bundle.*')),'formatter build failure cleans staging without publishing')
     original=d/'original';moved=d/'moved bundle'
     started=time.monotonic()
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(original)],env=env,capture_output=True,text=True,timeout=240)
@@ -34,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     if r.returncode:sys.exit(1)
     original.rename(moved)
     launcher=moved/'bin/hs';compiler=moved/'bootstrap/hs-hosted-x86_64'
-    r=subprocess.run(['/bin/sh',str(launcher),'fmt','input.holy'],env=env,capture_output=True,text=True,timeout=10)
+    r=subprocess.run(['/bin/sh',str(launcher),'check','input.holy'],env=env,capture_output=True,text=True,timeout=10)
     check(r.returncode==2 and 'unknown command' in r.stderr,'unsupported development command is explicit, no fallback')
     source=d/'main file.holy';module=d/'support.holy';module.write_text('value = 19\n')
     source.write_text('import support\nprint support.value\nprint json_str([1, "ok"])\nprint argv()\nextern:\n  I64 printf(Str format, ..., I64 n)\nprintf("value=%lld\\n", 27)\n')
@@ -105,6 +113,54 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     interp.chmod(0o755)
     r=subprocess.run(['/bin/sh',str(launcher),'interpret',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==0 and r.stdout=='23\n','restored interpreter works')
+    # Installed formatter is stdout-only and always uses existing comment mode.
+    formatter=moved/'bin/hs-fmt'
+    formatter_bytes=formatter.read_bytes();formatter_mtime=formatter.stat().st_mtime_ns
+    print('METRIC installed_formatter_bytes',len(formatter_bytes),flush=True)
+    cases=[('format file.txt','# ไทย header\nx=1 # tail\nprint x\n'),
+           ('-dash-name','# comment only\n'),('empty',''),
+           ('quirks','class A: # cls\n  # method\n  def f(self): # meth\n    return 1 # ret\nprint 0\n')]
+    for name,text in cases:
+        path=d/name;path.write_bytes(text.encode())
+        reference_interp.reset_parse_state()
+        expected_fmt=fmt.fmt_program_c(reference_interp.parse_program(text,raw=True),text)
+        r=subprocess.run(['/bin/sh',str(launcher),'fmt',path.name],cwd=d,env=env,capture_output=True,text=True,timeout=30)
+        check(r.returncode==0 and not r.stderr and r.stdout==expected_fmt,'relocated fmt exact comments '+name)
+        check(path.read_bytes()==text.encode(),'fmt source unchanged '+name)
+    check(formatter.read_bytes()==formatter_bytes and formatter.stat().st_mtime_ns==formatter_mtime,'fmt does not rebuild installed driver')
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt'],env=env,capture_output=True,text=True,timeout=10)
+    check(r.returncode==2 and not r.stdout and 'usage:' in r.stderr,'fmt requires source')
+    for extra in ['-w','--check','--comments','second.holy']:
+        r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(path),extra],env=env,capture_output=True,text=True,timeout=10)
+        check(r.returncode==2 and not r.stdout and 'usage: hs fmt SOURCE' in r.stderr,'fmt refuses extra '+extra)
+    # Compare failures to the unchanged bundled source formatter, not Python CLI.
+    for label,path in [('parse',d/'bad format.holy'),('missing',d/'missing format.holy')]:
+        if label=='parse':path.write_text('def broken(:\n')
+        direct=subprocess.run([str(formatter),str(path),'--comments'],env=env,capture_output=True,text=True,timeout=30)
+        r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(path)],env=env,capture_output=True,text=True,timeout=30)
+        check(r.returncode==1 and (r.returncode,r.stdout,r.stderr)==(direct.returncode,direct.stdout,direct.stderr),'fmt '+label+' failure preserves driver streams/status')
+    source.write_text('print "TARGET MUST NOT RUN" # comment\n')
+    formatter.write_bytes(formatter_bytes+b'changed')
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'formatter checksum failed' in r.stderr,'corrupt formatter refused before output')
+    source.write_text('print 31\n')
+    for command in ['run','interpret']:
+        r=subprocess.run(['/bin/sh',str(launcher),command,str(source)],env=env,capture_output=True,text=True,timeout=30)
+        check(r.returncode==0 and r.stdout=='31\n',command+' independent of formatter checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'build',str(source),str(exe)],env=env,capture_output=True,text=True,timeout=60)
+    if r.returncode==0:r=subprocess.run([str(exe)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='31\n','build independent of formatter checksum')
+    formatter.write_bytes(formatter_bytes)
+    sums=moved/'FMT_SHA256SUMS';saved_fmt_sums=sums.read_bytes();sums.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing formatter manifest reports incomplete bundle')
+    sums.write_bytes(saved_fmt_sums);formatter.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing formatter binary reports incomplete bundle')
+    formatter.write_bytes(formatter_bytes);formatter.chmod(0o755)
+    source.write_text('print "TARGET MUST NOT RUN" # comment\n')
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and not r.stderr and r.stdout=='print "TARGET MUST NOT RUN"  # comment\n','restored formatter formats without running target')
     source.write_text('print 1 / 0\n')
     r=subprocess.run(['/bin/sh',str(launcher),'run',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode!=0 and 'division by zero' in r.stderr,'runtime error status')

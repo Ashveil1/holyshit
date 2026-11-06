@@ -2,7 +2,7 @@
 # Installed as BUNDLE/bin/hs. Resolve data relative to the moved bundle.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs build SOURCE OUTPUT | hs SOURCE.holy [args...]'
+USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs build SOURCE OUTPUT | hs SOURCE.holy [args...]'
 if [ "$#" -lt 1 ]; then
   printf '%s\n' "$USAGE" >&2
   exit 2
@@ -65,6 +65,21 @@ case "$COMMAND" in
       exit 1
     }
     exec "$ROOT/bin/hs-interp" "$SOURCE" "$@"
+    ;;
+  fmt)
+    if [ "$#" -ne 0 ]; then
+      printf '%s\n' 'usage: hs fmt SOURCE' >&2
+      exit 2
+    fi
+    if [ ! -f "$ROOT/bin/hs-fmt" ] || [ ! -f "$ROOT/FMT_SHA256SUMS" ]; then
+      printf '%s\n' 'installed formatter is missing; install a new complete bundle' >&2
+      exit 1
+    fi
+    (cd "$ROOT" && sha256sum --status -c FMT_SHA256SUMS) || {
+      printf '%s\n' 'installed formatter checksum failed' >&2
+      exit 1
+    }
+    exec "$ROOT/bin/hs-fmt" "$SOURCE" --comments
     ;;
   build)
     if [ "$#" -ne 1 ]; then
