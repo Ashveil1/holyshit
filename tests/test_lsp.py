@@ -381,5 +381,147 @@ for uri, expected in (
         ("file://[invalid/tmp/a.holy", None)):
     check("file URI decode " + uri, lsp.uri_to_path(uri) == expected)
 
+# Initialized single-root workspace discovery is independent of didOpen.
+def workspace_case(name, initialize, opened=None, query="marker"):
+    c = Client()
+    try:
+        capabilities = c.request("initialize", dict(
+            {"capabilities": {}}, **initialize))["capabilities"]
+        c.notify("initialized", {})
+        if opened:
+            path, text = opened
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": path.as_uri(), "languageId": "holyshit",
+                "text": text, "version": 1}})
+        try:
+            result = c.request("workspace/symbol", {"query": query})
+        except RuntimeError as error:
+            check(name + " response", False, str(error))
+            return None
+        check(name + " no multi-root advertisement",
+              "workspaceFolders" not in capabilities.get("workspace", {}))
+        return result
+    finally:
+        c.close()
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp) / "project spaces#%20?ไทย😀"
+    (root / "src").mkdir(parents=True)
+    (root / "sibling").mkdir()
+    main = root / "src/main.holy"
+    main.write_text("def marker_disk():\n  return 1\n", encoding="utf-8")
+    sibling = root / "sibling/lib.hs"
+    sibling.write_text("def marker_sibling():\n  return 2\n", encoding="utf-8")
+    for excluded in (".git", "legacy", "__pycache__"):
+        (root / excluded).mkdir()
+        (root / excluded / "hidden.holy").write_text(
+            "def marker_hidden():\n  return 0\n")
+    outside = Path(tmp) / "outside"
+    outside.mkdir()
+    (outside / "elsewhere.holy").write_text(
+        "def marker_outside():\n  return 0\n")
+    (root / "linked").symlink_to(outside, target_is_directory=True)
+    expected = {"marker_disk", "marker_sibling"}
+    for label, params in (
+            ("root URI", {"rootUri": root.as_uri()}),
+            ("root path", {"rootPath": str(root)}),
+            ("localhost root", {"rootUri": root.as_uri().replace(
+                "file:///", "file://localhost/", 1)}),
+            ("root URI precedence", {"rootUri": root.as_uri(),
+                                     "rootPath": str(outside)})):
+        for opened in (None, (main, main.read_text())):
+            name = label + (" before open" if opened is None else " nested open")
+            result = workspace_case(name, params, opened)
+            check(name + " sibling discovery and exclusions",
+                  result is not None and {x["name"] for x in result} == expected,
+                  result)
+            check(name + " escaped sibling location", result is not None
+                  and any(x["location"]["uri"] == sibling.as_uri()
+                          for x in result), result)
+    result = workspace_case("unsaved buffer", {"rootUri": root.as_uri()},
+                            (main, "def marker_unsaved():\n  return 3\n"))
+    check("unsaved buffer shadows disk once", result is not None
+          and sorted(x["name"] for x in result)
+          == ["marker_sibling", "marker_unsaved"], result)
+    result = workspace_case("no root no open", {})
+    check("no root no open empty", result == [], result)
+    result = workspace_case("no root fallback", {}, (main, main.read_text()))
+    check("no root uses document directory", result is not None
+          and [x["name"] for x in result] == ["marker_disk"], result)
+    result = workspace_case("unsupported folders", {"workspaceFolders": [
+        {"uri": root.as_uri(), "name": "project"}]})
+    check("unsupported folders do not scan", result == [], result)
+    for label, params in (
+            ("remote URI", {"rootUri": "file://remote" + str(root),
+                             "rootPath": str(root)}),
+            ("nonfile URI", {"rootUri": "https://example.com/project"}),
+            ("relative path", {"rootPath": "relative"}),
+            ("invalid root type", {"rootUri": 42}),
+            ("NUL path", {"rootPath": str(root) + "\0"})):
+        result = workspace_case(label, params)
+        check(label + " does not scan", result == [], result)
+    # Preserve HSPATH discovery without changing import lookup semantics.
+    previous = os.environ.get("HSPATH")
+    os.environ["HSPATH"] = str(outside)
+    try:
+        result = workspace_case("HSPATH without document", {})
+        check("HSPATH without document discovered", result is not None
+              and [x["name"] for x in result] == ["marker_outside"], result)
+    finally:
+        if previous is None:
+            os.environ.pop("HSPATH", None)
+        else:
+            os.environ["HSPATH"] = previous
+
+# References discover unopened sibling consumers without changing imports.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    (root / "src").mkdir()
+    (root / "sibling").mkdir()
+    main = root / "src/main.holy"
+    (root / "src/lib.holy").write_text("def shared(x):\n  return x * 2\n")
+    source = "import lib\nprint lib.shared(1)\n"
+    main.write_text(source)
+    consumer = root / "sibling/use.holy"
+    consumer.write_text("import lib\nprint lib.shared(2)\n")
+    previous = os.environ.get("HSPATH")
+    os.environ["HSPATH"] = str(root / "src")
+    c = Client()
+    try:
+        c.request("initialize", {"rootUri": root.as_uri(), "capabilities": {}})
+        c.notify("initialized", {})
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": main.as_uri(), "languageId": "holyshit", "text": source,
+            "version": 1}})
+        result = c.request("textDocument/references", {
+            "textDocument": {"uri": main.as_uri()},
+            "position": {"line": 1, "character": 12},
+            "context": {"includeDeclaration": False}})
+        check("references include unopened sibling consumer",
+              {r["uri"] for r in result} == {main.as_uri(), consumer.as_uri()},
+              result)
+    finally:
+        c.close()
+        if previous is None:
+            os.environ.pop("HSPATH", None)
+        else:
+            os.environ["HSPATH"] = previous
+
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    for i in range(410):
+        (root / ("file%03d.holy" % i)).write_text(
+            "def marker_%03d():\n  return %d\n" % (i, i))
+    result = workspace_case("bounded discovery", {"rootUri": root.as_uri()})
+    check("existing discovery limit is 401", result is not None
+          and len(result) == 401, len(result) if result is not None else None)
+    many = root / "many.holy"
+    text = "".join("def marker_%03d():\n  return %d\n" % (i, i)
+                   for i in range(510))
+    result = workspace_case("bounded symbols", {}, (many, text))
+    check("existing symbol limit is 500", result is not None
+          and len(result) == 500, len(result) if result is not None else None)
+
 print(f"{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)
