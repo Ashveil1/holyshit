@@ -446,8 +446,17 @@ class Server:
         params = msg.get("params", {}) or {}
         try:
             if method == "initialize":
-                self.root = (params.get("rootUri")
-                             or params.get("rootPath"))
+                root_uri = params.get("rootUri")
+                if root_uri is not None:
+                    local_root = (uri_to_path(root_uri)
+                                  if isinstance(root_uri, str) else None)
+                    self.root = os.path.abspath(local_root) if local_root else None
+                else:
+                    root_path = params.get("rootPath")
+                    self.root = (os.path.abspath(root_path)
+                                 if isinstance(root_path, str)
+                                 and "\0" not in root_path
+                                 and os.path.isabs(root_path) else None)
                 self.reply(mid, {
                     "capabilities": {
                         "textDocumentSync": 1,
@@ -732,13 +741,14 @@ class Server:
     # ----- references / highlights / signature help / workspace symbols -----
 
     def _index_docs(self, doc):
-        """Open documents plus every .holy file next to this one (bounded)."""
+        """Open buffers plus the local workspace (or document directory)."""
         out = list(self.docs.values())
-        if not doc.path:
-            return out
-        root = os.path.dirname(os.path.abspath(doc.path))
-        for base in [root] + [d for d in
-                              os.environ.get("HSPATH", "").split(":") if d]:
+        root = self.root
+        if root is None and doc is not None and doc.path:
+            root = os.path.dirname(os.path.abspath(doc.path))
+        bases = ([root] if root else []) + [d for d in
+                 os.environ.get("HSPATH", "").split(":") if d]
+        for base in bases:
             if not os.path.isdir(base):
                 continue
             for dirpath, dirnames, filenames in os.walk(base):

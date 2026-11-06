@@ -56,7 +56,16 @@ python3 scripts/lsp_client.py --symbols prog.holy
 python3 scripts/lsp_client.py --format prog.holy [--write]
 ```
 
-Known limitation: references/workspace symbols scan `.holy` files in the
-opened file's directory (skipping `.git`, `legacy`, `__pycache__`) plus
-`HSPATH` - so it is not yet a full workspace index, but enough for projects
-whose `.holy` files live together.
+References and workspace symbols scan `.holy` and legacy `.hs` files under
+an initialized local `rootUri` (or legacy absolute `rootPath`), plus `HSPATH`.
+`rootUri` takes precedence and uses the same local-file URI rules as navigation.
+Without a root, the opened file's directory is the fallback. Workspace symbols
+also work before a file is opened; without any scan source they return `[]`.
+Open buffers take priority over disk files. Hidden directories, `legacy` and
+`__pycache__` are skipped; directory symlinks are not followed. Discovery keeps
+the existing scan cutoff (disk discovery stops after the document list exceeds
+400 entries; already-open buffers are retained) and
+returns at most 500 symbols. This is not a persistent workspace index.
+Multi-root `workspaceFolders` and workspace-folder changes are not supported;
+no workspace-folder capability is advertised. The one-shot client still uses
+the opened file's directory rather than guessing a project root.
