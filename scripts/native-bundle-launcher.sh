@@ -2,7 +2,7 @@
 # Installed as BUNDLE/bin/hs. Resolve data relative to the moved bundle.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-USAGE='usage: hs run SOURCE [args...] | hs build SOURCE OUTPUT | hs SOURCE.holy [args...]'
+USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs build SOURCE OUTPUT | hs SOURCE.holy [args...]'
 if [ "$#" -lt 1 ]; then
   printf '%s\n' "$USAGE" >&2
   exit 2
@@ -53,6 +53,18 @@ case "$COMMAND" in
       printf '%s\n' "$ROOT" > "$STAMP" 2>/dev/null || true
     fi
     exec "$EAGER" "$SOURCE" "$@"
+    ;;
+  interpret)
+    # Explicit existing IR interpreter, never an automatic fallback for run.
+    if [ ! -f "$ROOT/bin/hs-interp" ] || [ ! -f "$ROOT/INTERP_SHA256SUMS" ]; then
+      printf '%s\n' 'installed interpreter is missing; install a new complete bundle' >&2
+      exit 1
+    fi
+    (cd "$ROOT" && sha256sum --status -c INTERP_SHA256SUMS) || {
+      printf '%s\n' 'installed interpreter checksum failed' >&2
+      exit 1
+    }
+    exec "$ROOT/bin/hs-interp" "$SOURCE" "$@"
     ;;
   build)
     if [ "$#" -ne 1 ]; then
