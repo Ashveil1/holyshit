@@ -1,0 +1,63 @@
+extern:
+  Ptr malloc(U64 n)
+  U0 free(Ptr p)
+extern from "./zlib_bridge.so":
+  U64 hs_z_bound(U64 n)
+  I64 hs_z_compress(Ptr dest, Ptr destlen, Ptr source, U64 sourcelen, I64 level)
+  I64 hs_z_uncompress(Ptr dest, Ptr destlen, Ptr source, U64 sourcelen)
+capacity = hs_z_bound(6)
+source = malloc(6)
+packed = malloc(capacity)
+output = malloc(6)
+length = malloc(8)
+try:
+  if source == 0 or packed == 0 or output == 0 or length == 0:
+    raise "allocation failed"
+  unsafe:
+    store8(as_ptr(source), 65)
+    store8(as_ptr(source + 1), 0)
+    store8(as_ptr(source + 2), 66)
+    store8(as_ptr(source + 3), 255)
+    store8(as_ptr(source + 4), 67)
+    store8(as_ptr(source + 5), 0)
+    store64(as_ptr(length), capacity)
+  if hs_z_compress(packed, length, source, 6, 6) != 0:
+    raise "compression failed"
+  unsafe:
+    packedlen = load64(as_ptr(length))
+    store64(as_ptr(length), 6)
+  if packedlen < 1 or packedlen > capacity:
+    raise "invalid compressed length"
+  compressed = []
+  for i in range(packedlen):
+    unsafe:
+      value = load8(as_ptr(packed + i))
+    compressed.append(value)
+  print compressed
+  if hs_z_uncompress(output, length, packed, packedlen) != 0:
+    raise "decompression failed"
+  unsafe:
+    restoredlen = load64(as_ptr(length))
+  if restoredlen != 6:
+    raise "invalid restored length"
+  restored = []
+  for i in range(restoredlen):
+    unsafe:
+      value = load8(as_ptr(output + i))
+    restored.append(value)
+  print restored
+  unsafe:
+    store64(as_ptr(length), 1)
+  print hs_z_uncompress(output, length, packed, packedlen)
+  unsafe:
+    store64(as_ptr(length), capacity)
+  print hs_z_compress(packed, length, source, 6, 10)
+  unsafe:
+    store64(as_ptr(length), 6)
+    store8(as_ptr(packed), 0)
+  print hs_z_uncompress(output, length, packed, packedlen)
+finally:
+  free(length)
+  free(output)
+  free(packed)
+  free(source)

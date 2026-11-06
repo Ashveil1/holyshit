@@ -102,6 +102,7 @@ SUITES = [
     ("test_verify_hs.py", "CFG verifier in hs vs ir.py (valid + malformed modules)"),
     ("test_irbuild_diagnostics.py", "IR builder exception evidence preserves original failure details"),
     ("test_irbuild.py", "AST-to-IR builder in hs vs ir.py (interp + x64)"),
+    ("test_zlib.py", "real zlib roundtrip through typed C bridge on four routes"),
     ("test_ffi_variadic.py", "typed C variadic declaration and promoted ABI arguments"),
     ("test_ffi_u64.py", "negative U64 extern conversion before C side effect"),
     ("test_ffi_stack.py", "SysV stack arguments beyond integer and float registers"),

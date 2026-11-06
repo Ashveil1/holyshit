@@ -33,7 +33,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: native backend deps (gcc + Boehm GC)
-        run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-user
+        run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev zlib1g-dev qemu-user
       - name: tests write scratch files under /tmp/opencode
         run: mkdir -p /tmp/opencode
       - name: all suites except the QEMU kernel suite
@@ -98,7 +98,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev qemu-system-x86 qemu-user grub-pc-bin grub-common xorriso
+      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev zlib1g-dev qemu-system-x86 qemu-user grub-pc-bin grub-common xorriso
       - run: mkdir -p /tmp/opencode
       - name: fixed framebuffer console boot and cursor boundaries (required)
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-gui-evidence python3 tests/test_console_fixed.py
