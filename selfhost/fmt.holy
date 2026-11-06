@@ -1,9 +1,57 @@
-# Self-hosted formatter: prints the canonical form of a .holy file, exactly like
-# `python3 hs.py fmt FILE` (fmt.py). Uses selfhost/parselib.holy for the AST.
+# Self-hosted formatter: structural fmt.py output by default; SOURCE --comments
+# selects fmt_program_c comment rules. Uses selfhost/parselib.holy for the AST.
 import parselib
 
 BIN_PREC = {"or": 1, "and": 2, "==": 3, "!=": 3, "<": 3, ">": 3, "<=": 3, ">=": 3, "+": 4, "-": 4, "*": 5, "/": 5, "%": 5, "<<": 6, ">>": 6, "&": 6, "|": 6, "^": 6}
 LAM = {}
+
+# Optional source-comment state; structural formatting remains the default.
+CMT = {"enabled": false, "full": [], "next": 0, "trail": {}, "order": []}
+CMT_WS = json_parse("[\"\\t\", \"\\n\", \"\\u000b\", \"\\f\", \"\\r\", \"\\u001c\", \"\\u001d\", \"\\u001e\", \"\\u001f\", \" \", \"\\u0085\", \"\\u00a0\", \"\\u1680\", \"\\u2000\", \"\\u2001\", \"\\u2002\", \"\\u2003\", \"\\u2004\", \"\\u2005\", \"\\u2006\", \"\\u2007\", \"\\u2008\", \"\\u2009\", \"\\u200a\", \"\\u2028\", \"\\u2029\", \"\\u202f\", \"\\u205f\", \"\\u3000\"]")
+def comment_rstrip(s):
+  again = true
+  while again:
+    again = false
+    for w in CMT_WS:
+      n = len(s) - len(w)
+      if n >= 0:
+        if s[n:len(s)] == w:
+          s = s[0:n]
+          again = true
+  return s
+def collect_comments(src):
+  line = 0
+  for raw in split(src, "\n"):
+    line = line + 1
+    quoted = false
+    i = 0
+    while i < len(raw):
+      c = raw[i]
+      if quoted:
+        if c == "\\":
+          if i + 1 < len(raw):
+            i = i + 2
+            continue
+        if c == "\"":
+          quoted = false
+      elif c == "\"":
+        quoted = true
+      else:
+        found = c == "#"
+        if c == "/":
+          if i + 1 < len(raw):
+            if raw[i + 1] == "/":
+              found = true
+        if found:
+          text = comment_rstrip(raw[i:len(raw)])
+          if comment_rstrip(raw[0:i]) == "":
+            append(CMT["full"], [line, text])
+          else:
+            key = str(line)
+            CMT["trail"][key] = text
+            append(CMT["order"], key)
+          break
+      i = i + 1
 
 def esc(s):
   out = ""
@@ -171,13 +219,36 @@ def pad(ind):
     out = out + "  "
     i = i + 1
   return out
+def flush_comments(out, upto, ind):
+  while CMT["next"] < len(CMT["full"]):
+    entry = CMT["full"][CMT["next"]]
+    if upto != null:
+      if entry[0] >= upto:
+        break
+    append(out, pad(ind) + entry[1])
+    CMT["next"] = CMT["next"] + 1
 
 def fmt_block(body, ind, out):
   reg_lams(body)
   for s in body:
     if s["t"] == "def" and (has(s, "lam") or has(s, "clsmember")):
       continue
+    line = null
+    if CMT["enabled"]:
+      if has(s, "line"):
+        line = s["line"]
+        if line:
+          flush_comments(out, line, ind)
+    start = len(out)
     fmt_stmt(s, ind, out)
+    if line:
+      if len(out) > start:
+        key = str(line)
+        if has(CMT["trail"], key):
+          text = CMT["trail"][key]
+          if text != "":
+            out[start] = out[start] + "  " + text
+            CMT["trail"][key] = ""
 
 def suite(head, body, ind, out):
   append(out, pad(ind) + head)
@@ -316,9 +387,20 @@ def fmt_stmt(s, ind, out):
     raise "fmt: bad stmt " + t
 
 try:
-  prog = parselib.parse(read_text(argv()[0]))
+  args = argv()
+  src = read_text(args[0])
+  prog = parselib.parse(src)
+  if len(args) > 1:
+    if args[1] == "--comments":
+      CMT["enabled"] = true
+      collect_comments(src)
   out = []
   fmt_block(prog, 0, out)
+  if CMT["enabled"]:
+    flush_comments(out, null, 0)
+    for key in CMT["order"]:
+      if CMT["trail"][key] != "":
+        append(out, CMT["trail"][key])
   print join("\n", out)
 except as e:
   print "error: " + parselib.strip_raise(e)

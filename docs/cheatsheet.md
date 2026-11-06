@@ -23,6 +23,30 @@ python3 hs.py run prog.holy        # development CLI, backend selection/fallback
 python3 hs.py fmt prog.holy -w     # canonical formatting
 ```
 
+## Optional hs source formatter comments
+
+The hs-written source formatter keeps its original structural (comment-stripping)
+default. Opt in with `SOURCE --comments`:
+
+```sh
+python3 interp.py selfhost/fmt.holy prog.holy --comments
+# Or build once on Linux x86-64 and run without Python/gcc:
+HSROOT="$PWD" HSPATH="$PWD/selfhost" bootstrap/hs-hosted-x86_64 selfhost/fmt.holy /tmp/hs-fmt
+/tmp/hs-fmt prog.holy --comments
+```
+
+This writes formatted text to stdout, never edits the input, and is not an
+installed `hs fmt` command or a replacement for the Python CLI's `-w`/`--check`.
+The `--comments` flag must follow the source path. It follows the existing
+Python formatter's comment rules, including their placement limits: blank lines
+are dropped, full-line comments attach before the next rendered statement, and
+trailing comments attach to a statement's first line. Comments on branch headers,
+class-method headers, extern declarations or struct fields can move to the end;
+comments before methods can move into the body. It does not preserve original
+physical placement. String contents are not treated as comments. UTF-8 comment text is kept;
+trailing whitespace follows the current Python formatter's whitespace set.
+This does not add general Unicode/source-newline parity to the parser.
+
 ## Syntax
 
 ```hs

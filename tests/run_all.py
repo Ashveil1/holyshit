@@ -89,6 +89,7 @@ SUITES = [
     ("test_lsp.py", "language server"),
     ("test_docs.py", "docs"),
     ("test_selfhost.py", "self-hosted lexer/parser/fmt vs Python"),
+    ("test_selfhost_fmt_comments.py", "optional hs formatter comments vs Python oracle"),
     ("test_run.py", "hs run backend selection"),
     ("test_klink.py", "multiboot linker in hs vs Python kernel ELF"),
     ("test_asm32.py", "boot assembler in hs vs x64.Asm32"),
