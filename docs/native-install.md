@@ -8,16 +8,18 @@ sh scripts/install-native.sh "$HOME/holyshit-native"
 "$HOME/holyshit-native/bin/hs" build examples/hello.holy /tmp/hello-hs
 "$HOME/holyshit-native/bin/hs" interpret examples/hello.holy
 "$HOME/holyshit-native/bin/hs" fmt examples/hello.holy
+"$HOME/holyshit-native/bin/hs" check examples/hello.holy
 ```
 
 The parent must already exist and the destination must not. Paths with spaces
 work. The installer checks the host and delegates to the audited bundle
 builder: verify pinned compiler checksum, stage a separate directory, build
-the eager driver, existing hs-written IR interpreter and hs formatter with
-the native compiler, then publish without overwriting. All three must build before
-the staged directory is published; failure leaves no partial installation.
+the eager driver, existing hs-written IR interpreter, hs formatter and hs
+checker with the native compiler, then publish without overwriting. All four
+must build before the staged directory is published; failure leaves no partial
+installation.
 It downloads nothing, uses no Python/gcc, changes no profile/PATH, creates no
-system-wide link and needs no sudo. Building three drivers takes additional
+system-wide link and needs no sudo. Building four drivers takes additional
 installation time and disk space; none is rebuilt for each invocation.
 
 Keep the whole installed directory together. The launcher resolves compiler,
@@ -71,7 +73,22 @@ Missing formatter binary/manifest or checksum corruption refuses with status 1.
 Old bundles without `fmt` require a new complete install, not a copied launcher.
 Formatter corruption does not block `run`, `build` or `interpret`.
 
-Check/test/REPL/LSP and source/bootstrap audits remain development tools
+`check SOURCE` scans the source and its reachable imports without running any
+of them, using the prebuilt checker. A clean scan prints `ok: SOURCE` to stdout
+with exit 0; a check error prints the same file/line/message text as the Python
+CLI's check to stderr with exit 1. `hs --json check SOURCE` (or `--json` after
+the command) emits the JSON error object with file, line and message; the
+optional code/hint catalog fields the Python CLI can add are not emitted yet.
+The checker keeps the Python checker's documented baseline: unknown names,
+bare raise, def-after-use and circular imports are accepted, not errors. A
+missing source argument returns status 2; extra positional arguments are
+ignored like the Python CLI. The checker checksum is verified before every
+launch with the same accidental-corruption limits above. A missing checker
+binary or manifest, or checksum corruption, refuses with status 1 and reports
+an incomplete bundle; install a new complete bundle. Checker corruption does
+not block `run`, `interpret`, `fmt` or `build`.
+
+Test/REPL/LSP and source/bootstrap audits remain development tools
 that use Python. The Python formatter remains available for `-w`/`--check`. Kernel building has its existing separate native script;
 it is not an installed launcher command. Python reference/testing tools are
 kept deliberately and are not being deleted in this stage.

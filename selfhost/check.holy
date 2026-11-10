@@ -1,0 +1,549 @@
+# Self-hosted semantic checker library: a scan-only port of the Gen scan phase
+# in hs.py, matching `python3 hs.py check` behavior including its current
+# quirks. Walks the normalized AST of the root source and every reachable
+# import without executing module bodies or producing target effects.
+import parselib
+import normalize
+import pyrt
+UTYPES = {"I64": true, "U64": true, "Ptr": true}
+UNSAFE_BUILTINS = {"alloc": true, "as_int": true, "as_ptr": true, "asm": true, "call0": true, "load32": true, "load64": true, "load8": true, "store32": true, "store64": true, "store8": true}
+UNSAFE_SORTED = "alloc, as_int, as_ptr, asm, call0, load32, load64, load8, store32, store64, store8"
+BUILTINS = {"alloc": true, "append": true, "append_bytes": true, "append_text": true, "argv": true, "as_int": true, "as_ptr": true, "byte_at": true, "byte_find": true, "byte_len": true, "close": true, "contains": true, "env": true, "exists": true, "find": true, "float": true, "has": true, "http_get": true, "input": true, "int": true, "join": true, "json_load": true, "json_parse": true, "json_save": true, "json_str": true, "keys": true, "len": true, "load32": true, "load64": true, "load8": true, "ls": true, "meminfo": true, "mkdir": true, "open": true, "pmm_alloc": true, "print": true, "range": true, "read": true, "read_bytes": true, "read_mem": true, "read_text": true, "readkey": true, "split": true, "store32": true, "store64": true, "store8": true, "str": true, "system": true, "tcp_accept": true, "tcp_close": true, "tcp_connect": true, "tcp_listen": true, "tcp_recv": true, "tcp_send": true, "ticks": true, "values": true, "write": true, "write_bytes": true, "write_text": true}
+IDC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789"
+CHK = {"modules": [], "by_path": {}, "scanning": {}, "shells": {}, "file_dir": "", "mod": null, "fstack": [], "hspath": null, "uid": 0}
+def fail(msg, line):
+  raise pyrt.py_err(msg, line)
+def ck_eline(e):
+  i = find(e, pyrt.EMARK)
+  if i < 0:
+    return null
+  rest = e[i + len(pyrt.EMARK):len(e)]
+  j = find(rest, "u0002")
+  r = rest[j + 5:len(rest)]
+  k = 0
+  while k < len(r) and find("0123456789", r[k]) >= 0:
+    k = k + 1
+  if k == 0:
+    return null
+  return int(r[0:k])
+def trailing_line(s):
+  n = len(s)
+  k = n
+  while k > 0 and find("0123456789", s[k - 1]) >= 0:
+    k = k - 1
+  if k == n or k < 9:
+    return [s, null]
+  if s[k - 9:k] != " at line ":
+    return [s, null]
+  return [s[0:k - 9], s[k:n]]
+def src_err(e):
+  # [message, line-or-null] from a checker py_err or a parselib parse error.
+  # hs raise appends the raise-site line, so a parse error arrives as
+  # "msg at line S at line R"; S is the source line the Python CLI reports.
+  if find(e, pyrt.EMARK) >= 0:
+    return [pyrt.py_emsg(e), ck_eline(e)]
+  once = trailing_line(e)
+  core = e
+  if once[1] != null:
+    if trailing_line(once[0])[1] != null:
+      core = once[0]
+  t = trailing_line(core)
+  if t[1] != null:
+    return [t[0], int(t[1])]
+  return [core, null]
+def gt(d, k):
+  return pyrt.py_get(d, k, null)
+def path_join(a, b):
+  if len(b) > 0:
+    if b[0] == "/":
+      return b
+  if a == "":
+    return b
+  if a[len(a) - 1] == "/":
+    return a + b
+  return a + "/" + b
+def normpath(p):
+  absolute = false
+  if len(p) > 0:
+    if p[0] == "/":
+      absolute = true
+  parts = []
+  for comp in split(p, "/"):
+    if comp == "" or comp == ".":
+      continue
+    if comp == "..":
+      if len(parts) > 0:
+        if parts[len(parts) - 1] != "..":
+          parts = parts[0:len(parts) - 1]
+          continue
+      if not absolute:
+        append(parts, comp)
+      continue
+    append(parts, comp)
+  out = join("/", parts)
+  if absolute:
+    out = "/" + out
+  if out == "":
+    if absolute:
+      return "/"
+    return "."
+  return out
+def path_dirname(p):
+  i = len(p) - 1
+  while i >= 0 and p[i] != "/":
+    i = i - 1
+  if i < 0:
+    return ""
+  if i == 0:
+    return "/"
+  return p[0:i]
+def hspath_dirs():
+  if CHK["hspath"] != null:
+    return CHK["hspath"]
+  out = []
+  raw = read_text("/proc/self/environ")
+  for kv in split(raw, "\0"):
+    if len(kv) >= 7:
+      if kv[0:7] == "HSPATH=":
+        for d in split(kv[7:len(kv)], ":"):
+          if d != "":
+            append(out, d)
+  CHK["hspath"] = out
+  return out
+def valid_seg(s):
+  if len(s) == 0:
+    return false
+  if find(IDC, s[0]) < 0 or find("0123456789", s[0]) >= 0:
+    return false
+  i = 1
+  while i < len(s):
+    if find(IDC, s[i]) < 0:
+      return false
+    i = i + 1
+  return true
+def valid_modname(name):
+  for seg in split(name, "."):
+    if not valid_seg(seg):
+      return false
+  return true
+def new_scope(parent, mod, is_func, top):
+  CHK["uid"] = CHK["uid"] + 1
+  return {"parent": parent, "module": mod, "params": [], "assigned": {}, "globals": {}, "utypes": {}, "imported": {}, "submods": {}, "externs": {}, "is_func": is_func, "top": top, "caps": {}, "sid": CHK["uid"]}
+def new_module(name, path, prog):
+  CHK["uid"] = CHK["uid"] + 1
+  m = {"name": name, "path": path, "prog": prog, "uid": CHK["uid"], "scope": null}
+  m["scope"] = new_scope(null, m, false, true)
+  return m
+def mod_of(scope):
+  return scope["module"]
+def find_loaded(dname):
+  for m in CHK["modules"]:
+    if m["name"] == dname:
+      return m
+  return null
+def shell_module(name):
+  if has(CHK["shells"], name):
+    return CHK["shells"][name]
+  m = new_module(name, "<shell>", [])
+  append(CHK["modules"], m)
+  CHK["shells"][name] = m
+  return m
+def find_module_file(name, basedir, line):
+  rel = join("/", split(name, "."))
+  dirs = [basedir]
+  for d in hspath_dirs():
+    append(dirs, d)
+  append(dirs, ".")
+  for d in dirs:
+    if d == "":
+      continue
+    for suffix in [".holy", ".hs"]:
+      p = normpath(path_join(d, rel + suffix))
+      if exists(p):
+        return p
+  fail("cannot find module '" + name + "'", line)
+def load_module(name, from_dir, line):
+  if not valid_modname(name):
+    fail("bad module name '" + name + "'", line)
+  if find(name, ".") >= 0:
+    parts = split(name, ".")
+    leaf = parts[len(parts) - 1]
+    parent = join(".", parts[0:len(parts) - 1])
+    pmod = null
+    try:
+      pmod = load_module(parent, from_dir, line)
+    except as e:
+      if find(e, pyrt.EMARK) >= 0 and pyrt.py_emsg(e) == "cannot find module '" + parent + "'":
+        pmod = shell_module(parent)
+      else:
+        raise e
+    p = find_module_file(name, from_dir, line)
+    leafmod = load_mod_path(name, p, line)
+    pmod["scope"]["submods"][leaf] = leafmod
+    return leafmod
+  if has(CHK["shells"], name):
+    return CHK["shells"][name]
+  p = find_module_file(name, from_dir, line)
+  return load_mod_path(name, p, line)
+def load_mod_path(name, p, line):
+  if has(CHK["by_path"], p):
+    return CHK["by_path"][p]
+  if has(CHK["scanning"], p):
+    return null
+  src = read_text(p)
+  prog = null
+  try:
+    prog = normalize.parse(src)
+  except as e:
+    pair = src_err(e)
+    fail("in module '" + name + "': " + pair[0], pair[1])
+  m = new_module(name, p, prog)
+  append(CHK["modules"], m)
+  CHK["by_path"][p] = m
+  CHK["scanning"][p] = true
+  saved = CHK["file_dir"]
+  CHK["file_dir"] = path_dirname(p)
+  scan_body(prog, m["scope"], false)
+  CHK["file_dir"] = saved
+  pyrt.py_del(CHK["scanning"], p)
+  return m
+def check_no_ucapture(name, scope, line):
+  p = null
+  if not scope["top"]:
+    p = scope["parent"]
+  while p != null and not p["top"]:
+    if has(p["utypes"], name) and not has(p["globals"], name):
+      fail("closure capture of unsafe '" + name + "' not supported (use global dynamic)", line)
+    if has(p["globals"], name):
+      break
+    p = p["parent"]
+def ffi_lib_kind(lib, line):
+  if lib == null:
+    return ["default", null]
+  if pyrt.py_endswith(lib, ".c"):
+    p = lib
+    if len(lib) > 0:
+      if lib[0] != "/":
+        p = normpath(path_join(CHK["file_dir"], lib))
+    if not exists(p):
+      fail("cannot find ffi source '" + lib + "'", line)
+    return ["src", p]
+  if find(lib, "/") >= 0 or pyrt.py_endswith(lib, ".so") or pyrt.py_endswith(lib, ".o") or pyrt.py_endswith(lib, ".a"):
+    p = lib
+    if len(lib) > 0:
+      if lib[0] != "/":
+        p = normpath(path_join(CHK["file_dir"], lib))
+    if not exists(p):
+      fail("cannot find ffi library '" + lib + "'", line)
+    return ["file", p]
+  return ["lib", lib]
+def capture_owner(use_scope, bind_scope):
+  # Nearest enclosing function scope of use_scope strictly inside bind_scope.
+  q = use_scope
+  while q != null:
+    if q["sid"] == bind_scope["sid"]:
+      return null
+    if q["is_func"]:
+      return q
+    q = q["parent"]
+  return null
+def resolve(name, scope, line):
+  mod = mod_of(scope)
+  s = scope
+  if s["top"]:
+    if has(s["externs"], name):
+      return ["E", s["externs"][name]]
+    if name in s["params"]:
+      return ["L"]
+    if has(s["utypes"], name):
+      return ["UG"]
+    if has(s["assigned"], name):
+      return ["G"]
+    if has(s["imported"], name):
+      return ["MOD", s["imported"][name]]
+  else:
+    if has(s["globals"], name):
+      if has(mod["scope"]["utypes"], name):
+        fail("cannot declare global for unsafe variable '" + name + "'", line)
+      return ["G"]
+    if name in s["params"]:
+      return ["L"]
+    if has(s["externs"], name):
+      return ["E", s["externs"][name]]
+    if has(s["utypes"], name):
+      return ["UL"]
+    if has(s["assigned"], name):
+      return ["L"]
+    if has(s["imported"], name):
+      return ["MOD", s["imported"][name]]
+    p = s["parent"]
+    while p != null and not p["top"]:
+      if has(p["externs"], name):
+        return ["E", p["externs"][name]]
+      if has(p["utypes"], name) and not has(p["globals"], name):
+        fail("closure capture of unsafe '" + name + "' not supported (use global dynamic)", line)
+      if name in p["params"] or has(p["assigned"], name):
+        if has(p["globals"], name):
+          break
+        owner = capture_owner(scope, p)
+        if owner == null:
+          fail("closure capture of '" + name + "' not supported yet (use global)", line)
+        if len(CHK["fstack"]) > 0:
+          owner["caps"][name] = true
+        return ["C"]
+      if has(p["globals"], name) or has(p["imported"], name):
+        break
+      p = p["parent"]
+  if has(mod["scope"]["externs"], name):
+    return ["E", mod["scope"]["externs"][name]]
+  if has(mod["scope"]["utypes"], name):
+    return ["UG"]
+  if has(mod["scope"]["assigned"], name):
+    return ["G"]
+  if has(mod["scope"]["imported"], name):
+    return ["MOD", mod["scope"]["imported"][name]]
+  if has(BUILTINS, name):
+    return ["B"]
+  return ["G"]
+def scan_body(body, scope, ux):
+  for s in body:
+    scan_stmt(s, scope, ux)
+def scan_stmt(s, scope, ux):
+  t = s["t"]
+  if t == "unsafe":
+    scan_body(s["body"], scope, true)
+    return
+  if t == "struct":
+    return
+  if t == "import":
+    n = s["name"]
+    top = split(n, ".")[0]
+    load_module(n, CHK["file_dir"], s["line"])
+    chain = []
+    acc = []
+    for part in split(n, "."):
+      append(acc, part)
+      dname = join(".", acc)
+      m = null
+      if has(CHK["shells"], dname):
+        m = CHK["shells"][dname]
+      else:
+        m = find_loaded(dname)
+      append(chain, m)
+    if top in scope["params"] or has(scope["utypes"], top):
+      fail("'" + top + "' already defined in this scope", s["line"])
+    if has(scope["imported"], top):
+      if chain[0] != null and scope["imported"][top]["uid"] != chain[0]["uid"]:
+        fail("'" + top + "' already defined in this scope", s["line"])
+    else:
+      if has(scope["assigned"], top):
+        fail("'" + top + "' already defined in this scope", s["line"])
+      if chain[0] != null:
+        scope["imported"][top] = chain[0]
+    scope["assigned"][top] = true
+    return
+  if t == "try":
+    scan_body(s["body"], scope, ux)
+    if gt(s, "ename") != null:
+      scope["assigned"][s["ename"]] = true
+    if gt(s, "ebody") != null:
+      scan_body(s["ebody"], scope, ux)
+    if gt(s, "fbody") != null:
+      scan_body(s["fbody"], scope, ux)
+    return
+  if t == "raise":
+    if gt(s, "val") != null:
+      scan_expr(s["val"], scope, ux)
+    return
+  if t == "extern":
+    if ux:
+      fail("extern not allowed in unsafe (declare at top level)", s["line"])
+    for d in s["decls"]:
+      n = d["name"]
+      if n in scope["params"] or has(scope["assigned"], n) or has(scope["utypes"], n) or has(scope["imported"], n) or has(scope["externs"], n) or has(BUILTINS, n):
+        fail("'" + n + "' already defined in this scope", d["line"])
+      ffi_lib_kind(gt(s, "lib"), s["line"])
+      scope["externs"][n] = {"cname": n, "ptypes": d["params"]}
+    return
+  if t == "udecl":
+    n = s["name"]
+    if n in scope["params"] or has(scope["assigned"], n) or has(scope["utypes"], n) or has(scope["imported"], n):
+      fail("'" + n + "' already defined in this scope", s["line"])
+    if has(scope["globals"], n):
+      fail("cannot declare unsafe '" + n + "' as global", s["line"])
+    scope["utypes"][n] = s["utype"]
+    if gt(s, "init") != null:
+      scan_expr(s["init"], scope, true)
+    return
+  if t == "store":
+    scan_expr(s["ptr"], scope, true)
+    scan_expr(s["val"], scope, true)
+    return
+  if t == "def":
+    if ux:
+      fail("def not allowed in unsafe", s["line"])
+    if has(scope["utypes"], s["name"]) or has(scope["imported"], s["name"]):
+      fail("'" + s["name"] + "' already defined in this scope", s["line"])
+    scope["assigned"][s["name"]] = true
+    fs = new_scope(scope, scope["module"], true, false)
+    fs["params"] = s["params"]
+    append(CHK["fstack"], fs)
+    scan_body(s["body"], fs, false)
+    fsx = CHK["fstack"]
+    CHK["fstack"] = fsx[0:len(fsx) - 1]
+    return
+  if t == "setindex":
+    scan_expr(s["obj"], scope, ux)
+    scan_expr(s["idx"], scope, ux)
+    scan_expr(s["val"], scope, ux)
+    return
+  if t == "for":
+    if ux:
+      fail("for not allowed in unsafe (use while)", s["line"])
+    if has(scope["imported"], s["var"]):
+      fail("'" + s["var"] + "' is an imported module (cannot assign)", s["line"])
+    scope["assigned"][s["var"]] = true
+    scan_expr(s["iter"], scope, ux)
+    scan_body(s["body"], scope, ux)
+    return
+  if t == "set":
+    if has(scope["imported"], s["name"]):
+      fail("'" + s["name"] + "' is an imported module (cannot assign)", s["line"])
+    if not ux:
+      check_no_ucapture(s["name"], scope, s["line"])
+    scope["assigned"][s["name"]] = true
+    scan_expr(s["val"], scope, ux)
+    return
+  if t == "setattr":
+    scan_expr(s["obj"], scope, ux)
+    scan_expr(s["val"], scope, ux)
+    return
+  if t == "fstore":
+    scan_expr(s["obj"], scope, ux)
+    if gt(s, "idx") != null:
+      scan_expr(s["idx"], scope, ux)
+    scan_expr(s["val"], scope, ux)
+    return
+  if t == "global":
+    for n in s["names"]:
+      if has(CHK["mod"]["utypes"], n):
+        fail("cannot declare global for unsafe variable '" + n + "'", s["line"])
+      scope["globals"][n] = true
+    return
+  if t == "expr":
+    scan_expr(s["val"], scope, ux)
+    return
+  if t == "print":
+    for a in s["args"]:
+      scan_expr(a, scope, ux)
+    return
+  if t == "return":
+    if gt(s, "val") != null:
+      scan_expr(s["val"], scope, ux)
+    return
+  if t == "if":
+    scan_expr(s["cond"], scope, ux)
+    scan_body(s["then"], scope, ux)
+    for pair in s["elifs"]:
+      scan_expr(pair[0], scope, ux)
+      scan_body(pair[1], scope, ux)
+    scan_body(s["els"], scope, ux)
+    return
+  if t == "while":
+    scan_expr(s["cond"], scope, ux)
+    scan_body(s["body"], scope, ux)
+    return
+def scan_expr(e, scope, ux):
+  t = e["t"]
+  if t == "num" or t == "str":
+    return
+  if t == "var":
+    e["_res"] = resolve(e["name"], scope, e["line"])
+    return
+  if t == "neg" or t == "not" or t == "unot" or t == "deref":
+    scan_expr(e["val"], scope, ux)
+    return
+  if t == "bin":
+    scan_expr(e["l"], scope, ux)
+    scan_expr(e["r"], scope, ux)
+    return
+  if t == "call":
+    fn = e["fn"]
+    if ux:
+      if fn["t"] != "var" or not has(UNSAFE_BUILTINS, fn["name"]):
+        got = "expression"
+        if fn["t"] == "var":
+          got = fn["name"]
+        fail("cannot call '" + got + "' from unsafe (only: " + UNSAFE_SORTED + ")", e["line"])
+      if fn["name"] == "asm":
+        if len(e["args"]) != 1 or e["args"][0]["t"] != "str":
+          fail("asm wants asm(\"...\") with a string literal", e["line"])
+    else:
+      if fn["t"] == "var" and fn["name"] == "asm":
+        fail("asm only allowed in unsafe", e["line"])
+      scan_expr(fn, scope, ux)
+      if fn["t"] == "var":
+        r = gt(fn, "_res")
+        if r != null and r[0] == "E":
+          sig = r[1]
+          if len(e["args"]) != len(sig["ptypes"]):
+            fail("ffi '" + sig["cname"] + "' wants " + str(len(sig["ptypes"])) + " args, got " + str(len(e["args"])), e["line"])
+    for a in e["args"]:
+      scan_expr(a, scope, ux)
+    return
+  if t == "index":
+    scan_expr(e["obj"], scope, ux)
+    scan_expr(e["idx"], scope, ux)
+    return
+  if t == "slice":
+    scan_expr(e["obj"], scope, ux)
+    if gt(e, "start") != null:
+      scan_expr(e["start"], scope, ux)
+    if gt(e, "stop") != null:
+      scan_expr(e["stop"], scope, ux)
+    if ux:
+      fail("slicing not allowed in unsafe", e["line"])
+    return
+  if t == "sizeof":
+    st = e["stype"]
+    if not has(UTYPES, st) and not has(parselib.P["structs"], st):
+      fail("unknown struct '" + st + "'", e["line"])
+    return
+  if t == "field":
+    scan_expr(e["obj"], scope, ux)
+    if gt(e, "idx") != null:
+      scan_expr(e["idx"], scope, ux)
+    return
+  if t == "attr":
+    scan_expr(e["obj"], scope, ux)
+    if ux:
+      fail("attribute access not allowed in unsafe", e["line"])
+    return
+  if t == "list":
+    for x in e["items"]:
+      scan_expr(x, scope, ux)
+    return
+  if t == "dict":
+    for kv in e["pairs"]:
+      scan_expr(kv[0], scope, ux)
+      scan_expr(kv[1], scope, ux)
+    return
+def check_source(src, path):
+  parselib.P["kernel_wide"] = true
+  CHK["modules"] = []
+  CHK["by_path"] = {}
+  CHK["scanning"] = {}
+  CHK["shells"] = {}
+  CHK["fstack"] = []
+  CHK["hspath"] = null
+  CHK["file_dir"] = ""
+  CHK["mod"] = null
+  prog = normalize.parse(src)
+  m = new_module("<main>", "<main>", prog)
+  append(CHK["modules"], m)
+  CHK["mod"] = m["scope"]
+  ap = path
+  if len(ap) == 0 or ap[0] != "/":
+    ap = "./" + ap
+  CHK["file_dir"] = path_dirname(normpath(ap))
+  scan_body(prog, m["scope"], false)

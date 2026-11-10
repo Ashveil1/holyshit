@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Moved native bundle operates with no checkout reference or Python/gcc PATH."""
 from pathlib import Path
-import os,shutil,subprocess,sys,tempfile,time
+import json,os,shutil,subprocess,sys,tempfile,time
 ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT))
 import fmt,interp as reference_interp
@@ -34,6 +34,12 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     failed_fmt_install=d/'failed formatter install'
     r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_fmt_install)],env=env,capture_output=True,text=True,timeout=240)
     check(r.returncode!=0 and not failed_fmt_install.exists() and not list(d.glob('.holyshit-bundle.*')),'formatter build failure cleans staging without publishing')
+    # The fourth build must also fail without publishing the first three drivers.
+    shutil.copyfile(ROOT/'selfhost/fmt.holy',broken/'selfhost/fmt.holy')
+    (broken/'selfhost/check_run.holy').write_text('def broken(:\n')
+    failed_check_install=d/'failed checker install'
+    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_check_install)],env=env,capture_output=True,text=True,timeout=240)
+    check(r.returncode!=0 and not failed_check_install.exists() and not list(d.glob('.holyshit-bundle.*')),'checker build failure cleans staging without publishing')
     original=d/'original';moved=d/'moved bundle'
     started=time.monotonic()
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(original)],env=env,capture_output=True,text=True,timeout=240)
@@ -42,7 +48,7 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     if r.returncode:sys.exit(1)
     original.rename(moved)
     launcher=moved/'bin/hs';compiler=moved/'bootstrap/hs-hosted-x86_64'
-    r=subprocess.run(['/bin/sh',str(launcher),'check','input.holy'],env=env,capture_output=True,text=True,timeout=10)
+    r=subprocess.run(['/bin/sh',str(launcher),'test','input.holy'],env=env,capture_output=True,text=True,timeout=10)
     check(r.returncode==2 and 'unknown command' in r.stderr,'unsupported development command is explicit, no fallback')
     source=d/'main file.holy';module=d/'support.holy';module.write_text('value = 19\n')
     source.write_text('import support\nprint support.value\nprint json_str([1, "ok"])\nprint argv()\nextern:\n  I64 printf(Str format, ..., I64 n)\nprintf("value=%lld\\n", 27)\n')
@@ -161,6 +167,51 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     source.write_text('print "TARGET MUST NOT RUN" # comment\n')
     r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==0 and not r.stderr and r.stdout=='print "TARGET MUST NOT RUN"  # comment\n','restored formatter formats without running target')
+    # Installed checker scans the source and reachable imports without running them.
+    checker=moved/'bin/hs-check'
+    checker_bytes=checker.read_bytes();checker_mtime=checker.stat().st_mtime_ns
+    print('METRIC installed_checker_bytes',len(checker_bytes),flush=True)
+    source.write_text('import support\nprint support.value\nprint missing_name\n')
+    r=subprocess.run(['/bin/sh',str(launcher),'check',source.name],cwd=d,env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and not r.stderr and r.stdout=='ok: '+str(source)+'\n','relocated check accepts valid source '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    check(checker.read_bytes()==checker_bytes and checker.stat().st_mtime_ns==checker_mtime,'check does not rebuild installed driver')
+    r=subprocess.run(['/bin/sh',str(launcher),'check',source.name,'ignored-extra.holy'],cwd=d,env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='ok: '+str(source)+'\n','check ignores extra positional arguments like the Python CLI')
+    source.write_text('import absent_zz\n')
+    r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and r.stderr=="error: cannot find module 'absent_zz' at line 1\n",'check error text matches Python CLI '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    r=subprocess.run(['/bin/sh',str(launcher),'--json','check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and json.loads(r.stderr)=={'file':str(source),'line':1,'message':"cannot find module 'absent_zz'"},'check --json file/line/message matches Python CLI shape '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    r=subprocess.run(['/bin/sh',str(launcher),'check','--json',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and json.loads(r.stderr)['line']==1,'check accepts --json after the command')
+    r=subprocess.run(['/bin/sh',str(launcher),'check'],env=env,capture_output=True,text=True,timeout=10)
+    check(r.returncode==2 and not r.stdout and 'usage:' in r.stderr,'check requires source')
+    source.write_text('print "TARGET MUST NOT RUN"\nwrite_text("EFFECT_MARK","x")\nsystem("touch EFFECT_MARK2")\n')
+    r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='ok: '+str(source)+'\n' and not (d/'EFFECT_MARK').exists() and not (d/'EFFECT_MARK2').exists(),'check scans without target effects '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    checker.write_bytes(checker_bytes+b'changed')
+    r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'checker checksum failed' in r.stderr,'corrupt checker refused before scanning')
+    # Corrupting this optional analysis route must not change run/interpret/fmt/build.
+    source.write_text('print 41\n')
+    for command in ['run','interpret']:
+        r=subprocess.run(['/bin/sh',str(launcher),command,str(source)],env=env,capture_output=True,text=True,timeout=30)
+        check(r.returncode==0 and r.stdout=='41\n',command+' independent of checker checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='print 41\n','fmt independent of checker checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'build',str(source),str(exe)],env=env,capture_output=True,text=True,timeout=60)
+    if r.returncode==0:r=subprocess.run([str(exe)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='41\n','build independent of checker checksum')
+    checker.write_bytes(checker_bytes)
+    sums=moved/'CHECK_SHA256SUMS';saved_check_sums=sums.read_bytes();sums.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing checker manifest reports incomplete bundle')
+    sums.write_bytes(saved_check_sums);checker.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing checker binary reports incomplete bundle')
+    checker.write_bytes(checker_bytes);checker.chmod(0o755)
+    r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and not r.stderr and r.stdout=='ok: '+str(source)+'\n','restored checker scans without running target')
     source.write_text('print 1 / 0\n')
     r=subprocess.run(['/bin/sh',str(launcher),'run',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode!=0 and 'division by zero' in r.stderr,'runtime error status')

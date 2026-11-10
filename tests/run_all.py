@@ -153,6 +153,7 @@ SUITES = [
     ("test_jitimage.py", "relocated RX code and RW data in hs"),
     ("test_jitmem.py", "executable-memory groundwork, W^X and generated code"),
     ("test_native_bundle.py", "relocated native directory without checkout/Python/gcc"),
+    ("test_native_check.py", "native hs check differential vs python3 hs.py check"),
     ("test_native_run.py", "one-command native source runner without Python/gcc"),
     ("test_hosted_seed.py", "verified seed + Python-free bootstrap"),
     ("test_native_kernel.py", "native kernel compiler complete ELF images"),

@@ -26,11 +26,15 @@ keep the old one until the new version is checked. Removing an install means
 removing only its chosen directory, not any source checkout.
 
 The native launcher provides `run SOURCE [args...]`, `build SOURCE OUTPUT`
-and explicit `interpret SOURCE [args...]`, plus stdout-only `fmt SOURCE`. `interpret` runs the hs-written IR
+and explicit `interpret SOURCE [args...]`, plus stdout-only `fmt SOURCE` and
+scan-only `check SOURCE`. `check` scans the source and reachable imports
+without running them and prints `ok: SOURCE`; a check error matches the Python
+CLI's text with exit 1, and `--json` adds the JSON error object without its
+optional code/hint catalog fields. `interpret` runs the hs-written IR
 interpreter, with its own documented subset and refusals; it is not a fallback
 for `run` or `build`. Those commands report unsupported hosted-subset programs
 rather than silently switching execution modes. It does not provide the Python
-CLI's check, test, REPL, LSP or kernel commands, or fmt's `-w`/`--check` modes. `run` compiles eagerly in memory, not on
+CLI's test, REPL, LSP or kernel commands, or fmt's `-w`/`--check` modes. `run` compiles eagerly in memory, not on
 first call or in tiers. The installed prebuilt driver is not rebuilt per run.
 `fmt SOURCE` keeps comments using the existing formatter rules, does not run
 or edit the source, drops blank lines and can relocate comments. Extra arguments
