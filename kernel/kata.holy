@@ -1,4 +1,5 @@
-import kprim
+# (no kprim import: it runs its self-test banner at import time,
+# and every kernel that pulls kata transitively would emit it)
 DATA = 0x1F0
 ERR = 0x1F1
 SEC_CNT = 0x1F2
