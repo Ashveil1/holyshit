@@ -39,7 +39,7 @@ expect("empty file", kvfs.write("/empty", ""), true)
 img = kkrfs.serialize()
 base = img[0]
 n = img[1]
-expect("magic", read_mem(base, 4), "KRFS")
+expect("magic", read_mem(kkrfs.addr_of(base), 4), "KRFS")
 expect("count", kkrfs.rd32(base, 4), 8)
 expect("size sane", n > 60, true)
 
@@ -61,7 +61,8 @@ expect("fixpoint size", img2[1], n)
 expect("fixpoint bytes", same_bytes(img2[0], base, n), true)
 
 # malformed images are rejected, never trusted
-bad = alloc(4)
+unsafe:
+  bad = alloc(4)
 kkrfs.put8(bad, 0, 88)
 kkrfs.put8(bad, 1, 82)
 kkrfs.put8(bad, 2, 70)

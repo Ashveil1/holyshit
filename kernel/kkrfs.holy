@@ -98,7 +98,10 @@ def serialize():
   # keep the raw alloc handle: put8/put32/rd8 all go through as_ptr,
   # whose spacing the allocator manages correctly; an as_int-normalized
   # buffer aliases other objects (48-byte stride) and smears on copy
-  buf = alloc(total)
+  # alloc sits in an unsafe block: the strict x64 corpus build rejects a
+  # bare unsafe-builtin call (interp tolerates it)
+  unsafe:
+    buf = alloc(total)
   # "KRFS" one byte at a time: hs has no multi-char byte literal
   put8(buf, 0, 75)
   put8(buf, 1, 82)
