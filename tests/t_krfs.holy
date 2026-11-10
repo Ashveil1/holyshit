@@ -40,7 +40,7 @@ img = kkrfs.serialize()
 base = img[0]
 n = img[1]
 expect("magic", read_mem(kkrfs.addr_of(base), 4), "KRFS")
-expect("count", kkrfs.rd32(base, 4), 8)
+expect("count", kkrfs.rd32le(base, 4), 8)
 expect("size sane", n > 60, true)
 
 expect("re-init", kvfs.vfs_init(), true)
@@ -63,18 +63,18 @@ expect("fixpoint bytes", same_bytes(img2[0], base, n), true)
 # malformed images are rejected, never trusted
 unsafe:
   bad = alloc(4)
-kkrfs.put8(bad, 0, 88)
-kkrfs.put8(bad, 1, 82)
-kkrfs.put8(bad, 2, 70)
-kkrfs.put8(bad, 3, 83)
+kkrfs.put8le(bad, 0, 88)
+kkrfs.put8le(bad, 1, 82)
+kkrfs.put8le(bad, 2, 70)
+kkrfs.put8le(bad, 3, 83)
 expect("tiny rejected", kkrfs.parse(base, 4), -1)
 expect("bad magic rejected", kkrfs.parse(bad, 8), -1)
-kkrfs.put8(base, 0, 88)
+kkrfs.put8le(base, 0, 88)
 expect("magic flipped rejected", kkrfs.parse(base, n), -1)
-kkrfs.put8(base, 0, 75)
-kkrfs.put32(base, 4, 99999)
+kkrfs.put8le(base, 0, 75)
+kkrfs.put32le(base, 4, 99999)
 expect("huge count rejected", kkrfs.parse(base, n), -1)
-kkrfs.put32(base, 4, 8)
+kkrfs.put32le(base, 4, 8)
 expect("truncated rejected", kkrfs.parse(base, n - 30), -1)
 
 print "fails", fails

@@ -11,7 +11,13 @@
 
 import kvfs
 
-def pad4(n):
+# helper names carry the le suffix on purpose: the x64 backend
+# resolves module-level names statically, and a generic name like rd32
+# here silently shadowed kmb.rd32 (different arity!) in every kernel
+# whose import closure contained both, corrupting the memory-map parse
+# far from the cause - owned ELF lifecycle caught the trailing fault
+
+def pad4le(n):
   # round up to a multiple of 4 with integer division (safe `/` is Float)
   unsafe:
     I64 x = n
@@ -25,17 +31,17 @@ def addr_of(h):
   unsafe:
     return as_int(as_ptr(h))
 
-def rd32(base, off):
+def rd32le(base, off):
   unsafe:
     Ptr p = as_ptr(base)
     return load32(p + off)
 
-def put8(base, off, v):
+def put8le(base, off, v):
   unsafe:
     Ptr p = as_ptr(base)
     store8(p + off, v)
 
-def put32(base, off, v):
+def put32le(base, off, v):
   unsafe:
     Ptr p = as_ptr(base)
     store32(p + off, v)
@@ -48,7 +54,7 @@ def parse(base, n):
     return -1
   if read_mem(addr_of(base), 4) != "KRFS":
     return -1
-  count = rd32(base, 4)
+  count = rd32le(base, 4)
   if count < 0 or count > 4096:
     return -1
   off = 8
@@ -57,17 +63,17 @@ def parse(base, n):
   while i < count:
     if off + 12 > n:
       return -1
-    t = rd32(base, off)
-    plen = rd32(base, off + 4)
+    t = rd32le(base, off)
+    plen = rd32le(base, off + 4)
     if t != 0 and t != 1:
       return -1
     if plen < 0 or plen > 1024:
       return -1
     path = read_mem(addr_of(base) + off + 8, plen)
-    sizeoff = off + 8 + pad4(plen)
+    sizeoff = off + 8 + pad4le(plen)
     if sizeoff + 4 > n:
       return -1
-    size = rd32(base, sizeoff)
+    size = rd32le(base, sizeoff)
     if size < 0:
       return -1
     data_off = sizeoff + 4
@@ -83,7 +89,7 @@ def parse(base, n):
       if not kvfs.write(full, read_mem(addr_of(base) + data_off, size)):
         return -1
     loaded = loaded + 1
-    off = data_off + pad4(size)
+    off = data_off + pad4le(size)
     i = i + 1
   return loaded
 
@@ -94,7 +100,7 @@ def serialize():
   entries = kvfs.walk()
   total = 8
   for e in entries:
-    total = total + 8 + pad4(byte_len(e[1]) - 1) + 4 + pad4(byte_len(e[2]))
+    total = total + 8 + pad4le(byte_len(e[1]) - 1) + 4 + pad4le(byte_len(e[2]))
   # keep the raw alloc handle: put8/put32/rd8 all go through as_ptr,
   # whose spacing the allocator manages correctly; an as_int-normalized
   # buffer aliases other objects (48-byte stride) and smears on copy
@@ -103,11 +109,11 @@ def serialize():
   unsafe:
     buf = alloc(total)
   # "KRFS" one byte at a time: hs has no multi-char byte literal
-  put8(buf, 0, 75)
-  put8(buf, 1, 82)
-  put8(buf, 2, 70)
-  put8(buf, 3, 83)
-  put32(buf, 4, len(entries))
+  put8le(buf, 0, 75)
+  put8le(buf, 1, 82)
+  put8le(buf, 2, 70)
+  put8le(buf, 3, 83)
+  put32le(buf, 4, len(entries))
   off = 8
   for e in entries:
     # kvfs kinds match KRFS types: 0 = file, 1 = dir
@@ -115,19 +121,19 @@ def serialize():
     plen = byte_len(path)
     data = e[2]
     size = byte_len(data)
-    put32(buf, off, e[0])
-    put32(buf, off + 4, plen)
+    put32le(buf, off, e[0])
+    put32le(buf, off + 4, plen)
     off = off + 8
     i = 0
     while i < plen:
-      put8(buf, off + i, byte_at(path, i))
+      put8le(buf, off + i, byte_at(path, i))
       i = i + 1
-    off = off + pad4(plen)
-    put32(buf, off, size)
+    off = off + pad4le(plen)
+    put32le(buf, off, size)
     off = off + 4
     i = 0
     while i < size:
-      put8(buf, off + i, byte_at(data, i))
+      put8le(buf, off + i, byte_at(data, i))
       i = i + 1
-    off = off + pad4(size)
+    off = off + pad4le(size)
   return [buf, total]
