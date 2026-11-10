@@ -2,7 +2,25 @@
 # Installed as BUNDLE/bin/hs. Resolve data relative to the moved bundle.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs build SOURCE OUTPUT | hs SOURCE.holy [args...]'
+USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs build SOURCE OUTPUT | hs SOURCE.holy [args...]'
+if [ "$#" -lt 1 ]; then
+  printf '%s\n' "$USAGE" >&2
+  exit 2
+fi
+# Python-style global --json: strip it wherever it appears (only check uses it).
+AS_JSON=no
+N=$#
+I=0
+while [ "$I" -lt "$N" ]; do
+  A=$1
+  shift
+  if [ "$A" = "--json" ]; then
+    AS_JSON=yes
+  else
+    set -- "$@" "$A"
+  fi
+  I=$((I + 1))
+done
 if [ "$#" -lt 1 ]; then
   printf '%s\n' "$USAGE" >&2
   exit 2
@@ -80,6 +98,21 @@ case "$COMMAND" in
       exit 1
     }
     exec "$ROOT/bin/hs-fmt" "$SOURCE" --comments
+    ;;
+  check)
+    # Extra positional arguments are ignored, matching the Python CLI.
+    if [ ! -f "$ROOT/bin/hs-check" ] || [ ! -f "$ROOT/CHECK_SHA256SUMS" ]; then
+      printf '%s\n' 'installed checker is missing; install a new complete bundle' >&2
+      exit 1
+    fi
+    (cd "$ROOT" && sha256sum --status -c CHECK_SHA256SUMS) || {
+      printf '%s\n' 'installed checker checksum failed' >&2
+      exit 1
+    }
+    if [ "$AS_JSON" = yes ]; then
+      exec "$ROOT/bin/hs-check" "$SOURCE" --json
+    fi
+    exec "$ROOT/bin/hs-check" "$SOURCE"
     ;;
   build)
     if [ "$#" -ne 1 ]; then

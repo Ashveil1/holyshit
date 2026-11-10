@@ -1,0 +1,55 @@
+# Installed native `hs check` driver: scan SOURCE and its reachable imports
+# without executing anything. Text success prints `ok: SOURCE`; check errors
+# exit 1, usage errors exit 2. --json prints the Python CLI's basic
+# {"file", "line", "message"} error object on stderr; the error catalog's
+# optional code/hint fields are a documented follow-up, not emitted here.
+import check
+
+def die(msg, code):
+  f = open("/dev/stderr", "w")
+  write(f, "error: " + msg + "\n")
+  close(f)
+  scall(60, code, 0, 0, 0, 0, 0)
+
+def jerr(path, msg, line):
+  d = {"file": path, "line": line, "message": msg}
+  f = open("/dev/stderr", "w")
+  write(f, json_str(d) + "\n")
+  close(f)
+
+def bad(msg, line, path, as_json, code):
+  if as_json:
+    jerr(path, msg, line)
+  else:
+    m = msg
+    if line != null:
+      m = m + " at line " + str(line)
+    die(m, code)
+  scall(60, code, 0, 0, 0, 0, 0)
+
+args = argv()
+as_json = false
+rest = []
+for a in args:
+  if a == "--json":
+    as_json = true
+  else:
+    append(rest, a)
+if len(rest) < 1:
+  die("usage: hs check SOURCE", 2)
+path = rest[0]
+if not exists(path):
+  bad("cannot read " + path + ": No such file or directory", null, path, as_json, 1)
+src = ""
+try:
+  src = read_text(path)
+except as e:
+  pair = check.src_err(e)
+  bad("cannot read " + path + ": " + pair[0], null, path, as_json, 1)
+try:
+  check.check_source(src, path)
+except as e:
+  pair = check.src_err(e)
+  bad(pair[0], pair[1], path, as_json, 1)
+if not as_json:
+  print "ok: " + path
