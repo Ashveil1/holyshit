@@ -1,0 +1,13 @@
+import kata
+import kkrfs
+
+buf = kata.identify_buf()
+print "present", kata.present()
+kata.read_identify(buf)
+hdr = alloc(512)
+kata.read(0, 1, hdr)
+print "rd8 view:", kata.rd8(hdr, 0), kata.rd8(hdr, 1), kata.rd8(hdr, 2), kata.rd8(hdr, 3)
+print "read_mem view:", read_mem(as_int(hdr), 4)
+print "as_int", as_int(hdr)
+print "rd32 n", kkrfs.rd32(hdr, 4), "gen", kkrfs.rd32(hdr, 8)
+print "dbg-done"

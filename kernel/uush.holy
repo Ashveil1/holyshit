@@ -11,6 +11,7 @@ SYS_EXEC = 59
 SYS_LS = 78
 SYS_MKDIR = 83
 SYS_UNLINK = 87
+SYS_SYNC = 74
 
 def sc(nr, a1, a2, a3, a4, a5, a6):
   return scall(nr, a1, a2, a3, a4, a5, a6)
@@ -85,7 +86,7 @@ def main():
     if cmd == "exit":
       return null
     if cmd == "help":
-      print "commands: help echo cat ls mkdir rm write run exit"
+      print "commands: help echo cat ls mkdir rm write run sync exit"
       continue
     if cmd == "echo":
       print join(" ", parts[1:])
@@ -121,6 +122,12 @@ def main():
         writefile(parts[1], join(" ", parts[2:]))
       else:
         print "usage: write <file> <text...>"
+      continue
+    if cmd == "sync":
+      if sc(SYS_SYNC, 0, 0, 0, 0, 0, 0) < 0:
+        print "sync failed: no disk"
+      else:
+        print "synced"
       continue
     if cmd == "run":
       if len(parts) > 1:

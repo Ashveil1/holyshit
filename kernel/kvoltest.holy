@@ -1,0 +1,79 @@
+# persistent volume end to end: one kernel, three boots of the SAME disk
+# image. The volume contents themselves say which boot this is:
+#   fresh   -> populate the tree and sync (generation 1)
+#   gen 1   -> verify the tree came back, mutate, sync (generation 2)
+#   gen 2   -> verify the mutation persisted
+# Persistence across kernel runs is the assertion: each boot is a separate
+# QEMU process with no state but the disk file.
+import kmb
+import kpmm
+import kvfs
+import kata
+import kkrfs
+import kvol
+
+fails = 0
+
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("vfs init", kvfs.vfs_init(), true)
+
+n = kvol.mount()
+if n < 0:
+  print "FAIL no ata device"
+  fails = fails + 1
+elif n == 0:
+  # fresh disk: populate and commit
+  expect("fresh tree empty", kvfs.ls("/"), [])
+  expect("mkdir etc", kvfs.mkdir("/etc"), true)
+  expect("mkdirs a/b/c", kvfs.mkdirs("/a/b/c"), true)
+  expect("write motd", kvfs.write("/motd", "persisted motd\n"), true)
+  expect("write config", kvfs.write("/etc/config", "volume=ata\n"), true)
+  expect("write deep", kvfs.write("/a/b/c/deep.txt", "deep\n"), true)
+  expect("sync", kvol.sync(), true)
+  expect("generation 1", kvol.generation(), 1)
+  hdr = as_int(alloc(512))
+  kata.read(0, 1, hdr)
+  expect("header magic", read_mem(hdr, 4), "KVOL")
+  print "hdr bytes", kata.rd8(hdr, 0), kata.rd8(hdr, 1), kata.rd8(hdr, 2), kata.rd8(hdr, 3)
+  print "hdr n gen", kkrfs.rd32(hdr, 4), kkrfs.rd32(hdr, 8)
+  sec1 = as_int(alloc(512))
+  kata.read(1, 1, sec1)
+  print "sec1 magic", read_mem(sec1, 4)
+  kata.read(0, 1, hdr)
+  print "hdr reread", read_mem(hdr, 4)
+  print "kvol-populated"
+else:
+  if kvfs.is_file("/motd"):
+    # second boot: the first boot's tree came back over the wire
+    expect("motd back", kvfs.read("/motd"), "persisted motd\n")
+    expect("config back", kvfs.read("/etc/config"), "volume=ata\n")
+    expect("deep back", kvfs.read("/a/b/c/deep.txt"), "deep\n")
+    expect("root listing", kvfs.ls("/"), ["etc", "motd", "a"])
+    expect("etc listing", kvfs.ls("/etc"), ["config"])
+    expect("generation read", kvol.generation(), 1)
+    # mutate and commit a second generation
+    expect("unlink motd", kvfs.unlink("/motd"), true)
+    expect("write new", kvfs.write("/new.txt", "second boot\n"), true)
+    expect("sync 2", kvol.sync(), true)
+    expect("generation 2", kvol.generation(), 2)
+    print "kvol-modified"
+  else:
+    # third boot: the second generation came back
+    expect("motd gone", kvfs.read("/motd"), null)
+    expect("new back", kvfs.read("/new.txt"), "second boot\n")
+    expect("config still", kvfs.read("/etc/config"), "volume=ata\n")
+    expect("root listing final", kvfs.ls("/"), ["etc", "a", "new.txt"])
+    expect("generation final", kvol.generation(), 2)
+    print "kvol-final"
+
+print "fails", fails
+print "kvol-done"

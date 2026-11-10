@@ -1,0 +1,30 @@
+ok init
+ok empty serialize loads zero
+ok dirs
+ok nested dirs
+ok motd
+ok config
+ok deep
+ok empty file
+ok magic
+ok count
+ok size sane
+ok re-init
+ok tree gone
+ok parse
+ok root listing
+ok etc listing
+ok motd back
+ok config back
+ok deep back
+ok empty back
+ok empty stat
+ok config stat
+ok fixpoint size
+ok fixpoint bytes
+ok tiny rejected
+ok bad magic rejected
+ok magic flipped rejected
+ok huge count rejected
+ok truncated rejected
+fails 0

@@ -10,6 +10,7 @@
 import kpage
 import kpmm
 import kvfs
+import kvol
 
 SYS_READ = 0
 SYS_WRITE = 1
@@ -21,6 +22,7 @@ SYS_EXIT = 60
 SYS_LS = 78
 SYS_MKDIR = 83
 SYS_UNLINK = 87
+SYS_SYNC = 74
 
 # user pages live in PML4 slot 1 and up, so a user address space can be built
 # without ever touching the kernel half (PML4[0])
@@ -289,6 +291,13 @@ def sys_exit(code):
   user_stop()
   return 0
 
+def sys_sync():
+  # flush the whole tree to the ATA volume; 0 like Linux sync, -1 when no
+  # disk is attached (the in-memory tree is untouched either way)
+  if not kvol.sync():
+    return -1
+  return 0
+
 def dispatch(nr, a1, a2, a3, a4, a5, a6):
   # the stub tags every register word on entry, so the slots already hold
   # the original words as plain hs Ints — use them directly
@@ -314,6 +323,8 @@ def dispatch(nr, a1, a2, a3, a4, a5, a6):
     return sys_mkdir(a1, a2)
   if nr == SYS_LS:
     return sys_ls(a1, a2, a3, a4)
+  if nr == SYS_SYNC:
+    return sys_sync()
   if nr == SYS_EXEC:
     return sys_exec(a1, a2)
   return -38
