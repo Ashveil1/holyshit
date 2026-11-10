@@ -40,16 +40,12 @@ elif n == 0:
   expect("write deep", kvfs.write("/a/b/c/deep.txt", "deep\n"), true)
   expect("sync", kvol.sync(), true)
   expect("generation 1", kvol.generation(), 1)
-  hdr = as_int(alloc(512))
+  hdr = alloc(512)
   kata.read(0, 1, hdr)
-  expect("header magic", read_mem(hdr, 4), "KVOL")
-  print "hdr bytes", kata.rd8(hdr, 0), kata.rd8(hdr, 1), kata.rd8(hdr, 2), kata.rd8(hdr, 3)
-  print "hdr n gen", kkrfs.rd32(hdr, 4), kkrfs.rd32(hdr, 8)
-  sec1 = as_int(alloc(512))
+  expect("header magic", read_mem(kkrfs.addr_of(hdr), 4), "KVOL")
+  sec1 = alloc(512)
   kata.read(1, 1, sec1)
-  print "sec1 magic", read_mem(sec1, 4)
-  kata.read(0, 1, hdr)
-  print "hdr reread", read_mem(hdr, 4)
+  expect("image magic on disk", read_mem(kkrfs.addr_of(sec1), 4), "KRFS")
   print "kvol-populated"
 else:
   if kvfs.is_file("/motd"):
@@ -57,7 +53,7 @@ else:
     expect("motd back", kvfs.read("/motd"), "persisted motd\n")
     expect("config back", kvfs.read("/etc/config"), "volume=ata\n")
     expect("deep back", kvfs.read("/a/b/c/deep.txt"), "deep\n")
-    expect("root listing", kvfs.ls("/"), ["etc", "motd", "a"])
+    expect("root listing", kvfs.ls("/"), ["etc", "a", "motd"])
     expect("etc listing", kvfs.ls("/etc"), ["config"])
     expect("generation read", kvol.generation(), 1)
     # mutate and commit a second generation

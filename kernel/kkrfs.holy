@@ -17,6 +17,14 @@ def pad4(n):
     I64 x = n
     return (x + 3) / 4 * 4
 
+def addr_of(h):
+  # the real byte address of a buffer, for read_mem: as_int(handle)
+  # alone lands in a different, wrongly-spaced view where read_mem
+  # misses, but as_int(as_ptr(h)) is the true address on x64 and the
+  # identity on plain int addresses (initrd modules, interp buffers)
+  unsafe:
+    return as_int(as_ptr(h))
+
 def rd32(base, off):
   unsafe:
     Ptr p = as_ptr(base)
@@ -34,14 +42,11 @@ def put32(base, off, v):
 
 def parse(base, n):
   # -> entries loaded into kvfs, or -1 on a malformed image
-  # base stays in the caller's space: an initrd module address (plain
-  # int) or an alloc handle. as_ptr(base) is right for both in rd32;
-  # read_mem wants as_int(base), which is the identity for plain ints
-  # and the data view of a handle. Never normalize base itself once:
-  # as_ptr(as_int(handle)) aliases a different, wrongly-spaced address.
+  # base may be an initrd module address (plain int) or an alloc
+  # handle; addr_of maps both to the address read_mem understands
   if n < 8:
     return -1
-  if read_mem(as_int(base), 4) != "KRFS":
+  if read_mem(addr_of(base), 4) != "KRFS":
     return -1
   count = rd32(base, 4)
   if count < 0 or count > 4096:
@@ -58,7 +63,7 @@ def parse(base, n):
       return -1
     if plen < 0 or plen > 1024:
       return -1
-    path = read_mem(as_int(base) + off + 8, plen)
+    path = read_mem(addr_of(base) + off + 8, plen)
     sizeoff = off + 8 + pad4(plen)
     if sizeoff + 4 > n:
       return -1
@@ -75,7 +80,7 @@ def parse(base, n):
     else:
       if not kvfs.mkdirs(kvfs.split_parent(full)[0]):
         return -1
-      if not kvfs.write(full, read_mem(as_int(base) + data_off, size)):
+      if not kvfs.write(full, read_mem(addr_of(base) + data_off, size)):
         return -1
     loaded = loaded + 1
     off = data_off + pad4(size)
