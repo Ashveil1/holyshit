@@ -51,10 +51,49 @@ msg: .ascii "ownedelf!"
 .section .bss
 .lcomm blank,8
 '''
-with tempfile.TemporaryDirectory() as temp:
- d=Path(temp);s=d/'fixture.s';s.write_text(ASM);obj=d/'fixture.o';elf=d/'fixture'
+# Faulting guests for the containment gates: each must be killed and
+# reclaimed while the kernel survives. If the fault does not fire the
+# guest falls through to exit(99), which the assertions below reject.
+ASM_PF='''
+.global _start
+.section .text
+_start:
+ mov $0xDEADBEEF,%eax
+ mov (%rax),%bl
+ mov $60,%eax
+ mov $99,%edi
+ syscall
+'''
+ASM_DE='''
+.global _start
+.section .text
+_start:
+ xor %edx,%edx
+ mov $1,%eax
+ xor %ecx,%ecx
+ div %ecx
+ mov $60,%eax
+ mov $99,%edi
+ syscall
+'''
+ASM_GP='''
+.global _start
+.section .text
+_start:
+ mov $0x3F8,%edx
+ out %al,(%dx)
+ mov $60,%eax
+ mov $99,%edi
+ syscall
+'''
+def build_elf(d,name,asm_text):
+ s=d/(name+'.s');s.write_text(asm_text);obj=d/(name+'.o');out=d/name
  subprocess.run(['as','--64',str(s),'-o',str(obj)],check=True)
- subprocess.run(['ld','-static','-nostdlib','-z','max-page-size=4096','-Ttext-segment=0x10000000',str(obj),'-o',str(elf)],check=True)
+ subprocess.run(['ld','-static','-nostdlib','-z','max-page-size=4096','-Ttext-segment=0x10000000',str(obj),'-o',str(out)],check=True)
+ return out
+with tempfile.TemporaryDirectory() as temp:
+ d=Path(temp);elf=build_elf(d,'fixture',ASM)
+ pfe=build_elf(d,'faultpf',ASM_PF);dee=build_elf(d,'faultde',ASM_DE);gpe=build_elf(d,'faultgp',ASM_GP)
  before=elf.read_bytes();host=subprocess.run([str(elf)],capture_output=True)
  assert host.returncode==5 and host.stdout==b'ownedelf!',(host.returncode,host.stdout)
  for _ in range(3):
@@ -172,6 +211,33 @@ while i < 100:
 end = marker()
 print "OWNED ELF END"
 assert end - start == 16
+print "OWNED FAULT BEGIN"
+assert kownedelf.prepare(kmb.mod_start(1), kmb.mod_len(1))
+assert kownedelf.run()
+assert kownedelf.fault_vector() == 14
+assert kownedelf.state() == kownedelf.EMPTY
+assert cr3() == original
+assert kpmm.available() == frames_base
+assert kownedelf.prepare(kmb.mod_start(2), kmb.mod_len(2))
+assert kownedelf.run()
+assert kownedelf.fault_vector() == 0
+assert kownedelf.state() == kownedelf.EMPTY
+assert cr3() == original
+assert kpmm.available() == frames_base
+assert kownedelf.prepare(kmb.mod_start(3), kmb.mod_len(3))
+assert kownedelf.run()
+assert kownedelf.fault_vector() == 13
+assert kownedelf.state() == kownedelf.EMPTY
+assert cr3() == original
+assert kpmm.available() == frames_base
+assert kownedelf.prepare(base, size)
+assert kownedelf.run()
+assert kownedelf.fault_vector() == -1
+assert kownedelf.exit_code() == 5
+assert kownedelf.state() == kownedelf.EMPTY
+assert cr3() == original
+assert kpmm.available() == frames_base
+print "OWNED FAULT END"
 assert kpage.entry_get(0x100000, 0) == kernel_value
 assert kpage.pte_get(original, kowned.LOW) == original_low_pte
 print "OWNED ELF DONE"
@@ -181,15 +247,23 @@ print "OWNED ELF DONE"
  subprocess.run([str(ROOT/'bootstrap/hs-hosted-x86_64'),str(ROOT/'selfhost/be/kernel_ir.holy'),str(driver)],env=env,capture_output=True,check=True,timeout=240)
  subprocess.run([str(driver),str(source),str(native)],env=env,capture_output=True,check=True,timeout=90)
  assert kernel.read_bytes()==native.read_bytes(),'native/reference whole kernel mismatch'
- serial=d/'serial';p=subprocess.Popen([qemu,'-kernel',str(kernel),'-initrd',str(elf),'-serial','file:'+str(serial),'-display','none','-monitor','none','-nic','none'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ serial=d/'serial';p=subprocess.Popen([qemu,'-kernel',str(kernel),'-initrd','{},{},{},{}'.format(elf,pfe,dee,gpe),'-serial','file:'+str(serial),'-display','none','-monitor','none','-nic','none'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  try:
   deadline=time.monotonic()+60;out=b''
-  want=b'OWNED ELF BEGIN\n'+b'ownedelf!'*100+b'OWNED ELF END\nOWNED ELF DONE\n'
+  want=b'OWNED ELF BEGIN\n'+b'ownedelf!'*100+b'OWNED ELF END\n'
   while time.monotonic()<deadline:
    out=serial.read_bytes() if serial.exists() else b''
    if b'OWNED ELF DONE' in out or b'error:' in out:break
    time.sleep(.1)
-  assert out==want,out[-400:]
+  assert out.startswith(want),out[-400:]
+  # containment gates: each fault is reported (EXC <vec> ... cr2=...), the
+  # guest is killed and reclaimed, and the kernel runs on to the next one.
+  rest=out[len(want):]
+  for piece in (b'OWNED FAULT BEGIN\n',b'EXC 14 ',b'cr2=3735928559',b'EXC 0 ',b'EXC 13 ',b'ownedelf!',b'OWNED FAULT END\n',b'OWNED ELF DONE\n'):
+   i=rest.find(piece)
+   assert i>=0,(piece,out[-400:])
+   rest=rest[i+len(piece):]
+  assert rest==b'',out[-400:]
  finally:p.kill();p.wait()
  assert elf.read_bytes()==before,'fixture modified between host and guest'
-print('owned ELF lifecycle gates passed:100 load/run/exit cycles reclaimed, allocation-budget unwind, malformed/discard/stale rejection, perms, native image')
+print('owned ELF lifecycle gates passed:100 load/run/exit cycles reclaimed, allocation-budget unwind, malformed/discard/stale rejection, perms, native image, 3 contained ring-3 fault kills (#PF/#DE/#GP) reclaimed with the kernel alive')

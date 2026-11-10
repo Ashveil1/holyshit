@@ -71,7 +71,10 @@ def link(p, stack_patch):
   b.labels["MBINFO"] = dat_off + dl["mbinfo_"]
   b.labels["MBMAGIC"] = dat_off + dl["mbmagic_"]
   tss_base = BASE + dat_off + dl["tss_"]
-  tss = [103, 0, tss_base & 255, tss_base >> 8 & 255, tss_base >> 16 & 255, 137, 15, tss_base >> 24 & 255] + elf.u64(tss_base >> 32)
+  # limit 103 (bytes 0-1 and the high nibble 0 in byte 6), byte granularity:
+  # a stray high limit nibble here would widen the segment past the I/O map
+  # offset 104 and silently grant ring 3 every port.
+  tss = [103, 0, tss_base & 255, tss_base >> 8 & 255, tss_base >> 16 & 255, 137, 0, tss_base >> 24 & 255] + elf.u64(tss_base >> 32)
   put(gdt, 40, tss)
   put(data, dl["tss_"] + 4, elf.u32(stack_top))
   put(data, dl["tss_"] + 66, elf.u16(104))
