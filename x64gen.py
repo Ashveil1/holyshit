@@ -12383,12 +12383,13 @@ def build_xkernel(prog_path, out_path, ir_backend=True):
     b.labels["MBINFO"] = (A(dat_off + asm64.data_labels["mbinfo_"]) - KBASE)
     b.labels["MBMAGIC"] = (A(dat_off + asm64.data_labels["mbmagic_"]) - KBASE)
     # TSS descriptor (16 bytes) for the 104-byte task state segment: limit
-    # 103, 64-bit available TSS, 16-byte granular limit, no I/O bitmap (the
-    # offset field is 104 = limit + 1, so ring 3 gets no port access at all).
+    # 103, 64-bit available TSS, byte-granular limit (G=0, limit[19:16]=0),
+    # no I/O bitmap (the offset field is 104 = limit + 1, so ring 3 gets no
+    # port access at all).
     tss_base = A(dat_off + asm64.data_labels["tss_"])
     tss_lo = ((104 - 1) | ((tss_base & 0xFFFF) << 16)
               | (((tss_base >> 16) & 0xFF) << 32) | (0x89 << 40)
-              | (0x0F << 48) | (((tss_base >> 24) & 0xFF) << 56))
+              | (((tss_base >> 24) & 0xFF) << 56))
     tss_hi = (tss_base >> 32) & 0xFFFFFFFF
     gdt[gdt_off_sel:gdt_off_sel + 16] = (_st.pack("<Q", tss_lo)
                                        + _st.pack("<Q", tss_hi))

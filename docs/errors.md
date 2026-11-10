@@ -366,7 +366,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py - direct x86-64 backend (xbuild/xkernel) (115)
+## x64gen.py - direct x86-64 backend (xbuild/xkernel) (117)
 
 - `'{n}' already defined in this scope`
 - `Int literal {v} is outside the 62-bit range of the x64 backend`
@@ -472,6 +472,8 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `unknown variable '{e['name']}'`
 - `unknown variable '{name}'`
 - `unknown variable '{obj['name']}'`
+- `user_fault_arm wants user_fault_arm(1 or 0)`
+- `user_fault_take takes no args`
 - `user_stop takes no args`
 - `write wants write(f, str)`
 - `{fn['name']} wants 1 arg`
@@ -666,4 +668,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-620 messages total - duplicates across files are counted once per file
+622 messages total - duplicates across files are counted once per file
