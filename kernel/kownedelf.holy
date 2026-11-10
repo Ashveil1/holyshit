@@ -32,6 +32,7 @@ OFF_NSPANS = 56
 OFF_SPANS = 64
 OFF_LOADS = 208
 OFF_NLOADS = 528
+OFF_FAULT = 536
 META_BYTES = 576
 metadata = 0
 def rd(address):
@@ -71,6 +72,11 @@ def exit_code():
 def calls():
   init()
   return rd(metadata + OFF_CALLS)
+def fault_vector():
+  # Vector of the ring-3 fault that killed the last run (0 #DE, 13 #GP,
+  # 14 #PF, ...), or -1 when the program stopped by its own exit syscall.
+  init()
+  return rd(metadata + OFF_FAULT) - 1
 def seen_root():
   init()
   return rd(metadata + OFF_SEEN)
@@ -289,7 +295,8 @@ def dispatch(nr, a1, a2, a3, a4, a5, a6):
     return 0
   return -38
 def run():
-  # Enter the prepared program, wait for its exit syscall, then reclaim:
+  # Enter the prepared program, wait for its exit syscall or a contained
+  # ring-3 fault (the guest is killed, the kernel survives), then reclaim:
   # restore the boot root and the normal syscall handler BEFORE destroying
   # the owned handle. The entry stub re-enables IRQs on its return path
   # (x64gen lab_uret sti, verified) before this code regains control, so
@@ -310,6 +317,7 @@ def run():
   wr(metadata + OFF_CALLS, 0)
   wr(metadata + OFF_STOPPED, 0)
   wr(metadata + OFF_SEEN, 0)
+  wr(metadata + OFF_FAULT, 0)
   irq_off()
   set_cr3(root)
   top = STACK + PAGE - 48
@@ -324,10 +332,20 @@ def run():
   kuser.poke(frame + 24, top)
   kuser.poke(frame + 32, kuser.SS_USER)
   ksyscall.register(dispatch)
+  # Arm containment: a ring-3 fault in this guest (bad pointer, divide by
+  # zero, port access, ...) resumes below instead of halting the kernel.
+  # The exception stub records the vector; user_fault_take() reads it once.
+  user_fault_arm(1)
   enter_user(rd(metadata + OFF_ENTRY), frame)
   # enter_user now returns with IF clear; mask again defensively so no IRQ
   # can run in the transition before restoring the boot root.
   irq_off()
+  user_fault_arm(0)
+  fault = user_fault_take()
+  if fault >= 0:
+    # Killed, not exited: still a full stop, reclaimed the same way below.
+    wr(metadata + OFF_FAULT, fault + 1)
+    wr(metadata + OFF_STOPPED, 1)
   set_cr3(previous)
   ksyscall.start()
   stopped = rd(metadata + OFF_STOPPED)

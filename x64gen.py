@@ -2395,6 +2395,7 @@ class Gen:
                 "irq_off", "irq_on",
                 "sched_on_tick", "sched_tick_clear",
                 "syscall_register", "user_stop", "enter_user", "exec_enter",
+                "user_fault_arm", "user_fault_take",
                 "tcp_connect", "tcp_send", "tcp_recv", "tcp_close",
                 "tcp_listen", "tcp_accept", "http_get", "json_parse",
                 "json_str", "json_load", "json_save", "write_bytes",
@@ -2407,7 +2408,7 @@ class Gen:
                     "irq_off", "irq_on",
                     "sched_on_tick", "sched_tick_clear",
                     "syscall_register", "user_stop", "enter_user",
-                    "exec_enter"):
+                    "exec_enter", "user_fault_arm", "user_fault_take"):
                 self.ev_kdev(fn["name"], e["args"], sc, mod, ln)
                 return
             name = fn["name"]
@@ -2996,6 +2997,44 @@ class Gen:
             a.mov_ri32("rax", 1)
             a.mov_mr("rcx", "rax", 0)
             a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "user_fault_arm":
+            # user_fault_arm(1|0): arm the ring-3 containment branch in the
+            # exception stub. While armed, a fault whose frame CS is RPL 3
+            # records vector/rip/cr2 and resumes the enter_user continuation
+            # instead of halting the kernel; the stub consumes the arm on
+            # the way out, so a second fault before re-arming still halts.
+            if len(args) != 1:
+                raise HSErr("user_fault_arm wants user_fault_arm(1 or 0)", ln)
+            self.sev(args[0], sc, mod)  # raw 0/1
+            a.lea_rip("rcx", "ufault_arm_")
+            a.mov_mr("rcx", "rax", 0)
+            a.mov_ri64("rax", Gen.HS_NULL)
+            return
+        if name == "user_fault_take":
+            # user_fault_take(): the vector of the contained ring-3 fault
+            # that resumed the last enter_user continuation, or -1 when the
+            # guest stopped without faulting. Reading clears the pending
+            # mark, so a resumed run() sees each fault exactly once.
+            if args:
+                raise HSErr("user_fault_take takes no args", ln)
+            a.lea_rip("rax", "ufault_pend_")
+            a.mov_rm("rax", "rax", 0)
+            a.test_rr("rax", "rax")
+            lab_ufnone = self.new_tmp("uf")
+            a.jcc("e", lab_ufnone)
+            a.lea_rip("rax", "ufault_pend_")
+            a.mov_ri32("rcx", 0)
+            a.mov_mr("rax", "rcx", 0)
+            a.lea_rip("rax", "ufault_vec_")
+            a.mov_rm("rax", "rax", 0)
+            self.tag_box()
+            lab_ufdone = self.new_tmp("uf")
+            a.jmp(lab_ufdone)
+            a.label(lab_ufnone)
+            a.mov_ri32("rax", -1)
+            self.tag_box()
+            a.label(lab_ufdone)
             return
         if name in ("enter_user", "exec_enter"):
             # enter_user(rip, frame): iretq into ring 3, reading the
@@ -4906,6 +4945,17 @@ class Gen:
         ERRCODE = {8, 10, 11, 12, 13, 14, 17, 21, 29, 30}
         # common exception entry: rdi = vector (all GPRs already pushed)
         a.label("k_exc")
+        # Record the raw fault facts before anything below clobbers them:
+        # the containment branch reads them after the diagnostics, and the
+        # .holy side reads them (via user_fault_take) after the resume.
+        a.lea_rip("rax", "ufault_vec_")
+        a.mov_mr("rax", "rdi", 0)
+        a.mov_rm("rax", "rsp", 128)  # fault RIP (offsets as below)
+        a.lea_rip("rcx", "ufault_rip_")
+        a.mov_mr("rcx", "rax", 0)
+        a.mov_rcr64("rax", 2)
+        a.lea_rip("rcx", "ufault_cr2_")
+        a.mov_mr("rcx", "rax", 0)
         a.lea_rip("rsi", "exc_")
         a.mov_ri32("rdx", 4)
         self.k_write()
@@ -4948,6 +4998,38 @@ class Gen:
         a.add_ri32("rsp", 8)
         a.mov_ri32("rax", 10)
         a.call("x_putc")
+        # Containment: a ring-3 fault with an armed owner kills the guest
+        # and resumes the kernel continuation instead of halting the
+        # machine; the .holy owner reclaims the owned space after the
+        # resume. Ring-0 faults, and ring-3 faults nobody armed, keep the
+        # old behavior: report and halt.
+        a.mov_rm("rax", "rsp", 136)  # fault CS
+        a.and_ri32("rax", 3)
+        a.cmp_ri32("rax", 3)
+        lab_xhalt = self.new_tmp("xh")
+        a.jcc("ne", lab_xhalt)  # ring 0 fault: halt as before
+        a.lea_rip("rax", "ufault_arm_")
+        a.mov_rm("rax", "rax", 0)
+        a.test_rr("rax", "rax")
+        a.jcc("e", lab_xhalt)  # nobody armed: halt as before
+        a.lea_rip("rax", "ufault_arm_")
+        a.mov_ri32("rcx", 0)
+        a.mov_mr("rax", "rcx", 0)  # consume: a refault before re-arm halts
+        a.lea_rip("rax", "ufault_pend_")
+        a.mov_ri32("rcx", 1)
+        a.mov_mr("rax", "rcx", 0)
+        # Resume the kernel exactly where enter_user left it, like the
+        # syscall stop path: same saved rbp/rsp, same continuation. The
+        # abandoned exception frame sits above the restored rsp on the
+        # shared kstack_; RSP0 is reloaded from the TSS on every ring-3
+        # entry, so nothing leaks into later exceptions.
+        a.lea_rip("rax", "user_saved_rbp_")
+        a.mov_rm("rbp", "rax", 0)
+        a.lea_rip("rax", "user_saved_rsp_")
+        a.mov_rm("rsp", "rax", 0)
+        a.lea_rip("rax", "user_cont_")
+        a.jmp_m("rax")
+        a.label(lab_xhalt)
         a.call("k_halt")
         for vec in range(48):
             if vec in (32, 33):
@@ -5500,6 +5582,11 @@ class Gen:
         a.jmp_m("rax")
         self.reserve("syscall_fn_", 8)
         self.reserve("syscall_stop_", 8)
+        self.reserve("ufault_vec_", 8)
+        self.reserve("ufault_rip_", 8)
+        self.reserve("ufault_cr2_", 8)
+        self.reserve("ufault_arm_", 8)
+        self.reserve("ufault_pend_", 8)
         self.reserve("ret_rip_", 8)
         self.reserve("ret_rfl_", 8)
         self.reserve("ret_rsp_", 8)

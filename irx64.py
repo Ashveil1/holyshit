@@ -26,7 +26,8 @@ KERNEL_BUILTINS = {"ticks", "readkey", "readkey_code", "readkey_nav", "readkey_e
     "mb_info", "mb_magic", "image_end", "cr2", "cr3", "set_cr3", "invlpg",
     "tlb_flush", "ctx_swap", "task_run", "task_init", "irq_off", "irq_on",
     "sched_on_tick", "sched_tick_clear", "syscall_register", "user_stop",
-    "enter_user", "exec_enter", "ioport_in", "ioport_out"}
+    "enter_user", "exec_enter", "ioport_in", "ioport_out",
+    "user_fault_arm", "user_fault_take"}
 
 NOT_A_VALUE = {
     # var_get's "is not a value (call it)" list minus BI_VALUES (which take
