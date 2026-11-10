@@ -12,7 +12,7 @@ def check(ok,label):
     print(('ok  ' if ok else 'FAIL'),label,flush=True)
 with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     d=Path(temp);bindir=d/'utilities';bindir.mkdir()
-    for name in ['uname','dirname','sha256sum','mktemp','rm','mkdir','cp','chmod','mv','cmp']:
+    for name in ['uname','dirname','sha256sum','mktemp','rm','mkdir','cp','chmod','mv','cmp','find']:
         (bindir/name).symlink_to(shutil.which(name))
     env=dict(os.environ,PATH=str(bindir));env.pop('HSPATH',None);env.pop('HSROOT',None)
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh')],env=env,capture_output=True,text=True,timeout=10)
@@ -40,6 +40,12 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     failed_check_install=d/'failed checker install'
     r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_check_install)],env=env,capture_output=True,text=True,timeout=240)
     check(r.returncode!=0 and not failed_check_install.exists() and not list(d.glob('.holyshit-bundle.*')),'checker build failure cleans staging without publishing')
+    # The fifth build must also fail without publishing the first four drivers.
+    shutil.copyfile(ROOT/'selfhost/check_run.holy',broken/'selfhost/check_run.holy')
+    (broken/'selfhost/test_run.holy').write_text('def broken(:\n')
+    failed_test_install=d/'failed tester install'
+    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_test_install)],env=env,capture_output=True,text=True,timeout=240)
+    check(r.returncode!=0 and not failed_test_install.exists() and not list(d.glob('.holyshit-bundle.*')),'tester build failure cleans staging without publishing')
     original=d/'original';moved=d/'moved bundle'
     started=time.monotonic()
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(original)],env=env,capture_output=True,text=True,timeout=240)
@@ -48,7 +54,7 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     if r.returncode:sys.exit(1)
     original.rename(moved)
     launcher=moved/'bin/hs';compiler=moved/'bootstrap/hs-hosted-x86_64'
-    r=subprocess.run(['/bin/sh',str(launcher),'test','input.holy'],env=env,capture_output=True,text=True,timeout=10)
+    r=subprocess.run(['/bin/sh',str(launcher),'repl','input.holy'],env=env,capture_output=True,text=True,timeout=10)
     check(r.returncode==2 and 'unknown command' in r.stderr,'unsupported development command is explicit, no fallback')
     source=d/'main file.holy';module=d/'support.holy';module.write_text('value = 19\n')
     source.write_text('import support\nprint support.value\nprint json_str([1, "ok"])\nprint argv()\nextern:\n  I64 printf(Str format, ..., I64 n)\nprintf("value=%lld\\n", 27)\n')
@@ -173,10 +179,10 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     print('METRIC installed_checker_bytes',len(checker_bytes),flush=True)
     source.write_text('import support\nprint support.value\nprint missing_name\n')
     r=subprocess.run(['/bin/sh',str(launcher),'check',source.name],cwd=d,env=env,capture_output=True,text=True,timeout=30)
-    check(r.returncode==0 and not r.stderr and r.stdout=='ok: '+str(source)+'\n','relocated check accepts valid source '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    check(r.returncode==0 and not r.stderr and r.stdout=='ok: '+source.name+'\n','relocated check accepts valid source, echoing the path as given like the Python CLI '+repr((r.returncode,r.stdout,r.stderr[-150:])))
     check(checker.read_bytes()==checker_bytes and checker.stat().st_mtime_ns==checker_mtime,'check does not rebuild installed driver')
     r=subprocess.run(['/bin/sh',str(launcher),'check',source.name,'ignored-extra.holy'],cwd=d,env=env,capture_output=True,text=True,timeout=30)
-    check(r.returncode==0 and r.stdout=='ok: '+str(source)+'\n','check ignores extra positional arguments like the Python CLI')
+    check(r.returncode==0 and r.stdout=='ok: '+source.name+'\n','check ignores extra positional arguments like the Python CLI')
     source.write_text('import absent_zz\n')
     r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==1 and not r.stdout and r.stderr=="error: cannot find module 'absent_zz' at line 1\n",'check error text matches Python CLI '+repr((r.returncode,r.stdout,r.stderr[-150:])))
@@ -212,6 +218,51 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     checker.write_bytes(checker_bytes);checker.chmod(0o755)
     r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==0 and not r.stderr and r.stdout=='ok: '+str(source)+'\n','restored checker scans without running target')
+    # Installed tester runs def test_* functions on the installed interpreter.
+    tester=moved/'bin/hs-test'
+    tester_bytes=tester.read_bytes();tester_mtime=tester.stat().st_mtime_ns
+    print('METRIC installed_tester_bytes',len(tester_bytes),flush=True)
+    tsource=d/'sample tests.holy'
+    tsource.write_text('def test_ok():\n  assert 1 + 1 == 2\n\ndef test_bad():\n  raise "boom"\n')
+    r=subprocess.run(['/bin/sh',str(launcher),'test',str(tsource)],env=env,capture_output=True,text=True,timeout=60)
+    check(r.returncode==1 and not r.stderr and r.stdout=='ok   '+str(tsource)+'::test_ok\nFAIL '+str(tsource)+'::test_bad: boom at line 5\n1 passed, 1 failed\n','relocated test reports pass/fail like the Python CLI '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    check(tester.read_bytes()==tester_bytes and tester.stat().st_mtime_ns==tester_mtime,'test does not rebuild installed driver')
+    tsource.write_text('def test_ok():\n  assert 1 + 1 == 2\n')
+    r=subprocess.run(['/bin/sh',str(launcher),'test',str(tsource),'--json'],env=env,capture_output=True,text=True,timeout=60)
+    check(r.returncode==0 and not r.stderr and json.loads(r.stdout)=={'passed':1,'failed':0,'results':[{'file':str(tsource),'test':'test_ok','ok':True}]},'test --json matches Python CLI shape '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    r=subprocess.run(['/bin/sh',str(launcher),'test'],env=env,capture_output=True,text=True,timeout=10)
+    check(r.returncode==2 and not r.stdout and 'usage:' in r.stderr,'test requires a path')
+    tdir=d/'testdir';tdir.mkdir()
+    (tdir/'test_a.holy').write_text('def test_ok():\n  assert 1 + 1 == 2\n')
+    (tdir/'other.holy').write_text('def test_skip():\n  assert false\n')
+    (tdir/'t_b.hs').write_text('def test_hs():\n  assert 2 * 3 == 6\n')
+    r=subprocess.run(['/bin/sh',str(launcher),'test',str(tdir)],env=env,capture_output=True,text=True,timeout=120)
+    check(r.returncode==0 and r.stdout=='ok   '+str(tdir)+'/t_b.hs::test_hs\nok   '+str(tdir)+'/test_a.holy::test_ok\n2 passed, 0 failed\n','test discovers test files in a directory '+repr((r.returncode,r.stdout[-200:],r.stderr[-150:])))
+    tester.write_bytes(tester_bytes+b'changed')
+    r=subprocess.run(['/bin/sh',str(launcher),'test',str(tsource)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'tester checksum failed' in r.stderr,'corrupt tester refused before running')
+    # Corrupting this optional analysis route must not change the others.
+    source.write_text('print 41\n')
+    for command in ['run','interpret']:
+        r=subprocess.run(['/bin/sh',str(launcher),command,str(source)],env=env,capture_output=True,text=True,timeout=30)
+        check(r.returncode==0 and r.stdout=='41\n',command+' independent of tester checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='print 41\n','fmt independent of tester checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='ok: '+str(source)+'\n','check independent of tester checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'build',str(source),str(exe)],env=env,capture_output=True,text=True,timeout=60)
+    if r.returncode==0:r=subprocess.run([str(exe)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='41\n','build independent of tester checksum')
+    tester.write_bytes(tester_bytes)
+    tsums=moved/'TEST_SHA256SUMS';saved_test_sums=tsums.read_bytes();tsums.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'test',str(tsource)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing tester manifest reports incomplete bundle')
+    tsums.write_bytes(saved_test_sums);tester.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'test',str(tsource)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing tester binary reports incomplete bundle')
+    tester.write_bytes(tester_bytes);tester.chmod(0o755)
+    r=subprocess.run(['/bin/sh',str(launcher),'test',str(tsource)],env=env,capture_output=True,text=True,timeout=60)
+    check(r.returncode==0 and not r.stderr and r.stdout=='ok   '+str(tsource)+'::test_ok\n1 passed, 0 failed\n','restored tester runs tests')
     source.write_text('print 1 / 0\n')
     r=subprocess.run(['/bin/sh',str(launcher),'run',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode!=0 and 'division by zero' in r.stderr,'runtime error status')

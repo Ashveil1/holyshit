@@ -9,17 +9,18 @@ sh scripts/install-native.sh "$HOME/holyshit-native"
 "$HOME/holyshit-native/bin/hs" interpret examples/hello.holy
 "$HOME/holyshit-native/bin/hs" fmt examples/hello.holy
 "$HOME/holyshit-native/bin/hs" check examples/hello.holy
+"$HOME/holyshit-native/bin/hs" test examples
 ```
 
 The parent must already exist and the destination must not. Paths with spaces
 work. The installer checks the host and delegates to the audited bundle
 builder: verify pinned compiler checksum, stage a separate directory, build
-the eager driver, existing hs-written IR interpreter, hs formatter and hs
-checker with the native compiler, then publish without overwriting. All four
-must build before the staged directory is published; failure leaves no partial
-installation.
+the eager driver, existing hs-written IR interpreter, hs formatter, hs
+checker and hs tester with the native compiler, then publish without
+overwriting. All five must build before the staged directory is published;
+failure leaves no partial installation.
 It downloads nothing, uses no Python/gcc, changes no profile/PATH, creates no
-system-wide link and needs no sudo. Building four drivers takes additional
+system-wide link and needs no sudo. Building five drivers takes additional
 installation time and disk space; none is rebuilt for each invocation.
 
 Keep the whole installed directory together. The launcher resolves compiler,
@@ -88,7 +89,24 @@ binary or manifest, or checksum corruption, refuses with status 1 and reports
 an incomplete bundle; install a new complete bundle. Checker corruption does
 not block `run`, `interpret`, `fmt` or `build`.
 
-Test/REPL/LSP and source/bootstrap audits remain development tools
+`test FILE|DIR...` runs every top-level zero-arg `def test_*` of each given
+file; a directory means its recursively discovered test_*/t_* .holy/.hs
+files, like the Python CLI. A test passes by returning and fails by raising.
+Output and exit codes match the Python CLI: `ok   FILE::NAME` and
+`FAIL FILE::NAME: error` lines, a `N passed, M failed` summary, exit 1 on any
+failure or when no tests ran, and `--json` for the same machine-readable
+object the Python CLI prints. Tests execute one generated sibling driver file
+per source file on the installed hs interpreter, so the file's top-level code
+runs once and imports resolve as usual. Deviation from the Python CLI: the
+installed interpreter has the documented irinterp subset, so files using
+unsafe/ffi or out-of-subset builtins are reported failed with the refusal
+line instead of executing; the Python CLI runs them under CPython. Discovery
+uses the system `find` utility. The tester checksum is verified before every
+launch with the same accidental-corruption limits above; a missing tester
+binary or manifest, or checksum corruption, refuses with status 1. Tester
+corruption does not block `run`, `interpret`, `fmt`, `check` or `build`.
+
+REPL/LSP and source/bootstrap audits remain development tools
 that use Python. The Python formatter remains available for `-w`/`--check`. Kernel building has its existing separate native script;
 it is not an installed launcher command. Python reference/testing tools are
 kept deliberately and are not being deleted in this stage.
