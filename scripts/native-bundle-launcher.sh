@@ -2,7 +2,7 @@
 # Installed as BUNDLE/bin/hs. Resolve data relative to the moved bundle.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs build SOURCE OUTPUT | hs SOURCE.holy [args...]'
+USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs test FILE|DIR... | hs build SOURCE OUTPUT | hs SOURCE.holy [args...]'
 if [ "$#" -lt 1 ]; then
   printf '%s\n' "$USAGE" >&2
   exit 2
@@ -42,7 +42,12 @@ case "$COMMAND" in
     shift
     ;;
 esac
-case "$SOURCE" in /*) ;; *) SOURCE="$(pwd)/$SOURCE" ;; esac
+# check and test report paths exactly as given, like the Python CLI; the
+# other commands resolve the source against the invocation directory.
+case "$COMMAND" in
+  check|test) ;;
+  *) case "$SOURCE" in /*) ;; *) SOURCE="$(pwd)/$SOURCE" ;; esac ;;
+esac
 export HSROOT="$ROOT"
 export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT/std${HSPATH:+:$HSPATH}"
 case "$COMMAND" in
@@ -113,6 +118,21 @@ case "$COMMAND" in
       exec "$ROOT/bin/hs-check" "$SOURCE" --json
     fi
     exec "$ROOT/bin/hs-check" "$SOURCE"
+    ;;
+  test)
+    # All positional arguments are paths (FILE|DIR...), like the Python CLI.
+    if [ ! -f "$ROOT/bin/hs-test" ] || [ ! -f "$ROOT/TEST_SHA256SUMS" ]; then
+      printf '%s\n' 'installed tester is missing; install a new complete bundle' >&2
+      exit 1
+    fi
+    (cd "$ROOT" && sha256sum --status -c TEST_SHA256SUMS) || {
+      printf '%s\n' 'installed tester checksum failed' >&2
+      exit 1
+    }
+    if [ "$AS_JSON" = yes ]; then
+      exec "$ROOT/bin/hs-test" "$SOURCE" "$@" --json
+    fi
+    exec "$ROOT/bin/hs-test" "$SOURCE" "$@"
     ;;
   build)
     if [ "$#" -ne 1 ]; then

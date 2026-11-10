@@ -1,0 +1,257 @@
+# Library for the installed native `hs test` driver: mirror hs.py cmd_test.
+# Discovery of test_*.holy / t_*.holy (.hs) files, zero-arg def test_*
+# selection from the raw parse, sibling temp driver generation, subprocess
+# execution on the installed hs interpreter, @@hs-test marker parsing and
+# text/JSON aggregation. Kept free of driver I/O so the runner stays small.
+import parselib
+def sw(s, pre):
+  return s[0:len(pre)] == pre
+def trailing_line(s):
+  n = len(s)
+  k = n
+  while k > 0 and find("0123456789", s[k - 1]) >= 0:
+    k = k - 1
+  if k == n or k < 9:
+    return [s, null]
+  if s[k - 9:k] != " at line ":
+    return [s, null]
+  return [s[0:k - 9], s[k:n]]
+def parse_err(e):
+  # str(HSErr) for a parselib parse error: hs raise appends the raise-site
+  # line, so e arrives as "msg at line S at line R"; Python reports
+  # "error: msg at line S".
+  core = e
+  once = trailing_line(e)
+  if once[1] != null and trailing_line(once[0])[1] != null:
+    core = once[0]
+  return "error: " + core
+def ew(s, suf):
+  return s[len(s) - len(suf):] == suf
+def rfind(s, sub):
+  i = -1
+  start = 0
+  while true:
+    j = find(s[start:], sub)
+    if j < 0:
+      return i
+    i = start + j
+    start = i + 1
+  return i
+def rstrip_nl(s):
+  while len(s) > 0 and s[len(s) - 1:] == "\n":
+    s = s[0:len(s) - 1]
+  return s
+def ws_strip(s):
+  ws = " \t\n\rx0bx0c"
+  while len(s) > 0 and contains(ws, s[0:1]):
+    s = s[1:]
+  while len(s) > 0 and contains(ws, s[len(s) - 1:]):
+    s = s[0:len(s) - 1]
+  return s
+def shq(s):
+  return "'" + join("'\\''", split(s, "'")) + "'"
+def dirname(p):
+  i = rfind(p, "/")
+  if i < 0:
+    return "."
+  if i == 0:
+    return "/"
+  return p[0:i]
+def basename(p):
+  i = rfind(p, "/")
+  return p[i + 1:]
+def normpath(p):
+  absolute = sw(p, "/")
+  parts = []
+  for comp in split(p, "/"):
+    if comp == "" or comp == ".":
+      continue
+    if comp == "..":
+      if len(parts) > 0 and parts[len(parts) - 1] != "..":
+        parts = parts[0:len(parts) - 1]
+      elif not absolute:
+        append(parts, "..")
+    else:
+      append(parts, comp)
+  r = join("/", parts)
+  if absolute:
+    r = "/" + r
+  if r == "":
+    if absolute:
+      return "/"
+    return "."
+  return r
+def cwd():
+  # The real working directory (Python's os.getcwd), not $PWD: a stale or
+  # mismatched PWD must not move the sibling temp driver file.
+  pid = my_pid()
+  f = tmpfile("cwd", pid)
+  system("pwd -P > " + shq(f) + " 2>/dev/null")
+  d = ""
+  try:
+    d = rstrip_nl(read_text(f))
+  except as e:
+    d = ""
+  system("rm -f " + shq(f))
+  if d == "":
+    return env_or("PWD", ".")
+  return d
+def abspath(p):
+  if not sw(p, "/"):
+    p = cwd() + "/" + p
+  return normpath(p)
+def isdir(p):
+  return system("test -d " + shq(p)) == 0
+def my_pid():
+  try:
+    st = read_text("/proc/self/status")
+    i = find(st, "Pid:")
+    return ws_strip(split(split(st[i:], "\n")[0], "\t")[1])
+  except as e:
+    return "0"
+# Sort full paths the way sorted(os.walk(dir)) + sorted(files) yields them:
+# by (directory path, file name), both byte-wise.
+def walk_less(a, b):
+  da = dirname(a)
+  db = dirname(b)
+  if da != db:
+    return da < db
+  return basename(a) < basename(b)
+def walk_sort(xs):
+  if len(xs) < 2:
+    return xs
+  mid = int(len(xs) / 2)
+  left = walk_sort(xs[0:mid])
+  right = walk_sort(xs[mid:])
+  out = []
+  i = 0
+  j = 0
+  while i < len(left) and j < len(right):
+    if walk_less(right[j], left[i]):
+      append(out, right[j])
+      j = j + 1
+    else:
+      append(out, left[i])
+      i = i + 1
+  while i < len(left):
+    append(out, left[i])
+    i = i + 1
+  while j < len(right):
+    append(out, right[j])
+    j = j + 1
+  return out
+def env_or(k, fallback):
+  v = env(k)
+  if v == null or v == "":
+    return fallback
+  return v
+def tmpfile(kind, pid):
+  root = env_or("TMPDIR", "/tmp")
+  return root + "/_hs_test_" + kind + "_" + pid + ".txt"
+def dir_files(dir, pid):
+  f = tmpfile("find", pid)
+  system("find " + shq(dir) + " -type f 2>/dev/null > " + shq(f))
+  lines = split(read_text(f), "\n")
+  system("rm -f " + shq(f))
+  out = []
+  for line in lines:
+    if line == "":
+      continue
+    name = basename(line)
+    if (sw(name, "test_") or sw(name, "t_")) and (ew(name, ".holy") or ew(name, ".hs")):
+      append(out, line)
+  return walk_sort(out)
+def test_files(paths, pid):
+  out = []
+  for p in paths:
+    if isdir(p):
+      for f in dir_files(p, pid):
+        append(out, f)
+    else:
+      append(out, p)
+  return out
+ERRNOS = {"1": "Operation not permitted", "2": "No such file or directory", "13": "Permission denied", "20": "Not a directory", "21": "Is a directory", "24": "Too many open files", "26": "Text file busy", "28": "No space left on device", "30": "Read-only file system", "36": "File name too long", "40": "Too many levels of symbolic links"}
+def read_err(e, path):
+  # Native read_text errors look like "open failed: errno 2 at line N";
+  # Python reports str(OSError) = "[Errno 2] No such file or directory: 'p'".
+  m = e
+  i = rfind(m, " at line ")
+  if i >= 0:
+    m = m[0:i]
+  n = ""
+  j = find(m, "errno ")
+  if j >= 0:
+    n = m[j + 6:]
+  if n == "" or not contains("0123456789", n[0:1]):
+    return m
+  text = "os error " + n
+  if has(ERRNOS, n):
+    text = ERRNOS[n]
+  return "[Errno " + n + "] " + text + ": '" + path + "'"
+def select_tests(prog):
+  names = []
+  for n in prog:
+    if n["t"] == "def" and sw(n["name"], "test_") and len(n["params"]) == 0:
+      append(names, n["name"])
+  return names
+def build_driver(src, names):
+  lines = [rstrip_nl(src), "", "_hs_fail = 0"]
+  for nm in names:
+    append(lines, "try:")
+    append(lines, "  " + nm + "()")
+    append(lines, "  print \"@@hs-test ok " + nm + "\"")
+    append(lines, "except as _hs_e:")
+    append(lines, "  _hs_fail = _hs_fail + 1")
+    append(lines, "  print \"@@hs-test FAIL " + nm + " \" + _hs_e")
+  return join("\n", lines) + "\n"
+def run_file(path, pid, interp_bin):
+  results = []
+  src = ""
+  try:
+    src = read_text(path)
+  except as e:
+    append(results, {"file": path, "test": null, "ok": false, "error": read_err(e, path)})
+    return results
+  prog = null
+  try:
+    prog = parselib.parse(src)
+  except as e:
+    append(results, {"file": path, "test": null, "ok": false, "error": parse_err(e)})
+    return results
+  names = select_tests(prog)
+  if len(names) == 0:
+    return results
+  tmp = dirname(abspath(path)) + "/_hs_test_tmp_" + pid + ".holy"
+  outf = tmpfile("out", pid)
+  errf = tmpfile("err", pid)
+  write_text(tmp, build_driver(src, names))
+  system(shq(interp_bin) + " " + shq(tmp) + " > " + shq(outf) + " 2> " + shq(errf))
+  system("rm -f " + shq(tmp))
+  out = read_text(outf)
+  err = read_text(errf)
+  system("rm -f " + shq(outf) + " " + shq(errf))
+  seen = {}
+  for line in split(out, "\n"):
+    if sw(line, "@@hs-test ok "):
+      nm = line[13:]
+      seen[nm] = 1
+      append(results, {"file": path, "test": nm, "ok": true})
+    elif sw(line, "@@hs-test FAIL "):
+      rest = line[15:]
+      i = find(rest, " ")
+      nm = rest
+      msg = ""
+      if i >= 0:
+        nm = rest[0:i]
+        msg = rest[i + 1:]
+      seen[nm] = 1
+      append(results, {"file": path, "test": nm, "ok": false, "error": msg})
+  for nm in names:
+    if not has(seen, nm):
+      err = ws_strip(err)
+      last = "did not run"
+      if err != "":
+        el = split(err, "\n")
+        last = el[len(el) - 1]
+      append(results, {"file": path, "test": nm, "ok": false, "error": last})
+  return results

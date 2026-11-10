@@ -1,0 +1,53 @@
+# Installed native `hs test` driver: run every top-level zero-arg def test_*
+# of each file (directories mean their test_*.holy / t_*.holy / .hs files),
+# mirroring hs.py test. Tests execute on the installed hs interpreter, one
+# generated sibling driver file per source file; a test passes by returning
+# and fails by raising. Text output is the Python CLI's ok/FAIL lines and
+# summary; --json prints the same machine-readable object. Exit 1 on any
+# failure or when no tests ran. Deviation from the Python CLI: tests run on
+# the hs-written IR interpreter with its documented subset, so files using
+# unsafe/ffi or out-of-subset builtins are reported failed with the
+# interpreter's refusal line instead of executing.
+import test
+
+def die(msg, code):
+  f = open("/dev/stderr", "w")
+  write(f, "error: " + msg + "\n")
+  close(f)
+  scall(60, code, 0, 0, 0, 0, 0)
+
+args = argv()
+as_json = false
+paths = []
+for a in args:
+  if a == "--json":
+    as_json = true
+  elif not test.sw(a, "-"):
+    append(paths, a)
+root = test.env_or("HSROOT", "")
+if root == "":
+  die("HSROOT is not set; run through the installed hs launcher", 2)
+pid = test.my_pid()
+results = []
+for path in test.test_files(paths, pid):
+  for r in test.run_file(path, pid, root + "/bin/hs-interp"):
+    append(results, r)
+failed = 0
+for x in results:
+  if not x["ok"]:
+    failed = failed + 1
+if as_json:
+  print json_str({"passed": len(results) - failed, "failed": failed, "results": results})
+else:
+  for x in results:
+    nm = x["test"]
+    if nm == null:
+      nm = "(parse)"
+    if x["ok"]:
+      print "ok   " + x["file"] + "::" + nm
+    else:
+      print "FAIL " + x["file"] + "::" + nm + ": " + x["error"]
+  print str(len(results) - failed) + " passed, " + str(failed) + " failed"
+if failed > 0 or len(results) == 0:
+  scall(60, 1, 0, 0, 0, 0, 0)
+scall(60, 0, 0, 0, 0, 0, 0)

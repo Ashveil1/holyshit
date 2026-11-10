@@ -95,7 +95,9 @@ with tempfile.TemporaryDirectory(prefix='hs native check ') as temp:
         cdir = d / 'cases' / c['name']; cdir.mkdir(parents=True)
         for rel, content in c['files'].items():
             p = cdir / rel; p.parent.mkdir(parents=True, exist_ok=True); p.write_text(content)
-        main = Path(c['main']); main = main if main.is_absolute() else cdir / main
+        # Paths are passed exactly as given (relative to the case directory),
+        # matching how the Python CLI echoes them in ok:/JSON output.
+        main = c['main']
         hspath = ':'.join(str(Path(h) if Path(h).is_absolute() else cdir / h) for h in c['hspath'])
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
         if hspath: env['HSPATH'] = hspath
