@@ -12,32 +12,26 @@ SYS_LS = 78
 SYS_MKDIR = 83
 SYS_UNLINK = 87
 SYS_SYNC = 74
-
 def sc(nr, a1, a2, a3, a4, a5, a6):
   return scall(nr, a1, a2, a3, a4, a5, a6)
-
 def saddr(s):
   # address of a Str's payload (header [kind][len] is 16 bytes)
   unsafe:
     Ptr p = as_ptr(s)
     return as_int(p + 16)
-
 def ubuf(n):
   unsafe:
     Ptr p = alloc(n)
     return as_int(p)
-
 def puts(s):
   # exact bytes, no extra newline (unlike print)
   return sc(SYS_WRITE, 1, saddr(s), len(s), 0, 0, 0)
-
 def readline():
   b = ubuf(256)
   n = sc(SYS_READ, 0, b, 256, 0, 0, 0)
   if n <= 0:
     return null
   return read_mem(b, n)
-
 def cat(path):
   fd = sc(SYS_OPEN, saddr(path), len(path), 0, 0, 0, 0)
   if fd < 0:
@@ -50,7 +44,6 @@ def cat(path):
       break
     sc(SYS_WRITE, 1, b, n, 0, 0, 0)
   sc(SYS_CLOSE, fd, 0, 0, 0, 0, 0)
-
 def ls(path):
   b = ubuf(1024)
   n = sc(SYS_LS, saddr(path), len(path), b, 1024, 0, 0)
@@ -61,7 +54,6 @@ def ls(path):
     print "(empty)"
     return
   sc(SYS_WRITE, 1, b, n, 0, 0, 0)
-
 def writefile(path, text):
   fd = sc(SYS_OPEN, saddr(path), len(path), 1, 0, 0, 0)
   if fd < 0:
@@ -69,7 +61,6 @@ def writefile(path, text):
     return
   sc(SYS_WRITE, fd, saddr(text), len(text), 0, 0, 0)
   sc(SYS_CLOSE, fd, 0, 0, 0, 0, 0)
-
 def main():
   print "holyshit sh - type help"
   while true:
@@ -125,7 +116,7 @@ def main():
       continue
     if cmd == "sync":
       if sc(SYS_SYNC, 0, 0, 0, 0, 0, 0) < 0:
-        print "sync failed: no disk"
+        print "sync failed: no disk or volume refused"
       else:
         print "synced"
       continue

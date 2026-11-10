@@ -415,6 +415,35 @@ with tempfile.TemporaryDirectory() as d:
               out[-800:])
         m = re.search(r"fails (\d+)", out)
         check("kvol all assertions pass", m and m.group(1) == "0", out[-800:])
+    # Fail-closed storage cases. Every rejected sync must leave the host
+    # disk file byte-identical, not merely print a success marker.
+    safety = os.path.join(d, "kvolsafety.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kvolsafety.holy"), safety)
+    check("kvol safety build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        import struct
+        cases = [("oversize", None, "cap-refusal-ok"),
+                 ("length zero", 0, "corrupt-refusal-ok"),
+                 ("length too short", 7, "corrupt-refusal-ok"),
+                 ("length over cap", 131073, "corrupt-refusal-ok"),
+                 ("bad payload", 8, "corrupt-refusal-ok")]
+        for label, size, marker in cases:
+            before = bytearray(1 << 20)
+            if size is not None:
+                before[:12] = b"KVOL" + struct.pack("<II", size, 23)
+                before[512:520] = b"BAD!" + bytes(4)
+            image = os.path.join(d, "safety.img")
+            with open(image, "wb") as f:
+                f.write(before)
+            out = boot(safety, timeout=5, disk=image,
+                       until=["kvol-safety-done"])
+            check("kvol safety " + label,
+                  marker in out and "kvol-safety-done" in out
+                  and "EXC " not in out and "error:" not in out,
+                  out[-800:])
+            with open(image, "rb") as f:
+                after = f.read()
+            check("kvol unchanged " + label, after == before)
     # shell: stage ramdisk + user ELFs, pack, then type over sendkeys.
     # Keys start late and slow: TCG boot takes seconds and the keyboard
     # FIFO is bounded; slow pacing still avoids assumptions about host PS/2 timing.

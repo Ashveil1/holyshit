@@ -3,42 +3,37 @@
 # Layout: sector 0 is the commit header - "KVOL" | u32 image bytes |
 # u32 generation; sectors 1.. hold the KRFS image, zero-padded to a
 # sector multiple. sync() writes the image sectors FIRST and the header
-# LAST, so a torn sync leaves the previous generation intact: the header
-# is the only commit point. Persistence is explicit - nothing reaches the
+# LAST. This is NOT atomic: an interrupted sync can destroy the previous
+# image. No journal, dual slot, checksum, or cache-flush barrier exists.
+# Interrupted-sync durability is explicitly unsupported.
+# Persistence is explicit - nothing reaches the
 # disk until sync() runs, matching the reality that the kernel has no
 # clean shutdown path (QEMU is simply killed).
 #
-# mount() -> entries loaded, 0 when the disk holds no/invalid volume
-# (the caller then starts from an empty or initrd-filled tree), -1 when
-# no ATA device exists. Helpers come before their users: the x64 backend
+# mount() -> entries loaded, 0 when no KVOL signature exists, -1 when
+# no ATA device exists, -2 for a recognized but corrupt volume. A corrupt
+# mount latches write refusal until reboot. Helpers come before their users: the x64 backend
 # resolves module-level names statically.
-
 import kata
 import kkrfs
 import kvfs
-
 # 256 sectors = one ATA command, so reads and writes never need chunking.
 # hs handles do not support pointer arithmetic outside unsafe blocks, and
 # as_int-normalized buffer addresses alias each other on the x64 backend,
 # so offset arithmetic on buffer addresses is not available here at all.
 MAX_BYTES = 131072
-
 gen_ = 0
-
+volume_blocked_ = false
 def ceil512(n):
   # sector count for n bytes with integer division (safe `/` is Float)
   unsafe:
     I64 x = n
     return (x + 511) / 512
-
 def zero(base, n):
   i = 0
   while i < n:
     kkrfs.put8le(base, i, 0)
     i = i + 1
-
-
-
 def probe():
   # present() issues IDENTIFY, which stages a 512-byte data block (DRQ);
   # kata leaves draining it to the caller. Undrained, the next commands'
@@ -48,9 +43,8 @@ def probe():
     return false
   kata.read_identify(kata.identify_buf())
   return true
-
 def mount():
-  global gen_
+  global gen_, volume_blocked_
   if not probe():
     return -1
   hdr = alloc(512)
@@ -59,24 +53,32 @@ def mount():
     return 0
   n = kkrfs.rd32le(hdr, 4)
   g = kkrfs.rd32le(hdr, 8)
-  if n <= 0 or n > MAX_BYTES:
-    return 0
+  if n < 8 or n > MAX_BYTES:
+    volume_blocked_ = true
+    return -2
   nsec = ceil512(n)
   buf = alloc(nsec * 512)
   kata.read(1, nsec, buf)
   loaded = kkrfs.parse(buf, n)
   if loaded < 0:
-    # a present-but-corrupt image must fail loudly, never be clobbered
+    # A corrupt volume stays write-blocked even if callers change the VFS.
+    volume_blocked_ = true
     return -2
   gen_ = g
   return loaded
-
 def sync():
   global gen_
-  if not probe():
+  # Check refusal and size BEFORE probing or issuing any ATA I/O.
+  if volume_blocked_:
+    print "sync refused: corrupt volume"
     return false
   img = kkrfs.serialize()
   n = img[1]
+  if n > MAX_BYTES:
+    print "sync refused: image exceeds 128 KiB"
+    return false
+  if not probe():
+    return false
   nsec = ceil512(n)
   # the serializer's buffer is exactly n bytes; the disk wants whole
   # sectors, so stage a sector-padded copy (also zero-padded: alloc does
@@ -90,7 +92,7 @@ def sync():
     kkrfs.put8le(base, i, 0)
     i = i + 1
   kata.write(1, nsec, base)
-  # the header commits the new image; write it last
+  # Header last is only an ordering convention, NOT an atomic commit.
   hdr = alloc(512)
   zero(hdr, 512)
   kkrfs.put8le(hdr, 0, 75)
@@ -102,6 +104,5 @@ def sync():
   kata.write(0, 1, hdr)
   gen_ = gen_ + 1
   return true
-
 def generation():
   return gen_

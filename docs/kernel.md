@@ -121,10 +121,14 @@ reboots. A run with `-drive file=vol.img,if=ide,format=raw` gets a volume:
   (`"KVOL"` | `u32` image bytes | `u32` generation), sectors 1.. hold the
   KRFS image, zero-padded to a sector multiple, capped at 128 KiB (256
   sectors, one command). `sync()` writes the image sectors first and the
-  header last, so a torn sync leaves the previous generation intact: the
-  header is the only commit point. `mount()` returns the entries loaded,
+  header last. Interrupted-sync durability is explicitly UNSUPPORTED:
+  payload sectors are overwritten in place, so a torn sync can destroy the
+  previous image. There is no journal, dual payload slot, checksum, or ATA
+  cache-flush barrier. Atomic storage is a later milestone. `mount()` returns the entries loaded,
   0 for an empty disk (caller starts from a fresh or initrd-filled tree),
-  -1 with no ATA device, -2 for a corrupt image (loud, never clobbered)
+  -1 with no ATA device, -2 for a recognized corrupt header/image. Corrupt
+  mount latches a write refusal until reboot, even if the caller changes
+  the VFS. Oversized images are refused loudly before any ATA I/O.
 - persistence is explicit: nothing reaches the disk until `sync()` runs,
   exposed to ring 3 as `SYS_SYNC` (74) and the shell's `sync` command
 - buffer addressing pitfall this layer had to respect: an `alloc` handle and
@@ -136,7 +140,9 @@ reboots. A run with `-drive file=vol.img,if=ide,format=raw` gets a volume:
   images rejected), `kernel/kvoltest.holy` (content-driven 3-boot cycle on a
   scratch image: populate + sync, verify + mutate + sync, verify final),
   `kernel/kushpersist.holy` (the ring 3 shell writes a file, syncs, and the
-  next boot's shell cats it back)
+  next boot's shell cats it back), `kernel/kvolsafety.holy` (oversize
+  rejection and invalid header/image write refusal, with host-side disk
+  byte equality checks)
 
 ## user mode + syscall (policy in `.holy`, mechanism in the encoder)
 
