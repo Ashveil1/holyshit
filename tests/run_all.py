@@ -59,6 +59,7 @@ SUITES = [
     ("test_xkernel.py", "kernel on QEMU"),
     ("test_keycode_native.py", "native keyboard integer code image and finite polling allocations"),
     ("test_keyboard_queue.py", "deterministic keyboard FIFO/overflow/IF/readkey on QEMU"),
+    ("test_mouse_packet.py", "PS/2 mouse packet decode/FIFO and real IRQ12 injection on QEMU"),
     ("test_timer_irq.py", "deterministic timer IRQ GPR preservation"),
     ("test_kernel_ir.py", "retained AST kernel reference on QEMU"),
     ("test_kernel_default.py", "public kernel IR selection"),
@@ -173,7 +174,7 @@ SUITES = [
 ]
 
 
-QUICK_SKIP = ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py")
+QUICK_SKIP = ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py")
 
 
 def main(argv):
