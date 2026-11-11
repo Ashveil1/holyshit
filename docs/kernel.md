@@ -107,6 +107,43 @@ modules - no real block driver, data lives in RAM
 - tests: `tests/t_vfs.holy` + `tests/x64/vfs.holy` (the whole VFS on interp/native/x64),
   `kernel/kfstest.holy` (real boot: loads the ramdisk, then reads/writes/deletes on QEMU)
 
+### persistent volume (KRFS on ATA)
+
+The same KRFS image format also lives on the QEMU IDE disk, so files survive
+reboots. A run with `-drive file=vol.img,if=ide,format=raw` gets a volume:
+
+- `kernel/kata.holy` - 28-bit LBA PIO driver (identify/read/write, up to 256
+  sectors per command). IDENTIFY stages a 512-byte data block that every
+  caller must drain (`read_identify`) before further commands, and every
+  sector of a read or write is its own data phase gated on DRQ - skipping
+  either makes the next command's data vanish silently
+- `kernel/kvol.holy` - volume layer: sector 0 is the commit header
+  (`"KVOL"` | `u32` image bytes | `u32` generation), sectors 1.. hold the
+  KRFS image, zero-padded to a sector multiple, capped at 128 KiB (256
+  sectors, one command). `sync()` writes the image sectors first and the
+  header last. Interrupted-sync durability is explicitly UNSUPPORTED:
+  payload sectors are overwritten in place, so a torn sync can destroy the
+  previous image. There is no journal, dual payload slot, checksum, or ATA
+  cache-flush barrier. Atomic storage is a later milestone. `mount()` returns the entries loaded,
+  0 for an empty disk (caller starts from a fresh or initrd-filled tree),
+  -1 with no ATA device, -2 for a recognized corrupt header/image. Corrupt
+  mount latches a write refusal until reboot, even if the caller changes
+  the VFS. Oversized images are refused loudly before any ATA I/O.
+- persistence is explicit: nothing reaches the disk until `sync()` runs,
+  exposed to ring 3 as `SYS_SYNC` (74) and the shell's `sync` command
+- buffer addressing pitfall this layer had to respect: an `alloc` handle and
+  its `as_int` are different views on the x64 backend (the `as_int` view is
+  wrongly spaced across allocations), so byte buffers stay handles and
+  `read_mem` goes through `kkrfs.addr_of` (`as_int(as_ptr(h))`, the
+  identity for plain int addresses)
+- tests: `tests/t_krfs.holy` (interp round-trip, fixpoint bytes, malformed
+  images rejected), `kernel/kvoltest.holy` (content-driven 3-boot cycle on a
+  scratch image: populate + sync, verify + mutate + sync, verify final),
+  `kernel/kushpersist.holy` (the ring 3 shell writes a file, syncs, and the
+  next boot's shell cats it back), `kernel/kvolsafety.holy` (oversize
+  rejection and invalid header/image write refusal, with host-side disk
+  byte equality checks)
+
 ## user mode + syscall (policy in `.holy`, mechanism in the encoder)
 
 A user program is a static ELF64 from `python3 hs.py xbuild prog.holy`, passed
@@ -182,7 +219,9 @@ User code reaches the VFS through the same syscall numbers as Linux (paths are
 ## Current limitations
 
 - Division by zero = CPU `#DE` -> `EXC 0` then halt (not catchable with try)
-- The filesystem is pure RAM - still no persist across reboots; no multi-process
+- With no `-drive` attached the filesystem is still pure RAM; persistence is
+  QEMU-only (no hardware probing), one volume, whole-image sync (no
+  write-back cache), 128 KiB cap; no multi-process
   user mode yet (one process + basic syscalls + one-shot `exec`, no fork/permissions)
 - `ticks` starts counting after boot; the keyboard is scancode set 1 (no shift)
 

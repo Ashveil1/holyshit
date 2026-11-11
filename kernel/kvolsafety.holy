@@ -1,0 +1,27 @@
+# Run on a blank disk (cap refusal), and on recognized corrupt volumes
+# (invalid lengths and malformed payload). The host checks every disk byte
+# is unchanged after each separate QEMU process.
+import kvfs
+import kvol
+assert kvfs.vfs_init()
+m = kvol.mount()
+if m == 0:
+  data = "x"
+  i = 0
+  while i < 17:
+    data = data + data
+    i = i + 1
+  assert kvfs.write("/oversize", data)
+  assert not kvol.sync()
+  assert kvol.generation() == 0
+  print "cap-refusal-ok"
+else:
+  assert m == -2
+  assert kvfs.write("/new", "must never reach disk")
+  assert not kvol.sync()
+  # Refusal is latched across repeated calls and additional VFS changes.
+  assert kvfs.write("/another", "still refused")
+  assert not kvol.sync()
+  assert kvol.generation() == 0
+  print "corrupt-refusal-ok"
+print "kvol-safety-done"

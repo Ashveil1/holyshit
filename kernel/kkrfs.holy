@@ -1,0 +1,139 @@
+# KRFS v1 bytes <-> kvfs, on any backend. The format (see scripts/mkramdisk.py):
+#   "KRFS" | u32 count
+#   per entry: u32 type (0 = file, 1 = dir) | u32 path_len | path bytes +
+#              pad | u32 size | data bytes + pad
+# Every u32 sits at a 4-aligned offset by construction, so load32/store32
+# stay alignment-safe on strict backends; byte data moves one byte at a
+# time. parse() reads from an absolute address (an initrd module or an ATA
+# sector buffer); serialize() returns a fresh buffer the caller owns.
+# Helpers come before their users: the x64 backend resolves module-level
+# names statically.
+
+import kvfs
+
+# helper names carry the le suffix on purpose: the x64 backend
+# resolves module-level names statically, and a generic name like rd32
+# here silently shadowed kmb.rd32 (different arity!) in every kernel
+# whose import closure contained both, corrupting the memory-map parse
+# far from the cause - owned ELF lifecycle caught the trailing fault
+
+def pad4le(n):
+  # round up to a multiple of 4 with integer division (safe `/` is Float)
+  unsafe:
+    I64 x = n
+    return (x + 3) / 4 * 4
+
+def addr_of(h):
+  # the real byte address of a buffer, for read_mem: as_int(handle)
+  # alone lands in a different, wrongly-spaced view where read_mem
+  # misses, but as_int(as_ptr(h)) is the true address on x64 and the
+  # identity on plain int addresses (initrd modules, interp buffers)
+  unsafe:
+    return as_int(as_ptr(h))
+
+def rd32le(base, off):
+  unsafe:
+    Ptr p = as_ptr(base)
+    return load32(p + off)
+
+def put8le(base, off, v):
+  unsafe:
+    Ptr p = as_ptr(base)
+    store8(p + off, v)
+
+def put32le(base, off, v):
+  unsafe:
+    Ptr p = as_ptr(base)
+    store32(p + off, v)
+
+def parse(base, n):
+  # -> entries loaded into kvfs, or -1 on a malformed image
+  # base may be an initrd module address (plain int) or an alloc
+  # handle; addr_of maps both to the address read_mem understands
+  if n < 8:
+    return -1
+  if read_mem(addr_of(base), 4) != "KRFS":
+    return -1
+  count = rd32le(base, 4)
+  if count < 0 or count > 4096:
+    return -1
+  off = 8
+  loaded = 0
+  i = 0
+  while i < count:
+    if off + 12 > n:
+      return -1
+    t = rd32le(base, off)
+    plen = rd32le(base, off + 4)
+    if t != 0 and t != 1:
+      return -1
+    if plen < 0 or plen > 1024:
+      return -1
+    path = read_mem(addr_of(base) + off + 8, plen)
+    sizeoff = off + 8 + pad4le(plen)
+    if sizeoff + 4 > n:
+      return -1
+    size = rd32le(base, sizeoff)
+    if size < 0:
+      return -1
+    data_off = sizeoff + 4
+    if data_off + size > n:
+      return -1
+    full = "/" + path
+    if t == 1:
+      if not kvfs.mkdirs(full):
+        return -1
+    else:
+      if not kvfs.mkdirs(kvfs.split_parent(full)[0]):
+        return -1
+      if not kvfs.write(full, read_mem(addr_of(base) + data_off, size)):
+        return -1
+    loaded = loaded + 1
+    off = data_off + pad4le(size)
+    i = i + 1
+  return loaded
+
+def serialize():
+  # -> [base, nbytes]: a fresh KRFS image of the current kvfs tree.
+  # Entry order is kvfs.walk() inode order, a fixpoint of parse+serialize,
+  # so an unchanged tree syncs to identical bytes.
+  entries = kvfs.walk()
+  total = 8
+  for e in entries:
+    total = total + 8 + pad4le(byte_len(e[1]) - 1) + 4 + pad4le(byte_len(e[2]))
+  # keep the raw alloc handle: put8/put32/rd8 all go through as_ptr,
+  # whose spacing the allocator manages correctly; an as_int-normalized
+  # buffer aliases other objects (48-byte stride) and smears on copy
+  # alloc sits in an unsafe block: the strict x64 corpus build rejects a
+  # bare unsafe-builtin call (interp tolerates it)
+  unsafe:
+    buf = alloc(total)
+  # "KRFS" one byte at a time: hs has no multi-char byte literal
+  put8le(buf, 0, 75)
+  put8le(buf, 1, 82)
+  put8le(buf, 2, 70)
+  put8le(buf, 3, 83)
+  put32le(buf, 4, len(entries))
+  off = 8
+  for e in entries:
+    # kvfs kinds match KRFS types: 0 = file, 1 = dir
+    path = e[1][1:]
+    plen = byte_len(path)
+    data = e[2]
+    size = byte_len(data)
+    put32le(buf, off, e[0])
+    put32le(buf, off + 4, plen)
+    off = off + 8
+    i = 0
+    while i < plen:
+      put8le(buf, off + i, byte_at(path, i))
+      i = i + 1
+    off = off + pad4le(plen)
+    put32le(buf, off, size)
+    off = off + 4
+    i = 0
+    while i < size:
+      put8le(buf, off + i, byte_at(data, i))
+      i = i + 1
+    off = off + pad4le(size)
+  return [buf, total]

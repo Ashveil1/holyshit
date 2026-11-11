@@ -1,0 +1,57 @@
+# shell persistence end to end: ATA volume mounted, initrd supplies the
+# toolchain (/bin), the shell's file commands land on the volume through
+# `sync`. Two boots of one disk image: the first writes and syncs, the
+# second reads the files back - typed over QEMU sendkeys both times.
+import kmb
+import kpmm
+import ksyscall
+import kvfs
+import kramdisk
+import kvol
+import kuser
+
+fails = 0
+
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("vfs ready", kvfs.vfs_init(), true)
+m = kvol.mount()
+expect("volume mount ok", m >= 0, true)
+persisted = kvfs.is_file("/note")
+expect("ramdisk loads", kramdisk.load() > 0, true)
+expect("shell present", kvfs.is_file("/bin/uush"), true)
+
+data = kvfs.read("/bin/uush")
+expect("shell readable", data != null, true)
+expect("shell loads", kuser.load_image(kuser.payload_addr(data), len(data)), 1)
+expect("handler registered", ksyscall.start(), true)
+expect("exec enabled", kuser.enable_exec(), true)
+
+# --- ring 3 (the shell; driven by sendkeys) ---
+kuser.run()
+
+expect("user stopped", ksyscall.user_stopped(), true)
+expect("exit code", ksyscall.user_exit_code(), 0)
+expect("kernel alive", cr3() != 0, true)
+if persisted:
+  # second boot: the first boot's writes came back from the disk, and the
+  # second boot's own write + sync landed in the tree again
+  expect("note persisted", kvfs.read("/note"), "persisted123")
+  expect("second persisted", kvfs.read("/second"), "two456")
+  print "kushpersist-verify-done"
+else:
+  # first boot: the shell wrote and synced the note
+  expect("note written", kvfs.read("/note"), "persisted123")
+  expect("generation one", kvol.generation(), 1)
+  print "kushpersist-populate-done"
+
+print "fails", fails
+print "kushpersist-done"

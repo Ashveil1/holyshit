@@ -1,4 +1,5 @@
-import kprim
+# (no kprim import: it runs its self-test banner at import time,
+# and every kernel that pulls kata transitively would emit it)
 DATA = 0x1F0
 ERR = 0x1F1
 SEC_CNT = 0x1F2
@@ -11,6 +12,7 @@ CMD_IDENTIFY = 0xEC
 CMD_READ = 0x20
 CMD_WRITE = 0x30
 ST_ERR = 0x01
+ST_DRQ = 0x08
 ST_DRDY = 0x40
 ST_BSY = 0x80
 SECTOR = 512
@@ -36,6 +38,19 @@ def wait_ready():
   if s & ST_DRDY == 0:
     return false
   return true
+def wait_drq():
+  # data transfer may start only once the drive raises DRQ with BSY clear;
+  # DRDY alone passes while the drive is still preparing the phase, and
+  # bytes moved in that window go nowhere
+  i = 0
+  while i < SPIN:
+    s = status()
+    if s & ST_ERR != 0:
+      return false
+    if s & ST_BSY == 0 and s & ST_DRQ != 0:
+      return true
+    i = i + 1
+  return false
 def lba_setup(lba, count):
   ioport_out(SEC_CNT, count, 1)
   ioport_out(LBA0, lba & 0xFF, 1)
@@ -100,18 +115,22 @@ def read(lba, count, dst):
   select(lba >> 24)
   lba_setup(lba, count)
   ioport_out(STATUS, CMD_READ, 1)
-  if not wait_ready():
-    raise "ata read failed"
   unsafe:
     Ptr q = as_ptr(dst)
-  i = 0
-  n = count * SECTOR
-  while i < n:
-    w = ioport_in(DATA, 2)
-    unsafe:
-      store8(q + i, w & 0xFF)
-      store8(q + i + 1, w >> 8 & 0xFF)
-    i = i + 2
+  sec = 0
+  while sec < count:
+    # every sector is its own data-in phase with its own DRQ
+    if not wait_drq():
+      raise "ata read failed"
+    i = 0
+    base = sec * SECTOR
+    while i < SECTOR:
+      w = ioport_in(DATA, 2)
+      unsafe:
+        store8(q + base + i, w & 0xFF)
+        store8(q + base + i + 1, w >> 8 & 0xFF)
+      i = i + 2
+    sec = sec + 1
   return true
 def rd8(addr, off):
   unsafe:
@@ -123,15 +142,19 @@ def write(lba, count, src):
   select(lba >> 24)
   lba_setup(lba, count)
   ioport_out(STATUS, CMD_WRITE, 1)
-  if not wait_ready():
-    raise "ata write failed"
-  i = 0
-  n = count * SECTOR
-  while i < n:
-    lo = rd8(src, i)
-    hi = rd8(src, i + 1)
-    ioport_out(DATA, lo | (hi << 8), 2)
-    i = i + 2
+  sec = 0
+  while sec < count:
+    # every sector is its own data-out phase with its own DRQ
+    if not wait_drq():
+      raise "ata write failed"
+    i = 0
+    base = sec * SECTOR
+    while i < SECTOR:
+      lo = rd8(src, base + i)
+      hi = rd8(src, base + i + 1)
+      ioport_out(DATA, lo | (hi << 8), 2)
+      i = i + 2
+    sec = sec + 1
   # the drive is busy committing the sector: the next command is ignored
   # while BSY is set, so wait for it to finish
   if not wait_ready():

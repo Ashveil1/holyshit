@@ -1,0 +1,80 @@
+# kkrfs round-trip: serialize a kvfs tree to KRFS bytes, parse them into a
+# fresh tree, and verify everything twice - content and byte stability.
+import kvfs
+import kkrfs
+
+fails = 0
+
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+def byte_at_buf(base, off):
+  unsafe:
+    Ptr p = as_ptr(base)
+    return load8(p + off)
+
+def same_bytes(a, b, n):
+  i = 0
+  while i < n:
+    if byte_at_buf(a, i) != byte_at_buf(b, i):
+      return false
+    i = i + 1
+  return true
+
+expect("init", kvfs.vfs_init(), true)
+expect("empty serialize loads zero", kkrfs.parse(kkrfs.serialize()[0], kkrfs.serialize()[1]), 0)
+
+expect("dirs", kvfs.mkdirs("/etc"), true)
+expect("nested dirs", kvfs.mkdirs("/a/b/c"), true)
+expect("motd", kvfs.write("/motd", "holyshit persists\n"), true)
+expect("config", kvfs.write("/etc/config", "key=value\n"), true)
+expect("deep", kvfs.write("/a/b/c/deep.txt", "deep\n"), true)
+expect("empty file", kvfs.write("/empty", ""), true)
+
+img = kkrfs.serialize()
+base = img[0]
+n = img[1]
+expect("magic", read_mem(kkrfs.addr_of(base), 4), "KRFS")
+expect("count", kkrfs.rd32le(base, 4), 8)
+expect("size sane", n > 60, true)
+
+expect("re-init", kvfs.vfs_init(), true)
+expect("tree gone", kvfs.ls("/"), [])
+expect("parse", kkrfs.parse(base, n), 8)
+expect("root listing", kvfs.ls("/"), ["etc", "a", "motd", "empty"])
+expect("etc listing", kvfs.ls("/etc"), ["config"])
+expect("motd back", kvfs.read("/motd"), "holyshit persists\n")
+expect("config back", kvfs.read("/etc/config"), "key=value\n")
+expect("deep back", kvfs.read("/a/b/c/deep.txt"), "deep\n")
+expect("empty back", kvfs.read("/empty"), "")
+expect("empty stat", kvfs.stat("/empty"), [0, 0])
+expect("config stat", kvfs.stat("/etc/config"), [0, 10])
+
+# byte stability: parse + serialize of an unchanged tree is a fixpoint
+img2 = kkrfs.serialize()
+expect("fixpoint size", img2[1], n)
+expect("fixpoint bytes", same_bytes(img2[0], base, n), true)
+
+# malformed images are rejected, never trusted
+unsafe:
+  bad = alloc(4)
+kkrfs.put8le(bad, 0, 88)
+kkrfs.put8le(bad, 1, 82)
+kkrfs.put8le(bad, 2, 70)
+kkrfs.put8le(bad, 3, 83)
+expect("tiny rejected", kkrfs.parse(base, 4), -1)
+expect("bad magic rejected", kkrfs.parse(bad, 8), -1)
+kkrfs.put8le(base, 0, 88)
+expect("magic flipped rejected", kkrfs.parse(base, n), -1)
+kkrfs.put8le(base, 0, 75)
+kkrfs.put32le(base, 4, 99999)
+expect("huge count rejected", kkrfs.parse(base, n), -1)
+kkrfs.put32le(base, 4, 8)
+expect("truncated rejected", kkrfs.parse(base, n - 30), -1)
+
+print "fails", fails

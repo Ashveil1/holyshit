@@ -390,6 +390,60 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("kata all assertions pass", m and m.group(1) == "0", out[-800:])
         check("kata ran its checks", out.count("\nok ") >= 8, out[-800:])
+    # persistent volume (kernel/kvol.holy): a KRFS image on the ATA disk.
+    # One kernel is booted three times against the SAME image file - the
+    # tree must survive across processes: populate, verify + mutate,
+    # verify the mutation. Content-driven modes live in kvoltest.holy.
+    volimg = os.path.join(d, "kvol.img")
+    with open(volimg, "wb") as f:
+        f.write(bytes(1 << 20))
+    kvt = os.path.join(d, "kvol.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kvoltest.holy"), kvt)
+    check("kvoltest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kvt, timeout=20, disk=volimg, until=["kvol-done"])
+        check("kvol populate finished", "kvol-populated" in out, out[-800:])
+        check("kvol populate clean", "EXC " not in out and "\nFAIL " not in out,
+              out[-800:])
+        out = boot(kvt, timeout=20, disk=volimg, until=["kvol-done"])
+        check("kvol modify finished", "kvol-modified" in out, out[-800:])
+        check("kvol modify clean", "EXC " not in out and "\nFAIL " not in out,
+              out[-800:])
+        out = boot(kvt, timeout=20, disk=volimg, until=["kvol-done"])
+        check("kvol final finished", "kvol-final" in out, out[-800:])
+        check("kvol final clean", "EXC " not in out and "\nFAIL " not in out,
+              out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("kvol all assertions pass", m and m.group(1) == "0", out[-800:])
+    # Fail-closed storage cases. Every rejected sync must leave the host
+    # disk file byte-identical, not merely print a success marker.
+    safety = os.path.join(d, "kvolsafety.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kvolsafety.holy"), safety)
+    check("kvol safety build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        import struct
+        cases = [("oversize", None, "cap-refusal-ok"),
+                 ("length zero", 0, "corrupt-refusal-ok"),
+                 ("length too short", 7, "corrupt-refusal-ok"),
+                 ("length over cap", 131073, "corrupt-refusal-ok"),
+                 ("bad payload", 8, "corrupt-refusal-ok")]
+        for label, size, marker in cases:
+            before = bytearray(1 << 20)
+            if size is not None:
+                before[:12] = b"KVOL" + struct.pack("<II", size, 23)
+                before[512:520] = b"BAD!" + bytes(4)
+            image = os.path.join(d, "safety.img")
+            with open(image, "wb") as f:
+                f.write(before)
+            out = boot(safety, timeout=5, disk=image,
+                       until=["kvol-safety-done"])
+            check("kvol safety " + label,
+                  marker in out and "kvol-safety-done" in out
+                  and "EXC " not in out and "error:" not in out,
+                  out[-800:])
+            with open(image, "rb") as f:
+                after = f.read()
+            check("kvol unchanged " + label, after == before)
     # shell: stage ramdisk + user ELFs, pack, then type over sendkeys.
     # Keys start late and slow: TCG boot takes seconds and the keyboard
     # FIFO is bounded; slow pacing still avoids assumptions about host PS/2 timing.
@@ -437,7 +491,7 @@ with tempfile.TemporaryDirectory() as d:
             out.append((0.6, "ret"))
         return out
 
-    def shboot(lines, timeout):
+    def shboot(lines, timeout, kern=None, disk=None):
         # boot() but every sendkey reply is checked for errors
         slog = os.path.join(d, "shserial.log")
         msock = os.path.join(d, "shmon.sock")
@@ -447,10 +501,13 @@ with tempfile.TemporaryDirectory() as d:
             os.unlink(msock)
         except OSError:
             pass
-        p = subprocess.Popen([QEMU, "-kernel", ku, "-serial", f"file:{slog}",
-                              "-display", "none", "-m", "256M",
-                              "-monitor", f"unix:{msock},server=on,wait=off",
-                              "-initrd", srd],
+        cmd = [QEMU, "-kernel", kern or ku, "-serial", f"file:{slog}",
+               "-display", "none", "-m", "256M",
+               "-monitor", f"unix:{msock},server=on,wait=off",
+               "-initrd", srd]
+        if disk is not None:
+            cmd += ["-drive", f"file={disk},if=ide,format=raw,index=0,media=disk"]
+        p = subprocess.Popen(cmd,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
             booted = False
@@ -518,7 +575,7 @@ with tempfile.TemporaryDirectory() as d:
                       "rm /n", "exit"], 25)
         check("kush finished", "kushell-done" in out, out[-800:])
         check("kush did not fault", "EXC " not in out, out[-800:])
-        for line in ("commands: help echo cat ls mkdir rm write run exit",
+        for line in ("commands: help echo cat ls mkdir rm write run sync exit",
                      "holyshit test ramdisk", "second line here",
                      "no such file", "unknown command: bogus", "xyzzy 123"):
             check(f"kush output {line!r}", line in out, out[-800:])
@@ -539,6 +596,31 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("kushexec all assertions pass", m and m.group(1) == "0",
               out[-800:])
+        # shell persistence: write + sync typed over sendkeys, then a
+        # second boot of the SAME disk reads the files back through cat.
+        # The initrd supplies /bin; the volume holds what sync commits.
+        kp2 = os.path.join(d, "kup.elf")
+        rc = build_xkernel(os.path.join(ROOT, "kernel", "kushpersist.holy"), kp2)
+        check("kushpersist build clean", rc == 0)
+        pimg = os.path.join(d, "kushvol.img")
+        with open(pimg, "wb") as f:
+            f.write(bytes(1 << 20))
+        if rc == 0 and QEMU is not None:
+            out = shboot(["write /note persisted123", "sync", "exit"], 25,
+                         kern=kp2, disk=pimg)
+            check("kushpersist populate finished",
+                  "kushpersist-populate-done" in out, out[-800:])
+            check("kushpersist populate clean", "EXC " not in out, out[-800:])
+            check("kushpersist sync acked", "\nsynced\n" in out, out[-800:])
+            out = shboot(["cat /note", "write /second two456", "sync",
+                          "exit"], 25, kern=kp2, disk=pimg)
+            check("kushpersist verify finished",
+                  "kushpersist-verify-done" in out, out[-800:])
+            check("kushpersist verify clean", "EXC " not in out, out[-800:])
+            check("kushpersist cat persisted", "persisted123" in out, out[-800:])
+            m = re.search(r"fails (\d+)", out)
+            check("kushpersist all assertions pass", m and m.group(1) == "0",
+                  out[-800:])
     # exceptions
     for prog, vec in (("kxexc_pf.holy", "EXC 14"), ("kxexc_de.holy", "EXC 0")):
         kx = os.path.join(d, "kx.elf")

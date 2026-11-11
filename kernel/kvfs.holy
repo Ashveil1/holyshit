@@ -274,3 +274,23 @@ def fwrite(fd, data):
   v_data[ino] = s[:off] + data + s[off + len(data):]
   f_off[fd] = off + len(data)
   return len(data)
+def full_path(ino):
+  # absolute path of an inode: walk parents up to root
+  p = ""
+  while ino != 0:
+    p = "/" + v_names[ino] + p
+    ino = v_parent[ino]
+  return p
+
+def walk():
+  # [kind, path, data] per live inode except root, in inode order. Inode
+  # order is a fixpoint of mount-then-serialize, so a volume byte image is
+  # stable across syncs that change nothing.
+  out = []
+  i = 1
+  n = len(v_names)
+  while i < n:
+    if v_kind[i] != K_DEAD:
+      append(out, [v_kind[i], full_path(i), v_data[i]])
+    i = i + 1
+  return out
