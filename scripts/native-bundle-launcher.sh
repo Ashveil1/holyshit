@@ -2,7 +2,7 @@
 # Installed as BUNDLE/bin/hs. Resolve data relative to the moved bundle.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs test FILE|DIR... | hs build SOURCE OUTPUT | hs explain "<error message>" | hs cc SOURCE [-o OUTPUT] | hs SOURCE.holy [args...]'
+USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs test FILE|DIR... | hs build SOURCE OUTPUT | hs explain "<error message>" | hs cc SOURCE [-o OUTPUT] | hs ir SOURCE | hs SOURCE.holy [args...]'
 if [ "$#" -lt 1 ]; then
   printf '%s\n' "$USAGE" >&2
   exit 2
@@ -74,10 +74,11 @@ case "$COMMAND" in
     shift
     ;;
 esac
-# check, test and cc report/use paths exactly as given, like the Python
-# CLI; the other commands resolve the source against the invocation directory.
+# check, test, cc and ir report/use paths exactly as given, like the
+# Python CLI; the other commands resolve the source against the invocation
+# directory.
 case "$COMMAND" in
-  check|test|cc) ;;
+  check|test|cc|ir) ;;
   *) case "$SOURCE" in /*) ;; *) SOURCE="$(pwd)/$SOURCE" ;; esac ;;
 esac
 export HSROOT="$ROOT"
@@ -208,6 +209,21 @@ case "$COMMAND" in
       exit 1
     }
     exec "$ROOT/bin/hs-cc" "$SOURCE" "$OUT"
+    ;;
+  ir)
+    # Extra positional arguments are ignored, matching the Python CLI.
+    if [ ! -f "$ROOT/bin/hs-ir" ] || [ ! -f "$ROOT/IR_SHA256SUMS" ]; then
+      printf '%s\n' 'installed IR dumper is missing; install a new complete bundle' >&2
+      exit 1
+    fi
+    (cd "$ROOT" && sha256sum --status -c IR_SHA256SUMS) || {
+      printf '%s\n' 'installed IR dumper checksum failed' >&2
+      exit 1
+    }
+    if [ "$AS_JSON" = yes ]; then
+      exec "$ROOT/bin/hs-ir" "$SOURCE" --json
+    fi
+    exec "$ROOT/bin/hs-ir" "$SOURCE"
     ;;
   *)
     printf '%s\n' "unknown command: $COMMAND" >&2

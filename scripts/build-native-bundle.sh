@@ -43,6 +43,8 @@ export HSPATH="$WORK/selfhost:$WORK/selfhost/be:$WORK/std"
 (cd "$WORK" && sha256sum bin/hs-explain > EXPLAIN_SHA256SUMS)
 "$WORK/bootstrap/hs-hosted-x86_64" "$WORK/selfhost/cc.holy" "$WORK/bin/hs-cc"
 (cd "$WORK" && sha256sum bin/hs-cc > CC_SHA256SUMS)
+"$WORK/bootstrap/hs-hosted-x86_64" "$WORK/selfhost/ir_run.holy" "$WORK/bin/hs-ir"
+(cd "$WORK" && sha256sum bin/hs-ir > IR_SHA256SUMS)
 # No pre-existing destination is replaced. Build is staged on the same filesystem.
 if [ -e "$OUTPUT" ]; then
   printf '%s\n' "output appeared during build: $OUTPUT" >&2
