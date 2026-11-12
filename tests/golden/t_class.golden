@@ -1,0 +1,13 @@
+HSGOLD1
+rc=0
+stdout=30
+stderr=0
+
+4 6
+25
+13
+3
+3
+25
+point 13,4
+0

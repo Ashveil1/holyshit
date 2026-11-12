@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=55
+
+error: ffi 'strlen' arg 1 wants Str, got Int at line 4

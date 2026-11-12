@@ -1,0 +1,6 @@
+HSGOLD1
+rc=0
+stdout=13
+stderr=0
+
+42 2.5 works

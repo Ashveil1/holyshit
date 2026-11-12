@@ -1,0 +1,10 @@
+HSGOLD1
+rc=1
+stdout=53
+stderr=45
+
+b'hello www\n'
+b'hi\x00\x80A'
+b''
+b'HTTP/1.0 200 OK'
+error: cannot convert Null to Int at line 10

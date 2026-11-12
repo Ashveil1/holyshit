@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=46
+
+error: unknown variable 'nosuchvar' at line 1

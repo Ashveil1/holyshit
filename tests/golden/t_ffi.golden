@@ -1,0 +1,11 @@
+HSGOLD1
+rc=0
+stdout=29
+stderr=0
+
+from-ffi
+5
+0.0
+6
+false
+freed

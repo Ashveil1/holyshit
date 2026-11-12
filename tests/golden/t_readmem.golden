@@ -1,0 +1,17 @@
+HSGOLD1
+rc=0
+stdout=80
+stderr=0
+
+hi!
+true
+3
+4
+true
+2
+true
+true
+read_mem length must be >= 0 at line 38
+hi
+2
+true

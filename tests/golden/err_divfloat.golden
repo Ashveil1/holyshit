@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=34
+
+error: division by zero at line 1

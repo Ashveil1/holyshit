@@ -1,0 +1,16 @@
+HSGOLD1
+rc=0
+stdout=59
+stderr=0
+
+hi
+  7
+7  
+true
+true
+[a, b]
+[3, 6, 9]
+[2, 4]
+10
+false
+true

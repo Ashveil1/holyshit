@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=72
+
+error: param 'c' without a default follows one with a default at line 1

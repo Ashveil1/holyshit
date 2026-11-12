@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=86
+
+error: json_parse failed: Expecting property name enclosed in double quotes at line 1

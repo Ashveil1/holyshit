@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=94
+
+error: in module 'mod_circ_a': in module 'mod_circ_b': circular import 'mod_circ_a' at line 1

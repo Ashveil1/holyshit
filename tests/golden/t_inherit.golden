@@ -1,0 +1,9 @@
+HSGOLD1
+rc=0
+stdout=42
+stderr=0
+
+cat says ...
+rex says woof
+bit says yip
+1

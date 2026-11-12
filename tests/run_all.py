@@ -140,6 +140,7 @@ SUITES = [
     ("test_jit_return.py", "one-shot native module return, not mixed tiers"),
     ("test_jitrun.py", "experimental eager in-process hs JIT"),
     ("test_jit_corpus.py", "JIT-vs-interp byte parity on the full tests/ corpus"),
+    ("test_golden.py", "JIT-vs-frozen-golden corpus parity without a live interpreter"),
     ("test_a64asm.py", "A64 assembler written in hs vs a64shim.py"),
     ("test_a64compiler.py", "hs source compiler AArch64 complete-image oracle and execution"),
     ("test_arm64_asm.py", "A64 assembler + ELF writer, run under qemu-aarch64 or natively"),

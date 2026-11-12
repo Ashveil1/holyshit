@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=41
+
+error: add wants 2 args, got 1 at line 3

@@ -1,0 +1,13 @@
+HSGOLD1
+rc=0
+stdout=34
+stderr=0
+
+101
+102
+102
+outer
+7
+[1, 2]
+44
+2.5
