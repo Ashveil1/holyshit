@@ -158,6 +158,8 @@ SUITES = [
     ("test_native_explain.py", "native hs explain differential vs python3 hs.py explain"),
     ("test_native_cc.py", "native hs cc differential vs python3 hs.py cc"),
     ("test_native_ir.py", "native hs ir differential vs python3 hs.py ir"),
+    ("test_run_auto_fallback.py", "hs run auto chain survives a broken gcc"),
+    ("test_evals.py", "AI-coding eval reference suite stays green"),
     ("test_native_run.py", "one-command native source runner without Python/gcc"),
     ("test_hosted_seed.py", "verified seed + Python-free bootstrap"),
     ("test_native_kernel.py", "native kernel compiler complete ELF images"),

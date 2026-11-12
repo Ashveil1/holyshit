@@ -2329,9 +2329,25 @@ def main(argv):
     argv = argv[:3] + rest
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, "hsbin")
-        rc = build(prog, out)
-        if rc != 0:
-            return rc
+        if backend == "auto":
+            # Last-resort route on the auto chain: a broken gcc (present but
+            # unable to build, e.g. missing libgc headers) must not stop the
+            # program from running - fall back to the reference interpreter.
+            # The build's diagnostics are suppressed; when the interpreter
+            # also cannot run it, its own error is the truthful one.
+            import contextlib as _cl2
+            import io as _io2
+            with _cl2.redirect_stdout(_io2.StringIO()), \
+                    _cl2.redirect_stderr(_io2.StringIO()):
+                rc = build(prog, out)
+            if rc != 0:
+                return subprocess.run([sys.executable, os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "interp.py"),
+                    prog] + rest).returncode
+        else:
+            rc = build(prog, out)
+            if rc != 0:
+                return rc
         r = subprocess.run([out] + argv[3:])
         return r.returncode
 

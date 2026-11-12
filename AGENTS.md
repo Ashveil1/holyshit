@@ -259,10 +259,11 @@ returns `[null, value]` or `["<message>", null]`, so the wrapper raises with the
 caller's line and interp's exact CPython wording (`Expecting value`,
 `Extra data`, `Illegal trailing comma before end of array`, ...).
 `json_parse`/`json_str` work freestanding too; `json_load`/`json_save`
-need a filesystem and stay hosted-only. Two gotchas that file lives with:
-x64 `and`/`or` do not short-circuit, so every bound test is written as its
-own safe call (`js_at(s, i, n)`), and an x64 Str has no `chr()` — bytes are
-built with `alloc` + `store8` + `read_mem` (`js_chr`).
+need a filesystem and stay hosted-only. One gotcha the file lives with:
+an x64 Str has no `chr()` — bytes are
+built with `alloc` + `store8` + `read_mem` (`js_chr`). Its bound tests are
+written as their own safe calls (`js_at(s, i, n)`) from before `and`/`or`
+short-circuited everywhere; the style is harmless, not required.
 
 Missing (compile error, on purpose):
 attribute access on values (only modules have attrs), `extern`,
@@ -272,10 +273,10 @@ Modules support aliasing: `m = mod` / `m = pkg.sub` binds the name
 without emitting code, and `m.attr` resolves statically like the
 original (including `<module name>` display). Passing a module into a
 call, arithmetic, or index is still an error — use `mod.attr`.
-`/` truncates
-like C here, not hs. Out-of-range indexing reports `index out of range`.
-`and`/`or` do not short-circuit: both sides always run, so `s[i]` inside a
-bound test raises instead of guarding. `int(x)` with an Int `x` returns
+Out-of-range indexing reports `index out of range`.
+`and`/`or` short-circuit like interp: a guard such as `i < len(s) and
+s[i] == "x"` never evaluates the right side when the left fails.
+`int(x)` with an Int `x` returns
 `x` and leaves the evaluation stack exactly as it found it.
 
 Errors: every dynamic failure carries `message at line N` (uncaught prints
@@ -286,8 +287,9 @@ start UNBOUND; call arity is checked at every user call, at registration
 for task/tick/syscall handlers (exact interp message with the callee's own
 name, catchable by try). Freestanding integer
 divide hits hardware #DE (`EXC 0`, halt) instead of a catchable error.
-Str index/slice/split are byte-based (non-ASCII diverges from interp);
-`split` with empty separator raises (interp/native crash instead).
+Str index/slice/split are byte-based on every backend (interp included), so
+non-ASCII text counts bytes, not characters; `split` with an empty
+separator raises `split with empty separator` on every backend.
 
 Value representation: low 2 bits are the tag — `01` Int (`v<<2|1`),
 `10` Bool (0x02/0x0A), `11` Null (0x03)/Unbound (0x0B), `00` heap object
