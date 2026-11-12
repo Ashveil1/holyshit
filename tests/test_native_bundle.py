@@ -24,6 +24,7 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     broken.mkdir()
     for name in ('scripts','bootstrap','selfhost','runtime','std','docs'):
         shutil.copytree(ROOT/name,broken/name)
+    shutil.copyfile(ROOT/'VERSION',broken/'VERSION')
     (broken/'selfhost/be/irinterp_run.holy').write_text('def broken(:\n')
     failed_install=d/'failed install'
     r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_install)],env=env,capture_output=True,text=True,timeout=240)
@@ -52,6 +53,12 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     failed_explain_install=d/'failed explainer install'
     r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_explain_install)],env=env,capture_output=True,text=True,timeout=240)
     check(r.returncode!=0 and not failed_explain_install.exists() and not list(d.glob('.holyshit-bundle.*')),'explainer build failure cleans staging without publishing')
+    # The seventh build must also fail without publishing the first six drivers.
+    shutil.copyfile(ROOT/'selfhost/explain_run.holy',broken/'selfhost/explain_run.holy')
+    (broken/'selfhost/cc.holy').write_text('def broken(:\n')
+    failed_cc_install=d/'failed compiler install'
+    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_cc_install)],env=env,capture_output=True,text=True,timeout=240)
+    check(r.returncode!=0 and not failed_cc_install.exists() and not list(d.glob('.holyshit-bundle.*')),'compiler build failure cleans staging without publishing')
     original=d/'original';moved=d/'moved bundle'
     started=time.monotonic()
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(original)],env=env,capture_output=True,text=True,timeout=240)
@@ -310,6 +317,50 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     explainer.write_bytes(explainer_bytes);explainer.chmod(0o755)
     r=subprocess.run(['/bin/sh',str(launcher),'explain','index out of range'],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==0 and 'pattern: index out of range  (Most common errors)  [E002]' in r.stdout,'restored explainer matches the catalog')
+    # Installed hs-written compiler (hs cc) emits static ELFs from its subset.
+    check((moved/'VERSION').read_bytes()==(ROOT/'VERSION').read_bytes(),'bundle ships VERSION')
+    r=subprocess.run(['/bin/sh',str(launcher),'--version'],env=env,capture_output=True,text=True,timeout=10)
+    check((r.returncode,r.stdout,r.stderr)==(0,'hs '+(ROOT/'VERSION').read_text().strip()+'\n',''),'hs --version prints the bundled version '+repr((r.returncode,r.stdout,r.stderr)))
+    r=subprocess.run(['/bin/sh',str(launcher),'run','--version'],env=env,capture_output=True,text=True,timeout=10)
+    check(r.returncode==0 and r.stdout=='hs '+(ROOT/'VERSION').read_text().strip()+'\n','--version after a command prints the version like the Python CLI')
+    ccdriver=moved/'bin/hs-cc'
+    ccdriver_bytes=ccdriver.read_bytes();ccdriver_mtime=ccdriver.stat().st_mtime_ns
+    print('METRIC installed_cc_bytes',len(ccdriver_bytes),flush=True)
+    csource=d/'cc sample.holy';csource.write_text('print 6 * 7\n')
+    r=subprocess.run(['/bin/sh',str(launcher),'cc',str(csource),'-o',str(d/'cc-out')],env=env,capture_output=True,text=True,timeout=60)
+    check(r.returncode==0 and not r.stdout and not r.stderr,'relocated cc compiles clean '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    r=subprocess.run([str(d/'cc-out')],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='42\n','relocated cc output runs without Python/gcc')
+    check(ccdriver.read_bytes()==ccdriver_bytes and ccdriver.stat().st_mtime_ns==ccdriver_mtime,'cc does not rebuild installed driver')
+    r=subprocess.run(['/bin/sh',str(launcher),'cc'],env=env,capture_output=True,text=True,timeout=10)
+    check(r.returncode==2 and not r.stdout and 'usage:' in r.stderr,'cc requires a source')
+    ccdriver.write_bytes(ccdriver_bytes+b'changed')
+    r=subprocess.run(['/bin/sh',str(launcher),'cc',str(csource),'-o',str(d/'cc-out2')],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'compiler checksum failed' in r.stderr,'corrupt compiler refused before compiling')
+    # Corrupting this optional route must not change the others.
+    source.write_text('print 41\n')
+    for command in ['run','interpret']:
+        r=subprocess.run(['/bin/sh',str(launcher),command,str(source)],env=env,capture_output=True,text=True,timeout=30)
+        check(r.returncode==0 and r.stdout=='41\n',command+' independent of compiler checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='print 41\n','fmt independent of compiler checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='ok: '+str(source)+'\n','check independent of compiler checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'build',str(source),str(exe)],env=env,capture_output=True,text=True,timeout=60)
+    if r.returncode==0:r=subprocess.run([str(exe)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='41\n','build independent of compiler checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'explain','index out of range'],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and '[E002]' in r.stdout,'explain independent of compiler checksum')
+    ccdriver.write_bytes(ccdriver_bytes)
+    csums=moved/'CC_SHA256SUMS';saved_cc_sums=csums.read_bytes();csums.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'cc',str(csource),'-o',str(d/'cc-out2')],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing compiler manifest reports incomplete bundle')
+    csums.write_bytes(saved_cc_sums);ccdriver.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'cc',str(csource),'-o',str(d/'cc-out2')],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing compiler binary reports incomplete bundle')
+    ccdriver.write_bytes(ccdriver_bytes);ccdriver.chmod(0o755)
+    r=subprocess.run(['/bin/sh',str(launcher),'cc',str(csource),'-o',str(d/'cc-out2')],env=env,capture_output=True,text=True,timeout=60)
+    check(r.returncode==0 and not r.stdout and not r.stderr,'restored compiler compiles')
     source.write_text('print 1 / 0\n')
     r=subprocess.run(['/bin/sh',str(launcher),'run',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode!=0 and 'division by zero' in r.stderr,'runtime error status')

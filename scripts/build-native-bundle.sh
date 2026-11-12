@@ -24,6 +24,7 @@ mkdir -p "$WORK/bin" "$WORK/bootstrap" "$WORK/docs"
 cp "$ROOT/bootstrap/hs-hosted-x86_64" "$ROOT/bootstrap/SHA256SUMS" "$WORK/bootstrap/"
 cp -R "$ROOT/selfhost" "$ROOT/runtime" "$ROOT/std" "$WORK/"
 cp "$ROOT/docs/errors.md" "$ROOT/docs/for-agents.md" "$WORK/docs/"
+cp "$ROOT/VERSION" "$WORK/"
 cp "$ROOT/scripts/native-bundle-launcher.sh" "$WORK/bin/hs"
 chmod +x "$WORK/bin/hs"
 export HSROOT="$WORK"
@@ -40,6 +41,8 @@ export HSPATH="$WORK/selfhost:$WORK/selfhost/be:$WORK/std"
 (cd "$WORK" && sha256sum bin/hs-test > TEST_SHA256SUMS)
 "$WORK/bootstrap/hs-hosted-x86_64" "$WORK/selfhost/explain_run.holy" "$WORK/bin/hs-explain"
 (cd "$WORK" && sha256sum bin/hs-explain > EXPLAIN_SHA256SUMS)
+"$WORK/bootstrap/hs-hosted-x86_64" "$WORK/selfhost/cc.holy" "$WORK/bin/hs-cc"
+(cd "$WORK" && sha256sum bin/hs-cc > CC_SHA256SUMS)
 # No pre-existing destination is replaced. Build is staged on the same filesystem.
 if [ -e "$OUTPUT" ]; then
   printf '%s\n' "output appeared during build: $OUTPUT" >&2

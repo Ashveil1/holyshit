@@ -1618,6 +1618,14 @@ def gen_c(src, main_path="<main>"):
     return Gen(prog, main_path).build()
 
 
+def _version():
+    try:
+        with open(os.path.join(HERE, "VERSION"), encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError:
+        return "unknown"
+
+
 def _jerr(path, msg, line):
     import json as _json
     d = {"file": path, "line": line, "message": msg}

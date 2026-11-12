@@ -120,6 +120,31 @@ or checksum corruption, refuses with status 1. Explainer corruption does not
 block `run`, `interpret`, `fmt`, `check`, `test` or `build`. The `--json run`
 stderr envelope (a JSON error object for runtime errors) remains Python-only.
 
+`cc SOURCE [-o OUTPUT]` compiles a program with the compiler written in hs
+itself (selfhost/cc.holy), prebuilt at installation: the cc subset is
+Int/Bool/Str/List/Dict, functions, modules and try/except; Float, class and
+FFI are compile errors, never silently different output. The output is a
+static x86-64 ELF with no runtime dependency, written executable. The default
+output path strips the source's final extension, and `-o` is accepted
+anywhere after the source with other extra arguments ignored, like the Python
+CLI; a missing source argument returns status 2. Successful compiles emit no
+stdout/stderr and produce byte-identical ELFs to the Python CLI's compiler
+(the same cc.holy source compiled by itself). Compile-failure diagnostics
+differ by executing runtime and both forms are pinned in
+tests/test_native_cc.py: the Python CLI's self-compiled compiler reports some
+failures as its own emitted runtime's uncatchable native faults (a fixed
+`error: <reason>` line on stderr, empty stdout), while the installed
+natively-compiled driver reports them through the hs-level handler (the
+diagnostic on stdout, then `error: compile failed at line N` on stderr with
+the native runtime's uncaught-raise line suffix). Exit codes match. The
+compiler checksum is verified before every launch with the same
+accidental-corruption limits above; a missing compiler binary or manifest,
+or checksum corruption, refuses with status 1. Compiler corruption does not
+block `run`, `interpret`, `fmt`, `check`, `test`, `explain` or `build`.
+
+`--version` (or `-V`) prints `hs ` plus the bundled VERSION file's contents
+wherever the flag appears, like the Python CLI.
+
 REPL/LSP and source/bootstrap audits remain development tools
 that use Python. The Python formatter remains available for `-w`/`--check`. Kernel building has its existing separate native script;
 it is not an installed launcher command. Python reference/testing tools are
