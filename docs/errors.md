@@ -366,7 +366,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py - direct x86-64 backend (xbuild/xkernel) (117)
+## x64gen.py - direct x86-64 backend (xbuild/xkernel) (118)
 
 - `'{n}' already defined in this scope`
 - `Int literal {v} is outside the 62-bit range of the x64 backend`
@@ -423,6 +423,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `float wants 1 arg`
 - `has wants has(dict, key)`
 - `image_end takes no args`
+- `in module '{m['name']}': {e.msg}`
 - `in module '{name}': {e.msg}`
 - `input takes no args`
 - `int wants 1 arg`
@@ -668,4 +669,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-622 messages total - duplicates across files are counted once per file
+623 messages total - duplicates across files are counted once per file

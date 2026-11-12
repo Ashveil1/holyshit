@@ -216,6 +216,9 @@ class Gen:
                     m["scope"] = msc
                     try:
                         self.collect(m["prog"], msc)
+                    except HSErr as e:
+                        raise HSErr(f"in module '{m['name']}': {e.msg}",
+                                    e.line)
                     finally:
                         del m["busy"]
                     m["collected"] = True
