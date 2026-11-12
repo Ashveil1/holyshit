@@ -1,0 +1,69 @@
+# Installed native `hs ir` driver: parse SOURCE, build the flat CFG with the
+# hs builder (be/irbuild.holy), verify it (be/verify.holy) and print the
+# canonical IR text (irdump.holy), byte-identical to `python3 hs.py ir`.
+# Errors exit 1 with the Python CLI's text; --json prints the Python CLI's
+# error object on stderr: {"file", "line", "message"} plus the error
+# catalog's code/hint fields when a coded catalog row loosely matches (hs.py
+# _jerr). Usage errors exit 2; extra arguments are ignored like the Python
+# CLI.
+import normalize
+import irbuild
+import verify
+import irdump
+import explain
+import check
+def die(msg, code):
+  f = open("/dev/stderr", "w")
+  write(f, "error: " + msg + "\n")
+  close(f)
+  scall(60, code, 0, 0, 0, 0, 0)
+def jerr(rows, path, msg, line):
+  d = {"file": path, "line": line, "message": msg}
+  d = explain.jerr_attach(rows, d, msg)
+  f = open("/dev/stderr", "w")
+  write(f, explain.pj_jerr(path, line, msg, d) + "\n")
+  close(f)
+def bad(msg, line, path, as_json, code):
+  # str(HSErr) omits the line suffix when the line is falsy (null or 0);
+  # the JSON object carries the line through as-is.
+  if as_json:
+    jerr(ROWS, path, msg, line)
+  else:
+    m = msg
+    if line != null and line != 0:
+      m = m + " at line " + str(line)
+    die(m, code)
+  scall(60, code, 0, 0, 0, 0, 0)
+args = argv()
+as_json = false
+rest = []
+for a in args:
+  if a == "--json":
+    as_json = true
+  else:
+    append(rest, a)
+if len(rest) < 1:
+  die("usage: hs ir SOURCE", 2)
+ROWS = []
+if as_json:
+  root = env("HSROOT")
+  if root != null and root != "":
+    ROWS = explain.load(root + "/docs/errors.md")
+path = rest[0]
+if not exists(path):
+  bad("cannot read " + path + ": No such file or directory", null, path, as_json, 1)
+src = ""
+try:
+  src = read_text(path)
+except as e:
+  pair = check.src_err(e)
+  bad("cannot read " + path + ": " + pair[0], null, path, as_json, 1)
+m = null
+try:
+  m = irbuild.build_module(normalize.parse(src), "")
+  verify.verify_module(m)
+except as e:
+  pair = check.src_err(e)
+  bad(pair[0], pair[1], path, as_json, 1)
+# print adds the one trailing newline ir.py's dump_module ends with.
+print join("\n", irdump.dump_lines(m))

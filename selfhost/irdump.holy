@@ -1,0 +1,233 @@
+# irdump.holy - canonical IR text dump: ir.py's dump_module/dump_instr/
+# dump_term/_q ported so `hs ir` prints byte-identical text to the Python CLI.
+# Self-contained (the runtime json.holy quote differs: it uses \b \f
+# shorthands that ir.py's _q expands to \u0008 / \u000c).
+import pyrt
+DQ_HEX = "0123456789abcdef"
+def dq_pow16(k):
+  if k == 3:
+    return 4096
+  if k == 2:
+    return 256
+  if k == 1:
+    return 16
+  return 1
+def dq_hex4(n):
+  s = ""
+  k = 3
+  while k >= 0:
+    s = s + DQ_HEX[int(n / dq_pow16(k)) % 16]
+    k = k - 1
+  return s
+def dq_u16(cp):
+  return "\\u" + dq_hex4(cp)
+def dq_codepoint(cp):
+  # one code point as dump text: BMP directly, above it a surrogate pair
+  if cp < 0x10000:
+    return dq_u16(cp)
+  v = cp - 0x10000
+  return dq_u16(0xD800 + int(v / 1024)) + dq_u16(0xDC00 + v % 1024)
+def dq_quote(s):
+  # ir.py _q's string branch: escapes \\ \" \n \t \r, keeps 32..126 literal,
+  # every other code point as \uXXXX (surrogate pairs above the BMP).
+  out = "\""
+  i = 0
+  n = byte_len(s)
+  while i < n:
+    b = byte_at(s, i)
+    if b == 34:
+      out = out + "\\\""
+    elif b == 92:
+      out = out + "\\\\"
+    elif b == 10:
+      out = out + "\\n"
+    elif b == 9:
+      out = out + "\\t"
+    elif b == 13:
+      out = out + "\\r"
+    elif b >= 32 and b <= 126:
+      out = out + s[i]
+    elif b < 128:
+      out = out + dq_u16(b)
+    else:
+      # multi-byte UTF-8: decode to a code point, then escape it. i ends on
+      # the last continuation byte so the loop tail steps past the sequence.
+      need = 1
+      cp = (b - 192) * 64
+      if b >= 240:
+        cp = (b - 240) * 262144
+        need = 3
+      elif b >= 224:
+        cp = (b - 224) * 4096
+        need = 2
+      k = 0
+      while k < need:
+        i = i + 1
+        cp = cp + (byte_at(s, i) - 128) * dq_pow16k(need - 1 - k)
+        k = k + 1
+      out = out + dq_codepoint(cp)
+    i = i + 1
+  return out + "\""
+def dq_pow16k(k):
+  # 64 ** k for the UTF-8 continuation walk (0..3)
+  if k == 3:
+    return 262144
+  if k == 2:
+    return 4096
+  if k == 1:
+    return 64
+  return 1
+def dq_q(v):
+  t = pyrt.py_type(v)
+  if t == "bool":
+    if v:
+      return "true"
+    return "false"
+  if t == "null":
+    return "null"
+  if t == "float":
+    return str(v)
+  if t == "str":
+    return dq_quote(v)
+  return str(v)
+def dq_opt(x):
+  if x == null:
+    return "-"
+  return x
+def dump_instr(ins):
+  op = ins["op"]
+  if op == "const":
+    return str(ins["dest"]) + " = const " + dq_q(ins["val"])
+  if op == "load":
+    return str(ins["dest"]) + " = load " + ins["name"]
+  if op == "stvar":
+    return "stvar " + ins["name"] + " " + str(ins["src"])
+  if op == "stglobal":
+    return "stglobal " + ins["name"] + " " + str(ins["src"])
+  if op == "mkfunc":
+    return str(ins["dest"]) + " = mkfunc " + ins["func"]
+  if op == "ffi":
+    head = str(ins["dest"]) + " = ffi " + ins["rtype"] + " " + ins["sym"] + "("
+    return head + join(", ", ins["ptypes"]) + ") from " + dq_q(ins["lib"])
+  if op == "bin":
+    return str(ins["dest"]) + " = bin " + ins["binop"] + " " + str(ins["l"]) + " " + str(ins["r"])
+  if op == "un":
+    return str(ins["dest"]) + " = un " + ins["unop"] + " " + str(ins["v"])
+  if op == "call":
+    return str(ins["dest"]) + " = call " + str(ins["fn"]) + "(" + join(", ", ins["args"]) + ")"
+  if op == "print":
+    if len(ins["args"]):
+      return "print " + join(", ", ins["args"])
+    return "print"
+  if op == "sconst":
+    return str(ins["dest"]) + " = sconst " + ins["stype"] + " " + str(ins["val"])
+  if op == "sload":
+    return str(ins["dest"]) + " = sload " + ins["name"]
+  if op == "sdecl":
+    return "sdecl " + ins["name"] + " " + ins["utype"] + " " + str(ins["src"])
+  if op == "sstore":
+    return "sstore " + str(ins["ptr"]) + " " + str(ins["val"])
+  if op == "sfstore":
+    return "sfstore " + str(ins["obj"]) + " " + ins["name"] + " " + str(dq_opt(ins["idx"])) + " " + str(ins["val"])
+  if op == "sset":
+    return "sset " + ins["name"] + " " + str(ins["src"])
+  if op == "dset":
+    return "dset " + ins["name"] + " " + str(ins["src"])
+  if op == "sbin":
+    return str(ins["dest"]) + " = sbin " + ins["binop"] + " " + str(ins["l"]) + " " + str(ins["r"])
+  if op == "sun":
+    return str(ins["dest"]) + " = sun " + ins["unop"] + " " + str(ins["v"])
+  if op == "scall":
+    return str(ins["dest"]) + " = scall " + ins["name"] + "(" + join(", ", ins["args"]) + ")"
+  if op == "sderef":
+    return str(ins["dest"]) + " = sderef " + str(ins["v"])
+  if op == "sfield":
+    return str(ins["dest"]) + " = sfield " + str(ins["obj"]) + " " + ins["name"] + " " + str(dq_opt(ins["idx"]))
+  if op == "box":
+    return str(ins["dest"]) + " = box " + str(ins["src"])
+  if op == "sraw":
+    return str(ins["dest"]) + " = sraw " + str(ins["src"])
+  if op == "snz":
+    return str(ins["dest"]) + " = snz " + str(ins["src"])
+  if op == "svarptr":
+    return str(ins["dest"]) + " = svarptr " + ins["conv"] + " " + ins["var"]
+  if op == "sstr":
+    return str(ins["dest"]) + " = sstr " + dq_q(ins["val"])
+  if op == "serr":
+    return str(ins["dest"]) + " = serr " + dq_q(ins["imsg"]) + " " + dq_q(ins["xmsg"])
+  if op == "ssizeof":
+    return str(ins["dest"]) + " = ssizeof " + ins["stype"]
+  if op == "import":
+    return "import " + ins["name"]
+  if op == "try_push":
+    return "try_push " + ins["handler"]
+  if op == "try_pop":
+    return "try_pop"
+  if op == "exc_str":
+    return str(ins["dest"]) + " = exc_str"
+  if op == "exc_pop":
+    return "exc_pop"
+  if op == "unbind":
+    return "unbind " + ins["name"]
+  if op == "reraise":
+    return "reraise"
+  if op == "attr":
+    return str(ins["dest"]) + " = attr " + str(ins["obj"]) + " " + ins["name"]
+  if op == "setattr":
+    return "setattr " + str(ins["obj"]) + " " + ins["name"] + " " + str(ins["val"])
+  if op == "build_list":
+    return str(ins["dest"]) + " = build_list [" + join(", ", ins["items"]) + "]"
+  if op == "build_dict":
+    ps = ""
+    for p in ins["pairs"]:
+      if len(ps):
+        ps = ps + " "
+      ps = ps + "(" + str(p[0]) + ": " + str(p[1]) + ")"
+    if len(ps):
+      return str(ins["dest"]) + " = build_dict " + ps
+    return str(ins["dest"]) + " = build_dict"
+  if op == "index":
+    return str(ins["dest"]) + " = index " + str(ins["obj"]) + " " + str(ins["idx"])
+  if op == "setindex":
+    return "setindex " + str(ins["obj"]) + " " + str(ins["idx"]) + " " + str(ins["val"])
+  if op == "slice":
+    return str(ins["dest"]) + " = slice " + str(ins["obj"]) + " " + str(dq_opt(ins["start"])) + " " + str(dq_opt(ins["stop"]))
+  if op == "iterseq":
+    return str(ins["dest"]) + " = iterseq " + str(ins["src"])
+  if op == "phi":
+    arms = ""
+    for a in ins["arms"]:
+      if len(arms):
+        arms = arms + " "
+      arms = arms + "[" + str(a[0]) + ": " + str(a[1]) + "]"
+    return str(ins["dest"]) + " = phi " + arms
+  return "<bad " + op + ">"
+def dump_term(tm):
+  if tm["term"] == "jmp":
+    return "jmp " + tm["to"]
+  if tm["term"] == "br":
+    return "br " + str(tm["cond"]) + " " + tm["then"] + " " + tm["els"]
+  if tm["term"] == "ret":
+    if tm["val"] != null:
+      return "ret " + str(tm["val"])
+    return "ret"
+  if tm["term"] == "raise":
+    if tm["src"] != null:
+      return "raise " + str(tm["src"])
+    return "raise"
+  return "<bad term>"
+def dump_lines(m):
+  # Canonical text lines: `hs ir` prints these; ir.parse_module reads them
+  # back.
+  out = []
+  for name in m["order"]:
+    fn = m["funcs"][name]
+    append(out, "func " + name + "(" + join(", ", fn["params"]) + "):")
+    for b in fn["blocks"]:
+      append(out, b["label"] + ":")
+      for ins in b["instrs"]:
+        append(out, "  " + dump_instr(ins) + " @" + str(ins["line"]))
+      append(out, "  " + dump_term(b["term"]) + " @" + str(b["term"]["line"]))
+  return out
+def dump_module(m):
+  return join("\n", dump_lines(m)) + "\n"

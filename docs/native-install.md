@@ -16,11 +16,12 @@ The parent must already exist and the destination must not. Paths with spaces
 work. The installer checks the host and delegates to the audited bundle
 builder: verify pinned compiler checksum, stage a separate directory, build
 the eager driver, existing hs-written IR interpreter, hs formatter, hs
-checker, hs tester and hs explainer with the native compiler, then publish
-without overwriting. All six must build before the staged directory is
+checker, hs tester, hs explainer, hs-written subset compiler and hs IR
+dumper with the native compiler, then publish
+without overwriting. All eight must build before the staged directory is
 published; failure leaves no partial installation.
 It downloads nothing, uses no Python/gcc, changes no profile/PATH, creates no
-system-wide link and needs no sudo. Building six drivers takes additional
+system-wide link and needs no sudo. Building eight drivers takes additional
 installation time and disk space; none is rebuilt for each invocation.
 
 Keep the whole installed directory together. The launcher resolves compiler,
@@ -140,7 +141,28 @@ the native runtime's uncaught-raise line suffix). Exit codes match. The
 compiler checksum is verified before every launch with the same
 accidental-corruption limits above; a missing compiler binary or manifest,
 or checksum corruption, refuses with status 1. Compiler corruption does not
-block `run`, `interpret`, `fmt`, `check`, `test`, `explain` or `build`.
+block `run`, `interpret`, `fmt`, `check`, `test`, `explain`, `ir` or `build`.
+
+`ir SOURCE` parses a program (with the Python CLI's prelude injection and
+range-step/defaults desugars), builds the flat CFG with the hs IR builder,
+verifies it and prints the canonical IR text, byte-identical to the Python
+CLI's `hs.py ir` dump. Extra arguments after the source are ignored and a
+missing source argument returns status 2, like the Python CLI. Read, parse,
+build and verify failures exit 1 with the Python CLI's `error: <msg> at line
+N` text on stderr; `--json` instead prints the Python CLI's JSON error object
+there, including the optional code/hint fields when the shipped error
+catalog matches. Two diagnostics differ by executing runtime and both forms
+are pinned in tests/test_native_ir.py: a source that exists but cannot be
+read (for example a directory) reports the native runtime's errno text
+(`read failed: errno 21`) instead of CPython's strerror text (`Is a
+directory`), and a source whose Int literal exceeds the native runtime's
+62-bit tagged range cannot be lexed by any native driver at all (native `hs
+check` on the same source fails identically with status 97) while the
+Python CLI dumps it. Exit codes match. The IR dumper checksum is verified
+before every launch with the same accidental-corruption limits above; a
+missing IR dumper binary or manifest, or checksum corruption, refuses with
+status 1. IR dumper corruption does not block `run`, `interpret`, `fmt`,
+`check`, `test`, `explain`, `cc` or `build`.
 
 `--version` (or `-V`) prints `hs ` plus the bundled VERSION file's contents
 wherever the flag appears, like the Python CLI.
