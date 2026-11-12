@@ -41,14 +41,13 @@ user programs that talk to our kernel, e.g. `kernel/uush.holy`) but
 
 ## Traps to remember
 
-- `/` truncates like C (hosted yields Float)
-- Str index/slice/split count **bytes** (non-ASCII differs from interp)
-- `split` with an empty sep raises (interp/native crash instead)
+- `/` truncates like C only inside `unsafe:` (safe code yields Float)
+- Str index/slice/split count **bytes** on every backend, interp included
+- `split` with an empty sep raises `split with empty separator` everywhere
 - Division by zero on kernel is a HW `#DE` (halt), not a catchable error
 - Reading a never-assigned variable = `unknown variable` error (not garbage)
-- `and`/`or` do **not short-circuit** - both sides always run, so write bound checks
-  as separate calls (`js_at(s, i, n)` in `runtime/json.holy`) or an out-of-range
-  `s[i]` will raise
+- `and`/`or` short-circuit like interp; the separate-call bound checks in
+  `runtime/json.holy` (`js_at(s, i, n)`) predate that and are just a style
 - `json_*` is compiled from `runtime/json.holy` (a private `<json>` module that
   x64gen embeds in the image when the program calls it) - it is not an API:
   you can `import` it yourself if the repo is on HSPATH, but anything needing

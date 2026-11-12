@@ -7,8 +7,8 @@ the shortcut plus the tools an agent can call right away.
 
 ```sh
 python3 hs.py check prog.holy    # 1. fast syntax + scope (does not run)
-python3 hs.py run prog.holy      # 2. build with gcc then run
-python3 interp.py prog.holy     # 3. reference behavior (slower, but the truth)
+python3 hs.py run prog.holy      # 2. native JIT/x64 chain (no gcc needed; interp fallback)
+python3 interp.py prog.holy      # 3. reference behavior (slower, but the truth)
 python3 tests/test.py          # 4. the whole suite
 ```
 
