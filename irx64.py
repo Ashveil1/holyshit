@@ -239,7 +239,11 @@ class GenIR(Gen):
                     self.allorder.extend(sub["order"])
                     for k in sub["order"]:
                         self.funcmod[k] = dotted
-                    self._load_mod_body(dotted, sub, active + [dotted])
+                    try:
+                        self._load_mod_body(dotted, sub, active + [dotted])
+                    except HSErr as e:
+                        raise HSErr(f"in module '{dotted}': {e.msg}",
+                                    e.line)
         topmod = self.modtab.get(parts[0])
         if topmod is None:
             topmod = next(m for m in chain if m["name"] == parts[0])

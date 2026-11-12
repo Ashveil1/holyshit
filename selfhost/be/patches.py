@@ -42,4 +42,8 @@ PATCHES = [
     ("if ((pname in GenIR_JSON_CALLS) and", "if (pyrt.py_has_key(pname, GenIR_JSON_CALLS) and"),
     ("asm.data_qword(((bits - (1 << 64)) if (bits >= (1 << 63)) else bits))", "asm.data_qword(bits)"),
     ("frozenset(pyrt.py_set([\"read_bytes\", \"tcp_recv\", \"http_get\"]))", "pyrt.py_set([\"read_bytes\", \"tcp_recv\", \"http_get\"])"),
+    # except-bound errors are marked strings in the self-hosted runtime, not
+    # objects: e.msg/e.line would index a Str with a Str ("index must be
+    # Int"). Recover the parts through pyrt instead.
+    ("str(e.msg)), e.line)", "str(pyrt.py_ewrap(e))), pyrt.py_eline(e))"),
 ]

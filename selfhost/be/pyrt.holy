@@ -4,33 +4,57 @@
 # py_eline recover the parts (hs appends " at line N" itself on raise).
 SEP = "u001f"
 EMARK = "u0001HSERRu0002"
+ESEP = "u0002"
 ASCII = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 IDC = {"n": 0}
 def py_err(msg, line):
   l = ""
   if line != null:
     l = str(line)
-  return EMARK + msg + "u0002" + l
+  return EMARK + msg + ESEP + l
 def py_emsg(e):
   i = find(e, EMARK)
   if i < 0:
     return e
   rest = e[i + len(EMARK):len(e)]
-  j = find(rest, "u0002")
+  j = find(rest, ESEP)
   return rest[0:j]
 def py_eline(e):
   i = find(e, EMARK)
   if i < 0:
     return null
   rest = e[i + len(EMARK):len(e)]
-  j = find(rest, "u0002")
-  r = rest[j + 1:len(rest)]
+  j = find(rest, ESEP)
+  r = rest[j + len(ESEP):len(rest)]
   k = 0
   while k < len(r) and find("0123456789", r[k]) >= 0:
     k = k + 1
   if k == 0:
     return null
   return int(r[0:k])
+def py_trailing_line(s):
+  n = len(s)
+  k = n
+  while k > 0 and find("0123456789", s[k - 1]) >= 0:
+    k = k - 1
+  if k == n or k < 9:
+    return [s, null]
+  if s[k - 9:k] != " at line ":
+    return [s, null]
+  return [s[0:k - 9], s[k:n]]
+def py_ewrap(e):
+  # Message part of a caught error, for re-wrapping ("in module 'm': ...").
+  # Marked (py_err) errors: the marker's msg. Plain string raises: hs
+  # appended one " at line N" for the raise site; a library may have baked
+  # its own target line first (parselib does), so strip one suffix only
+  # when two are present - same rule as the drivers' error_exit.
+  i = find(e, EMARK)
+  if i >= 0:
+    return py_emsg(e)
+  once = py_trailing_line(e)
+  if once[1] != null and py_trailing_line(once[0])[1] != null:
+    return once[0]
+  return e
 def py_estr(e):
   m = py_emsg(e)
   l = py_eline(e)

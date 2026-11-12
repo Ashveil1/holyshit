@@ -31,8 +31,6 @@ DIVERGENCE = {
                 "(roadmap 3.4, needs an owner decision)",
     "t_bits": "62-bit x64 Int vs 64-bit interpreter Int "
               "(roadmap 3.4, needs an owner decision)",
-    "t_circ": "interp nests 'in module' prefixes on loader errors; the "
-              "self-hosted loader reports the innermost error only",
     "t_ffi": "the JIT driver cannot bind C-source externs "
              "(extern from \"file.c\"); library externs work and the Python "
              "native path covers C sources via gcc (test_native.py)",
