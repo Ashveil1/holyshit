@@ -2,7 +2,7 @@
 # Installed as BUNDLE/bin/hs. Resolve data relative to the moved bundle.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs test FILE|DIR... | hs build SOURCE OUTPUT | hs explain "<error message>" | hs SOURCE.holy [args...]'
+USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs test FILE|DIR... | hs build SOURCE OUTPUT | hs explain "<error message>" | hs cc SOURCE [-o OUTPUT] | hs SOURCE.holy [args...]'
 if [ "$#" -lt 1 ]; then
   printf '%s\n' "$USAGE" >&2
   exit 2
@@ -21,6 +21,15 @@ while [ "$I" -lt "$N" ]; do
     set -- "$@" "$A"
   fi
   I=$((I + 1))
+done
+# Python-style global --version/-V: print the bundled version wherever the
+# flag appears, before any command dispatch.
+for A in "$@"; do
+  if [ "$A" = "--version" ] || [ "$A" = "-V" ]; then
+    V=$(IFS= read -r L 2>/dev/null < "$ROOT/VERSION" && printf '%s' "$L") || V=
+    printf 'hs %s\n' "${V:-unknown}"
+    exit 0
+  fi
 done
 if [ "$#" -lt 1 ]; then
   printf '%s\n' "$USAGE" >&2
@@ -65,10 +74,10 @@ case "$COMMAND" in
     shift
     ;;
 esac
-# check and test report paths exactly as given, like the Python CLI; the
-# other commands resolve the source against the invocation directory.
+# check, test and cc report/use paths exactly as given, like the Python
+# CLI; the other commands resolve the source against the invocation directory.
 case "$COMMAND" in
-  check|test) ;;
+  check|test|cc) ;;
   *) case "$SOURCE" in /*) ;; *) SOURCE="$(pwd)/$SOURCE" ;; esac ;;
 esac
 export HSROOT="$ROOT"
@@ -164,6 +173,41 @@ case "$COMMAND" in
     fi
     (cd "$ROOT/bootstrap" && sha256sum -c SHA256SUMS >&2)
     exec "$ROOT/bootstrap/hs-hosted-x86_64" "$SOURCE" "$@"
+    ;;
+  cc)
+    # The compiler written in hs itself (hosted subset). Optional -o OUTPUT
+    # anywhere after the source, other extra arguments ignored, matching the
+    # Python CLI; the default output strips the source's final extension.
+    OUT=
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = "-o" ]; then
+        if [ "$#" -gt 1 ]; then
+          OUT=$2
+        fi
+        break
+      fi
+      shift
+    done
+    if [ -z "$OUT" ]; then
+      BASE=${SOURCE##*/}
+      STEM=$BASE
+      case "$BASE" in
+        ?*.*) STEM=${BASE%.*} ;;
+      esac
+      case "$SOURCE" in
+        */*) OUT=${SOURCE%/*}/$STEM ;;
+        *) OUT=$STEM ;;
+      esac
+    fi
+    if [ ! -f "$ROOT/bin/hs-cc" ] || [ ! -f "$ROOT/CC_SHA256SUMS" ]; then
+      printf '%s\n' 'installed compiler is missing; install a new complete bundle' >&2
+      exit 1
+    fi
+    (cd "$ROOT" && sha256sum --status -c CC_SHA256SUMS) || {
+      printf '%s\n' 'installed compiler checksum failed' >&2
+      exit 1
+    }
+    exec "$ROOT/bin/hs-cc" "$SOURCE" "$OUT"
     ;;
   *)
     printf '%s\n' "unknown command: $COMMAND" >&2

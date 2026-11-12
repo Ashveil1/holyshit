@@ -18,7 +18,8 @@ sh scripts/install-native.sh "$HOME/holyshit-native"
 
 No Python or gcc is needed to install or use this route. It needs Linux
 x86-64, `/bin/sh`, standard shell/checksum utilities and host libc/shared
-libraries for FFI. Installation builds the eager driver, IR interpreter and formatter
+libraries for FFI. Installation builds the eager driver, IR interpreter,
+formatter, checker, tester, explainer and the hs-written subset compiler
 once and can take time and extra disk space. Move the whole installed
 directory together; no checkout is needed after installation. The installer does not edit PATH/shell profiles, use sudo
 or overwrite an existing directory. Use a new directory for each update;
@@ -27,8 +28,11 @@ removing only its chosen directory, not any source checkout.
 
 The native launcher provides `run SOURCE [args...]`, `build SOURCE OUTPUT`
 and explicit `interpret SOURCE [args...]`, plus stdout-only `fmt SOURCE`,
-scan-only `check SOURCE`, `test FILE|DIR...` and `explain "<error message>"`.
-`check` scans the source and
+scan-only `check SOURCE`, `test FILE|DIR...`, `explain "<error message>"`,
+`cc SOURCE [-o OUTPUT]` and `--version`. `cc` compiles the cc subset
+(Int/Bool/Str/List/Dict, functions, modules, try/except; no Float/class/FFI)
+to a static ELF with the compiler written in hs itself, byte-identical to the
+Python CLI's compiler output. `check` scans the source and
 reachable imports without running them and prints `ok: SOURCE`; a check error
 matches the Python CLI's text with exit 1, and `--json` adds the JSON error
 object including its optional code/hint catalog fields. `test` runs every
