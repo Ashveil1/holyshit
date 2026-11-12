@@ -11,8 +11,9 @@ sh scripts/install-native.sh "$HOME/holyshit-native"
 "$HOME/holyshit-native/bin/hs" build prog.holy /tmp/prog-hs
 ```
 
-New destination, existing parent; no Python/gcc needed. Hosted subset,
-run/build only, no interpreter fallback. See [native-install.md](native-install.md).
+New destination, existing parent; no Python/gcc needed. Provides `run`,
+`build`, `interpret`, `fmt`, `check`, `test`, `explain`, `cc`, `ir` and
+`--version`. See [native-install.md](native-install.md).
 
 ## Development/reference tools (Python)
 
@@ -55,7 +56,7 @@ print x, x + 1              # space-separated + trailing newline
 print "str"                 # Str can be concatenated
 "bare string"               # a lone string line also prints
 
-def f(a, b = 0):            # default arg: none
+def f(a, b = 0):            # default args
   return a + b              # return with no value -> null
 
 if c:
@@ -98,12 +99,12 @@ No `//` division (use `/`, which yields Float). No `0..5` (use `range(5)`).
 |---|---|---|
 | Int | `42`, `0xFF`, `-7` | 64-bit (x64 subset: 62-bit) |
 | Float | `3.5` | hosted only |
-| Str | `"a\nb"` | escapes: `\n \t \" \\` |
+| Str | `"a\nb"` | escapes: `\n \t \r \0 \" \\` |
 | Bool | `true`, `false` | falsy: `false null 0 "" [] {}` |
 | Null | `null` | |
 | List | `[1, "a"]` | mixed types ok; `append` adds at end |
 | Dict | `{"k": 1}` | keys must be Str; reading a missing key = error |
-| Func | `def`, no lambda | first-class: store in vars / pass as arguments |
+| Func | `def`, `lambda x: expr` | first-class: store in vars / pass as arguments |
 
 ## Operators
 
@@ -165,7 +166,7 @@ unsafe:
   Point* q = p + 1           # steps by sizeof
   print q - p
   print 7 / 2                # 3 (C-style truncation)
-  print 1 and 2             # 2 -> I64
+  print 1 and 2              # 1 (and/or return I64 0/1)
   asm("nop")                 # native build only
 ```
 
@@ -209,4 +210,6 @@ Uncaught = prints `error: <msg> at line N` to stderr and exits 1.
 4. Block indent must be consistent, and only `def` creates a scope
 5. A closure captures values **at `def` time** (not at call time)
 6. `print` uses spaces, not Python-style commas
-7. The x64/kernel subset has no Float/Dict/extern/argv - see `x64-subset.md`
+7. The x64 subset drops `extern`, `tcp_*`/`http_get` and the other
+   hosted-only pieces in `x64-subset.md`; the freestanding kernel subset is
+   smaller still

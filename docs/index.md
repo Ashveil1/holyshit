@@ -2,8 +2,8 @@
 
 A dynamic language that is as easy to write as Python, with 4 run targets
 (see the table in `builtins.md` for which feature runs where). The docs are
-written for humans, for AI agents and for machines - and every claim in them
-is checked by tests.
+written for humans, for AI agents and for machines - and the generated
+references (builtins.md, api.json, errors.md) are checked by tests.
 
 | I want to... | Read |
 |---|---|
@@ -31,8 +31,9 @@ sh scripts/install-native.sh "$HOME/holyshit-native"
 
 Use a new directory with an existing parent. No Python/gcc is needed for
 this route; shell/checksum utilities and host libc/shared libraries are
-required. The installed launcher supports run/build of the hosted subset,
-not all development commands or the entire language. See
+required. The installed launcher provides `run`, `build`, `interpret`,
+`fmt`, `check`, `test`, `explain`, `cc` and `ir`; the Python CLI remains
+for the development/oracle tools (lsp, xbuild/xkernel, the test suites). See
 [native install](native-install.md) for relocation, updates and limits.
 
 ## Development/reference tools (Python)

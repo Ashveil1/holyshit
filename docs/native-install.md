@@ -73,7 +73,7 @@ the source formatter's status 1 and diagnostic streams, which can include an
 error line on stdout as well as stderr, not the Python CLI's error contract.
 Missing formatter binary/manifest or checksum corruption refuses with status 1.
 Old bundles without `fmt` require a new complete install, not a copied launcher.
-Formatter corruption does not block `run`, `build` or `interpret`.
+Formatter corruption does not block the other commands.
 
 `check SOURCE` scans the source and its reachable imports without running any
 of them, using the prebuilt checker. A clean scan prints `ok: SOURCE` to stdout
@@ -89,7 +89,7 @@ ignored like the Python CLI. The checker checksum is verified before every
 launch with the same accidental-corruption limits above. A missing checker
 binary or manifest, or checksum corruption, refuses with status 1 and reports
 an incomplete bundle; install a new complete bundle. Checker corruption does
-not block `run`, `interpret`, `fmt`, `test`, `explain` or `build`.
+not block the other commands.
 
 `test FILE|DIR...` runs every top-level zero-arg `def test_*` of each given
 file; a directory means its recursively discovered test_*/t_* .holy/.hs
@@ -106,8 +106,7 @@ line instead of executing; the Python CLI runs them under CPython. Discovery
 uses the system `find` utility. The tester checksum is verified before every
 launch with the same accidental-corruption limits above; a missing tester
 binary or manifest, or checksum corruption, refuses with status 1. Tester
-corruption does not block `run`, `interpret`, `fmt`, `check`, `explain` or
-`build`.
+corruption does not block the other commands.
 
 `explain "<error message>"` explains a message against the shipped error
 catalog (docs/errors.md, installed alongside the bundle): it prints the best
@@ -118,7 +117,7 @@ message. Message words are passed exactly as given (never resolved as
 paths). The explainer checksum is verified before every launch with the same
 accidental-corruption limits above; a missing explainer binary or manifest,
 or checksum corruption, refuses with status 1. Explainer corruption does not
-block `run`, `interpret`, `fmt`, `check`, `test` or `build`. The `--json run`
+block the other commands. The `--json run`
 stderr envelope (a JSON error object for runtime errors) remains Python-only.
 
 `cc SOURCE [-o OUTPUT]` compiles a program with the compiler written in hs
@@ -141,7 +140,7 @@ the native runtime's uncaught-raise line suffix). Exit codes match. The
 compiler checksum is verified before every launch with the same
 accidental-corruption limits above; a missing compiler binary or manifest,
 or checksum corruption, refuses with status 1. Compiler corruption does not
-block `run`, `interpret`, `fmt`, `check`, `test`, `explain`, `ir` or `build`.
+block the other commands.
 
 `ir SOURCE` parses a program (with the Python CLI's prelude injection and
 range-step/defaults desugars), builds the flat CFG with the hs IR builder,
@@ -161,8 +160,7 @@ check` on the same source fails identically with status 97) while the
 Python CLI dumps it. Exit codes match. The IR dumper checksum is verified
 before every launch with the same accidental-corruption limits above; a
 missing IR dumper binary or manifest, or checksum corruption, refuses with
-status 1. IR dumper corruption does not block `run`, `interpret`, `fmt`,
-`check`, `test`, `explain`, `cc` or `build`.
+status 1. IR dumper corruption does not block the other commands.
 
 `--version` (or `-V`) prints `hs ` plus the bundled VERSION file's contents
 wherever the flag appears, like the Python CLI.
