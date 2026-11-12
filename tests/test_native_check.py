@@ -3,11 +3,10 @@
 
 Builds the real bundle, moves it, then compares the installed `hs check`
 against the Python CLI over a curated valid/invalid matrix: exit codes,
-stdout, exact text errors, and the JSON file/line/message fields. The JSON
-error catalog's optional code/hint fields are a documented follow-up: the
-native object must not emit them yet, and comparison covers the three base
-fields only. Driver stderr goes to a temp file so the suite is independent
-of how the runner wires standard error.
+stdout, exact text errors, and the full JSON error object including the
+error catalog's optional code/hint fields (hs.py _jerr parity). Driver
+stderr goes to a temp file so the suite is independent of how the runner
+wires standard error.
 """
 from pathlib import Path
 import json, os, shutil, subprocess, sys, tempfile
@@ -122,9 +121,8 @@ with tempfile.TemporaryDirectory(prefix='hs native check ') as temp:
                 else:
                     ok = ok and pj is not None and nvj is not None
                     if pj and nvj:
-                        ok = ok and all(pj.get(k) == nvj.get(k) for k in ('file', 'line', 'message'))
-                        # Documented gap: catalog code/hint parity is a follow-up.
-                        ok = ok and 'code' not in nvj and 'hint' not in nvj
+                        # Full parity: file/line/message plus catalog code/hint.
+                        ok = ok and pj == nvj
             else:
                 ok = ok and py.stderr == nerr_text
             check(ok, label, repr((py.returncode, nv.returncode, py.stdout, nv.stdout, py.stderr, nerr_text))[:400])

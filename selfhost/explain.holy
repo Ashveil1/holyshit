@@ -1,0 +1,416 @@
+# Error-catalog library for the installed native `hs explain` driver and the
+# --json code/hint attachment: a port of hs.py's catalog consumers
+# (_explain_load, _explain_regex, cmd_explain, _jerr) over docs/errors.md.
+# CPython difflib.SequenceMatcher is ported for the "similar:" suggestions.
+# Documented deviation from the Python CLI: whitespace is Python's ASCII \s
+# set (space, \t, \n, \x0b, \x0c, \r); non-ASCII whitespace is not treated
+# (catalog messages are ASCII).
+# JSON is emitted through the pj_* encoder below, not json_str: the native
+# runtime's json_str escapes non-ASCII as \uXXXX (json.dumps
+# ensure_ascii=True behavior) while the Python CLI's explain/_jerr use
+# ensure_ascii=False, emitting literal UTF-8.
+WS = join("", json_parse("[\"\\t\", \"\\n\", \"\\u000b\", \"\\f\", \"\\r\", \" \"]"))
+def sw(s, pre):
+  return s[0:len(pre)] == pre
+def ew(s, suf):
+  return s[len(s) - len(suf):] == suf
+def is_ws(c):
+  return find(WS, c) >= 0
+def is_digit(c):
+  return find("0123456789", c) >= 0
+def ws_strip(s):
+  while len(s) > 0 and is_ws(s[0:1]):
+    s = s[1:len(s)]
+  while len(s) > 0 and is_ws(s[len(s) - 1:len(s)]):
+    s = s[0:len(s) - 1]
+  return s
+def parse_erow(line):
+  # | `E001` | `pattern` | meaning | fix |  ->  [pattern, meaning, fix, code]
+  # or null when the line is not such a row. Mirrors the hs.py regex
+  # ^\| `(E\d+)` \| `(.+?)` \| (.+?) \| (.+?) \|$ including its non-greedy
+  # split points (first " | " ends the meaning, trailing " |" ends the fix).
+  if not sw(line, "| `"):
+    return null
+  if not ew(line, " |"):
+    return null
+  rest = line[3:len(line)]
+  i = find(rest, "`")
+  if i <= 1:
+    return null
+  code = rest[0:i]
+  if code[0:1] != "E":
+    return null
+  k = 1
+  while k < len(code):
+    if not is_digit(code[k:k + 1]):
+      return null
+    k = k + 1
+  rest = rest[i + 1:len(rest)]
+  if not sw(rest, " | `"):
+    return null
+  rest = rest[4:len(rest)]
+  j = find(rest, "`")
+  if j <= 0:
+    return null
+  pat = rest[0:j]
+  rest = rest[j + 1:len(rest)]
+  if not sw(rest, " | "):
+    return null
+  rest = rest[3:len(rest)]
+  k = find(rest, " | ")
+  if k <= 0:
+    return null
+  meaning = rest[0:k]
+  fix = rest[k + 3:len(rest) - 2]
+  if len(fix) == 0:
+    return null
+  return [pat, meaning, fix, code]
+def parse_brow(line):
+  # - `pattern`  ->  [pattern, null, null, null] or null.
+  if not sw(line, "- `"):
+    return null
+  if not ew(line, "`"):
+    return null
+  pat = line[3:len(line) - 1]
+  if len(pat) == 0:
+    return null
+  return [pat, null, null, null]
+def load(path):
+  # _explain_load: rows are [pattern, meaning|null, fix|null, section, code|null].
+  rows = []
+  src = ""
+  try:
+    src = read_text(path)
+  except as e:
+    return rows
+  sect = ""
+  for ln in split(src, "\n"):
+    if sw(ln, "## "):
+      sect = ws_strip(ln[3:len(ln)])
+      continue
+    r = parse_erow(ln)
+    if r != null:
+      append(rows, [r[0], r[1], r[2], sect, r[3]])
+      continue
+    b = parse_brow(ln)
+    if b != null:
+      append(rows, [b[0], null, null, sect, null])
+  return rows
+def norm_msg(msg):
+  # msg.strip(), then re.sub("^error:\s*") and re.sub("\s+at line \d+$").
+  m = ws_strip(msg)
+  if sw(m, "error:"):
+    m = m[6:len(m)]
+    while len(m) > 0 and is_ws(m[0:1]):
+      m = m[1:len(m)]
+  n = len(m)
+  k = n
+  while k > 0 and is_digit(m[k - 1:k]):
+    k = k - 1
+  if k < n:
+    if k >= 8 and m[k - 1:k] == " " and m[k - 8:k - 1] == "at line":
+      i = k - 8
+      if i > 0 and is_ws(m[i - 1:i]):
+        while i > 0 and is_ws(m[i - 1:i]):
+          i = i - 1
+        m = m[0:i]
+  return m
+def is_ecode(m):
+  # ^E\d{3}$
+  if len(m) != 4:
+    return false
+  if m[0:1] != "E":
+    return false
+  return is_digit(m[1:2]) and is_digit(m[2:3]) and is_digit(m[3:4])
+def split_pat(pat):
+  # re.split(r"(\{[^}]*\}|<[^>]*>)", pat): alternating [is_wild, text] parts.
+  parts = []
+  lit = ""
+  i = 0
+  n = len(pat)
+  while i < n:
+    c = pat[i:i + 1]
+    if c == "{":
+      j = find(pat[i + 1:n], "}")
+      if j >= 0:
+        append(parts, [false, lit])
+        append(parts, [true, pat[i:i + j + 2]])
+        lit = ""
+        i = i + j + 2
+        continue
+    if c == "<":
+      j = find(pat[i + 1:n], ">")
+      if j >= 0:
+        append(parts, [false, lit])
+        append(parts, [true, pat[i:i + j + 2]])
+        lit = ""
+        i = i + j + 2
+        continue
+    lit = lit + c
+    i = i + 1
+  append(parts, [false, lit])
+  return parts
+def lit_of(parts):
+  lit = ""
+  for p in parts:
+    if not p[0]:
+      lit = lit + p[1]
+  return ws_strip(lit)
+def mparts(parts, i, s, pos, loose):
+  # Anchored match of the pattern parts against s from pos. Wildcards are
+  # non-greedy .+? (one or more chars, never \n); loose drops the end anchor.
+  if i >= len(parts):
+    if loose:
+      return true
+    return pos == len(s)
+  p = parts[i]
+  if not p[0]:
+    L = p[1]
+    if s[pos:pos + len(L)] != L:
+      return false
+    return mparts(parts, i + 1, s, pos + len(L), loose)
+  if i + 1 >= len(parts):
+    return pos < len(s) and s[len(s) - 1:len(s)] != "\n"
+  nxt = parts[i + 1]
+  L = nxt[1]
+  q = pos + 1
+  while q <= len(s):
+    if s[q - 1:q] == "\n":
+      return false
+    if L == "":
+      if mparts(parts, i + 1, s, q, loose):
+        return true
+    else:
+      if q + len(L) <= len(s) and s[q:q + len(L)] == L:
+        if mparts(parts, i + 2, s, q + len(L), loose):
+          return true
+    q = q + 1
+  return false
+def match_pat(pat, m, loose):
+  parts = split_pat(pat)
+  return mparts(parts, 0, m, 0, loose)
+def jerr_attach(rows, d, msg):
+  # _jerr's catalog lookup: the first coded row whose pattern loosely matches
+  # msg adds code/hint to the JSON error object. No minimum-literal filter.
+  for r in rows:
+    if r[4] == null:
+      continue
+    if match_pat(r[0], msg, true):
+      d["code"] = r[4]
+      d["hint"] = r[2]
+      return d
+  return d
+def pj_hex4(b):
+  digs = "0123456789abcdef"
+  return "\\u" + digs[int(b / 4096):int(b / 4096) + 1] + digs[int(b / 256) % 16:int(b / 256) % 16 + 1] + digs[int(b / 16) % 16:int(b / 16) % 16 + 1] + digs[b % 16:b % 16 + 1]
+def pj_str(s):
+  # json.dumps string quoting with ensure_ascii=False: only ", \, the short
+  # escapes and bytes < 32 are escaped; everything else is literal UTF-8.
+  out = "\""
+  i = 0
+  n = byte_len(s)
+  while i < n:
+    b = byte_at(s, i)
+    if b == 34:
+      out = out + "\\\""
+    elif b == 92:
+      out = out + "\\\\"
+    elif b == 10:
+      out = out + "\\n"
+    elif b == 13:
+      out = out + "\\r"
+    elif b == 9:
+      out = out + "\\t"
+    elif b == 8:
+      out = out + "\\b"
+    elif b == 12:
+      out = out + "\\f"
+    elif b < 32:
+      out = out + pj_hex4(b)
+    else:
+      out = out + s[i:i + 1]
+    i = i + 1
+  return out + "\""
+def pj_opt_str(v):
+  if v == null:
+    return "null"
+  return pj_str(v)
+def pj_hit(h):
+  return "{\"code\": " + pj_opt_str(h["code"]) + ", \"pattern\": " + pj_str(h["pattern"]) + ", \"meaning\": " + pj_opt_str(h["meaning"]) + ", \"fix\": " + pj_opt_str(h["fix"]) + ", \"source\": " + pj_str(h["source"]) + "}"
+def pj_explain(m, hits, near):
+  # json.dumps({"message": m, "matches": hits, "nearest": near}, ensure_ascii=False)
+  ms = ""
+  i = 0
+  while i < len(hits):
+    if i > 0:
+      ms = ms + ", "
+    ms = ms + pj_hit(hits[i])
+    i = i + 1
+  ns = ""
+  i = 0
+  while i < len(near):
+    if i > 0:
+      ns = ns + ", "
+    ns = ns + pj_str(near[i])
+    i = i + 1
+  return "{\"message\": " + pj_str(m) + ", \"matches\": [" + ms + "], \"nearest\": [" + ns + "]}"
+def pj_jerr(path, line, msg, d):
+  # json.dumps({"file": path, "line": line, "message": msg[, "code": c, "hint": h]},
+  # ensure_ascii=False) onto stderr, keys in the Python CLI's insertion order.
+  out = "{\"file\": " + pj_str(path) + ", \"line\": "
+  if line == null:
+    out = out + "null"
+  else:
+    out = out + str(line)
+  out = out + ", \"message\": " + pj_str(msg)
+  if has(d, "code"):
+    out = out + ", \"code\": " + pj_str(d["code"]) + ", \"hint\": " + pj_opt_str(d["hint"])
+  return out + "}"
+def build_b2j(b):
+  # SequenceMatcher.set_seq2 including the autojunk popular-element purge.
+  b2j = {}
+  i = 0
+  while i < len(b):
+    c = b[i:i + 1]
+    if has(b2j, c):
+      lst = b2j[c]
+      append(lst, i)
+    else:
+      b2j[c] = [i]
+    i = i + 1
+  n = len(b)
+  if n >= 200:
+    ntest = int(n / 100) + 1
+    for c in keys(b2j):
+      if len(b2j[c]) > ntest:
+        b2j[c] = []
+  return b2j
+def flm(a, alo, ahi, b, blo, bhi, b2j):
+  # SequenceMatcher.find_longest_match (junk-free; autojunk already purged).
+  besti = alo
+  bestj = blo
+  bestsize = 0
+  j2len = {}
+  i = alo
+  while i < ahi:
+    c = a[i:i + 1]
+    lst = []
+    if has(b2j, c):
+      lst = b2j[c]
+    newj = {}
+    for j in lst:
+      if j < blo:
+        continue
+      if j >= bhi:
+        break
+      prev = 0
+      pk = str(j - 1)
+      if has(j2len, pk):
+        prev = j2len[pk]
+      k = prev + 1
+      newj[str(j)] = k
+      if k > bestsize:
+        besti = i - k + 1
+        bestj = j - k + 1
+        bestsize = k
+    j2len = newj
+    i = i + 1
+  while besti > alo and bestj > blo and a[besti - 1:besti] == b[bestj - 1:bestj]:
+    besti = besti - 1
+    bestj = bestj - 1
+    bestsize = bestsize + 1
+  while besti + bestsize < ahi and bestj + bestsize < bhi and a[besti + bestsize:besti + bestsize + 1] == b[bestj + bestsize:bestj + bestsize + 1]:
+    bestsize = bestsize + 1
+  return [besti, bestj, bestsize]
+def ratio(a, b, b2j):
+  # SequenceMatcher.ratio: 2*M/T over get_matching_blocks (the adjacent-block
+  # collapse does not change the sum of sizes, so it is skipped).
+  t = len(a) + len(b)
+  if t == 0:
+    return 1.0
+  queue = [[0, len(a), 0, len(b)]]
+  msum = 0
+  while len(queue) > 0:
+    blk = queue[len(queue) - 1]
+    queue = queue[0:len(queue) - 1]
+    mm = flm(a, blk[0], blk[1], b, blk[2], blk[3], b2j)
+    if mm[2] > 0:
+      msum = msum + mm[2]
+      if blk[0] < mm[0] and blk[2] < mm[1]:
+        append(queue, [blk[0], mm[0], blk[2], mm[1]])
+      if mm[0] + mm[2] < blk[1] and mm[1] + mm[2] < blk[3]:
+        append(queue, [mm[0] + mm[2], blk[1], mm[1] + mm[2], blk[3]])
+  return 2.0 * msum / t
+def close_matches(word, poss):
+  # difflib.get_close_matches(word, poss, n=3, cutoff=0.5): heapq.nlargest is
+  # sorted(reverse=True)[:n], so ties break on the string itself descending.
+  b2j = build_b2j(word)
+  res = []
+  for x in poss:
+    r = ratio(x, word, b2j)
+    if r >= 0.5:
+      append(res, [r, x])
+  out = []
+  for cur in res:
+    j = len(out)
+    append(out, cur)
+    while j > 0:
+      prv = out[j - 1]
+      if prv[0] > cur[0]:
+        break
+      if prv[0] == cur[0] and prv[1] >= cur[1]:
+        break
+      out[j] = prv
+      out[j - 1] = cur
+      j = j - 1
+  ans = []
+  i = 0
+  while i < len(out) and i < 3:
+    append(ans, out[i][1])
+    i = i + 1
+  return ans
+def explain(rows, msg):
+  # cmd_explain's matching phase: returns [normalized message, hits, nearest].
+  m = norm_msg(msg)
+  if is_ecode(m):
+    for r in rows:
+      if r[4] != null and r[4] == m:
+        m = r[0]
+        break
+  hits = []
+  for r in rows:
+    parts = split_pat(r[0])
+    lit = lit_of(parts)
+    if len(lit) < 6:
+      continue
+    loose = false
+    if r[4] != null:
+      loose = true
+    if mparts(parts, 0, m, 0, loose):
+      append(hits, {"code": r[4], "pattern": r[0], "meaning": r[1], "fix": r[2], "source": r[3]})
+  srt = []
+  for cur in hits:
+    j = len(srt)
+    append(srt, cur)
+    cm = 0
+    if cur["meaning"] == null:
+      cm = 1
+    while j > 0:
+      prv = srt[j - 1]
+      pm = 0
+      if prv["meaning"] == null:
+        pm = 1
+      if pm < cm:
+        break
+      if pm == cm and len(prv["pattern"]) >= len(cur["pattern"]):
+        break
+      srt[j] = prv
+      srt[j - 1] = cur
+      j = j - 1
+  near = []
+  if len(srt) == 0:
+    poss = []
+    for r in rows:
+      append(poss, r[0])
+    near = close_matches(m, poss)
+  return [m, srt, near]

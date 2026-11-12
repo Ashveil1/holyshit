@@ -41,8 +41,13 @@ def rstrip_nl(s):
   while len(s) > 0 and s[len(s) - 1:] == "\n":
     s = s[0:len(s) - 1]
   return s
+WS = join("", json_parse("[\"\\t\", \"\\n\", \"\\u000b\", \"\\f\", \"\\r\", \" \"]"))
 def ws_strip(s):
-  ws = " \t\n\rx0bx0c"
+  # Python str.strip for ASCII inputs. The previous literal " \t\n\rx0bx0c"
+  # accidentally stripped the characters x, 0, b and c too (unknown escapes
+  # pass through literally in hs), which mangled pids ending in 0 and stderr
+  # text beginning or ending with those characters.
+  ws = WS
   while len(s) > 0 and contains(ws, s[0:1]):
     s = s[1:]
   while len(s) > 0 and contains(ws, s[len(s) - 1:]):

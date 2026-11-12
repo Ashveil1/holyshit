@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     # A second-driver build failure must not publish a partial installation.
     broken=d/'broken checkout'
     broken.mkdir()
-    for name in ('scripts','bootstrap','selfhost','runtime','std'):
+    for name in ('scripts','bootstrap','selfhost','runtime','std','docs'):
         shutil.copytree(ROOT/name,broken/name)
     (broken/'selfhost/be/irinterp_run.holy').write_text('def broken(:\n')
     failed_install=d/'failed install'
@@ -46,6 +46,12 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     failed_test_install=d/'failed tester install'
     r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_test_install)],env=env,capture_output=True,text=True,timeout=240)
     check(r.returncode!=0 and not failed_test_install.exists() and not list(d.glob('.holyshit-bundle.*')),'tester build failure cleans staging without publishing')
+    # The sixth build must also fail without publishing the first five drivers.
+    shutil.copyfile(ROOT/'selfhost/test_run.holy',broken/'selfhost/test_run.holy')
+    (broken/'selfhost/explain_run.holy').write_text('def broken(:\n')
+    failed_explain_install=d/'failed explainer install'
+    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_explain_install)],env=env,capture_output=True,text=True,timeout=240)
+    check(r.returncode!=0 and not failed_explain_install.exists() and not list(d.glob('.holyshit-bundle.*')),'explainer build failure cleans staging without publishing')
     original=d/'original';moved=d/'moved bundle'
     started=time.monotonic()
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(original)],env=env,capture_output=True,text=True,timeout=240)
@@ -187,7 +193,9 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==1 and not r.stdout and r.stderr=="error: cannot find module 'absent_zz' at line 1\n",'check error text matches Python CLI '+repr((r.returncode,r.stdout,r.stderr[-150:])))
     r=subprocess.run(['/bin/sh',str(launcher),'--json','check',str(source)],env=env,capture_output=True,text=True,timeout=30)
-    check(r.returncode==1 and not r.stdout and json.loads(r.stderr)=={'file':str(source),'line':1,'message':"cannot find module 'absent_zz'"},'check --json file/line/message matches Python CLI shape '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    cat_row=[ln for ln in (ROOT/'docs/errors.md').read_text(encoding='utf-8').split('\n') if ln.startswith('| `E012` |')][0]
+    cat_hint=cat_row.split(' | ')[3][:-2]
+    check(r.returncode==1 and not r.stdout and json.loads(r.stderr)=={'file':str(source),'line':1,'message':"cannot find module 'absent_zz'",'code':'E012','hint':cat_hint},'check --json matches Python CLI shape incl. catalog code/hint '+repr((r.returncode,r.stdout,r.stderr[-150:])))
     r=subprocess.run(['/bin/sh',str(launcher),'check','--json',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==1 and json.loads(r.stderr)['line']==1,'check accepts --json after the command')
     r=subprocess.run(['/bin/sh',str(launcher),'check'],env=env,capture_output=True,text=True,timeout=10)
@@ -263,6 +271,45 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     tester.write_bytes(tester_bytes);tester.chmod(0o755)
     r=subprocess.run(['/bin/sh',str(launcher),'test',str(tsource)],env=env,capture_output=True,text=True,timeout=60)
     check(r.returncode==0 and not r.stderr and r.stdout=='ok   '+str(tsource)+'::test_ok\n1 passed, 0 failed\n','restored tester runs tests')
+    # Installed explainer matches messages against the shipped catalog.
+    check((moved/'docs/errors.md').read_bytes()==(ROOT/'docs/errors.md').read_bytes(),'bundle ships the error catalog')
+    explainer=moved/'bin/hs-explain'
+    explainer_bytes=explainer.read_bytes();explainer_mtime=explainer.stat().st_mtime_ns
+    print('METRIC installed_explainer_bytes',len(explainer_bytes),flush=True)
+    r=subprocess.run(['/bin/sh',str(launcher),'explain',"cannot find module 'absent_zz'"],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and not r.stderr and r.stdout.startswith('message: cannot find module \'absent_zz\'\npattern: cannot find module \'<m>\'  (Most common errors)  [E012]\n'),'relocated explain hits the shipped catalog '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    check(explainer.read_bytes()==explainer_bytes and explainer.stat().st_mtime_ns==explainer_mtime,'explain does not rebuild installed driver')
+    r=subprocess.run(['/bin/sh',str(launcher),'--json','explain',"cannot find module 'absent_zz'"],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and json.loads(r.stdout)['matches'][0]['code']=='E012','explain --json emits the catalog code '+repr((r.returncode,r.stdout[-200:],r.stderr[-150:])))
+    r=subprocess.run(['/bin/sh',str(launcher),'explain','totally unmatchable qwerty'],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and r.stdout.startswith('no catalog entry for: totally unmatchable qwerty\n'),'explain reports no catalog entry with rc 1 '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    r=subprocess.run(['/bin/sh',str(launcher),'explain'],env=env,capture_output=True,text=True,timeout=10)
+    check(r.returncode==2 and not r.stdout and 'usage:' in r.stderr,'explain requires a message')
+    explainer.write_bytes(explainer_bytes+b'changed')
+    r=subprocess.run(['/bin/sh',str(launcher),'explain','index out of range'],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'explainer checksum failed' in r.stderr,'corrupt explainer refused before matching')
+    # Corrupting this optional analysis route must not change the others.
+    source.write_text('print 41\n')
+    for command in ['run','interpret']:
+        r=subprocess.run(['/bin/sh',str(launcher),command,str(source)],env=env,capture_output=True,text=True,timeout=30)
+        check(r.returncode==0 and r.stdout=='41\n',command+' independent of explainer checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'fmt',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='print 41\n','fmt independent of explainer checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'check',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='ok: '+str(source)+'\n','check independent of explainer checksum')
+    r=subprocess.run(['/bin/sh',str(launcher),'build',str(source),str(exe)],env=env,capture_output=True,text=True,timeout=60)
+    if r.returncode==0:r=subprocess.run([str(exe)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='41\n','build independent of explainer checksum')
+    explainer.write_bytes(explainer_bytes)
+    xsums=moved/'EXPLAIN_SHA256SUMS';saved_xsums=xsums.read_bytes();xsums.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'explain','index out of range'],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing explainer manifest reports incomplete bundle')
+    xsums.write_bytes(saved_xsums);explainer.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'explain','index out of range'],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing explainer binary reports incomplete bundle')
+    explainer.write_bytes(explainer_bytes);explainer.chmod(0o755)
+    r=subprocess.run(['/bin/sh',str(launcher),'explain','index out of range'],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and 'pattern: index out of range  (Most common errors)  [E002]' in r.stdout,'restored explainer matches the catalog')
     source.write_text('print 1 / 0\n')
     r=subprocess.run(['/bin/sh',str(launcher),'run',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode!=0 and 'division by zero' in r.stderr,'runtime error status')

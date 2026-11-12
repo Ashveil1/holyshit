@@ -1,0 +1,54 @@
+# Installed native `hs explain` driver: explain an error message against the
+# error catalog (docs/errors.md), mirroring hs.py explain "<message>". Prints
+# the best catalog hit (or "no catalog entry" with similar patterns); --json
+# prints the Python CLI's machine-readable object. Exit 0 on a hit, 1 on no
+# hit, 2 on usage errors. A missing catalog file means no rows, like the
+# Python CLI, so every message reports "no catalog entry".
+import explain
+
+def die(msg, code):
+  f = open("/dev/stderr", "w")
+  write(f, "error: " + msg + "\n")
+  close(f)
+  scall(60, code, 0, 0, 0, 0, 0)
+
+args = argv()
+as_json = false
+words = []
+for a in args:
+  if a == "--json":
+    as_json = true
+  else:
+    append(words, a)
+if len(words) == 0:
+  die("usage: hs explain \"<error message>\"", 2)
+root = env("HSROOT")
+if root == null or root == "":
+  die("HSROOT is not set; run through the installed hs launcher", 2)
+rows = explain.load(root + "/docs/errors.md")
+r = explain.explain(rows, join(" ", words))
+m = r[0]
+hits = r[1]
+near = r[2]
+if as_json:
+  print explain.pj_explain(m, hits[0:3], near)
+else:
+  if len(hits) > 0:
+    h = hits[0]
+    print "message: " + m
+    line = "pattern: " + h["pattern"] + "  (" + h["source"] + ")"
+    if h["code"] != null:
+      line = line + "  [" + h["code"] + "]"
+    print line
+    if h["meaning"] != null:
+      print "meaning: " + h["meaning"]
+      print "fix: " + h["fix"]
+    else:
+      print "no curated fix; see docs/errors.md and docs/for-agents.md"
+  else:
+    print "no catalog entry for: " + m
+    for n in near:
+      print "similar: " + n
+if len(hits) > 0:
+  scall(60, 0, 0, 0, 0, 0, 0)
+scall(60, 1, 0, 0, 0, 0, 0)

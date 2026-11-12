@@ -1,9 +1,10 @@
 # Installed native `hs check` driver: scan SOURCE and its reachable imports
 # without executing anything. Text success prints `ok: SOURCE`; check errors
-# exit 1, usage errors exit 2. --json prints the Python CLI's basic
-# {"file", "line", "message"} error object on stderr; the error catalog's
-# optional code/hint fields are a documented follow-up, not emitted here.
+# exit 1, usage errors exit 2. --json prints the Python CLI's error object on
+# stderr: {"file", "line", "message"} plus the error catalog's code/hint
+# fields when a coded catalog row loosely matches the message (hs.py _jerr).
 import check
+import explain
 
 def die(msg, code):
   f = open("/dev/stderr", "w")
@@ -11,15 +12,16 @@ def die(msg, code):
   close(f)
   scall(60, code, 0, 0, 0, 0, 0)
 
-def jerr(path, msg, line):
+def jerr(rows, path, msg, line):
   d = {"file": path, "line": line, "message": msg}
+  d = explain.jerr_attach(rows, d, msg)
   f = open("/dev/stderr", "w")
-  write(f, json_str(d) + "\n")
+  write(f, explain.pj_jerr(path, line, msg, d) + "\n")
   close(f)
 
 def bad(msg, line, path, as_json, code):
   if as_json:
-    jerr(path, msg, line)
+    jerr(ROWS, path, msg, line)
   else:
     m = msg
     if line != null:
@@ -37,6 +39,11 @@ for a in args:
     append(rest, a)
 if len(rest) < 1:
   die("usage: hs check SOURCE", 2)
+ROWS = []
+if as_json:
+  root = env("HSROOT")
+  if root != null and root != "":
+    ROWS = explain.load(root + "/docs/errors.md")
 path = rest[0]
 if not exists(path):
   bad("cannot read " + path + ": No such file or directory", null, path, as_json, 1)

@@ -2,12 +2,13 @@
 # Installed as BUNDLE/bin/hs. Resolve data relative to the moved bundle.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs test FILE|DIR... | hs build SOURCE OUTPUT | hs SOURCE.holy [args...]'
+USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs test FILE|DIR... | hs build SOURCE OUTPUT | hs explain "<error message>" | hs SOURCE.holy [args...]'
 if [ "$#" -lt 1 ]; then
   printf '%s\n' "$USAGE" >&2
   exit 2
 fi
-# Python-style global --json: strip it wherever it appears (only check uses it).
+# Python-style global --json: strip it wherever it appears (check, test and
+# explain use it).
 AS_JSON=no
 N=$#
 I=0
@@ -27,6 +28,28 @@ if [ "$#" -lt 1 ]; then
 fi
 COMMAND=$1
 shift
+if [ "$COMMAND" = "explain" ]; then
+  # explain takes the message words, not a source path; they are passed
+  # exactly as given, like the Python CLI joining argv with spaces.
+  if [ "$#" -lt 1 ]; then
+    printf '%s\n' "$USAGE" >&2
+    exit 2
+  fi
+  export HSROOT="$ROOT"
+  export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT/std${HSPATH:+:$HSPATH}"
+  if [ ! -f "$ROOT/bin/hs-explain" ] || [ ! -f "$ROOT/EXPLAIN_SHA256SUMS" ]; then
+    printf '%s\n' 'installed explainer is missing; install a new complete bundle' >&2
+    exit 1
+  fi
+  (cd "$ROOT" && sha256sum --status -c EXPLAIN_SHA256SUMS) || {
+    printf '%s\n' 'installed explainer checksum failed' >&2
+    exit 1
+  }
+  if [ "$AS_JSON" = yes ]; then
+    exec "$ROOT/bin/hs-explain" "$@" --json
+  fi
+  exec "$ROOT/bin/hs-explain" "$@"
+fi
 case "$COMMAND" in
   *.holy)
     # Bare source path: `hs prog.holy` runs it.
