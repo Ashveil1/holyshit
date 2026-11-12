@@ -1,0 +1,11 @@
+HSGOLD1
+rc=0
+stdout=28
+stderr=0
+
+[a, b]
+a,b
+0
+[x, y, z]
+10
+b

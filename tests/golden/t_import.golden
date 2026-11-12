@@ -1,0 +1,9 @@
+HSGOLD1
+rc=0
+stdout=25
+stderr=0
+
+42
+3
+4
+<module mod_math>

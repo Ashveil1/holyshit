@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=50
+
+error: struct 'Desc' has no field 'zzz' at line 6

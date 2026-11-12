@@ -1,0 +1,9 @@
+HSGOLD1
+rc=0
+stdout=64
+stderr=0
+
+6
+x must be positive at line 2
+assertion failed at line 10
+done

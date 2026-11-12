@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=42
+
+error: has wants has(dict, key) at line 1

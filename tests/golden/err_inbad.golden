@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=57
+
+error: 'in' needs a Str, List or Dict, got Int at line 1

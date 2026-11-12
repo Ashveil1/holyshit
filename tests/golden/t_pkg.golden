@@ -1,0 +1,7 @@
+HSGOLD1
+rc=0
+stdout=15
+stderr=0
+
+hi hs!
+pkgdemo

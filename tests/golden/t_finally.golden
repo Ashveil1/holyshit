@@ -1,0 +1,28 @@
+HSGOLD1
+rc=0
+stdout=266
+stderr=0
+
+body
+fin
+x at line 7
+fin2
+cleanup
+zero
+1
+cleanup
+after
+1
+iter
+iter
+loop-done
+inner-fin
+deep at line 38
+done
+saw boom at line 48
+fin-before-rethrow
+outer saw rethrown at line 51
+saw boom at line 60
+fin-before-typeerror
+outer saw cannot add Int and Str at line 63
+end

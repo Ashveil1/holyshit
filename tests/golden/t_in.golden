@@ -1,0 +1,11 @@
+HSGOLD1
+rc=0
+stdout=73
+stderr=0
+
+true false true true
+true false true
+true true true false true
+ok
+3
+true

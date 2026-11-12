@@ -1,0 +1,10 @@
+HSGOLD1
+rc=0
+stdout=24
+stderr=0
+
+[a, b c]
+2
+null
+false
+3

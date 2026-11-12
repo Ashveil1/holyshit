@@ -1,0 +1,10 @@
+HSGOLD1
+rc=0
+stdout=37
+stderr=0
+
+hello, a!
+hi, b!
+yo, c?
+12 20
+6 20 9

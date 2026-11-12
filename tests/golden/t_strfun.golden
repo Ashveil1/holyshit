@@ -1,0 +1,17 @@
+HSGOLD1
+rc=0
+stdout=62
+stderr=0
+
+[1, 2, 3]
+[a, b, c]
+[a, b, ]
+2
+-1
+x-y
+el
+he
+llo
+ll
+[20, 30]
+2

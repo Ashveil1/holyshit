@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=39
+
+error: expected else, got '' at line 1

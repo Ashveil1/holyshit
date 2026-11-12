@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=45
+
+error: dict key must be Str or Int at line 2

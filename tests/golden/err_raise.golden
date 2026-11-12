@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=48
+
+error: raise without active exception at line 1

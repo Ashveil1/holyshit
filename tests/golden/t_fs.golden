@@ -1,0 +1,11 @@
+HSGOLD1
+rc=0
+stdout=62
+stderr=0
+
+hello world
+true
+false
+{x: [1, 2]}
+[a.txt, b.json]
+{"k": "v"}

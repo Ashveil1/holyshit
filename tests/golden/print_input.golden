@@ -1,0 +1,10 @@
+HSGOLD1
+rc=0
+stdout=27
+stderr=0
+
+line:
+
+1 2 3
+parens
+hi bob

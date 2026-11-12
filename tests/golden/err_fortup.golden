@@ -1,0 +1,6 @@
+HSGOLD1
+rc=1
+stdout=0
+stderr=40
+
+error: bad loop variable 'in' at line 1
