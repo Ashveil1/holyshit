@@ -27,17 +27,20 @@ removing only its chosen directory, not any source checkout.
 
 The native launcher provides `run SOURCE [args...]`, `build SOURCE OUTPUT`
 and explicit `interpret SOURCE [args...]`, plus stdout-only `fmt SOURCE`,
-scan-only `check SOURCE` and `test FILE|DIR...`. `check` scans the source and
+scan-only `check SOURCE`, `test FILE|DIR...` and `explain "<error message>"`.
+`check` scans the source and
 reachable imports without running them and prints `ok: SOURCE`; a check error
 matches the Python CLI's text with exit 1, and `--json` adds the JSON error
-object without its optional code/hint catalog fields. `test` runs every
+object including its optional code/hint catalog fields. `test` runs every
 top-level zero-arg `def test_*` of each file (directories mean their
 test_*.holy / t_*.holy / .hs files) on the installed hs interpreter and
 reports like the Python CLI, with `--json` for the machine-readable object.
 Unlike the Python CLI, which runs tests on the CPython interpreter, the
 installed interpreter has a documented subset: files using unsafe/ffi or
 out-of-subset builtins are reported failed with the refusal line instead of
-executing. `interpret` runs the hs-written IR
+executing. `explain` matches a message against the shipped error catalog and
+prints the best hit's meaning and fix (or similar patterns), like the Python
+CLI. `interpret` runs the hs-written IR
 interpreter, with its own documented subset and refusals; it is not a fallback
 for `run` or `build`. Those commands report unsupported hosted-subset programs
 rather than silently switching execution modes. It does not provide the Python

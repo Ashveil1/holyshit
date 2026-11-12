@@ -16,11 +16,11 @@ The parent must already exist and the destination must not. Paths with spaces
 work. The installer checks the host and delegates to the audited bundle
 builder: verify pinned compiler checksum, stage a separate directory, build
 the eager driver, existing hs-written IR interpreter, hs formatter, hs
-checker and hs tester with the native compiler, then publish without
-overwriting. All five must build before the staged directory is published;
-failure leaves no partial installation.
+checker, hs tester and hs explainer with the native compiler, then publish
+without overwriting. All six must build before the staged directory is
+published; failure leaves no partial installation.
 It downloads nothing, uses no Python/gcc, changes no profile/PATH, creates no
-system-wide link and needs no sudo. Building five drivers takes additional
+system-wide link and needs no sudo. Building six drivers takes additional
 installation time and disk space; none is rebuilt for each invocation.
 
 Keep the whole installed directory together. The launcher resolves compiler,
@@ -78,8 +78,9 @@ Formatter corruption does not block `run`, `build` or `interpret`.
 of them, using the prebuilt checker. A clean scan prints `ok: SOURCE` to stdout
 with exit 0; a check error prints the same file/line/message text as the Python
 CLI's check to stderr with exit 1. `hs --json check SOURCE` (or `--json` after
-the command) emits the JSON error object with file, line and message; the
-optional code/hint catalog fields the Python CLI can add are not emitted yet.
+the command) emits the JSON error object with file, line and message, plus
+the error catalog's code/hint fields when a coded catalog row matches, like
+the Python CLI.
 The checker keeps the Python checker's documented baseline: unknown names,
 bare raise, def-after-use and circular imports are accepted, not errors. A
 missing source argument returns status 2; extra positional arguments are
@@ -87,7 +88,7 @@ ignored like the Python CLI. The checker checksum is verified before every
 launch with the same accidental-corruption limits above. A missing checker
 binary or manifest, or checksum corruption, refuses with status 1 and reports
 an incomplete bundle; install a new complete bundle. Checker corruption does
-not block `run`, `interpret`, `fmt` or `build`.
+not block `run`, `interpret`, `fmt`, `test`, `explain` or `build`.
 
 `test FILE|DIR...` runs every top-level zero-arg `def test_*` of each given
 file; a directory means its recursively discovered test_*/t_* .holy/.hs
@@ -104,7 +105,20 @@ line instead of executing; the Python CLI runs them under CPython. Discovery
 uses the system `find` utility. The tester checksum is verified before every
 launch with the same accidental-corruption limits above; a missing tester
 binary or manifest, or checksum corruption, refuses with status 1. Tester
-corruption does not block `run`, `interpret`, `fmt`, `check` or `build`.
+corruption does not block `run`, `interpret`, `fmt`, `check`, `explain` or
+`build`.
+
+`explain "<error message>"` explains a message against the shipped error
+catalog (docs/errors.md, installed alongside the bundle): it prints the best
+catalog hit with its meaning and fix, or `no catalog entry` plus similar
+patterns, exactly like the Python CLI, with `--json` for the same
+machine-readable object. Exit 0 on a hit, 1 on no hit, 2 on a missing
+message. Message words are passed exactly as given (never resolved as
+paths). The explainer checksum is verified before every launch with the same
+accidental-corruption limits above; a missing explainer binary or manifest,
+or checksum corruption, refuses with status 1. Explainer corruption does not
+block `run`, `interpret`, `fmt`, `check`, `test` or `build`. The `--json run`
+stderr envelope (a JSON error object for runtime errors) remains Python-only.
 
 REPL/LSP and source/bootstrap audits remain development tools
 that use Python. The Python formatter remains available for `-w`/`--check`. Kernel building has its existing separate native script;
