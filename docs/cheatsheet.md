@@ -118,10 +118,15 @@ bitwise (Int only - Bool is not an Int):
 
 ```hs
 print 6 & 3, 6 | 3, 6 ^ 3
+# => 2 7 5
 print ~0
+# => -1
 print 1 << 10
+# => 1024
 print 1024 >> 3
+# => 128
 print 0x83 & ~0x10
+# => 131
 ```
 
 Result: `2 7 5` / `-1` / `1024` / `128` / `131`
@@ -163,15 +168,19 @@ unsafe:
   p.x = 3
   p.y = 4
   print p.x + p.y
+  # => 7
   Point* q = p + 1           # steps by sizeof
   print q - p
+  # => 1
   print 7 / 2                # 3 (C-style truncation)
+  # => 3
   print 1 and 2              # 1 (and/or return I64 0/1)
-  asm("nop")                 # native build only
+  # => 1
 ```
 
 - Allowed: typed decl (`I64 U64 Ptr Name*`), `*p = v`, struct, `p.f`, `p.arr[i]`,
-  `sizeof(T)` (every field is 8 bytes, no padding), `if/while`, `print`
+  `sizeof(T)` (every field is 8 bytes, no padding), `if/while`, `print`,
+  `asm("...")` (native build only)
 - raw 64-bit: `load64(p)` / `store64(p, v)` (no tag - for page table entries)
 - Not allowed: `def`, `for`, `try`, `Str/List/Float`, extern, string
 - Values inside `unsafe:` are raw machine words - cross the boundary with `as_ptr`/`as_int`

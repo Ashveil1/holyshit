@@ -100,7 +100,7 @@ def run_blocks(state, path):
 
 with tempfile.TemporaryDirectory() as state:
     # only these are supposed to carry runnable examples
-    must_have = {"tutorial.md", "x64-subset.md"}
+    must_have = {"tutorial.md", "x64-subset.md", "cheatsheet.md"}
     for fname in sorted(os.listdir(DOCS)):
         if not fname.endswith(".md") or fname.startswith("builtins"):
             continue
