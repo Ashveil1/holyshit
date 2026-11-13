@@ -1,0 +1,25 @@
+# Double-buffered surface demo: full-scene flush, then after a key press a
+# small second flush that must touch only the dirty rect's bytes.
+import kpmm
+import kheap
+import kframebuffer
+import ksurface
+
+kpmm.init()
+kheap.init(384)
+frame = kframebuffer.descriptor()
+kframebuffer.map(frame)
+s = ksurface.create(frame[2], frame[3])
+ksurface.rect(s, 0, 0, frame[2], frame[3], 0x16324f)
+ksurface.rect(s, 50, 50, 530, 370, 0xe8edf2)
+ksurface.rect(s, 50, 50, 530, 50, 0x386fa4)
+n1 = ksurface.flush(s, frame)
+print "SURFACE READY", s[0], s[1], frame[4], n1
+key = readkey()
+while key == null:
+  key = readkey()
+ksurface.rect(s, 400, 300, 64, 48, 0xff8800)
+n2 = ksurface.flush(s, frame)
+print "SURFACE UPDATED", n2
+while true:
+  pass

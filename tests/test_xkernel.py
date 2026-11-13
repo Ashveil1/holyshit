@@ -248,6 +248,17 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("kheap all assertions pass", m and m.group(1) == "0", out[-800:])
         check("kheap ran its checks", out.count("\nok ") >= 25, out[-800:])
+    # ksurface: dirty-rect double-buffered surface over a mock framebuffer
+    ks = os.path.join(d, "ks.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "ksurfacetest.holy"), ks)
+    check("ksurfacetest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(ks, timeout=10)
+        check("ksurface finished", "ksurface-done" in out, out[-800:])
+        check("ksurface did not fault", "EXC " not in out, out[-800:])
+        m = re.search(r"fails (\d+)", out)
+        check("ksurface all assertions pass", m and m.group(1) == "0", out[-800:])
+        check("ksurface ran its checks", out.count("\nok ") >= 25, out[-800:])
     # address spaces: a new PML4 shares the kernel, isolates user pages
     ka = os.path.join(d, "ka.elf")
     rc = build_xkernel(os.path.join(ROOT, "kernel", "kaddrtest.holy"), ka)
