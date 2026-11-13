@@ -99,7 +99,7 @@
          _t124 = self.ensure_prefixes(s["name"], from_dir, s["line"])
          topmod = _t124[0]
          chain = _t124[1]
-@@ -166,7 +222,8 @@
+@@ -168,7 +224,8 @@
          self.ann_expr(s["val"], sc, false)
        elif t in ["pass", "break", "continue", "global", "extern", "struct"]:
          if t == "global":
@@ -109,7 +109,7 @@
          pass
        else:
          raise pyrt.py_err(str(t) + " not in x64 subset", s["line"])
-@@ -205,7 +262,8 @@
+@@ -207,7 +264,8 @@
              m = m.parent
            pyrt.py_add(m.raw_names, s["name"])
          elif t == "global":
@@ -119,7 +119,7 @@
          elif t == "print":
            for ar in s["args"]:
              self.ann_expr(ar, sc, true)
-@@ -268,7 +326,7 @@
+@@ -270,7 +328,7 @@
        return null
      if t == "sizeof":
        st = e["stype"]
@@ -128,7 +128,7 @@
          raise pyrt.py_err("unknown struct '" + str(st) + "'", e["line"])
        return null
      if t == "field":
-@@ -294,9 +352,9 @@
+@@ -296,9 +354,9 @@
        raise pyrt.py_err("unknown variable '" + str(obj["name"]) + "'", ln)
      if obj["t"] == "field":
        xs = pyrt.py_get(obj, "_st", null)
@@ -140,7 +140,7 @@
        if f == null:
          raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(obj["name"]) + "'", ln)
        xs2 = ptr_struct(f[0])
-@@ -313,7 +371,7 @@
+@@ -315,7 +373,7 @@
      for fs in self.all_fs:
        caps = pyrt.py_set(null)
        for s, nm in self.reads:
@@ -149,7 +149,7 @@
            continue
          if nm in fs.params or nm in fs.loc or nm in fs.uloc or nm in fs.globs:
            continue
-@@ -322,7 +380,7 @@
+@@ -324,7 +382,7 @@
          p = fs.parent
          outer = false
          while p != null:
@@ -158,7 +158,7 @@
              break
            if nm in p.globs:
              break
-@@ -350,13 +408,13 @@
+@@ -352,13 +410,13 @@
        asm.data_bytes(b + pyrt.py_rep([0], 8 - len(b) % 8))
      return self.sstrs[s]
    def sfloat(self, bits):
@@ -174,7 +174,7 @@
      return self.sstrs[key]
    def emit_str_table(self):
      for s, lab in pyrt.py_items(self.strs):
-@@ -365,7 +423,7 @@
+@@ -367,7 +425,7 @@
    def new_tmp(self, pfx):
      self.tmpn = self.tmpn + 1
      return str(pfx) + str(self.tmpn)
@@ -183,7 +183,7 @@
      t = e["t"]
      ln = e["line"]
      if t == "num":
-@@ -381,11 +439,21 @@
+@@ -383,11 +441,21 @@
          if not self.freestanding:
            asm.lea_rip("rax", self.sfloat(bits))
            return null
@@ -207,7 +207,7 @@
        return null
      if t == "str":
        if self.freestanding:
-@@ -446,7 +514,7 @@
+@@ -448,7 +516,7 @@
        asm.jcc("ne", lab_nno)
        asm.label(lab_nfl)
        asm.mov_rm("rdi", "rax", 8)
@@ -216,7 +216,7 @@
        asm.xor_rr("rdi", "r11")
        asm.call("x_float_new")
        asm.jmp(lab_ndone)
-@@ -504,6 +572,8 @@
+@@ -506,6 +574,8 @@
        self.sev(e, sc, mod)
        return null
      raise pyrt.py_err(str(t) + " not in x64 subset", ln)
@@ -225,7 +225,7 @@
    def ev_slice(self, e, sc, mod):
      ln = e["line"]
      self.ev(e["obj"], sc, mod)
-@@ -551,13 +621,13 @@
+@@ -553,13 +623,13 @@
    def resolve_var(self, name, sc, mod, ln):
      reader = sc
      while reader != null and not reader.is_func:
@@ -241,7 +241,7 @@
          if name in s.uloc:
            return ["guloc", name]
          if name in s.loc:
-@@ -567,15 +637,15 @@
+@@ -569,15 +639,15 @@
          s = s.parent
          continue
        if name in s.params:
@@ -260,7 +260,7 @@
            return ["cap", self.cap_index(reader, name, ln)]
          return ["loc", s.loc[name]]
        s = s.parent
-@@ -622,7 +692,7 @@
+@@ -624,7 +694,7 @@
        if name in cur.globs:
          cur = cur.parent
          continue
@@ -269,7 +269,7 @@
          break
        cur = cur.parent
      return null
-@@ -687,13 +757,13 @@
+@@ -689,13 +759,13 @@
        return null
      if kind in ["guloc", "gloc"]:
        asm.lea_rip("rax", self.glabel(mod, name))
@@ -285,7 +285,7 @@
        raise pyrt.py_err("bad module name '" + str(fullname) + "'", line)
      parts = pyrt.py_split(fullname, ".")
      chain = []
-@@ -701,17 +771,20 @@
+@@ -703,17 +773,20 @@
      for i, part in pyrt.py_enumerate(parts):
        dotted = pyrt.py_join(".", parts[0:i + 1])
        last = i == len(parts) - 1
@@ -313,7 +313,7 @@
        pyrt.py_setdefault(m, "submods", {})
        if parent != null:
          pyrt.py_setdefault(parent, "submods", {})[part] = m
-@@ -720,7 +793,7 @@
+@@ -722,7 +795,7 @@
          append(chain, m)
      topmod = pyrt.py_get(self.shell_mods, parts[0], null)
      if topmod == null:
@@ -322,7 +322,7 @@
      return [topmod, chain]
    def find_binding(self, name, sc):
      s = sc
-@@ -760,11 +833,16 @@
+@@ -762,11 +835,16 @@
        self.ev(e["r"], sc, mod)
        asm.mov_rr("rcx", "rax")
        asm.pop_r("rax")
@@ -344,7 +344,7 @@
        asm.cmp_rr("rax", "rcx")
        asm.jcc("ne", lab_eq_ne)
        asm.mov_rr("r11", "rax")
-@@ -813,9 +891,10 @@
+@@ -815,9 +893,10 @@
        self.ev(e["r"], sc, mod)
        asm.mov_rr("rcx", "rax")
        asm.pop_r("rax")
@@ -358,7 +358,7 @@
        asm.mov_rr("r11", "rax")
        asm.and_ri32("r11", 3)
        asm.cmp_ri32("r11", Gen_TAG_INT)
-@@ -1196,7 +1275,7 @@
+@@ -1198,7 +1277,7 @@
      self.raise_static("index out of range", ln)
      asm.label(lab_done)
      asm.label(lab_ix_done)
@@ -367,7 +367,7 @@
      ln = e["line"]
      fn = e["fn"]
      if fn["t"] == "var" and (not (fn["name"] in Gen_XBUILTINS) or fn["name"] in ["byte_len", "byte_find", "byte_at"]):
-@@ -1259,9 +1338,9 @@
+@@ -1261,9 +1340,9 @@
        asm.movq_xm(0, "rax", 8)
        asm.cvttsd2si("rax", 0)
        asm.mov_rr("rcx", "rax")
@@ -379,7 +379,7 @@
        asm.cmp_rr("rcx", "r11")
        asm.jcc("ae", lab_inum)
        self.tag_box()
-@@ -1276,9 +1355,9 @@
+@@ -1278,9 +1357,9 @@
        asm.test_rr("rdx", "rdx")
        asm.jcc("e", lab_iquote)
        asm.mov_rr("rcx", "rax")
@@ -391,7 +391,7 @@
        asm.cmp_rr("rcx", "r11")
        asm.jcc("ae", lab_iquote)
        self.tag_box()
-@@ -1332,6 +1411,8 @@
+@@ -1334,6 +1413,8 @@
          self.raise_unop(0, ln)
          asm.label(lab_lok)
        if fn["name"] == "len":
@@ -400,7 +400,7 @@
          asm.mov_rm("rax", "rax", 8)
          asm.shl_ri8("rax", 2)
          asm.or_ri8("rax", 1)
-@@ -1457,9 +1538,9 @@
+@@ -1459,9 +1540,9 @@
        if len(e["args"]) != 1:
          raise pyrt.py_err("byte_len wants byte_len(s)", ln)
        self.ev(e["args"][0], sc, mod)
@@ -413,7 +413,7 @@
        asm.mov_rr("r11", "rax")
        asm.and_ri32("r11", 3)
        asm.test_rr("r11", "r11")
-@@ -1485,9 +1566,9 @@
+@@ -1487,9 +1568,9 @@
        self.ev(e["args"][1], sc, mod)
        asm.mov_rr("rsi", "rax")
        asm.pop_r("rdi")
@@ -426,7 +426,7 @@
        for rr in ["rdi", "rsi"]:
          asm.mov_rr("r11", rr)
          asm.and_ri32("r11", 3)
-@@ -1518,9 +1599,9 @@
+@@ -1520,9 +1601,9 @@
        self.ev(e["args"][1], sc, mod)
        asm.mov_rr("rcx", "rax")
        asm.pop_r("rax")
@@ -439,7 +439,7 @@
        asm.mov_rr("r11", "rax")
        asm.and_ri32("r11", 3)
        asm.test_rr("r11", "r11")
-@@ -1551,9 +1632,9 @@
+@@ -1553,9 +1634,9 @@
        asm.jcc("ge", lab_ba_pos)
        asm.add_rr("rcx", "r11")
        asm.label(lab_ba_pos)
@@ -452,7 +452,7 @@
        asm.cmp_ri32("rcx", 0)
        asm.jcc("l", lab_ba_oob)
        asm.cmp_rr("rcx", "r11")
-@@ -2132,6 +2213,8 @@
+@@ -2134,6 +2215,8 @@
        name = fn["name"]
        raise pyrt.py_err("builtin '" + str(name) + "' not in x64 subset", ln)
      self.ev_user_call(e, sc, mod, ln)
@@ -461,7 +461,7 @@
    def is_user_def(self, name, sc, mod):
      cur = sc
      while cur != null:
-@@ -2142,7 +2225,7 @@
+@@ -2144,7 +2227,7 @@
        if name in cur.globs:
          cur = cur.parent
          continue
@@ -470,7 +470,7 @@
          break
        cur = cur.parent
      return false
-@@ -2289,7 +2372,7 @@
+@@ -2291,7 +2374,7 @@
      asm.call_rax()
      asm.pop_r("r15")
      asm.add_ri32("rsp", 8 * (len(e["args"]) + 1))
@@ -479,7 +479,7 @@
      if name == "ticks":
        if args:
          raise pyrt.py_err("ticks takes no args", ln)
-@@ -2694,6 +2777,8 @@
+@@ -2696,6 +2779,8 @@
        asm.mov_ri64("rax", Gen_HS_NULL)
        return null
      raise pyrt.py_err("bad kdev " + str(name), ln)
@@ -488,7 +488,7 @@
    def print_unsafe(self, args, sc, mod, ln):
      for i, ar in pyrt.py_enumerate(args):
        if i > 0:
-@@ -2733,7 +2818,7 @@
+@@ -2735,7 +2820,7 @@
      asm.lea_rip("rdi", "nl_")
      asm.mov_ri32("rsi", 1)
      self.rt_out(1)
@@ -497,7 +497,7 @@
      t = e["t"]
      ln = e["line"]
      if t == "num":
-@@ -2744,6 +2829,8 @@
+@@ -2746,6 +2831,8 @@
          asm.mov_ri32("rax", int(v))
        elif pyrt.py_isinstance(v, ["int"]):
          asm.mov_ri64("rax", v if v >= 0 else v)
@@ -506,7 +506,7 @@
        else:
          raise pyrt.py_err("float not in x64 subset", ln)
        return null
-@@ -2780,9 +2867,9 @@
+@@ -2782,9 +2869,9 @@
        if st in ["I64", "U64", "Ptr"]:
          asm.mov_ri32("rax", 8)
        else:
@@ -518,7 +518,7 @@
        return null
      if t == "field":
        self.sev_field(e, sc, mod)
-@@ -2797,14 +2884,16 @@
+@@ -2799,14 +2886,16 @@
          return null
        raise pyrt.py_err("only alloc/load/store/as_* calls allowed in unsafe (x64)", ln)
      raise pyrt.py_err(str(t) + " not in x64 subset", ln)
@@ -537,7 +537,7 @@
      f = pyrt.py_get(L["fields"], e["name"], null)
      if f == null:
        raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(e["name"]) + "'", ln)
-@@ -2853,7 +2942,7 @@
+@@ -2855,7 +2944,7 @@
      asm.shl_ri8("rax", 2)
      asm.sar_ri8("rax", 2)
    def emit_bitop(self, op, e, sc, mod, ln, dynamic):
@@ -546,7 +546,7 @@
      evalfn(e["l"], sc, mod)
      asm.push_r("rax")
      evalfn(e["r"], sc, mod)
-@@ -2998,7 +3087,7 @@
+@@ -3000,7 +3089,7 @@
      asm.mov_ri32("rax", 0)
      asm.call_r11()
      asm.mov_rm("rsp", "rsp", 0)
@@ -555,7 +555,7 @@
      if name == "call0":
        if self.freestanding:
          raise pyrt.py_err("call0 not in kernel", ln)
-@@ -3077,6 +3166,8 @@
+@@ -3079,6 +3168,8 @@
        asm.label(lab_done)
        return null
      raise pyrt.py_err(str(name) + " not in x64 subset", ln)
@@ -564,7 +564,7 @@
    def ex(self, s, sc, mod, depth, ux):
      t = s["t"]
      ln = s["line"]
-@@ -3606,7 +3697,7 @@
+@@ -3608,7 +3699,7 @@
          asm.mov_mr("rax", "rcx", 0)
        elif t == "fstore":
          xs = self.field_base(x["obj"], sc, ln)
@@ -573,16 +573,16 @@
          f = pyrt.py_get(L["fields"], x["name"], null)
          if f == null:
            raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(x["name"]) + "'", ln)
-@@ -3732,7 +3823,7 @@
+@@ -3734,7 +3825,7 @@
        return null
      raise pyrt.py_err(str(t) + " not allowed in unsafe (x64)", s["line"])
    def tag_int(self, v):
 -    if self.checked_int() and not (0 - 1 << 61 <= v and v < 1 << 61):
 +    if false:
-       raise pyrt.py_err("Int literal " + str(v) + " is outside the 62-bit range of the x64 backend", 0)
+       raise pyrt.py_err("Int literal " + str(v) + " is outside the 62-bit range", 0)
      return v * 4 + 1
    def tag_box(self):
-@@ -3945,7 +4036,7 @@
+@@ -3947,7 +4038,7 @@
      for name in pyrt.py_sorted(pyrt.py_union(pyrt.py_set(ms.loc), pyrt.py_set(ms.uloc)), null):
        asm.data_label(self.glabel(mod, name))
        asm.data_qword(Gen_HS_UNBOUND if name in ms.loc else 0)
@@ -591,7 +591,7 @@
      ms = mod["scope"]
      if self.freestanding:
        self.emit_longmode_tail(mod)
-@@ -3979,6 +4070,8 @@
+@@ -3981,6 +4072,8 @@
      asm.mov_rr("rdi", "rax")
      asm.mov_ri32("rax", 60)
      asm.syscall()
@@ -600,7 +600,7 @@
    def emit_longmode_tail(self, mod):
      asm.label("long_mode")
      asm.mov_ax_imm16(16)
-@@ -4018,21 +4111,28 @@
+@@ -4080,21 +4173,28 @@
        if pyrt.py_isinstance(node, ["dict"]):
          t = pyrt.py_get(node, "t", null)
          if t == "call":
@@ -633,9 +633,9 @@
              return true
          return false
        if pyrt.py_isinstance(node, ["list"]):
-@@ -4049,7 +4149,8 @@
-     seen = _t4046[0]
-     todo = _t4046[1]
+@@ -4111,7 +4211,8 @@
+     seen = _t4106[0]
+     todo = _t4106[1]
      while todo:
 -      m = pyrt.py_pop(todo)
 +      m = todo[len(todo) - 1]
@@ -643,7 +643,7 @@
        key = pyrt.py_id(m)
        if key in seen:
          continue
-@@ -4065,7 +4166,7 @@
+@@ -4127,7 +4228,7 @@
          for x in node:
            walk(x)
          return null
@@ -652,7 +652,7 @@
          return null
        if pyrt.py_get(node, "t", null) == "call":
          fn = pyrt.py_get(node, "fn", null)
-@@ -4086,7 +4187,7 @@
+@@ -4148,7 +4249,7 @@
        pyrt.py_close(f)
      except as e:
        raise pyrt.py_err("cannot read " + str(path) + ": " + str(e.strerror or e), 1)
@@ -661,7 +661,7 @@
      mod = {"name": "<json>", "prog": prog, "pfx": "js_", "scope": Gen_Scope(null, false), "dir": pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(path))}
      mod["scope"]._mod = mod
      base = len(self.all_fs)
-@@ -4108,7 +4209,7 @@
+@@ -4170,7 +4271,7 @@
      if lab == null:
        raise pyrt.py_err("json internal error (no " + str(name) + " in runtime/json.holy)", ln)
      return lab
@@ -670,7 +670,7 @@
      ms = mod["scope"]
      ms._mod = mod
      self.collect(mod["prog"], ms)
-@@ -4120,7 +4221,7 @@
+@@ -4182,7 +4283,7 @@
      self.uses_bytes = self.scan_uses_bytes(mod)
      for m in [mod] + [x for x in self.modules if pyrt.py_get(x, "collected", null)]:
        self.emit_data(m)
@@ -679,7 +679,7 @@
          asm.data_label("hsM_done_" + str(m["pfx"]))
          asm.data_qword(0)
      if self.freestanding:
-@@ -4227,11 +4328,13 @@
+@@ -4293,11 +4394,13 @@
        asm.data_label("exc_vals")
        asm.data_bytes(pyrt.py_rep([0], Gen_EXC_VSZ * Gen_EXC_VMAX))
      if self.freestanding:
@@ -694,7 +694,7 @@
    def _def_nodes(self, mod):
      out = []
      def walk(body, themod):
-@@ -4346,7 +4449,7 @@
+@@ -4412,7 +4515,7 @@
      asm.lea_rip("rax", "user_saved_rsp_")
      asm.mov_rm("rsp", "rax", 0)
      asm.lea_rip("rax", "user_cont_")
@@ -703,7 +703,7 @@
      asm.label(lab_xhalt)
      asm.call("k_halt")
      for vec in range(48):
-@@ -4795,7 +4898,7 @@
+@@ -4967,7 +5070,7 @@
      asm.lea_rip("rax", "user_saved_rsp_")
      asm.mov_rm("rsp", "rax", 0)
      asm.lea_rip("rax", "user_cont_")
@@ -712,7 +712,7 @@
      self.reserve("syscall_fn_", 8)
      self.reserve("syscall_stop_", 8)
      self.reserve("ufault_vec_", 8)
-@@ -6525,7 +6628,7 @@
+@@ -6697,7 +6800,7 @@
      asm.sub_ri32("rsp", 48)
      asm.mov_mr("rbp", "rdi", 0 - 8)
      asm.mov_mr("rbp", "rsi", 0 - 16)
@@ -721,7 +721,7 @@
      asm.mov_rm("rax", "rbp", 0 - 24)
      asm.mov_rr("r11", "rax")
      asm.shl_ri8("r11", 1)
-@@ -6534,7 +6637,7 @@
+@@ -6706,7 +6809,7 @@
      asm.mov_rm("rcx", "rbp", 0 - 16)
      asm.mov_rr("r11", "rax")
      asm.mov_rr("r10", "rcx")
@@ -730,7 +730,7 @@
      asm.and_rr("r11", "rcx")
      asm.and_rr("r10", "rcx")
      asm.cmp_rr("r11", "r10")
-@@ -6546,8 +6649,9 @@
+@@ -6718,8 +6821,9 @@
      asm.movq_rx("rax", 0)
      asm.jmp("fmod_done")
      asm.label("fmod_zero")
@@ -741,7 +741,7 @@
      asm.and_rr("rax", "rcx")
      asm.label("fmod_done")
      asm.mov_rr("rsp", "rbp")
-@@ -6957,7 +7061,7 @@
+@@ -7129,7 +7233,7 @@
      asm.sub_ri32("rsp", BW * 8)
      asm.mov_ri32("rax", 0)
      asm.mov_mr("rbp", "rax", 0 - 40)
@@ -750,7 +750,7 @@
      asm.mov_mr("rbp", "rax", 0 - 48)
      asm.mov_ri32("rax", 63)
      asm.mov_mr("rbp", "rax", 0 - 56)
-@@ -7016,7 +7120,7 @@
+@@ -7188,7 +7292,7 @@
      asm.jmp("nd_sign")
      asm.label("nd_round")
      asm.mov_rm("rax", "rbp", 0 - 40)
@@ -759,7 +759,7 @@
      asm.cmp_rr("rax", "rcx")
      asm.jcc("e", "nd_infedge")
      asm.mov_rr("rdi", "rax")
-@@ -7083,10 +7187,10 @@
+@@ -7255,10 +7359,10 @@
      asm.call("dec_cmp")
      asm.test_rr("rax", "rax")
      asm.jcc("l", "nd_maxdbl")
@@ -772,7 +772,7 @@
      asm.jmp("nd_sign")
      asm.label("nd_sign")
      asm.mov_rm("rcx", "rbp", 0 - 32)
-@@ -7166,7 +7270,7 @@
+@@ -7338,7 +7442,7 @@
      asm.or_ri32("rax", 32)
      asm.cmp_ri32("rax", 110)
      asm.jcc("ne", "pf_bad")
@@ -781,7 +781,7 @@
      asm.mov_ri32("rdx", 1)
      asm.mov_rr("rsp", "rbp")
      asm.pop_r("rbp")
-@@ -7210,7 +7314,7 @@
+@@ -7382,7 +7486,7 @@
      asm.cmp_ri32("rax", 121)
      asm.jcc("ne", "pf_bad")
      asm.label("pf_inf3")
@@ -790,7 +790,7 @@
      asm.mov_rm("rcx", "rbp", 0 - 32)
      asm.shl_ri8("rcx", 63)
      asm.or_rr("rax", "rcx")
-@@ -7469,7 +7573,7 @@
+@@ -7641,7 +7745,7 @@
      asm.pop_r("rbp")
      asm.ret()
      asm.label("pf_infret")
@@ -799,7 +799,7 @@
      asm.mov_rm("rcx", "rbp", 0 - 32)
      asm.shl_ri8("rcx", 63)
      asm.or_rr("rax", "rcx")
-@@ -7703,7 +7807,7 @@
+@@ -7875,7 +7979,7 @@
      asm.mov_ri32("rax", 1)
      asm.mov_mr("rbp", "rax", 0 - 104)
      asm.mov_rm("rax", "rbp", 0 - 16)
@@ -808,7 +808,7 @@
      asm.and_rr("rax", "r11")
      asm.mov_mr("rbp", "rax", 0 - 152)
      asm.mov_rr("r11", "rax")
-@@ -7759,7 +7863,7 @@
+@@ -7931,7 +8035,7 @@
      asm.label("fb_up")
      asm.mov_rm("rax", "rbp", 0 - 152)
      asm.add_ri32("rax", 1)
@@ -817,7 +817,7 @@
      asm.cmp_rr("rax", "rcx")
      asm.jcc("e", "fb_infedge")
      asm.mov_rr("rdi", "rax")
-@@ -8468,7 +8572,7 @@
+@@ -8640,7 +8744,7 @@
      asm.test_rr("rax", "rax")
      asm.jcc("ns", "iparse_pos")
      asm.mov_rr("rax", "rdx")
@@ -826,7 +826,7 @@
      asm.cmp_rr("rax", "rcx")
      asm.jcc("a", "iparse_bad")
      asm.jcc("e", "iparse_min")
-@@ -8479,14 +8583,14 @@
+@@ -8651,14 +8755,14 @@
      asm.pop_r("rbp")
      asm.ret()
      asm.label("iparse_min")
@@ -843,7 +843,7 @@
      asm.cmp_rr("rax", "rcx")
      asm.jcc("a", "iparse_bad")
      asm.mov_ri32("rdx", 1)
-@@ -8643,7 +8747,7 @@
+@@ -8815,7 +8919,7 @@
      asm.test_rr("rax", "rax")
      asm.jcc("e", lab_hstr)
      asm.mov_rr("rax", "rdi")
@@ -852,7 +852,7 @@
      asm.imul_rr("rax", "r8")
      asm.mov_rr("rdx", "rax")
      asm.shr_ri8("rdx", 32)
-@@ -8652,7 +8756,7 @@
+@@ -8824,7 +8928,7 @@
      asm.label(lab_hstr)
      asm.mov_rr("r10", "rdi")
      asm.mov_rm("rcx", "r10", 8)
@@ -860,8 +860,8 @@
 +    asm.mov_ri64_bytes("rax", [37, 35, 34, 132, 228, 156, 242, 203])
      asm.mov_ri64("r8", 1099511628211)
      asm.mov_ri32("rdx", 0)
-     _t8655 = [self.new_tmp("dc"), self.new_tmp("dc")]
-@@ -9355,7 +9459,7 @@
+     _t8825 = [self.new_tmp("dc"), self.new_tmp("dc")]
+@@ -9527,7 +9631,7 @@
      asm.mov_ri32("rcx", 1)
      asm.label(lab_lp)
      asm.mov_rr("r9", "rax")
@@ -870,7 +870,7 @@
      asm.mul_r("r8")
      asm.shr_ri8("rdx", 3)
      asm.mov_ri32("r8", 10)
-@@ -11120,7 +11224,7 @@
+@@ -11292,7 +11396,7 @@
      self.bi_ids = {}
      self.bi_stubs = {}
  def build_x64(prog_path, out_path):
@@ -879,7 +879,7 @@
    try:
      f = pyrt.py_open(prog_path, null)
      src = f.read_()
-@@ -11129,17 +11233,17 @@
+@@ -11301,17 +11405,17 @@
      pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
      return 1
    try:
@@ -901,7 +901,7 @@
    try:
      img = g.build_ir_image()
    except as e:
-@@ -11152,7 +11256,7 @@
+@@ -11324,7 +11428,7 @@
    pyrt.py_print(["ok: x64 -> " + str(out_path) + " (" + str(len(img)) + " bytes, no gcc)"])
    return 0
  def build_x64_ast(prog_path, out_path):
@@ -910,7 +910,7 @@
    try:
      f = pyrt.py_open(prog_path, null)
      src = f.read_()
-@@ -11161,7 +11265,7 @@
+@@ -11333,7 +11437,7 @@
      pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
      return 1
    try:
@@ -919,7 +919,7 @@
    except as e:
      pyrt.py_print([str(e)])
      return 1
-@@ -11264,15 +11368,15 @@
+@@ -11436,15 +11540,15 @@
        pyrt.py_close(f)
      except as e:
        raise pyrt.py_err("cannot read " + str(path) + ": " + str(e.strerror or e), 1)
@@ -939,9 +939,9 @@
      self._moddir["<json>"] = pyrt.py_os_path_dirname(path)
      self.js_entries = {}
      for k in sub["order"]:
-@@ -11289,6 +11393,13 @@
-           _top = _t11317[0]
-           chain = _t11317[1]
+@@ -11461,6 +11565,13 @@
+           _top = _t11487[0]
+           chain = _t11487[1]
            ins["_chain"] = chain
 +  def _resolve_path(self, dotted, from_dir, ln, last):
 +    try:
@@ -953,7 +953,7 @@
    def _resolve_import(self, name, from_dir, ln, active, mpref, funckey):
      parts = pyrt.py_split(name, ".")
      chain = []
-@@ -11296,16 +11407,9 @@
+@@ -11468,16 +11579,9 @@
      for i, part in pyrt.py_enumerate(parts):
        dotted = pyrt.py_join(".", parts[0:i + 1])
        last = i == len(parts) - 1
@@ -973,7 +973,7 @@
        if dotted in active:
          raise pyrt.py_err("circular import '" + str(dotted) + "'", ln)
        if not (dotted in self.modtab):
-@@ -11323,15 +11427,15 @@
+@@ -11495,15 +11599,15 @@
            src = f.read_()
            pyrt.py_close(f)
            try:
@@ -994,7 +994,8 @@
            rec["pfx"] = dotted + "."
            self._moddir[dotted] = pyrt.py_os_path_dirname(path)
            self.mod_entries[dotted] = sub["entry"]
-@@ -11446,6 +11550,6 @@
+@@ -11517,7 +11621,7 @@
+             raise pyrt.py_err("in module '" + str(dotted) + "': " + str(pyrt.py_ewrap(e)), pyrt.py_eline(e))
      topmod = pyrt.py_get(self.modtab, parts[0], null)
      if topmod == null:
 -      topmod = next([m for m in chain if m["name"] == parts[0]])
@@ -1002,7 +1003,7 @@
      top = parts[0]
      append(self.pending, [funckey, top, name, chain, ln, mpref, self.modtab[parts[0]]])
      return [topmod, chain]
-@@ -11405,8 +11509,8 @@
+@@ -11580,8 +11684,8 @@
              pyrt.py_add(pyrt.py_setdefault(usage, ins["name"], pyrt.py_set(null)), key)
      self._name_usage = usage
      for key in self.allorder:
@@ -1013,7 +1014,7 @@
      self._compute_rawabi()
      self._note_imports()
      for key in self.allorder:
-@@ -11465,7 +11569,7 @@
+@@ -11640,7 +11744,7 @@
      dead = pyrt.py_set(null)
      for b in fdef["blocks"]:
        for ins in b["instrs"]:
@@ -1022,7 +1023,7 @@
            pyrt.py_add(dead, ins["dest"])
      fr["deadloads"] = dead
    def _plan_func(self, key, fdef, modpfx, is_entry):
-@@ -11579,7 +11683,10 @@
+@@ -11754,7 +11858,10 @@
      self._capnames = c
      return c
    def _var_uses_elsewhere(self, key, name):
@@ -1034,7 +1035,7 @@
    def _compute_ivars(self, key, fdef, is_entry):
      cand = pyrt.py_set(null)
      bad = self._captured_names()
-@@ -11607,24 +11714,26 @@
+@@ -11782,24 +11889,26 @@
        if key == "<main>":
          continue
        fr = self.frames[key]
@@ -1068,7 +1069,7 @@
        counts = {}
        for b in self.allfuncs[key]["blocks"]:
          for ins in b["instrs"]:
-@@ -11648,13 +11757,13 @@
+@@ -11823,13 +11932,13 @@
      if p == null or p[0] != "load":
        return null
      nm = p[1]
@@ -1084,7 +1085,7 @@
        return null
      if self._classify(key, nm) in ["global", "auto", "cap"]:
        return gk
-@@ -11697,37 +11806,32 @@
+@@ -11872,37 +11981,32 @@
      cand = pyrt.py_set(null)
      if self.freestanding:
        fnmap = {}
@@ -1096,10 +1097,10 @@
        for key in self.allorder:
          f = self.frames[key]
          iv0 = self._compute_ivars(key, self.allfuncs[key], f["is_entry"])
--        _t11737 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, false)
--        iraw = _t11737[0]
--        ivars = _t11737[1]
--        rawcalls = _t11737[2]
+-        _t11907 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, false)
+-        iraw = _t11907[0]
+-        ivars = _t11907[1]
+-        rawcalls = _t11907[2]
 -        f["iraw"] = iraw
 -        f["ivars"] = ivars
 -        f["rawcalls"] = rawcalls
@@ -1108,10 +1109,10 @@
 +        f["ivars"] = r[1]
 +        f["rawcalls"] = r[2]
          if key in cand:
--          _t11745 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, true)
--          iraw_r = _t11745[0]
--          ivars_r = _t11745[1]
--          rawcalls_r = _t11745[2]
+-          _t11915 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, true)
+-          iraw_r = _t11915[0]
+-          ivars_r = _t11915[1]
+-          rawcalls_r = _t11915[2]
 -          f["iraw_r"] = iraw_r
 -          f["ivars_r"] = ivars_r
 -          f["rawcalls_r"] = rawcalls_r
@@ -1136,7 +1137,7 @@
          break
        cand = newc
      self.rawabi = cand
-@@ -11745,7 +11849,7 @@
+@@ -11920,7 +12024,7 @@
            append(pyrt.py_setdefault(stvar_srcs, ins["name"], []), ins["src"])
          if pyrt.py_get(ins, "dest", null) != null:
            definstr[ins["dest"]] = ins
@@ -1145,7 +1146,7 @@
              pyrt.py_add(iraw, ins["dest"])
            elif ins["op"] == "bin" and ins["binop"] in GenIR_INT_BINOPS:
              pyrt.py_add(iraw, ins["dest"])
-@@ -11765,12 +11869,17 @@
+@@ -11940,12 +12044,17 @@
      changed = true
      while changed:
        keepv = pyrt.py_set(null)
@@ -1163,7 +1164,7 @@
          if ins["op"] == "bin":
            ok = ins["l"] in iraw and ins["r"] in iraw
          elif ins["op"] == "un":
-@@ -11782,11 +11891,11 @@
+@@ -11957,11 +12066,11 @@
          elif ins["op"] == "call":
            gk = pyrt.py_get(rawcalls, d, null)
            ok = gk != null and pyrt.py_all([a in iraw for a in ins["args"]])
@@ -1178,7 +1179,7 @@
        iraw = keep
        ivars = keepv
      return [iraw, ivars, rawcalls]
-@@ -11858,12 +11967,22 @@
+@@ -12033,12 +12142,22 @@
      elif v == null:
        asm.mov_ri64("rax", Gen_HS_NULL)
      elif pyrt.py_isinstance(v, ["float"]) and self.freestanding:
@@ -1203,15 +1204,15 @@
      elif pyrt.py_isinstance(v, ["str"]) and self.freestanding:
        asm.lea_rip("rdi", self.rstr(v))
        asm.mov_ri32("rsi", len(pyrt.py_encode(v, null)))
-@@ -11964,11 +12083,16 @@
+@@ -12139,11 +12258,16 @@
        self.emit_add(ln)
        return null
      if op in ["==", "!="]:
--      _t11997 = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
--      lab_eq_ne = _t11997[0]
--      lab_eq_slow = _t11997[1]
--      lab_eq_done = _t11997[2]
--      lab_eq_noteq = _t11997[3]
+-      _t12167 = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
+-      lab_eq_ne = _t12167[0]
+-      lab_eq_slow = _t12167[1]
+-      lab_eq_done = _t12167[2]
+-      lab_eq_noteq = _t12167[3]
 +      _teqf = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
 +      lab_eq_ne = _teqf[0]
 +      lab_eq_slow = _teqf[1]
@@ -1225,13 +1226,13 @@
        asm.cmp_rr("rax", "rcx")
        asm.jcc("ne", lab_eq_ne)
        asm.mov_rr("r11", "rax")
-@@ -12012,9 +12136,10 @@
+@@ -12187,9 +12311,10 @@
          asm.xor_rax_8()
        return null
      if op in ["<", ">", "<=", ">="]:
--      _t12045 = [self.new_tmp("ii"), self.new_tmp("ii")]
--      lab_ii = _t12045[0]
--      lab_iidone = _t12045[1]
+-      _t12215 = [self.new_tmp("ii"), self.new_tmp("ii")]
+-      lab_ii = _t12215[0]
+-      lab_iidone = _t12215[1]
 +      _tii = [self.new_tmp("ii"), self.new_tmp("ii")]
 +      lab_ii = _tii[0]
 +      lab_iidone = _tii[1]
@@ -1239,7 +1240,7 @@
        asm.mov_rr("r11", "rax")
        asm.and_ri32("r11", 3)
        asm.cmp_ri32("r11", Gen_TAG_INT)
-@@ -12243,7 +12368,7 @@
+@@ -12418,7 +12543,7 @@
        asm.jcc("ne", lab_nno)
        asm.label(lab_nfl)
        asm.mov_rm("rdi", "rax", 8)
@@ -1248,7 +1249,7 @@
        asm.xor_rr("rdi", "r11")
        asm.call("x_float_new")
        asm.jmp(lab_ndone)
-@@ -12368,7 +12493,7 @@
+@@ -12543,7 +12668,7 @@
        xs = self._struct_of(fr, ins["obj"], seen)
        if xs == null:
          return null
@@ -1257,11 +1258,11 @@
        if L == null:
          return null
        f = pyrt.py_get(L["fields"], ins["name"], null)
-@@ -12377,14 +12502,20 @@
+@@ -12552,14 +12677,20 @@
        ft = f[0]
        return pyrt.py_tail(ft, 4) if pyrt.py_startswith(ft, "Ptr:") else null
      if op == "phi":
--      xs = pyrt.py_set([self._struct_of(fr, _p12410_0[1], seen) for _p12410_0 in ins["arms"]])
+-      xs = pyrt.py_set([self._struct_of(fr, _p12580_0[1], seen) for _p12580_0 in ins["arms"]])
 -      xs[null] = false
 -      return pyrt.py_pop(xs) if len(xs) == 1 else null
 +      xs = []
@@ -1282,7 +1283,7 @@
      asm.mov_mr("rbp", "rax", fr["slots"][dest])
    def _sload(self, fr, dest, name, ln):
      if name in pyrt.py_get(fr, "rawnames", []):
-@@ -12443,9 +12574,9 @@
+@@ -12618,9 +12749,9 @@
      asm.mov_mr("rax", "rcx", 0)
    def _sfstore(self, fr, obj, name, idx, val, ln):
      xs = self._struct_of(fr, obj, null)
@@ -1293,8 +1294,8 @@
 +    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
      if f == null:
        raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-     _t12481 = f
-@@ -12649,9 +12780,9 @@
+     _t12651 = f
+@@ -12824,9 +12955,9 @@
      asm.mov_mr("rbp", "rax", fr["slots"][dest])
    def _sfield(self, fr, dest, obj, name, idx, ln):
      xs = self._struct_of(fr, obj, null)
@@ -1305,8 +1306,8 @@
 +    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
      if f == null:
        raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-     _t12687 = f
-@@ -13046,7 +13177,7 @@
+     _t12857 = f
+@@ -13221,7 +13352,7 @@
    def _call(self, fr, dest, fn, args, ln):
      p = pyrt.py_get(fr["prov"], fn, null)
      pname = p[1] if p != null and p[0] == "load" else null
@@ -1315,7 +1316,7 @@
        nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
        self._kernel_frame = fr
        self._kernel_raw_dynamic = true
-@@ -13054,19 +13185,19 @@
+@@ -13229,19 +13360,19 @@
          if pname in pyrt.py_set(["ioport_in", "ioport_out"]):
            scope = Gen_Scope(null, false)
            mod = {"scope": scope}
@@ -1339,7 +1340,7 @@
        finally:
          self._kernel_raw_dynamic = false
        if pname == "as_int":
-@@ -13099,7 +13230,7 @@
+@@ -13274,7 +13405,7 @@
        elif name in ["split", "find", "join"]:
          nodes = [{"t": "irtemp", "ref": ar, "line": ln} for ar in args]
          self._kernel_frame = fr
@@ -1348,7 +1349,7 @@
          asm.mov_mr("rbp", "rax", fr["slots"][dest])
        elif name == "write_bytes":
          self._inline_write_bytes(fr, dest, args, ln)
-@@ -13148,14 +13279,14 @@
+@@ -13323,14 +13454,14 @@
          raise pyrt.py_err("IR: '" + str(name) + "' not in irx64 subset yet", ln)
        return null
      rc = pyrt.py_get(pyrt.py_get(fr, "rawcalls", {}), dest, null)
@@ -1365,7 +1366,7 @@
          asm.add_ri32("rsp", 8 * len(args))
        asm.mov_mr("rbp", "rax", fr["slots"][dest])
        return null
-@@ -13334,6 +13465,8 @@
+@@ -13509,6 +13640,8 @@
        self.raise_unop(0, ln)
        asm.label(lab_lok)
      if name == "len":
@@ -1374,7 +1375,7 @@
        asm.mov_rm("rax", "rax", 8)
        asm.shl_ri8("rax", 2)
        asm.or_ri8("rax", 1)
-@@ -13384,9 +13517,9 @@
+@@ -13559,9 +13692,9 @@
      asm.movq_xm(0, "rax", 8)
      asm.cvttsd2si("rax", 0)
      asm.mov_rr("rcx", "rax")
@@ -1386,7 +1387,7 @@
      asm.cmp_rr("rcx", "r11")
      asm.jcc("ae", lab_inum)
      self.tag_box()
-@@ -13401,9 +13534,9 @@
+@@ -13576,9 +13709,9 @@
      asm.test_rr("rdx", "rdx")
      asm.jcc("e", lab_iquote)
      asm.mov_rr("rcx", "rax")
@@ -1398,7 +1399,7 @@
      asm.cmp_rr("rcx", "r11")
      asm.jcc("ae", lab_iquote)
      self.tag_box()
-@@ -13937,7 +14070,7 @@
+@@ -14112,7 +14245,7 @@
      elif "/" in lib or pyrt.py_endswith(lib, ".so") or ".so." in lib:
        so = lib
      else:
@@ -1407,7 +1408,7 @@
        if so == null:
          raise pyrt.py_err("cannot find ffi library '" + str(lib) + "'", ln)
      if not (so in self.ffi_libs):
-@@ -14009,7 +14142,7 @@
+@@ -14184,7 +14317,7 @@
          asm.push_r("rax")
          self.copy_bytes()
        else:
@@ -1416,7 +1417,7 @@
          if ft == "U64":
            asm.test_rr("rax", "rax")
            asm.jcc("s", lab_bad)
-@@ -14189,15 +14322,15 @@
+@@ -14364,15 +14497,15 @@
              pyrt.py_add(heads, t)
        c[k] = [by, heads]
      return c[k][1]
@@ -1435,7 +1436,7 @@
            asm.mov_ri64("rax", ins["val"])
          else:
            self._const(ins["val"], ln)
-@@ -14208,9 +14341,9 @@
+@@ -14383,9 +14516,9 @@
            asm.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
          elif ins["dest"] in pyrt.py_get(fr, "deadloads", []):
            pass
@@ -1447,7 +1448,7 @@
            pass
          else:
            iv = pyrt.py_get(fr, "ivars", null)
-@@ -14397,9 +14530,9 @@
+@@ -14572,9 +14705,9 @@
          raise pyrt.py_err(ins["xmsg"], ln)
        elif op == "ssizeof":
          st = ins["stype"]
@@ -1459,7 +1460,7 @@
          asm.mov_mr("rbp", "rax", fr["slots"][ins["dest"]])
        else:
          raise pyrt.py_err("IR: '" + str(op) + "' not in irx64 subset yet", ln)
-@@ -14485,8 +14618,9 @@
+@@ -14660,8 +14793,9 @@
        asm.sub_ri32("rsp", 8 * fr["nloc"])
      self.frame_init_unbound(fr["nloc"])
      by = pyrt.py_dict([[b["label"], b] for b in fdef["blocks"]])
@@ -1470,17 +1471,17 @@
      asm.label(lab_done)
      asm.ret()
    def _emit_ifunc(self, key):
-@@ -14498,20 +14632,18 @@
+@@ -14673,20 +14807,18 @@
      else:
        asm.label(self.flabel[key])
      self._emit_frame_body(key, fdef, fr)
 -    if key in pyrt.py_getattr(self, "rawabi", []):
 +    if key in pyrt.py_getattr(self, "rawabi", pyrt.py_set(null)):
        saved = [fr["iraw"], fr["ivars"], fr["rawcalls"]]
--      _t14532 = [fr["iraw_r"], fr["ivars_r"], fr["rawcalls_r"]]
--      fr["iraw"] = _t14532[0]
--      fr["ivars"] = _t14532[1]
--      fr["rawcalls"] = _t14532[2]
+-      _t14702 = [fr["iraw_r"], fr["ivars_r"], fr["rawcalls_r"]]
+-      fr["iraw"] = _t14702[0]
+-      fr["ivars"] = _t14702[1]
+-      fr["rawcalls"] = _t14702[2]
 +      fr["iraw"] = fr["iraw_r"]
 +      fr["ivars"] = fr["ivars_r"]
 +      fr["rawcalls"] = fr["rawcalls_r"]
@@ -1488,17 +1489,17 @@
        asm.label(self.rawlabel[key])
        self._emit_frame_body(key, fdef, fr)
        self._rawabi_emit = false
--      _t14540 = saved
--      fr["iraw"] = _t14540[0]
--      fr["ivars"] = _t14540[1]
--      fr["rawcalls"] = _t14540[2]
+-      _t14710 = saved
+-      fr["iraw"] = _t14710[0]
+-      fr["ivars"] = _t14710[1]
+-      fr["rawcalls"] = _t14710[2]
 +      fr["iraw"] = saved[0]
 +      fr["ivars"] = saved[1]
 +      fr["rawcalls"] = saved[2]
    def _emit_frame_body(self, key, fdef, fr):
      asm.push_r("rbp")
      asm.mov_rr("rbp", "rsp")
-@@ -14523,23 +14655,24 @@
+@@ -14698,23 +14830,24 @@
        asm.mov_mr("rbp", "r10", fr["slots"]["%cline"])
      self._gc_point()
      by = pyrt.py_dict([[b["label"], b] for b in fdef["blocks"]])
@@ -1525,9 +1526,9 @@
 -      return Gen.emit_main(self, mod)
 +      return self._base_emit_main(mod)
      self.emit_longmode_tail(mod)
-     inits = pyrt.py_set([_p14573_0[1] for _p14573_0 in pyrt.py_items(self.mod_entries) if _p14573_0[0] != ""])
+     inits = pyrt.py_set([_p14743_0[1] for _p14743_0 in pyrt.py_items(self.mod_entries) if _p14743_0[0] != ""])
      for key in self.allorder:
-@@ -14557,7 +14690,7 @@
+@@ -14732,7 +14865,7 @@
      for nm in pyrt.py_sorted(self.mglob, null):
        self._glabel(nm, "")
      mod = {"name": "<main>", "prog": [], "pfx": "ir", "scope": Gen_Scope(null, false), "dir": self.prog_dir}
@@ -1536,7 +1537,7 @@
    def build_ir_image(self):
      asm.data_label("gc_data_lo")
      self._plan()
-@@ -14695,10 +14828,10 @@
+@@ -14870,10 +15003,10 @@
      if self.ffi_syms:
        asm.data_label("ffi_got_")
        asm.data_bytes(pyrt.py_rep([0], 8 * len(self.ffi_syms)))
@@ -1549,7 +1550,7 @@
      lo = elf.layout(len(asm.state()["code"]))
      code = asm.resolve_at(lo["text_vaddr"], lo["data_vaddr"])
      start_off = asm.state()["labels"]["_start"]
-@@ -14710,10 +14843,11 @@
+@@ -14885,10 +15018,11 @@
      self.allow_extern_sections = true
      return self.build_ir_sections()
  GenIR_JSON_CALLS = pyrt.py_set(["json_parse", "json_str", "json_load", "json_save"])
@@ -1563,7 +1564,7 @@
    try:
      f = pyrt.py_open(prog_path, null)
      src = f.read_()
-@@ -14722,13 +14856,13 @@
+@@ -14897,13 +15031,13 @@
      pyrt.py_print(["error: cannot read " + str(prog_path) + ": " + str(e.strerror or e)])
      return 1
    try:
@@ -1579,7 +1580,7 @@
    try:
      img = g.build_ir_image()
    except as e:
-@@ -14740,3 +14874,7 @@
+@@ -14915,3 +15049,7 @@
    pyrt.py_os_chmod(out_path, 493)
    pyrt.py_print(["ok: irx64 -> " + str(out_path) + " (" + str(len(img)) + " bytes, via IR, no gcc)"])
    return 0

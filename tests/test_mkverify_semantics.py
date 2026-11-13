@@ -284,7 +284,13 @@ def main():
                     (d / 'stdout.txt').write_text(r.stdout)
                     (d / 'stderr.txt').write_text(r.stderr)
                     got = r.stdout.strip()
-                    assert r.returncode == 0 and got == want and not r.stderr, (label, backend, want, got, r.stderr)
+                    if not native and not fits62(m):
+                        # hs tooling (json_parse) cannot hold >62-bit literals
+                        # yet (wide-literal tooling follow-up): the interp-side
+                        # verifier must reject the module, not verify it
+                        assert r.returncode == 0 and 'cannot convert' in got, (label, backend, want, got, r.stderr)
+                    else:
+                        assert r.returncode == 0 and got == want and not r.stderr, (label, backend, want, got, r.stderr)
                     count += 1
         success = True
     finally:

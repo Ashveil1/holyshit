@@ -30,8 +30,7 @@ print n
 s = 4
 print 1 << s
 print 1024 >> s
-print 1 << 62 > 0
-print 1 << 61 > 0
+print 1 << 60 > 0
 try:
   print 1 & "a"
 except as e:

@@ -213,7 +213,7 @@
   },
   {
     "id": "factorial_big",
-    "prompt": "Read N from the first argument and print N factorial (N <= 20).",
+    "prompt": "Read N from the first argument and print N factorial (N <= 19).",
     "cases": [
       {
         "args": [
@@ -229,9 +229,9 @@
       },
       {
         "args": [
-          "20"
+          "19"
         ],
-        "out": "2432902008176640000\n"
+        "out": "121645100408832000\n"
       }
     ]
   },

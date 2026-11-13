@@ -95,6 +95,20 @@ void hs_try_pop(void) {
 Val v_null(void) { return (Val){T_NULL, {0}}; }
 Val v_bool(int b) { return (Val){T_BOOL, {.b = !!b}}; }
 Val v_int(int64_t i) { return (Val){T_INT, {.i = i}}; }
+
+/* Unified 62-bit safe Int: arithmetic overflow is an uncatchable, */
+/* process-terminal trap (exit 97, bare message) on every backend. */
+#define INT62_MIN (-(1LL << 61))
+#define INT62_MAX ((1LL << 61) - 1)
+static void hs_ovf(void) {
+    fputs("error: Int outside the 62-bit range\n", stderr);
+    exit(97);
+}
+static int64_t chk62(__int128 v) {
+    if (v < INT62_MIN || v > INT62_MAX)
+        hs_ovf();
+    return (int64_t)v;
+}
 Val v_float(double f) { return (Val){T_FLOAT, {.f = f}}; }
 
 // float literals can overflow to inf (1e400) or be nan; neither has a
@@ -292,7 +306,7 @@ Val v_add(Val a, Val b, int line) {
     if (is_num(a) && is_num(b)) {
         if (a.tag == T_FLOAT || b.tag == T_FLOAT)
             return v_float(to_f(a) + to_f(b));
-        return v_int(a.u.i + b.u.i);
+        return v_int(chk62((__int128)a.u.i + b.u.i));
     }
     if (a.tag == T_STR && b.tag == T_STR) {
         Str *x = AS_STR(a), *y = AS_STR(b);
@@ -328,14 +342,14 @@ Val v_sub(Val a, Val b, int line) {
     need_nums("-", a, b, line);
     if (a.tag == T_FLOAT || b.tag == T_FLOAT)
         return v_float(to_f(a) - to_f(b));
-    return v_int(a.u.i - b.u.i);
+    return v_int(chk62((__int128)a.u.i - b.u.i));
 }
 
 Val v_mul(Val a, Val b, int line) {
     need_nums("*", a, b, line);
     if (a.tag == T_FLOAT || b.tag == T_FLOAT)
         return v_float(to_f(a) * to_f(b));
-    return v_int(a.u.i * b.u.i);
+    return v_int(chk62((__int128)a.u.i * b.u.i));
 }
 
 Val v_div(Val a, Val b, int line) {
@@ -400,7 +414,7 @@ Val v_xor(Val a, Val b, int line) {
 
 Val v_shl(Val a, Val b, int line) {
     need_ints("<<", a, b, line);
-    return v_int(a.u.i << shift_count(b, "<<", line));
+    return v_int(chk62((__int128)a.u.i << shift_count(b, "<<", line)));
 }
 
 Val v_shr(Val a, Val b, int line) {
@@ -416,7 +430,7 @@ Val v_bnot(Val v, int line) {
 
 Val v_neg(Val v, int line) {
     if (v.tag == T_INT)
-        return v_int(-v.u.i);
+        return v_int(chk62(-(__int128)v.u.i));
     if (v.tag == T_FLOAT)
         return v_float(-v.u.f);
     hs_err(line, "cannot negate %s", hs_tname(v));
@@ -1099,8 +1113,11 @@ Val b_int(Val *args, int nargs, int line) {
         return v_int(a.u.b);
     if (a.tag == T_INT)
         return a;
-    if (a.tag == T_FLOAT)
+    if (a.tag == T_FLOAT) {
+        if (a.u.f < -2305843009213693952.0 || a.u.f >= 2305843009213693952.0)
+            hs_err(line, "cannot convert %s to Int", hs_tname(a));
         return v_int((int64_t)a.u.f);
+    }
     if (a.tag == T_STR) {
         const char *s = AS_STR(a)->data;
         while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
@@ -1115,6 +1132,8 @@ Val b_int(Val *args, int nargs, int line) {
         while (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r')
             end++;
         if (*end != '\0')
+            hs_err(line, "cannot convert '%s' to Int", AS_STR(a)->data);
+        if (errno == ERANGE || v < INT62_MIN || v > INT62_MAX)
             hs_err(line, "cannot convert '%s' to Int", AS_STR(a)->data);
         return v_int((int64_t)v);
     }

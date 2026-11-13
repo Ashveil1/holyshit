@@ -127,7 +127,7 @@ print n << 2
  ('divzero', 'x = 10\ny = 0\nz = x % y\nprint z\n', '', 1, 'error: division by zero at line 3\n'),
  ('shiftrange', 'x = 1\ny = 64\nz = x << y\nprint z\n', '', 1, 'error: shift count 64 out of range (0..63) at line 3\n'),
  ('mixedtype', 'x = 5\ny = "a"\nz = x + y\nprint z\n', '', 1, 'error: cannot add Int and Str at line 3\n'),
- ('overflow', 'a = 2147483648\nb = a * a\nprint b\n', '', 97, 'error: Int outside the 62-bit range of the x64 backend (HS_BACKEND=native or interp has 64-bit Int)\n'),
+ ('overflow', 'a = 2147483648\nb = a * a\nprint b\n', '', 97, 'error: Int outside the 62-bit range\n'),
 ]
 with tempfile.TemporaryDirectory() as d:
     d=Path(d)

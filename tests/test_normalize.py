@@ -58,6 +58,23 @@ for f in sorted(files):
     r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
         str(ROOT/'selfhost/be/normalize_run.holy'), '--backend', 'interp', astfile.name],
         env=env, capture_output=True, text=True, timeout=600)
+    if not fits62(prog):
+        # unified 62-bit Int: no backend can hold literals past the 62-bit
+        # safe range; both the interp run and the x64 build must trap with
+        # the bare overflow error
+        native = subprocess.run([exe, astfile.name], capture_output=True,
+                                text=True, timeout=600)
+        traps = lambda rr: (rr.returncode == 97 and rr.stdout == "" and
+                            rr.stderr == "error: Int outside the 62-bit range\n")
+        if traps(r) and traps(native):
+            native_skipped += 1
+            passed += 1
+        else:
+            failed += 1
+            print('FAIL', Path(f).name, 'wide-literal trap parity:',
+                  r.returncode, native.returncode, r.stderr[:120],
+                  native.stderr[:120], flush=True)
+        continue
     try:
         got = json.loads(r.stdout)
         ok = got == json.loads(json.dumps(want))

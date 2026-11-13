@@ -113,7 +113,7 @@ Every feature must: be specified in SPEC first, change `interp.py` first (the be
 - 3.2 IR optimizations: constant folding, dead code, small-function inlining, mem2reg (the IR plan says deferred)
   [documented: "variables do not get mem2reg since..."] - every one must preserve "byte-exact match with interp"
 - 3.3 Simple register allocation (linear scan) instead of using the stack for everything **[inferred - check what x64gen does today]**
-- 3.4 Fix the recorded divergence: Int 62-bit on x64 vs 64-bit on interp - pick one (bigint/overflow semantics)
+- 3.4 ~~Fix the recorded divergence: Int 62-bit on x64 vs 64-bit on interp - pick one (bigint/overflow semantics)~~ **[done: owner picked 62-bit everywhere - interp traps like the hosted backends (exit 97, `error: Int outside the 62-bit range`), unsafe I64/U64 mixing allowed, `hs run` no longer rescues overflows]**
 - **Pass gate:** phase 1 benches improve to target with no regression in interp-equality tests; a program allocating 10^8 times does not run out of memory
 
 ## Phase 4 - JIT (historical duration estimate; implementation remains open)  [goals 2, 1]

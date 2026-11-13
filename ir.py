@@ -30,7 +30,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import interp
-from interp import HSErr
+from interp import HSErr, HSOvf, chk62
 
 # Builtins the IR runtime reuses verbatim (same function objects as interp,
 # so messages match by construction). Anything else fails at call time.
@@ -1775,9 +1775,6 @@ def _sbinop(op, l, r, ln):
             if op == "-" and lt == "Ptr" and rt == "Ptr":
                 return UnsafeVal("I64", wrap_i64(lv - rv))
         raise HSErr(f"cannot apply '{op}' to pointers", ln)
-    if lt != rt and ("I64" in (lt, rt) and "U64" in (lt, rt)):
-        raise HSErr(f"cannot mix I64 and U64 with '{op}' (convert "
-                    "explicitly)", ln)
     tgt = lt if lt != "LIT" else (rt if rt != "LIT" else "I64")
     a = coerce(lt, lv, tgt, ln)
     b = coerce(rt, rv, tgt, ln)
@@ -2126,13 +2123,13 @@ def _binop(op, l, r, ln):
         if r < 0 or r > 63:
             raise HSErr(f"shift count {r} out of range (0..63)", ln)
         if op == "<<":
-            return wrap_i64(l << r)
+            return chk62(l << r)
         return l >> r
     if op == "+":
         if is_num(l) and is_num(r):
             if isinstance(l, float) or isinstance(r, float):
                 return float(l) + float(r)
-            return l + r
+            return chk62(l + r)
         if isinstance(l, str) and isinstance(r, str):
             return l + r
         if isinstance(l, list) and isinstance(r, list):
@@ -2144,10 +2141,10 @@ def _binop(op, l, r, ln):
                         f"{tname(l)} and {tname(r)}", ln)
         if op == "-":
             return (float(l) - float(r)) if isinstance(l, float) or \
-                isinstance(r, float) else l - r
+                isinstance(r, float) else chk62(l - r)
         if op == "*":
             return (float(l) * float(r)) if isinstance(l, float) or \
-                isinstance(r, float) else l * r
+                isinstance(r, float) else chk62(l * r)
         if op == "/":
             if r == 0:
                 raise HSErr("division by zero", ln)
@@ -2361,7 +2358,8 @@ def _step(ins, temps, frame, prev):
     op = ins["op"]
     ln = ins["line"]
     if op == "const":
-        temps[ins["dest"]] = ins["val"]
+        v = ins["val"]
+        temps[ins["dest"]] = chk62(v) if isinstance(v, int) else v
     elif op == "load":
         v = frame.get(ins["name"], ln)
         # dynamic reads auto-box statics, like interp's ev var
@@ -2648,6 +2646,9 @@ def main(argv):
         prog = interp.parse_program(src)
         run_module(build_module(prog),
                    os.path.dirname(os.path.abspath(argv[1])))
+    except HSOvf:
+        sys.stderr.write("error: Int outside the 62-bit range\n")
+        return 97
     except HSErr as e:
         print(str(e), file=sys.stderr)
         return 1

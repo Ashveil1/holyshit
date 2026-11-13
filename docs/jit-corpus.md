@@ -23,9 +23,6 @@ HTTP server for `t_sock` and the `/tmp/opencode/hs_fs_test` pre-clean for
 
 | test | reason |
 | --- | --- |
-| `err_umix` | The interpreter rejects I64+U64 mixing; the x64 subset accepts it (roadmap 3.4 — needs an owner decision). |
-| `t_bits` | 62-bit x64 Int vs 64-bit interpreter Int (roadmap 3.4 — needs an owner decision). |
-| `t_circ` | The interpreter nests `in module '...'` prefixes on loader errors; the self-hosted loader reports the innermost error only. |
 | `t_ffi` | The JIT driver cannot bind C-source externs (`extern from "file.c"`); library externs work, and the Python native path covers C sources via gcc (`test_native.py`). |
 | `t_sock` | The self-hosted x64 backend has no socket/http/ticks runtime support yet; the Python native path covers it (`test_native.py`). |
 

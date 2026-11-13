@@ -1,6 +1,6 @@
 HSGOLD1
 rc=0
-stdout=404
+stdout=399
 stderr=0
 
 2
@@ -26,13 +26,12 @@ true
 16
 64
 true
-true
-operator '&' needs Ints, got Int and Str at line 36
-operator '|' needs Ints, got Str and Int at line 40
-shift count 100 out of range (0..63) at line 44
-shift count -1 out of range (0..63) at line 48
-cannot bitwise-not Str at line 52
-operator '&' needs Ints, got Bool and Int at line 56
+operator '&' needs Ints, got Int and Str at line 35
+operator '|' needs Ints, got Str and Int at line 39
+shift count 100 out of range (0..63) at line 43
+shift count -1 out of range (0..63) at line 47
+cannot bitwise-not Str at line 51
+operator '&' needs Ints, got Bool and Int at line 55
 52
 4852
 60875

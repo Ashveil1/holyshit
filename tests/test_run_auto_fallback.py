@@ -28,18 +28,30 @@ with tempfile.TemporaryDirectory(prefix='hs auto fallback ') as temp:
     big = d / 'big.holy'
     big.write_text('n = int(argv()[0])\nr = 1\nfor i in range(2, n + 1):\n'
                    '  r = r * i\nprint r\n')
+    # outside the x64 subset (ticks has no x64 runtime), so the auto chain
+    # must reach the interpreter even when gcc cannot build
+    sub = d / 'sub.holy'
+    sub.write_text('print ticks() > 0\n')
 
     def run(args):
         return subprocess.run([sys.executable, str(ROOT / 'hs.py')] + args,
                               capture_output=True, text=True, timeout=120, env=env)
 
-    r = run(['run', str(big), '20'])
-    check((r.returncode, r.stdout) == (0, '2432902008176640000\n'),
+    r = run(['run', str(sub)])
+    check((r.returncode, r.stdout) == (0, 'true\n'),
           'auto falls back to the interpreter when gcc cannot build',
           repr((r.returncode, r.stdout, r.stderr[-200:])))
-    check('62-bit' not in r.stderr and 'compile failed' not in r.stderr,
+    check('compile failed' not in r.stderr,
           'the failing native route stays silent after fallback',
           repr(r.stderr[-200:]))
+
+    # unified 62-bit Int (owner decision): no backend rescues the overflow;
+    # the trap surfaces as-is on the auto chain
+    r = run(['run', str(big), '20'])
+    check(r.returncode == 97 and 'Int outside the 62-bit range' in r.stderr
+          and '2432902008176640000' not in r.stdout,
+          'auto surfaces the unified 62-bit trap on every backend',
+          repr((r.returncode, r.stdout, r.stderr[-200:])))
 
     err = d / 'err.holy'
     err.write_text('print 1 / 0\n')

@@ -152,7 +152,7 @@ CASES = [
      None, None, 1),
     ("unsafemix",
      "unsafe:\n  I64 x = 5\n  U64 y = 6\n  print x + y\n",
-     None, None, 1),
+     "11\n", "", 0),
 ]
 
 fails = 0
