@@ -4848,6 +4848,10 @@ class Gen:
             self.a.code += b" fl="
             self.a.label("exccr2_")
             self.a.code += b" cr2="
+            self.a.label("excrsp_")
+            self.a.code += b" rsp="
+            self.a.label("excstk_")
+            self.a.code += b"stk "
             self.a.label("dzm_")
             self.a.code += b"division by zero\0"
             self.a.label("exc_")
@@ -5071,6 +5075,45 @@ class Gen:
         a.add_ri32("rsp", 8)
         a.mov_ri32("rax", 10)
         a.call("x_putc")
+        # --- b1-repro-F instrumentation: fault rsp + a window of stack words
+        # around stack_top-8 (return slot of `call hs_kernel_main`) ---
+        a.lea_rip("rsi", "excrsp_")
+        a.mov_ri32("rdx", 5)
+        self.k_write()
+        a.mov_rr("rax", "rsp")
+        a.add_ri32("rax", 152)  # ring-0 fault rsp: 128 regsave + rip/cs/rflags
+        a.push_r("rax")
+        a.call("print_int")
+        a.add_ri32("rsp", 8)
+        a.mov_ri32("rax", 10)
+        a.call("x_putc")
+        # stkbase_ = kstack_ + KSTACK_SIZE - 8
+        a.lea_rip("rax", "kstack_")
+        a.add_ri32("rax", KSTACK_SIZE - 8)
+        a.lea_rip("rcx", "stkbase_")
+        a.mov_mr("rcx", "rax", 0)
+        for wi in range(15, -1, -1):
+            a.lea_rip("rsi", "excstk_")
+            a.mov_ri32("rdx", 4)
+            self.k_write()
+            a.lea_rip("rax", "stkbase_")
+            a.mov_rm("rax", "rax", 0)
+            a.sub_ri32("rax", wi * 8)
+            a.push_r("rax")
+            a.call("print_int")
+            a.add_ri32("rsp", 8)
+            a.mov_ri32("rax", 32)
+            a.call("x_putc")
+            a.lea_rip("rax", "stkbase_")
+            a.mov_rm("rax", "rax", 0)
+            a.sub_ri32("rax", wi * 8)
+            a.mov_rm("rax", "rax", 0)
+            a.push_r("rax")
+            a.call("print_int")
+            a.add_ri32("rsp", 8)
+            a.mov_ri32("rax", 10)
+            a.call("x_putc")
+        # --- end b1-repro-F instrumentation ---
         # Containment: a ring-3 fault with an armed owner kills the guest
         # and resumes the kernel continuation instead of halting the
         # machine; the .holy owner reclaims the owned space after the
@@ -5777,6 +5820,7 @@ class Gen:
         self.reserve("syscall_fn_", 8)
         self.reserve("syscall_stop_", 8)
         self.reserve("ufault_vec_", 8)
+        self.reserve("stkbase_", 8)
         self.reserve("ufault_rip_", 8)
         self.reserve("ufault_cr2_", 8)
         self.reserve("ufault_arm_", 8)
