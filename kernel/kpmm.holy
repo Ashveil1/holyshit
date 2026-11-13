@@ -119,6 +119,13 @@ def init():
   reserved_frames = reserve(0, pool_base)
   reserved_frames = reserved_frames + reserve(pool_base, image_end())
   reserved_frames = reserved_frames + reserve_loader()
+  # the boot information block itself: GRUB can place it inside the usable
+  # pool, and handing its frames out corrupts every later multiboot2 read
+  nbytes = kmb.info_bytes()
+  if nbytes > 0:
+    base = kmb.info() & -4096
+    top = (kmb.info() + nbytes + 4095) & -4096
+    reserved_frames = reserved_frames + reserve(base, top)
   # alloc() serves Str/List payloads, page tables and this bitmap from a
   # fixed window; those frames are the runtime's, never ours
   bump_lo = kmb.RUNTIME_BUMP_BASE

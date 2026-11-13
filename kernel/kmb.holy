@@ -12,12 +12,22 @@
 #     +12 boot_device, +48 map address
 #     entry: +0 entry size (=20), +4 base (u64), +12 length (u64), +20 type
 #
+#   mb2 (multiboot2, magic 0x36d76289; GRUB multiboot2 protocol):
+#     +0 total_size, then 8-byte-aligned {type, size} tags; the memory map
+#     is tag 6: +8 entry_size, +12 entry_version, +16 first entry
+#     entry: +0 base (u64), +8 length (u64), +16 type (u32)
+#     module tags are not decoded yet, so mods_count() reports 0 here
+#
 # Helpers come before their users: the x64 backend resolves module names
 # statically. Every function returns a normal (tagged) Int.
 
 ABI_NONE = 0
 ABI_SPEC = 1
 ABI_QEMU = 2
+ABI_MB2 = 3
+
+MB2_MAGIC = 0x36d76289
+MB2_TAG_MMAP = 6
 
 FRAME_BYTES = 4096
 
@@ -40,6 +50,7 @@ QEMU_ENT_BYTES = 24
 detected = 0
 n_entries = 0
 ent_bytes = 0
+mb2_map_tag = 0
 
 def rd32(addr):
   unsafe:
@@ -59,9 +70,37 @@ def magic():
 
 def detect():
   # returns the ABI, validating whatever the loader gave us
-  global detected, ent_bytes, n_entries
+  global detected, ent_bytes, n_entries, mb2_map_tag
   p = info()
   if p == 0:
+    detected = ABI_NONE
+    return ABI_NONE
+  if magic() == MB2_MAGIC:
+    # multiboot2: the map is a tagged structure, not fixed offsets. Without
+    # the magic check the first tag's header would alias the spec-layout
+    # flags field and misdetect.
+    total = rd32(p)
+    if total < 8 or total > 65536:
+      detected = ABI_NONE
+      return ABI_NONE
+    off = 8
+    while off + 8 <= total:
+      tag = p + off
+      ttype = rd32(tag)
+      tsize = rd32(tag + 4)
+      if tsize < 8 or off + tsize > total:
+        break
+      if ttype == 0:
+        break
+      if ttype == MB2_TAG_MMAP:
+        esz = rd32(tag + 8)
+        if tsize >= 16 and esz >= 24 and (tsize - 16) % esz == 0:
+          mb2_map_tag = tag
+          ent_bytes = esz
+          detected = ABI_MB2
+          return ABI_MB2
+        break
+      off = (off + tsize + 7) & -8
     detected = ABI_NONE
     return ABI_NONE
   # QEMU: map pointer at +48 pointing at a plausible entry list
@@ -94,6 +133,14 @@ def usable():
   # true when a memory map was found
   return abi() != ABI_NONE
 
+def info_bytes():
+  # total size of the boot information block, when the ABI carries one.
+  # kpmm reserves these frames: the block can sit inside the usable pool,
+  # and losing it to the heap corrupts every later tag read.
+  if abi() == ABI_MB2:
+    return rd32(info())
+  return 0
+
 def count_entries():
   global n_entries
   a = abi()
@@ -117,6 +164,10 @@ def count_entries():
     n = int(mlen / esz)
     n_entries = n
     return n
+  if a == ABI_MB2:
+    n = int((rd32(mb2_map_tag + 4) - 16) / ent_bytes)
+    n_entries = n
+    return n
   n_entries = 0
   return 0
 
@@ -126,6 +177,8 @@ def entry_addr(i):
     return rd32(info() + QEMU_MMAP_ADDR) + i * QEMU_ENT_BYTES
   if a == ABI_SPEC:
     return info() + SPEC_MMAP_FIRST + i * rd32(info() + SPEC_MMAP_ENT)
+  if a == ABI_MB2:
+    return mb2_map_tag + 16 + i * ent_bytes
   return 0
 
 def entry_base(p):

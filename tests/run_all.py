@@ -86,6 +86,7 @@ SUITES = [
     ("test_console_session.py", "GRUB multi-submission transcript and text pixels"),
     ("test_console_kernel.py", "GRUB keyboard console actual text pixels"),
     ("test_framebuffer_kernel.py", "GRUB framebuffer native image and guest pixels"),
+    ("test_ksurface.py", "GRUB double-buffered surface full and partial flush pixels"),
     ("test_examples.py", "examples"),
     ("test_lsp.py", "language server"),
     ("test_docs.py", "docs"),
@@ -174,7 +175,7 @@ SUITES = [
 ]
 
 
-QUICK_SKIP = ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py")
+QUICK_SKIP = ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_ksurface.py")
 
 
 def main(argv):

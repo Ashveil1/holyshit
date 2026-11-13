@@ -1,0 +1,115 @@
+# ksurface: double-buffered surface, dirty-rect tracking, flush byte layout.
+# Uses a heap buffer as a mock hardware framebuffer, so every check is
+# deterministic on any machine (no GRUB or real display needed).
+import kmb
+import kpmm
+import kpage
+import kheap
+import kframebuffer
+import ksurface
+
+fails = 0
+
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+def peek8(addr):
+  unsafe:
+    return load8(as_ptr(addr))
+
+def poke8(addr, value):
+  unsafe:
+    store8(as_ptr(addr), value)
+
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("heap init", kheap.init(64), true)
+expect("heap ready", kheap.ready(), true)
+
+# Mock hardware framebuffer: 64x48 RGB32, B,G,R,X byte order in memory.
+mock = kheap.malloc(64 * 48 * 4)
+expect("mock allocated", mock != 0, true)
+i = 0
+while i < 64 * 48 * 4:
+  poke8(mock + i, 0)
+  i = i + 1
+frame = [mock, 256, 64, 48, 4, 2, 1, 0]
+
+s = ksurface.create(64, 48)
+expect("surface width", s[0], 64)
+expect("surface height", s[1], 48)
+expect("initially clean", s[3], 0)
+expect("backbuffer zeroed", ksurface.sample(s, 0, 0), 0)
+
+ksurface.rect(s, 0, 0, 64, 48, 0x16324f)
+expect("full rect one dirty", s[3], 1)
+expect("full rect x0", s[4][0], 0)
+expect("full rect y0", s[4][1], 0)
+expect("full rect x1", s[4][2], 64)
+expect("full rect y1", s[4][3], 48)
+expect("backbuffer holds color", ksurface.sample(s, 3, 2), 0x16324f)
+expect("full flush writes all", ksurface.flush(s, frame), 64 * 48)
+expect("clean after flush", s[3], 0)
+
+base = mock + 2 * 256 + 3 * 4
+expect("flush red channel", peek8(base + 2), 0x16)
+expect("flush green channel", peek8(base + 1), 0x32)
+expect("flush blue channel", peek8(base + 0), 0x4f)
+expect("flush leaves 4th byte", peek8(base + 3), 0)
+
+# Byte-for-byte parity with kframebuffer.pixel at the same layout.
+kframebuffer.pixel(frame, 7, 9, 0x43aa8b)
+ksurface.pixel(s, 11, 9, 0x43aa8b)
+expect("single pixel flush", ksurface.flush(s, frame), 1)
+expect("parity red", peek8(mock + 9 * 256 + 7 * 4 + 2), peek8(mock + 9 * 256 + 11 * 4 + 2))
+expect("parity green", peek8(mock + 9 * 256 + 7 * 4 + 1), peek8(mock + 9 * 256 + 11 * 4 + 1))
+expect("parity blue", peek8(mock + 9 * 256 + 7 * 4 + 0), peek8(mock + 9 * 256 + 11 * 4 + 0))
+expect("parity color value", peek8(mock + 9 * 256 + 7 * 4 + 2), 0x43)
+
+# Partial flush writes only the dirty region.
+poke8(mock, 0xee)
+ksurface.rect(s, 40, 30, 6, 6, 0xff8800)
+expect("partial flush count", ksurface.flush(s, frame), 36)
+expect("untouched sentinel", peek8(mock), 0xee)
+expect("dirty bytes landed", peek8(mock + 30 * 256 + 40 * 4 + 2), 0xff)
+
+# Dirty-rect merge semantics.
+ksurface.rect(s, 0, 0, 4, 4, 0x000001)
+ksurface.rect(s, 4, 0, 4, 4, 0x000002)
+expect("touching rects merge", s[3], 1)
+expect("merged union x1", s[4][2], 8)
+ksurface.rect(s, 20, 20, 3, 3, 0x000003)
+expect("disjoint rect appends", s[3], 2)
+ksurface.flush(s, frame)
+
+# Capacity overflow collapses to one full-surface rect.
+ksurface.pixel(s, 0, 40, 1)
+ksurface.pixel(s, 8, 40, 1)
+ksurface.pixel(s, 16, 40, 1)
+ksurface.pixel(s, 24, 40, 1)
+ksurface.pixel(s, 32, 40, 1)
+ksurface.pixel(s, 40, 40, 1)
+ksurface.pixel(s, 48, 40, 1)
+ksurface.pixel(s, 56, 40, 1)
+expect("eight disjoint kept", s[3], 8)
+ksurface.pixel(s, 0, 44, 1)
+expect("overflow collapses", s[3], 1)
+expect("collapse is full x1", s[4][2], 64)
+expect("collapse is full y1", s[4][3], 48)
+expect("collapsed flush is full", ksurface.flush(s, frame), 64 * 48)
+
+# Clipping: out-of-bounds drawing is ignored; negative rect clips to edge.
+ksurface.pixel(s, 0 - 5, 0 - 5, 0xffffff)
+ksurface.pixel(s, 64, 48, 0xffffff)
+expect("oob pixels stay clean", s[3], 0)
+ksurface.rect(s, 0 - 4, 0 - 4, 8, 8, 0x123456)
+expect("clipped flush count", ksurface.flush(s, frame), 16)
+expect("clipped corner byte", peek8(mock + 2), 0x12)
+
+print "fails", fails
+print "ksurface-done"
