@@ -12684,6 +12684,10 @@ def build_xkernel(prog_path, out_path, ir_backend=True):
     ie_off = asm64.data_labels["imageend_"]
     asm64.data[ie_off:ie_off + 8] = _st.pack("<Q", image_end)
     code[g._stack_patch_pos:g._stack_patch_pos + 8] = _st.pack("<Q", stack_top)
+    import sys as _sys
+    _ks = A(dat_off + asm64.data_labels["kstack_"])
+    print(f"DBG kstack_={hex(_ks)} KSTACK_SIZE={KSTACK_SIZE} stack_top={hex(stack_top)} tss_={hex(A(dat_off + asm64.data_labels['tss_']))} RSP0field={hex(stack_top)} sc_top={hex(sc_top)}", file=_sys.stderr)
+    print(f"DBG gdt_off={hex(gdt_off)} gdt_off_sel={gdt_off_sel} dat_off={hex(dat_off)} pay_off={hex(pay_off)}", file=_sys.stderr)
     code = bytes(code)
     data = bytes(asm64.data)
     # text segment: headers area + mb + boot + gdt + payload, ending at dat_off
