@@ -4926,7 +4926,7 @@ class Gen:
             # main stack: 16KB of .data, so it can never collide with
             # page tables or with bootloader data placed after the image
             # (multiboot structs, cmdlines, initrd). stack_top points past it.
-            self.reserve("kstack_", KSTACK_SIZE)
+            self.reserve("kstack_", KSTACK_SIZE + KMAIN_GUARD)
             # dedicated syscall stack (see emit_syscall_runtime): the stub
             # runs handlers here instead of trusting the user rsp, so deep
             # handler call chains can never overflow a user stack that is
@@ -12434,6 +12434,22 @@ def build_x64_ast(prog_path, out_path):
 # ---------- freestanding kernel link ----------
 KBASE = 0x100000
 KSTACK_SIZE = 16384
+# main's frame must stay clear of the ring-3 entry zone: every exception or
+# IRQ taken from ring 3 makes the CPU push its frame at RSP0 (= stack_top)
+# and the stub then saves 15 registers, so entries write
+# [stack_top-168, stack_top]. When main's frame top sits there, guest-time
+# fault/IRQ traffic clobbers main's saved rbp / return address / locals and
+# the final return consumes the wreckage (observed as a post-shutdown
+# EXC 14 at a garbage rip, layout-dependent). kstack_ is reserved
+# KMAIN_GUARD bytes larger and long_mode starts hs_kernel_main at
+# stack_top - KMAIN_GUARD, so main's frame begins exactly where it did
+# without the guard while the entry zone lives on its own page above it.
+# A full page, not 168 bytes: nested exceptions and handler/scheduler
+# chains enter below the stub save, and the page costs one reserved frame.
+# (Simply lowering main's rsp without growing kstack_ is NOT equivalent:
+# that shrinks main's stack budget and deep chains underflow into the
+# .data below kstack_ - bump_ptr_, sched_*, imageend_.)
+KMAIN_GUARD = 4096
 KTABLE_PAGES = 3
 # GDT selectors the kernel loads at boot (ring 3 gets the same descriptors
 # with RPL 3, so enter_user switches CS/SS to ...|3)
@@ -12568,7 +12584,7 @@ def build_xkernel(prog_path, out_path, ir_backend=True):
     tbl_off, off = off, off + 4096 * KTABLE_PAGES
     # absolute addresses
     A = lambda o: KBASE + o
-    stack_top = A(dat_off + asm64.data_labels["kstack_"] + KSTACK_SIZE)
+    stack_top = A(dat_off + asm64.data_labels["kstack_"] + KSTACK_SIZE + KMAIN_GUARD)
     # patch boot32 symbolic constants: use abs32 labels mapped to constants
     b.labels["STACK_TOP"] = stack_top - KBASE  # abs32 -> base + this
     b.labels["PML4"] = (A(tbl_off) - KBASE)
@@ -12638,7 +12654,8 @@ def build_xkernel(prog_path, out_path, ir_backend=True):
     image_end = max(stack_top, A(tbl_off + 4096 * KTABLE_PAGES))
     ie_off = asm64.data_labels["imageend_"]
     asm64.data[ie_off:ie_off + 8] = _st.pack("<Q", image_end)
-    code[g._stack_patch_pos:g._stack_patch_pos + 8] = _st.pack("<Q", stack_top)
+    code[g._stack_patch_pos:g._stack_patch_pos + 8] = _st.pack(
+        "<Q", stack_top - KMAIN_GUARD)
     code = bytes(code)
     data = bytes(asm64.data)
     # text segment: headers area + mb + boot + gdt + payload, ending at dat_off
