@@ -17,6 +17,7 @@ jobs:
       - name: repro loop (up to 8 boots)
         run: |
           set +e
+          mkdir -p /tmp/fb1work
           for i in 1 2 3 4 5 6 7 8; do
             echo "=== attempt $i ==="
             python3 tests/zz_fb1_repro.py
