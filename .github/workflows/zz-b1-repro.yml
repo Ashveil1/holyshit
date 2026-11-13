@@ -1,0 +1,38 @@
+name: zz-b1-repro
+# TEMPORARY debug workflow for the b1-repro-F info_bytes investigation.
+# Loops the owned-ELF repro on QEMU and uploads the full serial log.
+# Drop before any PR to master.
+on:
+  push:
+    branches: [b1-repro-F]
+jobs:
+  repro:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
+      - name: repro loop (up to 8 boots)
+        run: |
+          set +e
+          for i in 1 2 3 4 5 6 7 8; do
+            echo "=== attempt $i ==="
+            python3 tests/zz_fb1_repro.py
+            rc=$?
+            if [ $rc -ne 0 ]; then
+              echo "CAUGHT on attempt $i (rc=$rc)"
+              cp /tmp/fb1-harness-full.log fb1-caught.log 2>/dev/null
+              exit 7
+            fi
+          done
+          echo "no fault in 8 attempts"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fb1-serial
+          path: |
+            /tmp/fb1-harness-full.log
+            fb1-caught.log
+          if-no-files-found: ignore
