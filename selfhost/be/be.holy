@@ -4093,6 +4093,66 @@ class Gen:
       asm.mov_ri16("dx", port)
       asm.mov_ri32("rax", val)
       asm.out_dx_al()
+    lab_msdone = self.new_tmp("msdone")
+    def ps2_out(port, val):
+      asm.mov_ri16("dx", port)
+      asm.mov_ri32("rax", val)
+      asm.out_dx_al()
+    def ps2_wait(mask, want):
+      lab = self.new_tmp("ps2w")
+      lab_ok = self.new_tmp("ps2ok")
+      asm.mov_ri32("r10", 100000)
+      asm.label(lab)
+      asm.mov_ri16("dx", 100)
+      asm.in_al_dx()
+      asm.and_ri32("rax", mask)
+      asm.cmp_ri32("rax", want)
+      asm.jcc("e", lab_ok)
+      asm.sub_ri32("r10", 1)
+      asm.jcc("ne", lab)
+      asm.jmp(lab_msdone)
+      asm.label(lab_ok)
+    def mouse_cmd(val):
+      ps2_wait(2, 0)
+      ps2_out(100, 212)
+      ps2_wait(2, 0)
+      ps2_out(96, val)
+      ps2_wait(1, 1)
+      asm.mov_ri16("dx", 96)
+      asm.in_al_dx()
+      asm.and_ri32("rax", 255)
+      asm.cmp_ri32("rax", 250)
+      asm.jcc("ne", lab_msdone)
+    lab_msnoflush = self.new_tmp("msnoflush")
+    asm.mov_ri16("dx", 100)
+    asm.in_al_dx()
+    asm.and_ri32("rax", 1)
+    asm.jcc("e", lab_msnoflush)
+    asm.mov_ri16("dx", 96)
+    asm.in_al_dx()
+    asm.label(lab_msnoflush)
+    ps2_wait(2, 0)
+    ps2_out(100, 168)
+    ps2_wait(2, 0)
+    ps2_out(100, 32)
+    ps2_wait(1, 1)
+    asm.mov_ri16("dx", 96)
+    asm.in_al_dx()
+    asm.and_ri32("rax", 255)
+    asm.or_ri32("rax", 2)
+    asm.and_ri32("rax", 223)
+    asm.mov_rr("r9", "rax")
+    ps2_wait(2, 0)
+    ps2_out(100, 96)
+    ps2_wait(2, 0)
+    asm.mov_ri16("dx", 96)
+    asm.mov_rr("rax", "r9")
+    asm.out_dx_al()
+    mouse_cmd(246)
+    mouse_cmd(244)
+    ps2_out(33, 248)
+    ps2_out(161, 239)
+    asm.label(lab_msdone)
     asm.lidt_rip("idtr_")
     asm.sti()
     asm.call("hs_kernel_main")
@@ -4147,9 +4207,9 @@ class Gen:
         return false
       return false
     mods = [main_mod] + [m for m in self.modules if pyrt.py_get(m, "collected", null)]
-    _t4046 = [pyrt.py_set(null), pyrt.py_list(mods)]
-    seen = _t4046[0]
-    todo = _t4046[1]
+    _t4106 = [pyrt.py_set(null), pyrt.py_list(mods)]
+    seen = _t4106[0]
+    todo = _t4106[1]
     while todo:
       m = todo[len(todo) - 1]
       todo = todo[0:len(todo) - 1]
@@ -4287,7 +4347,7 @@ class Gen:
       asm.data_qword(Gen_KHEAP_BASE)
       asm.data_label("bump_end_")
       asm.data_qword(Gen_KHEAP_BASE + Gen_KHEAP_SIZE)
-      for nm in ["ticks_", "keyhead_", "keytail_", "keydrops_", "navhead_", "navtail_", "navdrops_", "keyextended_", "eventhead_", "eventtail_", "eventdrops_", "pmm_next_"]:
+      for nm in ["ticks_", "keyhead_", "keytail_", "keydrops_", "navhead_", "navtail_", "navdrops_", "keyextended_", "eventhead_", "eventtail_", "eventdrops_", "mshead_", "mstail_", "msdrops_", "msphase_", "pmm_next_"]:
         asm.data_label(nm)
         asm.data_qword(0)
       asm.data_label("eventqueue_")
@@ -4296,6 +4356,10 @@ class Gen:
       asm.data_bytes(pyrt.py_bytes(64))
       asm.data_label("keyqueue_")
       asm.data_bytes(pyrt.py_bytes(64))
+      asm.data_label("mspkt_")
+      asm.data_bytes(pyrt.py_bytes(4))
+      asm.data_label("msqueue_")
+      asm.data_bytes(pyrt.py_bytes(64 * 8))
       asm.data_label("pmm_free_")
       asm.data_qword(32768)
       asm.data_label("mbinfo_")
@@ -4368,9 +4432,9 @@ class Gen:
     return out
   def k_write(self):
     asm.mov_rr("rcx", "rdx")
-    _t4264 = [self.new_tmp("kw"), self.new_tmp("kw")]
-    lab_l = _t4264[0]
-    lab_d = _t4264[1]
+    _t4328 = [self.new_tmp("kw"), self.new_tmp("kw")]
+    lab_l = _t4328[0]
+    lab_d = _t4328[1]
     asm.label(lab_l)
     asm.test_rr("rcx", "rcx")
     asm.jcc("e", lab_d)
@@ -4455,7 +4519,7 @@ class Gen:
     asm.label(lab_xhalt)
     asm.call("k_halt")
     for vec in range(48):
-      if vec in [32, 33]:
+      if vec in [32, 33, 44]:
         continue
       asm.label("irq_stub_" + str(vec))
       if vec in ERRCODE:
@@ -4773,6 +4837,112 @@ class Gen:
     asm.mov_ri32("rax", 0)
     pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([157]))
     asm.ret()
+    asm.label("irq_stub_44")
+    for r in Gen_GPREGS:
+      asm.push_r(r)
+    asm.mov_ri16("dx", 100)
+    asm.in_al_dx()
+    asm.and_ri32("rax", 1)
+    lab_msdata = self.new_tmp("msdata")
+    asm.jcc("ne", lab_msdata)
+    asm.mov_ri32("rax", 32)
+    asm.mov_ri16("dx", 160)
+    asm.out_dx_al()
+    asm.mov_ri16("dx", 32)
+    asm.out_dx_al()
+    for r in pyrt.py_reversed(Gen_GPREGS):
+      asm.pop_r(r)
+    asm.iretq()
+    asm.label(lab_msdata)
+    asm.mov_ri16("dx", 96)
+    asm.in_al_dx()
+    asm.and_ri32("rax", 255)
+    asm.call("ms_byte")
+    asm.mov_ri32("rax", 32)
+    asm.mov_ri16("dx", 160)
+    asm.out_dx_al()
+    asm.mov_ri16("dx", 32)
+    asm.out_dx_al()
+    for r in pyrt.py_reversed(Gen_GPREGS):
+      asm.pop_r(r)
+    asm.iretq()
+    asm.label("ms_byte")
+    lab_msstore = self.new_tmp("msstore")
+    lab_msdone2 = self.new_tmp("msbdone")
+    asm.lea_rip("rcx", "msphase_")
+    asm.mov_rm("rdx", "rcx", 0)
+    asm.cmp_ri32("rdx", 0)
+    asm.jcc("ne", lab_msstore)
+    asm.mov_rr("r10", "rax")
+    asm.and_ri32("r10", 8)
+    asm.jcc("e", lab_msdone2)
+    asm.label(lab_msstore)
+    asm.lea_rip("r10", "mspkt_")
+    asm.add_rr("r10", "rdx")
+    asm.mov_mr8("r10", 0, 0)
+    asm.add_ri32("rdx", 1)
+    asm.cmp_ri32("rdx", 3)
+    lab_mssave = self.new_tmp("mssave")
+    asm.jcc("b", lab_mssave)
+    asm.mov_ri32("rdx", 0)
+    asm.mov_mr("rcx", "rdx", 0)
+    asm.lea_rip("r11", "mspkt_")
+    asm.movzx_eax_m8("r11", 0)
+    asm.mov_rr("r10", "rax")
+    asm.movzx_eax_m8("r11", 1)
+    asm.shl_ri8("rax", 8)
+    asm.or_rr("r10", "rax")
+    asm.movzx_eax_m8("r11", 2)
+    asm.shl_ri8("rax", 16)
+    asm.or_rr("r10", "rax")
+    asm.mov_rr("rax", "r10")
+    asm.jmp("ms_enqueue")
+    asm.label(lab_mssave)
+    asm.mov_mr("rcx", "rdx", 0)
+    asm.label(lab_msdone2)
+    asm.ret()
+    asm.label("ms_enqueue")
+    asm.lea_rip("rcx", "mstail_")
+    asm.mov_rm("rdx", "rcx", 0)
+    asm.mov_rr("r10", "rdx")
+    asm.add_ri32("r10", 1)
+    asm.and_ri32("r10", 63)
+    asm.lea_rip("r11", "mshead_")
+    asm.mov_rm("r11", "r11", 0)
+    asm.cmp_rr("r10", "r11")
+    lab_msfull = self.new_tmp("msfull")
+    asm.jcc("e", lab_msfull)
+    asm.lea_rip("r11", "msqueue_")
+    asm.mov_mrx("r11", "rdx", 8, 0, "rax")
+    asm.mov_mr("rcx", "r10", 0)
+    asm.ret()
+    asm.label(lab_msfull)
+    asm.lea_rip("rcx", "msdrops_")
+    asm.mov_rm("rax", "rcx", 0)
+    asm.add_ri32("rax", 1)
+    asm.mov_mr("rcx", "rax", 0)
+    asm.ret()
+    asm.label("ms_dequeue")
+    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([156]))
+    asm.cli()
+    asm.lea_rip("rcx", "mshead_")
+    asm.mov_rm("rdx", "rcx", 0)
+    asm.lea_rip("r10", "mstail_")
+    asm.mov_rm("r10", "r10", 0)
+    asm.cmp_rr("rdx", "r10")
+    lab_msempty = self.new_tmp("msempty")
+    asm.jcc("e", lab_msempty)
+    asm.lea_rip("r11", "msqueue_")
+    asm.mov_rmx("rax", "r11", "rdx", 8, 0)
+    asm.add_ri32("rdx", 1)
+    asm.and_ri32("rdx", 63)
+    asm.mov_mr("rcx", "rdx", 0)
+    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([157]))
+    asm.ret()
+    asm.label(lab_msempty)
+    asm.mov_ri32("rax", 0)
+    pyrt.py_extend(asm.state()["code"], pyrt.py_bytes([157]))
+    asm.ret()
   def emit_task_runtime(self):
     asm.label("ctx_swap_inner")
     asm.mov_mr("rdi", "rax", 64)
@@ -4825,7 +4995,7 @@ class Gen:
     asm.jmp("ctx_swap_inner")
     self.reserve("exit_save_", 136)
   def emit_syscall_runtime(self):
-    reg = pyrt.py_dict([[_p4721_0[1], 8 * _p4721_0[0]] for _p4721_0 in pyrt.py_enumerate(Gen_GPREGS)])
+    reg = pyrt.py_dict([[_p4891_0[1], 8 * _p4891_0[0]] for _p4891_0 in pyrt.py_enumerate(Gen_GPREGS)])
     asm.label("syscall_entry")
     asm.xchg_rip("rcx", "ret_rip_")
     asm.xchg_rip("r11", "ret_rfl_")
@@ -5187,13 +5357,13 @@ class Gen:
     asm.mov_rr("r10", "rdi")
     asm.mov_rr("rax", "r10")
     asm.and_ri32("rax", 3)
-    _t5083 = [self.new_tmp("tn"), self.new_tmp("tn"), self.new_tmp("tn")]
-    lab_ti = _t5083[0]
-    lab_tb = _t5083[1]
-    lab_tn = _t5083[2]
-    _t5087 = [self.new_tmp("tn"), self.new_tmp("tn")]
-    lab_th = _t5087[0]
-    lab_tu = _t5087[1]
+    _t5253 = [self.new_tmp("tn"), self.new_tmp("tn"), self.new_tmp("tn")]
+    lab_ti = _t5253[0]
+    lab_tb = _t5253[1]
+    lab_tn = _t5253[2]
+    _t5257 = [self.new_tmp("tn"), self.new_tmp("tn")]
+    lab_th = _t5257[0]
+    lab_tu = _t5257[1]
     asm.cmp_ri32("rax", Gen_TAG_INT)
     asm.jcc("e", lab_ti)
     asm.cmp_ri32("rax", Gen_TAG_BOOL)
@@ -5203,17 +5373,17 @@ class Gen:
     asm.test_rr("rax", "rax")
     asm.jcc("ne", lab_tu)
     asm.mov_rm("rax", "r10", 0)
-    _t5099 = [self.new_tmp("tn"), self.new_tmp("tn"), self.new_tmp("tn")]
-    lab_ts = _t5099[0]
-    lab_tl = _t5099[1]
-    lab_tf = _t5099[2]
-    _t5103 = [self.new_tmp("tn"), self.new_tmp("tn")]
-    lab_tfl = _t5103[0]
-    lab_tdc = _t5103[1]
+    _t5269 = [self.new_tmp("tn"), self.new_tmp("tn"), self.new_tmp("tn")]
+    lab_ts = _t5269[0]
+    lab_tl = _t5269[1]
+    lab_tf = _t5269[2]
+    _t5273 = [self.new_tmp("tn"), self.new_tmp("tn")]
+    lab_tfl = _t5273[0]
+    lab_tdc = _t5273[1]
     lab_tft = self.new_tmp("tn")
-    _t5107 = [self.new_tmp("tn"), self.new_tmp("tn")]
-    lab_tbi = _t5107[0]
-    lab_tfn = _t5107[1]
+    _t5277 = [self.new_tmp("tn"), self.new_tmp("tn")]
+    lab_tbi = _t5277[0]
+    lab_tfn = _t5277[1]
     lab_tby = self.new_tmp("tn") if self.uses_bytes else null
     asm.cmp_ri32("rax", Gen_K_STR)
     asm.jcc("e", lab_ts)
@@ -5309,12 +5479,12 @@ class Gen:
     asm.mov_mr("rbp", "rdx", 0 - 24)
     asm.mov_mr("rbp", "rcx", 0 - 32)
     asm.cmp_ri32("rdi", 0)
-    _t5205 = [self.new_tmp("be"), self.new_tmp("be")]
-    lab_badd = _t5205[0]
-    lab_barith = _t5205[1]
-    _t5208 = [self.new_tmp("be"), self.new_tmp("be")]
-    lab_bcmp = _t5208[0]
-    lab_bjoin = _t5208[1]
+    _t5375 = [self.new_tmp("be"), self.new_tmp("be")]
+    lab_badd = _t5375[0]
+    lab_barith = _t5375[1]
+    _t5378 = [self.new_tmp("be"), self.new_tmp("be")]
+    lab_bcmp = _t5378[0]
+    lab_bjoin = _t5378[1]
     asm.jcc("e", lab_badd)
     asm.cmp_ri32("rdi", 5)
     asm.jcc("e", lab_bcmp)
@@ -5385,17 +5555,17 @@ class Gen:
     asm.mov_mr("rbp", "rdi", 0 - 8)
     asm.mov_mr("rbp", "rsi", 0 - 16)
     asm.mov_mr("rbp", "rdx", 0 - 24)
-    _t5281 = [self.new_tmp("ue"), self.new_tmp("ue"), self.new_tmp("ue")]
-    lab_u0 = _t5281[0]
-    lab_u1 = _t5281[1]
-    lab_u2 = _t5281[2]
-    _t5285 = [self.new_tmp("ue"), self.new_tmp("ue"), self.new_tmp("ue")]
-    lab_u3 = _t5285[0]
-    lab_u4 = _t5285[1]
-    lab_u5 = _t5285[2]
-    _t5289 = [self.new_tmp("ue"), self.new_tmp("ue")]
-    lab_u6 = _t5289[0]
-    lab_u7 = _t5289[1]
+    _t5451 = [self.new_tmp("ue"), self.new_tmp("ue"), self.new_tmp("ue")]
+    lab_u0 = _t5451[0]
+    lab_u1 = _t5451[1]
+    lab_u2 = _t5451[2]
+    _t5455 = [self.new_tmp("ue"), self.new_tmp("ue"), self.new_tmp("ue")]
+    lab_u3 = _t5455[0]
+    lab_u4 = _t5455[1]
+    lab_u5 = _t5455[2]
+    _t5459 = [self.new_tmp("ue"), self.new_tmp("ue")]
+    lab_u6 = _t5459[0]
+    lab_u7 = _t5459[1]
     lab_u9 = self.new_tmp("ue")
     lab_ugo = self.new_tmp("ue")
     asm.cmp_ri32("rdi", 0)
@@ -5532,9 +5702,9 @@ class Gen:
       asm.mov_ri32("rax", 60)
       asm.syscall()
   def copy_bytes(self):
-    _t5428 = [self.new_tmp("cp"), self.new_tmp("cp")]
-    lab_top = _t5428[0]
-    lab_done = _t5428[1]
+    _t5598 = [self.new_tmp("cp"), self.new_tmp("cp")]
+    lab_top = _t5598[0]
+    lab_done = _t5598[1]
     asm.label(lab_top)
     asm.test_rr("rcx", "rcx")
     asm.jcc("e", lab_done)
@@ -5638,12 +5808,12 @@ class Gen:
     asm.mov_mr("rbp", "rax", 0 - 16)
     asm.mov_ri32("rax", 128)
     asm.mov_mr("rbp", "rax", 0 - 24)
-    _t5534 = [self.new_tmp("in"), self.new_tmp("in")]
-    lab_top = _t5534[0]
-    lab_read = _t5534[1]
-    _t5537 = [self.new_tmp("in"), self.new_tmp("in")]
-    lab_eof = _t5537[0]
-    lab_done = _t5537[1]
+    _t5704 = [self.new_tmp("in"), self.new_tmp("in")]
+    lab_top = _t5704[0]
+    lab_read = _t5704[1]
+    _t5707 = [self.new_tmp("in"), self.new_tmp("in")]
+    lab_eof = _t5707[0]
+    lab_done = _t5707[1]
     asm.label(lab_top)
     asm.mov_rm("rax", "rbp", 0 - 16)
     asm.mov_rm("rcx", "rbp", 0 - 24)
@@ -5711,12 +5881,12 @@ class Gen:
     asm.mov_mr("rbp", "r10", 0 - 24)
     asm.mov_ri32("rax", 0)
     asm.mov_mr("rbp", "rax", 0 - 32)
-    _t5607 = [self.new_tmp("ev"), self.new_tmp("ev")]
-    lab_top = _t5607[0]
-    lab_next = _t5607[1]
-    _t5610 = [self.new_tmp("ev"), self.new_tmp("ev")]
-    lab_nomatch = _t5610[0]
-    lab_missing = _t5610[1]
+    _t5777 = [self.new_tmp("ev"), self.new_tmp("ev")]
+    lab_top = _t5777[0]
+    lab_next = _t5777[1]
+    _t5780 = [self.new_tmp("ev"), self.new_tmp("ev")]
+    lab_nomatch = _t5780[0]
+    lab_missing = _t5780[1]
     asm.label(lab_top)
     asm.mov_rm("r10", "rbp", 0 - 24)
     asm.mov_rm("rax", "rbp", 0 - 32)
@@ -5754,9 +5924,9 @@ class Gen:
     asm.lea_mx("rsi", "r10", "rcx", 1, 1)
     asm.mov_mr("rbp", "rsi", 0 - 40)
     asm.mov_ri32("rcx", 0)
-    _t5650 = [self.new_tmp("ev"), self.new_tmp("ev")]
-    lab_vlen = _t5650[0]
-    lab_hit = _t5650[1]
+    _t5820 = [self.new_tmp("ev"), self.new_tmp("ev")]
+    lab_vlen = _t5820[0]
+    lab_hit = _t5820[1]
     asm.label(lab_vlen)
     asm.movzx_eax_m8("rsi", 0)
     asm.test_rr("rax", "rax")
@@ -5823,10 +5993,10 @@ class Gen:
     asm.mov_ri32("rax", 57)
     asm.syscall()
     asm.test_rr("rax", "rax")
-    _t5719 = [self.new_tmp("sy"), self.new_tmp("sy"), self.new_tmp("sy")]
-    lab_child = _t5719[0]
-    lab_parent = _t5719[1]
-    lab_forkerr = _t5719[2]
+    _t5889 = [self.new_tmp("sy"), self.new_tmp("sy"), self.new_tmp("sy")]
+    lab_child = _t5889[0]
+    lab_parent = _t5889[1]
+    lab_forkerr = _t5889[2]
     asm.jcc("l", lab_forkerr)
     asm.jcc("e", lab_child)
     asm.jmp(lab_parent)
@@ -6006,9 +6176,9 @@ class Gen:
     asm.mov_mr("rbp", "rax", 0 - 40)
     asm.mov_ri32("rax", 128)
     asm.mov_mr("rbp", "rax", 0 - 48)
-    _t5902 = [self.new_tmp("fh"), self.new_tmp("fh")]
-    lab_rtop = _t5902[0]
-    lab_rread = _t5902[1]
+    _t6072 = [self.new_tmp("fh"), self.new_tmp("fh")]
+    lab_rtop = _t6072[0]
+    lab_rread = _t6072[1]
     lab_rdone = self.new_tmp("fh")
     asm.label(lab_rtop)
     asm.mov_rm("rax", "rbp", 0 - 40)
@@ -6078,9 +6248,9 @@ class Gen:
     asm.mov_mr("rbp", "rax", 0 - 40)
     asm.mov_ri32("rax", 0)
     asm.mov_mr("rbp", "rax", 0 - 48)
-    _t5974 = [self.new_tmp("fh"), self.new_tmp("fh")]
-    lab_wtop = _t5974[0]
-    lab_wdone = _t5974[1]
+    _t6144 = [self.new_tmp("fh"), self.new_tmp("fh")]
+    lab_wtop = _t6144[0]
+    lab_wdone = _t6144[1]
     asm.label(lab_wtop)
     asm.mov_rm("rax", "rbp", 0 - 48)
     asm.mov_rm("rcx", "rbp", 0 - 40)
@@ -6437,10 +6607,10 @@ class Gen:
     if not wanted:
       return null
     for name in wanted:
-      _t6333 = Gen_BI_VALUES[name]
-      lo = _t6333[0]
-      hi = _t6333[1]
-      _msg = _t6333[2]
+      _t6503 = Gen_BI_VALUES[name]
+      lo = _t6503[0]
+      hi = _t6503[1]
+      _msg = _t6503[2]
       bid = self.bi_id(name)
       for n in range(lo, hi + 1):
         self.bi_stubs[pyrt.py_key([name, n])] = [n, "hsBI_" + str(bid) + "_" + str(n)]
@@ -6453,10 +6623,10 @@ class Gen:
     asm.mov_rm("rax", "r15", 0)
     lab_ret = self.new_tmp("bic")
     for name in wanted:
-      _t6349 = Gen_BI_VALUES[name]
-      lo = _t6349[0]
-      hi = _t6349[1]
-      msg = _t6349[2]
+      _t6519 = Gen_BI_VALUES[name]
+      lo = _t6519[0]
+      hi = _t6519[1]
+      msg = _t6519[2]
       bid = self.bi_id(name)
       lab_next = self.new_tmp("bic")
       asm.cmp_ri32("rax", bid)
@@ -6591,10 +6761,10 @@ class Gen:
     asm.mov_rr("rbp", "rsp")
     asm.movq_xr(0, "rdi")
     asm.movq_xr(1, "rsi")
-    _t6486 = [self.new_tmp("fo"), self.new_tmp("fo"), self.new_tmp("fo")]
-    lab_f1 = _t6486[0]
-    lab_f2 = _t6486[1]
-    lab_f3 = _t6486[2]
+    _t6656 = [self.new_tmp("fo"), self.new_tmp("fo"), self.new_tmp("fo")]
+    lab_f1 = _t6656[0]
+    lab_f2 = _t6656[1]
+    lab_f3 = _t6656[2]
     asm.cmp_ri32("rdx", 0)
     asm.jcc("e", lab_f1)
     asm.cmp_ri32("rdx", 1)
@@ -8761,9 +8931,9 @@ class Gen:
     asm.mov_ri64_bytes("rax", [37, 35, 34, 132, 228, 156, 242, 203])
     asm.mov_ri64("r8", 1099511628211)
     asm.mov_ri32("rdx", 0)
-    _t8655 = [self.new_tmp("dc"), self.new_tmp("dc")]
-    lab_ht = _t8655[0]
-    lab_hd = _t8655[1]
+    _t8825 = [self.new_tmp("dc"), self.new_tmp("dc")]
+    lab_ht = _t8825[0]
+    lab_hd = _t8825[1]
     asm.label(lab_ht)
     asm.cmp_rr("rdx", "rcx")
     asm.jcc("ae", lab_hd)
@@ -8791,9 +8961,9 @@ class Gen:
     asm.mov_rm("rcx", "rdx", 32)
     asm.mov_rm("rsi", "rcx", 0)
     asm.and_rr("rax", "rsi")
-    _t8685 = [self.new_tmp("dc"), self.new_tmp("dc")]
-    lab_ap = _t8685[0]
-    lab_ad = _t8685[1]
+    _t8855 = [self.new_tmp("dc"), self.new_tmp("dc")]
+    lab_ap = _t8855[0]
+    lab_ad = _t8855[1]
     asm.label(lab_ap)
     asm.mov_rmx("rdx", "rcx", "rax", 8, 8)
     asm.test_rr("rdx", "rdx")
@@ -8816,9 +8986,9 @@ class Gen:
     asm.mov_rm("rax", "rdi", 16)
     asm.shl_ri8("rax", 1)
     asm.mov_ri32("rcx", 8)
-    _t8710 = [self.new_tmp("dc"), self.new_tmp("dc")]
-    lab_rn = _t8710[0]
-    lab_rd = _t8710[1]
+    _t8880 = [self.new_tmp("dc"), self.new_tmp("dc")]
+    lab_rn = _t8880[0]
+    lab_rd = _t8880[1]
     asm.label(lab_rn)
     asm.cmp_rr("rcx", "rax")
     asm.jcc("ae", lab_rd)
@@ -8833,9 +9003,9 @@ class Gen:
     asm.call("x_malloc")
     asm.mov_mr("rbp", "rax", 0 - 24)
     asm.mov_ri32("rdx", 0)
-    _t8727 = [self.new_tmp("dc"), self.new_tmp("dc")]
-    lab_zt = _t8727[0]
-    lab_zd = _t8727[1]
+    _t8897 = [self.new_tmp("dc"), self.new_tmp("dc")]
+    lab_zt = _t8897[0]
+    lab_zd = _t8897[1]
     asm.mov_rm("rcx", "rbp", 0 - 40)
     asm.mov_ri32("rsi", 0)
     asm.label(lab_zt)
@@ -8852,9 +9022,9 @@ class Gen:
     asm.mov_mr("rdx", "rax", 32)
     asm.mov_ri32("rcx", 0)
     asm.mov_mr("rbp", "rcx", 0 - 32)
-    _t8746 = [self.new_tmp("dc"), self.new_tmp("dc")]
-    lab_ri = _t8746[0]
-    lab_rf = _t8746[1]
+    _t8916 = [self.new_tmp("dc"), self.new_tmp("dc")]
+    lab_ri = _t8916[0]
+    lab_rf = _t8916[1]
     asm.label(lab_ri)
     asm.mov_rm("rax", "rbp", 0 - 32)
     asm.mov_rm("rdx", "rbp", 0 - 8)
@@ -9011,9 +9181,9 @@ class Gen:
     asm.mov_mr("rbp", "rax", 0 - 24)
     asm.mov_ri32("rcx", 0)
     asm.mov_mr("rbp", "rcx", 0 - 32)
-    _t8905 = [self.new_tmp("di"), self.new_tmp("di")]
-    lab_ditop = _t8905[0]
-    lab_didone = _t8905[1]
+    _t9075 = [self.new_tmp("di"), self.new_tmp("di")]
+    lab_ditop = _t9075[0]
+    lab_didone = _t9075[1]
     asm.label(lab_ditop)
     asm.mov_rm("rcx", "rbp", 0 - 32)
     asm.mov_rm("rax", "rbp", 0 - 8)
@@ -9045,10 +9215,10 @@ class Gen:
     asm.mov_mr("rbp", "rsi", 0 - 16)
     asm.mov_mr("rbp", "rdx", 0 - 24)
     lab_cbad = self.new_tmp("cn")
-    _t8939 = [self.new_tmp("cn"), self.new_tmp("cn"), self.new_tmp("cn")]
-    lab_cstr = _t8939[0]
-    lab_clist = _t8939[1]
-    lab_cdict = _t8939[2]
+    _t9109 = [self.new_tmp("cn"), self.new_tmp("cn"), self.new_tmp("cn")]
+    lab_cstr = _t9109[0]
+    lab_clist = _t9109[1]
+    lab_cdict = _t9109[2]
     asm.mov_rr("r11", "rdi")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -9100,9 +9270,9 @@ class Gen:
     asm.mov_rm("rdi", "rbp", 0 - 8)
     asm.mov_rm("rsi", "rbp", 0 - 16)
     asm.call("x_find")
-    _t8994 = [self.new_tmp("cn"), self.new_tmp("cn")]
-    lab_cstrno = _t8994[0]
-    lab_cret = _t8994[1]
+    _t9164 = [self.new_tmp("cn"), self.new_tmp("cn")]
+    lab_cstrno = _t9164[0]
+    lab_cret = _t9164[1]
     asm.cmp_ri32("rax", 0 - 3)
     asm.jcc("e", lab_cstrno)
     asm.mov_ri64("rax", Gen_HS_TRUE)
@@ -9111,9 +9281,9 @@ class Gen:
     asm.mov_ri64("rax", Gen_HS_FALSE)
     asm.jmp(lab_cret)
     asm.label(lab_cdict)
-    _t9005 = [self.new_tmp("cn"), self.new_tmp("cn")]
-    lab_cdok = _t9005[0]
-    lab_cdbad = _t9005[1]
+    _t9175 = [self.new_tmp("cn"), self.new_tmp("cn")]
+    lab_cdok = _t9175[0]
+    lab_cdbad = _t9175[1]
     asm.mov_rr("r11", "rsi")
     asm.and_ri32("r11", 3)
     asm.cmp_ri32("r11", Gen_TAG_INT)
@@ -9312,9 +9482,9 @@ class Gen:
     asm.mov_mr("rbp", "rax", 0 - 24)
     asm.mov_ri32("rax", 1)
     asm.mov_mr("rbp", "rax", 0 - 32)
-    _t9206 = [self.new_tmp("av"), self.new_tmp("av")]
-    lab_top = _t9206[0]
-    lab_done = _t9206[1]
+    _t9376 = [self.new_tmp("av"), self.new_tmp("av")]
+    lab_top = _t9376[0]
+    lab_done = _t9376[1]
     asm.label(lab_top)
     asm.mov_rm("rax", "rbp", 0 - 32)
     asm.mov_rm("rcx", "rbp", 0 - 16)
@@ -9324,9 +9494,9 @@ class Gen:
     asm.mov_rmx("rsi", "r10", "rax", 8, 0)
     asm.mov_mr("rbp", "rsi", 0 - 40)
     asm.mov_ri32("rcx", 0)
-    _t9218 = [self.new_tmp("av"), self.new_tmp("av")]
-    lab_len = _t9218[0]
-    lab_lend = _t9218[1]
+    _t9388 = [self.new_tmp("av"), self.new_tmp("av")]
+    lab_len = _t9388[0]
+    lab_lend = _t9388[1]
     asm.label(lab_len)
     asm.movzx_eax_m8("rsi", 0)
     asm.test_rr("rax", "rax")
@@ -9444,10 +9614,10 @@ class Gen:
     asm.push_r("rsi")
     asm.mov_rr("rax", "rdi")
     asm.test_rr("rax", "rax")
-    _t9338 = [self.new_tmp("fi"), self.new_tmp("fi"), self.new_tmp("fi")]
-    lab_nz = _t9338[0]
-    lab_lp = _t9338[1]
-    lab_dn = _t9338[2]
+    _t9508 = [self.new_tmp("fi"), self.new_tmp("fi"), self.new_tmp("fi")]
+    lab_nz = _t9508[0]
+    lab_lp = _t9508[1]
+    lab_dn = _t9508[2]
     asm.jcc("ne", lab_nz)
     asm.sub_ri32("rsi", 1)
     asm.mov_ri32("rcx", 48)
@@ -9496,19 +9666,19 @@ class Gen:
     self.rt_out(1)
     asm.ret()
   def emit_val_runtime(self):
-    _t9390 = [Gen_TAG_INT, Gen_TAG_BOOL, Gen_TAG_NULL, Gen_K_STR]
-    I = _t9390[0]
-    B = _t9390[1]
-    N = _t9390[2]
-    KS = _t9390[3]
+    _t9560 = [Gen_TAG_INT, Gen_TAG_BOOL, Gen_TAG_NULL, Gen_K_STR]
+    I = _t9560[0]
+    B = _t9560[1]
+    N = _t9560[2]
+    KS = _t9560[3]
     asm.label("x_truth")
     asm.mov_rr("rax", "rdi")
     asm.and_ri32("rax", 3)
-    _t9398 = [self.new_tmp("tr"), self.new_tmp("tr"), self.new_tmp("tr"), self.new_tmp("tr")]
-    lab_int = _t9398[0]
-    lab_bool = _t9398[1]
-    lab_null = _t9398[2]
-    lab_heap = _t9398[3]
+    _t9568 = [self.new_tmp("tr"), self.new_tmp("tr"), self.new_tmp("tr"), self.new_tmp("tr")]
+    lab_int = _t9568[0]
+    lab_bool = _t9568[1]
+    lab_null = _t9568[2]
+    lab_heap = _t9568[3]
     lab_bad_truth = self.new_tmp("tr")
     lab_heap_len = self.new_tmp("tr")
     asm.cmp_ri32("rax", I)
@@ -9570,22 +9740,22 @@ class Gen:
     asm.mov_rr("r10", "rdi")
     asm.mov_rr("rax", "r10")
     asm.and_ri32("rax", 3)
-    _t9464 = [self.new_tmp("pv"), self.new_tmp("pv")]
-    lab_pv_int = _t9464[0]
-    lab_pv_bool = _t9464[1]
-    _t9467 = [self.new_tmp("pv"), self.new_tmp("pv"), self.new_tmp("pv")]
-    lab_pv_null = _t9467[0]
-    lab_pv_heap = _t9467[1]
-    lab_pv_out = _t9467[2]
-    _t9471 = [self.new_tmp("pv"), self.new_tmp("pv")]
-    lab_pv_unb = _t9471[0]
-    lab_pv_bad = _t9471[1]
+    _t9634 = [self.new_tmp("pv"), self.new_tmp("pv")]
+    lab_pv_int = _t9634[0]
+    lab_pv_bool = _t9634[1]
+    _t9637 = [self.new_tmp("pv"), self.new_tmp("pv"), self.new_tmp("pv")]
+    lab_pv_null = _t9637[0]
+    lab_pv_heap = _t9637[1]
+    lab_pv_out = _t9637[2]
+    _t9641 = [self.new_tmp("pv"), self.new_tmp("pv")]
+    lab_pv_unb = _t9641[0]
+    lab_pv_bad = _t9641[1]
     lab_pv_done = self.new_tmp("pv")
     lab_pv_str = self.new_tmp("pv")
     lab_pv_list = self.new_tmp("pv")
-    _t9477 = [self.new_tmp("pv"), self.new_tmp("pv")]
-    lab_pv_file = _t9477[0]
-    lab_pv_dict = _t9477[1]
+    _t9647 = [self.new_tmp("pv"), self.new_tmp("pv")]
+    lab_pv_file = _t9647[0]
+    lab_pv_dict = _t9647[1]
     lab_pv_float = self.new_tmp("pv")
     lab_pv_bytes = self.new_tmp("pv") if self.uses_bytes else null
     asm.cmp_ri32("rax", I)
@@ -9747,16 +9917,16 @@ class Gen:
     asm.mov_rr("r11", "rsi")
     asm.mov_rm("rax", "r10", 8)
     asm.mov_rm("rcx", "r11", 8)
-    _t9641 = [self.new_tmp("sm"), self.new_tmp("sm")]
-    lab_len = _t9641[0]
-    lab_eq = _t9641[1]
-    _t9644 = [self.new_tmp("sm"), self.new_tmp("sm")]
-    lab_loop = _t9644[0]
-    lab_diff = _t9644[1]
+    _t9811 = [self.new_tmp("sm"), self.new_tmp("sm")]
+    lab_len = _t9811[0]
+    lab_eq = _t9811[1]
+    _t9814 = [self.new_tmp("sm"), self.new_tmp("sm")]
+    lab_loop = _t9814[0]
+    lab_diff = _t9814[1]
     lab_fin = self.new_tmp("sm")
-    _t9648 = [self.new_tmp("sm"), self.new_tmp("sm")]
-    lab_min_b = _t9648[0]
-    lab_min_go = _t9648[1]
+    _t9818 = [self.new_tmp("sm"), self.new_tmp("sm")]
+    lab_min_b = _t9818[0]
+    lab_min_go = _t9818[1]
     lab_prefix = self.new_tmp("sm")
     asm.cmp_rr("rax", "rcx")
     asm.jcc("b", lab_min_b)
@@ -9890,9 +10060,9 @@ class Gen:
     asm.mov_rr("rax", "r10")
     asm.and_ri32("rax", 3)
     asm.cmp_ri32("rax", I)
-    _t9784 = [self.new_tmp("eq"), self.new_tmp("eq")]
-    lab_eq_h1 = _t9784[0]
-    lab_eq_h2 = _t9784[1]
+    _t9954 = [self.new_tmp("eq"), self.new_tmp("eq")]
+    lab_eq_h1 = _t9954[0]
+    lab_eq_h2 = _t9954[1]
     asm.jcc("ne", lab_eq_h1)
     asm.mov_rr("rax", "r11")
     asm.and_ri32("rax", 3)
@@ -10041,12 +10211,12 @@ class Gen:
       asm.xor_rr("r9", "r9")
       asm.mov_ri32("rax", 0)
       asm.mov_mr("rbp", "rax", 0 - 56)
-      _t9935 = [self.new_tmp("bs"), self.new_tmp("bs")]
-      lab_scan = _t9935[0]
-      lab_scdone = _t9935[1]
-      _t9938 = [self.new_tmp("bs"), self.new_tmp("bs")]
-      lab_sq = _t9938[0]
-      lab_sq2 = _t9938[1]
+      _t10105 = [self.new_tmp("bs"), self.new_tmp("bs")]
+      lab_scan = _t10105[0]
+      lab_scdone = _t10105[1]
+      _t10108 = [self.new_tmp("bs"), self.new_tmp("bs")]
+      lab_sq = _t10108[0]
+      lab_sq2 = _t10108[1]
       asm.label(lab_scan)
       asm.mov_rm("rax", "rbp", 0 - 56)
       asm.mov_rm("rcx", "rbp", 0 - 16)
@@ -10097,21 +10267,21 @@ class Gen:
       emit_rax()
       asm.mov_ri32("rax", 0)
       asm.mov_mr("rbp", "rax", 0 - 56)
-      _t9991 = [self.new_tmp("bs"), self.new_tmp("bs")]
-      lab_loop = _t9991[0]
-      lab_ldone = _t9991[1]
-      _t9994 = [self.new_tmp("bs"), self.new_tmp("bs"), self.new_tmp("bs"), self.new_tmp("bs")]
-      lab_escq = _t9994[0]
-      lab_esct = _t9994[1]
-      lab_escn = _t9994[2]
-      lab_escr = _t9994[3]
-      _t9999 = [self.new_tmp("bs"), self.new_tmp("bs"), self.new_tmp("bs")]
-      lab_plain = _t9999[0]
-      lab_hex = _t9999[1]
-      lab_next = _t9999[2]
-      _t10003 = [self.new_tmp("bs"), self.new_tmp("bs")]
-      lab_dig1 = _t10003[0]
-      lab_dig2 = _t10003[1]
+      _t10161 = [self.new_tmp("bs"), self.new_tmp("bs")]
+      lab_loop = _t10161[0]
+      lab_ldone = _t10161[1]
+      _t10164 = [self.new_tmp("bs"), self.new_tmp("bs"), self.new_tmp("bs"), self.new_tmp("bs")]
+      lab_escq = _t10164[0]
+      lab_esct = _t10164[1]
+      lab_escn = _t10164[2]
+      lab_escr = _t10164[3]
+      _t10169 = [self.new_tmp("bs"), self.new_tmp("bs"), self.new_tmp("bs")]
+      lab_plain = _t10169[0]
+      lab_hex = _t10169[1]
+      lab_next = _t10169[2]
+      _t10173 = [self.new_tmp("bs"), self.new_tmp("bs")]
+      lab_dig1 = _t10173[0]
+      lab_dig2 = _t10173[1]
       asm.label(lab_loop)
       asm.mov_rm("rax", "rbp", 0 - 56)
       asm.mov_rm("rcx", "rbp", 0 - 16)
@@ -10360,9 +10530,9 @@ class Gen:
     asm.mov_rr("rax", "r10")
     asm.and_ri32("rax", 3)
     asm.test_rr("rax", "rax")
-    _t10254 = [self.new_tmp("lq"), self.new_tmp("lq")]
-    lab_ap_bad = _t10254[0]
-    lab_ap_fit = _t10254[1]
+    _t10424 = [self.new_tmp("lq"), self.new_tmp("lq")]
+    lab_ap_bad = _t10424[0]
+    lab_ap_fit = _t10424[1]
     asm.jcc("ne", lab_ap_bad)
     asm.mov_rm("rax", "r10", 0)
     asm.cmp_ri32("rax", Gen_K_LIST)
@@ -10459,9 +10629,9 @@ class Gen:
     asm.mov_rm("rax", "rdi", 8)
     asm.mov_rm("rcx", "rsi", 8)
     asm.cmp_rr("rax", "rcx")
-    _t10353 = [self.new_tmp("lq"), self.new_tmp("lq")]
-    lab_lq_ne = _t10353[0]
-    lab_lq_eq = _t10353[1]
+    _t10523 = [self.new_tmp("lq"), self.new_tmp("lq")]
+    lab_lq_ne = _t10523[0]
+    lab_lq_eq = _t10523[1]
     asm.jcc("ne", lab_lq_ne)
     asm.mov_mr("rbp", "rax", 0 - 32)
     asm.mov_ri32("rax", 0)
@@ -10645,12 +10815,12 @@ class Gen:
     asm.mov_mr("rbp", "rax", 0 - 32)
     asm.mov_ri32("rax", 0)
     asm.mov_mr("rbp", "rax", 0 - 24)
-    _t10539 = [self.new_tmp("sp"), self.new_tmp("sp")]
-    lab_sp1_top = _t10539[0]
-    lab_sp1_sk = _t10539[1]
-    _t10542 = [self.new_tmp("sp"), self.new_tmp("sp")]
-    lab_sp1_wd = _t10542[0]
-    lab_sp1_em = _t10542[1]
+    _t10709 = [self.new_tmp("sp"), self.new_tmp("sp")]
+    lab_sp1_top = _t10709[0]
+    lab_sp1_sk = _t10709[1]
+    _t10712 = [self.new_tmp("sp"), self.new_tmp("sp")]
+    lab_sp1_wd = _t10712[0]
+    lab_sp1_em = _t10712[1]
     asm.label(lab_sp1_top)
     asm.mov_rm("rax", "rbp", 0 - 24)
     asm.mov_rm("rcx", "rbp", 0 - 16)
@@ -10817,12 +10987,12 @@ class Gen:
     asm.lea_m("r8", "rdi", 16)
     asm.lea_m("r9", "rsi", 16)
     asm.mov_ri32("r10", 0)
-    _t10711 = [self.new_tmp("fn"), self.new_tmp("fn")]
-    lab_fn_top = _t10711[0]
-    lab_fn_in = _t10711[1]
-    _t10714 = [self.new_tmp("fn"), self.new_tmp("fn")]
-    lab_fn_mt = _t10714[0]
-    lab_fn_nm = _t10714[1]
+    _t10881 = [self.new_tmp("fn"), self.new_tmp("fn")]
+    lab_fn_top = _t10881[0]
+    lab_fn_in = _t10881[1]
+    _t10884 = [self.new_tmp("fn"), self.new_tmp("fn")]
+    lab_fn_mt = _t10884[0]
+    lab_fn_nm = _t10884[1]
     lab_fn_nf = self.new_tmp("fn")
     asm.label(lab_fn_top)
     asm.mov_rr("rax", "r10")
@@ -10867,9 +11037,9 @@ class Gen:
     asm.mov_ri32("rax", 0)
     asm.mov_mr("rbp", "rax", 0 - 32)
     asm.mov_mr("rbp", "rax", 0 - 48)
-    _t10761 = [self.new_tmp("jn"), self.new_tmp("jn")]
-    lab_jn_top = _t10761[0]
-    lab_jn_dn = _t10761[1]
+    _t10931 = [self.new_tmp("jn"), self.new_tmp("jn")]
+    lab_jn_top = _t10931[0]
+    lab_jn_dn = _t10931[1]
     lab_jn_bad = self.new_tmp("jn")
     asm.label(lab_jn_top)
     asm.mov_rm("rax", "rbp", 0 - 48)
@@ -10923,9 +11093,9 @@ class Gen:
     asm.mov_mr("rbp", "rdx", 0 - 48)
     asm.mov_ri32("rax", 0)
     asm.mov_mr("rbp", "rax", 0 - 32)
-    _t10817 = [self.new_tmp("jn"), self.new_tmp("jn")]
-    lab_jn_tp2 = _t10817[0]
-    lab_jn_dn2 = _t10817[1]
+    _t10987 = [self.new_tmp("jn"), self.new_tmp("jn")]
+    lab_jn_tp2 = _t10987[0]
+    lab_jn_dn2 = _t10987[1]
     asm.label(lab_jn_tp2)
     asm.mov_rm("rax", "rbp", 0 - 32)
     asm.mov_rm("rcx", "rbp", 0 - 24)
@@ -11085,9 +11255,9 @@ class Gen:
     asm.mov_mr("rbp", "rdx", 0 - 48)
     asm.mov_ri32("rax", 0)
     asm.mov_mr("rbp", "rax", 0 - 16)
-    _t10979 = [self.new_tmp("lq"), self.new_tmp("lq")]
-    lab_ls_t3 = _t10979[0]
-    lab_ls_dn = _t10979[1]
+    _t11149 = [self.new_tmp("lq"), self.new_tmp("lq")]
+    lab_ls_t3 = _t11149[0]
+    lab_ls_dn = _t11149[1]
     asm.label(lab_ls_t3)
     asm.mov_rm("rax", "rbp", 0 - 16)
     asm.mov_rm("rcx", "rbp", 0 - 32)
@@ -11143,9 +11313,9 @@ class Gen:
     asm.lea_rip("rdi", self.rstr("["))
     asm.mov_ri32("rsi", 1)
     self.rt_out(1)
-    _t11037 = [self.new_tmp("lq"), self.new_tmp("lq")]
-    lab_pl_top = _t11037[0]
-    lab_pl_dn = _t11037[1]
+    _t11207 = [self.new_tmp("lq"), self.new_tmp("lq")]
+    lab_pl_top = _t11207[0]
+    lab_pl_dn = _t11207[1]
     asm.label(lab_pl_top)
     asm.mov_rm("rax", "rbp", 0 - 8)
     asm.mov_rm("rcx", "rax", 8)
@@ -11391,9 +11561,9 @@ class GenIR(Gen):
         for ins in b["instrs"]:
           if ins["op"] != "import":
             continue
-          _t11317 = self._resolve_import(ins["name"], self._moddir[mpref], ins["line"], active, mpref, key)
-          _top = _t11317[0]
-          chain = _t11317[1]
+          _t11487 = self._resolve_import(ins["name"], self._moddir[mpref], ins["line"], active, mpref, key)
+          _top = _t11487[0]
+          chain = _t11487[1]
           ins["_chain"] = chain
   def _resolve_path(self, dotted, from_dir, ln, last):
     try:
@@ -11579,7 +11749,7 @@ class GenIR(Gen):
     fr["deadloads"] = dead
   def _plan_func(self, key, fdef, modpfx, is_entry):
     params = pyrt.py_list(fdef["params"])
-    pmap = pyrt.py_dict([[_p11503_0[1], 24 + 8 * _p11503_0[0]] for _p11503_0 in pyrt.py_enumerate(params)])
+    pmap = pyrt.py_dict([[_p11673_0[1], 24 + 8 * _p11673_0[0]] for _p11673_0 in pyrt.py_enumerate(params)])
     stored = pyrt.py_set(null)
     rawnames = pyrt.py_set(null)
     utypes = {}
@@ -12158,13 +12328,13 @@ class GenIR(Gen):
       self.box_bool_al()
       asm.jmp(lab_iidone)
       asm.label(lab_ii)
-      _t12061 = [self.new_tmp("co"), self.new_tmp("co"), self.new_tmp("co")]
-      lab_cmpno = _t12061[0]
-      lab_cmperr = _t12061[1]
-      lab_cmpok = _t12061[2]
-      _t12065 = [self.new_tmp("co"), self.new_tmp("co")]
-      lab_cflt = _t12065[0]
-      lab_cnoflt = _t12065[1]
+      _t12231 = [self.new_tmp("co"), self.new_tmp("co"), self.new_tmp("co")]
+      lab_cmpno = _t12231[0]
+      lab_cmperr = _t12231[1]
+      lab_cmpok = _t12231[2]
+      _t12235 = [self.new_tmp("co"), self.new_tmp("co")]
+      lab_cflt = _t12235[0]
+      lab_cnoflt = _t12235[1]
       lab_cerr = self.new_tmp("co")
       self.emit_float_check(lab_cflt, lab_cnoflt)
       self.emit_f64_bits("rax", lab_cerr)
@@ -12222,12 +12392,12 @@ class GenIR(Gen):
     if op in ["-", "*", "/", "%"]:
       opcodes = {"-": 1, "*": 2, "/": 3, "%": 4}
       lab_aerr = self.new_tmp("ae")
-      _t12125 = [self.new_tmp("ae"), self.new_tmp("ae")]
-      lab_aflt = _t12125[0]
-      lab_noflt = _t12125[1]
-      _t12128 = [self.new_tmp("ae"), self.new_tmp("ae")]
-      lab_bok = _t12128[0]
-      lab_fdone = _t12128[1]
+      _t12295 = [self.new_tmp("ae"), self.new_tmp("ae")]
+      lab_aflt = _t12295[0]
+      lab_noflt = _t12295[1]
+      _t12298 = [self.new_tmp("ae"), self.new_tmp("ae")]
+      lab_bok = _t12298[0]
+      lab_fdone = _t12298[1]
       self.emit_float_check(lab_aflt, lab_noflt)
       self.emit_f64_bits("rax", lab_aerr)
       self.emit_f64_bits("rcx", lab_aerr)
@@ -12297,9 +12467,9 @@ class GenIR(Gen):
       return null
     raise pyrt.py_err("IR: '" + str(op) + "' not in irx64 subset yet", ln)
   def _bitop(self, op, ln):
-    _t12200 = [self.new_tmp("be"), self.new_tmp("be")]
-    lab_body = _t12200[0]
-    lab_err = _t12200[1]
+    _t12370 = [self.new_tmp("be"), self.new_tmp("be")]
+    lab_body = _t12370[0]
+    lab_err = _t12370[1]
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
     asm.cmp_ri32("r11", Gen_TAG_INT)
@@ -12320,9 +12490,9 @@ class GenIR(Gen):
     asm.sar_ri8("rax", 2)
     asm.sar_ri8("rcx", 2)
     if op in ["<<", ">>"]:
-      _t12223 = [self.new_tmp("be"), self.new_tmp("be")]
-      lab_sh = _t12223[0]
-      lab_bad = _t12223[1]
+      _t12393 = [self.new_tmp("be"), self.new_tmp("be")]
+      lab_sh = _t12393[0]
+      lab_bad = _t12393[1]
       asm.cmp_ri32("rcx", 63)
       asm.jcc("le", lab_sh)
       asm.jmp(lab_bad)
@@ -12360,10 +12530,10 @@ class GenIR(Gen):
       return null
     self._load(fr, v, ln)
     if op == "neg":
-      _t12263 = [self.new_tmp("ng"), self.new_tmp("ng"), self.new_tmp("ng")]
-      lab_nfl = _t12263[0]
-      lab_nno = _t12263[1]
-      lab_ndone = _t12263[2]
+      _t12433 = [self.new_tmp("ng"), self.new_tmp("ng"), self.new_tmp("ng")]
+      lab_nfl = _t12433[0]
+      lab_nno = _t12433[1]
+      lab_ndone = _t12433[2]
       asm.mov_rr("r11", "rax")
       asm.and_ri32("r11", 3)
       asm.test_rr("r11", "r11")
@@ -12390,9 +12560,9 @@ class GenIR(Gen):
       self.box_bool_al()
       return null
     if op == "unot":
-      _t12293 = [self.new_tmp("un"), self.new_tmp("un")]
-      lab_bad = _t12293[0]
-      lab_done = _t12293[1]
+      _t12463 = [self.new_tmp("un"), self.new_tmp("un")]
+      lab_bad = _t12463[0]
+      lab_done = _t12463[1]
       self.check_int(lambda: asm.jmp(lab_bad), "rax")
       asm.sar_ri8("rax", 2)
       asm.not_rr("rax")
@@ -12464,7 +12634,7 @@ class GenIR(Gen):
       if t in seen:
         return true
       pyrt.py_add(seen, t)
-      arms = [self._is_raw_temp(fr, _p12367_0[1], seen) for _p12367_0 in ins["arms"]]
+      arms = [self._is_raw_temp(fr, _p12537_0[1], seen) for _p12537_0 in ins["arms"]]
       return len(arms) > 0 and pyrt.py_all(arms)
     return false
   def _struct_of(self, fr, t, seen):
@@ -12584,10 +12754,10 @@ class GenIR(Gen):
     f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
     if f == null:
       raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-    _t12481 = f
-    ft = _t12481[0]
-    off = _t12481[1]
-    count = _t12481[2]
+    _t12651 = f
+    ft = _t12651[0]
+    off = _t12651[1]
+    count = _t12651[2]
     self._load(fr, obj, ln)
     asm.push_r("rax")
     lab_nn = self.new_tmp("nn")
@@ -12654,9 +12824,9 @@ class GenIR(Gen):
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _sbitop(self, op, ln):
     if op in ["<<", ">>"]:
-      _t12551 = [self.new_tmp("be"), self.new_tmp("be")]
-      lab_sh = _t12551[0]
-      lab_bad = _t12551[1]
+      _t12721 = [self.new_tmp("be"), self.new_tmp("be")]
+      lab_sh = _t12721[0]
+      lab_bad = _t12721[1]
       asm.cmp_ri32("rcx", 63)
       asm.jcc("le", lab_sh)
       asm.jmp(lab_bad)
@@ -12759,10 +12929,10 @@ class GenIR(Gen):
         lab = self._glabel(name, fr["mod"])
         asm.lea_rip("rax", lab)
         asm.mov_rm("rax", "rax", 0)
-      _t12656 = [self.new_tmp("az"), self.new_tmp("az"), self.new_tmp("az")]
-      lab_heap = _t12656[0]
-      lab_bad = _t12656[1]
-      lab_done = _t12656[2]
+      _t12826 = [self.new_tmp("az"), self.new_tmp("az"), self.new_tmp("az")]
+      lab_heap = _t12826[0]
+      lab_bad = _t12826[1]
+      lab_done = _t12826[2]
       asm.mov_rr("r11", "rax")
       asm.and_ri32("r11", 3)
       asm.cmp_ri32("r11", Gen_TAG_INT)
@@ -12790,10 +12960,10 @@ class GenIR(Gen):
     f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
     if f == null:
       raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-    _t12687 = f
-    ft = _t12687[0]
-    off = _t12687[1]
-    count = _t12687[2]
+    _t12857 = f
+    ft = _t12857[0]
+    off = _t12857[1]
+    count = _t12857[2]
     self._load(fr, obj, ln)
     lab_nn = self.new_tmp("nn")
     asm.test_rr("rax", "rax")
@@ -12842,9 +13012,9 @@ class GenIR(Gen):
         self._print_str("<module " + str(r[1]["name"]) + ">")
         continue
       if r != null:
-        _t12739 = [r[1], r[2]]
-        _m = _t12739[0]
-        mattr = _t12739[1]
+        _t12909 = [r[1], r[2]]
+        _m = _t12909[0]
+        mattr = _t12909[1]
         rr = self._mod_attr(_m, mattr, ln)
         if rr[0] == "lab":
           asm.lea_rip("rax", rr[1])
@@ -12917,9 +13087,9 @@ class GenIR(Gen):
     asm.mov_rr("rcx", "rax")
     asm.pop_r("rax")
     lab_notdict = self.new_tmp("ix")
-    _t12814 = [self.new_tmp("ix"), self.new_tmp("ix")]
-    lab_dkey = _t12814[0]
-    lab_dget = _t12814[1]
+    _t12984 = [self.new_tmp("ix"), self.new_tmp("ix")]
+    lab_dkey = _t12984[0]
+    lab_dget = _t12984[1]
     lab_ix_done = self.new_tmp("ix")
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
@@ -12954,12 +13124,12 @@ class GenIR(Gen):
     self.raise_static("index must be Int", ln)
     asm.label(lab_ok)
     asm.sar_ri8("rcx", 2)
-    _t12851 = [self.new_tmp("ix"), self.new_tmp("ix")]
-    lab_heap = _t12851[0]
-    lab_bad = _t12851[1]
-    _t12854 = [self.new_tmp("ix"), self.new_tmp("ix")]
-    lab_str = _t12854[0]
-    lab_list = _t12854[1]
+    _t13021 = [self.new_tmp("ix"), self.new_tmp("ix")]
+    lab_heap = _t13021[0]
+    lab_bad = _t13021[1]
+    _t13024 = [self.new_tmp("ix"), self.new_tmp("ix")]
+    lab_str = _t13024[0]
+    lab_list = _t13024[1]
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -13031,9 +13201,9 @@ class GenIR(Gen):
     asm.pop_r("rdx")
     asm.pop_r("rsi")
     asm.pop_r("rdi")
-    _t12928 = [self.new_tmp("sl"), self.new_tmp("sl")]
-    lab_sok = _t12928[0]
-    lab_sbad = _t12928[1]
+    _t13098 = [self.new_tmp("sl"), self.new_tmp("sl")]
+    lab_sok = _t13098[0]
+    lab_sbad = _t13098[1]
     asm.mov_rr("r11", "rdi")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -13063,9 +13233,9 @@ class GenIR(Gen):
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
     lab_snotdict = self.new_tmp("sx")
-    _t12960 = [self.new_tmp("sx"), self.new_tmp("sx")]
-    lab_sdkey = _t12960[0]
-    lab_sdset = _t12960[1]
+    _t13130 = [self.new_tmp("sx"), self.new_tmp("sx")]
+    lab_sdkey = _t13130[0]
+    lab_sdset = _t13130[1]
     lab_sx_done = self.new_tmp("sx")
     asm.jcc("ne", lab_snotdict)
     asm.mov_rm("r11", "rax", 0)
@@ -13096,13 +13266,13 @@ class GenIR(Gen):
     self.raise_static("index must be Int", ln)
     asm.label(lab_ok)
     asm.sar_ri8("rcx", 2)
-    _t12993 = [self.new_tmp("sx"), self.new_tmp("sx")]
-    lab_bad = _t12993[0]
-    lab_list = _t12993[1]
-    _t12996 = [self.new_tmp("sx"), self.new_tmp("sx"), self.new_tmp("sx")]
-    lab_pos = _t12996[0]
-    lab_oob = _t12996[1]
-    lab_done = _t12996[2]
+    _t13163 = [self.new_tmp("sx"), self.new_tmp("sx")]
+    lab_bad = _t13163[0]
+    lab_list = _t13163[1]
+    _t13166 = [self.new_tmp("sx"), self.new_tmp("sx"), self.new_tmp("sx")]
+    lab_pos = _t13166[0]
+    lab_oob = _t13166[1]
+    lab_done = _t13166[2]
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -13131,11 +13301,11 @@ class GenIR(Gen):
     asm.label(lab_sx_done)
   def _iterseq(self, fr, dest, src, ln):
     self._load(fr, src, ln)
-    _t13028 = [self.new_tmp("iq"), self.new_tmp("iq"), self.new_tmp("iq"), self.new_tmp("iq")]
-    lab_list = _t13028[0]
-    lab_str = _t13028[1]
-    lab_dict = _t13028[2]
-    lab_done = _t13028[3]
+    _t13198 = [self.new_tmp("iq"), self.new_tmp("iq"), self.new_tmp("iq"), self.new_tmp("iq")]
+    lab_list = _t13198[0]
+    lab_str = _t13198[1]
+    lab_dict = _t13198[2]
+    lab_done = _t13198[3]
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -13252,9 +13422,9 @@ class GenIR(Gen):
         if len(args) != 1:
           raise pyrt.py_err(msg, ln)
         self._load(fr, args[0], ln)
-        _t13149 = [self.new_tmp("kv"), self.new_tmp("kv")]
-        lb = _t13149[0]
-        lo = _t13149[1]
+        _t13319 = [self.new_tmp("kv"), self.new_tmp("kv")]
+        lb = _t13319[0]
+        lo = _t13319[1]
         asm.mov_rr("r11", "rax")
         asm.and_ri32("r11", 3)
         asm.test_rr("r11", "r11")
@@ -13340,15 +13510,15 @@ class GenIR(Gen):
     if len(args) != 1:
       raise pyrt.py_err("float wants 1 arg", ln)
     self._load(fr, args[0], ln)
-    _t13237 = [self.new_tmp("fl"), self.new_tmp("fl")]
-    lab_fok = _t13237[0]
-    lab_fnum = _t13237[1]
-    _t13240 = [self.new_tmp("fl"), self.new_tmp("fl")]
-    lab_fflt = _t13240[0]
-    lab_fstr = _t13240[1]
-    _t13243 = [self.new_tmp("fl"), self.new_tmp("fl")]
-    lab_fbool = _t13243[0]
-    lab_fquote = _t13243[1]
+    _t13407 = [self.new_tmp("fl"), self.new_tmp("fl")]
+    lab_fok = _t13407[0]
+    lab_fnum = _t13407[1]
+    _t13410 = [self.new_tmp("fl"), self.new_tmp("fl")]
+    lab_fflt = _t13410[0]
+    lab_fstr = _t13410[1]
+    _t13413 = [self.new_tmp("fl"), self.new_tmp("fl")]
+    lab_fbool = _t13413[0]
+    lab_fquote = _t13413[1]
     lab_fint = self.new_tmp("fl")
     asm.push_r("rax")
     asm.mov_rr("r11", "rax")
@@ -13449,9 +13619,9 @@ class GenIR(Gen):
       raise pyrt.py_err(str(name) + " wants 1 arg", ln)
     self._load(fr, args[0], ln)
     if name == "len":
-      _t13346 = [self.new_tmp("ln"), self.new_tmp("ln")]
-      lab_lok = _t13346[0]
-      lab_lck = _t13346[1]
+      _t13516 = [self.new_tmp("ln"), self.new_tmp("ln")]
+      lab_lok = _t13516[0]
+      lab_lck = _t13516[1]
       asm.mov_rr("r11", "rax")
       asm.and_ri32("r11", 3)
       asm.test_rr("r11", "r11")
@@ -13483,15 +13653,15 @@ class GenIR(Gen):
     if len(args) != 1:
       raise pyrt.py_err("int wants 1 arg", ln)
     self._load(fr, args[0], ln)
-    _t13378 = [self.new_tmp("in"), self.new_tmp("in")]
-    lab_iok = _t13378[0]
-    lab_inum = _t13378[1]
-    _t13381 = [self.new_tmp("in"), self.new_tmp("in")]
-    lab_iflt = _t13381[0]
-    lab_istr = _t13381[1]
-    _t13384 = [self.new_tmp("in"), self.new_tmp("in")]
-    lab_ibool = _t13384[0]
-    lab_iquote = _t13384[1]
+    _t13548 = [self.new_tmp("in"), self.new_tmp("in")]
+    lab_iok = _t13548[0]
+    lab_inum = _t13548[1]
+    _t13551 = [self.new_tmp("in"), self.new_tmp("in")]
+    lab_iflt = _t13551[0]
+    lab_istr = _t13551[1]
+    _t13554 = [self.new_tmp("in"), self.new_tmp("in")]
+    lab_ibool = _t13554[0]
+    lab_iquote = _t13554[1]
     lab_iint = self.new_tmp("in")
     asm.push_r("rax")
     asm.mov_rr("r11", "rax")
@@ -13591,9 +13761,9 @@ class GenIR(Gen):
     if len(args) != 2:
       raise pyrt.py_err("append wants append(list, x)", ln)
     self._load(fr, args[0], ln)
-    _t13486 = [self.new_tmp("ap"), self.new_tmp("ap")]
-    lab_apok = _t13486[0]
-    lab_apbad = _t13486[1]
+    _t13656 = [self.new_tmp("ap"), self.new_tmp("ap")]
+    lab_apok = _t13656[0]
+    lab_apbad = _t13656[1]
     asm.mov_rr("r11", "rax")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -13618,10 +13788,10 @@ class GenIR(Gen):
     self._load(fr, args[1], ln)
     asm.mov_rr("rsi", "rax")
     asm.pop_r("rdi")
-    _t13513 = [self.new_tmp("hs"), self.new_tmp("hs"), self.new_tmp("hs")]
-    lab_bad = _t13513[0]
-    lab_k = _t13513[1]
-    lab_ok = _t13513[2]
+    _t13683 = [self.new_tmp("hs"), self.new_tmp("hs"), self.new_tmp("hs")]
+    lab_bad = _t13683[0]
+    lab_k = _t13683[1]
+    lab_ok = _t13683[2]
     asm.mov_rr("r11", "rdi")
     asm.and_ri32("r11", 3)
     asm.test_rr("r11", "r11")
@@ -13644,9 +13814,9 @@ class GenIR(Gen):
     self.raise_static("has wants has(dict, key)", ln)
     asm.label(lab_ok)
     asm.call("x_dict_find")
-    _t13539 = [self.new_tmp("hs"), self.new_tmp("hs")]
-    lab_f = _t13539[0]
-    lab_d = _t13539[1]
+    _t13709 = [self.new_tmp("hs"), self.new_tmp("hs")]
+    lab_f = _t13709[0]
+    lab_d = _t13709[1]
     asm.test_rr("rax", "rax")
     asm.jcc("s", lab_f)
     asm.mov_ri64("rax", Gen_HS_TRUE)
@@ -13657,12 +13827,12 @@ class GenIR(Gen):
     asm.mov_mr("rbp", "rax", fr["slots"][dest])
   def _inline_file(self, fr, dest, name, args, ln):
     want = {"read_text": [1, "read_text wants read_text(path)"], "read_bytes": [1, "read_bytes wants read_bytes(path)"], "write_text": [2, "write_text wants write_text(path, str)"], "append_text": [2, "append_text wants append_text(path, str)"], "exists": [1, "exists wants exists(path)"], "ls": [1, "ls wants ls(dir)"], "mkdir": [1, "mkdir wants mkdir(path)"]}[name]
-    _t13552 = want
-    n_want = _t13552[0]
-    msg = _t13552[1]
-    _t13555 = [self.new_tmp("fs"), self.new_tmp("fs")]
-    lab_fsbad = _t13555[0]
-    lab_fsret = _t13555[1]
+    _t13722 = want
+    n_want = _t13722[0]
+    msg = _t13722[1]
+    _t13725 = [self.new_tmp("fs"), self.new_tmp("fs")]
+    lab_fsbad = _t13725[0]
+    lab_fsret = _t13725[1]
     if len(args) != n_want:
       raise pyrt.py_err(msg, ln)
     if self.freestanding:
@@ -13731,11 +13901,11 @@ class GenIR(Gen):
     msg = "write_bytes wants write_bytes(path, [Int 0..255]|bytes)"
     if len(args) != 2:
       raise pyrt.py_err(msg, ln)
-    _t13626 = [self.new_tmp("wb") for _ in range(4)]
-    bad = _t13626[0]
-    bytebad = _t13626[1]
-    loop = _t13626[2]
-    done = _t13626[3]
+    _t13796 = [self.new_tmp("wb") for _ in range(4)]
+    bad = _t13796[0]
+    bytebad = _t13796[1]
+    loop = _t13796[2]
+    done = _t13796[3]
     listpath = self.new_tmp("wb")
     bytespath = self.new_tmp("wb")
     end2 = self.new_tmp("wb")
@@ -13839,11 +14009,11 @@ class GenIR(Gen):
     msg = "append_bytes wants append_bytes(path, [Int 0..255]|bytes)"
     if len(args) != 2:
       raise pyrt.py_err(msg, ln)
-    _t13734 = [self.new_tmp("ab") for _ in range(4)]
-    bad = _t13734[0]
-    bytebad = _t13734[1]
-    loop = _t13734[2]
-    done = _t13734[3]
+    _t13904 = [self.new_tmp("ab") for _ in range(4)]
+    bad = _t13904[0]
+    bytebad = _t13904[1]
+    loop = _t13904[2]
+    done = _t13904[3]
     listpath = self.new_tmp("ab")
     bytespath = self.new_tmp("ab")
     end2 = self.new_tmp("ab")
@@ -14082,10 +14252,10 @@ class GenIR(Gen):
       append(self.ffi_libs, so)
     return so
   def _ffi(self, fr, ins, ln):
-    _t13977 = [ins["sym"], ins["ptypes"], ins["rtype"]]
-    name = _t13977[0]
-    pt = _t13977[1]
-    rt = _t13977[2]
+    _t14147 = [ins["sym"], ins["ptypes"], ins["rtype"]]
+    name = _t14147[0]
+    pt = _t14147[1]
+    rt = _t14147[2]
     nf = pyrt.py_count(pt, "F64")
     if len(pt) > 32:
       raise pyrt.py_err("ffi '" + str(name) + "': xbuild passes at most 32 args", ln)
@@ -14097,17 +14267,17 @@ class GenIR(Gen):
     self.ffi_owners[name] = owner
     gi = self._ffi_sym(name)
     fl = self._ffi_sym("fflush")
-    for i, _f13992_1 in pyrt.py_enumerate(pyrt.py_zip(ins["pnames"], pt)):
-      pn = _f13992_1[0]
-      ft = _f13992_1[1]
+    for i, _f14162_1 in pyrt.py_enumerate(pyrt.py_zip(ins["pnames"], pt)):
+      pn = _f14162_1[0]
+      ft = _f14162_1[1]
       self._load(fr, pn, ln)
       msg = "ffi '" + str(name) + "' arg " + str(i + 1) + " wants " + str(ft) + ", got "
       lab_bad = self.new_tmp("ff")
       lab_after = self.new_tmp("ff")
       if ft == "F64":
-        _t14000 = [self.new_tmp("ff"), self.new_tmp("ff")]
-        lab_fi = _t14000[0]
-        lab_fok = _t14000[1]
+        _t14170 = [self.new_tmp("ff"), self.new_tmp("ff")]
+        lab_fi = _t14170[0]
+        lab_fok = _t14170[1]
         asm.mov_rr("r11", "rax")
         asm.and_ri32("r11", 3)
         asm.cmp_ri32("r11", Gen_TAG_INT)
@@ -14169,9 +14339,9 @@ class GenIR(Gen):
       asm.jmp("hs_raise_msg")
       asm.label(lab_after)
     iregs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"]
-    _t14064 = [0, 0]
-    fi = _t14064[0]
-    ii = _t14064[1]
+    _t14234 = [0, 0]
+    fi = _t14234[0]
+    ii = _t14234[1]
     stack_args = []
     for i, ft in pyrt.py_enumerate(pt):
       offset = 8 * (len(pt) - 1 - i)
@@ -14218,12 +14388,12 @@ class GenIR(Gen):
     elif rt == "U0":
       asm.mov_ri64("rax", Gen_HS_NULL)
     elif rt == "Str":
-      _t14113 = [self.new_tmp("ff"), self.new_tmp("ff")]
-      lab_nn = _t14113[0]
-      lab_done = _t14113[1]
-      _t14116 = [self.new_tmp("ff"), self.new_tmp("ff")]
-      lab_lt = _t14116[0]
-      lab_le = _t14116[1]
+      _t14283 = [self.new_tmp("ff"), self.new_tmp("ff")]
+      lab_nn = _t14283[0]
+      lab_done = _t14283[1]
+      _t14286 = [self.new_tmp("ff"), self.new_tmp("ff")]
+      lab_lt = _t14286[0]
+      lab_le = _t14286[1]
       asm.test_rr("rax", "rax")
       asm.jcc("ne", lab_nn)
       asm.mov_ri64("rax", Gen_HS_NULL)
@@ -14313,7 +14483,7 @@ class GenIR(Gen):
     c = {}
     k = 0
     if not (k in c):
-      order = pyrt.py_dict([[_p14207_0[1], _p14207_0[0]] for _p14207_0 in pyrt.py_enumerate(by)])
+      order = pyrt.py_dict([[_p14377_0[1], _p14377_0[0]] for _p14377_0 in pyrt.py_enumerate(by)])
       heads = pyrt.py_set(null)
       for lab, b in pyrt.py_items(by):
         tm = b["term"]
@@ -14679,7 +14849,7 @@ class GenIR(Gen):
     if not self.freestanding:
       return self._base_emit_main(mod)
     self.emit_longmode_tail(mod)
-    inits = pyrt.py_set([_p14573_0[1] for _p14573_0 in pyrt.py_items(self.mod_entries) if _p14573_0[0] != ""])
+    inits = pyrt.py_set([_p14743_0[1] for _p14743_0 in pyrt.py_items(self.mod_entries) if _p14743_0[0] != ""])
     for key in self.allorder:
       if not (key in inits):
         self._emit_ifunc(key)
@@ -14706,7 +14876,7 @@ class GenIR(Gen):
         break
     for nm in pyrt.py_sorted(self.mglob, null):
       self._glabel(nm, "")
-    inits = pyrt.py_set([_p14600_0[1] for _p14600_0 in pyrt.py_items(self.mod_entries) if _p14600_0[0] != ""])
+    inits = pyrt.py_set([_p14770_0[1] for _p14770_0 in pyrt.py_items(self.mod_entries) if _p14770_0[0] != ""])
     for key in self.allorder:
       if key in inits:
         continue

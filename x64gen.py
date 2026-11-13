@@ -4569,6 +4569,72 @@ class Gen:
             a.mov_ri16("dx", port)
             a.mov_ri32("rax", val)
             a.out_dx_al()
+        # PS/2 auxiliary mouse: enable the port, route IRQ12 in the
+        # controller command byte, then defaults + enable data reporting.
+        # Cascade (master IRQ2) and IRQ12 stay masked until the final ACK
+        # arrives, so a missing or dead mouse can never storm the PIC.
+        # Every wait is bounded; on timeout or NACK the mouse stays masked.
+        lab_msdone = self.new_tmp("msdone")
+        def ps2_out(port, val):
+            a.mov_ri16("dx", port)
+            a.mov_ri32("rax", val)
+            a.out_dx_al()
+        def ps2_wait(mask, want):  # poll status 0x64 until (al&mask)==want
+            lab = self.new_tmp("ps2w")
+            lab_ok = self.new_tmp("ps2ok")
+            a.mov_ri32("r10", 100000)
+            a.label(lab)
+            a.mov_ri16("dx", 0x64)
+            a.in_al_dx()
+            a.and_ri32("rax", mask)
+            a.cmp_ri32("rax", want)
+            a.jcc("e", lab_ok)
+            a.sub_ri32("r10", 1)
+            a.jcc("ne", lab)
+            a.jmp(lab_msdone)
+            a.label(lab_ok)
+        def mouse_cmd(val):  # 0xD4 tunnel, expect 0xFA ACK
+            ps2_wait(2, 0)
+            ps2_out(0x64, 0xD4)
+            ps2_wait(2, 0)
+            ps2_out(0x60, val)
+            ps2_wait(1, 1)
+            a.mov_ri16("dx", 0x60)
+            a.in_al_dx()
+            a.and_ri32("rax", 0xFF)
+            a.cmp_ri32("rax", 0xFA)
+            a.jcc("ne", lab_msdone)
+        # Discard a stale output byte, then enable the auxiliary port.
+        lab_msnoflush = self.new_tmp("msnoflush")
+        a.mov_ri16("dx", 0x64)
+        a.in_al_dx()
+        a.and_ri32("rax", 1)
+        a.jcc("e", lab_msnoflush)
+        a.mov_ri16("dx", 0x60)
+        a.in_al_dx()
+        a.label(lab_msnoflush)
+        ps2_wait(2, 0)
+        ps2_out(0x64, 0xA8)  # enable auxiliary device
+        ps2_wait(2, 0)
+        ps2_out(0x64, 0x20)  # read controller command byte
+        ps2_wait(1, 1)
+        a.mov_ri16("dx", 0x60)
+        a.in_al_dx()
+        a.and_ri32("rax", 0xFF)
+        a.or_ri32("rax", 0x02)  # IRQ12 on
+        a.and_ri32("rax", 0xDF)  # auxiliary clock enabled (bit5 clear)
+        a.mov_rr("r9", "rax")
+        ps2_wait(2, 0)
+        ps2_out(0x64, 0x60)  # write controller command byte
+        ps2_wait(2, 0)
+        a.mov_ri16("dx", 0x60)
+        a.mov_rr("rax", "r9")
+        a.out_dx_al()
+        mouse_cmd(0xF6)  # set defaults
+        mouse_cmd(0xF4)  # enable data reporting
+        ps2_out(0x21, 0xF8)  # unmask cascade (IRQ0+1 already open)
+        ps2_out(0xA1, 0xEF)  # unmask IRQ12 only
+        a.label(lab_msdone)
         a.lidt_rip("idtr_")
         a.sti()
         a.call("hs_kernel_main")
@@ -4818,7 +4884,7 @@ class Gen:
             self.a.data_label("bump_end_")
             self.a.data_qword(Gen.KHEAP_BASE + Gen.KHEAP_SIZE)
             # kernel device state: timer ticks, bounded keyboard FIFO, pmm
-            for nm in ("ticks_", "keyhead_", "keytail_", "keydrops_", "navhead_", "navtail_", "navdrops_", "keyextended_", "eventhead_", "eventtail_", "eventdrops_", "pmm_next_"):
+            for nm in ("ticks_", "keyhead_", "keytail_", "keydrops_", "navhead_", "navtail_", "navdrops_", "keyextended_", "eventhead_", "eventtail_", "eventdrops_", "mshead_", "mstail_", "msdrops_", "msphase_", "pmm_next_"):
                 self.a.data_label(nm)
                 self.a.data_qword(0)
             self.a.data_label("eventqueue_")
@@ -4827,6 +4893,10 @@ class Gen:
             self.a.data_bytes(bytes(64))
             self.a.data_label("keyqueue_")
             self.a.data_bytes(bytes(64))
+            self.a.data_label("mspkt_")
+            self.a.data_bytes(bytes(4))
+            self.a.data_label("msqueue_")
+            self.a.data_bytes(bytes(64 * 8))
             self.a.data_label("pmm_free_")
             self.a.data_qword(32768)
             # physical address of the multiboot info struct, written by the
@@ -5035,7 +5105,7 @@ class Gen:
         a.label(lab_xhalt)
         a.call("k_halt")
         for vec in range(48):
-            if vec in (32, 33):
+            if vec in (32, 33, 44):
                 continue
             a.label(f"irq_stub_{vec}")
             if vec in ERRCODE:
@@ -5401,6 +5471,127 @@ class Gen:
         a.code += bytes([0x9d])  # popfq
         a.ret()
         a.label(lab_empty)
+        a.mov_ri32("rax", 0)
+        a.code += bytes([0x9d])
+        a.ret()
+
+        # mouse IRQ12 -> vec 44 (slave IRQ4): assemble the packet, then EOI
+        # both PICs (slave first, like every cascade handler).
+        a.label("irq_stub_44")
+        for r in Gen.GPREGS:
+            a.push_r(r)
+        # A masked edge latched while the init poll drained the controller
+        # refires on unmask with an empty output buffer: only read 0x60
+        # when the controller says a byte is really there.
+        a.mov_ri16("dx", 0x64)
+        a.in_al_dx()
+        a.and_ri32("rax", 1)
+        lab_msdata = self.new_tmp("msdata")
+        a.jcc("ne", lab_msdata)
+        a.mov_ri32("rax", 0x20)
+        a.mov_ri16("dx", 0xA0)
+        a.out_dx_al()  # EOI slave
+        a.mov_ri16("dx", 0x20)
+        a.out_dx_al()  # EOI master
+        for r in reversed(Gen.GPREGS):
+            a.pop_r(r)
+        a.iretq()
+        a.label(lab_msdata)
+        a.mov_ri16("dx", 0x60)
+        a.in_al_dx()
+        a.and_ri32("rax", 0xFF)
+        a.call("ms_byte")
+        a.mov_ri32("rax", 0x20)
+        a.mov_ri16("dx", 0xA0)
+        a.out_dx_al()  # EOI slave
+        a.mov_ri16("dx", 0x20)
+        a.out_dx_al()  # EOI master
+        for r in reversed(Gen.GPREGS):
+            a.pop_r(r)
+        a.iretq()
+
+        # 3-byte packet assembly: the leader byte must carry the always-1
+        # bit (anything else is dropped to resync), bytes 1-2 are raw dx/dy.
+        # A complete packet enqueues status | dx<<8 | dy<<16, which is never
+        # 0 because the leader bit is set, so 0 stays the empty marker.
+        a.label("ms_byte")
+        lab_msstore = self.new_tmp("msstore")
+        lab_msdone2 = self.new_tmp("msbdone")
+        a.lea_rip("rcx", "msphase_")
+        a.mov_rm("rdx", "rcx", 0)
+        a.cmp_ri32("rdx", 0)
+        a.jcc("ne", lab_msstore)
+        a.mov_rr("r10", "rax")
+        a.and_ri32("r10", 8)
+        a.jcc("e", lab_msdone2)  # no leader bit: drop and stay resynced
+        a.label(lab_msstore)
+        a.lea_rip("r10", "mspkt_")
+        a.add_rr("r10", "rdx")
+        a.mov_mr8("r10", 0, 0)  # mspkt_[phase] = al
+        a.add_ri32("rdx", 1)
+        a.cmp_ri32("rdx", 3)
+        lab_mssave = self.new_tmp("mssave")
+        a.jcc("b", lab_mssave)
+        a.mov_ri32("rdx", 0)
+        a.mov_mr("rcx", "rdx", 0)  # phase = 0 for the next packet
+        a.lea_rip("r11", "mspkt_")
+        a.movzx_eax_m8("r11", 0)
+        a.mov_rr("r10", "rax")
+        a.movzx_eax_m8("r11", 1)
+        a.shl_ri8("rax", 8)
+        a.or_rr("r10", "rax")
+        a.movzx_eax_m8("r11", 2)
+        a.shl_ri8("rax", 16)
+        a.or_rr("r10", "rax")
+        a.mov_rr("rax", "r10")
+        a.jmp("ms_enqueue")
+        a.label(lab_mssave)
+        a.mov_mr("rcx", "rdx", 0)
+        a.label(lab_msdone2)
+        a.ret()
+
+        # Same single-producer FIFO shape as the keyboard queues: 64 qword
+        # slots, one reserved, drop newest and count drops. Enqueue runs
+        # only in IRQ12 (or diagnostic callers with IF clear).
+        a.label("ms_enqueue")
+        a.lea_rip("rcx", "mstail_")
+        a.mov_rm("rdx", "rcx", 0)
+        a.mov_rr("r10", "rdx")
+        a.add_ri32("r10", 1)
+        a.and_ri32("r10", 63)
+        a.lea_rip("r11", "mshead_")
+        a.mov_rm("r11", "r11", 0)
+        a.cmp_rr("r10", "r11")
+        lab_msfull = self.new_tmp("msfull")
+        a.jcc("e", lab_msfull)
+        a.lea_rip("r11", "msqueue_")
+        a.mov_mrx("r11", "rdx", 8, 0, "rax")
+        a.mov_mr("rcx", "r10", 0)
+        a.ret()
+        a.label(lab_msfull)
+        a.lea_rip("rcx", "msdrops_")
+        a.mov_rm("rax", "rcx", 0)
+        a.add_ri32("rax", 1)
+        a.mov_mr("rcx", "rax", 0)
+        a.ret()
+        a.label("ms_dequeue")
+        a.code += bytes([0x9c])  # pushfq: preserve caller IF, not unconditional sti
+        a.cli()
+        a.lea_rip("rcx", "mshead_")
+        a.mov_rm("rdx", "rcx", 0)
+        a.lea_rip("r10", "mstail_")
+        a.mov_rm("r10", "r10", 0)
+        a.cmp_rr("rdx", "r10")
+        lab_msempty = self.new_tmp("msempty")
+        a.jcc("e", lab_msempty)
+        a.lea_rip("r11", "msqueue_")
+        a.mov_rmx("rax", "r11", "rdx", 8, 0)
+        a.add_ri32("rdx", 1)
+        a.and_ri32("rdx", 63)
+        a.mov_mr("rcx", "rdx", 0)
+        a.code += bytes([0x9d])  # popfq
+        a.ret()
+        a.label(lab_msempty)
         a.mov_ri32("rax", 0)
         a.code += bytes([0x9d])
         a.ret()
