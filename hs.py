@@ -1048,6 +1048,10 @@ class Gen:
                 if v == float("-inf"):
                     return "v_float(hs_f64raw(0xfff0000000000000ULL))"
                 return f"v_float({repr(v)})"
+            if v < -(1 << 61) or v > (1 << 61) - 1:
+                # same contract as x64gen.tag_int: safe Ints are 62-bit
+                raise HSErr(f"Int literal {v} is outside the 62-bit range",
+                            e["line"])
             return f"v_int({v}LL)"
         if t == "str":
             return f'v_strn("{c_esc(e["val"])}", {len(e["val"].encode("utf-8"))})'
