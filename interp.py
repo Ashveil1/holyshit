@@ -199,6 +199,19 @@ US_MEM = bytearray(1 << 20)
 US_TOP = 8
 FFI_USED = False  # a program with extern may load/store C memory (real addresses)
 MASK64 = (1 << 64) - 1
+INT62_MIN = -(1 << 61)
+INT62_MAX = (1 << 61) - 1
+
+
+class HSOvf(Exception):
+    """Safe Int outgrew the 62-bit range: bare trap, exit 97, no line - the
+    same contract as the hosted x64/JIT backends."""
+
+
+def chk62(v):
+    if v < INT62_MIN or v > INT62_MAX:
+        raise HSOvf()
+    return v
 
 
 def wrap_i64(v):
@@ -286,17 +299,14 @@ def struct_size(sname, line):
 
 
 def box(utype, v, line):
-    """static -> dynamic."""
+    """static -> dynamic: the raw word, signed interpretation (matches the
+    hosted backends, which tag the word without a range check)."""
     if utype in ("I64", "LIT"):
         return v
     if utype == "U64":
-        if v > (1 << 63) - 1:
-            raise HSErr(f"U64 value {v} too large for Int", line)
-        return v
+        return wrap_i64(v)
     if is_ptr(utype):
-        if v >= (1 << 63):
-            raise HSErr("address too large for Int", line)
-        return v
+        return wrap_i64(v)
     raise HSErr(f"bad static type {utype}", line)
 
 
@@ -1798,7 +1808,11 @@ def ev(e, env):
     t = e["t"]
     ln = e["line"]
     if t == "num" or t == "str":
-        return e["val"]
+        v = e["val"]
+        if t == "num" and isinstance(v, int) and not isinstance(v, bool) \
+                and not INT62_MIN <= v <= INT62_MAX:
+            raise HSErr(f"Int literal {v} is outside the 62-bit range", ln)
+        return v
     if t == "var":
         v = env.get(e["name"], ln)
         if isinstance(v, UnsafeVal):
@@ -1817,7 +1831,7 @@ def ev(e, env):
     if t == "neg":
         v = ev(e["val"], env)
         if is_num(v):
-            return -v
+            return chk62(-v) if is_int(v) else -v
         raise HSErr(f"cannot negate {tname(v)}", ln)
     if t == "unot":
         v = ev(e["val"], env)
@@ -1905,13 +1919,13 @@ def ev_bin(e, env):
         if r < 0 or r > 63:
             raise HSErr(f"shift count {r} out of range (0..63)", ln)
         if op == "<<":
-            return wrap_i64(l << r)
+            return chk62(l << r)
         return l >> r      # arithmetic shift, like C on signed Int
     if op == "+":
         if is_num(l) and is_num(r):
             if isinstance(l, float) or isinstance(r, float):
                 return float(l) + float(r)
-            return l + r
+            return chk62(l + r)
         if isinstance(l, str) and isinstance(r, str):
             return l + r
         if isinstance(l, list) and isinstance(r, list):
@@ -1922,9 +1936,9 @@ def ev_bin(e, env):
             raise HSErr(f"operator '{op}' needs numbers, got {tname(l)} and {tname(r)}", ln)
         try:
             if op == "-":
-                return (float(l) - float(r)) if isinstance(l, float) or isinstance(r, float) else l - r
+                return (float(l) - float(r)) if isinstance(l, float) or isinstance(r, float) else chk62(l - r)
             if op == "*":
-                return (float(l) * float(r)) if isinstance(l, float) or isinstance(r, float) else l * r
+                return (float(l) * float(r)) if isinstance(l, float) or isinstance(r, float) else chk62(l * r)
             if op == "/":
                 if r == 0:
                     raise HSErr("division by zero", ln)
@@ -1936,6 +1950,8 @@ def ev_bin(e, env):
                     return float(l) % float(r)
                 return l % r
         except HSErr:
+            raise
+        except HSOvf:
             raise
         except Exception as ex:
             raise HSErr(str(ex), ln)
@@ -2169,8 +2185,6 @@ def sev_bin(e, env):
             if op == "-" and lt == "Ptr" and rt == "Ptr":
                 return ("I64", wrap_i64(lv - rv))
         raise HSErr(f"cannot apply '{op}' to pointers", ln)
-    if lt != rt and ("I64" in (lt, rt) and "U64" in (lt, rt)):
-        raise HSErr(f"cannot mix I64 and U64 with '{op}' (convert explicitly)", ln)
     tgt = lt if lt != "LIT" else (rt if rt != "LIT" else "I64")
     a = coerce(lt, lv, tgt, ln)
     b = coerce(rt, rv, tgt, ln)
@@ -2661,12 +2675,18 @@ def b_int(args, ln):
     if isinstance(a, int):
         return a
     if isinstance(a, float):
-        return int(a)
+        v = int(a)
+        if not INT62_MIN <= v <= INT62_MAX:
+            raise HSErr(f"cannot convert {a!r} to Int", ln)
+        return v
     if isinstance(a, str):
         try:
-            return int(a.strip(), 0) if a.strip().startswith("0x") or a.strip().startswith("0X") else int(a.strip())
+            v = int(a.strip(), 0) if a.strip().startswith("0x") or a.strip().startswith("0X") else int(a.strip())
         except ValueError:
             raise HSErr(f"cannot convert {a!r} to Int", ln)
+        if not INT62_MIN <= v <= INT62_MAX:
+            raise HSErr(f"cannot convert {a!r} to Int", ln)
+        return v
     raise HSErr(f"cannot convert {tname(a)} to Int", ln)
 
 
@@ -3410,6 +3430,9 @@ def main():
         ex_body(prog, main_env)
     except HSErr as e:
         fail(e.msg, e.line)
+    except HSOvf:
+        sys.stderr.write("error: Int outside the 62-bit range\n")
+        sys.exit(97)
     except RecursionError:
         fail("stack overflow (recursion too deep)", None)
 

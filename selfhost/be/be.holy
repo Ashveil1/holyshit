@@ -3826,7 +3826,7 @@ class Gen:
     raise pyrt.py_err(str(t) + " not allowed in unsafe (x64)", s["line"])
   def tag_int(self, v):
     if false:
-      raise pyrt.py_err("Int literal " + str(v) + " is outside the 62-bit range of the x64 backend", 0)
+      raise pyrt.py_err("Int literal " + str(v) + " is outside the 62-bit range", 0)
     return v * 4 + 1
   def tag_box(self):
     if self.checked_int():
@@ -5336,7 +5336,7 @@ class Gen:
       asm.jmp("hs_fatal_msgline")
     if not self.freestanding:
       asm.label("int_ovf")
-      msg = "error: Int outside the 62-bit range of the x64 backend (HS_BACKEND=native or interp has 64-bit Int)\n"
+      msg = "error: Int outside the 62-bit range\n"
       asm.lea_rip("rsi", self.rstr(msg))
       asm.mov_ri32("rdx", len(msg))
       asm.mov_ri32("rdi", 2)

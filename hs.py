@@ -894,8 +894,6 @@ class Gen:
                 if op == "-" and lt == "Ptr" and rt == "Ptr":
                     return ("I64", f"((int64_t)(({lc}) - ({rc})))", None)
             raise HSErr(f"cannot apply '{op}' to pointers", ln)
-        if lt in ("I64", "U64") and rt in ("I64", "U64") and lt != rt:
-            raise HSErr(f"cannot mix I64 and U64 with '{op}' (convert explicitly)", ln)
         tgt = lt if lt != "LIT" else (rt if rt != "LIT" else "I64")
         lc2 = self.coerce_c(lt, lc, lcv, tgt, out, ln)
         rc2 = self.coerce_c(rt, rc, rcv, tgt, out, ln)
@@ -1641,14 +1639,6 @@ def _jerr(path, msg, line):
     print(_json.dumps(d, ensure_ascii=False), file=sys.stderr)
 
 
-# builtins whose effects must not run twice, so no silent re-run after the
-# x64 Int-overflow trap once the program could have done I/O
-_SIDE_EFFECT_WORDS = ("input", "open", "read", "write", "append_text",
-                      "append_bytes", "write_text", "write_bytes", "mkdir", "system",
-                      "tcp_connect",
-                      "tcp_send", "tcp_listen", "http_get", "json_save",
-                      "readkey", "file", "close", "read_text", "read_mem")
-
 
 def _run_cache_path(src):
     """Cache file for the x64 binary of a single-file program, or None when
@@ -1773,13 +1763,6 @@ def _run_jit_auto(driver, sha, prog, rest):
             err = ef.read()
         if code == 98:
             return None  # compile-time failure: the program never ran
-        if code == 97 and b"62-bit" in err:
-            risky = nbytes > 0 or any(
-                re.search(r"\b" + w + r"\b", src) for w in _SIDE_EFFECT_WORDS)
-            if not risky:
-                return None
-            err += (b"hint: run with HS_BACKEND=native or HS_BACKEND=interp "
-                    b"for 64-bit Int\n")
         os.write(2, err)
         return code
 
@@ -1787,8 +1770,7 @@ def _run_jit_auto(driver, sha, prog, rest):
 def _run_auto(prog, rest):
     """Default `hs run`: build with the x64 backend (no C compiler, ~0.1s).
     Returns the exit code, or None when the caller should use the slower
-    native/interp path: the program is outside the x64 subset, or it hit the
-    x64 62-bit Int limit before producing any output or side effect."""
+    native/interp path: the program is outside the x64 subset."""
     import re
     import contextlib as _cl
     import io as _io
@@ -1836,13 +1818,6 @@ def _run_auto(prog, rest):
             code = p.wait()
             ef.seek(0)
             err = ef.read()
-        if code == 97 and b"62-bit" in err:
-            risky = nbytes > 0 or any(
-                re.search(r"\b" + w + r"\b", src) for w in _SIDE_EFFECT_WORDS)
-            if not risky:
-                return None
-            err += (b"hint: run with HS_BACKEND=native or HS_BACKEND=interp "
-                    b"for 64-bit Int\n")
         os.write(2, err)
         return code
 

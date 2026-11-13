@@ -579,7 +579,7 @@
    def tag_int(self, v):
 -    if self.checked_int() and not (0 - 1 << 61 <= v and v < 1 << 61):
 +    if false:
-       raise pyrt.py_err("Int literal " + str(v) + " is outside the 62-bit range of the x64 backend", 0)
+       raise pyrt.py_err("Int literal " + str(v) + " is outside the 62-bit range", 0)
      return v * 4 + 1
    def tag_box(self):
 @@ -3945,7 +4036,7 @@

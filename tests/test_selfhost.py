@@ -75,12 +75,21 @@ with tempfile.TemporaryDirectory() as d:
         how = "x64"
         if r.stdout.rstrip("\n") != want.rstrip("\n") and "0x" in open(
                 f, encoding="utf-8", errors="replace").read():
-            # x64 Int is 62-bit: literals above 2^61 cannot be represented.
-            # Those files are checked against the 64-bit interp run instead.
+            # 62-bit Int (all backends): a literal above 2^61-1 cannot be
+            # held in a safe Int, so both the x64 build and the interp run
+            # must trap with the same bare overflow error.
+            x64_trap = r.returncode == 97 and \
+                r.stderr == "error: Int outside the 62-bit range\n" and \
+                r.stdout == ""
             r = subprocess.run([sys.executable, os.path.join(ROOT, "interp.py"),
                                 os.path.join(ROOT, "selfhost", "parse.holy"), f],
                                capture_output=True, text=True, errors="replace")
-            how = "interp (x64 Int is 62-bit)"
+            how = "62-bit trap parity"
+            interp_trap = r.returncode == 97 and \
+                r.stderr == "error: Int outside the 62-bit range\n" and \
+                r.stdout == ""
+            if interp_trap and x64_trap:
+                want, wrc = r.stdout, r.returncode
         if r.stdout.rstrip("\n") == want.rstrip("\n") and \
                 (r.returncode == 0) == (wrc == 0):
             print(f"ok   parse[{how}] {rel}")
@@ -111,10 +120,21 @@ with tempfile.TemporaryDirectory() as d:
         how = "x64"
         if r.stdout.rstrip("\n") != want.rstrip("\n") and "0x" in open(
                 f, encoding="utf-8", errors="replace").read():
+            # 62-bit Int (all backends): a literal above 2^61-1 cannot be
+            # held in a safe Int, so both the x64 build and the interp run
+            # must trap with the same bare overflow error.
+            x64_trap = r.returncode == 97 and \
+                r.stderr == "error: Int outside the 62-bit range\n" and \
+                r.stdout == ""
             r = subprocess.run([sys.executable, os.path.join(ROOT, "interp.py"),
                                 os.path.join(ROOT, "selfhost", "fmt.holy"), f],
                                capture_output=True, text=True, errors="replace")
-            how = "interp (x64 Int is 62-bit)"
+            how = "62-bit trap parity"
+            interp_trap = r.returncode == 97 and \
+                r.stderr == "error: Int outside the 62-bit range\n" and \
+                r.stdout == ""
+            if interp_trap and x64_trap:
+                want, wrc = r.stdout, r.returncode
         total += 1
         if r.stdout.rstrip("\n") == want.rstrip("\n") and \
                 (r.returncode == 0) == (wrc == 0):

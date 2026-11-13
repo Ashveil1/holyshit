@@ -1,6 +1,6 @@
 HSGOLD1
-rc=1
-stdout=0
-stderr=70
+rc=0
+stdout=2
+stderr=0
 
-error: cannot mix I64 and U64 with '+' (convert explicitly) at line 4
+3

@@ -4230,8 +4230,7 @@ class Gen:
     def tag_int(self, v):
         """Python int -> tagged 64-bit pattern (62-bit payload)."""
         if self.checked_int() and not -(1 << 61) <= v < (1 << 61):
-            raise HSErr(f"Int literal {v} is outside the 62-bit range of "
-                        "the x64 backend", 0)
+            raise HSErr(f"Int literal {v} is outside the 62-bit range", 0)
         return ((v * 4) + 1) & ((1 << 64) - 1)
 
     def tag_box(self):
@@ -6074,7 +6073,7 @@ class Gen:
         # type_err: generic fallback for runtime-internal failures.
         if not self.freestanding:
             a.label("int_ovf")
-            msg = "error: Int outside the 62-bit range of the x64 backend (HS_BACKEND=native or interp has 64-bit Int)\n"
+            msg = "error: Int outside the 62-bit range\n"
             a.lea_rip("rsi", self.rstr(msg))
             a.mov_ri32("rdx", len(msg))
             a.mov_ri32("rdi", 2)

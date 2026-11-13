@@ -28,16 +28,15 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 | `E011` | `json_parse not in x64 subset` | using `json_*` on the x64 side | see `x64-subset.md` |
 | `E012` | `cannot find module '<m>'` | `import` cannot find the file | set `HSPATH` to point at the module's directory |
 
-## interp.py - interpreter + parser (every language error) (249)
+## interp.py - interpreter + parser (every language error) (247)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
 - `'{d['name']}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
 - `'{v}' is reserved for future use`
-- `U64 value {v} too large for Int`
+- `Int literal {v} is outside the 62-bit range`
 - `a class body holds only def`
-- `address too large for Int`
 - `alloc of negative size {n}`
 - `alloc wants alloc(n)`
 - `append wants append(list, x)`
@@ -112,7 +111,6 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `cannot find module '{name}'`
 - `cannot index {tname(obj)}`
 - `cannot load ffi library '{lib}'`
-- `cannot mix I64 and U64 with '{op}' (convert explicitly)`
 - `cannot negate Ptr`
 - `cannot negate {tname(v)}`
 - `cannot order pointers (use == / !=)`
@@ -280,7 +278,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{want} arg count mismatch`
 - `{what} wants an open socket`
 
-## hs.py - native backend via gcc (83)
+## hs.py - native backend via gcc (82)
 
 - `'{n}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
@@ -325,7 +323,6 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `cannot dereference {pt} (need Ptr)`
 - `cannot find ffi library '{lib}'`
 - `cannot find ffi source '{lib}'`
-- `cannot mix I64 and U64 with '{op}' (convert explicitly)`
 - `cannot negate Ptr`
 - `cannot order pointers (use == / !=)`
 - `cannot store through {pt} (need Ptr)`
@@ -369,7 +366,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 ## x64gen.py - direct x86-64 backend (xbuild/xkernel) (118)
 
 - `'{n}' already defined in this scope`
-- `Int literal {v} is outside the 62-bit range of the x64 backend`
+- `Int literal {v} is outside the 62-bit range`
 - `alloc wants alloc(n)`
 - `append wants append(list, x)`
 - `argv takes no args`
@@ -492,7 +489,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `fmt: bad expr {t}`
 - `fmt: bad stmt {t}`
 
-## ir.py - middle IR (build/verify/exec) (120)
+## ir.py - middle IR (build/verify/exec) (119)
 
 - `'{name}' already defined in this scope`
 - `IR: bad binop '{op}'`
@@ -571,7 +568,6 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `cannot dereference {v.utype} (need Ptr)`
 - `cannot find module '{name}'`
 - `cannot index {tname(obj)}`
-- `cannot mix I64 and U64 with '{op}' (convert explicitly)`
 - `cannot negate Ptr`
 - `cannot negate {tname(v)}`
 - `cannot order pointers (use == / !=)`
@@ -669,4 +665,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-623 messages total - duplicates across files are counted once per file
+619 messages total - duplicates across files are counted once per file

@@ -85,7 +85,7 @@ print collatz(27)
  ('overflowinraw', '''def sq(n):
   return n * n
 print sq(2147483648)
-''', '', 97, 'error: Int outside the 62-bit range of the x64 backend (HS_BACKEND=native or interp has 64-bit Int)\n'),
+''', '', 97, 'error: Int outside the 62-bit range\n'),
  ('mixedret', '''def pick(n):
   if n > 0:
     return n

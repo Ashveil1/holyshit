@@ -1,0 +1,6 @@
+HSGOLD1
+rc=97
+stdout=0
+stderr=36
+
+error: Int outside the 62-bit range

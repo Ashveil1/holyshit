@@ -49,18 +49,20 @@ rc, out, err = run(BIG, {"HS_BACKEND": "x64"})
 check("x64 traps instead of wrapping", rc == 97 and "62-bit" in err
       and out == "", (rc, out, err))
 rc, out, err = run(BIG, {"HS_BACKEND": "interp"})
-check("interp keeps 64-bit Int", out == BIG_OUT, (rc, out, err))
+check("interp traps like x64 (unified 62-bit)", rc == 97 and "62-bit" in err
+      and out == "", (rc, out, err))
 rc, out, err = run(BIG)
-check("auto falls back before any output", out == BIG_OUT and rc == 0,
-      (rc, out, err))
+check("auto surfaces the trap (no rescue)", rc == 97 and "62-bit" in err
+      and out == "", (rc, out, err))
 rc, out, err = run("print 1\n" + BIG)
 check("trap after output is loud, not silent",
-      rc == 97 and out == "1\n" and "62-bit" in err and "hint" in err,
+      rc == 97 and out == "1\n" and "62-bit" in err,
       (rc, out, err))
 rc, out, err = run("x = 4294967296\nprint x * x\n", {"HS_BACKEND": "x64"})
 check("multiply overflow traps", rc == 97, (rc, out, err))
-rc, out, err = run("x = 0xFFFFFFFFFFFFFFF0\nprint x & 255\n")
-check("big literal falls back", out == "240\n" and rc == 0, (rc, out, err))
+rc, out, err = run("x = 0xFFFFFFFFFFFFFFF0\nprint x & 255\n", {"HS_BACKEND": "interp"})
+check("big safe literal is a clean error", rc == 1 and "Int literal" in err
+      and "62-bit" in err and out == "", (rc, out, err))
 rc, out, err = run("print true == 1, 1 == true, false == 0, true == 2\n")
 check("Bool == Int like interp", out == "true true true false\n",
       (rc, out, err))
@@ -116,12 +118,6 @@ for be in ("interp", "native", "auto"):
     rc, out, err = run(AB, {"HS_BACKEND": be})
     check(f"append_bytes appends exact bytes, mode 644 on create ({be})",
           rc == 0 and out == AB_OUT, (rc, out, err))
-import re as _re
-_m = _re.search(r"_SIDE_EFFECT_WORDS = \(([^)]*)\)",
-                open(os.path.join(ROOT, "hs.py")).read(), _re.S)
-check("append_bytes is a run-cache side-effect word",
-      _m is not None and '"append_bytes"' in _m.group(1),
-      _m.group(1) if _m else "no _SIDE_EFFECT_WORDS")
 with tempfile.TemporaryDirectory() as d:
     env = dict(os.environ, HS_CC_CACHE=os.path.join(d, "cache"))
     src = os.path.join(d, "p.holy")

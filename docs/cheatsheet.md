@@ -97,7 +97,7 @@ No `//` division (use `/`, which yields Float). No `0..5` (use `range(5)`).
 
 | Type | Written | Notes |
 |---|---|---|
-| Int | `42`, `0xFF`, `-7` | 64-bit (x64 subset: 62-bit) |
+| Int | `42`, `0xFF`, `-7` | 62-bit (all backends) |
 | Float | `3.5` | hosted only |
 | Str | `"a\nb"` | escapes: `\n \t \r \0 \" \\` |
 | Bool | `true`, `false` | falsy: `false null 0 "" [] {}` |
