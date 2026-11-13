@@ -27,7 +27,7 @@ PROGS = {
     "classes": 'class A:\n  def __init__(self, n):\n    self.n = n\n  def val(self):\n    return self.n\n  def bump(self):\n    self.n = self.n + 1\nclass B(A):\n  def __init__(self, n):\n    self.n = n * 2\n  def twice(self):\n    return self.val() * 2\na = A(3)\nb = B(4)\na.bump()\nprint a.val(), b.val(), b.twice()\nitems = [A(i) for i in range(3)]\nprint items[2].n\n',
     "fib": "def fib(n):\n  if n < 2:\n    return n\n  return fib(n - 1) + fib(n - 2)\nprint fib(22)\n",
     "arith": "a = 17\nb = 5\nprint a + b, a - b, a * b, a % b, -a % b, a % -b, -a % -b\n"
-             "print 0, -1, 4611686018427387903, -4611686018427387903\n",
+             "print 0, -1, 1152921504606846975, -1152921504606846975\n",  # 2^60-1: max cc encodes on a 62-bit host
     "bits": "x = 0xF0F0\nprint x & 255, x | 15, x ^ 255, x << 4, x >> 4, -256 >> 4\n",
     "loop": "i = 0\nt = 0\nwhile i < 1000:\n  t = t + i * i % 7\n  i = i + 1\nprint t\n",
     "breakcont": "i = 0\nt = 0\nwhile 1 == 1:\n  i = i + 1\n  if i % 2 == 0:\n    continue\n"
@@ -48,7 +48,7 @@ PROGS = {
     "andor_val": "x = 5 and 7\nprint x, 0 or 9, null or 3, 1 and null, false or false\n",
     "truthy": "if 0:\n  print 1\nelse:\n  print 2\nif null:\n  print 3\nif -1:\n  print 4\nif false or 0:\n  print 5\nelse:\n  print 6\n",
     "boolarg": "def f(a, b):\n  if a:\n    return b\n  return a\nprint f(1 < 2, 5), f(2 < 1, 5), f(null, 1)\n",
-    "bigint": "x = 4611686018427387903\nprint x, -x, x - 1, -x - 1\n",
+    "bigint": "x = 1152921504606846975\nprint x, -x, x - 1, -x - 1\n",  # 2^60-1: cc host-encodable max
     "str_basic": 's = "hello" + " " + "world"\nprint s, len(s), s[0], s[-1], s[4]\nprint s == "hello world", s != "x", "a" < "b", "ab" < "a", "b" >= "b", "" == ""\nprint "" or "dflt", "x" and "y", not ""\ndef rep(a, n):\n  r = ""\n  i = 0\n  while i < n:\n    r = r + a\n    i = i + 1\n  return r\nt = rep("ab", 50)\nprint len(t), t[99], t == rep("ab", 50), rep("x", 3) + "!"\n',
     "str_eq": "a = \"x\" + \"y\"\nprint a == \"xy\", \"xy\" == a, a == 1, 1 == a, a == null, a != \"xz\"\nprint \"abc\" < \"abd\", \"abc\" <= \"abc\", \"b\" > \"abc\", \"\" < \"a\"\n",
     "str_fn": "def f(s, n):\n  if n == 0:\n    return s\n  return f(s + s, n - 1)\nx = f(\"ab\", 10)\nprint len(x), x[1023], x[-1], len(f(\"\", 5))\n",
@@ -63,7 +63,7 @@ PROGS = {
     'dict_grow': 'd = {}\nfor i in range(300):\n  d[i] = i * 2\nd["k"] = []\nappend(d["k"], 5)\nt = 0\nfor k in keys(d):\n  if k != "k":\n    t = t + d[k]\nprint len(d), t, d[299], d["k"], has(d, 150), has(d, 300)\nfor i in range(300):\n  d[i] = 0\nprint values(d)[7], len(d)\n',
     'dict_words': 'def count(ws):\n  c = {}\n  for w in ws:\n    if w in c:\n      c[w] = c[w] + 1\n    else:\n      c[w] = 1\n  return c\nc = count(["a", "b", "a", "c" + "d", "cd", "a"])\nprint c, c["a"], c["cd"]\nprint c == {"cd": 2, "a": 3, "b": 1}, c == {"a": 3}, {"x": {"y": [1]}} == {"x": {"y": [1]}}\n',
     'contains': 'print 3 in [1, 2, 3], 4 in [1, 2, 3], "ell" in "hello", "z" in "hello", "" in "x", "hello!" in "hello", 5 not in [1], "a" in ["b", "a"]\n',
-    "slice_str": 's = "hello world"\nprint s[0:5], s[6:], s[:5], s[-5:], s[:-6], s[3:3], s[5:2], s[-100:100], s[:], s[2:4] + "!"\nl = [1, 2, 3, 4, 5]\nprint l[1:3], l[:2], l[-2:], l[2:], l[:], l[4:1], l[9:], l[:-1]\nm = l[1:4]\nappend(m, 9)\nprint m, l, len(l[0:0])\nprint str(0), str(-45) + "|", str(123456789012), str(true), str(false), str(null), str("x"), len(str(4611686018427387903)), str(-4611686018427387903)\nn = 0\nt = ""\nwhile n < 5:\n  t = t + str(n * n) + ","\n  n = n + 1\nprint t\n',
+    "slice_str": 's = "hello world"\nprint s[0:5], s[6:], s[:5], s[-5:], s[:-6], s[3:3], s[5:2], s[-100:100], s[:], s[2:4] + "!"\nl = [1, 2, 3, 4, 5]\nprint l[1:3], l[:2], l[-2:], l[2:], l[:], l[4:1], l[9:], l[:-1]\nm = l[1:4]\nappend(m, 9)\nprint m, l, len(l[0:0])\nprint str(0), str(-45) + "|", str(123456789012), str(true), str(false), str(null), str("x"), len(str(1152921504606846975)), str(-1152921504606846975)\nn = 0\nt = ""\nwhile n < 5:\n  t = t + str(n * n) + ","\n  n = n + 1\nprint t\n',
     "builtins": 'print find("hello", "ll"), find("hello", "z"), find("abc", ""), find("", "a")\np = split("a,b,,c", ",")\nprint p, len(p), split("abc", ","), split("a--b--", "--")\nprint int("123"), int("-45") + 1, int("0")\ntry:\n  x = int("12x")\n  print "no"\nexcept as e:\n  print "caught"\ntry:\n  print "in try"\nexcept as e2:\n  print "never"\ndef f(n):\n  if n > 2:\n    raise "too big: " + str(n)\n  return n\ntry:\n  print f(1)\n  print f(5)\n  print "unreach"\nexcept as err:\n  print "caught2"\nprint "after"\na = argv()\nprint len(a)\nwrite_bytes("/tmp/_cc_wb.out", [72, 105, 10])\nprint read_text("/tmp/_cc_wb.out"), len(read_text("/tmp/_cc_wb.out"))\n',
     "list_add": 'a = [1, 2]\nb = [3]\nprint a + b, a + [] , [] + b, len(a + b + a), [] + []\nx = a + b\nappend(x, 9)\nprint x, a, b\n',
     "for_str": 'for ch in "abc":\n  print ch\nfor k in {"x": 1, "y": 2}:\n  print k\nn = 0\nfor c in "hello world":\n  if c == "o":\n    n = n + 1\nprint n\n',

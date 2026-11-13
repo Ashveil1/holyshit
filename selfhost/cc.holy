@@ -98,8 +98,10 @@ def gen(e):
       mag = sv
       if mag[0] == "-":
         mag = mag[1:]
-      if len(mag) > 19 or len(mag) == 19 and mag > "4611686018427387903":
-        fail("Int literal outside the 63-bit range of cc", ln)
+      # cc's runtime Int is 63-bit (tag 2n+1), but the encoder runs on the
+      # 62-bit host: v * 2 + 1 must fit the host range, so |v| <= 2^60 - 1.
+      if len(mag) > 19 or len(mag) == 19 and mag > "1152921504606846975":
+        fail("Int literal outside the range cc can encode on a 62-bit host", ln)
       asm.mov_ri64("rax", v * 2 + 1)
   elif t == "var":
     nm = e["name"]

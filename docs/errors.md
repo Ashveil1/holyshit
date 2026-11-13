@@ -28,7 +28,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 | `E011` | `json_parse not in x64 subset` | using `json_*` on the x64 side | see `x64-subset.md` |
 | `E012` | `cannot find module '<m>'` | `import` cannot find the file | set `HSPATH` to point at the module's directory |
 
-## interp.py - interpreter + parser (every language error) (247)
+## interp.py - interpreter + parser (every language error) (248)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -99,6 +99,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `cannot compare I64 and U64 (convert explicitly)`
 - `cannot compare {lt} and {rt}`
 - `cannot compare {tname(l)} and {tname(r)}`
+- `cannot convert '{v}' to Int`
 - `cannot convert {a} to Float`
 - `cannot convert {a} to Int`
 - `cannot convert {st} to {target}`
@@ -278,13 +279,14 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{want} arg count mismatch`
 - `{what} wants an open socket`
 
-## hs.py - native backend via gcc (82)
+## hs.py - native backend via gcc (83)
 
 - `'{n}' already defined in this scope`
 - `'{s['name']}' already defined in this scope`
 - `'{s['name']}' is an imported module (cannot assign)`
 - `'{s['var']}' is an imported module (cannot assign)`
 - `'{top}' already defined in this scope`
+- `Int literal {v} is outside the 62-bit range`
 - `address {av} out of range`
 - `alloc wants alloc(n)`
 - `array field '{e['name']}' needs an index`
@@ -665,4 +667,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-619 messages total - duplicates across files are counted once per file
+621 messages total - duplicates across files are counted once per file
