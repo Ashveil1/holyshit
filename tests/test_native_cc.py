@@ -34,15 +34,15 @@ FAILS = {
     'float': ('print 1.5 + 2.5\n',
               (1, '', 'error: type error (cc backend)\n'),
               (1, 'error: cc: only Int literals are supported (no Float) (line 1)\n',
-               'error: compile failed at line 2546\n')),
+               'error: compile failed at line 2548\n')),
     'syntax': ('if\n',
                (1, "error: expression expected, got ''\n", 'error: compile failed\n'),
                (1, "error: expression expected, got '' at line 1\n",
-                'error: compile failed at line 2546\n')),
+                'error: compile failed at line 2548\n')),
     'missing': (None,
                 (1, '', 'error: cannot open file\n'),
                 (1, 'error: open failed: errno 2\n',
-                 'error: compile failed at line 2546\n')),
+                 'error: compile failed at line 2548\n')),
 }
 
 passed = failed = 0
