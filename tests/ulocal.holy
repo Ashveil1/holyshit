@@ -1,0 +1,24 @@
+# A plain local FIRST bound inside `unsafe:` and read after the block
+# (the OS lane's ksurface flush pattern). The interp, the IR backend and
+# the C native backend read it back as the assigned value; the legacy
+# AST-direct backend (build_x64_ast) reads the raw slot as a tagged word
+# - x64gen-today divergence, flagged by tests/test_irx64.py as
+# "(!! matches interp, not x64gen)" until the AST path is fixed.
+def other(color):
+  return color + 1
+
+def fresh_local():
+  unsafe:
+    color = 41 + 1
+  return color
+
+def load32_local():
+  unsafe:
+    Ptr p = alloc(8)
+    *p = 11189196
+    color = load32(as_ptr(as_int(p)))
+  return color >> 16
+
+print fresh_local()
+print load32_local()
+print other(1)
