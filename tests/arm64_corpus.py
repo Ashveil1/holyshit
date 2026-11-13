@@ -51,8 +51,8 @@ names = sys.argv[1:] or [os.path.splitext(os.path.basename(p))[0]
                          for p in sorted(glob.glob(os.path.join(HERE, "*.holy")))]
 ok = refused = bad = 0
 FAILED = []
-PIN_FAIL = {"err_umix", "t_bits"}   # documented x64 Int divergences
-EXPECT_FAIL, EXPECT_REFUSED = 2, 14
+PIN_FAIL = set()   # unified 62-bit Int: no known corpus divergences
+EXPECT_FAIL, EXPECT_REFUSED = 0, 14
 with tempfile.TemporaryDirectory(prefix="hs-a64.") as d:
     for name in names:
         if name.startswith("mod_") or os.path.exists(os.path.join(HERE, name + ".nativeonly")):
