@@ -3067,7 +3067,12 @@ _JSON_DEPTH = 200
 def _json_to_hs(v, ln, depth):
     if depth > _JSON_DEPTH:
         raise HSErr("json too deeply nested", ln)
-    if v is None or isinstance(v, (bool, int, float, str)):
+    if isinstance(v, int) and not isinstance(v, bool):
+        if v < INT62_MIN or v > INT62_MAX:
+            # json.holy's as_int rejects these identically on native backends
+            raise HSErr(f"cannot convert '{v}' to Int", ln)
+        return v
+    if v is None or isinstance(v, (bool, float, str)):
         return v
     if isinstance(v, list):
         return [_json_to_hs(x, ln, depth + 1) for x in v]

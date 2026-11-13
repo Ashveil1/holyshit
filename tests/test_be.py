@@ -13,6 +13,15 @@ sys.path.insert(0, ROOT)
 import ir  # noqa: E402
 import irx64  # noqa: E402
 
+def fits62(v):
+    if type(v) is int:
+        return -(1 << 61) <= v < (1 << 61)
+    if isinstance(v, (list, tuple)):
+        return all(fits62(x) for x in v)
+    if isinstance(v, dict):
+        return all(fits62(x) for x in v.values())
+    return True
+
 HS = [sys.executable, os.path.join(ROOT, "hs.py")]
 env = dict(os.environ, HSROOT=ROOT, HSPATH=os.path.join(ROOT, "selfhost") + ":" + os.path.join(ROOT, "selfhost", "be"))
 progs = sorted(glob.glob(os.path.join(ROOT, "tests", "*.holy")))
@@ -41,6 +50,17 @@ with tempfile.TemporaryDirectory() as d:
         open(p, "w").write(r.stdout)
         g = subprocess.run(HS + ["run", os.path.join(ROOT, "selfhost", "be", "irx64_run.holy"),
                                  "--backend", "interp", p], capture_output=True, text=True, env=env)
+        if not fits62(m):
+            # unified 62-bit Int: the hs IR loader cannot hold consts past the
+            # safe range; it must reject them (wide-literal IR tooling is C2)
+            if g.returncode != 0 and ("cannot convert" in g.stderr or
+                                      "Int outside the 62-bit range" in g.stderr):
+                skipped += 1
+                continue
+            bad += 1
+            print("FAIL be", rel, "expected wide-literal rejection, got",
+                  g.returncode, g.stderr[-160:])
+            continue
         if "unknown variable 'interp'" in g.stdout + g.stderr:
             deferred += 1  # json/fs helper modules are built from source: needs S5 (AST->IR)
             continue

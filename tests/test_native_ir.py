@@ -61,8 +61,7 @@ FAILS = {
     'biglit': ('print 0x4000000000000000\n',
                (0, 'func <main>():\nb_entry_0:\n  %1 = const 4611686018427387904 @1\n'
                    '  print %1 @1\n  ret @1\n', ''),
-               (97, '', 'error: Int outside the 62-bit range '
-                        '')),
+               (97, '', 'error: Int outside the 62-bit range\n')),
 }
 FAILS_JSON = {
     'missing': ('{"file": "absent.holy", "line": null, '

@@ -3,10 +3,38 @@
 # label) with asm.holy and print the bytes as hex. tests/test_asm.py compares
 # the output with x64.py.
 import asm
+def dec_bytes(w):
+  # full-width decimal -> 8 little-endian bytes, small arithmetic only:
+  # 64-bit immediates cannot be held in a 62-bit safe Int
+  neg = false
+  t = w
+  if t[0] == "-":
+    neg = true
+    t = t[1:len(t)]
+  bs = [0, 0, 0, 0, 0, 0, 0, 0]
+  for i in range(len(t)):
+    carry = find("0123456789", t[i])
+    for j in range(8):
+      v = bs[j] * 10 + carry
+      bs[j] = v & 255
+      carry = v >> 8
+  if neg:
+    c = 1
+    for j in range(8):
+      n = 255 - bs[j] + c
+      bs[j] = n & 255
+      c = n >> 8
+  return bs
+
 def arg(w):
   c = w[0]
   if c == "-" or find("0123456789", c) >= 0:
-    return int(w)
+    n = len(w)
+    if c == "-":
+      n = n - 1
+    if n < 19:
+      return int(w)
+    return {"wide": dec_bytes(w)}
   return w
 def run(op, a):
   n = len(a)
@@ -21,7 +49,11 @@ def run(op, a):
   elif op == "mov_ri32":
     asm.mov_ri32(a[0], a[1])
   elif op == "mov_ri64":
-    asm.mov_ri64(a[0], a[1])
+    # wide immediates arrive as {"wide": bytes} (arg cannot hold them in an Int)
+    try:
+      asm.mov_ri64_bytes(a[0], a[1]["wide"])
+    except:
+      asm.mov_ri64(a[0], a[1])
   elif op == "mov_rm":
     asm.mov_rm(a[0], a[1], a[2])
   elif op == "mov_rmx":

@@ -112,6 +112,27 @@ for f in sorted(files):
     r = subprocess.run([sys.executable, str(ROOT/'hs.py'), 'run',
         str(ROOT/'selfhost/be/irbuild_run.holy'), '--backend', 'interp', astfile.name],
         env=env, capture_output=True, text=True, timeout=60)
+    if not fits62(prog):
+        # unified 62-bit Int: no backend can hold literals past the 62-bit
+        # safe range; both the interp run and the x64 build must trap with
+        # the bare overflow error
+        native = subprocess.run([exe, astfile.name], capture_output=True,
+                                text=True, timeout=60)
+        # the hs JSON loader rejects literals past the 62-bit safe range
+        # with the same "cannot convert" error on every backend
+        traps = lambda rr: (rr.returncode == 1 and rr.stdout == "" and
+                            "cannot convert '" in rr.stderr and
+                            "to Int" in rr.stderr)
+        if traps(r) and traps(native):
+            native_skipped += 1
+            passed += 1
+        else:
+            failed += 1
+            print('FAIL', Path(f).name, 'wide-literal trap parity:',
+                  r.returncode, native.returncode, r.stderr[:120],
+                  native.stderr[:120], flush=True)
+        os.unlink(astfile.name)
+        continue
     stage = 'interp-parse'
     fail_stage = None
     diag = {}
