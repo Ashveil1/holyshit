@@ -1,7 +1,10 @@
 #!/bin/sh
 set -e
 # regenerate selfhost/be/be.holy: translate, then apply selfhost/be/patches.py
-cd "$(dirname "$0")/.." && python3 scripts/py2hs.py x64gen.py,irx64.py /tmp/all.holy && python3 - <<'PY'
+# C2.4: the translation step runs the hs port of py2hs (selfhost/py/pygen.holy
+# via interp); byte-identical to the old scripts/py2hs.py pipeline (gate:
+# tests/test_pygen.py), so be.holy does not change and the seed is untouched.
+cd "$(dirname "$0")/.." && python3 interp.py selfhost/py/pygen_run.holy x64gen.py,irx64.py /tmp/all.holy x64.py && python3 - <<'PY'
 import re, sys
 sys.path.insert(0, "selfhost/be")
 from patches import PATCHES

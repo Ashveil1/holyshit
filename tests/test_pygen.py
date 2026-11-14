@@ -22,17 +22,19 @@ DRIVER = ROOT / "selfhost" / "py" / "pygen_run.holy"
 CORPUS = ROOT / "tests" / "py2hs_corpus"
 ASM = ROOT / "x64.py"
 TARGETS = [ROOT / f for f in ("x64.py", "irx64.py", "x64gen.py")]
+# the mkbe.sh translation step: comma-separated multi-source input
+MULTI = [tuple(ROOT / f for f in ("x64gen.py", "irx64.py"))]
 
 
-def run_mine(src, out):
+def run_mine(srcs_csv, out):
     return subprocess.run(
-        [sys.executable, str(INTERP), str(DRIVER), str(src), str(out), str(ASM)],
+        [sys.executable, str(INTERP), str(DRIVER), srcs_csv, str(out), str(ASM)],
         capture_output=True, text=True, errors="replace")
 
 
-def run_oracle(src, out):
+def run_oracle(srcs, out):
     warns = []
-    errs = py2hs.translate([str(src)], str(out), str(ASM), warns)
+    errs = py2hs.translate([str(s) for s in srcs], str(out), str(ASM), warns)
     return ["WARNING " + w for w in warns] + ["UNSUPPORTED " + e for e in errs]
 
 
@@ -48,11 +50,11 @@ def main():
         out = CORPUS / (name + ".pygen.tmp")
         orc = CORPUS / (name + ".py2hs.tmp")
         try:
-            r = run_mine(inp, out)
+            r = run_mine(str(inp), out)
             assert r.returncode == 0, (name, r.stdout, r.stderr)
             lines = r.stdout.splitlines()
             text = out.read_text() if out.exists() else ""
-            assert lines == run_oracle(inp, orc), (name, lines)
+            assert lines == run_oracle([inp], orc), (name, lines)
             if golden.exists():
                 assert not any(l.startswith("UNSUPPORTED ") for l in lines), (name, lines)
                 assert text == golden.read_text(), name
@@ -73,16 +75,17 @@ def main():
             for p in (out, orc):
                 if p.exists():
                     p.unlink()
-    for tgt in TARGETS:
-        mine = tgt.with_suffix(".pygen.tmp")
-        orc = tgt.with_suffix(".py2hs.tmp")
+    for grp in [tuple([t]) for t in TARGETS] + list(MULTI):
+        label = ",".join(p.name for p in grp)
+        mine = ROOT / (grp[0].stem + ".pygen.tmp")
+        orc = ROOT / (grp[0].stem + ".py2hs.tmp")
         try:
-            r = run_mine(tgt, mine)
-            assert r.returncode == 0, (tgt, r.stdout, r.stderr)
-            assert r.stdout.splitlines() == run_oracle(tgt, orc), tgt
-            assert mine.read_text() == orc.read_text(), tgt
+            r = run_mine(",".join(str(p) for p in grp), mine)
+            assert r.returncode == 0, (label, r.stdout, r.stderr)
+            assert r.stdout.splitlines() == run_oracle(grp, orc), label
+            assert mine.read_text() == orc.read_text(), label
             total += 1
-            print(f"ok   pygen {tgt.name}")
+            print(f"ok   pygen {label}")
         finally:
             for p in (mine, orc):
                 if p.exists():
