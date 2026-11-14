@@ -948,6 +948,16 @@ def num_node(x):
     return N("num", x[2], {"val": hexval(s), "raw": s})
   if find(s, ".") >= 0 or find(s, "e") >= 0 or find(s, "E") >= 0:
     return N("num", x[2], {"val": float(s), "raw": s})
+  if has(P, "big_num_text") and P["big_num_text"]:
+    v = 0
+    okv = true
+    try:
+      v = int(s)
+    except as e:
+      okv = false
+    if okv:
+      return N("num", x[2], {"val": v, "raw": null})
+    return N("num", x[2], {"val": s, "raw": s})
   return N("num", x[2], {"val": int(s), "raw": null})
 
 def parse_atom():
