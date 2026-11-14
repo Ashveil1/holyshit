@@ -20,7 +20,7 @@ def ts_is(ts, i, kind, v):
     return false
   return ts[i][0] == kind and ts[i][1] == v
 
-# ---------- expression parser (recursive descent, Python precedence) ----------
+# ---------- expression parser (precedence climbing, Python precedence) ----------
 
 def parse_expr(ts, i):
   # lambda and ifexp sit at the bottom
@@ -65,111 +65,88 @@ def parse_lambda(ts, i):
   return [{"t": "Lambda", "args": names, "defaults": defaults, "body": rb[0], "line": ln}, rb[1]]
 
 def parse_or(ts, i):
-  r = parse_and(ts, i)
-  while ts_is(ts, r[1], "ID", "or"):
-    r2 = parse_and(ts, r[1] + 1)
-    if r[0]["t"] == "BoolOp" and r[0]["op"] == "Or":
-      append(r[0]["values"], r2[0])
-      r = [r[0], r2[1]]
-    else:
-      r = [{"t": "BoolOp", "op": "Or", "values": [r[0], r2[0]], "line": r[0]["line"]}, r2[1]]
-  return r
-
-def parse_and(ts, i):
-  r = parse_not(ts, i)
-  while ts_is(ts, r[1], "ID", "and"):
-    r2 = parse_not(ts, r[1] + 1)
-    if r[0]["t"] == "BoolOp" and r[0]["op"] == "And":
-      append(r[0]["values"], r2[0])
-      r = [r[0], r2[1]]
-    else:
-      r = [{"t": "BoolOp", "op": "And", "values": [r[0], r2[0]], "line": r[0]["line"]}, r2[1]]
-  return r
-
-def parse_not(ts, i):
-  if ts_is(ts, i, "ID", "not"):
-    r = parse_not(ts, i + 1)
-    return [{"t": "UnaryOp", "op": "Not", "operand": r[0], "line": ts[i][2]}, r[1]]
-  return parse_compare(ts, i)
+  return parse_prec(ts, i, 1)
 
 CMPOPS = {"<": "Lt", ">": "Gt", "==": "Eq", "!=": "NotEq", "<=": "LtE", ">=": "GtE"}
+BIN9OPS = {"*": "Mult", "/": "Div", "//": "FloorDiv", "%": "Mod", "@": "MatMult"}
 
-def parse_compare(ts, i):
-  r = parse_bitor(ts, i)
-  ops = []
-  cmps = []
-  while true:
-    j = r[1]
-    op = ""
-    if ts_at(ts, j, "OP") and ts[j][1] in CMPOPS:
-      op = CMPOPS[ts[j][1]]
-      j = j + 1
-    elif ts_is(ts, j, "ID", "in"):
-      op = "In"
-      j = j + 1
-    elif ts_is(ts, j, "ID", "not") and ts_is(ts, j + 1, "ID", "in"):
-      op = "NotIn"
-      j = j + 2
-    elif ts_is(ts, j, "ID", "is"):
-      if ts_is(ts, j + 1, "ID", "not"):
-        op = "IsNot"
-        j = j + 2
-      else:
-        op = "Is"
-        j = j + 1
-    else:
+# precedence climbing: or 1, and 2, compare 3, | 4, ^ 5, & 6, << >> 7,
+# + - 8, * / // % @ 9. Unary +,-,~ and right-assoc ** stay in parse_factor;
+# prefix `not` binds between and and compare. Returns [prec, width, op, kind]
+# with kind "bin" (BinOp), "bool" (BoolOp, same-op chains flattened) or "cmp"
+# (Compare, all consecutive comparators chained), or null when not an infix op.
+def classify_op(ts, i):
+  t = ts[i]
+  if t[0] == "ID":
+    v = t[1]
+    if v == "or":
+      return [1, 1, "Or", "bool"]
+    if v == "and":
+      return [2, 1, "And", "bool"]
+    if v == "in":
+      return [3, 1, "In", "cmp"]
+    if v == "is":
+      if ts_is(ts, i + 1, "ID", "not"):
+        return [3, 2, "IsNot", "cmp"]
+      return [3, 1, "Is", "cmp"]
+    if v == "not" and ts_is(ts, i + 1, "ID", "in"):
+      return [3, 2, "NotIn", "cmp"]
+    return null
+  if t[0] != "OP":
+    return null
+  v = t[1]
+  if v in CMPOPS:
+    return [3, 1, CMPOPS[v], "cmp"]
+  if v == "|":
+    return [4, 1, "BitOr", "bin"]
+  if v == "^":
+    return [5, 1, "BitXor", "bin"]
+  if v == "&":
+    return [6, 1, "BitAnd", "bin"]
+  if v == "<<":
+    return [7, 1, "LShift", "bin"]
+  if v == ">>":
+    return [7, 1, "RShift", "bin"]
+  if v == "+":
+    return [8, 1, "Add", "bin"]
+  if v == "-":
+    return [8, 1, "Sub", "bin"]
+  if v in BIN9OPS:
+    return [9, 1, BIN9OPS[v], "bin"]
+  return null
+
+def parse_prec(ts, i, minp):
+  if minp <= 3 and ts_is(ts, i, "ID", "not"):
+    rn = parse_prec(ts, i + 1, 3)
+    r = [{"t": "UnaryOp", "op": "Not", "operand": rn[0], "line": ts[i][2]}, rn[1]]
+  else:
+    r = parse_factor(ts, i)
+  while r[1] < len(ts):
+    c = classify_op(ts, r[1])
+    if c == null or c[0] < minp:
       break
-    r2 = parse_bitor(ts, j)
-    append(ops, op)
-    append(cmps, r2[0])
-    r = [r[0], r2[1]]
-  if len(ops) == 0:
-    return r
-  return [{"t": "Compare", "left": r[0], "ops": ops, "comparators": cmps, "line": r[0]["line"]}, r[1]]
-
-BINLEVELS = [["|", "BitOr"], ["^", "BitXor"], ["&", "BitAnd"]]
-
-def parse_bitor(ts, i):
-  return parse_binlevel(ts, i, 0)
-
-def parse_binlevel(ts, i, lv):
-  if lv >= len(BINLEVELS):
-    return parse_shift(ts, i)
-  r = parse_binlevel(ts, i, lv + 1)
-  op = BINLEVELS[lv]
-  while ts_is(ts, r[1], "OP", op[0]):
-    r2 = parse_binlevel(ts, r[1] + 1, lv + 1)
-    r = [{"t": "BinOp", "op": op[1], "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
-  return r
-
-def parse_shift(ts, i):
-  r = parse_arith(ts, i)
-  while ts_is(ts, r[1], "OP", "<<") or ts_is(ts, r[1], "OP", ">>"):
-    op = "LShift"
-    if ts[r[1]][1] == ">>":
-      op = "RShift"
-    r2 = parse_arith(ts, r[1] + 1)
-    r = [{"t": "BinOp", "op": op, "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
-  return r
-
-def parse_arith(ts, i):
-  r = parse_term(ts, i)
-  while ts_is(ts, r[1], "OP", "+") or ts_is(ts, r[1], "OP", "-"):
-    op = "Add"
-    if ts[r[1]][1] == "-":
-      op = "Sub"
-    r2 = parse_term(ts, r[1] + 1)
-    r = [{"t": "BinOp", "op": op, "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
-  return r
-
-TERMOPS = {"*": "Mult", "/": "Div", "//": "FloorDiv", "%": "Mod", "@": "MatMult"}
-
-def parse_term(ts, i):
-  r = parse_factor(ts, i)
-  while ts_at(ts, r[1], "OP") and ts[r[1]][1] in TERMOPS:
-    op = TERMOPS[ts[r[1]][1]]
-    r2 = parse_factor(ts, r[1] + 1)
-    r = [{"t": "BinOp", "op": op, "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
+    if c[3] == "cmp":
+      ops = []
+      cmps = []
+      while r[1] < len(ts):
+        cc = classify_op(ts, r[1])
+        if cc == null or cc[3] != "cmp":
+          break
+        r2 = parse_prec(ts, r[1] + cc[1], 4)
+        append(ops, cc[2])
+        append(cmps, r2[0])
+        r = [r[0], r2[1]]
+      r = [{"t": "Compare", "left": r[0], "ops": ops, "comparators": cmps, "line": r[0]["line"]}, r[1]]
+      continue
+    r2 = parse_prec(ts, r[1] + c[1], c[0] + 1)
+    if c[3] == "bool":
+      if r[0]["t"] == "BoolOp" and r[0]["op"] == c[2]:
+        append(r[0]["values"], r2[0])
+        r = [r[0], r2[1]]
+      else:
+        r = [{"t": "BoolOp", "op": c[2], "values": [r[0], r2[0]], "line": r[0]["line"]}, r2[1]]
+    else:
+      r = [{"t": "BinOp", "op": c[2], "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
   return r
 
 UNOPS = {"-": "USub", "+": "UAdd", "~": "Invert"}
