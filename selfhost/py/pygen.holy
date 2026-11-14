@@ -821,6 +821,21 @@ def sigget(T, n):
     return T["sigs"][n]
   return null
 
+def py_split_csv(a):
+  # sys.argv-style split on "," (py2hs __main__: sys.argv[1].split(","))
+  out = []
+  cur = ""
+  i = 0
+  while i < len(a):
+    if a[i] == ",":
+      append(out, cur)
+      cur = ""
+    else:
+      cur = cur + a[i]
+    i = i + 1
+  append(out, cur)
+  return out
+
 def py_split_str(a):
   # split emitted arg string on ", " (top level only good enough for the
   # Gen.Scope path, which takes simple args)

@@ -1,9 +1,12 @@
-# C2.3 driver: pygen_run.holy SRC DST ASM_PATH
-# Mirrors scripts/py2hs.py __main__: writes the translated .holy and prints
-# WARNING/UNSUPPORTED lines.
+# C2.3 driver: pygen_run.holy SRCS_CSV DST ASM_PATH
+# Mirrors scripts/py2hs.py __main__: SRCS_CSV is a comma-separated source
+# list; writes the translated .holy and prints WARNING/UNSUPPORTED lines.
 import pygen
 
-r = pygen.pygen_translate([read_text(argv()[0])], read_text(argv()[2]))
+srcs = []
+for p in pygen.py_split_csv(argv()[0]):
+  append(srcs, read_text(p))
+r = pygen.pygen_translate(srcs, read_text(argv()[2]))
 write_text(argv()[1], r[0])
 for w in r[1]:
   print "WARNING " + w
