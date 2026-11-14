@@ -53,6 +53,7 @@ SUITES = [
     ("test_pygen.py", "C2 pygen hs py2hs translator port vs py2hs.py byte-exact"),
     ("test_pygen_native.py", "C2 pygen xbuild-compiled translator vs py2hs.py byte-exact"),
     ("test_pygen_seed_build.py", "C2 hosted-seed translator build identical + smoke"),
+    ("test_mkbe_pipeline.py", "C2 Python-free mkbe regenerates be.holy byte-identically"),
     ("test_py2hs_slice_step.py", "py2hs explicit slice steps fail closed"),
     ("test_py2hs_builtins.py", "py2hs HS_BUILTINS/HS_RESERVED cover interp builtins; nm collision renaming"),
     ("test_byteops.py", "byte_len/byte_find/byte_at parity and errors on interp/native/x64"),

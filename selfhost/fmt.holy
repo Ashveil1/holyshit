@@ -389,6 +389,7 @@ def fmt_stmt(s, ind, out):
 try:
   args = argv()
   src = read_text(args[0])
+  parselib.P["big_num_text"] = true
   prog = parselib.parse(src)
   if len(args) > 1:
     if args[1] == "--comments":

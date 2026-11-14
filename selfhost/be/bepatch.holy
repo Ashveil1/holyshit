@@ -1,0 +1,133 @@
+# bepatch.holy: Python-free port of the mkbe patch step (was the
+# python3 heredoc in scripts/mkbe.sh + selfhost/be/patches.py).
+# argv: SRC DST. Applies the mechanical py_ -> pyrt.py_ rewrite,
+# the import header, the py_open default, the tuple-loop scratch
+# rename, and the maintained PATCHES list, in the same order.
+# The PATCHES data below is GENERATED from the old patches.py; keep
+# entries in sync by editing this file (patches.py is deleted).
+
+PATCHES = []
+append(PATCHES, ["    lo = layout(len(asm.state()[\"code\"]), len(asm.state()[\"data\"]))\n    code = asm.resolve_at(lo[\"text_vaddr\"], lo[\"data_vaddr\"])\n    start_off = asm.state()[\"labels\"][\"_start\"]\n    return pack(code, pyrt.py_bytes(asm.state()[\"data\"]), start_off, lo)", "    lo = elf.layout(len(asm.state()[\"code\"]))\n    code = asm.resolve_at(lo[\"text_vaddr\"], lo[\"data_vaddr\"])\n    start_off = asm.state()[\"labels\"][\"_start\"]\n    return elf.pack(code, asm.state()[\"data\"], start_off, lo)"])
+append(PATCHES, ["    gcrt.gc_data(a)", "    gcrt.gc_data()"])
+append(PATCHES, ["    k = pyrt.py_id(by)\n    if (not (k in c)):\n      order = pyrt.py_dict([[_p", "    c = {}\n    k = 0\n    if (not (k in c)):\n      order = pyrt.py_dict([[_p"])
+append(PATCHES, ["_st.unpack(\"<Q\", pyrt.py_pack(\"<d\", v))[0]", "pyrt.py_f64bits(v)"])
+append(PATCHES, ["pyrt.py_get(_os.environ, \"HSPATH\", \"\")", "pyrt.py_hspath()"])
+append(PATCHES, ["pyrt.py_os_path_join(pyrt.py_os_path_dirname(pyrt.py_os_path_abspath(__file__)), \"runtime\", \"json.holy\")", "(pyrt.py_root() + \"/runtime/json.holy\")"])
+append(PATCHES, ["(bool(arms) and pyrt.py_all(arms))", "((len(arms) > 0) and pyrt.py_all(arms))"])
+append(PATCHES, ["        self.bi_stubs[pyrt.py_key([name, n])] = (\"hsBI_\" + str(bid) + \"_\" + str(n))", "        self.bi_stubs[pyrt.py_key([name, n])] = [n, (\"hsBI_\" + str(bid) + \"_\" + str(n))]"])
+append(PATCHES, ["asm.jmp(self.bi_stubs[pyrt.py_key([name, n])])", "asm.jmp(self.bi_stubs[pyrt.py_key([name, n])][1])"])
+append(PATCHES, ["    for _f5833_0, label in pyrt.py_sorted(pyrt.py_items(self.bi_stubs), (lambda kv: kv[1])):\n      name = _f5833_0[0]\n      n = _f5833_0[1]\n", "    for _f5833_0, label in pyrt.py_sorted(pyrt.py_items(self.bi_stubs), (lambda kv: kv[1][1])):\n      name = pyrt.py_bi_name(_f5833_0)\n      n = label[0]\n      label = label[1]\n"])
+append(PATCHES, ["      try:\n        path = self._find_module(dotted, from_dir, ln)\n        is_shell = false", "      is_shell = false\n      path = null\n      try:\n        path = self._find_module(dotted, from_dir, ln)\n        is_shell = false"])
+append(PATCHES, ["(pyrt.py_get(loads, ins[\"fn\"], null) in GenIR_JSON_CALLS)", "pyrt.py_has_key(pyrt.py_get(loads, ins[\"fn\"], null), GenIR_JSON_CALLS)"])
+append(PATCHES, ["if ((pname in GenIR_JSON_CALLS) and", "if (pyrt.py_has_key(pname, GenIR_JSON_CALLS) and"])
+append(PATCHES, ["asm.data_qword(((bits - (1 << 64)) if (bits >= (1 << 63)) else bits))", "asm.data_qword(bits)"])
+append(PATCHES, ["frozenset(pyrt.py_set([\"read_bytes\", \"tcp_recv\", \"http_get\"]))", "pyrt.py_set([\"read_bytes\", \"tcp_recv\", \"http_get\"])"])
+append(PATCHES, ["str(e.msg)), e.line)", "str(pyrt.py_ewrap(e))), pyrt.py_eline(e))"])
+
+def is_ident_ch(c):
+  if c >= "0" and c <= "9":
+    return true
+  if c >= "a" and c <= "z":
+    return true
+  if c >= "A" and c <= "Z":
+    return true
+  return c == "_"
+
+def replace_all(s, old, new):
+  parts = []
+  i = 0
+  while true:
+    j = find(s[i:], old)
+    if j < 0:
+      break
+    append(parts, s[i:(i + j)])
+    append(parts, new)
+    i = i + j + len(old)
+  append(parts, s[i:])
+  return join("", parts)
+
+def py_prefix(s):
+  # re.sub(r"\bpy_(\w+)\(", r"pyrt.py_\1(", s)
+  parts = []
+  last = 0
+  i = 0
+  n = len(s)
+  while i + 3 < n:
+    if s[i:(i + 3)] == "py_" and (i == 0 or not is_ident_ch(s[(i - 1):i])):
+      j = i + 3
+      while j < n and is_ident_ch(s[j:(j + 1)]):
+        j = j + 1
+      if j < n and j > i + 3 and s[j:(j + 1)] == "(":
+        append(parts, s[last:i])
+        append(parts, "pyrt." + s[i:(j + 1)])
+        last = j + 1
+        i = j + 1
+        continue
+    i = i + 1
+  append(parts, s[last:])
+  return join("", parts)
+
+def fix_py_open(s):
+  # re.sub(r"pyrt\.py_open\(([^,()]+)\)", r"pyrt.py_open(\1, null)", s)
+  parts = []
+  last = 0
+  i = 0
+  n = len(s)
+  needle = "pyrt.py_open("
+  while true:
+    k = find(s[i:], needle)
+    if k < 0:
+      break
+    k = k + i
+    j = k + len(needle)
+    m = j
+    ok = true
+    while m < n:
+      c = s[m:(m + 1)]
+      if c == ")":
+        break
+      if c == "," or c == "(":
+        ok = false
+        break
+      m = m + 1
+    if ok and m < n and m > j:
+      append(parts, s[last:m])
+      append(parts, ", null")
+      last = m
+      i = m
+    else:
+      i = k + len(needle)
+  append(parts, s[last:])
+  return join("", parts)
+
+def rename_scratch(s):
+  # re.search(r"for (_f[0-9]+_0), label in pyrt.py_sorted\(pyrt.py_items\(self.bi_stubs\)", s)
+  # then s.replace(match.group(1), "_f5833_0") - all occurrences of the name
+  anchor = "for _f"
+  tail = "_0, label in pyrt.py_sorted(pyrt.py_items(self.bi_stubs"
+  k = find(s, anchor)
+  while k >= 0:
+    j = k + len(anchor)
+    m = j
+    while m < len(s) and s[m:(m + 1)] >= "0" and s[m:(m + 1)] <= "9":
+      m = m + 1
+    if m > j and s[m:(m + len(tail))] == tail:
+      return replace_all(s, "_f" + s[j:m] + "_0", "_f5833_0")
+    nk = find(s[(k + 1):], anchor)
+    if nk < 0:
+      return s
+    k = k + 1 + nk
+  return s
+
+args = argv()
+s = read_text(args[0])
+s = py_prefix(s)
+s = "import pyrt\nimport asm\nimport gcrt\nimport elf\n\n" + s
+s = fix_py_open(s)
+s = rename_scratch(s)
+for p in PATCHES:
+  if find(s, p[0]) < 0:
+    print "PATCH MISSING: " + p[0][0:70]
+    raise "patch missing"
+  s = replace_all(s, p[0], p[1])
+write_text(args[1], s)
