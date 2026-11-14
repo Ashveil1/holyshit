@@ -259,6 +259,17 @@ with tempfile.TemporaryDirectory() as d:
         m = re.search(r"fails (\d+)", out)
         check("ksurface all assertions pass", m and m.group(1) == "0", out[-800:])
         check("ksurface ran its checks", out.count("\nok ") >= 25, out[-800:])
+    # kpci: config-space enumeration; the five pinned functions are the pc
+    # machine's fixed slots, extra devices (default NIC) may follow them
+    kp = os.path.join(d, "kp.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kpcitest.holy"), kp)
+    check("kpcitest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kp, timeout=10)
+        check("kpci finished", "PCI TEST DONE" in out, out[-800:])
+        check("kpci did not fault", "EXC " not in out, out[-800:])
+        check("kpci all assertions pass", "PCI TEST DONE 0" in out, out[-800:])
+        check("kpci ran its checks", ("\n" + out).count("\nok ") >= 35, out[-800:])
     # address spaces: a new PML4 shares the kernel, isolates user pages
     ka = os.path.join(d, "ka.elf")
     rc = build_xkernel(os.path.join(ROOT, "kernel", "kaddrtest.holy"), ka)

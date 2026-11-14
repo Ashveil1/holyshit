@@ -1,0 +1,96 @@
+# PCI config-space enumeration, mechanism #1 (ports 0xCF8 / 0xCFC).
+# init() walks bus 0..255, dev 0..31, fn 0..7 and records every function
+# whose vendor id is not 0xFFFF. Functions of a single-function device
+# (header-type bit 7 clear) are skipped. Accessors read the table.
+CONFIG_ADDR = 0xCF8
+CONFIG_DATA = 0xCFC
+MAX_DEV = 64
+
+recs = []
+ndev = 0
+
+def addr(bus, dev, fn, reg):
+  return 0x80000000 | (bus << 16) | (dev << 11) | (fn << 8) | (reg & 252)
+
+def rd32(bus, dev, fn, reg):
+  ioport_out(CONFIG_ADDR, addr(bus, dev, fn, reg), 4)
+  return ioport_in(CONFIG_DATA, 4)
+
+def scan_fn(bus, dev, fn):
+  global ndev
+  id = rd32(bus, dev, fn, 0)
+  if id & 0xFFFF == 0xFFFF:
+    return 0
+  cls = rd32(bus, dev, fn, 8)
+  append(recs, [bus, dev, fn, id & 0xFFFF, id >> 16 & 0xFFFF, cls >> 24 & 0xFF, cls >> 16 & 0xFF, cls >> 8 & 0xFF, cls & 0xFF])
+  ndev = ndev + 1
+  return 1
+
+def init():
+  global recs, ndev
+  recs = []
+  ndev = 0
+  bus = 0
+  while bus < 256:
+    dev = 0
+    while dev < 32:
+      if scan_fn(bus, dev, 0) == 1:
+        ht = rd32(bus, dev, 0, 12)
+        if ht >> 16 & 0x80 != 0:
+          fn = 1
+          while fn < 8:
+            scan_fn(bus, dev, fn)
+            if ndev >= MAX_DEV:
+              return ndev
+            fn = fn + 1
+      if ndev >= MAX_DEV:
+        return ndev
+      dev = dev + 1
+    bus = bus + 1
+  return ndev
+
+def count():
+  return ndev
+
+def bus(i):
+  return recs[i][0]
+
+def dev(i):
+  return recs[i][1]
+
+def fn(i):
+  return recs[i][2]
+
+def vendor(i):
+  return recs[i][3]
+
+def device(i):
+  return recs[i][4]
+
+def classof(i):
+  return recs[i][5]
+
+def subclass(i):
+  return recs[i][6]
+
+def progif(i):
+  return recs[i][7]
+
+def rev(i):
+  return recs[i][8]
+
+def find(vendor_id, device_id):
+  i = 0
+  while i < ndev:
+    if recs[i][3] == vendor_id and recs[i][4] == device_id:
+      return i
+    i = i + 1
+  return -1
+
+def find_class(class_code, sub):
+  i = 0
+  while i < ndev:
+    if recs[i][5] == class_code and recs[i][6] == sub:
+      return i
+    i = i + 1
+  return -1

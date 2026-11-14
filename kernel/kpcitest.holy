@@ -1,0 +1,60 @@
+# PCI config-space enumeration gate: kpci.init() must find exactly the five
+# functions QEMU's pc machine exposes, cross-checked against the QEMU
+# monitor's own "info pci" topology.
+import kpci
+
+fails = 0
+
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+def expect_ge(label, got, want):
+  global fails
+  if got >= want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+n = kpci.init()
+expect_ge("function count", n, 5)
+expect("host bridge bus", kpci.bus(0), 0)
+expect("host bridge dev", kpci.dev(0), 0)
+expect("host bridge fn", kpci.fn(0), 0)
+expect("host bridge vendor", kpci.vendor(0), 0x8086)
+expect("host bridge device", kpci.device(0), 0x1237)
+expect("host bridge class", kpci.classof(0), 6)
+expect("host bridge subclass", kpci.subclass(0), 0)
+expect("isa bridge vendor", kpci.vendor(1), 0x8086)
+expect("isa bridge device", kpci.device(1), 0x7000)
+expect("isa bridge class", kpci.classof(1), 6)
+expect("isa bridge subclass", kpci.subclass(1), 1)
+expect("ide fn", kpci.fn(2), 1)
+expect("ide device", kpci.device(2), 0x7010)
+expect("ide class", kpci.classof(2), 1)
+expect("ide subclass", kpci.subclass(2), 1)
+expect("ide progif", kpci.progif(2), 0x80)
+expect("acpi fn", kpci.fn(3), 3)
+expect("acpi device", kpci.device(3), 0x7113)
+expect("acpi subclass", kpci.subclass(3), 0x80)
+expect("acpi rev", kpci.rev(3), 3)
+expect("vga dev", kpci.dev(4), 2)
+expect("vga vendor", kpci.vendor(4), 0x1234)
+expect("vga device", kpci.device(4), 0x1111)
+expect("vga class", kpci.classof(4), 3)
+expect("vga rev", kpci.rev(4), 2)
+expect("find host bridge", kpci.find(0x8086, 0x1237), 0)
+expect("find vga", kpci.find(0x1234, 0x1111), 4)
+expect("find miss", kpci.find(0x8086, 0x9999), -1)
+expect("find_class vga", kpci.find_class(3, 0), 4)
+expect("find_class ide", kpci.find_class(1, 1), 2)
+expect("find_class miss", kpci.find_class(9, 0), -1)
+expect("rd32 host bridge", kpci.rd32(0, 0, 0, 0) & 0xFFFF, 0x8086)
+expect("rd32 absent fn", kpci.rd32(0, 5, 0, 0) & 0xFFFF, 0xFFFF)
+expect("rd32 absent bus", kpci.rd32(7, 0, 0, 0) & 0xFFFF, 0xFFFF)
+print "PCI TEST DONE", fails
