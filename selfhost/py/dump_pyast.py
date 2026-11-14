@@ -190,7 +190,8 @@ def conv(n):
 
 def conv_comp(g):
     return {"t": "comprehension", "line": g.target.lineno, "target": conv(g.target),
-            "iter": conv(g.iter), "ifs": [conv(c) for c in g.ifs]}
+            "iter": conv(g.iter), "ifs": [conv(c) for c in g.ifs],
+            "async": 1 if g.is_async else 0}
 
 
 # the schema field lists, kept in sync with pydump.holy

@@ -5,11 +5,9 @@ Differential: selfhost/py/pyparse_run.holy (via interp.py) vs
 selfhost/py/dump_pyast.py (CPython 3.11 ast oracle) over the frozen py2hs
 corpus and the real translation targets x64.py, irx64.py, x64gen.py, using
 the canonical S-expression dump of selfhost/py/pydump.holy's PYDUMP_SCHEMA.
-
-Two corpus pins (fail_comp_async, fail_dict_starstar) hold constructs py2hs
-rejects; pyparse fails them closed at parse time (error text differs from
-py2hs's translate-time rejection - same accept/reject behavior). Also pins
-the fail-closed error surface for out-of-subset syntax.
+Async comprehensions and dict-merge parse into marked nodes like CPython
+(the pygen translator rejects them, matching py2hs); also pins fail-closed
+syntax errors.
 """
 import os
 import subprocess
@@ -21,8 +19,6 @@ DRIVER = os.path.join(ROOT, "selfhost", "py", "pyparse_run.holy")
 ORACLE = os.path.join(ROOT, "selfhost", "py", "dump_pyast.py")
 CORPUS = os.path.join(ROOT, "tests", "py2hs_corpus")
 TARGETS = [os.path.join(ROOT, f) for f in ("x64.py", "irx64.py", "x64gen.py")]
-# py2hs rejects these; pyparse fails them closed instead of matching CPython
-PARSE_REJECTS = {"fail_comp_async.py", "fail_dict_starstar.py"}
 
 
 def run(cmd):
@@ -35,12 +31,6 @@ def main():
         os.path.join(CORPUS, f) for f in os.listdir(CORPUS) if f.endswith(".py"))
     for f in files + TARGETS:
         got = run([sys.executable, os.path.join(ROOT, "interp.py"), DRIVER, f])
-        if os.path.basename(f) in PARSE_REJECTS:
-            assert got.returncode != 0, (f, got.stdout)
-            assert got.stdout.startswith("error: "), (f, got.stdout)
-            total += 1
-            print(f"ok   pyparse {os.path.basename(f)} (fails closed)")
-            continue
         want = run([sys.executable, ORACLE, f])
         assert want.returncode == 0, (f, want.stderr)
         assert got.returncode == 0, (f, got.stdout, got.stderr)
@@ -50,7 +40,6 @@ def main():
     bad_sources = [
         '@dec\ndef f():\n    pass\n',
         'async def f():\n    pass\n',
-        'd = {**a}\n',
         'f(**kw)\n',
         'a = f"{ {1:2} }"\n',
         'for (name, n), label in xs:\n    pass\n',  # must PARSE (nested tuple target)
