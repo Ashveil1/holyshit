@@ -1,0 +1,87 @@
+# C2.2 canonical AST dump for the pyparse/pydump differential.
+# dump(node) -> S-expression string. selfhost/py/dump_pyast.py emits the
+# identical format from CPython's ast; the two must match byte for byte.
+
+PYDUMP_SCHEMA = {}
+PYDUMP_SCHEMA["Constant"] = ["kind", "v"]
+PYDUMP_SCHEMA["Name"] = ["id"]
+PYDUMP_SCHEMA["Attribute"] = ["value", "attr"]
+PYDUMP_SCHEMA["Call"] = ["func", "args", "keywords"]
+PYDUMP_SCHEMA["UnaryOp"] = ["op", "operand"]
+PYDUMP_SCHEMA["BinOp"] = ["op", "l", "r"]
+PYDUMP_SCHEMA["BoolOp"] = ["op", "values"]
+PYDUMP_SCHEMA["Compare"] = ["left", "ops", "comparators"]
+PYDUMP_SCHEMA["IfExp"] = ["body", "test", "orelse"]
+PYDUMP_SCHEMA["Subscript"] = ["value", "slice"]
+PYDUMP_SCHEMA["Slice"] = ["lower", "upper", "step"]
+PYDUMP_SCHEMA["Tuple"] = ["elts"]
+PYDUMP_SCHEMA["List"] = ["elts"]
+PYDUMP_SCHEMA["Set"] = ["elts"]
+PYDUMP_SCHEMA["Dict"] = ["keys", "values"]
+PYDUMP_SCHEMA["JoinedStr"] = ["values"]
+PYDUMP_SCHEMA["FormattedValue"] = ["value", "spec", "conv"]
+PYDUMP_SCHEMA["NamedExpr"] = ["target", "value"]
+PYDUMP_SCHEMA["Lambda"] = ["args", "defaults", "body"]
+PYDUMP_SCHEMA["ListComp"] = ["elt", "generators"]
+PYDUMP_SCHEMA["SetComp"] = ["elt", "generators"]
+PYDUMP_SCHEMA["DictComp"] = ["key", "value", "generators"]
+PYDUMP_SCHEMA["GeneratorExp"] = ["elt", "generators"]
+PYDUMP_SCHEMA["comprehension"] = ["target", "iter", "ifs"]
+PYDUMP_SCHEMA["Yield"] = ["value"]
+PYDUMP_SCHEMA["Await"] = ["value"]
+PYDUMP_SCHEMA["FunctionDef"] = ["name", "args", "defaults", "body"]
+PYDUMP_SCHEMA["ClassDef"] = ["name", "bases", "body"]
+PYDUMP_SCHEMA["Expr"] = ["value"]
+PYDUMP_SCHEMA["Return"] = ["value"]
+PYDUMP_SCHEMA["Pass"] = []
+PYDUMP_SCHEMA["Break"] = []
+PYDUMP_SCHEMA["Continue"] = []
+PYDUMP_SCHEMA["Assert"] = ["test", "msg"]
+PYDUMP_SCHEMA["Raise"] = ["exc"]
+PYDUMP_SCHEMA["Delete"] = ["targets"]
+PYDUMP_SCHEMA["Import"] = []
+PYDUMP_SCHEMA["AugAssign"] = ["target", "op", "value"]
+PYDUMP_SCHEMA["Assign"] = ["targets", "value"]
+PYDUMP_SCHEMA["If"] = ["test", "body", "orelse"]
+PYDUMP_SCHEMA["While"] = ["test", "body", "orelse"]
+PYDUMP_SCHEMA["For"] = ["target", "iter", "body", "orelse"]
+PYDUMP_SCHEMA["Try"] = ["body", "handlers", "finalbody"]
+PYDUMP_SCHEMA["handler"] = ["name", "body"]
+PYDUMP_SCHEMA["With"] = ["items", "body"]
+PYDUMP_SCHEMA["withitem"] = ["context", "vars"]
+PYDUMP_SCHEMA["keyword"] = ["arg", "value"]
+PYDUMP_SCHEMA["Global"] = []
+PYDUMP_SCHEMA["Nonlocal"] = []
+
+def dump_leaf(v):
+  j = json_str(v)
+  if j == "null":
+    return "()"
+  return j
+
+def dump_any(v):
+  j = json_str(v)
+  if j == "null":
+    return "()"
+  if j[0] == "[":
+    out = "["
+    first = true
+    for x in v:
+      if not first:
+        out = out + " "
+      first = false
+      out = out + dump_any(x)
+    return out + "]"
+  if j[0] == "{":
+    return dump_node(v)
+  return j
+
+def dump_node(n):
+  t = n["t"]
+  out = "(" + t + " " + str(n["line"])
+  for f in PYDUMP_SCHEMA[t]:
+    out = out + " " + dump_any(n[f])
+  return out + ")"
+
+def dump_module(body):
+  return dump_any(body)

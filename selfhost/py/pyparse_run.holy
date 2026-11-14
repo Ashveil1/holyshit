@@ -1,0 +1,11 @@
+# C2.2 parser driver: prints the canonical AST dump for a Python source
+# file. Must match `python3 selfhost/py/dump_pyast.py FILE` byte for byte.
+import pyparse
+import pydump
+
+try:
+  body = pyparse.parse(read_text(argv()[0]))
+except as e:
+  print "error: " + e
+  raise "pyparse failed"
+print pydump.dump_module(body)
