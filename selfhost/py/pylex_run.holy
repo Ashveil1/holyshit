@@ -1,0 +1,33 @@
+# C2.1 lexer driver: prints one token per line
+#   KIND<TAB>value<TAB>line
+# matching `python3 selfhost/py/dump_pylex.py FILE` byte for byte.
+# Errors print "error: msg at line N" and exit nonzero.
+import pylex
+
+def pylex_tsv(s):
+  out = ""
+  i = 0
+  while i < len(s):
+    c = s[i]
+    if c == "\\":
+      out = out + "\\\\"
+    elif c == "\n":
+      out = out + "\\n"
+    elif c == "\t":
+      out = out + "\\t"
+    elif c == "\r":
+      out = out + "\\r"
+    elif c == "\0":
+      out = out + "\\0"
+    else:
+      out = out + c
+    i = i + 1
+  return out
+
+try:
+  toks = pylex.lex(read_text(argv()[0]))
+except as e:
+  print "error: " + e
+  raise "pylex failed"
+for t in toks:
+  print t[0] + "\t" + pylex_tsv(t[1]) + "\t" + str(t[2])

@@ -1,0 +1,294 @@
+# C2.1: Python-subset lexer for the hs port of py2hs.
+# lex(src) -> [[kind, value, line], ...]
+# Kinds: ID NUM STR BYTES FSTR OP INDENT DEDENT NEWLINE EOF.
+# STR/BYTES/FSTR values keep the RAW source spelling (prefix + quotes);
+# decoding is the parser's job (pyparse.holy). NUM keeps the raw spelling.
+# Fail-closed: raises "msg at line N" for anything outside the subset
+# (docs/py-subset-spec.md). Oracle: selfhost/py/dump_pylex.py (CPython
+# tokenize, 3.11 semantics) must match byte for byte via pylex_run.holy.
+
+PYID = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+PYDIG = "0123456789"
+PYHEX = "0123456789abcdefABCDEF"
+PYOCT = "01234567"
+PYBIN = "01"
+PYOPS3 = ["**=", "//=", "<<=", ">>=", "..."]
+PYOPS2 = ["**", "//", "<<", ">>", "<=", ">=", "==", "!=", "->", ":=", "+=", "-=", "*=", "/=", "%=", "@=", "&=", "|=", "^="]
+PYOPS1 = "+-*/%@&|^~<>=()[]{},:.;"
+PYPFX = "rRbBfF"
+
+def pylex_fail(msg, ln):
+  raise msg + " at line " + str(ln)
+
+def pylex_idchar(c):
+  return c in PYID or c in PYDIG
+
+# Scan a string body starting at k (just past the opening quote).
+# Returns [end_index_after_close, new_line]. qlen is 1 or 3 (triple).
+def pylex_str_body(src, k, ln, quote, qlen, raw, is_f):
+  n = len(src)
+  close = ""
+  if qlen == 3:
+    close = quote + quote + quote
+  else:
+    close = quote
+  while k < n:
+    c = src[k]
+    if c == "\\" and not raw:
+      if k + 1 >= n:
+        break
+      if src[k + 1] == "\n":
+        ln = ln + 1
+      k = k + 2
+    elif is_f and c == "{":
+      if k + 1 < n and src[k + 1] == "{":
+        k = k + 2
+      else:
+        r = pylex_fexpr(src, k + 1, ln)
+        k = r[0]
+        ln = r[1]
+    elif is_f and c == "}":
+      if k + 1 < n and src[k + 1] == "}":
+        k = k + 2
+      else:
+        pylex_fail("f-string: single '}'", ln)
+    elif c == "\n":
+      if qlen == 3:
+        ln = ln + 1
+        k = k + 1
+      else:
+        pylex_fail("unterminated string literal", ln)
+    elif c == quote:
+      if qlen == 1:
+        return [k + 1, ln]
+      if src[k:k + 3] == close:
+        return [k + 3, ln]
+      k = k + 1
+    else:
+      k = k + 1
+  pylex_fail("unterminated string literal", ln)
+
+# Scan an f-string expression part starting at k (just past '{').
+# Fail-closed subset: no nested '{', no backslash, no newline (single-line
+# f-strings only); nested strings may use the other quote kinds.
+def pylex_fexpr(src, k, ln):
+  n = len(src)
+  while k < n:
+    c = src[k]
+    if c == "}":
+      return [k + 1, ln]
+    if c == "'" or c == "\"":
+      r = pylex_str_body(src, k + 1, ln, c, 1, false, false)
+      k = r[0]
+      ln = r[1]
+    elif c == "{":
+      pylex_fail("f-string: nested '{' unsupported", ln)
+    elif c == "\\":
+      pylex_fail("f-string expression part cannot include a backslash", ln)
+    elif c == "\n":
+      pylex_fail("f-string expression part cannot span lines", ln)
+    elif c == "#":
+      pylex_fail("f-string expression part cannot include '#'", ln)
+    else:
+      k = k + 1
+  pylex_fail("f-string: expecting '}'", ln)
+
+# Scan a whole string literal starting at i (first prefix char or quote).
+# Returns [end_index, new_line, is_f, is_b].
+def pylex_string(src, i, ln):
+  n = len(src)
+  j = i
+  while j < n and src[j] in PYPFX:
+    j = j + 1
+  prefix = ""
+  if j > i:
+    prefix = src[i:j]
+  low = ""
+  for ch in prefix:
+    low = low + ch
+  is_f = "f" in low or "F" in low
+  is_b = "b" in low or "B" in low
+  is_r = "r" in low or "R" in low
+  if is_f and is_b:
+    pylex_fail("invalid string prefix", ln)
+  if len(prefix) > 2:
+    pylex_fail("invalid string prefix", ln)
+  if j >= n or (src[j] != "'" and src[j] != "\""):
+    pylex_fail("invalid string prefix", ln)
+  quote = src[j]
+  qlen = 1
+  if src[j:j + 3] == quote + quote + quote:
+    qlen = 3
+  r = pylex_str_body(src, j + qlen, ln, quote, qlen, is_r, is_f)
+  return [r[0], r[1], is_f, is_b]
+
+# Scan a number starting at i. Keeps the raw spelling; the parser
+# validates digits/underscores/range. Fail-closed on idchar contact.
+def pylex_number(src, i, ln):
+  n = len(src)
+  k = i
+  if src[i] == "0" and i + 1 < n and (src[i + 1] == "x" or src[i + 1] == "X"):
+    k = i + 2
+    while k < n and (src[k] in PYHEX or src[k] == "_"):
+      k = k + 1
+  elif src[i] == "0" and i + 1 < n and (src[i + 1] == "o" or src[i + 1] == "O"):
+    k = i + 2
+    while k < n and (src[k] in PYOCT or src[k] == "_"):
+      k = k + 1
+  elif src[i] == "0" and i + 1 < n and (src[i + 1] == "b" or src[i + 1] == "B"):
+    k = i + 2
+    while k < n and (src[k] in PYBIN or src[k] == "_"):
+      k = k + 1
+  else:
+    while k < n and (src[k] in PYDIG or src[k] == "_"):
+      k = k + 1
+    if k < n and src[k] == "." and k + 1 < n and src[k + 1] in PYDIG:
+      k = k + 1
+      while k < n and (src[k] in PYDIG or src[k] == "_"):
+        k = k + 1
+    if k < n and (src[k] == "e" or src[k] == "E"):
+      m = k + 1
+      if m < n and (src[m] == "+" or src[m] == "-"):
+        m = m + 1
+      if m < n and src[m] in PYDIG:
+        k = m
+        while k < n and (src[k] in PYDIG or src[k] == "_"):
+          k = k + 1
+    if k < n and (src[k] == "j" or src[k] == "J"):
+      k = k + 1
+  if k < n and pylex_idchar(src[k]):
+    pylex_fail("invalid decimal literal", ln)
+  return k
+
+def lex(src):
+  toks = []
+  stack = [0]
+  i = 0
+  ln = 1
+  n = len(src)
+  depth = 0
+  at_start = true
+  line_had_tokens = false
+  while i < n:
+    if at_start:
+      col = 0
+      while i < n and src[i] == " ":
+        i = i + 1
+        col = col + 1
+      if i >= n:
+        break
+      c = src[i]
+      if c == "\n":
+        i = i + 1
+        ln = ln + 1
+        continue
+      if c == "#":
+        while i < n and src[i] != "\n":
+          i = i + 1
+        continue
+      if c == "\t":
+        pylex_fail("tabs not allowed, use spaces", ln)
+      if depth == 0:
+        top = stack[len(stack) - 1]
+        if col > top:
+          append(stack, col)
+          append(toks, ["INDENT", "", ln])
+        elif col < top:
+          while len(stack) > 1 and col < stack[len(stack) - 1]:
+            stack = stack[0:len(stack) - 1]
+            append(toks, ["DEDENT", "", ln])
+          if col != stack[len(stack) - 1]:
+            pylex_fail("unindent does not match any outer indentation level", ln)
+      at_start = false
+      line_had_tokens = false
+    c = src[i]
+    if c == " " or c == "\t":
+      i = i + 1
+    elif c == "#":
+      while i < n and src[i] != "\n":
+        i = i + 1
+    elif c == "\n":
+      i = i + 1
+      ln = ln + 1
+      if depth == 0:
+        if line_had_tokens:
+          append(toks, ["NEWLINE", "", ln - 1])
+        line_had_tokens = false
+        at_start = true
+    elif c == "\\":
+      if i + 1 < n and src[i + 1] == "\n":
+        i = i + 2
+        ln = ln + 1
+      else:
+        pylex_fail("unexpected character after line continuation character", ln)
+    elif c == "'" or c == "\"" or (c in PYPFX and i + 1 < n and (src[i + 1] == "'" or src[i + 1] == "\"" or src[i + 1] in PYPFX)):
+      isstr = false
+      if c == "'" or c == "\"":
+        isstr = true
+      else:
+        # prefix candidate: up to 2 prefix letters then a quote
+        j = i
+        while j < n and src[j] in PYPFX and j - i < 2:
+          j = j + 1
+        if j < n and (src[j] == "'" or src[j] == "\""):
+          isstr = true
+        else:
+          isstr = false
+      if isstr:
+        start_ln = ln
+        r = pylex_string(src, i, ln)
+        raw = src[i:r[0]]
+        ln = r[1]
+        if r[2]:
+          append(toks, ["FSTR", raw, start_ln])
+        elif r[3]:
+          append(toks, ["BYTES", raw, start_ln])
+        else:
+          append(toks, ["STR", raw, start_ln])
+        i = r[0]
+        line_had_tokens = true
+      else:
+        # plain identifier that happens to start with r/b/f
+        k = i + 1
+        while k < n and pylex_idchar(src[k]):
+          k = k + 1
+        append(toks, ["ID", src[i:k], ln])
+        i = k
+        line_had_tokens = true
+    elif c in PYDIG or (c == "." and i + 1 < n and src[i + 1] in PYDIG):
+      k = pylex_number(src, i, ln)
+      append(toks, ["NUM", src[i:k], ln])
+      i = k
+      line_had_tokens = true
+    elif c in PYID:
+      k = i + 1
+      while k < n and pylex_idchar(src[k]):
+        k = k + 1
+      append(toks, ["ID", src[i:k], ln])
+      i = k
+      line_had_tokens = true
+    elif src[i:i + 3] in PYOPS3:
+      append(toks, ["OP", src[i:i + 3], ln])
+      i = i + 3
+      line_had_tokens = true
+    elif src[i:i + 2] in PYOPS2:
+      append(toks, ["OP", src[i:i + 2], ln])
+      i = i + 2
+      line_had_tokens = true
+    elif c in PYOPS1:
+      append(toks, ["OP", c, ln])
+      if c == "(" or c == "[" or c == "{":
+        depth = depth + 1
+      elif c == ")" or c == "]" or c == "}":
+        depth = depth - 1
+      i = i + 1
+      line_had_tokens = true
+    else:
+      pylex_fail("bad character " + "'" + c + "'", ln)
+  if line_had_tokens:
+    append(toks, ["NEWLINE", "", ln])
+  while len(stack) > 1:
+    stack = stack[0:len(stack) - 1]
+    append(toks, ["DEDENT", "", ln])
+  append(toks, ["EOF", "", ln])
+  return toks
