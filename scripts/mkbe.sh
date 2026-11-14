@@ -4,7 +4,9 @@ set -e
 # C2.4: the translation step runs the hs port of py2hs (selfhost/py/pygen.holy
 # via interp); byte-identical to the old scripts/py2hs.py pipeline (gate:
 # tests/test_pygen.py), so be.holy does not change and the seed is untouched.
-cd "$(dirname "$0")/.." && python3 interp.py selfhost/py/pygen_run.holy x64gen.py,irx64.py /tmp/all.holy x64.py && python3 - <<'PY'
+# C2.5: compile the translator natively (~1s) and run it (~20s vs ~65s interp);
+# same bytes out (gate: tests/test_pygen_native.py).
+cd "$(dirname "$0")/.." && python3 hs.py xbuild selfhost/py/pygen_run.holy -o /tmp/hs_pygen_native && /tmp/hs_pygen_native x64gen.py,irx64.py /tmp/all.holy x64.py && python3 - <<'PY'
 import re, sys
 sys.path.insert(0, "selfhost/be")
 from patches import PATCHES
