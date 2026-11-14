@@ -1,0 +1,159 @@
+# Double-buffered software surface with dirty-rect flush to a mapped
+# multiboot2 framebuffer. Drawing writes a 32-bit-per-pixel back buffer in
+# kernel heap and records dirty rectangles; flush() copies only the dirty
+# regions to the hardware framebuffer with exactly the byte layout of
+# kframebuffer.pixel (R/G/B at the fbinfo channel offsets; other bytes in
+# each pixel slot are left untouched).
+import kheap
+import std.gfx
+
+MAX_DIRTY = 8
+
+def create(width, height):
+  width = std.gfx.coordinate(width)
+  height = std.gfx.coordinate(height)
+  if width < 1 or height < 1 or width > 4096 or height > 4096:
+    raise "surface dimensions must be 1..4096"
+  if width * height > 4194304:
+    raise "surface exceeds 4194304 pixels"
+  if not kheap.ready():
+    raise "surface requires the kernel heap"
+  buf = kheap.malloc(width * height * 4)
+  if buf == 0:
+    raise "surface allocation failed"
+  i = 0
+  total = width * height
+  while i < total:
+    unsafe:
+      store32(as_ptr(buf + i * 4), 0)
+    i = i + 1
+  # [width, height, backbuf, ndirty, flat rects x0 y0 x1 y1 ...]
+  return [width, height, buf, 0, []]
+
+def mark(s, x0, y0, x1, y1):
+  if x0 < 0:
+    x0 = 0
+  if y0 < 0:
+    y0 = 0
+  if x1 > s[0]:
+    x1 = s[0]
+  if y1 > s[1]:
+    y1 = s[1]
+  if x1 <= x0 or y1 <= y0:
+    return
+  # Existing rects are pairwise disjoint. One forward pass unions every
+  # rect the (growing) pending rect touches; anything already kept stays
+  # disjoint from the union, so a single pass is enough.
+  out = []
+  i = 0
+  while i < s[3]:
+    rx0 = s[4][i * 4]
+    ry0 = s[4][i * 4 + 1]
+    rx1 = s[4][i * 4 + 2]
+    ry1 = s[4][i * 4 + 3]
+    if x0 <= rx1 and rx0 <= x1 and y0 <= ry1 and ry0 <= y1:
+      x0 = rx0 if rx0 < x0 else x0
+      y0 = ry0 if ry0 < y0 else y0
+      x1 = rx1 if rx1 > x1 else x1
+      y1 = ry1 if ry1 > y1 else y1
+    else:
+      append(out, rx0)
+      append(out, ry0)
+      append(out, rx1)
+      append(out, ry1)
+    i = i + 1
+  if len(out) >> 2 >= MAX_DIRTY:
+    # Capacity reached: collapse to one full-surface rect.
+    s[3] = 1
+    s[4] = [0, 0, s[0], s[1]]
+    return
+  append(out, x0)
+  append(out, y0)
+  append(out, x1)
+  append(out, y1)
+  s[3] = len(out) >> 2
+  s[4] = out
+
+def pixel(s, x, y, color):
+  x = std.gfx.coordinate(x)
+  y = std.gfx.coordinate(y)
+  color = std.gfx.color24(color)
+  if x < 0 or y < 0 or x >= s[0] or y >= s[1]:
+    return
+  buf = s[2]
+  address = buf + (y * s[0] + x) * 4
+  unsafe:
+    store32(as_ptr(address), color)
+  mark(s, x, y, x + 1, y + 1)
+
+def rect(s, x, y, width, height, color):
+  x = std.gfx.coordinate(x)
+  y = std.gfx.coordinate(y)
+  width = std.gfx.coordinate(width)
+  height = std.gfx.coordinate(height)
+  color = std.gfx.color24(color)
+  if width <= 0 or height <= 0:
+    return
+  left = 0 if x < 0 else x
+  top = 0 if y < 0 else y
+  right = s[0] if x + width > s[0] else x + width
+  bottom = s[1] if y + height > s[1] else y + height
+  buf = s[2]
+  row = top
+  while row < bottom:
+    col = left
+    while col < right:
+      address = buf + (row * s[0] + col) * 4
+      unsafe:
+        store32(as_ptr(address), color)
+      col = col + 1
+    row = row + 1
+  mark(s, left, top, right, bottom)
+
+def sample(s, x, y):
+  x = std.gfx.coordinate(x)
+  y = std.gfx.coordinate(y)
+  if x < 0 or y < 0 or x >= s[0] or y >= s[1]:
+    raise "surface sample outside surface"
+  buf = s[2]
+  address = buf + (y * s[0] + x) * 4
+  unsafe:
+    return load32(as_ptr(address))
+
+def flush(s, frame):
+  # Copy every dirty rect to the hardware framebuffer, then clear the
+  # dirty list. Returns the number of pixels written (overlap-free by the
+  # disjoint invariant, so the count is exact).
+  buf = s[2]
+  written = 0
+  i = 0
+  while i < s[3]:
+    x0 = s[4][i * 4]
+    y0 = s[4][i * 4 + 1]
+    x1 = s[4][i * 4 + 2]
+    y1 = s[4][i * 4 + 3]
+    row = y0
+    while row < y1:
+      base = frame[0] + row * frame[1]
+      col = x0
+      while col < x1:
+        source = buf + (row * s[0] + col) * 4
+        address = base + col * frame[4]
+        red_address = address + frame[5]
+        green_address = address + frame[6]
+        blue_address = address + frame[7]
+        # Keep each load and its use in one unsafe statement: the AST
+        # backend does not carry a plain local assigned in unsafe out of
+        # the block (reads Unbound); single-expression load-store matches
+        # kconsole_buffer and compiles under both backends.
+        unsafe:
+          store8(as_ptr(red_address), load32(as_ptr(source)) >> 16 & 255)
+          store8(as_ptr(green_address), load32(as_ptr(source)) >> 8 & 255)
+          store8(as_ptr(blue_address), load32(as_ptr(source)) & 255)
+        written = written + 1
+        col = col + 1
+      row = row + 1
+    i = i + 1
+  s[3] = 0
+  s[4] = []
+  return written
