@@ -697,6 +697,14 @@ def t_target(T, tg):
     return t_e(T, tg)
   raise "target " + tg["t"]
 
+def norm_defaults(s):
+  # pyparse pads defaults with null per param; py2hs sees CPython's trailing-only list
+  defs = []
+  for d in s["defaults"]:
+    if d != null:
+      append(defs, d)
+  return defs
+
 def t_body(T, stmts, ind):
   n0 = len(T["out"])
   for s in stmts:
@@ -710,7 +718,7 @@ def t_st(T, s, ind):
     if ind == 0 and (s["name"] in HS_RESERVED or s["name"] in HS_BUILTINS):
       append(T["warn"], "name-collision: top-level def '" + s["name"] + "' (line " + str(s["line"]) + ") shadows an hs reserved/builtin name; emitted name unchanged (warning only)")
     ps = []
-    defs = s["defaults"]
+    defs = norm_defaults(s)
     nd = len(s["args"]) - len(defs)
     inclass = len(s["args"]) > 0 and s["args"][0] == "self"
     i = 0
@@ -769,7 +777,7 @@ def t_st(T, s, ind):
       r = t_e(T, f["value"])
       t_w(T, ind, r + " = " + r + "[0:(len(" + r + ") - 1)]")
       return
-    if f["attr"] == "pop" and len(s["value"]["args"]) == 1 and (f["value"]["t"] == "Name" or f["value"]["t"] == "Attribute" or f["value"]["t"] == "Call"):
+    if f["attr"] == "pop" and len(s["value"]["args"]) == 2 and (f["value"]["t"] == "Name" or f["value"]["t"] == "Attribute" or f["value"]["t"] == "Call"):
       t_w(T, ind, t_recv(T, f["value"]) + "[" + t_key(T, s["value"]["args"][0]) + "] = null")
       return
     if f["attr"] == "discard" and len(s["value"]["args"]) == 1:
@@ -1036,16 +1044,18 @@ def pygen_translate(src_texts, asm_text):
   nodes = []
   walk_nodes(body, nodes)
   for n in nodes:
-    if n["t"] == "FunctionDef" and len(n["args"]) > 0 and n["args"][0] == "self" and len(n["defaults"]) > 0:
-      nd = len(n["args"]) - len(n["defaults"]) - 1
-      dl = []
-      i = 0
-      while i < nd:
-        append(dl, null)
-        i = i + 1
-      for d in list_tail(n["defaults"], nd):
-        append(dl, t_e(T, d))
-      T["defaults"][n["name"]] = dl
+    if n["t"] == "FunctionDef" and len(n["args"]) > 0 and n["args"][0] == "self":
+      ndefs = norm_defaults(n)
+      if len(ndefs) > 0:
+        nd = len(n["args"]) - len(ndefs) - 1
+        dl = []
+        i = 0
+        while i < nd:
+          append(dl, null)
+          i = i + 1
+        for d in ndefs:
+          append(dl, t_e(T, d))
+        T["defaults"][n["name"]] = dl
   for n in nodes:
     if n["t"] == "ClassDef":
       for m in n["body"]:
@@ -1064,16 +1074,18 @@ def pygen_translate(src_texts, asm_text):
   for s in body:
     mark = len(T["out"])
     try:
+      dropped = false
       if s["t"] == "Assign":
         t_w(T, 0, t_target(T, s["targets"][0]) + " = " + t_e(T, s["value"]))
-      elif s["t"] == "Import" or s["t"] == "Expr":
-        pass
+      elif s["t"] == "Import" or s["t"] == "ImportFrom" or s["t"] == "Expr":
+        dropped = true
       elif s["t"] == "If" and has_name_ref(s["test"], "__name__"):
-        pass
+        dropped = true
       else:
         t_st(T, s, 0)
-      t_w(T, 0, "")
-      while len(T["hoisted"]) > 0 or len(T["hoisted_consts"]) > 0:
+      if not dropped:
+        t_w(T, 0, "")
+      while not dropped and (len(T["hoisted"]) > 0 or len(T["hoisted_consts"]) > 0):
         hc = T["hoisted_consts"]
         T["hoisted_consts"] = []
         hh = T["hoisted"]
