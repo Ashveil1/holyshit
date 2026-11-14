@@ -1,0 +1,261 @@
+# C2.2 helpers: number conversion and string decoding for the Python-subset
+# parser (pyparse.holy). Numbers may exceed hs's 62-bit Int, so they are
+# handled as decimal digit strings. Fail-closed via pylex.pylex_fail.
+import pylex
+
+# ---------- decimal-string helpers ----------
+
+def dec_add_small(s, d):
+  out = ""
+  carry = d
+  i = len(s) - 1
+  while i >= 0:
+    v = int(s[i]) + carry
+    out = str(v % 10) + out
+    carry = int(v / 10)
+    i = i - 1
+  while carry > 0:
+    out = str(carry % 10) + out
+    carry = int(carry / 10)
+  return out
+
+def dec_mul_small(s, m):
+  buf = ""
+  carry = 0
+  i = len(s) - 1
+  while i >= 0:
+    v = int(s[i]) * m + carry
+    buf = str(v % 10) + buf
+    carry = int(v / 10)
+    i = i - 1
+  while carry > 0:
+    buf = str(carry % 10) + buf
+    carry = int(carry / 10)
+  return buf
+
+def dec_strip_zeros(s):
+  i = 0
+  while i < len(s) - 1 and s[i] == "0":
+    i = i + 1
+  return s[i:len(s)]
+
+def dec_cmp(a, b):
+  if len(a) != len(b):
+    if len(a) < len(b):
+      return 0 - 1
+    return 1
+  if a == b:
+    return 0
+  if a < b:
+    return 0 - 1
+  return 1
+
+def dec_sub(a, b):
+  # a - b for normalized decimal strings, a >= b
+  out = ""
+  borrow = 0
+  i = len(a) - 1
+  j = len(b) - 1
+  while i >= 0:
+    v = int(a[i]) - borrow
+    if j >= 0:
+      v = v - int(b[j])
+      j = j - 1
+    if v < 0:
+      v = v + 10
+      borrow = 1
+    else:
+      borrow = 0
+    out = str(v) + out
+    i = i - 1
+  return dec_strip_zeros(out)
+
+def hex_digit(c):
+  if c >= "0" and c <= "9":
+    return int(c)
+  if c >= "a" and c <= "f":
+    return 10 + (byte_at(c, 0) - byte_at("a", 0))
+  if c >= "A" and c <= "F":
+    return 10 + (byte_at(c, 0) - byte_at("A", 0))
+  return 0 - 1
+
+# NUM raw spelling -> {"k": "int", "v": decimal-string} or {"k": "float",
+# "v": raw}. Fail-closed on malformed literals.
+def pynum(raw, ln):
+  n = len(raw)
+  if raw[0] == "_" or raw[n - 1] == "_" or "__" in raw:
+    pylex.pylex_fail("invalid decimal literal", ln)
+  if raw[0:2] == "0x" or raw[0:2] == "0X":
+    d = "0"
+    i = 2
+    while i < n:
+      v = hex_digit(raw[i])
+      if v < 0:
+        if raw[i] != "_":
+          pylex.pylex_fail("invalid hexadecimal literal", ln)
+      else:
+        d = dec_add_small(dec_mul_small(d, 16), v)
+      i = i + 1
+    return {"k": "int", "v": d}
+  if raw[0:2] == "0o" or raw[0:2] == "0O":
+    d = "0"
+    i = 2
+    while i < n:
+      c = raw[i]
+      if c != "_":
+        if not (c in pylex.PYOCT):
+          pylex.pylex_fail("invalid octal literal", ln)
+        d = dec_add_small(dec_mul_small(d, 8), int(c))
+      i = i + 1
+    return {"k": "int", "v": d}
+  if raw[0:2] == "0b" or raw[0:2] == "0B":
+    d = "0"
+    i = 2
+    while i < n:
+      c = raw[i]
+      if c != "_":
+        if not (c in pylex.PYBIN):
+          pylex.pylex_fail("invalid binary literal", ln)
+        d = dec_add_small(dec_mul_small(d, 2), int(c))
+      i = i + 1
+    return {"k": "int", "v": d}
+  if "." in raw or "e" in raw or "E" in raw or "j" in raw or "J" in raw:
+    return {"k": "float", "v": raw}
+  d = ""
+  i = 0
+  while i < n:
+    if raw[i] != "_":
+      d = d + raw[i]
+    i = i + 1
+  if len(d) > 1 and d[0] == "0":
+    pylex.pylex_fail("leading zeros in decimal integer literals are not permitted", ln)
+  return {"k": "int", "v": d}
+
+# ---------- string decoding (raw spelling -> value) ----------
+
+OCTD = "01234567"
+
+def chr_code(n, ln):
+  # one hs character for code point n (BMP only; astral fails closed)
+  if n > 65535:
+    pylex.pylex_fail("code point beyond U+FFFF unsupported", ln)
+  h = "0123456789abcdef"
+  q = "\\u" + h[(n >> 12) & 15] + h[(n >> 8) & 15] + h[(n >> 4) & 15] + h[n & 15]
+  return json_parse("\"" + q + "\"")
+
+def esc_value(body, i, ln):
+  # body[i] == '\\'. Returns [code_point_or_-1_for_text, text, next_index].
+  # Plain two-character escapes map to their control code; octal/hex/unicode
+  # to their value; unknown escapes keep backslash+char (CPython behavior).
+  n = len(body)
+  c = body[i + 1]
+  if c == "n":
+    return [10, "", i + 2]
+  if c == "t":
+    return [9, "", i + 2]
+  if c == "r":
+    return [13, "", i + 2]
+  if c == "a":
+    return [7, "", i + 2]
+  if c == "b":
+    return [8, "", i + 2]
+  if c == "f":
+    return [12, "", i + 2]
+  if c == "v":
+    return [11, "", i + 2]
+  if c == "\\":
+    return [92, "", i + 2]
+  if c == "'":
+    return [39, "", i + 2]
+  if c == "\"":
+    return [34, "", i + 2]
+  if c in OCTD:
+    j = i + 1
+    v = 0
+    cnt = 0
+    while j < n and cnt < 3 and body[j] in OCTD:
+      v = v * 8 + int(body[j])
+      j = j + 1
+      cnt = cnt + 1
+    return [v % 256, "", j]
+  if c == "x":
+    v = 0
+    cnt = 0
+    j = i + 2
+    while j < n and cnt < 2 and hex_digit(body[j]) >= 0:
+      v = v * 16 + hex_digit(body[j])
+      j = j + 1
+      cnt = cnt + 1
+    if cnt == 0:
+      pylex.pylex_fail("invalid \\x escape", ln)
+    return [v, "", j]
+  if c == "u":
+    v = 0
+    cnt = 0
+    j = i + 2
+    while j < n and cnt < 4 and hex_digit(body[j]) >= 0:
+      v = v * 16 + hex_digit(body[j])
+      j = j + 1
+      cnt = cnt + 1
+    if cnt != 4:
+      pylex.pylex_fail("invalid \\u escape", ln)
+    return [v, "", j]
+  if c == "U":
+    pylex.pylex_fail("\\U escapes unsupported", ln)
+  if c == "N":
+    pylex.pylex_fail("\\N escapes unsupported", ln)
+  if c == "\n":
+    return [0 - 1, "", i + 2]
+  return [0 - 1, "\\" + c, i + 2]
+
+# Decode a raw literal body (prefix + quotes stripped by the caller).
+# is_bytes -> list of byte ints; otherwise -> hs string.
+def pydecode(body, raw, is_bytes, ln):
+  out = ""
+  bout = []
+  i = 0
+  n = len(body)
+  while i < n:
+    c = body[i]
+    if c == "\\" and not raw:
+      if i + 1 >= n:
+        pylex.pylex_fail("trailing backslash in string", ln)
+      r = esc_value(body, i, ln)
+      if is_bytes:
+        if r[0] >= 0:
+          append(bout, r[0])
+        else:
+          if r[1] != "":
+            # unknown escape: backslash + ascii char
+            append(bout, 92)
+            append(bout, byte_at(r[1][1], 0))
+      else:
+        if r[0] >= 0:
+          out = out + chr_code(r[0], ln)
+        else:
+          out = out + r[1]
+      i = r[2]
+    else:
+      if is_bytes:
+        if byte_len(c) != 1 or byte_at(c, 0) > 127:
+          pylex.pylex_fail("bytes can only contain ASCII literal characters", ln)
+        append(bout, byte_at(c, 0))
+      else:
+        out = out + c
+      i = i + 1
+  if is_bytes:
+    return bout
+  return out
+
+# Split a raw STR/BYTES/FSTR token spelling into [prefix, quote, body].
+def split_literal(spelling, ln):
+  i = 0
+  while i < len(spelling) and spelling[i] in pylex.PYPFX:
+    i = i + 1
+  prefix = spelling[0:i]
+  q = spelling[i]
+  qlen = 1
+  if spelling[i:i + 3] == q + q + q:
+    qlen = 3
+  body = spelling[i + qlen:len(spelling) - qlen]
+  return [prefix, q, body]

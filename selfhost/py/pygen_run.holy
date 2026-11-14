@@ -1,0 +1,11 @@
+# C2.3 driver: pygen_run.holy SRC DST ASM_PATH
+# Mirrors scripts/py2hs.py __main__: writes the translated .holy and prints
+# WARNING/UNSUPPORTED lines.
+import pygen
+
+r = pygen.pygen_translate([read_text(argv()[0])], read_text(argv()[2]))
+write_text(argv()[1], r[0])
+for w in r[1]:
+  print "WARNING " + w
+for e in r[2]:
+  print "UNSUPPORTED " + e

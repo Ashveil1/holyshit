@@ -1,0 +1,1035 @@
+# C2.2: Python-subset parser for the hs port of py2hs.
+# parse(src) -> list of statement nodes. Nodes are dicts: "t" (type tag),
+# "line", and type-specific fields. The schema mirrors CPython 3.11 ast only
+# where py2hs consumes it (docs/py-subset-spec.md). Fail-closed.
+import pylex
+import pydec
+
+def pfail(msg, t):
+  raise msg + " at line " + str(t[2])
+
+# ---------- token stream ----------
+
+def ts_at(ts, i, kind):
+  if i >= len(ts):
+    return false
+  return ts[i][0] == kind
+
+def ts_is(ts, i, kind, v):
+  if i >= len(ts):
+    return false
+  return ts[i][0] == kind and ts[i][1] == v
+
+# ---------- expression parser (recursive descent, Python precedence) ----------
+
+def parse_expr(ts, i):
+  # lambda and ifexp sit at the bottom
+  if ts_is(ts, i, "ID", "lambda"):
+    return parse_lambda(ts, i)
+  r = parse_or(ts, i)
+  if ts_is(ts, r[1], "ID", "if"):
+    j = r[1] + 1
+    rt = parse_or(ts, j)
+    if not ts_is(ts, rt[1], "ID", "else"):
+      pfail("expected 'else'", ts[rt[1]])
+    ro = parse_expr(ts, rt[1] + 1)
+    return [{"t": "IfExp", "body": r[0], "test": rt[0], "orelse": ro[0], "line": r[0]["line"]}, ro[1]]
+  if ts_is(ts, r[1], "OP", ":="):
+    if r[0]["t"] != "Name":
+      pfail("walrus target must be a name", ts[r[1]])
+    rv = parse_expr(ts, r[1] + 1)
+    return [{"t": "NamedExpr", "target": r[0], "value": rv[0], "line": r[0]["line"]}, rv[1]]
+  return r
+
+def parse_lambda(ts, i):
+  ln = ts[i][2]
+  j = i + 1
+  names = []
+  defaults = []
+  while not ts_is(ts, j, "OP", ":"):
+    if not ts_at(ts, j, "ID"):
+      pfail("expected lambda parameter", ts[j])
+    append(names, ts[j][1])
+    j = j + 1
+    if ts_is(ts, j, "OP", "="):
+      rd = parse_or(ts, j + 1)
+      append(defaults, rd[0])
+      j = rd[1]
+    else:
+      append(defaults, null)
+    if ts_is(ts, j, "OP", ","):
+      j = j + 1
+    elif not ts_is(ts, j, "OP", ":"):
+      pfail("expected ',' or ':' in lambda", ts[j])
+  rb = parse_expr(ts, j + 1)
+  return [{"t": "Lambda", "args": names, "defaults": defaults, "body": rb[0], "line": ln}, rb[1]]
+
+def parse_or(ts, i):
+  r = parse_and(ts, i)
+  while ts_is(ts, r[1], "ID", "or"):
+    r2 = parse_and(ts, r[1] + 1)
+    if r[0]["t"] == "BoolOp" and r[0]["op"] == "Or":
+      append(r[0]["values"], r2[0])
+      r = [r[0], r2[1]]
+    else:
+      r = [{"t": "BoolOp", "op": "Or", "values": [r[0], r2[0]], "line": r[0]["line"]}, r2[1]]
+  return r
+
+def parse_and(ts, i):
+  r = parse_not(ts, i)
+  while ts_is(ts, r[1], "ID", "and"):
+    r2 = parse_not(ts, r[1] + 1)
+    if r[0]["t"] == "BoolOp" and r[0]["op"] == "And":
+      append(r[0]["values"], r2[0])
+      r = [r[0], r2[1]]
+    else:
+      r = [{"t": "BoolOp", "op": "And", "values": [r[0], r2[0]], "line": r[0]["line"]}, r2[1]]
+  return r
+
+def parse_not(ts, i):
+  if ts_is(ts, i, "ID", "not"):
+    r = parse_not(ts, i + 1)
+    return [{"t": "UnaryOp", "op": "Not", "operand": r[0], "line": ts[i][2]}, r[1]]
+  return parse_compare(ts, i)
+
+CMPOPS = {"<": "Lt", ">": "Gt", "==": "Eq", "!=": "NotEq", "<=": "LtE", ">=": "GtE"}
+
+def parse_compare(ts, i):
+  r = parse_bitor(ts, i)
+  ops = []
+  cmps = []
+  while true:
+    j = r[1]
+    op = ""
+    if ts_at(ts, j, "OP") and ts[j][1] in CMPOPS:
+      op = CMPOPS[ts[j][1]]
+      j = j + 1
+    elif ts_is(ts, j, "ID", "in"):
+      op = "In"
+      j = j + 1
+    elif ts_is(ts, j, "ID", "not") and ts_is(ts, j + 1, "ID", "in"):
+      op = "NotIn"
+      j = j + 2
+    elif ts_is(ts, j, "ID", "is"):
+      if ts_is(ts, j + 1, "ID", "not"):
+        op = "IsNot"
+        j = j + 2
+      else:
+        op = "Is"
+        j = j + 1
+    else:
+      break
+    r2 = parse_bitor(ts, j)
+    append(ops, op)
+    append(cmps, r2[0])
+    r = [r[0], r2[1]]
+  if len(ops) == 0:
+    return r
+  return [{"t": "Compare", "left": r[0], "ops": ops, "comparators": cmps, "line": r[0]["line"]}, r[1]]
+
+BINLEVELS = [["|", "BitOr"], ["^", "BitXor"], ["&", "BitAnd"]]
+
+def parse_bitor(ts, i):
+  return parse_binlevel(ts, i, 0)
+
+def parse_binlevel(ts, i, lv):
+  if lv >= len(BINLEVELS):
+    return parse_shift(ts, i)
+  r = parse_binlevel(ts, i, lv + 1)
+  op = BINLEVELS[lv]
+  while ts_is(ts, r[1], "OP", op[0]):
+    r2 = parse_binlevel(ts, r[1] + 1, lv + 1)
+    r = [{"t": "BinOp", "op": op[1], "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
+  return r
+
+def parse_shift(ts, i):
+  r = parse_arith(ts, i)
+  while ts_is(ts, r[1], "OP", "<<") or ts_is(ts, r[1], "OP", ">>"):
+    op = "LShift"
+    if ts[r[1]][1] == ">>":
+      op = "RShift"
+    r2 = parse_arith(ts, r[1] + 1)
+    r = [{"t": "BinOp", "op": op, "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
+  return r
+
+def parse_arith(ts, i):
+  r = parse_term(ts, i)
+  while ts_is(ts, r[1], "OP", "+") or ts_is(ts, r[1], "OP", "-"):
+    op = "Add"
+    if ts[r[1]][1] == "-":
+      op = "Sub"
+    r2 = parse_term(ts, r[1] + 1)
+    r = [{"t": "BinOp", "op": op, "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
+  return r
+
+TERMOPS = {"*": "Mult", "/": "Div", "//": "FloorDiv", "%": "Mod", "@": "MatMult"}
+
+def parse_term(ts, i):
+  r = parse_factor(ts, i)
+  while ts_at(ts, r[1], "OP") and ts[r[1]][1] in TERMOPS:
+    op = TERMOPS[ts[r[1]][1]]
+    r2 = parse_factor(ts, r[1] + 1)
+    r = [{"t": "BinOp", "op": op, "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
+  return r
+
+UNOPS = {"-": "USub", "+": "UAdd", "~": "Invert"}
+
+def parse_factor(ts, i):
+  if ts_at(ts, i, "OP") and ts[i][1] in UNOPS:
+    r = parse_factor(ts, i + 1)
+    return [{"t": "UnaryOp", "op": UNOPS[ts[i][1]], "operand": r[0], "line": ts[i][2]}, r[1]]
+  r = parse_atom_trailer(ts, i)
+  if ts_is(ts, r[1], "OP", "**"):
+    r2 = parse_factor(ts, r[1] + 1)
+    return [{"t": "BinOp", "op": "Pow", "l": r[0], "r": r2[0], "line": r[0]["line"]}, r2[1]]
+  return r
+
+def parse_atom_trailer(ts, i):
+  r = parse_atom(ts, i)
+  while r[1] < len(ts):
+    t = ts[r[1]]
+    if t[0] == "OP" and t[1] == ".":
+      if not ts_at(ts, r[1] + 1, "ID"):
+        pfail("expected attribute name", t)
+      r = [{"t": "Attribute", "value": r[0], "attr": ts[r[1] + 1][1], "line": r[0]["line"]}, r[1] + 2]
+    elif t[0] == "OP" and t[1] == "(":
+      rc = parse_call_args(ts, r[1] + 1)
+      r = [{"t": "Call", "func": r[0], "args": rc[0], "keywords": rc[1], "line": r[0]["line"]}, rc[2]]
+    elif t[0] == "OP" and t[1] == "[":
+      rs = parse_subscript(ts, r[1] + 1)
+      r = [{"t": "Subscript", "value": r[0], "slice": rs[0], "line": r[0]["line"]}, rs[1]]
+    else:
+      break
+  return r
+
+def parse_call_args(ts, i):
+  args = []
+  kws = []
+  j = i
+  while not ts_is(ts, j, "OP", ")"):
+    if ts_is(ts, j, "OP", "**"):
+      pfail("** call arguments unsupported", ts[j])
+    if ts_is(ts, j, "OP", "*"):
+      pfail("* call arguments unsupported", ts[j])
+    r = parse_expr(ts, j)
+    if ts_is(ts, r[1], "ID", "for") or ts_is(ts, r[1], "ID", "async"):
+      # generator expression as a call argument: f(x for x in xs)
+      rg = parse_comp_tail(ts, r[1], r[0])
+      append(args, {"t": "GeneratorExp", "elt": r[0], "generators": rg[0], "line": ts[i - 1][2]})
+      j = rg[1]
+    elif ts_is(ts, r[1], "OP", "=") and r[0]["t"] == "Name":
+      # keyword argument: NAME = expr (no spaces disambiguation needed)
+      rv = parse_expr(ts, r[1] + 1)
+      append(kws, {"t": "keyword", "arg": r[0]["id"], "value": rv[0], "line": r[0]["line"]})
+      j = rv[1]
+    else:
+      append(args, r[0])
+      j = r[1]
+    if ts_is(ts, j, "OP", ","):
+      j = j + 1
+    elif not ts_is(ts, j, "OP", ")"):
+      pfail("expected ',' or ')' in call", ts[j])
+  return [args, kws, j + 1]
+
+def parse_subscript(ts, i):
+  # a[b], a[b:c], a[:c], a[b:], a[:], a[(t1, t2)]
+  j = i
+  if ts_is(ts, j, "OP", ":"):
+    r = parse_slice(ts, j, null)
+    if not ts_is(ts, r[1], "OP", "]"):
+      pfail("expected ']'", ts[r[1]])
+    return [r[0], r[1] + 1]
+  r1 = parse_expr(ts, j)
+  if ts_is(ts, r1[1], "OP", ":"):
+    r = parse_slice(ts, r1[1], r1[0])
+    if not ts_is(ts, r[1], "OP", "]"):
+      pfail("expected ']'", ts[r[1]])
+    return [r[0], r[1] + 1]
+  if ts_is(ts, r1[1], "OP", ","):
+    # tuple subscript: a[k1, k2, ...]
+    elts = [r1[0]]
+    j = r1[1] + 1
+    while not ts_is(ts, j, "OP", "]"):
+      r2 = parse_expr(ts, j)
+      append(elts, r2[0])
+      j = r2[1]
+      if ts_is(ts, j, "OP", ","):
+        j = j + 1
+      elif not ts_is(ts, j, "OP", "]"):
+        pfail("expected ',' or ']' in subscript", ts[j])
+    return [{"t": "Tuple", "elts": elts, "line": r1[0]["line"]}, j + 1]
+  if not ts_is(ts, r1[1], "OP", "]"):
+    pfail("expected ']'", ts[r1[1]])
+  return [r1[0], r1[1] + 1]
+
+def parse_slice(ts, i, lo):
+  # ts[i] == ':'; lo may be null
+  j = i + 1
+  hi = null
+  if not ts_is(ts, j, "OP", "]") and not ts_is(ts, j, "OP", ":"):
+    r = parse_expr(ts, j)
+    hi = r[0]
+    j = r[1]
+  step = null
+  if ts_is(ts, j, "OP", ":"):
+    j = j + 1
+    if not ts_is(ts, j, "OP", "]"):
+      r = parse_expr(ts, j)
+      step = r[0]
+      j = r[1]
+  return [{"t": "Slice", "lower": lo, "upper": hi, "step": step, "line": ts[i][2]}, j]
+
+def parse_comp_tail(ts, i, first):
+  # ts[i] should be 'for'; returns [generators, end_index]
+  gens = []
+  j = i
+  while ts_is(ts, j, "ID", "for") or ts_is(ts, j, "ID", "async"):
+    ln = ts[j][2]
+    is_async = 0
+    if ts_is(ts, j, "ID", "async"):
+      # parsed and marked like CPython's is_async; the translator rejects it
+      is_async = 1
+      j = j + 1
+      if not ts_is(ts, j, "ID", "for"):
+        pfail("expected 'for' after 'async'", ts[j])
+    rt = parse_target_list(ts, j + 1)
+    if not ts_is(ts, rt[1], "ID", "in"):
+      pfail("expected 'in'", ts[rt[1]])
+    ri = parse_or(ts, rt[1] + 1)
+    ifs = []
+    j = ri[1]
+    while ts_is(ts, j, "ID", "if"):
+      rc = parse_or(ts, j + 1)
+      append(ifs, rc[0])
+      j = rc[1]
+    append(gens, {"t": "comprehension", "target": rt[0], "iter": ri[0], "ifs": ifs, "async": is_async, "line": ln})
+  return [gens, j]
+
+def parse_target_list(ts, i):
+  # for-target: a target, or a bare tuple of targets: t1, t2, ... in ...
+  r = parse_star_target(ts, i)
+  if ts_is(ts, r[1], "OP", ","):
+    elts = [r[0]]
+    j = r[1] + 1
+    while not ts_is(ts, j, "ID", "in"):
+      r2 = parse_star_target(ts, j)
+      append(elts, r2[0])
+      j = r2[1]
+      if ts_is(ts, j, "OP", ","):
+        j = j + 1
+      else:
+        break
+    return [{"t": "Tuple", "elts": elts, "line": r[0]["line"]}, j]
+  return r
+
+def parse_star_target(ts, i):
+  # one for-target element: NAME | (t, ...) | [t, ...]  (recursive)
+  t = ts[i]
+  if t[0] == "OP" and (t[1] == "(" or t[1] == "["):
+    closer = ")" if t[1] == "(" else "]"
+    tag = "Tuple" if t[1] == "(" else "List"
+    if ts_is(ts, i + 1, "OP", closer):
+      return [{"t": tag, "elts": [], "line": t[2]}, i + 2]
+    elts = []
+    j = i + 1
+    while true:
+      r = parse_star_target(ts, j)
+      append(elts, r[0])
+      j = r[1]
+      if ts_is(ts, j, "OP", ","):
+        j = j + 1
+        if ts_is(ts, j, "OP", closer):
+          j = j + 1
+          return [{"t": tag, "elts": elts, "line": t[2]}, j]
+      elif ts_is(ts, j, "OP", closer):
+        j = j + 1
+        if len(elts) == 1:
+          return [elts[0], j]
+        return [{"t": tag, "elts": elts, "line": t[2]}, j]
+      else:
+        pfail("expected ',' or '" + closer + "' in for-target", ts[j])
+  if t[0] == "ID":
+    return [{"t": "Name", "id": t[1], "line": t[2]}, i + 1]
+  pfail("expected for-target", t)
+
+def parse_atom(ts, i):
+  t = ts[i]
+  ln = t[2]
+  if t[0] == "NUM":
+    nm = pydec.pynum(t[1], ln)
+    if nm["k"] == "float":
+      return [{"t": "Constant", "kind": "float", "v": nm["v"], "line": ln}, i + 1]
+    return [{"t": "Constant", "kind": "int", "v": nm["v"], "line": ln}, i + 1]
+  if t[0] == "STR" or t[0] == "BYTES" or t[0] == "FSTR":
+    # implicit concatenation of adjacent literals
+    j = i
+    strs = []
+    kinds = []
+    while ts_at(ts, j, "STR") or ts_at(ts, j, "BYTES") or ts_at(ts, j, "FSTR"):
+      append(strs, ts[j])
+      append(kinds, ts[j][0])
+      j = j + 1
+    if "FSTR" in kinds:
+      return [join_fstrings(strs, ln), j]
+    if "BYTES" in kinds:
+      allbytes = true
+      for k in kinds:
+        if k != "BYTES":
+          allbytes = false
+      if not allbytes:
+        pfail("cannot mix bytes and nonbytes literals", t)
+      vals = []
+      for s in strs:
+        vals = vals + decode_str_token(s)
+      return [{"t": "Constant", "kind": "bytes", "v": vals, "line": ln}, j]
+    text = ""
+    for s in strs:
+      text = text + decode_str_token(s)
+    return [{"t": "Constant", "kind": "str", "v": text, "line": ln}, j]
+  if t[0] == "ID":
+    if t[1] == "True":
+      return [{"t": "Constant", "kind": "bool", "v": true, "line": ln}, i + 1]
+    if t[1] == "False":
+      return [{"t": "Constant", "kind": "bool", "v": false, "line": ln}, i + 1]
+    if t[1] == "None":
+      return [{"t": "Constant", "kind": "none", "v": null, "line": ln}, i + 1]
+    if t[1] == "yield":
+      if ts_at(ts, i + 1, "OP") and ts[i + 1][1] in [";", ")", "]", "}"]:
+        return [{"t": "Yield", "value": null, "line": ln}, i + 1]
+      r = parse_expr(ts, i + 1)
+      return [{"t": "Yield", "value": r[0], "line": ln}, r[1]]
+    if t[1] == "await":
+      r = parse_atom_trailer(ts, i + 1)
+      return [{"t": "Await", "value": r[0], "line": ln}, r[1]]
+    return [{"t": "Name", "id": t[1], "line": ln}, i + 1]
+  if t[0] == "OP" and t[1] == "...":
+    return [{"t": "Constant", "kind": "ellipsis", "v": null, "line": ln}, i + 1]
+  if t[0] == "OP" and t[1] == "(":
+    return parse_paren_atom(ts, i)
+  if t[0] == "OP" and t[1] == "[":
+    return parse_bracket_atom(ts, i)
+  if t[0] == "OP" and t[1] == "{":
+    return parse_brace_atom(ts, i)
+  pfail("unexpected token " + t[1], t)
+
+def decode_str_token(tok):
+  p = pydec.split_literal(tok[1], tok[2])
+  raw = "r" in p[0] or "R" in p[0]
+  isb = tok[0] == "BYTES"
+  return pydec.pydecode(p[2], raw, isb, tok[2])
+
+def parse_paren_atom(ts, i):
+  ln = ts[i][2]
+  j = i + 1
+  if ts_is(ts, j, "OP", ")"):
+    return [{"t": "Tuple", "elts": [], "line": ln}, j + 1]
+  r = parse_expr(ts, j)
+  if ts_is(ts, r[1], "OP", ","):
+    elts = [r[0]]
+    j = r[1] + 1
+    while not ts_is(ts, j, "OP", ")"):
+      r2 = parse_expr(ts, j)
+      append(elts, r2[0])
+      j = r2[1]
+      if ts_is(ts, j, "OP", ","):
+        j = j + 1
+      else:
+        break
+    return [{"t": "Tuple", "elts": elts, "line": ln}, j + 1]
+  if ts_is(ts, r[1], "ID", "for") or ts_is(ts, r[1], "ID", "async"):
+    rg = parse_comp_tail(ts, r[1], r[0])
+    if not ts_is(ts, rg[1], "OP", ")"):
+      pfail("expected ')'", ts[rg[1]])
+    return [{"t": "GeneratorExp", "elt": r[0], "generators": rg[0], "line": ln}, rg[1] + 1]
+  if not ts_is(ts, r[1], "OP", ")"):
+    pfail("expected ')'", ts[r[1]])
+  return [r[0], r[1] + 1]
+
+def parse_bracket_atom(ts, i):
+  ln = ts[i][2]
+  j = i + 1
+  if ts_is(ts, j, "OP", "]"):
+    return [{"t": "List", "elts": [], "line": ln}, j + 1]
+  r = parse_expr(ts, j)
+  if ts_is(ts, r[1], "ID", "for") or ts_is(ts, r[1], "ID", "async"):
+    rg = parse_comp_tail(ts, r[1], r[0])
+    if not ts_is(ts, rg[1], "OP", "]"):
+      pfail("expected ']'", ts[rg[1]])
+    return [{"t": "ListComp", "elt": r[0], "generators": rg[0], "line": ln}, rg[1] + 1]
+  elts = [r[0]]
+  j = r[1]
+  while ts_is(ts, j, "OP", ","):
+    j = j + 1
+    if ts_is(ts, j, "OP", "]"):
+      break
+    r2 = parse_expr(ts, j)
+    append(elts, r2[0])
+    j = r2[1]
+  if not ts_is(ts, j, "OP", "]"):
+    pfail("expected ']'", ts[j])
+  return [{"t": "List", "elts": elts, "line": ln}, j + 1]
+
+def parse_brace_atom(ts, i):
+  ln = ts[i][2]
+  j = i + 1
+  if ts_is(ts, j, "OP", "}"):
+    return [{"t": "Dict", "keys": [], "values": [], "line": ln}, j + 1]
+  if ts_is(ts, j, "OP", "**"):
+    # leading dict-merge: CPython Dict(keys=[None], values=[expr])
+    rv0 = parse_expr(ts, j + 1)
+    r = [{"t": "Dict", "keys": [null], "values": [rv0[0]], "line": ln}, rv0[1]]
+  else:
+    r = parse_expr(ts, j)
+  if r[0]["t"] == "Dict":
+    # started with **; keep collecting entries into the same Dict
+    keys = r[0]["keys"]
+    values = r[0]["values"]
+    j = r[1]
+    while ts_is(ts, j, "OP", ","):
+      j = j + 1
+      if ts_is(ts, j, "OP", "}"):
+        break
+      if ts_is(ts, j, "OP", "**"):
+        rv3 = parse_expr(ts, j + 1)
+        append(keys, null)
+        append(values, rv3[0])
+        j = rv3[1]
+        continue
+      rk = parse_expr(ts, j)
+      if not ts_is(ts, rk[1], "OP", ":"):
+        pfail("expected ':' in dict", ts[rk[1]])
+      rv2 = parse_expr(ts, rk[1] + 1)
+      append(keys, rk[0])
+      append(values, rv2[0])
+      j = rv2[1]
+    if not ts_is(ts, j, "OP", "}"):
+      pfail("expected '}'", ts[j])
+    return [{"t": "Dict", "keys": keys, "values": values, "line": ln}, j + 1]
+  if ts_is(ts, r[1], "OP", ":"):
+    # dict
+    keys = [r[0]]
+    rv = parse_expr(ts, r[1] + 1)
+    values = [rv[0]]
+    j = rv[1]
+    if ts_is(ts, j, "ID", "for") or ts_is(ts, j, "ID", "async"):
+      rg = parse_comp_tail(ts, j, null)
+      if not ts_is(ts, rg[1], "OP", "}"):
+        pfail("expected '}'", ts[rg[1]])
+      return [{"t": "DictComp", "key": keys[0], "value": values[0], "generators": rg[0], "line": ln}, rg[1] + 1]
+    while ts_is(ts, j, "OP", ","):
+      j = j + 1
+      if ts_is(ts, j, "OP", "}"):
+        break
+      if ts_is(ts, j, "OP", "**"):
+        # CPython: Dict(keys=[None], values=[expr]); the translator rejects it
+        rv3 = parse_expr(ts, j + 1)
+        append(keys, null)
+        append(values, rv3[0])
+        j = rv3[1]
+        continue
+      rk = parse_expr(ts, j)
+      if not ts_is(ts, rk[1], "OP", ":"):
+        pfail("expected ':' in dict", ts[rk[1]])
+      rv2 = parse_expr(ts, rk[1] + 1)
+      append(keys, rk[0])
+      append(values, rv2[0])
+      j = rv2[1]
+    if not ts_is(ts, j, "OP", "}"):
+      pfail("expected '}'", ts[j])
+    return [{"t": "Dict", "keys": keys, "values": values, "line": ln}, j + 1]
+  # set
+  elts = [r[0]]
+  j = r[1]
+  if ts_is(ts, j, "ID", "for") or ts_is(ts, j, "ID", "async"):
+    rg = parse_comp_tail(ts, j, null)
+    if not ts_is(ts, rg[1], "OP", "}"):
+      pfail("expected '}'", ts[rg[1]])
+    return [{"t": "SetComp", "elt": r[0], "generators": rg[0], "line": ln}, rg[1] + 1]
+  while ts_is(ts, j, "OP", ","):
+    j = j + 1
+    if ts_is(ts, j, "OP", "}"):
+      break
+    r2 = parse_expr(ts, j)
+    append(elts, r2[0])
+    j = r2[1]
+  if not ts_is(ts, j, "OP", "}"):
+    pfail("expected '}'", ts[j])
+  return [{"t": "Set", "elts": elts, "line": ln}, j + 1]
+
+# ---------- f-strings ----------
+
+def join_fstrings(strs, ln):
+  # one or more adjacent STR/FSTR tokens with at least one FSTR -> JoinedStr
+  values = []
+  for tok in strs:
+    if tok[0] == "FSTR":
+      for v in split_fstring(tok):
+        append(values, v)
+    else:
+      append(values, {"t": "Constant", "kind": "str", "v": decode_str_token(tok), "line": tok[2]})
+  # CPython merges adjacent literal parts (f-string tail + plain string and
+  # vice versa) into one Constant, keeping the first part's line
+  merged = []
+  for v in values:
+    if len(merged) > 0 and v["t"] == "Constant" and merged[len(merged) - 1]["t"] == "Constant":
+      merged[len(merged) - 1]["v"] = merged[len(merged) - 1]["v"] + v["v"]
+    else:
+      append(merged, v)
+  return {"t": "JoinedStr", "values": merged, "line": ln}
+
+def split_fstring(tok):
+  p = pydec.split_literal(tok[1], tok[2])
+  raw = "r" in p[0] or "R" in p[0]
+  body = p[2]
+  ln = tok[2]
+  out = []
+  lit = ""
+  i = 0
+  n = len(body)
+  while i < n:
+    c = body[i]
+    if c == "{" and i + 1 < n and body[i + 1] == "{":
+      lit = lit + "{"
+      i = i + 2
+    elif c == "}" and i + 1 < n and body[i + 1] == "}":
+      lit = lit + "}"
+      i = i + 2
+    elif c == "{":
+      if lit != "":
+        append(out, {"t": "Constant", "kind": "str", "v": lit, "line": ln})
+        lit = ""
+      r = parse_fexpr(body, i + 1, ln)
+      append(out, r[0])
+      i = r[1]
+    elif c == "\\" and not raw:
+      r = pydec.esc_value(body, i, ln)
+      if r[0] >= 0:
+        lit = lit + pydec.chr_code(r[0], ln)
+      else:
+        lit = lit + r[1]
+      i = r[2]
+    else:
+      lit = lit + c
+      i = i + 1
+  if lit != "":
+    append(out, {"t": "Constant", "kind": "str", "v": lit, "line": ln})
+  return out
+
+def parse_fexpr(body, i, ln):
+  # body[i-1] == '{'. Scan the expression text up to the matching '}',
+  # splitting off !conversion and :format-spec. Returns [FormattedValue, next].
+  n = len(body)
+  depth = 1
+  j = i
+  while j < n:
+    c = body[j]
+    if c == "'" or c == "\"":
+      r = pylex.pylex_str_body(body, j + 1, ln, c, 1, false, false)
+      j = r[0]
+    elif c == "{":
+      pylex.pylex_fail("f-string: nested '{' unsupported", ln)
+    elif c == "}":
+      break
+    elif c == "!" or c == ":":
+      # find where the expression text ends (here), then handle suffix below
+      break
+    else:
+      j = j + 1
+  exprtext = body[i:j]
+  conv = 0 - 1
+  spec = null
+  k = j
+  if k < n and body[k] == "!":
+    if k + 1 < n and (body[k + 1] == "r" or body[k + 1] == "s" or body[k + 1] == "a"):
+      conv = byte_at(body[k + 1], 0)
+      k = k + 2
+    else:
+      pylex.pylex_fail("f-string: invalid conversion character", ln)
+  if k < n and body[k] == ":":
+    # format spec: scan to matching '}' allowing one nested {...} level
+    m = k + 1
+    spectext = ""
+    while m < n and body[m] != "}":
+      if body[m] == "{":
+        # nested replacement field in the spec: keep verbatim, scan nested
+        e = m + 1
+        while e < n and body[e] != "}":
+          e = e + 1
+        if e >= n:
+          pylex.pylex_fail("f-string: expecting '}'", ln)
+        spectext = spectext + body[m:e + 1]
+        m = e + 1
+      else:
+        spectext = spectext + body[m]
+        m = m + 1
+    if m >= n:
+      pylex.pylex_fail("f-string: expecting '}'", ln)
+    spec = spectext
+    k = m
+  if k >= n or body[k] != "}":
+    pylex.pylex_fail("f-string: expecting '}'", ln)
+  fv = {"t": "FormattedValue", "value": parse_expr_text(exprtext, ln), "spec": spec, "conv": conv, "line": ln}
+  return [fv, k + 1]
+
+def parse_expr_text(text, ln):
+  ts = pylex.lex(text + "\n")
+  # f-string inner expressions report the f-string's own line (single-line
+  # fexprs are the only ones CPython agrees on; multiline fexprs unsupported)
+  for t in ts:
+    t[2] = ln
+  r = parse_expr(ts, 0)
+  return r[0]
+
+# ---------- statements ----------
+
+def parse_block(ts, i):
+  # after ':': NEWLINE INDENT stmt+ DEDENT, or a same-line simple suite
+  if ts_at(ts, i, "NEWLINE"):
+    j = i + 1
+    if not ts_at(ts, j, "INDENT"):
+      pfail("expected an indented block", ts[j])
+    j = j + 1
+    body = []
+    while not ts_at(ts, j, "DEDENT"):
+      r = parse_stmt(ts, j)
+      append(body, r[0])
+      j = r[1]
+    return [body, j + 1]
+  # same-line simple suite
+  body = []
+  j = i
+  while true:
+    r = parse_small_stmt(ts, j)
+    append(body, r[0])
+    j = r[1]
+    if ts_is(ts, j, "OP", ";"):
+      j = j + 1
+      if ts_at(ts, j, "NEWLINE"):
+        break
+    else:
+      break
+  if not ts_at(ts, j, "NEWLINE"):
+    pfail("expected NEWLINE", ts[j])
+  return [body, j + 1]
+
+def parse_stmt(ts, i):
+  t = ts[i]
+  if t[0] == "ID":
+    kw = t[1]
+    if kw == "if":
+      return parse_if(ts, i)
+    if kw == "while":
+      return parse_while(ts, i)
+    if kw == "for":
+      return parse_for(ts, i)
+    if kw == "try":
+      return parse_try(ts, i)
+    if kw == "with":
+      return parse_with(ts, i)
+    if kw == "def":
+      return parse_def(ts, i)
+    if kw == "class":
+      return parse_class(ts, i)
+    if kw == "global" or kw == "nonlocal":
+      # parse the name list, keep a node the translator rejects
+      j = i + 1
+      while ts_at(ts, j, "ID"):
+        j = j + 1
+        if ts_is(ts, j, "OP", ","):
+          j = j + 1
+        else:
+          break
+      if not ts_at(ts, j, "NEWLINE"):
+        pfail("expected NEWLINE", ts[j])
+      return [{"t": "Global" if kw == "global" else "Nonlocal", "line": t[2]}, j + 1]
+    if kw == "async":
+      pfail("async unsupported", t)
+  if t[0] == "OP" and t[1] == "@":
+    pfail("decorators unsupported", t)
+  r = parse_small_stmt(ts, i)
+  if not ts_at(ts, r[1], "NEWLINE"):
+    pfail("expected NEWLINE", ts[r[1]])
+  return [r[0], r[1] + 1]
+
+def parse_small_stmt(ts, i):
+  t = ts[i]
+  if t[0] == "ID":
+    kw = t[1]
+    if kw == "return":
+      if ts_at(ts, i + 1, "NEWLINE") or ts_is(ts, i + 1, "OP", ";"):
+        return [{"t": "Return", "value": null, "line": t[2]}, i + 1]
+      r = parse_expr_or_tuple(ts, i + 1)
+      return [{"t": "Return", "value": r[0], "line": t[2]}, r[1]]
+    if kw == "pass":
+      return [{"t": "Pass", "line": t[2]}, i + 1]
+    if kw == "break":
+      return [{"t": "Break", "line": t[2]}, i + 1]
+    if kw == "continue":
+      return [{"t": "Continue", "line": t[2]}, i + 1]
+    if kw == "raise":
+      if ts_at(ts, i + 1, "NEWLINE") or ts_is(ts, i + 1, "OP", ";"):
+        return [{"t": "Raise", "exc": null, "line": t[2]}, i + 1]
+      r = parse_expr(ts, i + 1)
+      if ts_is(ts, r[1], "ID", "from"):
+        pfail("raise ... from unsupported", ts[r[1]])
+      return [{"t": "Raise", "exc": r[0], "line": t[2]}, r[1]]
+    if kw == "assert":
+      r = parse_expr(ts, i + 1)
+      msg = null
+      if ts_is(ts, r[1], "OP", ","):
+        rm = parse_expr(ts, r[1] + 1)
+        msg = rm[0]
+        r = [r[0], rm[1]]
+      return [{"t": "Assert", "test": r[0], "msg": msg, "line": t[2]}, r[1]]
+    if kw == "del":
+      r = parse_expr_or_tuple(ts, i + 1)
+      targets = [r[0]]
+      if r[0]["t"] == "Tuple":
+        targets = r[0]["elts"]
+      return [{"t": "Delete", "targets": targets, "line": t[2]}, r[1]]
+    if kw == "import" or kw == "from":
+      j = i
+      while not ts_at(ts, j, "NEWLINE") and not ts_is(ts, j, "OP", ";"):
+        j = j + 1
+      return [{"t": "Import", "line": t[2]}, j]
+    if kw == "yield":
+      r = parse_expr_or_tuple(ts, i)
+      return [{"t": "Expr", "value": r[0], "line": t[2]}, r[1]]
+  # expression statement / assignment / augassign
+  r = parse_expr_or_tuple(ts, i)
+  j = r[1]
+  if ts_at(ts, j, "OP") and ts[j][1] in AUGOPS:
+    rv = parse_expr_or_tuple(ts, j + 1)
+    return [{"t": "AugAssign", "target": r[0], "op": AUGOPS[ts[j][1]], "value": rv[0], "line": t[2]}, rv[1]]
+  if ts_is(ts, j, "OP", "="):
+    targets = [r[0]]
+    rl = parse_assign_rhs(ts, j)
+    return [{"t": "Assign", "targets": targets + rl[0], "value": rl[1], "line": t[2]}, rl[2]]
+  return [{"t": "Expr", "value": r[0], "line": t[2]}, j]
+
+AUGOPS = {"+=": "Add", "-=": "Sub", "*=": "Mult", "/=": "Div", "//=": "FloorDiv", "%=": "Mod", "@=": "MatMult", "&=": "BitAnd", "|=": "BitOr", "^=": "BitXor", "<<=": "LShift", ">>=": "RShift", "**=": "Pow"}
+
+def parse_assign_rhs(ts, i):
+  # ts[i] == '='; collects (targets, value, end) for a = b = v chains
+  j = i
+  targets = []
+  while ts_is(ts, j, "OP", "="):
+    r = parse_expr_or_tuple(ts, j + 1)
+    if ts_is(ts, r[1], "OP", "="):
+      append(targets, r[0])
+      j = r[1]
+    else:
+      return [targets, r[0], r[1]]
+  return [targets, r[0], r[1]]
+
+def parse_expr_or_tuple(ts, i):
+  r = parse_expr(ts, i)
+  if ts_is(ts, r[1], "OP", ","):
+    elts = [r[0]]
+    j = r[1] + 1
+    while not ts_at(ts, j, "NEWLINE") and not ts_at(ts, j, "EOF") and not ts_is(ts, j, "OP", "=") and not ts_is(ts, j, "OP", ";") and not (ts_at(ts, j, "OP") and ts[j][1] in AUGOPS):
+      r2 = parse_expr(ts, j)
+      append(elts, r2[0])
+      j = r2[1]
+      if ts_is(ts, j, "OP", ","):
+        j = j + 1
+      else:
+        break
+    return [{"t": "Tuple", "elts": elts, "line": r[0]["line"]}, j]
+  return r
+
+def parse_if(ts, i):
+  ln = ts[i][2]
+  rt = parse_expr(ts, i + 1)
+  if not ts_is(ts, rt[1], "OP", ":"):
+    pfail("expected ':'", ts[rt[1]])
+  rb = parse_block(ts, rt[1] + 1)
+  body = rb[0]
+  orelse = []
+  j = rb[1]
+  if ts_is(ts, j, "ID", "elif"):
+    rr = parse_if_tail(ts, j)
+    orelse = [rr[0]]
+    j = rr[1]
+  elif ts_is(ts, j, "ID", "else"):
+    if not ts_is(ts, j + 1, "OP", ":"):
+      pfail("expected ':'", ts[j + 1])
+    ro = parse_block(ts, j + 2)
+    orelse = ro[0]
+    j = ro[1]
+  return [{"t": "If", "test": rt[0], "body": body, "orelse": orelse, "line": ln}, j]
+
+def parse_if_tail(ts, i):
+  # ts[i] == 'elif' -> build nested If
+  return parse_if(ts, i)
+
+def parse_while(ts, i):
+  ln = ts[i][2]
+  rt = parse_expr(ts, i + 1)
+  if not ts_is(ts, rt[1], "OP", ":"):
+    pfail("expected ':'", ts[rt[1]])
+  rb = parse_block(ts, rt[1] + 1)
+  j = rb[1]
+  orelse = []
+  if ts_is(ts, j, "ID", "else"):
+    if not ts_is(ts, j + 1, "OP", ":"):
+      pfail("expected ':'", ts[j + 1])
+    re_ = parse_block(ts, j + 2)
+    orelse = re_[0]
+    j = re_[1]
+  return [{"t": "While", "test": rt[0], "body": rb[0], "orelse": orelse, "line": ln}, j]
+
+def parse_for(ts, i):
+  ln = ts[i][2]
+  if ts_is(ts, i + 1, "ID", "async"):
+    pfail("async for unsupported", ts[i + 1])
+  rt = parse_target_list(ts, i + 1)
+  if not ts_is(ts, rt[1], "ID", "in"):
+    pfail("expected 'in'", ts[rt[1]])
+  ri = parse_expr_or_tuple(ts, rt[1] + 1)
+  if not ts_is(ts, ri[1], "OP", ":"):
+    pfail("expected ':'", ts[ri[1]])
+  rb = parse_block(ts, ri[1] + 1)
+  j = rb[1]
+  orelse = []
+  if ts_is(ts, j, "ID", "else"):
+    # loop else: parsed into the AST like CPython; the translator drops it
+    # (matching py2hs, which ignores For.orelse/While.orelse)
+    if not ts_is(ts, j + 1, "OP", ":"):
+      pfail("expected ':'", ts[j + 1])
+    re_ = parse_block(ts, j + 2)
+    orelse = re_[0]
+    j = re_[1]
+  return [{"t": "For", "target": rt[0], "iter": ri[0], "body": rb[0], "orelse": orelse, "line": ln}, j]
+
+def parse_try(ts, i):
+  ln = ts[i][2]
+  if not ts_is(ts, i + 1, "OP", ":"):
+    pfail("expected ':'", ts[i + 1])
+  rb = parse_block(ts, i + 2)
+  body = rb[0]
+  handlers = []
+  finalbody = []
+  j = rb[1]
+  while ts_is(ts, j, "ID", "except"):
+    hln = ts[j][2]
+    j = j + 1
+    # optional type expression (parsed, dropped) and 'as name'
+    if not ts_is(ts, j, "OP", ":"):
+      rt = parse_expr(ts, j)
+      j = rt[1]
+      if ts_is(ts, j, "ID", "as"):
+        if not ts_at(ts, j + 1, "ID"):
+          pfail("expected name after 'as'", ts[j + 1])
+        hname = ts[j + 1][1]
+        j = j + 2
+      else:
+        hname = null
+    else:
+      hname = null
+    if not ts_is(ts, j, "OP", ":"):
+      pfail("expected ':'", ts[j])
+    rh = parse_block(ts, j + 1)
+    append(handlers, {"t": "handler", "name": hname, "body": rh[0], "line": hln})
+    j = rh[1]
+  if ts_is(ts, j, "ID", "else"):
+    pfail("try/else unsupported", ts[j])
+  if ts_is(ts, j, "ID", "finally"):
+    if not ts_is(ts, j + 1, "OP", ":"):
+      pfail("expected ':'", ts[j + 1])
+    rf = parse_block(ts, j + 2)
+    finalbody = rf[0]
+    j = rf[1]
+  return [{"t": "Try", "body": body, "handlers": handlers, "finalbody": finalbody, "line": ln}, j]
+
+def parse_with(ts, i):
+  ln = ts[i][2]
+  items = []
+  j = i + 1
+  while true:
+    rc = parse_expr(ts, j)
+    vars = null
+    j = rc[1]
+    if ts_is(ts, j, "ID", "as"):
+      rv = parse_star_target(ts, j + 1)
+      vars = rv[0]
+      j = rv[1]
+    append(items, {"t": "withitem", "context": rc[0], "vars": vars, "line": ln})
+    if ts_is(ts, j, "OP", ","):
+      j = j + 1
+    else:
+      break
+  if not ts_is(ts, j, "OP", ":"):
+    pfail("expected ':'", ts[j])
+  rb = parse_block(ts, j + 1)
+  return [{"t": "With", "items": items, "body": rb[0], "line": ln}, rb[1]]
+
+def parse_def(ts, i):
+  ln = ts[i][2]
+  if not ts_at(ts, i + 1, "ID"):
+    pfail("expected function name", ts[i + 1])
+  name = ts[i + 1][1]
+  if not ts_is(ts, i + 2, "OP", "("):
+    pfail("expected '('", ts[i + 2])
+  j = i + 3
+  args = []
+  defaults = []
+  while not ts_is(ts, j, "OP", ")"):
+    if ts_is(ts, j, "OP", "*") or ts_is(ts, j, "OP", "**"):
+      pfail("*args/**kwargs unsupported", ts[j])
+    if not ts_at(ts, j, "ID"):
+      pfail("expected parameter name", ts[j])
+    append(args, ts[j][1])
+    j = j + 1
+    if ts_is(ts, j, "OP", "="):
+      rd = parse_expr(ts, j + 1)
+      append(defaults, rd[0])
+      j = rd[1]
+    else:
+      append(defaults, null)
+    if ts_is(ts, j, "OP", ","):
+      j = j + 1
+    elif not ts_is(ts, j, "OP", ")"):
+      pfail("expected ',' or ')'", ts[j])
+  j = j + 1
+  if ts_is(ts, j, "OP", "->"):
+    # return annotation: parse and drop one expression
+    ra = parse_expr(ts, j + 1)
+    j = ra[1]
+  if not ts_is(ts, j, "OP", ":"):
+    pfail("expected ':'", ts[j])
+  rb = parse_block(ts, j + 1)
+  return [{"t": "FunctionDef", "name": name, "args": args, "defaults": defaults, "body": rb[0], "line": ln}, rb[1]]
+
+def parse_class(ts, i):
+  ln = ts[i][2]
+  if not ts_at(ts, i + 1, "ID"):
+    pfail("expected class name", ts[i + 1])
+  name = ts[i + 1][1]
+  j = i + 2
+  bases = []
+  if ts_is(ts, j, "OP", "("):
+    j = j + 1
+    while not ts_is(ts, j, "OP", ")"):
+      rb = parse_expr(ts, j)
+      append(bases, rb[0])
+      j = rb[1]
+      if ts_is(ts, j, "OP", ","):
+        j = j + 1
+      elif not ts_is(ts, j, "OP", ")"):
+        pfail("expected ',' or ')'", ts[j])
+    j = j + 1
+  if not ts_is(ts, j, "OP", ":"):
+    pfail("expected ':'", ts[j])
+  rb = parse_block(ts, j + 1)
+  return [{"t": "ClassDef", "name": name, "bases": bases, "body": rb[0], "line": ln}, rb[1]]
+
+def parse(src):
+  ts = pylex.lex(src)
+  body = []
+  i = 0
+  while not ts_at(ts, i, "EOF"):
+    r = parse_stmt(ts, i)
+    append(body, r[0])
+    i = r[1]
+  return body

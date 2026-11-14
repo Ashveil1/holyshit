@@ -1,0 +1,1292 @@
+# pygen.holy - C2.3: scripts/py2hs.py ported into hs, byte-identical output.
+# Walks the pyparse AST (dicts shaped like CPython nodes, see pydump.holy)
+# and emits .holy source exactly as py2hs.py does, quirk for quirk.
+import pyparse
+import pydec
+
+# ---- tables (verbatim from py2hs.py) ----
+HS_RESERVED = {}
+for w in ["def", "if", "elif", "else", "while", "for", "in", "return", "break", "continue", "global", "and", "or", "not", "true", "false", "null", "pass", "import", "try", "except", "as", "extern", "raise", "lambda", "class", "assert", "module", "print", "finally", "unsafe", "self_"]:
+  HS_RESERVED[w] = true
+HS_BUILTINS = {}
+for w in ["alloc", "append", "append_bytes", "append_text", "argv", "as_int", "as_ptr", "byte_at", "byte_find", "byte_len", "close", "contains", "env", "exists", "find", "float", "has", "http_get", "input", "int", "join", "json_load", "json_parse", "json_save", "json_str", "keys", "len", "load32", "load64", "load8", "ls", "meminfo", "mkdir", "open", "pmm_alloc", "range", "read", "read_bytes", "read_mem", "read_text", "readkey", "split", "store32", "store64", "store8", "str", "system", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks", "values", "write", "write_bytes", "write_text"]:
+  HS_BUILTINS[w] = true
+BIN = {"Add": "+", "Sub": "-", "Mult": "*", "BitAnd": "&", "BitOr": "|", "BitXor": "^", "LShift": "<<", "RShift": ">>"}
+CMP = {"Eq": "==", "NotEq": "!=", "Lt": "<", "Gt": ">", "LtE": "<=", "GtE": ">="}
+FUNCS = {"bytes": "py_bytes", "bytearray": "py_bytes", "set": "py_set", "sorted": "py_sorted", "enumerate": "py_enumerate", "reversed": "py_reversed", "all": "py_all", "any": "py_any", "min": "py_min", "max": "py_max", "abs": "py_abs", "list": "py_list", "id": "py_id", "getattr": "py_getattr", "hex": "py_hex", "ord": "py_ord", "chr": "py_chr", "tuple": "py_list", "dict": "py_dict", "isinstance": "py_isinstance", "repr": "py_repr", "sum": "py_sum", "zip": "py_zip", "map": "py_map", "callable": "py_callable", "hasattr": "py_hasattr"}
+METHODS = {"get": "py_get", "setdefault": "py_setdefault", "items": "py_items", "add": "py_add", "update": "py_update", "extend": "py_extend", "pop": "py_pop", "startswith": "py_startswith", "endswith": "py_endswith", "replace": "py_replace", "encode": "py_encode", "decode": "py_decode", "index": "py_index", "discard": "py_discard", "copy": "py_copy", "insert": "py_insert", "strip": "py_strip", "lstrip": "py_lstrip", "rstrip": "py_rstrip", "lower": "py_lower", "upper": "py_upper", "count": "py_count", "sort": "py_sort", "remove": "py_remove", "clear": "py_clear", "isdigit": "py_isdigit", "isalpha": "py_isalpha", "format": "py_format", "to_bytes": "py_to_bytes", "rsplit": "py_rsplit", "rfind": "py_rfind", "union": "py_union", "keys": "py_keys", "values": "py_values", "match": "py_match", "isidentifier": "py_isidentifier", "isalnum": "py_isalnum", "splitlines": "py_splitlines", "ljust": "py_ljust", "partition": "py_partition", "hex": "py_hexm", "issubset": "py_issubset", "difference": "py_difference"}
+MODFUNCS = {"_st.pack": "py_pack", "_st.pack_into": "py_pack_into", "struct.pack": "py_pack", "struct.unpack": "py_unpack", "_os.path": null}
+PAD = {"py_err": 2, "py_get": 3, "py_dict": 1, "py_set": 1, "py_min": 2, "py_max": 2, "py_sorted": 2, "py_getattr": 3, "py_encode": 2, "py_bytes": 1, "py_list": 1, "py_split": 2, "py_sort": 2}
+
+def padded(name, args):
+  a = []
+  for x in args:
+    append(a, x)
+  if name in PAD:
+    while len(a) < PAD[name]:
+      append(a, "null")
+  return name + "(" + join(", ", a) + ")"
+
+# ---- translator state ----
+def pygen_new(asm_methods, sigs):
+  return {"out": [], "asm_methods": asm_methods, "sigs": sigs, "alias": {}, "lam": 0, "warn": [], "cls": null, "fails": [], "pending": [], "curfn": null, "hoisted": [], "hoisted_consts": [], "defaults": {}, "allconsts": {}, "cmap": {}, "tmpn": 0}
+
+def t_w(T, ind, s):
+  for ln in T["pending"]:
+    append(T["out"], repstr("  ", ind) + ln)
+  T["pending"] = []
+  append(T["out"], repstr("  ", ind) + s)
+
+def repstr(s, n):
+  out = ""
+  i = 0
+  while i < n:
+    out = out + s
+    i = i + 1
+  return out
+
+def t_nm(T, n):
+  if n in HS_RESERVED or n in HS_BUILTINS:
+    return n + "_"
+  return n
+
+# escape a Python string constant the way py2hs.s does
+def t_s(T, v):
+  out = "\""
+  i = 0
+  n = len(v)
+  while i < n:
+    ch = v[i]
+    o = byte_at(ch, 0)
+    if ch == "\\":
+      out = out + "\\\\"
+    elif ch == "\"":
+      out = out + "\\\""
+    elif ch == "\n":
+      out = out + "\\n"
+    elif ch == "\t":
+      out = out + "\\t"
+    elif ch == "\r":
+      out = out + "\\r"
+    elif o == 0:
+      out = out + "\\0"
+    elif o < 32 or o == 127:
+      out = out + "\" + py_chr(" + str(o) + ") + \""
+    else:
+      out = out + ch
+    i = i + 1
+  return out + "\""
+
+def t_isasm(T, f):
+  if f["t"] != "Attribute":
+    return false
+  if not (f["attr"] in T["asm_methods"]):
+    return false
+  if f["value"]["t"] == "Name" and (f["value"]["id"] == "self" or f["value"]["id"] == "Gen"):
+    return false
+  return true
+
+def constname(T, owner, attr):
+  c = T["cls"]
+  if owner != "self" and owner != "cls":
+    c = owner
+  if (c + "|" + attr) in T["cmap"]:
+    return c + "_" + attr
+  if ("Gen|" + attr) in T["cmap"]:
+    return "Gen_" + attr
+  return T["allconsts"][attr]
+
+# recursive existence scan used by keyused (order-free)
+def keywalk(n, name):
+  if py_is_node(n):
+    t = n["t"]
+    if t == "Subscript" and n["slice"]["t"] == "Name" and n["slice"]["id"] == name:
+      return true
+    if t == "Compare" and n["left"]["t"] == "Name" and n["left"]["id"] == name and len(n["ops"]) > 0 and (n["ops"][0] == "In" or n["ops"][0] == "NotIn"):
+      return true
+    if t == "Call" and n["func"]["t"] == "Attribute" and (n["func"]["attr"] == "get" or n["func"]["attr"] == "setdefault" or n["func"]["attr"] == "pop" or n["func"]["attr"] == "add" or n["func"]["attr"] == "discard") and len(n["args"]) > 0 and n["args"][0]["t"] == "Name" and n["args"][0]["id"] == name:
+      return true
+    for k in keys(n):
+      if keywalk(n[k], name):
+        return true
+    return false
+  if py_is_list(n):
+    for x in n:
+      if keywalk(x, name):
+        return true
+  return false
+
+def keyused(T, name):
+  if T["curfn"] == null:
+    return false
+  return keywalk(T["curfn"], name)
+
+def py_is_node(v):
+  return json_str(v)[0] == "{" and ("t" in v)
+
+def py_is_list(v):
+  return json_str(v)[0] == "["
+
+def seqish(x):
+  if x["t"] == "List" or x["t"] == "Tuple":
+    return true
+  if x["t"] == "Constant" and (x["kind"] == "bytes" or x["kind"] == "str"):
+    return true
+  return false
+
+# constant-fold to a decimal string; [ok, text]. Only the forms the subset
+# uses: int constants, + - * << with exact bignum results via pydec.
+def const_eval_dec(x):
+  if x["t"] == "Constant" and x["kind"] == "int":
+    return [true, x["v"]]
+  if x["t"] == "BinOp":
+    l = const_eval_dec(x["l"])
+    r = const_eval_dec(x["r"])
+    if l[0] and r[0]:
+      if x["op"] == "LShift":
+        # left * 2^shift; shift count must be a small int
+        if dec_small(r[1]) < 0:
+          return [false, ""]
+        n = pydec.dec_strip_zeros(r[1])
+        cnt = 0
+        if n != "0":
+          if len(n) > 3:
+            return [false, ""]
+          cnt = int(n)
+        out = l[1]
+        i = 0
+        while i < cnt:
+          out = pydec.dec_mul_small(out, 2)
+          i = i + 1
+        return [true, pydec.dec_strip_zeros(out)]
+      if x["op"] == "Sub":
+        if pydec.dec_cmp(l[1], r[1]) < 0:
+          return [false, ""]
+        return [true, pydec.dec_sub(l[1], r[1])]
+      if x["op"] == "Mult":
+        d = dec_small(r[1])
+        if d >= 0:
+          return [true, pydec.dec_strip_zeros(pydec.dec_mul_small(l[1], d))]
+        d = dec_small(l[1])
+        if d >= 0:
+          return [true, pydec.dec_strip_zeros(pydec.dec_mul_small(r[1], d))]
+        return [false, ""]
+  return [false, ""]
+
+def dec_small(s):
+  # decimal string -> non-negative int if it fits comfortably, else -1
+  n = pydec.dec_strip_zeros(s)
+  if len(n) > 8:
+    return 0 - 1
+  return int(n)
+
+def is_mask64(x):
+  r = const_eval_dec(x)
+  return r[0] and pydec.dec_strip_zeros(r[1]) == "18446744073709551615"
+
+def name_isupperish(s):
+  # Python str.isupper() approximation for the setish heuristic:
+  # all cased chars upper, at least one cased char
+  seen = false
+  i = 0
+  while i < len(s):
+    c = s[i]
+    o = byte_at(c, 0)
+    if o >= 97 and o <= 122:
+      return false
+    if o >= 65 and o <= 90:
+      seen = true
+    i = i + 1
+  return seen
+
+def setish(x):
+  if x["t"] == "Call" and x["func"]["t"] == "Name" and x["func"]["id"] == "set":
+    return true
+  if x["t"] == "Name" and name_isupperish(x["id"]) and len(x["id"]) > 2:
+    return true
+  if x["t"] == "Attribute" and name_isupperish(x["attr"]) and len(x["attr"]) > 2:
+    return true
+  if x["t"] == "BinOp" and x["op"] == "BitOr":
+    return setish(x["l"]) or setish(x["r"])
+  return false
+
+def t_key(T, k):
+  if k["t"] == "Tuple":
+    parts = []
+    for v in k["elts"]:
+      append(parts, t_e(T, v))
+    return "py_key([" + join(", ", parts) + "])"
+  return t_e(T, k)
+
+def isasmobj(v):
+  if v["t"] == "Name":
+    return v["id"] == "a" or v["id"] == "b" or v["id"] == "asm"
+  return v["t"] == "Attribute" and v["attr"] == "a"
+
+def t_comp(T, elt, gens):
+  if len(gens) != 1:
+    raise "multiple comprehension generators"
+  g = gens[0]
+  if g["async"] == 1:
+    raise "async comprehension"
+  if len(g["ifs"]) > 1:
+    raise "multiple comprehension filters"
+  saved = {}
+  for k in keys(T["alias"]):
+    saved[k] = T["alias"][k]
+  tgt = g["target"]
+  it = t_e(T, g["iter"])
+  clauses = []
+  if tgt["t"] == "Tuple":
+    for x in tgt["elts"]:
+      if x["t"] != "Name":
+        raise "nested comp target"
+    pv = "_p" + str(len(T["out"])) + "_0"
+    i = 0
+    while i < len(tgt["elts"]):
+      T["alias"][tgt["elts"][i]["id"]] = pv + "[" + str(i) + "]"
+      i = i + 1
+    nm = pv
+  else:
+    nm = t_nm(T, tgt["id"])
+    T["alias"][tgt["id"]] = null
+  cl = " for " + nm + " in " + it
+  for c in g["ifs"]:
+    cl = cl + " if " + t_e(T, c)
+  append(clauses, cl)
+  body = t_e(T, elt)
+  T["alias"] = saved
+  return body + join("", clauses)
+
+def t_cmp(T, l, op, r):
+  if (op == "Is" or op == "IsNot") and r["t"] == "Constant" and r["kind"] == "bool":
+    le = t_e(T, l)
+    bv = "false"
+    if r["v"] == true:
+      bv = "true"
+    t = "(py_type(" + le + ") == \"bool\" and " + le + " == " + bv + ")"
+    if op == "Is":
+      return t
+    return "(not " + t + ")"
+  if op == "Is" or op == "Eq":
+    return "(" + t_e(T, l) + " == " + t_e(T, r) + ")"
+  if op == "IsNot" or op == "NotEq":
+    return "(" + t_e(T, l) + " != " + t_e(T, r) + ")"
+  if op == "In":
+    return "(" + t_key(T, l) + " in " + t_e(T, r) + ")"
+  if op == "NotIn":
+    return "(not (" + t_key(T, l) + " in " + t_e(T, r) + "))"
+  return "(" + t_e(T, l) + " " + CMP[op] + " " + t_e(T, r) + ")"
+
+def t_fstr(T, x):
+  parts = []
+  for v in x["values"]:
+    if v["t"] == "Constant":
+      append(parts, t_s(T, v["v"]))
+    else:
+      inner = t_e(T, v["value"])
+      if v["conv"] == 114:
+        inner = "py_repr(" + inner + ")"
+      if v["spec"] == null:
+        append(parts, "str(" + inner + ")")
+      else:
+        append(parts, "py_fmt(" + inner + ", " + t_s(T, v["spec"]) + ")")
+  if len(parts) == 0:
+    return "\"\""
+  return "(" + join(" + ", parts) + ")"
+
+def count_top_args(a):
+  # number of top-level comma-separated items in an emitted arg string
+  depth = 0
+  n = 0
+  if len(py_strip(a)) > 0:
+    n = 1
+  instr = false
+  i = 0
+  while i < len(a):
+    c = a[i]
+    if instr:
+      if c == "\\":
+        i = i + 1
+      elif c == "\"":
+        instr = false
+    elif c == "\"":
+      instr = true
+    elif c == "(" or c == "[" or c == "{":
+      depth = depth + 1
+    elif c == ")" or c == "]" or c == "}":
+      depth = depth - 1
+    elif c == "," and depth == 0:
+      n = n + 1
+    i = i + 1
+  return n
+
+def py_strip(s):
+  a = 0
+  b = len(s)
+  while a < b and (s[a] == " " or s[a] == "\t" or s[a] == "\n" or s[a] == "\r"):
+    a = a + 1
+  while b > a and (s[b - 1] == " " or s[b - 1] == "\t" or s[b - 1] == "\n" or s[b - 1] == "\r"):
+    b = b - 1
+  return s[a:b]
+
+def t_argv_list(T, call, sig):
+  a = t_args(T, call, sig)
+  return count_top_args(a)
+
+def py_repr_str(v):
+  # CPython repr() of a str: single quotes unless the string has ' and no "
+  has_sq = false
+  has_dq = false
+  i = 0
+  while i < len(v):
+    if v[i] == "'":
+      has_sq = true
+    if v[i] == "\"":
+      has_dq = true
+    i = i + 1
+  q = "'"
+  if has_sq and not has_dq:
+    q = "\""
+  out = q
+  i = 0
+  while i < len(v):
+    c = v[i]
+    o = byte_at(c, 0)
+    if c == "\\":
+      out = out + "\\\\"
+    elif c == q:
+      out = out + "\\" + q
+    elif c == "\n":
+      out = out + "\\n"
+    elif c == "\r":
+      out = out + "\\r"
+    elif c == "\t":
+      out = out + "\\t"
+    elif o < 32 or o == 127:
+      hi = 0
+      while (hi + 1) * 16 <= o:
+        hi = hi + 1
+      out = out + "\\x" + "0123456789abcdef"[hi] + "0123456789abcdef"[o - hi * 16]
+    else:
+      out = out + c
+    i = i + 1
+  return out + q
+
+BINOP_STR = {"Add": "+", "Sub": "-", "Mult": "*", "Div": "/", "FloorDiv": "//", "Mod": "%", "Pow": "**", "LShift": "<<", "RShift": ">>", "BitOr": "|", "BitAnd": "&", "BitXor": "^", "MatMult": "@"}
+CMPOP_STR = {"Eq": "==", "NotEq": "!=", "Lt": "<", "LtE": "<=", "Gt": ">", "GtE": ">=", "In": "in", "NotIn": "not in", "Is": "is", "IsNot": "is not"}
+
+def unparse_node(x):
+  # subset of ast.unparse used by py2hs's "kwargs without signature" diagnostic
+  t = x["t"]
+  if t == "Name":
+    return x["id"]
+  if t == "Attribute":
+    return unparse_node(x["value"]) + "." + x["attr"]
+  if t == "Constant":
+    k = x["kind"]
+    if k == "str":
+      return py_repr_str(x["v"])
+    if k == "int" or k == "float":
+      return x["v"]
+    if k == "bool":
+      if x["v"] == true:
+        return "True"
+      return "False"
+    if k == "none":
+      return "None"
+    raise "unparse-const:" + k
+  if t == "List":
+    parts = []
+    for e in x["elts"]:
+      append(parts, unparse_node(e))
+    return "[" + join(", ", parts) + "]"
+  if t == "Set":
+    parts = []
+    for e in x["elts"]:
+      append(parts, unparse_node(e))
+    return "{" + join(", ", parts) + "}"
+  if t == "Tuple":
+    parts = []
+    for e in x["elts"]:
+      append(parts, unparse_node(e))
+    if len(parts) == 1:
+      return "(" + parts[0] + ",)"
+    return "(" + join(", ", parts) + ")"
+  if t == "Dict":
+    parts = []
+    i = 0
+    while i < len(x["keys"]):
+      kk = x["keys"][i]
+      if kk == null:
+        append(parts, "**" + unparse_node(x["values"][i]))
+      else:
+        append(parts, unparse_node(kk) + ": " + unparse_node(x["values"][i]))
+      i = i + 1
+    return "{" + join(", ", parts) + "}"
+  if t == "Call":
+    return unparse_call(x)
+  if t == "Subscript":
+    return unparse_node(x["value"]) + "[" + unparse_node(x["slice"]) + "]"
+  if t == "Slice":
+    lo = ""
+    if x["lower"] != null:
+      lo = unparse_node(x["lower"])
+    hi = ""
+    if x["upper"] != null:
+      hi = unparse_node(x["upper"])
+    r = lo + ":" + hi
+    if x["step"] != null:
+      r = r + ":" + unparse_node(x["step"])
+    return r
+  if t == "UnaryOp":
+    if x["op"] == "Not":
+      return "not " + unparse_node(x["operand"])
+    if x["op"] == "USub":
+      return "-" + unparse_node(x["operand"])
+    if x["op"] == "UAdd":
+      return "+" + unparse_node(x["operand"])
+    return "~" + unparse_node(x["operand"])
+  if t == "BinOp":
+    return unparse_node(x["left"]) + " " + BINOP_STR[x["op"]] + " " + unparse_node(x["right"])
+  if t == "BoolOp":
+    op = " and "
+    if x["op"] == "Or":
+      op = " or "
+    parts = []
+    for v in x["values"]:
+      append(parts, unparse_node(v))
+    return join(op, parts)
+  if t == "Compare":
+    r = unparse_node(x["left"])
+    i = 0
+    while i < len(x["ops"]):
+      r = r + " " + CMPOP_STR[x["ops"][i]] + " " + unparse_node(x["comparators"][i])
+      i = i + 1
+    return r
+  if t == "IfExp":
+    return unparse_node(x["body"]) + " if " + unparse_node(x["test"]) + " else " + unparse_node(x["orelse"])
+  raise "unparse:" + t
+
+def unparse_call(call):
+  parts = []
+  for a in call["args"]:
+    append(parts, unparse_node(a))
+  for k in call["keywords"]:
+    if k["arg"] == null:
+      append(parts, "**" + unparse_node(k["value"]))
+    else:
+      append(parts, k["arg"] + "=" + unparse_node(k["value"]))
+  return unparse_node(call["func"]) + "(" + join(", ", parts) + ")"
+
+def unparse_call_filtered(call):
+  # ast.Call(func=call.func, args=call.args, keywords=[k for k in keywords if k.arg not in ("encoding", "file")])
+  parts = []
+  for a in call["args"]:
+    append(parts, unparse_node(a))
+  for k in call["keywords"]:
+    if k["arg"] != "encoding" and k["arg"] != "file":
+      if k["arg"] == null:
+        append(parts, "**" + unparse_node(k["value"]))
+      else:
+        append(parts, k["arg"] + "=" + unparse_node(k["value"]))
+  return unparse_node(call["func"]) + "(" + join(", ", parts) + ")"
+
+def t_args(T, call, sig):
+  out = []
+  for a in call["args"]:
+    append(out, t_e(T, a))
+  kws = []
+  for k in call["keywords"]:
+    if k["arg"] != "encoding" and k["arg"] != "file":
+      append(kws, k)
+  if len(kws) > 0:
+    if sig == null:
+      u = unparse_call_filtered(call)
+      if len(u) > 60:
+        u = u[0:60]
+      raise "kwargs without signature: " + u
+    pos = out
+    names = list_tail(sig, len(call["args"]))
+    kw = {}
+    kworder = []
+    for k in kws:
+      kw[k["arg"]] = t_e(T, k["value"])
+      append(kworder, k["arg"])
+    last = 0 - 1
+    for k in kworder:
+      idx = index_of(names, k)
+      if idx > last:
+        last = idx
+    i = 0
+    while i <= last:
+      nme = names[i]
+      if nme in kw:
+        append(pos, kw[nme])
+      else:
+        append(pos, "null")
+      i = i + 1
+    out = pos
+  return join(", ", out)
+
+def list_tail(xs, n):
+  out = []
+  i = n
+  while i < len(xs):
+    append(out, xs[i])
+    i = i + 1
+  return out
+
+def index_of(xs, v):
+  i = 0
+  while i < len(xs):
+    if xs[i] == v:
+      return i
+    i = i + 1
+  return 0 - 1
+
+def t_recv(T, v):
+  r = t_e(T, v)
+  if v["t"] == "Name" or v["t"] == "Attribute":
+    return r
+  T["tmpn"] = T["tmpn"] + 1
+  nm = "_r" + str(T["tmpn"])
+  append(T["pending"], nm + " = " + r)
+  return nm
+
+# ---- expression emitter (port of T.e) ----
+def t_e(T, x):
+  t = x["t"]
+  if t == "Constant":
+    k = x["kind"]
+    if k == "bool":
+      if x["v"] == true:
+        return "true"
+      return "false"
+    if k == "none":
+      return "null"
+    if k == "str":
+      return t_s(T, x["v"])
+    if k == "bytes":
+      parts = []
+      for b in x["v"]:
+        append(parts, str(b))
+      return "[" + join(", ", parts) + "]"
+    if k == "float":
+      return x["v"]
+    if k == "int":
+      v = x["v"]
+      if pydec.dec_cmp(v, "9223372036854775808") >= 0 and pydec.dec_cmp(v, "18446744073709551616") < 0:
+        return "(0 - " + pydec.dec_sub("18446744073709551616", v) + ")"
+      return v
+    raise "'Ellipsis'"
+  if t == "Name":
+    if x["id"] in T["alias"] and T["alias"][x["id"]] != null:
+      return T["alias"][x["id"]]
+    if x["id"] == "None":
+      return "null"
+    return t_nm(T, x["id"])
+  if t == "Attribute":
+    at = x["attr"]
+    if (at == "code" or at == "labels" or at == "data" or at == "data_labels" or at == "fixups") and isasmobj(x["value"]):
+      return "asm.state()[\"" + at + "\"]"
+    if x["value"]["t"] == "Name" and (x["value"]["id"] == "Gen" or x["value"]["id"] == "GenIR" or x["value"]["id"] == "self" or x["value"]["id"] == "cls") and (at in T["allconsts"]):
+      if not (x["value"]["id"] == "self" and (at in T["sigs"])):
+        return constname(T, x["value"]["id"], at)
+    if x["value"]["t"] == "Name" and x["value"]["id"] == "Gen" and at == "Scope":
+      return "Gen_Scope"
+    return t_e(T, x["value"]) + "." + t_nm(T, at)
+  if t == "Call":
+    return t_call(T, x)
+  if t == "UnaryOp":
+    if x["op"] == "USub":
+      return "(0 - " + t_e(T, x["operand"]) + ")"
+    if x["op"] == "Not":
+      return "(not " + t_e(T, x["operand"]) + ")"
+    if x["op"] == "Invert":
+      return "(~" + t_e(T, x["operand"]) + ")"
+    if x["op"] == "UAdd":
+      return t_e(T, x["operand"])
+  if t == "BinOp":
+    op = x["op"]
+    if op == "Mult" and (seqish(x["l"]) or seqish(x["r"])):
+      return "py_rep(" + t_e(T, x["l"]) + ", " + t_e(T, x["r"]) + ")"
+    if op == "BitAnd" and is_mask64(x["r"]):
+      return t_e(T, x["l"])
+    if op == "BitOr" and (setish(x["l"]) or setish(x["r"])):
+      return "py_union(" + t_e(T, x["l"]) + ", " + t_e(T, x["r"]) + ")"
+    if op in BIN:
+      return "(" + t_e(T, x["l"]) + " " + BIN[op] + " " + t_e(T, x["r"]) + ")"
+    if op == "FloorDiv":
+      return "py_floordiv(" + t_e(T, x["l"]) + ", " + t_e(T, x["r"]) + ")"
+    if op == "Mod":
+      if x["l"]["t"] == "Constant" and x["l"]["kind"] == "str":
+        return "py_percent(" + t_e(T, x["l"]) + ", " + t_e(T, x["r"]) + ")"
+      return "(" + t_e(T, x["l"]) + " % " + t_e(T, x["r"]) + ")"
+    if op == "Pow":
+      return "py_pow(" + t_e(T, x["l"]) + ", " + t_e(T, x["r"]) + ")"
+    raise op
+  if t == "BoolOp":
+    j = " or "
+    if x["op"] == "And":
+      j = " and "
+    parts = []
+    for v in x["values"]:
+      append(parts, t_e(T, v))
+    return "(" + join(j, parts) + ")"
+  if t == "Compare":
+    parts = []
+    left = x["left"]
+    i = 0
+    while i < len(x["ops"]):
+      right = x["comparators"][i]
+      append(parts, t_cmp(T, left, x["ops"][i], right))
+      left = right
+      i = i + 1
+    if len(parts) == 1:
+      return parts[0]
+    return "(" + join(" and ", parts) + ")"
+  if t == "IfExp":
+    return "(" + t_e(T, x["body"]) + " if " + t_e(T, x["test"]) + " else " + t_e(T, x["orelse"]) + ")"
+  if t == "Subscript":
+    sl = x["slice"]
+    if sl["t"] == "Slice":
+      if sl["step"] != null:
+        raise "slice step"
+      lo = "0"
+      if sl["lower"] != null:
+        lo = t_e(T, sl["lower"])
+      if sl["upper"] != null:
+        return t_e(T, x["value"]) + "[" + lo + ":" + t_e(T, sl["upper"]) + "]"
+      return "py_tail(" + t_e(T, x["value"]) + ", " + lo + ")"
+    if sl["t"] == "Tuple":
+      return t_e(T, x["value"]) + "[" + t_key(T, sl) + "]"
+    return t_e(T, x["value"]) + "[" + t_e(T, sl) + "]"
+  if t == "Tuple" or t == "List":
+    parts = []
+    for v in x["elts"]:
+      append(parts, t_e(T, v))
+    return "[" + join(", ", parts) + "]"
+  if t == "Set":
+    parts = []
+    for v in x["elts"]:
+      append(parts, t_e(T, v))
+    return "py_set([" + join(", ", parts) + "])"
+  if t == "Dict":
+    items = []
+    i = 0
+    while i < len(x["keys"]):
+      if x["keys"][i] == null:
+        raise "dict **"
+      append(items, t_key(T, x["keys"][i]) + ": " + t_e(T, x["values"][i]))
+      i = i + 1
+    return "{" + join(", ", items) + "}"
+  if t == "JoinedStr":
+    return t_fstr(T, x)
+  if t == "NamedExpr":
+    append(T["pending"], t_nm(T, x["target"]["id"]) + " = " + t_e(T, x["value"]))
+    return t_nm(T, x["target"]["id"])
+  if t == "Lambda":
+    ps = []
+    for a in x["args"]:
+      append(ps, t_nm(T, a))
+    return "(lambda " + join(", ", ps) + ": " + t_e(T, x["body"]) + ")"
+  if t == "ListComp" or t == "GeneratorExp":
+    return "[" + t_comp(T, x["elt"], x["generators"]) + "]"
+  if t == "SetComp":
+    return "py_set([" + t_comp(T, x["elt"], x["generators"]) + "])"
+  if t == "DictComp":
+    pr = {"t": "List", "elts": [x["key"], x["value"]], "line": x["line"]}
+    return "py_dict([" + t_comp(T, pr, x["generators"]) + "])"
+  raise t
+
+# ---- calls (port of T.call) ----
+def t_call(T, x):
+  f = x["func"]
+  if f["t"] == "Name":
+    n = f["id"]
+    if n in T["alias"] and T["alias"][n] != null:
+      return T["alias"][n] + "(" + t_args(T, x, null) + ")"
+    if n == "print":
+      return "py_print([" + t_args(T, x, null) + "])"
+    if n == "isinstance" and len(x["args"]) == 2:
+      tn = x["args"][1]
+      names = []
+      if tn["t"] == "Tuple":
+        for e2 in tn["elts"]:
+          append(names, e2["id"])
+      else:
+        append(names, tn["id"])
+      qn = []
+      for e2 in names:
+        append(qn, "\"" + e2 + "\"")
+      return "py_isinstance(" + t_e(T, x["args"][0]) + ", [" + join(", ", qn) + "])"
+    if n in FUNCS and not (n in T["sigs"]):
+      pos = []
+      for a in x["args"]:
+        append(pos, t_e(T, a))
+      for k in x["keywords"]:
+        if k["arg"] != "file":
+          append(pos, t_e(T, k["value"]))
+      return padded(FUNCS[n], pos)
+    if n == "HSErr":
+      pos = []
+      for a in x["args"]:
+        append(pos, t_e(T, a))
+      return padded("py_err", pos)
+    if n == "len" or n == "range":
+      return n + "(" + t_args(T, x, null) + ")"
+    if n == "str" or n == "int" or n == "float":
+      return n + "(" + t_args(T, x, null) + ")"
+    return t_nm(T, n) + "(" + t_args(T, x, sigget(T, n)) + ")"
+  if f["t"] == "Attribute":
+    at = f["attr"]
+    if f["value"]["t"] == "Name" and (f["value"]["id"] + "." + at) in MODFUNCS and MODFUNCS[f["value"]["id"] + "." + at] != null:
+      return MODFUNCS[f["value"]["id"] + "." + at] + "(" + t_args(T, x, null) + ")"
+    if f["value"]["t"] == "Name" and (f["value"]["id"] == "_os" or f["value"]["id"] == "os" or f["value"]["id"] == "_sys" or f["value"]["id"] == "sys" or f["value"]["id"] == "_re" or f["value"]["id"] == "re"):
+      mod = f["value"]["id"]
+      if byte_at(mod, 0) == 95:
+        mod = mod[1:len(mod)]
+      return "py_" + mod + "_" + at + "(" + t_args(T, x, null) + ")"
+    if f["value"]["t"] == "Attribute" and f["value"]["value"]["t"] == "Name" and (f["value"]["value"]["id"] == "_os" or f["value"]["value"]["id"] == "os") and f["value"]["attr"] == "path":
+      return "py_os_path_" + at + "(" + t_args(T, x, null) + ")"
+    if f["value"]["t"] == "Name" and f["value"]["id"] == "Gen" and at == "Scope":
+      a = t_args(T, x, sigget(T, "Scope.__init__"))
+      parts = []
+      if len(a) > 0:
+        parts = py_split_str(a)
+      while len(parts) < 2:
+        if len(parts) == 0:
+          append(parts, "null")
+        else:
+          append(parts, "false")
+      return "Gen_Scope(" + join(", ", parts) + ")"
+    if f["value"]["t"] == "Name" and at == "__init__":
+      sub = {"t": "Call", "func": f, "args": list_tail(x["args"], 1), "keywords": x["keywords"], "line": x["line"]}
+      rest = t_args(T, sub, sigget(T, f["value"]["id"] + ".__init__"))
+      sep = ""
+      if len(rest) > 0:
+        sep = ", " + rest
+      return f["value"]["id"] + "__init__(" + t_e(T, x["args"][0]) + sep + ")"
+    if at == "__contains__":
+      return "(" + t_key(T, x["args"][0]) + " in " + t_e(T, f["value"]) + ")"
+    if t_isasm(T, f):
+      if at == "lea_m" and len(x["args"]) == 5:
+        d = t_e(T, x["args"][0])
+        b = t_e(T, x["args"][1])
+        disp = t_e(T, x["args"][2])
+        ix = t_e(T, x["args"][3])
+        sc = t_e(T, x["args"][4])
+        return "asm.lea_mx(" + d + ", " + b + ", " + ix + ", " + sc + ", " + disp + ")"
+      at2 = at
+      if at == "resolve" and len(x["args"]) == 2:
+        at2 = "resolve_at"
+      return "asm." + at2 + "(" + t_args(T, x, sigget(T, "asm." + at2)) + ")"
+    if (f["value"]["t"] == "Name" and f["value"]["id"] == "self") or ((at in T["sigs"]) and not (at in METHODS)):
+      a = t_args(T, x, sigget(T, at))
+      if at in T["defaults"]:
+        dfl = T["defaults"][at]
+        n_have = t_argv_list(T, x, sigget(T, at))
+        pad = list_tail(dfl, n_have)
+        ok = len(pad) > 0
+        for d2 in pad:
+          if d2 == null:
+            ok = false
+        if ok:
+          if len(a) > 0:
+            a = a + ", "
+          a = a + join(", ", pad)
+      return t_recv(T, f["value"]) + "." + t_nm(T, at) + "(" + a + ")"
+    if at == "append" and len(x["args"]) == 1:
+      return "append(" + t_e(T, f["value"]) + ", " + t_e(T, x["args"][0]) + ")"
+    if at == "split":
+      pos = [t_e(T, f["value"])]
+      for a in x["args"]:
+        append(pos, t_e(T, a))
+      return padded("py_split", pos)
+    if at == "join":
+      return "py_join(" + t_e(T, f["value"]) + ", " + t_args(T, x, null) + ")"
+    if at == "find":
+      return "py_find(" + t_e(T, f["value"]) + ", " + t_args(T, x, null) + ")"
+    if at in METHODS:
+      pos = [t_e(T, f["value"])]
+      for a in x["args"]:
+        append(pos, t_e(T, a))
+      return padded(METHODS[at], pos)
+    return t_recv(T, f["value"]) + "." + t_nm(T, at) + "(" + t_args(T, x, sigget(T, at)) + ")"
+  return t_e(T, f) + "(" + t_args(T, x, null) + ")"
+
+def sigget(T, n):
+  if n in T["sigs"]:
+    return T["sigs"][n]
+  return null
+
+def py_split_str(a):
+  # split emitted arg string on ", " (top level only good enough for the
+  # Gen.Scope path, which takes simple args)
+  out = []
+  cur = ""
+  depth = 0
+  i = 0
+  while i < len(a):
+    c = a[i]
+    if c == "(" or c == "[" or c == "{":
+      depth = depth + 1
+    if c == ")" or c == "]" or c == "}":
+      depth = depth - 1
+    if c == "," and depth == 0:
+      append(out, cur)
+      cur = ""
+      i = i + 2
+    else:
+      cur = cur + c
+      i = i + 1
+  if len(cur) > 0:
+    append(out, cur)
+  return out
+
+# ---- statements (port of T.st / T.body / T.target) ----
+def t_target(T, tg):
+  if tg["t"] == "Name":
+    return t_nm(T, tg["id"])
+  if tg["t"] == "Subscript":
+    sl = tg["slice"]
+    if sl["t"] == "Tuple":
+      return t_e(T, tg["value"]) + "[" + t_key(T, sl) + "]"
+    return t_e(T, tg["value"]) + "[" + t_e(T, sl) + "]"
+  if tg["t"] == "Attribute":
+    return t_e(T, tg)
+  raise "target " + tg["t"]
+
+def strip_err_line(ex):
+  # interp appends " at line N" to raised strings; py2hs errs carry no such suffix
+  i = len(ex) - 1
+  while i >= 0 and byte_at(ex[i], 0) >= 48 and byte_at(ex[i], 0) <= 57:
+    i = i - 1
+  if i < len(ex) - 1 and i >= 8 and ex[(i - 8):i] == " at line":
+    return ex[0:(i - 8)]
+  return ex
+
+def norm_defaults(s):
+  # pyparse pads defaults with null per param; py2hs sees CPython's trailing-only list
+  defs = []
+  for d in s["defaults"]:
+    if d != null:
+      append(defs, d)
+  return defs
+
+def t_body(T, stmts, ind):
+  n0 = len(T["out"])
+  for s in stmts:
+    t_st(T, s, ind)
+  if len(T["out"]) == n0:
+    t_w(T, ind, "pass")
+
+def t_st(T, s, ind):
+  t = s["t"]
+  if t == "FunctionDef":
+    if ind == 0 and (s["name"] in HS_RESERVED or s["name"] in HS_BUILTINS):
+      append(T["warn"], "name-collision: top-level def '" + s["name"] + "' (line " + str(s["line"]) + ") shadows an hs reserved/builtin name; emitted name unchanged (warning only)")
+    ps = []
+    defs = norm_defaults(s)
+    nd = len(s["args"]) - len(defs)
+    inclass = len(s["args"]) > 0 and s["args"][0] == "self"
+    i = 0
+    while i < len(s["args"]):
+      p = t_nm(T, s["args"][i])
+      if i >= nd and not inclass:
+        p = p + "=" + t_e(T, defs[i - nd])
+      append(ps, p)
+      i = i + 1
+    t_w(T, ind, "def " + s["name"] + "(" + join(", ", ps) + "):")
+    prev = T["curfn"]
+    T["curfn"] = s
+    t_body(T, s["body"], ind + 1)
+    T["curfn"] = prev
+    return
+  if t == "ClassDef":
+    if ind == 0 and (s["name"] in HS_RESERVED or s["name"] in HS_BUILTINS):
+      append(T["warn"], "name-collision: class '" + s["name"] + "' binds module scope and shadows an hs reserved/builtin name; emitted name unchanged (warning only)")
+    base = ""
+    if len(s["bases"]) > 0:
+      base = "(" + s["bases"][0]["id"] + ")"
+    nested = []
+    consts = []
+    methods = []
+    for m in s["body"]:
+      if m["t"] == "ClassDef":
+        append(nested, m)
+      elif m["t"] == "Assign":
+        append(consts, m)
+      elif m["t"] == "FunctionDef":
+        append(methods, m)
+    for c in nested:
+      c2 = {"t": "ClassDef", "name": s["name"] + "_" + c["name"], "bases": c["bases"], "body": c["body"], "line": c["line"]}
+      append(T["hoisted"], c2)
+    for c in consts:
+      append(T["hoisted_consts"], c)
+    t_w(T, ind, "class " + s["name"] + base + ":")
+    T["cls"] = s["name"]
+    n0 = len(T["out"])
+    for m in methods:
+      mark = len(T["out"])
+      try:
+        t_st(T, m, ind + 1)
+      except as ex:
+        T["out"] = list_head(T["out"], mark)
+        append(T["fails"], s["name"] + "." + m["name"] + ":" + str(m["line"]) + " " + strip_err_line(ex))
+        if m["t"] == "FunctionDef":
+          t_w(T, ind + 1, "def " + m["name"] + "(" + join(", ", m["args"]) + "):")
+          t_w(T, ind + 2, "raise \"untranslated " + m["name"] + "\"")
+    if len(T["out"]) == n0:
+      t_w(T, ind + 1, "pass")
+    return
+  if t == "Expr" and s["value"]["t"] == "Call" and s["value"]["func"]["t"] == "Attribute":
+    f = s["value"]["func"]
+    if f["attr"] == "pop" and len(s["value"]["args"]) == 0 and (f["value"]["t"] == "Name" or f["value"]["t"] == "Attribute"):
+      r = t_e(T, f["value"])
+      t_w(T, ind, r + " = " + r + "[0:(len(" + r + ") - 1)]")
+      return
+    if f["attr"] == "pop" and len(s["value"]["args"]) == 2 and (f["value"]["t"] == "Name" or f["value"]["t"] == "Attribute" or f["value"]["t"] == "Call"):
+      t_w(T, ind, t_recv(T, f["value"]) + "[" + t_key(T, s["value"]["args"][0]) + "] = null")
+      return
+    if f["attr"] == "discard" and len(s["value"]["args"]) == 1:
+      t_w(T, ind, t_recv(T, f["value"]) + "[" + t_key(T, s["value"]["args"][0]) + "] = false")
+      return
+  if t == "Expr":
+    if s["value"]["t"] == "Constant":
+      return
+    t_w(T, ind, t_e(T, s["value"]))
+    return
+  if t == "Return":
+    if s["value"] == null:
+      t_w(T, ind, "return null")
+    else:
+      t_w(T, ind, "return " + t_e(T, s["value"]))
+    return
+  if t == "Pass":
+    t_w(T, ind, "pass")
+    return
+  if t == "Break":
+    t_w(T, ind, "break")
+    return
+  if t == "Continue":
+    t_w(T, ind, "continue")
+    return
+  if t == "Assert":
+    t_w(T, ind, "py_assert(" + t_e(T, s["test"]) + ")")
+    return
+  if t == "Raise":
+    if s["exc"] == null:
+      t_w(T, ind, "raise")
+    else:
+      t_w(T, ind, "raise " + t_e(T, s["exc"]))
+    return
+  if t == "Delete":
+    for tg in s["targets"]:
+      t_w(T, ind, t_e(T, tg["value"]) + "[" + t_key(T, tg["slice"]) + "] = null")
+    return
+  if t == "Import":
+    return
+  if t == "AugAssign":
+    op = s["op"]
+    tg = t_target(T, s["target"])
+    if s["target"]["t"] == "Attribute" and s["target"]["attr"] == "code" and isasmobj(s["target"]["value"]):
+      t_w(T, ind, "py_extend(asm.state()[\"code\"], " + t_e(T, s["value"]) + ")")
+      return
+    if op in BIN:
+      t_w(T, ind, tg + " = " + tg + " " + BIN[op] + " " + t_e(T, s["value"]))
+      return
+    if op == "FloorDiv":
+      t_w(T, ind, tg + " = py_floordiv(" + tg + ", " + t_e(T, s["value"]) + ")")
+      return
+    if op == "Mod":
+      t_w(T, ind, tg + " = " + tg + " % " + t_e(T, s["value"]))
+      return
+    raise "augassign " + op
+  if t == "Assign" and len(s["targets"]) > 1:
+    last = s["targets"][len(s["targets"]) - 1]
+    t_st(T, {"t": "Assign", "targets": [last], "value": s["value"], "line": s["line"]}, ind)
+    i = 0
+    while i + 1 < len(s["targets"]):
+      t_st(T, {"t": "Assign", "targets": [s["targets"][i]], "value": last, "line": s["line"]}, ind)
+      i = i + 1
+    return
+  if t == "Assign":
+    tg = s["targets"][0]
+    v = s["value"]
+    if tg["t"] == "Name" and t_isasm(T, v) and v["t"] != "Call":
+      T["alias"][tg["id"]] = "asm." + v["attr"]
+      return
+    if tg["t"] == "Name" and v["t"] == "Attribute" and v["attr"] == "a" and v["value"]["t"] == "Name" and (v["value"]["id"] == "self" or v["value"]["id"] == "g"):
+      return
+    if tg["t"] == "Attribute" and tg["attr"] == "a" and v["t"] == "Call" and v["func"]["t"] == "Name" and v["func"]["id"] == "Asm":
+      t_w(T, ind, "asm.reset()")
+      t_w(T, ind, "asm.data_reset()")
+      return
+    if tg["t"] == "Tuple":
+      tmp = "_t" + str(len(T["out"]))
+      t_w(T, ind, tmp + " = " + t_e(T, v))
+      i = 0
+      while i < len(tg["elts"]):
+        t_w(T, ind, t_target(T, tg["elts"][i]) + " = " + tmp + "[" + str(i) + "]")
+        i = i + 1
+      return
+    if tg["t"] == "Name" and v["t"] == "Tuple" and keyused(T, tg["id"]):
+      t_w(T, ind, t_nm(T, tg["id"]) + " = py_key(" + t_e(T, v) + ")")
+      return
+    t_w(T, ind, t_target(T, tg) + " = " + t_e(T, v))
+    return
+  if t == "If":
+    t_w(T, ind, "if " + t_e(T, s["test"]) + ":")
+    t_body(T, s["body"], ind + 1)
+    orelse = s["orelse"]
+    while len(orelse) > 0:
+      if len(orelse) == 1 and orelse[0]["t"] == "If":
+        t_w(T, ind, "elif " + t_e(T, orelse[0]["test"]) + ":")
+        t_body(T, orelse[0]["body"], ind + 1)
+        orelse = orelse[0]["orelse"]
+      else:
+        t_w(T, ind, "else:")
+        t_body(T, orelse, ind + 1)
+        break
+    return
+  if t == "While":
+    t_w(T, ind, "while " + t_e(T, s["test"]) + ":")
+    t_body(T, s["body"], ind + 1)
+    return
+  if t == "For":
+    tgt = s["target"]
+    pre = []
+    if tgt["t"] == "Tuple":
+      names = []
+      i = 0
+      while i < len(tgt["elts"]):
+        x = tgt["elts"][i]
+        if x["t"] == "Name":
+          append(names, t_nm(T, x["id"]))
+        else:
+          tmpn = "_f" + str(len(T["out"])) + "_" + str(i)
+          append(names, tmpn)
+          append(pre, [x, tmpn])
+        i = i + 1
+      nm = join(", ", names)
+    elif tgt["t"] == "Name":
+      nm = t_nm(T, tgt["id"])
+    else:
+      raise "for target"
+    it = s["iter"]
+    if it["t"] == "Call" and it["func"]["t"] == "Name" and it["func"]["id"] == "range":
+      its = "range(" + t_args(T, it, null) + ")"
+    else:
+      its = t_e(T, it)
+    t_w(T, ind, "for " + nm + " in " + its + ":")
+    for pr in pre:
+      x = pr[0]
+      tmpn = pr[1]
+      j = 0
+      while j < len(x["elts"]):
+        el = x["elts"][j]
+        if el["t"] != "Name":
+          raise "deep for target"
+        t_w(T, ind + 1, t_nm(T, el["id"]) + " = " + tmpn + "[" + str(j) + "]")
+        j = j + 1
+    t_body(T, s["body"], ind + 1)
+    return
+  if t == "Try":
+    t_w(T, ind, "try:")
+    t_body(T, s["body"], ind + 1)
+    for h in s["handlers"]:
+      hn = "_e"
+      if h["name"] != null:
+        hn = t_nm(T, h["name"])
+      t_w(T, ind, "except as " + hn + ":")
+      t_body(T, h["body"], ind + 1)
+    if len(s["finalbody"]) > 0:
+      t_w(T, ind, "finally:")
+      t_body(T, s["finalbody"], ind + 1)
+    return
+  if t == "With":
+    it = s["items"][0]
+    if it["context"]["t"] == "Call" and it["context"]["func"]["t"] == "Name" and it["context"]["func"]["id"] == "open":
+      nm = t_nm(T, it["vars"]["id"])
+      t_w(T, ind, nm + " = py_open(" + t_args(T, it["context"], null) + ")")
+      t_body(T, s["body"], ind)
+      t_w(T, ind, "py_close(" + nm + ")")
+      return
+  raise t + " line " + str(s["line"])
+
+def list_head(xs, n):
+  out = []
+  i = 0
+  while i < n:
+    append(out, xs[i])
+    i = i + 1
+  return out
+
+# ---- module walk + pre-passes + translate ----
+def walk_nodes(n, out):
+  if py_is_node(n):
+    append(out, n)
+    for k in keys(n):
+      walk_nodes(n[k], out)
+  elif py_is_list(n):
+    for x in n:
+      walk_nodes(x, out)
+
+def collect_sigs(body):
+  sigs = {}
+  nodes = []
+  walk_nodes(body, nodes)
+  for n in nodes:
+    if n["t"] == "FunctionDef":
+      ps = []
+      for a in n["args"]:
+        if a != "self":
+          append(ps, a)
+      sigs[n["name"]] = ps
+    if n["t"] == "ClassDef":
+      for m in n["body"]:
+        if m["t"] == "FunctionDef":
+          ps = []
+          for a in m["args"]:
+            if a != "self":
+              append(ps, a)
+          sigs[n["name"] + "." + m["name"]] = ps
+  return sigs
+
+def asm_method_names(asm_body):
+  out = {}
+  for n in asm_body:
+    if n["t"] == "ClassDef" and n["name"] == "Asm":
+      for m in n["body"]:
+        if m["t"] == "FunctionDef" and byte_at(m["name"], 0) != 95:
+          out[m["name"]] = true
+  return out
+
+def has_name_ref(n, needle):
+  # '__name__' in ast.dump(test): a Name node or a str constant containing it
+  if py_is_node(n):
+    if n["t"] == "Name" and n["id"] == needle:
+      return true
+    if n["t"] == "Constant" and n["kind"] == "str" and py_contains_str(n["v"], needle):
+      return true
+    for k in keys(n):
+      if has_name_ref(n[k], needle):
+        return true
+    return false
+  if py_is_list(n):
+    for x in n:
+      if has_name_ref(x, needle):
+        return true
+  return false
+
+def py_contains_str(s, sub):
+  if len(sub) > len(s):
+    return false
+  i = 0
+  while i + len(sub) <= len(s):
+    if s[i:i + len(sub)] == sub:
+      return true
+    i = i + 1
+  return false
+
+def pygen_translate(src_texts, asm_text):
+  # src_texts: list of Python sources (concatenated like translate());
+  # asm_text: x64.py source. Returns [out_text, warns, errs]
+  body = []
+  for src in src_texts:
+    for st in pyparse.parse(src):
+      append(body, st)
+  asm_body = pyparse.parse(asm_text)
+  asm_m = asm_method_names(asm_body)
+  sigs = collect_sigs(body)
+  for n in asm_body:
+    if n["t"] == "ClassDef" and n["name"] == "Asm":
+      for m in n["body"]:
+        if m["t"] == "FunctionDef":
+          ps = []
+          for a in m["args"]:
+            if a != "self":
+              append(ps, a)
+          sigs["asm." + m["name"]] = ps
+  T = pygen_new(asm_m, sigs)
+  nodes = []
+  walk_nodes(body, nodes)
+  for n in nodes:
+    if n["t"] == "FunctionDef" and len(n["args"]) > 0 and n["args"][0] == "self":
+      ndefs = norm_defaults(n)
+      if len(ndefs) > 0:
+        nd = len(n["args"]) - len(ndefs) - 1
+        dl = []
+        i = 0
+        while i < nd:
+          append(dl, null)
+          i = i + 1
+        for d in ndefs:
+          append(dl, t_e(T, d))
+        T["defaults"][n["name"]] = dl
+  for n in nodes:
+    if n["t"] == "ClassDef":
+      for m in n["body"]:
+        if m["t"] == "Assign":
+          names = []
+          tg = m["targets"][0]
+          if tg["t"] == "Tuple":
+            for x in tg["elts"]:
+              append(names, x["id"])
+          else:
+            append(names, tg["id"])
+          for nme in names:
+            T["allconsts"][nme] = n["name"] + "_" + nme
+            T["cmap"][n["name"] + "|" + nme] = true
+  errs = []
+  for s in body:
+    mark = len(T["out"])
+    try:
+      dropped = false
+      if s["t"] == "Assign":
+        t_w(T, 0, t_target(T, s["targets"][0]) + " = " + t_e(T, s["value"]))
+      elif s["t"] == "Import" or s["t"] == "ImportFrom" or s["t"] == "Expr":
+        dropped = true
+      elif s["t"] == "If" and has_name_ref(s["test"], "__name__"):
+        dropped = true
+      else:
+        t_st(T, s, 0)
+      if not dropped:
+        t_w(T, 0, "")
+      while not dropped and (len(T["hoisted"]) > 0 or len(T["hoisted_consts"]) > 0):
+        hc = T["hoisted_consts"]
+        T["hoisted_consts"] = []
+        hh = T["hoisted"]
+        T["hoisted"] = []
+        owner = ""
+        if s["t"] == "ClassDef":
+          owner = s["name"]
+        for c in hc:
+          tg = c["targets"][0]
+          names = []
+          if tg["t"] == "Tuple":
+            for x in tg["elts"]:
+              append(names, x["id"])
+          else:
+            append(names, tg["id"])
+          val = t_e(T, c["value"])
+          if tg["t"] == "Tuple":
+            tmp = "_c_" + owner + "_" + names[0]
+            t_w(T, 0, tmp + " = " + val)
+            i = 0
+            while i < len(names):
+              t_w(T, 0, owner + "_" + names[i] + " = " + tmp + "[" + str(i) + "]")
+              i = i + 1
+          else:
+            t_w(T, 0, owner + "_" + names[0] + " = " + val)
+          t_w(T, 0, "")
+        for c in hh:
+          T["cls"] = c["name"]
+          t_st(T, c, 0)
+          t_w(T, 0, "")
+    except as ex:
+      T["out"] = list_head(T["out"], mark)
+      append(errs, s["t"] + ":" + str(s["line"]) + " " + strip_err_line(ex))
+  return [join("\n", T["out"]) + "\n", T["warn"], errs + T["fails"]]
