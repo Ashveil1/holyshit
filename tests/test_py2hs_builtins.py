@@ -213,7 +213,7 @@ def c14():
                              os.path.join(td, "all.holy")], capture_output=True, text=True)
         assert r2.returncode == 0, r2.stderr
         assert "WARNING" not in r2.stdout, f"current corpus must not warn: {r2.stdout[:400]}"
-        assert "UNSUPPORTED FunctionDef:12447" in r2.stdout, "UNSUPPORTED contract unchanged"
+        assert "UNSUPPORTED FunctionDef:12463" in r2.stdout, "UNSUPPORTED contract unchanged"
     return "CLI side channel: WARNING on collision, zero-warning corpus, UNSUPPORTED unchanged"
 
 
