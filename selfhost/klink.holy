@@ -3,6 +3,11 @@ import asm32
 import elf
 BASE = 1048576
 STACK = 16384
+# main-frame guard: kstack_ is reserved STACK + GUARD and main starts at
+# stack_top - GUARD, so the ring-3 entry zone (CPU frame + stub save,
+# [stack_top-168, stack_top]) never overlaps hs_kernel_main's frame.
+# Mirrors x64gen.KMAIN_GUARD; scstack_ stays STACK-sized.
+GUARD = 4096
 def zero(n):
   out = []
   for i in range(n):
@@ -64,7 +69,7 @@ def link(p, stack_patch):
   pay_off = gdt_off + len(gdt) + 10
   dat_off = pay_off + len(code)
   tbl_off = align(dat_off + len(data), 4096)
-  stack_top = BASE + dat_off + dl["kstack_"] + STACK
+  stack_top = BASE + dat_off + dl["kstack_"] + STACK + GUARD
   b.labels["STACK_TOP"] = stack_top - BASE
   b.labels["PML4"] = tbl_off
   b.labels["GDT_PTR"] = gdt_off + len(gdt)
@@ -105,7 +110,7 @@ def link(p, stack_patch):
   if stack_top > image_end:
     image_end = stack_top
   put(data, dl["imageend_"], elf.u64(image_end))
-  put(code, stack_patch, elf.u64(stack_top))
+  put(code, stack_patch, elf.u64(stack_top - GUARD))
   text = zero(mb_off - 116) + mb2 + mb1 + boot
   text = text + zero(gdt_off - 116 - len(text)) + gdt + gdt_ptr
   text = text + zero(pay_off - 116 - len(text)) + code
