@@ -334,6 +334,164 @@ def t_argv_list(T, call, sig):
   a = t_args(T, call, sig)
   return count_top_args(a)
 
+def py_repr_str(v):
+  # CPython repr() of a str: single quotes unless the string has ' and no "
+  has_sq = false
+  has_dq = false
+  i = 0
+  while i < len(v):
+    if v[i] == "'":
+      has_sq = true
+    if v[i] == "\"":
+      has_dq = true
+    i = i + 1
+  q = "'"
+  if has_sq and not has_dq:
+    q = "\""
+  out = q
+  i = 0
+  while i < len(v):
+    c = v[i]
+    o = byte_at(c, 0)
+    if c == "\\":
+      out = out + "\\\\"
+    elif c == q:
+      out = out + "\\" + q
+    elif c == "\n":
+      out = out + "\\n"
+    elif c == "\r":
+      out = out + "\\r"
+    elif c == "\t":
+      out = out + "\\t"
+    elif o < 32 or o == 127:
+      hi = 0
+      while (hi + 1) * 16 <= o:
+        hi = hi + 1
+      out = out + "\\x" + "0123456789abcdef"[hi] + "0123456789abcdef"[o - hi * 16]
+    else:
+      out = out + c
+    i = i + 1
+  return out + q
+
+BINOP_STR = {"Add": "+", "Sub": "-", "Mult": "*", "Div": "/", "FloorDiv": "//", "Mod": "%", "Pow": "**", "LShift": "<<", "RShift": ">>", "BitOr": "|", "BitAnd": "&", "BitXor": "^", "MatMult": "@"}
+CMPOP_STR = {"Eq": "==", "NotEq": "!=", "Lt": "<", "LtE": "<=", "Gt": ">", "GtE": ">=", "In": "in", "NotIn": "not in", "Is": "is", "IsNot": "is not"}
+
+def unparse_node(x):
+  # subset of ast.unparse used by py2hs's "kwargs without signature" diagnostic
+  t = x["t"]
+  if t == "Name":
+    return x["id"]
+  if t == "Attribute":
+    return unparse_node(x["value"]) + "." + x["attr"]
+  if t == "Constant":
+    k = x["kind"]
+    if k == "str":
+      return py_repr_str(x["v"])
+    if k == "int" or k == "float":
+      return x["v"]
+    if k == "bool":
+      if x["v"] == true:
+        return "True"
+      return "False"
+    if k == "none":
+      return "None"
+    raise "unparse-const:" + k
+  if t == "List":
+    parts = []
+    for e in x["elts"]:
+      append(parts, unparse_node(e))
+    return "[" + join(", ", parts) + "]"
+  if t == "Set":
+    parts = []
+    for e in x["elts"]:
+      append(parts, unparse_node(e))
+    return "{" + join(", ", parts) + "}"
+  if t == "Tuple":
+    parts = []
+    for e in x["elts"]:
+      append(parts, unparse_node(e))
+    if len(parts) == 1:
+      return "(" + parts[0] + ",)"
+    return "(" + join(", ", parts) + ")"
+  if t == "Dict":
+    parts = []
+    i = 0
+    while i < len(x["keys"]):
+      kk = x["keys"][i]
+      if kk == null:
+        append(parts, "**" + unparse_node(x["values"][i]))
+      else:
+        append(parts, unparse_node(kk) + ": " + unparse_node(x["values"][i]))
+      i = i + 1
+    return "{" + join(", ", parts) + "}"
+  if t == "Call":
+    return unparse_call(x)
+  if t == "Subscript":
+    return unparse_node(x["value"]) + "[" + unparse_node(x["slice"]) + "]"
+  if t == "Slice":
+    lo = ""
+    if x["lower"] != null:
+      lo = unparse_node(x["lower"])
+    hi = ""
+    if x["upper"] != null:
+      hi = unparse_node(x["upper"])
+    r = lo + ":" + hi
+    if x["step"] != null:
+      r = r + ":" + unparse_node(x["step"])
+    return r
+  if t == "UnaryOp":
+    if x["op"] == "Not":
+      return "not " + unparse_node(x["operand"])
+    if x["op"] == "USub":
+      return "-" + unparse_node(x["operand"])
+    if x["op"] == "UAdd":
+      return "+" + unparse_node(x["operand"])
+    return "~" + unparse_node(x["operand"])
+  if t == "BinOp":
+    return unparse_node(x["left"]) + " " + BINOP_STR[x["op"]] + " " + unparse_node(x["right"])
+  if t == "BoolOp":
+    op = " and "
+    if x["op"] == "Or":
+      op = " or "
+    parts = []
+    for v in x["values"]:
+      append(parts, unparse_node(v))
+    return join(op, parts)
+  if t == "Compare":
+    r = unparse_node(x["left"])
+    i = 0
+    while i < len(x["ops"]):
+      r = r + " " + CMPOP_STR[x["ops"][i]] + " " + unparse_node(x["comparators"][i])
+      i = i + 1
+    return r
+  if t == "IfExp":
+    return unparse_node(x["body"]) + " if " + unparse_node(x["test"]) + " else " + unparse_node(x["orelse"])
+  raise "unparse:" + t
+
+def unparse_call(call):
+  parts = []
+  for a in call["args"]:
+    append(parts, unparse_node(a))
+  for k in call["keywords"]:
+    if k["arg"] == null:
+      append(parts, "**" + unparse_node(k["value"]))
+    else:
+      append(parts, k["arg"] + "=" + unparse_node(k["value"]))
+  return unparse_node(call["func"]) + "(" + join(", ", parts) + ")"
+
+def unparse_call_filtered(call):
+  # ast.Call(func=call.func, args=call.args, keywords=[k for k in keywords if k.arg not in ("encoding", "file")])
+  parts = []
+  for a in call["args"]:
+    append(parts, unparse_node(a))
+  for k in call["keywords"]:
+    if k["arg"] != "encoding" and k["arg"] != "file":
+      if k["arg"] == null:
+        append(parts, "**" + unparse_node(k["value"]))
+      else:
+        append(parts, k["arg"] + "=" + unparse_node(k["value"]))
+  return unparse_node(call["func"]) + "(" + join(", ", parts) + ")"
+
 def t_args(T, call, sig):
   out = []
   for a in call["args"]:
@@ -344,7 +502,10 @@ def t_args(T, call, sig):
       append(kws, k)
   if len(kws) > 0:
     if sig == null:
-      raise "kwargs without signature"
+      u = unparse_call_filtered(call)
+      if len(u) > 60:
+        u = u[0:60]
+      raise "kwargs without signature: " + u
     pos = out
     names = list_tail(sig, len(call["args"]))
     kw = {}
@@ -697,6 +858,15 @@ def t_target(T, tg):
     return t_e(T, tg)
   raise "target " + tg["t"]
 
+def strip_err_line(ex):
+  # interp appends " at line N" to raised strings; py2hs errs carry no such suffix
+  i = len(ex) - 1
+  while i >= 0 and byte_at(ex[i], 0) >= 48 and byte_at(ex[i], 0) <= 57:
+    i = i - 1
+  if i < len(ex) - 1 and i >= 8 and ex[(i - 8):i] == " at line":
+    return ex[0:(i - 8)]
+  return ex
+
 def norm_defaults(s):
   # pyparse pads defaults with null per param; py2hs sees CPython's trailing-only list
   defs = []
@@ -764,7 +934,7 @@ def t_st(T, s, ind):
         t_st(T, m, ind + 1)
       except as ex:
         T["out"] = list_head(T["out"], mark)
-        append(T["fails"], s["name"] + "." + m["name"] + ":" + str(m["line"]) + " " + ex)
+        append(T["fails"], s["name"] + "." + m["name"] + ":" + str(m["line"]) + " " + strip_err_line(ex))
         if m["t"] == "FunctionDef":
           t_w(T, ind + 1, "def " + m["name"] + "(" + join(", ", m["args"]) + "):")
           t_w(T, ind + 2, "raise \"untranslated " + m["name"] + "\"")
@@ -1118,5 +1288,5 @@ def pygen_translate(src_texts, asm_text):
           t_w(T, 0, "")
     except as ex:
       T["out"] = list_head(T["out"], mark)
-      append(errs, s["t"] + ":" + str(s["line"]) + " " + ex)
+      append(errs, s["t"] + ":" + str(s["line"]) + " " + strip_err_line(ex))
   return [join("\n", T["out"]) + "\n", T["warn"], errs + T["fails"]]
