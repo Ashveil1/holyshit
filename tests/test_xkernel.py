@@ -270,6 +270,16 @@ with tempfile.TemporaryDirectory() as d:
         check("kpci did not fault", "EXC " not in out, out[-800:])
         check("kpci all assertions pass", "PCI TEST DONE 0" in out, out[-800:])
         check("kpci ran its checks", ("\n" + out).count("\nok ") >= 35, out[-800:])
+    # compositor: window registry, z-order, hit-test, cursor, compose pixels
+    kc = os.path.join(d, "kc.elf")
+    rc = build_xkernel(os.path.join(ROOT, "kernel", "kcomptest.holy"), kc)
+    check("kcomptest build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kc, timeout=10)
+        check("kcomp finished", "KCOMP TEST DONE" in out, out[-800:])
+        check("kcomp did not fault", "EXC " not in out, out[-800:])
+        check("kcomp all assertions pass", "KCOMP TEST DONE 0" in out, out[-800:])
+        check("kcomp ran its checks", ("\n" + out).count("\nok ") >= 43, out[-800:])
     # address spaces: a new PML4 shares the kernel, isolates user pages
     ka = os.path.join(d, "ka.elf")
     rc = build_xkernel(os.path.join(ROOT, "kernel", "kaddrtest.holy"), ka)
