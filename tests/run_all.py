@@ -47,6 +47,7 @@ SUITES = [
     ("test_mkverify_semantics.py", "disposable mkverify semantic differential and exact adaptation guards"),
     ("test_mkverify_atomic.py", "mkverify failure-atomic maintainer output plumbing"),
     ("test_py2hs_comp_preflight.py", "py2hs comprehension subset preflight"),
+    ("test_py2hs_corpus.py", "py2hs frozen corpus byte-exact goldens and fail-closed diagnostics"),
     ("test_py2hs_slice_step.py", "py2hs explicit slice steps fail closed"),
     ("test_py2hs_builtins.py", "py2hs HS_BUILTINS/HS_RESERVED cover interp builtins; nm collision renaming"),
     ("test_byteops.py", "byte_len/byte_find/byte_at parity and errors on interp/native/x64"),

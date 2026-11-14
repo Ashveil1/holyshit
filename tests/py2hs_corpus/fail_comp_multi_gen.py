@@ -1,0 +1,2 @@
+bad = [x for x in xs for y in ys]
+good = 7

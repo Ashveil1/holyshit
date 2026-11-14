@@ -1,0 +1,7 @@
+class Outer:
+  pass
+
+class Outer_Inner:
+  def m(self):
+    return 1
+

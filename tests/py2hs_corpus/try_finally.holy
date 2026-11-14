@@ -1,0 +1,7 @@
+try:
+  a = 1
+except as e:
+  b = 2
+finally:
+  c = 3
+

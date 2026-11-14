@@ -1,0 +1,4 @@
+a = "pre" + py_chr(1) + "post"
+
+b = "del" + py_chr(127) + ""
+

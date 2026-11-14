@@ -1,0 +1,5 @@
+def f(a, b, c):
+  return a
+
+r = f(1, null, 9)
+

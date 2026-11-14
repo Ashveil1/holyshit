@@ -1,0 +1,8 @@
+a = xs[1:2]
+
+b = xs[0:3]
+
+c = py_tail(xs, 4)
+
+d = py_tail(xs, 0)
+

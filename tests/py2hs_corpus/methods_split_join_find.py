@@ -1,0 +1,6 @@
+a = s.split(",")
+b = s.split()
+c = ",".join(xs)
+d = s.find("x")
+e = s.rfind("x")
+f = s.rsplit(",")

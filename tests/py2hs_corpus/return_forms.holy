@@ -1,0 +1,6 @@
+def f():
+  return null
+
+def g():
+  return 1
+

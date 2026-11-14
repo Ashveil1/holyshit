@@ -1,0 +1,3 @@
+def f(len_, print_):
+    range_ = len_
+    return range_

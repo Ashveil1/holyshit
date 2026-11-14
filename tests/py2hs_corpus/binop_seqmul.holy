@@ -1,0 +1,6 @@
+a = py_rep([0], 4)
+
+b = py_rep("ab", 3)
+
+c = py_rep([0], 8)
+

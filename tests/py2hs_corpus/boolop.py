@@ -1,0 +1,3 @@
+a = x and y
+b = x or y or z
+c = (x and y) or z

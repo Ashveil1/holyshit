@@ -1,0 +1,32 @@
+a = py_sorted(py_items(d), null)
+
+b = py_enumerate(xs)
+
+c = py_reversed(xs)
+
+d = py_all(xs)
+
+e = py_any(xs)
+
+f = py_min(1, 2)
+
+g = py_max(1, 2)
+
+h = py_abs(x)
+
+i = py_list(xs)
+
+j = py_hex(x)
+
+k = py_ord(c)
+
+l = py_chr(n)
+
+m = py_dict(null)
+
+n = py_sum(xs)
+
+o = py_zip(a, b)
+
+p = py_map(f, xs)
+
