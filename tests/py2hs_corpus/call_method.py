@@ -1,0 +1,5 @@
+class C:
+    def m(self, a, b):
+        return a
+c = C()
+r = c.m(1, 2)

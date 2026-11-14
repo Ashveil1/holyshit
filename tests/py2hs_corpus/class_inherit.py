@@ -1,0 +1,6 @@
+class B:
+    def m(self):
+        return 1
+class D(B):
+    def n(self):
+        return 2

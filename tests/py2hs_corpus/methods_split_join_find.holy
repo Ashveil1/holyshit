@@ -1,0 +1,12 @@
+a = py_split(s, ",")
+
+b = py_split(s, null)
+
+c = py_join(",", xs)
+
+d = py_find(s, "x")
+
+e = py_rfind(s, "x")
+
+f = py_rsplit(s, ",")
+

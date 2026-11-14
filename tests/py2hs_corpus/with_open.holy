@@ -1,0 +1,4 @@
+fh = py_open("f")
+data = fh.read_()
+py_close(fh)
+

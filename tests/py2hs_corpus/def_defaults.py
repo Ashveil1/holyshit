@@ -1,0 +1,4 @@
+def f(a, b=2, c=3):
+    return a
+r = f(1)
+s = f(1, 5)

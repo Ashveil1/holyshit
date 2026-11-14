@@ -1,0 +1,4 @@
+a = py_isinstance(x, ["int"])
+
+b = py_isinstance(y, ["str", "list"])
+

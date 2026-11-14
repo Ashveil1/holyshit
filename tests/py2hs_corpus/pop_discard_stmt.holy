@@ -1,0 +1,5 @@
+def f(xs, d, s, x):
+  xs = xs[0:(len(xs) - 1)]
+  d["k"] = null
+  s[x] = false
+

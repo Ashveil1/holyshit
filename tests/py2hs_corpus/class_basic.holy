@@ -1,0 +1,6 @@
+class C:
+  def m(self):
+    return C_K
+
+C_K = 5
+

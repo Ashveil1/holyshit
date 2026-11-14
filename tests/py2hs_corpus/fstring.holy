@@ -1,0 +1,8 @@
+a = ("x=" + str(x))
+
+b = (str(py_repr(x)))
+
+c = (py_fmt(x, "03d"))
+
+d = ("pre " + str(a) + " mid " + str(b) + " post")
+

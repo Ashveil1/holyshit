@@ -1,0 +1,14 @@
+a = (x == y)
+
+b = (x != y)
+
+c = ((x < y) and (y <= z))
+
+d = (x in y)
+
+e = (not (x in y))
+
+f = (x == y)
+
+g = (x != y)
+

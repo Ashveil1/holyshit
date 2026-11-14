@@ -1,0 +1,5 @@
+try:
+  a = 1
+except as e:
+  b = 2
+

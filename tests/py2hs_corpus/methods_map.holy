@@ -1,0 +1,50 @@
+a = py_get(d, "k", null)
+
+b = py_get(d, "k", 0)
+
+c = py_setdefault(d, "k", 1)
+
+d = py_items(d)
+
+e = py_add(s, x)
+
+f = py_update(d, o)
+
+g = py_extend(xs, ys)
+
+h = py_pop(xs)
+
+i = py_startswith(s, "a")
+
+j = py_endswith(s, "b")
+
+k = py_replace(s, "a", "b")
+
+l = py_decode(b, "utf-8")
+
+m = py_encode(s, "utf-8")
+
+n = py_index(xs, v)
+
+o = py_discard(s, x)
+
+p = py_copy(d)
+
+q = py_insert(xs, 0, v)
+
+r = py_strip(s)
+
+s = py_lower(s)
+
+t = py_upper(s)
+
+u = py_count(s, "x")
+
+v = py_sort(xs, null)
+
+w = py_remove(xs, v)
+
+x = py_isdigit(s)
+
+y = py_format(s, a)
+

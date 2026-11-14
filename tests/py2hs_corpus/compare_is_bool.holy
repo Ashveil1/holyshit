@@ -1,0 +1,4 @@
+a = (py_type(x) == "bool" and x == true)
+
+b = (not (py_type(y) == "bool" and y == false))
+
