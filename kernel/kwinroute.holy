@@ -15,12 +15,13 @@ import kinput
 
 QUEUE_MAX = 64
 
-# State: [compositor, wids, queues]; queues[i] holds events for wids[i],
-# oldest first. sys_router is the instance the syscall layer drains.
+# State: [compositor, wids, queues, created]; queues[i] holds events for
+# wids[i], oldest first; created tracks sys_create windows so sys_exit
+# can close them. sys_router is the instance the syscall layer drains.
 sys_router = null
 
 def create(c):
-  return [c, [], []]
+  return [c, [], [], []]
 
 def bind(r):
   global sys_router
@@ -103,9 +104,78 @@ def wrx(pev):
 def wry(pev):
   return pev >> 14 & 2047 - 1
 
+def qdrop(r, wid):
+  i = qfind(r, wid)
+  if i < 0:
+    return false
+  ws = []
+  qs = []
+  j = 0
+  while j < len(r[1]):
+    if j != i:
+      append(ws, r[1][j])
+      append(qs, r[2][j])
+    j = j + 1
+  r[1] = ws
+  r[2] = qs
+  return true
+
+def sys_create(x, y, w, h, color):
+  # SYS_WIN_CREATE: a compositor window owned by the calling program,
+  # with an implicit event queue. Returns the window id, -1 with no
+  # router bound, -22 on bad geometry.
+  if sys_router == null:
+    return -1
+  if w < 1 or h < 1:
+    return -22
+  wid = kcomp.win_add(sys_router[0], x, y, w, h, color)
+  append(sys_router[3], wid)
+  return wid
+
+def sys_close(wid):
+  # SYS_WIN_CLOSE: remove the window and drop its queue; 0 ok, -22 bad id.
+  if sys_router == null:
+    return -22
+  if not kcomp.win_remove(sys_router[0], wid):
+    return -22
+  qdrop(sys_router, wid)
+  cs = []
+  j = 0
+  while j < len(sys_router[3]):
+    if sys_router[3][j] != wid:
+      append(cs, sys_router[3][j])
+    j = j + 1
+  sys_router[3] = cs
+  return 0
+
+def sys_close_all():
+  # sys_exit hook: close every window the dying program created.
+  if sys_router == null:
+    return true
+  while len(sys_router[3]) > 0:
+    sys_close(sys_router[3][0])
+  return true
+
 def sys_read(wid):
   # SYS_WIN_EVENT_READ: oldest routed event for the window, 0 when empty
-  # or when no router is bound into the syscall layer.
+  # or when no router is bound. Ring 3 runs with IF clear by design, so
+  # the read opens a ring-0 interrupt window (up to ~400 ticks) and pumps
+  # the hardware FIFO through the router while it waits: a polling app
+  # keeps the machine fed exactly as a blocking read would.
   if sys_router == null:
     return 0
-  return drain(sys_router, wid)
+  irq_on()
+  t0 = ticks()
+  while true:
+    n = 0
+    while n < 64:
+      pev = kinput.read()
+      if pev == 0:
+        break
+      handle(sys_router, pev)
+      n = n + 1
+    out = drain(sys_router, wid)
+    if out != 0:
+      return out
+    if ticks() >= t0 + 400:
+      return 0

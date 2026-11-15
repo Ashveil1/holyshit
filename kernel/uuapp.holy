@@ -1,0 +1,23 @@
+# ring 3 window app: creates its own compositor window through
+# SYS_WIN_CREATE, announces the id, then drains 3 routed events through
+# SYS_WIN_EVENT_READ (blocking reads: the kernel pumps the pointer FIFO
+# while the app waits). The kernel auto-closes the window on exit.
+SYS_EXIT = 60
+SYS_WIN_EVENT_READ = 92
+SYS_WIN_CREATE = 93
+def sc(nr, a1, a2, a3, a4, a5, a6):
+  return scall(nr, a1, a2, a3, a4, a5, a6)
+wid = sc(SYS_WIN_CREATE, 30, 5, 30, 25, 0x224488, 0)
+print "wid", wid
+got = 0
+spins = 0
+while got < 3:
+  if spins >= 200:
+    break
+  ev = sc(SYS_WIN_EVENT_READ, wid, 0, 0, 0, 0, 0)
+  if ev != 0:
+    print "wev", ev & 7, ev >> 3 & 2047 - 1, ev >> 14 & 2047 - 1
+    got = got + 1
+  spins = spins + 1
+print "uuapp events", got
+sc(SYS_EXIT, 0, 0, 0, 0, 0, 0)
