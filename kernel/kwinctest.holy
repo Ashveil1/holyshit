@@ -1,0 +1,72 @@
+# Window lifecycle syscalls end to end: ring-0 pins for
+# SYS_WIN_CREATE/SYS_WIN_CLOSE, then /bin/uuapp runs in ring 3, creates
+# its window, and drains real QEMU-injected pointer traffic routed to it
+# (the harness injects over QMP after the app announces its window id).
+# On the app's exit the kernel must auto-close its window.
+import kmb
+import kpmm
+import kheap
+import ksyscall
+import kvfs
+import kramdisk
+import kuser
+import kinput
+import ksurface
+import kcomp
+import kwinroute
+fails = 0
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("heap init", kheap.init(64), true)
+expect("heap ready", kheap.ready(), true)
+expect("vfs ready", kvfs.vfs_init(), true)
+expect("ramdisk loads", kramdisk.load() > 0, true)
+expect("uuapp present", kvfs.is_file("/bin/uuapp"), true)
+
+# Ring-0 lifecycle pins on a bound private router.
+c0 = kcomp.create(ksurface.create(64, 48))
+r0 = kwinroute.create(c0)
+expect("router binds", kwinroute.bind(r0), true)
+wid0 = kwinroute.sys_create(2, 3, 10, 10, 0x112233)
+expect("create returns first id", wid0, 1)
+expect("window exists", len(c0[1]), 1)
+expect("bad width rejected", kwinroute.sys_create(0, 0, 0, 5, 0), -22)
+expect("bad height rejected", kwinroute.sys_create(0, 0, 5, 0, 0), -22)
+expect("close missing rejected", kwinroute.sys_close(9), -22)
+expect("close works", kwinroute.sys_close(1), 0)
+expect("window gone", len(c0[1]), 0)
+expect("created list empty", len(r0[3]), 0)
+expect("empty read times out to 0", kwinroute.sys_read(1), 0)
+
+# Live scene: the ring-3 app creates window 1 itself.
+c = kcomp.create(ksurface.create(64, 48))
+r = kwinroute.create(c)
+expect("live router binds", kwinroute.bind(r), true)
+data = kvfs.read("/bin/uuapp")
+expect("uuapp readable", data != null, true)
+expect("uuapp loads", kuser.load_image(kuser.payload_addr(data), len(data)), 1)
+expect("handler registered", ksyscall.start(), true)
+expect("exec enabled", kuser.enable_exec(), true)
+print "winc-ready"
+# The app announces its window id, then blocks in SYS_WIN_EVENT_READ; the
+# blocking read holds a ring-0 interrupt window open and pumps the FIFO,
+# so the harness can inject straight into the app's wait.
+kuser.run()
+expect("user stopped", ksyscall.user_stopped(), true)
+expect("exit code", ksyscall.user_exit_code(), 0)
+expect("win syscalls served", ksyscall.calls() >= 4, true)
+expect("window auto-closed", len(c[1]), 0)
+expect("focus cleared", c[5], -1)
+expect("created list drained", len(r[3]), 0)
+expect("queue dropped", kwinroute.qfind(r, 1), -1)
+expect("kernel alive", cr3() != 0, true)
+print "fails", fails
+print "winc-done"
