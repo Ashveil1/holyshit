@@ -95,6 +95,7 @@ SUITES = [
     ("test_framebuffer_kernel.py", "GRUB framebuffer native image and guest pixels"),
     ("test_ksurface.py", "GRUB double-buffered surface full and partial flush pixels"),
     ("test_pci.py", "QEMU PCI config-space enumeration pinned vs monitor topology"),
+    ("test_kcomp.py", "QEMU compositor window/z-order/cursor pixels on mock framebuffer"),
     ("test_examples.py", "examples"),
     ("test_lsp.py", "language server"),
     ("test_docs.py", "docs"),
@@ -184,7 +185,7 @@ SUITES = [
 ]
 
 
-QUICK_SKIP = ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_ksurface.py", "test_pci.py")
+QUICK_SKIP = ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
 
 
 def main(argv):

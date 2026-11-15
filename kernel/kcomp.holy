@@ -1,0 +1,115 @@
+# Compositor core: a window registry with z-order, hit-testing, and
+# full-scene composition onto a ksurface double buffer, plus a software
+# cursor drawn last. All drawing goes through ksurface, so the dirty-rect
+# flush to the framebuffer stays exact. Ring-3 window content and pointer
+# event delivery are later milestones (A2/B3); this is the kernel core.
+import ksurface
+
+# 7x7 NW-pointing cursor: per-row bitmasks, column 0 is bit 6.
+CURSOR_OUT = [96, 80, 72, 68, 66, 92, 96]
+CURSOR_FILL = [0, 32, 48, 56, 60, 32, 0]
+
+# State: [next_id, windows bottom..top, cursor_x, cursor_y, surface].
+# Window: [id, x, y, width, height, color].
+def create(surface):
+  return [1, [], 0, 0, surface]
+
+def win_find(c, wid):
+  i = 0
+  while i < len(c[1]):
+    if c[1][i][0] == wid:
+      return i
+    i = i + 1
+  return -1
+
+def win_add(c, x, y, width, height, color):
+  if width < 1 or height < 1:
+    raise "window needs positive size"
+  wid = c[0]
+  c[0] = wid + 1
+  append(c[1], [wid, x, y, width, height, color])
+  return wid
+
+def win_remove(c, wid):
+  i = win_find(c, wid)
+  if i < 0:
+    return false
+  out = []
+  j = 0
+  while j < len(c[1]):
+    if j != i:
+      append(out, c[1][j])
+    j = j + 1
+  c[1] = out
+  return true
+
+def win_raise(c, wid):
+  i = win_find(c, wid)
+  if i < 0:
+    return false
+  w = c[1][i]
+  win_remove(c, wid)
+  append(c[1], w)
+  return true
+
+def win_move(c, wid, nx, ny):
+  i = win_find(c, wid)
+  if i < 0:
+    return false
+  c[1][i][1] = nx
+  c[1][i][2] = ny
+  return true
+
+def hit_test(c, x, y):
+  # Topmost (last in z-order) window containing the point; edges are
+  # exclusive, matching ksurface clipping. The cursor is not a window.
+  i = len(c[1]) - 1
+  while i >= 0:
+    w = c[1][i]
+    if x >= w[1] and x < w[1] + w[3] and y >= w[2] and y < w[2] + w[4]:
+      return w[0]
+    i = i - 1
+  return -1
+
+def cursor_move(c, nx, ny):
+  s = c[4]
+  if nx < 0:
+    nx = 0
+  if ny < 0:
+    ny = 0
+  if nx >= s[0]:
+    nx = s[0] - 1
+  if ny >= s[1]:
+    ny = s[1] - 1
+  moved = nx != c[2] or ny != c[3]
+  c[2] = nx
+  c[3] = ny
+  return moved
+
+def compose(c):
+  # Redraw the whole scene bottom-to-top, cursor last. ksurface records
+  # the damage; flush() after compose writes exactly the dirty union.
+  s = c[4]
+  i = 0
+  while i < len(c[1]):
+    w = c[1][i]
+    ksurface.rect(s, w[1], w[2], w[3], w[4], w[5])
+    i = i + 1
+  dy = 0
+  while dy < 7:
+    bits = CURSOR_OUT[dy]
+    dx = 0
+    while dx < 7:
+      if bits >> (6 - dx) & 1 == 1:
+        ksurface.pixel(s, c[2] + dx, c[3] + dy, 0)
+      dx = dx + 1
+    dy = dy + 1
+  dy = 0
+  while dy < 7:
+    bits = CURSOR_FILL[dy]
+    dx = 0
+    while dx < 7:
+      if bits >> (6 - dx) & 1 == 1:
+        ksurface.pixel(s, c[2] + dx, c[3] + dy, 0xffffff)
+      dx = dx + 1
+    dy = dy + 1

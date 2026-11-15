@@ -1,0 +1,103 @@
+# kcomp: window registry, z-order, hit-testing, cursor clamp, and
+# compose+flush pixels on a mock heap framebuffer (deterministic on any
+# machine, same pattern as ksurfacetest).
+import kmb
+import kpmm
+import kheap
+import ksurface
+import kcomp
+
+fails = 0
+
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+def peek8(addr):
+  unsafe:
+    return load8(as_ptr(addr))
+
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("heap init", kheap.init(64), true)
+expect("heap ready", kheap.ready(), true)
+
+mock = kheap.malloc(64 * 48 * 4)
+expect("mock allocated", mock != 0, true)
+i = 0
+while i < 64 * 48 * 4:
+  unsafe:
+    store8(as_ptr(mock + i), 0)
+  i = i + 1
+frame = [mock, 256, 64, 48, 4, 2, 1, 0]
+
+c = kcomp.create(ksurface.create(64, 48))
+expect("first id is 1", c[0], 1)
+expect("empty hit test", kcomp.hit_test(c, 10, 10), -1)
+expect("add first window", kcomp.win_add(c, 0, 0, 20, 20, 0x112233), 1)
+expect("add second window", kcomp.win_add(c, 10, 10, 20, 20, 0x445566), 2)
+expect("window count", len(c[1]), 2)
+rejected = false
+try:
+  kcomp.win_add(c, 5, 5, 0, 5, 0)
+except as e:
+  rejected = true
+expect("zero width rejected", rejected, true)
+expect("hit first only", kcomp.hit_test(c, 5, 5), 1)
+expect("hit overlap takes top", kcomp.hit_test(c, 15, 15), 2)
+expect("hit outside", kcomp.hit_test(c, 63, 47), -1)
+expect("right edge excluded", kcomp.hit_test(c, 20, 5), -1)
+expect("bottom edge excluded", kcomp.hit_test(c, 5, 20), -1)
+expect("raise first", kcomp.win_raise(c, 1), true)
+expect("raised window on top", c[1][1][0], 1)
+expect("overlap hit after raise", kcomp.hit_test(c, 15, 15), 1)
+expect("raise missing", kcomp.win_raise(c, 9), false)
+expect("move second", kcomp.win_move(c, 2, 30, 30), true)
+expect("hit moved window", kcomp.hit_test(c, 35, 35), 2)
+expect("hit vacated spot", kcomp.hit_test(c, 25, 25), -1)
+expect("remove second", kcomp.win_remove(c, 2), true)
+expect("count after remove", len(c[1]), 1)
+expect("remove missing", kcomp.win_remove(c, 2), false)
+expect("move missing", kcomp.win_move(c, 9, 0, 0), false)
+expect("cursor clamp moved", kcomp.cursor_move(c, -5, 999), true)
+expect("cursor clamped x", c[2], 0)
+expect("cursor clamped y", c[3], 47)
+expect("cursor still", kcomp.cursor_move(c, 0, 47), false)
+
+# Fresh scene for pixel checks: w1 0x112233 at (0,0,20,20) under w2
+# 0x445566 at (10,10,20,20), cursor at (50,30) clear of both.
+kcomp.win_add(c, 10, 10, 20, 20, 0x445566)
+kcomp.cursor_move(c, 50, 30)
+kcomp.compose(c)
+# Windows union into the bounding box (0,0,30,30) = 900; the cursor's
+# drawn span (50,30,56,37) = 42 more, disjoint. flush writes bounding boxes.
+expect("scene flush pixels", ksurface.flush(c[4], frame), 942)
+expect("clean after flush", c[4][3], 0)
+expect("second flush empty", ksurface.flush(c[4], frame), 0)
+base = mock + 5 * 256 + 5 * 4
+expect("first-only red", peek8(base + 2), 0x11)
+base = mock + 15 * 256 + 15 * 4
+expect("overlap red", peek8(base + 2), 0x44)
+expect("overlap blue", peek8(base + 0), 0x66)
+base = mock + 25 * 256 + 25 * 4
+expect("second-only red", peek8(base + 2), 0x44)
+base = mock + 47 * 256 + 40 * 4
+expect("untouched pixel", peek8(base + 2), 0)
+base = mock + 31 * 256 + 51 * 4
+expect("cursor fill red", peek8(base + 2), 0xff)
+expect("cursor fill green", peek8(base + 1), 0xff)
+base = mock + 30 * 256 + 50 * 4
+expect("cursor outline red", peek8(base + 2), 0)
+
+# Raising changes occlusion on the next compose.
+kcomp.win_raise(c, 1)
+kcomp.compose(c)
+ksurface.flush(c[4], frame)
+base = mock + 15 * 256 + 15 * 4
+expect("overlap red after raise", peek8(base + 2), 0x11)
+
+print "KCOMP TEST DONE", fails
