@@ -1,18 +1,27 @@
-# Compositor core: a window registry with z-order, hit-testing, and
-# full-scene composition onto a ksurface double buffer, plus a software
-# cursor drawn last. All drawing goes through ksurface, so the dirty-rect
-# flush to the framebuffer stays exact. Ring-3 window content and pointer
-# event delivery are later milestones (A2/B3); this is the kernel core.
+# Compositor core: a window registry with z-order, hit-testing, focus and
+# title-bar drag driven by packed kinput pointer events, and full-scene
+# composition onto a ksurface double buffer, plus a software cursor drawn
+# last. All drawing goes through ksurface, so the dirty-rect flush to the
+# framebuffer stays exact. Ring-3 window content and per-window event
+# routing are later milestones (B4); this is the kernel core.
 import ksurface
+import kinput
 
 # 7x7 NW-pointing cursor: per-row bitmasks, column 0 is bit 6.
 CURSOR_OUT = [96, 80, 72, 68, 66, 92, 96]
 CURSOR_FILL = [0, 32, 48, 56, 60, 32, 0]
 
-# State: [next_id, windows bottom..top, cursor_x, cursor_y, surface].
+# Title bar: top TITLE_H rows of a window (fewer when the window is
+# shorter). Focused windows get the bright bar, the rest the dim one.
+TITLE_H = 6
+TITLE_FOCUS = 0x2a6fdb
+TITLE_DIM = 0x555a66
+
+# State: [next_id, windows bottom..top, cursor_x, cursor_y, surface,
+# focus_wid, drag_wid, grab_dx, grab_dy, prev_buttons].
 # Window: [id, x, y, width, height, color].
 def create(surface):
-  return [1, [], 0, 0, surface]
+  return [1, [], 0, 0, surface, -1, -1, 0, 0, 0]
 
 def win_find(c, wid):
   i = 0
@@ -41,6 +50,10 @@ def win_remove(c, wid):
       append(out, c[1][j])
     j = j + 1
   c[1] = out
+  if c[5] == wid:
+    c[5] = -1
+  if c[6] == wid:
+    c[6] = -1
   return true
 
 def win_raise(c, wid):
@@ -71,6 +84,67 @@ def hit_test(c, x, y):
     i = i - 1
   return -1
 
+def title_h(w):
+  th = TITLE_H
+  if w[4] < th:
+    th = w[4]
+  return th
+
+def in_title(w, x, y):
+  return x >= w[1] and x < w[1] + w[3] and y >= w[2] and y < w[2] + title_h(w)
+
+def handle_event(c, ev):
+  # One packed kinput event: move the cursor by the deltas, then apply
+  # left-button edges. Press on a window raises and focuses it; press on
+  # its title bar also starts a drag; press on bare desktop clears focus.
+  # A held button drags the grabbed window, clamped to the surface.
+  b = kinput.buttons(ev)
+  dx = kinput.dx(ev)
+  dy = kinput.dy(ev)
+  was_down = c[9] & 1 == 1
+  down = b & 1 == 1
+  cursor_move(c, c[2] + dx, c[3] + dy)
+  if down and not was_down:
+    hit = hit_test(c, c[2], c[3])
+    if hit < 0:
+      c[5] = -1
+    else:
+      win_raise(c, hit)
+      c[5] = hit
+      i = win_find(c, hit)
+      w = c[1][i]
+      if in_title(w, c[2], c[3]):
+        c[6] = hit
+        c[7] = c[2] - w[1]
+        c[8] = c[3] - w[2]
+  if down and c[6] >= 0:
+    i = win_find(c, c[6])
+    if i >= 0:
+      w = c[1][i]
+      s = c[4]
+      nx = c[2] - c[7]
+      ny = c[3] - c[8]
+      if nx < 0:
+        nx = 0
+      if ny < 0:
+        ny = 0
+      mx = s[0] - w[3]
+      my = s[1] - w[4]
+      if mx < 0:
+        mx = 0
+      if my < 0:
+        my = 0
+      if nx > mx:
+        nx = mx
+      if ny > my:
+        ny = my
+      w[1] = nx
+      w[2] = ny
+  if not down and was_down:
+    c[6] = -1
+  c[9] = b
+  return c[5]
+
 def cursor_move(c, nx, ny):
   s = c[4]
   if nx < 0:
@@ -87,13 +161,20 @@ def cursor_move(c, nx, ny):
   return moved
 
 def compose(c):
-  # Redraw the whole scene bottom-to-top, cursor last. ksurface records
-  # the damage; flush() after compose writes exactly the dirty union.
+  # Redraw the whole scene bottom-to-top, cursor last. Each window is a
+  # title bar (bright when focused) over its body. ksurface records the
+  # damage; flush() after compose writes exactly the dirty union.
   s = c[4]
   i = 0
   while i < len(c[1]):
     w = c[1][i]
-    ksurface.rect(s, w[1], w[2], w[3], w[4], w[5])
+    th = title_h(w)
+    tcol = TITLE_DIM
+    if w[0] == c[5]:
+      tcol = TITLE_FOCUS
+    ksurface.rect(s, w[1], w[2], w[3], th, tcol)
+    if w[4] > th:
+      ksurface.rect(s, w[1], w[2] + th, w[3], w[4] - th, w[5])
     i = i + 1
   dy = 0
   while dy < 7:
