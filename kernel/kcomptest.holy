@@ -1,6 +1,8 @@
-# kcomp: window registry, z-order, hit-testing, cursor clamp, and
-# compose+flush pixels on a mock heap framebuffer (deterministic on any
-# machine, same pattern as ksurfacetest).
+# kcomp: window registry, z-order, hit-testing, focus, title-bar drag,
+# pointer-event handling, cursor clamp, and compose+flush pixels on a
+# mock heap framebuffer (deterministic on any machine, same pattern as
+# ksurfacetest). Events are synthetic packed kinput words, so no IRQ or
+# hardware timing is involved.
 import kmb
 import kpmm
 import kheap
@@ -79,10 +81,10 @@ expect("scene flush pixels", ksurface.flush(c[4], frame), 942)
 expect("clean after flush", c[4][3], 0)
 expect("second flush empty", ksurface.flush(c[4], frame), 0)
 base = mock + 5 * 256 + 5 * 4
-expect("first-only red", peek8(base + 2), 0x11)
+expect("first-only title red", peek8(base + 2), 0x55)
 base = mock + 15 * 256 + 15 * 4
-expect("overlap red", peek8(base + 2), 0x44)
-expect("overlap blue", peek8(base + 0), 0x66)
+expect("overlap title red", peek8(base + 2), 0x55)
+expect("overlap title blue", peek8(base + 0), 0x66)
 base = mock + 25 * 256 + 25 * 4
 expect("second-only red", peek8(base + 2), 0x44)
 base = mock + 47 * 256 + 40 * 4
@@ -99,5 +101,62 @@ kcomp.compose(c)
 ksurface.flush(c[4], frame)
 base = mock + 15 * 256 + 15 * 4
 expect("overlap red after raise", peek8(base + 2), 0x11)
+
+# B3: focus, raise-on-press, title-bar drag with clamping, and focus
+# colors, driven by synthetic packed pointer events on a fresh scene.
+def ev(btn, edx, edy):
+  return btn + (edx + 512) << 3 + (edy + 512) << 13
+
+c2 = kcomp.create(ksurface.create(64, 48))
+kcomp.win_add(c2, 10, 10, 20, 20, 0x112233)
+kcomp.win_add(c2, 40, 20, 20, 20, 0x445566)
+expect("move only keeps focus", kcomp.handle_event(c2, ev(0, 5, 5)), -1)
+expect("desktop press clears focus", kcomp.handle_event(c2, ev(1, 0, 0)), -1)
+kcomp.handle_event(c2, ev(0, 0, 0))
+expect("no drag from desktop", c2[6], -1)
+kcomp.handle_event(c2, ev(1, 7, 7))
+expect("title press focuses", c2[5], 1)
+expect("title press raises", c2[1][1][0], 1)
+expect("title press starts drag", c2[6], 1)
+kcomp.handle_event(c2, ev(1, 8, 6))
+expect("drag moves window x", c2[1][1][1], 18)
+expect("drag moves window y", c2[1][1][2], 16)
+kcomp.handle_event(c2, ev(1, -30, -30))
+expect("drag clamps left", c2[1][1][1], 0)
+expect("drag clamps top", c2[1][1][2], 0)
+kcomp.handle_event(c2, ev(0, 0, 0))
+expect("release ends drag", c2[6], -1)
+kcomp.handle_event(c2, ev(0, 30, 25))
+expect("no drag after release", c2[1][1][1], 0)
+kcomp.handle_event(c2, ev(1, 15, 5))
+expect("body press focuses", c2[5], 2)
+expect("body press raises", c2[1][1][0], 2)
+expect("body press starts no drag", c2[6], -1)
+kcomp.handle_event(c2, ev(0, 0, 0))
+
+mock2 = kheap.malloc(64 * 48 * 4)
+expect("mock2 allocated", mock2 != 0, true)
+i = 0
+while i < 64 * 48 * 4:
+  unsafe:
+    store8(as_ptr(mock2 + i), 0)
+  i = i + 1
+frame2 = [mock2, 256, 64, 48, 4, 2, 1, 0]
+kcomp.compose(c2)
+ksurface.flush(c2[4], frame2)
+base = mock2 + 2 * 256 + 5 * 4
+expect("unfocused title red", peek8(base + 2), 0x55)
+base = mock2 + 22 * 256 + 45 * 4
+expect("focused title red", peek8(base + 2), 0x2a)
+expect("focused title green", peek8(base + 1), 0x6f)
+base = mock2 + 38 * 256 + 55 * 4
+expect("focused body red", peek8(base + 2), 0x44)
+base = mock2 + 10 * 256 + 10 * 4
+expect("unfocused body red", peek8(base + 2), 0x11)
+
+expect("remove focused clears focus", kcomp.win_remove(c2, 2), true)
+expect("focus cleared", c2[5], -1)
+expect("short window all title", kcomp.title_h([9, 50, 0, 8, 4, 0]), 4)
+expect("short window title hit", kcomp.in_title([9, 50, 0, 8, 4, 0], 54, 3), true)
 
 print "KCOMP TEST DONE", fails

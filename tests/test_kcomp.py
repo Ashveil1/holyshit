@@ -38,9 +38,9 @@ for ir_backend in (True, False):
             out = serial.read_text(errors='replace')
             assert 'KCOMP TEST DONE 0' in out, f'kcomp gate failures ({backend}):\n{out}'
             oks = out.count('\nok ') + (1 if out.startswith('ok ') else 0)
-            assert oks == 43, f'expected 43 ok lines ({backend}), got {oks}:\n{out}'
+            assert oks == 68, f'expected 68 ok lines ({backend}), got {oks}:\n{out}'
             total += 1
-            print(f'ok kcomp 43/43 registry and pixel assertions ({backend})')
+            print(f'ok kcomp 68/68 registry, focus, drag and pixel assertions ({backend})')
         finally:
             p.kill()
 print(f'{total}/2 kcomp gates (IR and AST)')
