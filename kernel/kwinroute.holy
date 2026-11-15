@@ -1,0 +1,111 @@
+# Window event routing: feeds packed kinput pointer events through the
+# compositor (focus/raise/drag chrome) and mirrors the non-chrome ones to
+# per-window queues as window-relative packed words for ring 3 readers.
+#
+# Chrome events are never routed: a press on a title bar or on bare
+# desktop, and every event while a title drag is active. Everything else
+# (motion, body presses, releases) lands in the queue of the window under
+# the cursor, translated to window-relative coordinates.
+#
+# Routed word: buttons + ((rx+1) << 3) + ((ry+1) << 14). rx/ry are the
+# cursor offset inside the window, biased by 1 so a zero-motion event at
+# the window origin is never 0; drain returns 0 for an empty queue.
+import kcomp
+import kinput
+
+QUEUE_MAX = 64
+
+# State: [compositor, wids, queues]; queues[i] holds events for wids[i],
+# oldest first. sys_router is the instance the syscall layer drains.
+sys_router = null
+
+def create(c):
+  return [c, [], []]
+
+def bind(r):
+  global sys_router
+  sys_router = r
+  return true
+
+def qfind(r, wid):
+  i = 0
+  while i < len(r[1]):
+    if r[1][i] == wid:
+      return i
+    i = i + 1
+  return -1
+
+def enqueue(r, wid, pev):
+  i = qfind(r, wid)
+  if i < 0:
+    append(r[1], wid)
+    append(r[2], [pev])
+    return true
+  if len(r[2][i]) >= QUEUE_MAX:
+    return false
+  append(r[2][i], pev)
+  return true
+
+def drain(r, wid):
+  i = qfind(r, wid)
+  if i < 0 or len(r[2][i]) == 0:
+    return 0
+  pev = r[2][i][0]
+  out = []
+  j = 1
+  while j < len(r[2][i]):
+    append(out, r[2][i][j])
+    j = j + 1
+  r[2][i] = out
+  return pev
+
+def handle(r, ev):
+  # One packed kinput event: compositor chrome first, then route the
+  # remainder to the window under the post-move cursor.
+  c = r[0]
+  b = kinput.buttons(ev)
+  was_down = c[9] & 1 == 1
+  down = b & 1 == 1
+  was_drag = c[6] >= 0
+  s = c[4]
+  px = c[2] + kinput.dx(ev)
+  py = c[3] + kinput.dy(ev)
+  if px < 0:
+    px = 0
+  if py < 0:
+    py = 0
+  if px >= s[0]:
+    px = s[0] - 1
+  if py >= s[1]:
+    py = s[1] - 1
+  chrome = false
+  if down and not was_down:
+    h = kcomp.hit_test(c, px, py)
+    if h < 0:
+      chrome = true
+    else:
+      i = kcomp.win_find(c, h)
+      if kcomp.in_title(c[1][i], px, py):
+        chrome = true
+  out = kcomp.handle_event(c, ev)
+  if not chrome and not was_drag:
+    h = kcomp.hit_test(c, c[2], c[3])
+    if h >= 0:
+      i = kcomp.win_find(c, h)
+      w = c[1][i]
+      enqueue(r, h, b + (c[2] - w[1] + 1) << 3 + (c[3] - w[2] + 1) << 14)
+  return out
+
+def wbuttons(pev):
+  return pev & 7
+def wrx(pev):
+  return pev >> 3 & 2047 - 1
+def wry(pev):
+  return pev >> 14 & 2047 - 1
+
+def sys_read(wid):
+  # SYS_WIN_EVENT_READ: oldest routed event for the window, 0 when empty
+  # or when no router is bound into the syscall layer.
+  if sys_router == null:
+    return 0
+  return drain(sys_router, wid)
