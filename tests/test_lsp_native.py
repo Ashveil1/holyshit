@@ -97,6 +97,36 @@ SEM_ERR = "print undefined_name_xyz\n"
 SEM_ERR2 = "def f():\n  return missing_thing + 1\nf()\n"
 NONASCII = "name = \"caf\u00e9 \u4e2d\u6587\"\nprint missing_after_unicode\n"
 UNCLOSED = "xs = [1, 2\n"
+HOVER = """import json
+def f(a, b):
+  y = a + b
+  return y
+print f(1, 2)
+print len([1])
+x = f(2, 3)
+while x < 10:
+  x = x + 1
+"""
+SYM = """import json
+import os.path
+x = 1
+def f(a, b):
+  y = a + b
+  def g(c):
+    return c * y
+  return g
+for i in [1, 2]:
+  print i
+try:
+  raise "e"
+except as err:
+  print err
+while x < 10:
+  x = x + 1
+unsafe:
+  z = 3
+print f(x, len([1]))
+"""
 
 
 def scenario(argv, env=None):
@@ -153,8 +183,142 @@ def scenario(argv, env=None):
     out["close"] = list(c.diags)
     open_doc(PARSE_ERR, "reopen_parse_err")
 
+    # documentSymbol: rich doc, parse-error doc, semantic-error doc, unknown doc
+    for tag, text in [("sym", SYM), ("sym_parse_err", PARSE_ERR),
+                      ("sym_sem_err", SEM_ERR)]:
+        u = "file:///tmp/lsp_native_%s.holy" % tag
+        c.diags.clear()
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": u, "languageId": "holyshit", "version": 1, "text": text}})
+        c.drain()
+        out["diags_" + tag] = list(c.diags)
+        out["symbols_" + tag] = c.request("textDocument/documentSymbol",
+                                          {"textDocument": {"uri": u}})
+    out["symbols_unknown"] = c.request("textDocument/documentSymbol", {
+        "textDocument": {"uri": "file:///tmp/never_opened.holy"}})
+
+    # hover: module/function/variable/param/builtin/keyword/def-site/misses
+    hov_uri = "file:///tmp/lsp_native_hover.holy"
+    c.diags.clear()
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": hov_uri, "languageId": "holyshit", "version": 1,
+        "text": HOVER}})
+    c.drain()
+    out["diags_hover"] = list(c.diags)
+
+    def hov(tag, line, ch, uri=hov_uri):
+        out["hov_" + tag] = c.request("textDocument/hover", {
+            "textDocument": {"uri": uri},
+            "position": {"line": line, "character": ch}})
+
+    hov("module", 0, 3)
+    hov("defsite", 1, 5)
+    hov("vardef", 2, 2)
+    hov("funcuse", 4, 7)
+    hov("builtin", 4, 1)
+    hov("builtin2", 5, 7)
+    hov("keyword", 7, 1)
+    hov("varuse", 8, 2)
+    hov("param", 1, 6)
+    hov("pastend", 4, 20)
+    hov("emptyline", 9, 0)
+    hov("badline", 40, 0)
+    hov("unknown_uri", 0, 0, uri="file:///tmp/never_opened.holy")
+    hov("undef", 0, 0, uri="file:///tmp/lsp_native_sym_sem_err.holy")
+    # dotted word over an unresolvable module path
+    hov("dotted", 1, 3, uri="file:///tmp/lsp_native_sym.holy")
+    # non-ASCII line: hover on ASCII name and far past the end
+    uni_uri = "file:///tmp/lsp_native_uni.holy"
+    c.diags.clear()
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uni_uri, "languageId": "holyshit", "version": 1,
+        "text": NONASCII}})
+    c.drain()
+    hov("unicode_name", 0, 2, uri=uni_uri)
+    hov("unicode_far", 0, 60, uri=uni_uri)
+    hov("unicode_use", 1, 8, uri=uni_uri)
+
+    # completion: with symbols, parse-error doc, unknown doc
+    out["compl"] = c.request("textDocument/completion", {
+        "textDocument": {"uri": hov_uri},
+        "position": {"line": 4, "character": 7}})
+    out["compl_parse_err"] = c.request("textDocument/completion", {
+        "textDocument": {"uri": "file:///tmp/lsp_native_sym_parse_err.holy"},
+        "position": {"line": 0, "character": 1}})
+    out["compl_unknown"] = c.request("textDocument/completion", {
+        "textDocument": {"uri": "file:///tmp/never_opened.holy"},
+        "position": {"line": 0, "character": 0}})
+
+    # formatting: messy doc, clean doc, comment-heavy doc, parse-error doc
+    MESSY = "x   =   1\ndef f( a,b ):\n  return a+b\n\n\ny = f(1,2)\n"
+    COMMENTS = "# header comment\nx = 1  # trailing\n# lone comment\nprint x\n"
+    for tag, text in [("fmt_messy", MESSY), ("fmt_clean", GOOD),
+                      ("fmt_comments", COMMENTS),
+                      ("fmt_parse_err", PARSE_ERR)]:
+        u = "file:///tmp/lsp_native_%s.holy" % tag
+        c.diags.clear()
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": u, "languageId": "holyshit", "version": 1,
+            "text": text}})
+        c.drain()
+        out[tag] = c.request("textDocument/formatting",
+                             {"textDocument": {"uri": u}})
+    out["fmt_unknown"] = c.request("textDocument/formatting", {
+        "textDocument": {"uri": "file:///tmp/never_opened.holy"}})
+
     out["unknown"] = c.request("workspace/doesNotExist", {})
     out["shutdown"] = c.request("shutdown", None)
+    c.notify("exit", {})
+    c.p.wait(timeout=10)
+    out["exitcode"] = c.p.returncode
+    return out
+
+
+def scenario_ws(argv, ws):
+    """Cross-module features over a small on-disk workspace at ws."""
+    c = Client(argv)
+    out = {}
+    out["init"] = c.request("initialize", {
+        "processId": None, "rootPath": ws, "capabilities": {}})
+    c.notify("initialized", {})
+    main_uri = "file://" + os.path.join(ws, "main.holy")
+    with open(os.path.join(ws, "main.holy"), encoding="utf-8") as f:
+        main_text = f.read()
+    c.diags.clear()
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": main_uri, "languageId": "holyshit", "version": 1,
+        "text": main_text}})
+    c.drain()
+    out["diags"] = list(c.diags)
+
+    def req(tag, method, params):
+        out[tag] = c.request(method, params)
+
+    def pos(line, ch):
+        return {"textDocument": {"uri": main_uri},
+                "position": {"line": line, "character": ch}}
+
+    req("def_module", "textDocument/definition", pos(0, 8))
+    req("def_crossfn", "textDocument/definition", pos(3, 16))
+    req("def_crossvar", "textDocument/definition", pos(4, 15))
+    req("def_local", "textDocument/definition", pos(6, 5))
+    req("def_miss", "textDocument/definition", pos(5, 0))
+    req("hov_crossfn", "textDocument/hover", pos(3, 16))
+    req("hov_crossmod", "textDocument/hover", pos(0, 8))
+    req("hl_x", "textDocument/documentHighlight", pos(4, 0))
+    req("hl_local", "textDocument/documentHighlight", pos(6, 5))
+    req("refs_addtwo", "textDocument/references", pos(3, 16))
+    req("refs_addtwo_nodecl", "textDocument/references",
+        dict(pos(3, 16), context={"includeDeclaration": False}))
+    req("refs_x", "textDocument/references", pos(4, 0))
+    req("sig_builtin", "textDocument/signatureHelp", pos(9, 9))
+    req("sig_builtin2", "textDocument/signatureHelp", pos(9, 14))
+    req("sig_user", "textDocument/signatureHelp", pos(8, 13))
+    req("sig_user2", "textDocument/signatureHelp", pos(8, 17))
+    req("sig_none", "textDocument/signatureHelp", pos(0, 2))
+    req("ws_all", "workspace/symbol", {"query": ""})
+    req("ws_add", "workspace/symbol", {"query": "ADD"})
+    req("shutdown", "shutdown", None)
     c.notify("exit", {})
     c.p.wait(timeout=10)
     out["exitcode"] = c.p.returncode
@@ -194,6 +358,11 @@ def pipelined(argv, env=None):
 
 
 def main():
+    r = subprocess.run(
+        [sys.executable, os.path.join(ROOT, "scripts", "gen_lspdata.py"),
+         "--check"], capture_output=True, text=True)
+    check("lspdata.holy up to date", r.returncode == 0,
+          (r.stdout + r.stderr)[-200:])
     with tempfile.TemporaryDirectory() as td:
         exe = os.path.join(td, "hs_lsp_native")
         env = dict(os.environ)
@@ -216,6 +385,29 @@ def main():
             check(f"scenario {k}", py[k] == hs[k],
                   f"\n  py: {json.dumps(py[k])[:300]}"
                   f"\n  hs: {json.dumps(hs[k])[:300]}")
+
+        ws = os.path.join(td, "ws")
+        os.makedirs(ws)
+        with open(os.path.join(ws, "mod_util.holy"), "w",
+                  encoding="utf-8") as f:
+            f.write("def add_two(a, b):\n  return a + b\nVERSION = 2\n")
+        with open(os.path.join(ws, "main.holy"), "w", encoding="utf-8") as f:
+            f.write("import mod_util\n"
+                    "def add_three(a, b, c):\n"
+                    "  return a + b + c\n"
+                    "print mod_util.add_two(1, 2)\n"
+                    "x = mod_util.VERSION\n"
+                    "y = 1\n"
+                    "def local():\n"
+                    "  return y\n"
+                    "z = add_three(1, 2, 3)\n"
+                    "w = open(\"f\", \"r\")\n")
+        wpy = scenario_ws([sys.executable, os.path.join(ROOT, "lsp.py")], ws)
+        whs = scenario_ws([exe], ws)
+        for k in wpy:
+            check(f"ws {k}", wpy[k] == whs[k],
+                  f"\n  py: {json.dumps(wpy[k])[:300]}"
+                  f"\n  hs: {json.dumps(whs[k])[:300]}")
 
         pin = py["init"]["result"]
         check("initialize capabilities shape",
