@@ -528,8 +528,10 @@ def scan_expr(e, scope, ux):
       scan_expr(kv[0], scope, ux)
       scan_expr(kv[1], scope, ux)
     return
-def check_source(src, path):
-  parselib.P["kernel_wide"] = true
+def scan_program(prog, path):
+  # Semantic scan of an already-parsed program (parse errors are the caller's
+  # to catch first, so a language server can report parse and semantic errors
+  # separately).
   CHK["modules"] = []
   CHK["by_path"] = {}
   CHK["scanning"] = {}
@@ -538,7 +540,6 @@ def check_source(src, path):
   CHK["hspath"] = null
   CHK["file_dir"] = ""
   CHK["mod"] = null
-  prog = normalize.parse(src)
   m = new_module("<main>", "<main>", prog)
   append(CHK["modules"], m)
   CHK["mod"] = m["scope"]
@@ -547,3 +548,7 @@ def check_source(src, path):
     ap = "./" + ap
   CHK["file_dir"] = path_dirname(normpath(ap))
   scan_body(prog, m["scope"], false)
+def check_source(src, path):
+  parselib.P["kernel_wide"] = true
+  prog = normalize.parse(src)
+  scan_program(prog, path)

@@ -1,0 +1,236 @@
+# Native Holyshit language server (LSP over stdio).
+# L1: protocol core + publishDiagnostics, differential-matched against lsp.py.
+# Framing: buffered read(2) byte loop for stdin (readkey is kernel-only in the
+# x64 backend; input()/getline would over-read pipelined messages), raw
+# flushed writes to /dev/stdout for output.
+import check
+import normalize
+import parselib
+import pyrt
+
+OUT = open("/dev/stdout", "w")
+LOWER = "abcdefghijklmnopqrstuvwxyz"
+UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+DOCS = {}
+ROOT = null
+
+unsafe:
+  RB = alloc(65536)
+CHUNK = ""
+CPOS = 0
+
+def read_chunk():
+  global CHUNK, CPOS
+  n = scall(0, 0, RB, 65536, 0, 0, 0)
+  if n <= 0:
+    return false
+  CHUNK = read_mem(RB, n)
+  CPOS = 0
+  return true
+
+def next_ch():
+  # Next stdin byte as a 1-char string, or null on EOF.
+  global CPOS
+  if CPOS >= len(CHUNK):
+    if not read_chunk():
+      return null
+  c = CHUNK[CPOS:CPOS + 1]
+  CPOS = CPOS + 1
+  return c
+
+def send(payload):
+  body = json_str(payload)
+  write(OUT, "Content-Length: " + str(byte_len(body)) + "\r\n\r\n" + body)
+
+def reply(mid, result):
+  send({"jsonrpc": "2.0", "id": mid, "result": result})
+
+def reply_err(mid, code, msg):
+  send({"jsonrpc": "2.0", "id": mid, "error": {"code": code, "message": msg}})
+
+def notify(method, params):
+  send({"jsonrpc": "2.0", "method": method, "params": params})
+
+def lwers(s):
+  out = ""
+  i = 0
+  while i < len(s):
+    c = s[i:i + 1]
+    j = find(UPPER, c)
+    if j >= 0:
+      out = out + LOWER[j:j + 1]
+    else:
+      out = out + c
+    i = i + 1
+  return out
+
+def read_msg():
+  # One JSON-RPC message, or null on EOF. Header names case-insensitive.
+  clen = -1
+  while true:
+    parts = []
+    while true:
+      c = next_ch()
+      if c == null:
+        return null
+      if c == "\n":
+        break
+      append(parts, c)
+    line = join("", parts)
+    if len(line) > 0 and line[len(line) - 1:len(line)] == "\r":
+      line = line[0:len(line) - 1]
+    if line == "":
+      break
+    ll = lwers(line)
+    if len(ll) > 14 and ll[0:14] == "content-length":
+      rest = line[15:len(line)]
+      while len(rest) > 0 and rest[0:1] == " ":
+        rest = rest[1:len(rest)]
+      clen = int(rest)
+  if clen < 0:
+    return null
+  parts = []
+  n = 0
+  while n < clen:
+    c = next_ch()
+    if c == null:
+      return null
+    append(parts, c)
+    n = n + 1
+  return json_parse(join("", parts))
+
+def uri_to_path(uri):
+  # file:// URIs only; %XX sequences are NOT decoded yet (plain paths only).
+  if len(uri) < 8 or uri[0:7] != "file://":
+    return null
+  rest = uri[7:len(uri)]
+  if len(rest) >= 10 and rest[0:9] == "localhost" and rest[9:10] == "/":
+    rest = rest[9:len(rest)]
+  if len(rest) == 0 or rest[0:1] != "/":
+    return null
+  if find(rest, "?") >= 0 or find(rest, "#") >= 0:
+    return null
+  if find(rest, "\0") >= 0:
+    return null
+  return rest
+
+def analyze(text, path):
+  # [perr, serr] as [message, line] pairs (line may be null), nulls when clean.
+  parselib.P["kernel_wide"] = true
+  prog = null
+  try:
+    prog = normalize.parse(text)
+  except as e:
+    return [check.src_err(e), null]
+  try:
+    check.scan_program(prog, path)
+  except as e:
+    return [null, check.src_err(e)]
+  return [null, null]
+
+def utf16_len(s):
+  # UTF-16 code units of a valid UTF-8 string (LSP character offsets).
+  n = 0
+  i = 0
+  total = byte_len(s)
+  while i < total:
+    b = byte_at(s, i)
+    if b < 128:
+      n = n + 1
+      i = i + 1
+    elif b >= 240:
+      n = n + 2
+      i = i + 4
+    elif b >= 224:
+      n = n + 1
+      i = i + 3
+    elif b >= 192:
+      n = n + 1
+      i = i + 2
+    else:
+      i = i + 1
+  return n
+
+def push_diagnostics(uri):
+  doc = pyrt.py_get(DOCS, uri, null)
+  if doc == null:
+    return
+  diags = []
+  lines = split(doc["text"], "\n")
+  nlines = len(lines)
+  if nlines < 1:
+    nlines = 1
+  for err in [doc["perr"], doc["serr"]]:
+    if err == null:
+      continue
+    ln = err[1]
+    if ln == null or ln < 1:
+      ln = 1
+    if ln > nlines:
+      ln = nlines
+    lt = ""
+    if ln - 1 < len(lines):
+      lt = lines[ln - 1]
+    append(diags, {"range": {"start": {"line": ln - 1, "character": 0}, "end": {"line": ln - 1, "character": utf16_len(lt)}}, "severity": 1, "source": "hs", "message": err[0]})
+  notify("textDocument/publishDiagnostics", {"uri": uri, "diagnostics": diags})
+
+def set_doc(uri, text, version):
+  path = uri_to_path(uri)
+  if path == null:
+    path = "<main>"
+  errs = analyze(text, path)
+  DOCS[uri] = {"text": text, "version": version, "perr": errs[0], "serr": errs[1]}
+
+def handle(msg):
+  global ROOT
+  method = msg["method"]
+  mid = pyrt.py_get(msg, "id", null)
+  params = pyrt.py_get(msg, "params", {})
+  if method == "initialize":
+    rp = pyrt.py_get(params, "rootPath", null)
+    if rp != null and len(rp) > 0 and rp[0:1] == "/" and find(rp, "\0") < 0:
+      ROOT = rp
+    reply(mid, {"capabilities": {"textDocumentSync": 1, "hoverProvider": true, "completionProvider": {"triggerCharacters": ["."]}, "definitionProvider": true, "referencesProvider": true, "documentHighlightProvider": true, "signatureHelpProvider": {"triggerCharacters": ["(", ",", ")"]}, "documentSymbolProvider": true, "workspaceSymbolProvider": true, "documentFormattingProvider": true}, "serverInfo": {"name": "holyshit-lsp", "version": "0.6.0"}})
+  elif method == "initialized":
+    pass
+  elif method == "shutdown":
+    reply(mid, null)
+  elif method == "exit":
+    return true
+  elif method == "textDocument/didOpen":
+    td = params["textDocument"]
+    set_doc(td["uri"], td["text"], pyrt.py_get(td, "version", 0))
+    push_diagnostics(td["uri"])
+  elif method == "textDocument/didChange":
+    uri = params["textDocument"]["uri"]
+    ver = pyrt.py_get(params["textDocument"], "version", 0)
+    for ch in pyrt.py_get(params, "contentChanges", []):
+      set_doc(uri, pyrt.py_get(ch, "text", ""), ver)
+    push_diagnostics(uri)
+  elif method == "textDocument/didClose":
+    uri = params["textDocument"]["uri"]
+    if has(DOCS, uri):
+      DOCS[uri] = null
+  elif method == "textDocument/didSave":
+    uri = params["textDocument"]["uri"]
+    if has(params, "text"):
+      set_doc(uri, params["text"], pyrt.py_get(params["textDocument"], "version", 0))
+    push_diagnostics(uri)
+  else:
+    if mid != null:
+      reply_err(mid, -32601, "unknown method " + method)
+  return false
+
+done = false
+while not done:
+  msg = read_msg()
+  if msg == null:
+    done = true
+  elif has(msg, "method"):
+    try:
+      if handle(msg):
+        done = true
+    except as e:
+      mid = pyrt.py_get(msg, "id", null)
+      if mid != null:
+        reply_err(mid, -32603, e)
