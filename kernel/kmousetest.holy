@@ -1,0 +1,57 @@
+# Pointer-event syscall end to end: deterministic decode pins in ring 0,
+# then /bin/uumouse runs in ring 3 while QEMU injects real mouse moves and
+# buttons (the harness types them over QMP after mouse-sys-ready).
+import kmb
+import kpmm
+import ksyscall
+import kvfs
+import kramdisk
+import kuser
+import kinput
+fails = 0
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("vfs ready", kvfs.vfs_init(), true)
+expect("ramdisk loads", kramdisk.load() > 0, true)
+expect("uumouse present", kvfs.is_file("/bin/uumouse"), true)
+# decode pins: status | dx<<8 | dy<<16 -> buttons/dx/dy, PS/2 sign bits
+ev = kinput.decode(0x08 | (10 << 8) | (5 << 16))
+expect("decode plain buttons", kinput.buttons(ev), 0)
+expect("decode plain dx", kinput.dx(ev), 10)
+expect("decode plain dy", kinput.dy(ev), 5)
+ev = kinput.decode(0x1B | (0xF6 << 8) | (0x05 << 16))
+expect("decode neg buttons", kinput.buttons(ev), 3)
+expect("decode neg dx", kinput.dx(ev), -10)
+expect("decode neg dy", kinput.dy(ev), 5)
+ev = kinput.decode(0x28 | (5 << 8))
+expect("decode dy signbit dx", kinput.dx(ev), 5)
+expect("decode dy signbit dy", kinput.dy(ev), -256)
+expect("empty fifo reads 0", kinput.read(), 0)
+expect("zero motion is not empty", kinput.decode(0x08) != 0, true)
+data = kvfs.read("/bin/uumouse")
+expect("uumouse readable", data != null, true)
+expect("uumouse loads", kuser.load_image(kuser.payload_addr(data), len(data)), 1)
+expect("handler registered", ksyscall.start(), true)
+expect("exec enabled", kuser.enable_exec(), true)
+print "mouse-sys-ready"
+# ring 3 runs with IF clear by design (enter_user), so IRQ12 can only fill
+# the FIFO while the kernel is still in ring 0: give the harness a window to
+# inject, then enter ring 3 and drain the queue through the syscall path.
+t0 = ticks()
+while ticks() < t0 + 250:
+  z = 0
+# --- ring 3 (uumouse drains what QEMU injected during the window) ---
+kuser.run()
+expect("user stopped", ksyscall.user_stopped(), true)
+expect("exit code", ksyscall.user_exit_code(), 0)
+expect("mouse syscalls served", ksyscall.calls() >= 6, true)
+expect("kernel alive", cr3() != 0, true)
+print "fails", fails
+print "mousesys-done"

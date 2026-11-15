@@ -1,0 +1,30 @@
+# Pointer events: decode PS/2 mouse packets into packed pointer words.
+# The hardware FIFO (x64gen ms_*) holds status|dx<<8|dy<<16, drained through
+# the mouse_event() builtin. Deltas keep the PS/2 convention: +dx is right,
+# +dy is UP (screen-down is negative). Buttons: bit 0 left, 1 right, 2 middle.
+#
+# Packed event: buttons + ((dx+512)<<3) + ((dy+512)<<13). dx/dy span -256..255,
+# so the zero-motion zero-button word is 512<<3 | 512<<13, never 0 — a
+# syscall can return 0 for "no event" with no ambiguity.
+def decode(w):
+  st = w & 255
+  dx = w >> 8 & 255
+  dy = w >> 16 & 255
+  if st & 16:
+    dx = dx - 256
+  if st & 32:
+    dy = dy - 256
+  return st & 7 + (dx + 512) << 3 + (dy + 512) << 13
+def buttons(ev):
+  return ev & 7
+def dx(ev):
+  return ev >> 3 & 1023 - 512
+def dy(ev):
+  return ev >> 13 & 1023 - 512
+def read():
+  # one event per call, 0 when the hardware FIFO is empty; the 64-slot
+  # drop-newest FIFO in x64gen is the queue, so no second queue here
+  w = mouse_event()
+  if w == null:
+    return 0
+  return decode(w)
