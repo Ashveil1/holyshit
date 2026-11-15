@@ -97,6 +97,36 @@ SEM_ERR = "print undefined_name_xyz\n"
 SEM_ERR2 = "def f():\n  return missing_thing + 1\nf()\n"
 NONASCII = "name = \"caf\u00e9 \u4e2d\u6587\"\nprint missing_after_unicode\n"
 UNCLOSED = "xs = [1, 2\n"
+HOVER = """import json
+def f(a, b):
+  y = a + b
+  return y
+print f(1, 2)
+print len([1])
+x = f(2, 3)
+while x < 10:
+  x = x + 1
+"""
+SYM = """import json
+import os.path
+x = 1
+def f(a, b):
+  y = a + b
+  def g(c):
+    return c * y
+  return g
+for i in [1, 2]:
+  print i
+try:
+  raise "e"
+except as err:
+  print err
+while x < 10:
+  x = x + 1
+unsafe:
+  z = 3
+print f(x, len([1]))
+"""
 
 
 def scenario(argv, env=None):
@@ -153,6 +183,72 @@ def scenario(argv, env=None):
     out["close"] = list(c.diags)
     open_doc(PARSE_ERR, "reopen_parse_err")
 
+    # documentSymbol: rich doc, parse-error doc, semantic-error doc, unknown doc
+    for tag, text in [("sym", SYM), ("sym_parse_err", PARSE_ERR),
+                      ("sym_sem_err", SEM_ERR)]:
+        u = "file:///tmp/lsp_native_%s.holy" % tag
+        c.diags.clear()
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": u, "languageId": "holyshit", "version": 1, "text": text}})
+        c.drain()
+        out["diags_" + tag] = list(c.diags)
+        out["symbols_" + tag] = c.request("textDocument/documentSymbol",
+                                          {"textDocument": {"uri": u}})
+    out["symbols_unknown"] = c.request("textDocument/documentSymbol", {
+        "textDocument": {"uri": "file:///tmp/never_opened.holy"}})
+
+    # hover: module/function/variable/param/builtin/keyword/def-site/misses
+    hov_uri = "file:///tmp/lsp_native_hover.holy"
+    c.diags.clear()
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": hov_uri, "languageId": "holyshit", "version": 1,
+        "text": HOVER}})
+    c.drain()
+    out["diags_hover"] = list(c.diags)
+
+    def hov(tag, line, ch, uri=hov_uri):
+        out["hov_" + tag] = c.request("textDocument/hover", {
+            "textDocument": {"uri": uri},
+            "position": {"line": line, "character": ch}})
+
+    hov("module", 0, 3)
+    hov("defsite", 1, 5)
+    hov("vardef", 2, 2)
+    hov("funcuse", 4, 7)
+    hov("builtin", 4, 1)
+    hov("builtin2", 5, 7)
+    hov("keyword", 7, 1)
+    hov("varuse", 8, 2)
+    hov("param", 1, 6)
+    hov("pastend", 4, 20)
+    hov("emptyline", 9, 0)
+    hov("badline", 40, 0)
+    hov("unknown_uri", 0, 0, uri="file:///tmp/never_opened.holy")
+    hov("undef", 0, 0, uri="file:///tmp/lsp_native_sym_sem_err.holy")
+    # dotted word over an unresolvable module path
+    hov("dotted", 1, 3, uri="file:///tmp/lsp_native_sym.holy")
+    # non-ASCII line: hover on ASCII name and far past the end
+    uni_uri = "file:///tmp/lsp_native_uni.holy"
+    c.diags.clear()
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uni_uri, "languageId": "holyshit", "version": 1,
+        "text": NONASCII}})
+    c.drain()
+    hov("unicode_name", 0, 2, uri=uni_uri)
+    hov("unicode_far", 0, 60, uri=uni_uri)
+    hov("unicode_use", 1, 8, uri=uni_uri)
+
+    # completion: with symbols, parse-error doc, unknown doc
+    out["compl"] = c.request("textDocument/completion", {
+        "textDocument": {"uri": hov_uri},
+        "position": {"line": 4, "character": 7}})
+    out["compl_parse_err"] = c.request("textDocument/completion", {
+        "textDocument": {"uri": "file:///tmp/lsp_native_sym_parse_err.holy"},
+        "position": {"line": 0, "character": 1}})
+    out["compl_unknown"] = c.request("textDocument/completion", {
+        "textDocument": {"uri": "file:///tmp/never_opened.holy"},
+        "position": {"line": 0, "character": 0}})
+
     out["unknown"] = c.request("workspace/doesNotExist", {})
     out["shutdown"] = c.request("shutdown", None)
     c.notify("exit", {})
@@ -194,6 +290,11 @@ def pipelined(argv, env=None):
 
 
 def main():
+    r = subprocess.run(
+        [sys.executable, os.path.join(ROOT, "scripts", "gen_lspdata.py"),
+         "--check"], capture_output=True, text=True)
+    check("lspdata.holy up to date", r.returncode == 0,
+          (r.stdout + r.stderr)[-200:])
     with tempfile.TemporaryDirectory() as td:
         exe = os.path.join(td, "hs_lsp_native")
         env = dict(os.environ)

@@ -4,6 +4,7 @@
 # x64 backend; input()/getline would over-read pipelined messages), raw
 # flushed writes to /dev/stdout for output.
 import check
+import lspdata
 import normalize
 import parselib
 import pyrt
@@ -115,18 +116,19 @@ def uri_to_path(uri):
   return rest
 
 def analyze(text, path):
-  # [perr, serr] as [message, line] pairs (line may be null), nulls when clean.
+  # [perr, serr, prog] - errors as [message, line] pairs (line may be null),
+  # nulls when clean; prog is the parsed statement list (null on parse error).
   parselib.P["kernel_wide"] = true
   prog = null
   try:
     prog = normalize.parse(text)
   except as e:
-    return [check.src_err(e), null]
+    return [check.src_err(e), null, null]
   try:
     check.scan_program(prog, path)
   except as e:
-    return [null, check.src_err(e)]
-  return [null, null]
+    return [null, check.src_err(e), prog]
+  return [null, null, prog]
 
 def utf16_len(s):
   # UTF-16 code units of a valid UTF-8 string (LSP character offsets).
@@ -174,12 +176,352 @@ def push_diagnostics(uri):
     append(diags, {"range": {"start": {"line": ln - 1, "character": 0}, "end": {"line": ln - 1, "character": utf16_len(lt)}}, "severity": 1, "source": "hs", "message": err[0]})
   notify("textDocument/publishDiagnostics", {"uri": uri, "diagnostics": diags})
 
+# ----- position helpers (ports of lsp.py col_to_idx / word_at / occ_index) -----
+
+def is_word_start(b):
+  # [A-Za-z_]
+  if b >= 97 and b <= 122:
+    return true
+  if b >= 65 and b <= 90:
+    return true
+  return b == 95
+
+def is_word_char(b):
+  # [A-Za-z0-9_.]
+  if is_word_start(b):
+    return true
+  if b >= 48 and b <= 57:
+    return true
+  return b == 46
+
+def is_name_char(b):
+  # [A-Za-z0-9_] (no dot)
+  if is_word_start(b):
+    return true
+  return b >= 48 and b <= 57
+
+def col_to_byte(text, col):
+  # LSP UTF-16 character offset -> byte index (port of col_to_idx).
+  if col <= 0:
+    return 0
+  units = 0
+  i = 0
+  total = byte_len(text)
+  while i < total:
+    b = byte_at(text, i)
+    u = 1
+    step = 1
+    if b >= 240:
+      u = 2
+      step = 4
+    elif b >= 224:
+      step = 3
+    elif b >= 192:
+      step = 2
+    if units + u > col:
+      return i
+    units = units + u
+    i = i + step
+  return total
+
+def word_at(text, idx):
+  # [word, start, end] around byte idx, [A-Za-z_][A-Za-z0-9_.]* runs first.
+  n = byte_len(text)
+  i = 0
+  while i < n:
+    if is_word_start(byte_at(text, i)):
+      j = i + 1
+      while j < n and is_word_char(byte_at(text, j)):
+        j = j + 1
+      if i <= idx and idx <= j and j > i:
+        return [text[i:j], i, j]
+      i = j
+    else:
+      i = i + 1
+  i = 0
+  while i < n:
+    if is_word_char(byte_at(text, i)):
+      j = i + 1
+      while j < n and is_word_char(byte_at(text, j)):
+        j = j + 1
+      if i <= idx and idx <= j:
+        return [text[i:j], i, j]
+      i = j
+    else:
+      i = i + 1
+  return ["", idx, idx]
+
+def occ_index(text, idx, name):
+  # Which occurrence of name (as a [A-Za-z_][A-Za-z0-9_]* match) holds idx.
+  n = byte_len(text)
+  count = 0
+  i = 0
+  while i < n:
+    if is_word_start(byte_at(text, i)):
+      j = i + 1
+      while j < n and is_name_char(byte_at(text, j)):
+        j = j + 1
+      if text[i:j] == name:
+        if i <= idx and idx <= j:
+          return count
+        count = count + 1
+      i = j
+    else:
+      i = i + 1
+  return 0
+
+# ----- symbol collection (port of lsp.py _collect) -----
+
+COL = {"symbols": [], "uses": [], "occ": {}}
+
+def cbind(sc, name, kind, line, detail):
+  sym = {"name": name, "kind": kind, "line": line, "detail": detail}
+  if not has(sc["names"], name):
+    sc["names"][name] = sym
+  append(COL["symbols"], sym)
+  return sym
+
+def cchain(sc):
+  out = []
+  while sc != null:
+    append(out, sc)
+    sc = sc["parent"]
+  return out
+
+def cuse(sc, name, line):
+  key = str(line) + "|" + name
+  idx = 0
+  if has(COL["occ"], key):
+    idx = COL["occ"][key]
+  COL["occ"][key] = idx + 1
+  append(COL["uses"], {"name": name, "line": line, "occ": idx, "scopes": cchain(sc)})
+
+def collect_stmts(body, sc):
+  for s in body:
+    st = s["t"]
+    if st == "def":
+      params = pyrt.py_get(s, "params", [])
+      sym = cbind(sc, s["name"], "function", s["line"], "(" + join(", ", params) + ")")
+      sym["params"] = params
+      fs = {"parent": sc, "names": {}}
+      for p in params:
+        cbind(fs, p, "param", s["line"], "")
+      collect_stmts(pyrt.py_get(s, "body", []), fs)
+    elif st == "set":
+      cbind(sc, s["name"], "variable", s["line"], "")
+      collect_expr(pyrt.py_get(s, "val", null), sc)
+    elif st == "for":
+      cbind(sc, pyrt.py_get(s, "var", ""), "variable", s["line"], "")
+      collect_expr(pyrt.py_get(s, "iter", null), sc)
+      collect_stmts(pyrt.py_get(s, "body", []), sc)
+    elif st == "import":
+      nm = s["name"]
+      base = nm
+      dot = find(nm, ".")
+      if dot >= 0:
+        base = nm[0:dot]
+      cbind(sc, base, "module", s["line"], nm)
+    elif st == "try":
+      collect_stmts(pyrt.py_get(s, "body", []), sc)
+      if pyrt.py_get(s, "ebody", null) != null:
+        en = pyrt.py_get(s, "ename", "")
+        if en != "":
+          cbind(sc, en, "variable", s["line"], "exception string")
+        collect_stmts(s["ebody"], sc)
+      if pyrt.py_get(s, "fbody", null) != null:
+        collect_stmts(s["fbody"], sc)
+    elif st == "if":
+      collect_expr(pyrt.py_get(s, "cond", null), sc)
+      collect_stmts(pyrt.py_get(s, "then", []), sc)
+      for ec in pyrt.py_get(s, "elifs", []):
+        collect_expr(ec[0], sc)
+        collect_stmts(ec[1], sc)
+      collect_stmts(pyrt.py_get(s, "els", []), sc)
+    elif st == "while":
+      collect_expr(pyrt.py_get(s, "cond", null), sc)
+      collect_stmts(pyrt.py_get(s, "body", []), sc)
+    elif st == "return" or st == "raise":
+      if pyrt.py_get(s, "val", null) != null:
+        collect_expr(s["val"], sc)
+    elif st == "print":
+      for a in pyrt.py_get(s, "args", []):
+        collect_expr(a, sc)
+    elif st == "expr":
+      collect_expr(pyrt.py_get(s, "val", null), sc)
+    elif st == "setindex":
+      collect_expr(pyrt.py_get(s, "obj", null), sc)
+      collect_expr(pyrt.py_get(s, "idx", null), sc)
+      collect_expr(pyrt.py_get(s, "val", null), sc)
+    elif st == "setattr":
+      collect_expr(pyrt.py_get(s, "obj", null), sc)
+      collect_expr(pyrt.py_get(s, "val", null), sc)
+    elif st == "unsafe":
+      for x in pyrt.py_get(s, "body", []):
+        xt = x["t"]
+        if xt == "udecl" or xt == "store" or xt == "fstore" or xt == "struct" or xt == "expr" or xt == "print" or xt == "if" or xt == "while" or xt == "return" or xt == "break" or xt == "continue" or xt == "set" or xt == "global" or xt == "raise":
+          collect_stmts([x], sc)
+
+def collect_expr(e, sc):
+  if e == null:
+    return
+  if not has(e, "t"):
+    return
+  t = e["t"]
+  if t == "var":
+    cuse(sc, e["name"], pyrt.py_get(e, "line", 0))
+  elif t == "neg" or t == "not" or t == "deref":
+    collect_expr(pyrt.py_get(e, "val", null), sc)
+  elif t == "bin":
+    collect_expr(pyrt.py_get(e, "l", null), sc)
+    collect_expr(pyrt.py_get(e, "r", null), sc)
+  elif t == "call":
+    collect_expr(pyrt.py_get(e, "fn", null), sc)
+    for a in pyrt.py_get(e, "args", []):
+      collect_expr(a, sc)
+  elif t == "index":
+    collect_expr(pyrt.py_get(e, "obj", null), sc)
+    collect_expr(pyrt.py_get(e, "idx", null), sc)
+  elif t == "slice":
+    collect_expr(pyrt.py_get(e, "obj", null), sc)
+    if pyrt.py_get(e, "start", null) != null:
+      collect_expr(e["start"], sc)
+    if pyrt.py_get(e, "stop", null) != null:
+      collect_expr(e["stop"], sc)
+  elif t == "attr":
+    collect_expr(pyrt.py_get(e, "obj", null), sc)
+  elif t == "list":
+    for a in pyrt.py_get(e, "items", []):
+      collect_expr(a, sc)
+  elif t == "dict":
+    for kv in pyrt.py_get(e, "pairs", []):
+      collect_expr(kv[0], sc)
+      collect_expr(kv[1], sc)
+  elif t == "field":
+    collect_expr(pyrt.py_get(e, "obj", null), sc)
+    if pyrt.py_get(e, "idx", null) != null:
+      collect_expr(e["idx"], sc)
+
+def collect(body):
+  global COL
+  COL = {"symbols": [], "uses": [], "occ": {}}
+  root = {"parent": null, "names": {}}
+  collect_stmts(body, root)
+  return {"symbols": COL["symbols"], "uses": COL["uses"]}
+
+def find_use(uses, line1, name, occ_idx):
+  for u in uses:
+    if u["line"] == line1 and u["name"] == name and u["occ"] == occ_idx:
+      return u
+  for u in uses:
+    if u["line"] == line1 and u["name"] == name:
+      return u
+  return null
+
+def resolve_use(use):
+  for sc in use["scopes"]:
+    if has(sc["names"], use["name"]):
+      return sc["names"][use["name"]]
+  return null
+
+def resolve_local(doc, base, line1, occ):
+  # Same-file resolution (port of the len(parts) == 1 path of resolve_parts).
+  use = find_use(doc["col"]["uses"], line1, base, occ)
+  sym = null
+  if use != null:
+    sym = resolve_use(use)
+  if sym == null:
+    # cursor sits on the definition itself (no use recorded there)
+    cands = []
+    for s in doc["col"]["symbols"]:
+      if s["name"] == base and s["line"] == line1:
+        if s["kind"] == "function" or s["kind"] == "module" or s["kind"] == "variable":
+          append(cands, s)
+    if len(cands) == 0:
+      for s in doc["col"]["symbols"]:
+        if s["kind"] == "module" and s["name"] == base and s["line"] <= line1:
+          append(cands, s)
+    if len(cands) > 0:
+      sym = cands[len(cands) - 1]
+  return sym
+
+def sym_hover(sym):
+  kind = sym["kind"]
+  if kind == "function":
+    return "**`def " + sym["name"] + sym["detail"] + "`**\n\nfunction defined at line " + str(sym["line"])
+  if kind == "param":
+    return "**`" + sym["name"] + "`** (parameter)\n\ndeclared at line " + str(sym["line"])
+  if kind == "module":
+    d = sym["detail"]
+    if d == "":
+      d = sym["name"]
+    return "**`import " + d + "`**\n\nmodule imported at line " + str(sym["line"])
+  return "**`" + sym["name"] + "`** (" + kind + ")\n\ndefined at line " + str(sym["line"])
+
+def hover(params):
+  doc = pyrt.py_get(DOCS, params["textDocument"]["uri"], null)
+  if doc == null:
+    return null
+  pos = params["position"]
+  ln = pos["line"]
+  lines = split(doc["text"], "\n")
+  if ln < 0 or ln >= len(lines):
+    return null
+  text = lines[ln]
+  idx = col_to_byte(text, pyrt.py_get(pos, "character", 0))
+  w = word_at(text, idx)
+  word = w[0]
+  if word == "":
+    return null
+  base = word
+  dot = find(word, ".")
+  if dot >= 0:
+    base = word[0:dot]
+  if dot < 0:
+    if has(lspdata.BUILTINS, word):
+      b = lspdata.BUILTINS[word]
+      return {"contents": {"kind": "markdown", "value": "**`" + b[0] + "`**\n\n" + b[1] + "\n\n_backends:_ " + join(", ", b[2])}}
+    if has(lspdata.KEYWORDS, word):
+      return {"contents": {"kind": "markdown", "value": "**`" + word + "`** (keyword)\n\n" + lspdata.KEYWORDS[word]}}
+  if dot >= 0:
+    # dotted names resolve across module files in lsp.py (not ported yet)
+    return null
+  occ = occ_index(text, idx, base)
+  sym = resolve_local(doc, base, ln + 1, occ)
+  if sym != null:
+    return {"contents": {"kind": "markdown", "value": sym_hover(sym)}}
+  return null
+
+def complete(params):
+  items = []
+  for kw in lspdata.KEYWORD_NAMES:
+    append(items, {"label": kw, "kind": 14, "detail": "keyword", "documentation": lspdata.KEYWORDS[kw]})
+  for name in lspdata.BUILTIN_NAMES:
+    b = lspdata.BUILTINS[name]
+    append(items, {"label": name, "kind": 3, "detail": b[0], "documentation": b[1] + " [" + join(", ", b[2]) + "]"})
+  doc = pyrt.py_get(DOCS, params["textDocument"]["uri"], null)
+  if doc != null and doc["ast"] != null:
+    seen = {}
+    for s in doc["col"]["symbols"]:
+      if has(seen, s["name"]):
+        continue
+      seen[s["name"]] = true
+      kind = 6
+      if s["kind"] == "function":
+        kind = 3
+      elif s["kind"] == "module":
+        kind = 9
+      append(items, {"label": s["name"], "kind": kind, "detail": s["kind"] + " (line " + str(s["line"]) + ")"})
+  return {"isIncomplete": false, "items": items}
+
 def set_doc(uri, text, version):
   path = uri_to_path(uri)
   if path == null:
     path = "<main>"
   errs = analyze(text, path)
-  DOCS[uri] = {"text": text, "version": version, "perr": errs[0], "serr": errs[1]}
+  col = null
+  if errs[2] != null:
+    col = collect(errs[2])
+  DOCS[uri] = {"text": text, "version": version, "perr": errs[0], "serr": errs[1], "ast": errs[2], "col": col}
 
 def handle(msg):
   global ROOT
@@ -211,6 +553,26 @@ def handle(msg):
     uri = params["textDocument"]["uri"]
     if has(DOCS, uri):
       DOCS[uri] = null
+  elif method == "textDocument/hover":
+    reply(mid, hover(params))
+  elif method == "textDocument/completion":
+    reply(mid, complete(params))
+  elif method == "textDocument/documentSymbol":
+    uri = params["textDocument"]["uri"]
+    doc = pyrt.py_get(DOCS, uri, null)
+    out = []
+    if doc != null and doc["ast"] != null:
+      for s in doc["col"]["symbols"]:
+        kind = 13
+        if s["kind"] == "function":
+          kind = 12
+        elif s["kind"] == "module":
+          kind = 2
+        ln = s["line"] - 1
+        if ln < 0:
+          ln = 0
+        append(out, {"name": s["name"], "kind": kind, "range": {"start": {"line": ln, "character": 0}, "end": {"line": ln, "character": 0}}, "selectionRange": {"start": {"line": ln, "character": 0}, "end": {"line": ln, "character": 0}}})
+    reply(mid, out)
   elif method == "textDocument/didSave":
     uri = params["textDocument"]["uri"]
     if has(params, "text"):
