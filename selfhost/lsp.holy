@@ -130,6 +130,24 @@ def analyze(text, path):
     return [null, check.src_err(e), prog]
   return [null, null, prog]
 
+def char_count(text):
+  # Unicode code points (Python len() on str); loc() bug-compat uses this.
+  n = 0
+  i = 0
+  total = byte_len(text)
+  while i < total:
+    b = byte_at(text, i)
+    if b >= 240:
+      i = i + 4
+    elif b >= 224:
+      i = i + 3
+    elif b >= 192:
+      i = i + 2
+    else:
+      i = i + 1
+    n = n + 1
+  return n
+
 def utf16_len(s):
   # UTF-16 code units of a valid UTF-8 string (LSP character offsets).
   n = 0
@@ -457,20 +475,29 @@ def sym_hover(sym):
     return "**`import " + d + "`**\n\nmodule imported at line " + str(sym["line"])
   return "**`" + sym["name"] + "`** (" + kind + ")\n\ndefined at line " + str(sym["line"])
 
-def hover(params):
+def pos_word(params):
+  # [doc, word, line0, wstart, wend, byte_idx]; doc null when the uri is not
+  # open, word null when the line is out of range (port of lsp.py pos_word).
   doc = pyrt.py_get(DOCS, params["textDocument"]["uri"], null)
   if doc == null:
-    return null
+    return [null, null, 0, 0, 0, 0]
   pos = params["position"]
   ln = pos["line"]
   lines = split(doc["text"], "\n")
   if ln < 0 or ln >= len(lines):
-    return null
+    return [doc, null, 0, 0, 0, 0]
   text = lines[ln]
   idx = col_to_byte(text, pyrt.py_get(pos, "character", 0))
   w = word_at(text, idx)
-  word = w[0]
-  if word == "":
+  return [doc, w[0], ln, w[1], w[2], idx]
+
+def hover(params):
+  pw = pos_word(params)
+  doc = pw[0]
+  if doc == null:
+    return null
+  word = pw[1]
+  if word == null or word == "":
     return null
   base = word
   dot = find(word, ".")
@@ -482,13 +509,16 @@ def hover(params):
       return {"contents": {"kind": "markdown", "value": "**`" + b[0] + "`**\n\n" + b[1] + "\n\n_backends:_ " + join(", ", b[2])}}
     if has(lspdata.KEYWORDS, word):
       return {"contents": {"kind": "markdown", "value": "**`" + word + "`** (keyword)\n\n" + lspdata.KEYWORDS[word]}}
-  if dot >= 0:
-    # dotted names resolve across module files in lsp.py (not ported yet)
-    return null
-  occ = occ_index(text, idx, base)
-  sym = resolve_local(doc, base, ln + 1, occ)
+  text = split(doc["text"], "\n")[pw[2]]
+  occ = occ_index(text, pw[5], base)
+  rp = resolve_parts(doc, split(word, "."), pw[2] + 1, occ)
+  sym = rp[0]
+  path = rp[1]
   if sym != null:
-    return {"contents": {"kind": "markdown", "value": sym_hover(sym)}}
+    txt = sym_hover(sym)
+    if path != null and doc["path"] != null and abspath(path) != abspath(doc["path"]):
+      txt = txt + "\n\n_defined in_ `" + path_basename(path) + "`"
+    return {"contents": {"kind": "markdown", "value": txt}}
   return null
 
 def complete(params):
@@ -513,15 +543,545 @@ def complete(params):
       append(items, {"label": s["name"], "kind": kind, "detail": s["kind"] + " (line " + str(s["line"]) + ")"})
   return {"isIncomplete": false, "items": items}
 
+# ----- cross-module resolution (ports of lsp.py module machinery) -----
+
+unsafe:
+  CWDB = alloc(4096)
+
+def cwd():
+  n = scall(79, CWDB, 4096, 0, 0, 0, 0)
+  if n <= 0:
+    return ""
+  return read_mem(CWDB, n - 1)
+
+CWD = cwd()
+MOD_CACHE = {}
+
+def lower(s):
+  out = ""
+  i = 0
+  n = byte_len(s)
+  while i < n:
+    ch = s[i:i + 1]
+    idx = find(UPPER, ch)
+    if idx >= 0:
+      out = out + LOWER[idx:idx + 1]
+    else:
+      out = out + ch
+    i = i + 1
+  return out
+
+def strip(s):
+  a = 0
+  n = byte_len(s)
+  while a < n and (s[a:a + 1] == " " or s[a:a + 1] == "\t" or s[a:a + 1] == "\n" or s[a:a + 1] == "\r"):
+    a = a + 1
+  b = n
+  while b > a and (s[b - 1:b] == " " or s[b - 1:b] == "\t" or s[b - 1:b] == "\n" or s[b - 1:b] == "\r"):
+    b = b - 1
+  return s[a:b]
+
+def rstrip(s):
+  n = byte_len(s)
+  while n > 0 and (s[n - 1:n] == " " or s[n - 1:n] == "\t" or s[n - 1:n] == "\n" or s[n - 1:n] == "\r"):
+    n = n - 1
+  return s[0:n]
+
+def path_basename(p):
+  parts = split(p, "/")
+  return parts[len(parts) - 1]
+
+def abspath(p):
+  if len(p) > 0 and p[0:1] == "/":
+    return check.normpath(p)
+  return check.normpath(CWD + "/" + p)
+
+def path_to_uri(path):
+  if path == null:
+    return null
+  return "file://" + abspath(path)
+
+def find_module_file(dotted, basedir):
+  rel = join("/", split(dotted, "."))
+  dirs = []
+  if basedir != null and basedir != "":
+    append(dirs, basedir)
+  hsenv = env("HSPATH")
+  if hsenv != null:
+    for d in split(hsenv, ":"):
+      if d != "":
+        append(dirs, d)
+  append(dirs, CWD)
+  for d in dirs:
+    if d == "":
+      continue
+    for suffix in [".holy", ".hs"]:
+      p = abspath(d + "/" + rel + suffix)
+      if exists(p):
+        return p
+  return null
+
+def load_module_doc(path):
+  if has(MOD_CACHE, path):
+    return MOD_CACHE[path]
+  text = null
+  try:
+    f = open(path, "r")
+    text = read(f)
+    close(f)
+  except as e:
+    return null
+  parselib.P["kernel_wide"] = true
+  prog = null
+  try:
+    prog = normalize.parse(text)
+  except as e:
+    return null
+  col = collect(prog)
+  doc = {"path": path, "text": text, "ast": prog, "col": col}
+  MOD_CACHE[path] = doc
+  return doc
+
+def top_symbol(symbols, name):
+  for s in symbols:
+    if s["name"] == name:
+      return s
+  return null
+
+def module_path(doc, dotted):
+  basedir = null
+  if doc["path"] != null:
+    basedir = check.path_dirname(abspath(doc["path"]))
+  return find_module_file(dotted, basedir)
+
+def submodule_path(mod_path, attr):
+  base = check.path_dirname(mod_path)
+  stem = path_basename(mod_path)
+  i = byte_len(stem) - 1
+  while i > 0:
+    if stem[i:i + 1] == ".":
+      stem = stem[0:i]
+      i = 0
+    else:
+      i = i - 1
+  for relative in [stem + "/" + attr, stem + "_" + attr]:
+    for suffix in [".holy", ".hs"]:
+      candidate = base + "/" + relative + suffix
+      if exists(candidate):
+        return candidate
+  return null
+
+def reexport_path(mdoc, attr):
+  for s in mdoc["col"]["symbols"]:
+    if s["kind"] == "module" and s["name"] == attr:
+      d = s["detail"]
+      if d == "":
+        d = attr
+      return module_path(mdoc, d)
+  return null
+
+def resolve_parts(doc, parts, line1, occ):
+  # Dotted-name resolution across module files (port of lsp.py resolve_parts).
+  base = parts[0]
+  sym = resolve_local(doc, base, line1, occ)
+  if sym == null:
+    return [null, null]
+  if len(parts) == 1:
+    if sym["kind"] == "module":
+      d = sym["detail"]
+      if d == "":
+        d = sym["name"]
+      return [sym, module_path(doc, d)]
+    return [sym, doc["path"]]
+  if sym["kind"] != "module":
+    return [null, null]
+  d0 = sym["detail"]
+  if d0 == "":
+    d0 = sym["name"]
+  cur = module_path(doc, d0)
+  i = 0
+  while i < len(parts) - 1:
+    attr = parts[i + 1]
+    if cur == null:
+      return [null, null]
+    mdoc = load_module_doc(cur)
+    if mdoc == null:
+      return [null, null]
+    tgt = top_symbol(mdoc["col"]["symbols"], attr)
+    if tgt == null:
+      return [null, null]
+    last = i == len(parts) - 2
+    if tgt["kind"] == "module":
+      sub = submodule_path(cur, attr)
+      if sub == null:
+        sub = reexport_path(mdoc, attr)
+      if last:
+        return [tgt, sub]
+      if sub == null:
+        return [null, null]
+      cur = sub
+      i = i + 1
+      continue
+    if last:
+      return [tgt, cur]
+    return [null, null]
+  return [null, null]
+
+def range_in(text, occ, name, line0):
+  # Range of the occ-th whole-word name on the line (port of _range_in).
+  n = byte_len(text)
+  seen = 0
+  i = 0
+  while i < n:
+    if is_word_start(byte_at(text, i)):
+      j = i + 1
+      while j < n and is_name_char(byte_at(text, j)):
+        j = j + 1
+      if text[i:j] == name:
+        if seen == occ:
+          return {"start": {"line": line0, "character": utf16_len(text[0:i])}, "end": {"line": line0, "character": utf16_len(text[0:j])}}
+        seen = seen + 1
+      i = j
+    else:
+      i = i + 1
+  return null
+
+def word_range(d, line0, occ, name):
+  lines = split(d["text"], "\n")
+  if line0 >= len(lines):
+    return null
+  return range_in(lines[line0], occ, name, line0)
+
+def word_range_file(path, line0, name):
+  text = null
+  try:
+    f = open(path, "r")
+    text = read(f)
+    close(f)
+  except as e:
+    return null
+  lines = split(text, "\n")
+  if line0 >= len(lines):
+    return null
+  return range_in(lines[line0], 0, name, line0)
+
+def loc(path, line0, name):
+  uri = null
+  if path != null:
+    uri = path_to_uri(path)
+  text = ""
+  if path != null and exists(path):
+    try:
+      f = open(path, "r")
+      whole = read(f)
+      close(f)
+      flines = split(whole, "\n")
+      if line0 < len(flines):
+        text = flines[line0]
+    except as e:
+      text = ""
+  c0 = 0
+  c1 = char_count(text)
+  if name != "":
+    r = null
+    n = byte_len(text)
+    m = byte_len(name)
+    i = 0
+    while i + m <= n:
+      if text[i:i + m] == name:
+        before_ok = i == 0 or not is_name_char(byte_at(text, i - 1))
+        after_ok = i + m >= n or not is_name_char(byte_at(text, i + m))
+        if before_ok and after_ok:
+          r = [i, i + m]
+          i = n
+      i = i + 1
+    if r != null:
+      c0 = utf16_len(text[0:r[0]])
+      c1 = utf16_len(text[0:r[1]])
+  if line0 < 0:
+    line0 = 0
+  return {"uri": uri, "range": {"start": {"line": line0, "character": c0}, "end": {"line": line0, "character": c1}}}
+
+def index_docs(doc):
+  # Open buffers plus the local workspace/HSPATH tree (port of _index_docs).
+  out = []
+  for d in values(DOCS):
+    if d != null:
+      append(out, d)
+  root = ROOT
+  if root == null and doc != null and doc["path"] != null:
+    root = check.path_dirname(abspath(doc["path"]))
+  bases = []
+  if root != null:
+    append(bases, root)
+  hsenv = env("HSPATH")
+  if hsenv != null:
+    for d in split(hsenv, ":"):
+      if d != "":
+        append(bases, d)
+  for base in bases:
+    if exists(base):
+      walk_collect(base, out)
+  return out
+
+def walk_collect(dirpath, out):
+  if len(out) > 400:
+    return
+  entries = null
+  try:
+    entries = ls(dirpath)
+  except as e:
+    return
+  for fn in entries:
+    if len(out) > 400:
+      return
+    full = dirpath + "/" + fn
+    fl = byte_len(fn)
+    if (fl > 5 and fn[fl - 5:fl] == ".holy") or (fl > 3 and fn[fl - 3:fl] == ".hs"):
+      dup = false
+      for d in out:
+        if d["path"] == full:
+          dup = true
+      if not dup:
+        mdoc = load_module_doc(full)
+        if mdoc != null:
+          append(out, mdoc)
+    else:
+      if fn[0:1] == "." or fn == "legacy" or fn == "__pycache__":
+        continue
+      walk_collect(full, out)
+
+def definition(params):
+  pw = pos_word(params)
+  doc = pw[0]
+  word = pw[1]
+  if doc == null or word == null or word == "":
+    return null
+  parts = split(word, ".")
+  text = split(doc["text"], "\n")[pw[2]]
+  occ = occ_index(text, pw[5], parts[0])
+  rp = resolve_parts(doc, parts, pw[2] + 1, occ)
+  sym = rp[0]
+  path = rp[1]
+  if sym == null or path == null:
+    return null
+  if sym["kind"] == "module":
+    return loc(path, 0, "")
+  return loc(path, sym["line"] - 1, sym["name"])
+
+def document_highlight(params):
+  pw = pos_word(params)
+  doc = pw[0]
+  word = pw[1]
+  if doc == null or word == null or word == "":
+    return []
+  parts = split(word, ".")
+  base = parts[0]
+  lines = split(doc["text"], "\n")
+  occ = occ_index(lines[pw[2]], pw[5], base)
+  rp = resolve_parts(doc, parts, pw[2] + 1, occ)
+  sym = rp[0]
+  path = rp[1]
+  out = []
+  lns = [pw[2]]
+  if sym != null and path != null and doc["path"] != null and abspath(path) == abspath(doc["path"]):
+    append(lns, sym["line"] - 1)
+  for ln in lns:
+    if ln >= len(lines):
+      continue
+    text = lines[ln]
+    n = byte_len(text)
+    i = 0
+    while i < n:
+      if is_word_start(byte_at(text, i)):
+        j = i + 1
+        while j < n and is_name_char(byte_at(text, j)):
+          j = j + 1
+        if text[i:j] == base:
+          kind = 2
+          if sym != null and ln == sym["line"] - 1:
+            kind = 1
+          append(out, {"range": {"start": {"line": ln, "character": utf16_len(text[0:i])}, "end": {"line": ln, "character": utf16_len(text[0:j])}}, "kind": kind})
+        i = j
+      else:
+        i = i + 1
+  return out
+
+def references(params, include_declaration):
+  pw = pos_word(params)
+  doc = pw[0]
+  word = pw[1]
+  if doc == null or word == null or word == "":
+    return []
+  parts = split(word, ".")
+  lines = split(doc["text"], "\n")
+  occ = occ_index(lines[pw[2]], pw[5], parts[0])
+  rp = resolve_parts(doc, parts, pw[2] + 1, occ)
+  sym = rp[0]
+  path = rp[1]
+  if sym == null or path == null:
+    return []
+  target_path = abspath(path)
+  out = []
+  for d in index_docs(doc):
+    if d["ast"] == null:
+      continue
+    for u in d["col"]["uses"]:
+      if u["name"] != parts[0]:
+        continue
+      rp2 = resolve_parts(d, parts, u["line"], u["occ"])
+      s2 = rp2[0]
+      p2 = rp2[1]
+      if s2 == null or p2 == null:
+        continue
+      if abspath(p2) != target_path or s2["name"] != sym["name"]:
+        continue
+      rng = word_range(d, u["line"] - 1, u["occ"], u["name"])
+      if rng != null:
+        append(out, {"uri": path_to_uri(d["path"]), "range": rng})
+  if include_declaration:
+    rng = word_range_file(path, sym["line"] - 1, sym["name"])
+    if rng != null:
+      decl = {"uri": path_to_uri(path), "range": rng}
+      dup = false
+      for r in out:
+        if r["uri"] == decl["uri"] and r["range"]["start"]["line"] == decl["range"]["start"]["line"] and r["range"]["start"]["character"] == decl["range"]["start"]["character"] and r["range"]["end"]["character"] == decl["range"]["end"]["character"]:
+          dup = true
+      if not dup:
+        append(out, decl)
+  seen = {}
+  uniq = []
+  for r in out:
+    k = r["uri"] + "|" + str(r["range"]["start"]["line"]) + "|" + str(r["range"]["start"]["character"])
+    if has(seen, k):
+      continue
+    seen[k] = true
+    append(uniq, r)
+  return uniq
+
+def workspace_symbol(params):
+  query = lower(pyrt.py_get(params, "query", ""))
+  out = []
+  first = null
+  for d in values(DOCS):
+    if d != null and first == null:
+      first = d
+  for d in index_docs(first):
+    if d["ast"] == null:
+      continue
+    for s in d["col"]["symbols"]:
+      if query != "" and find(lower(s["name"]), query) < 0:
+        continue
+      kind = 13
+      if s["kind"] == "function":
+        kind = 12
+      elif s["kind"] == "module":
+        kind = 2
+      ln = s["line"] - 1
+      if ln < 0:
+        ln = 0
+      rng = word_range(d, ln, 0, s["name"])
+      if rng == null:
+        rng = {"start": {"line": ln, "character": 0}, "end": {"line": ln, "character": 0}}
+      append(out, {"name": s["name"], "kind": kind, "location": {"uri": path_to_uri(d["path"]), "range": rng}, "containerName": path_basename(d["path"])})
+      if len(out) >= 500:
+        return out
+  return out
+
+def signature_help(params):
+  pw = pos_word(params)
+  doc = pw[0]
+  if doc == null or pw[1] == null:
+    return null
+  lines = split(doc["text"], "\n")
+  text = lines[pw[2]]
+  idx = pw[5]
+  prefix = text[0:idx]
+  op = -1
+  i = byte_len(prefix) - 1
+  while i >= 0:
+    if prefix[i:i + 1] == "(":
+      op = i
+      i = -2
+    i = i - 1
+  if op < 0:
+    return null
+  depth = 0
+  active = 0
+  i = op
+  pl = byte_len(prefix)
+  while i < pl:
+    ch = prefix[i:i + 1]
+    if ch == "(":
+      depth = depth + 1
+    elif ch == ")":
+      depth = depth - 1
+    elif ch == "," and depth == 1:
+      active = active + 1
+    i = i + 1
+  head = rstrip(prefix[0:op])
+  n = byte_len(head)
+  j = n
+  while j > 0 and is_word_char(byte_at(head, j - 1)):
+    j = j - 1
+  callee = head[j:n]
+  while byte_len(callee) > 0:
+    b0 = byte_at(callee, 0)
+    if b0 >= 48 and b0 <= 57:
+      callee = callee[1:byte_len(callee)]
+    else:
+      break
+  if byte_len(callee) == 0 or not is_word_start(byte_at(callee, 0)):
+    return null
+  params_list = null
+  label = null
+  doc_txt = null
+  if has(lspdata.BUILTINS, callee):
+    b = lspdata.BUILTINS[callee]
+    label = strip(split(b[0], "|")[0])
+    inner = strip(label[byte_len(callee):byte_len(label)])
+    il = byte_len(inner)
+    if il >= 2 and inner[0:1] == "(" and inner[il - 1:il] == ")":
+      params_list = []
+      for p in split(inner[1:il - 1], ","):
+        p2 = strip(p)
+        if p2 != "":
+          append(params_list, p2)
+    doc_txt = b[1]
+  else:
+    cparts = split(callee, ".")
+    occ = occ_index(text, idx, cparts[0])
+    rp = resolve_parts(doc, cparts, pw[2] + 1, occ)
+    sym = rp[0]
+    if sym == null or sym["kind"] != "function":
+      return null
+    params_list = pyrt.py_get(sym, "params", [])
+    label = sym["name"] + "(" + join(", ", params_list) + ")"
+  if params_list == null:
+    params_list = []
+  sig = {"label": label, "parameters": []}
+  for p in params_list:
+    append(sig["parameters"], {"label": p})
+  if doc_txt != null:
+    sig["documentation"] = {"kind": "markdown", "value": doc_txt}
+  ap = 0
+  if len(params_list) > 0:
+    ap = active
+    if ap > len(params_list) - 1:
+      ap = len(params_list) - 1
+    sig["activeParameter"] = ap
+  return {"signatures": [sig], "activeSignature": 0, "activeParameter": ap}
+
 def set_doc(uri, text, version):
   path = uri_to_path(uri)
-  if path == null:
-    path = "<main>"
-  errs = analyze(text, path)
+  apath = path
+  if apath == null:
+    apath = "<main>"
+  errs = analyze(text, apath)
   col = null
   if errs[2] != null:
     col = collect(errs[2])
-  DOCS[uri] = {"text": text, "version": version, "perr": errs[0], "serr": errs[1], "ast": errs[2], "col": col}
+  DOCS[uri] = {"text": text, "version": version, "perr": errs[0], "serr": errs[1], "ast": errs[2], "col": col, "path": path}
 
 def handle(msg):
   global ROOT
@@ -557,6 +1117,20 @@ def handle(msg):
     reply(mid, hover(params))
   elif method == "textDocument/completion":
     reply(mid, complete(params))
+  elif method == "textDocument/definition":
+    reply(mid, definition(params))
+  elif method == "textDocument/references":
+    ctx = pyrt.py_get(params, "context", null)
+    incd = true
+    if ctx != null:
+      incd = pyrt.py_get(ctx, "includeDeclaration", true)
+    reply(mid, references(params, incd))
+  elif method == "textDocument/documentHighlight":
+    reply(mid, document_highlight(params))
+  elif method == "textDocument/signatureHelp":
+    reply(mid, signature_help(params))
+  elif method == "workspace/symbol":
+    reply(mid, workspace_symbol(params))
   elif method == "textDocument/documentSymbol":
     uri = params["textDocument"]["uri"]
     doc = pyrt.py_get(DOCS, uri, null)

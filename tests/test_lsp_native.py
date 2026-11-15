@@ -257,6 +257,57 @@ def scenario(argv, env=None):
     return out
 
 
+def scenario_ws(argv, ws):
+    """Cross-module features over a small on-disk workspace at ws."""
+    c = Client(argv)
+    out = {}
+    out["init"] = c.request("initialize", {
+        "processId": None, "rootPath": ws, "capabilities": {}})
+    c.notify("initialized", {})
+    main_uri = "file://" + os.path.join(ws, "main.holy")
+    with open(os.path.join(ws, "main.holy"), encoding="utf-8") as f:
+        main_text = f.read()
+    c.diags.clear()
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": main_uri, "languageId": "holyshit", "version": 1,
+        "text": main_text}})
+    c.drain()
+    out["diags"] = list(c.diags)
+
+    def req(tag, method, params):
+        out[tag] = c.request(method, params)
+
+    def pos(line, ch):
+        return {"textDocument": {"uri": main_uri},
+                "position": {"line": line, "character": ch}}
+
+    req("def_module", "textDocument/definition", pos(0, 8))
+    req("def_crossfn", "textDocument/definition", pos(3, 16))
+    req("def_crossvar", "textDocument/definition", pos(4, 15))
+    req("def_local", "textDocument/definition", pos(6, 5))
+    req("def_miss", "textDocument/definition", pos(5, 0))
+    req("hov_crossfn", "textDocument/hover", pos(3, 16))
+    req("hov_crossmod", "textDocument/hover", pos(0, 8))
+    req("hl_x", "textDocument/documentHighlight", pos(4, 0))
+    req("hl_local", "textDocument/documentHighlight", pos(6, 5))
+    req("refs_addtwo", "textDocument/references", pos(3, 16))
+    req("refs_addtwo_nodecl", "textDocument/references",
+        dict(pos(3, 16), context={"includeDeclaration": False}))
+    req("refs_x", "textDocument/references", pos(4, 0))
+    req("sig_builtin", "textDocument/signatureHelp", pos(9, 9))
+    req("sig_builtin2", "textDocument/signatureHelp", pos(9, 14))
+    req("sig_user", "textDocument/signatureHelp", pos(8, 13))
+    req("sig_user2", "textDocument/signatureHelp", pos(8, 17))
+    req("sig_none", "textDocument/signatureHelp", pos(0, 2))
+    req("ws_all", "workspace/symbol", {"query": ""})
+    req("ws_add", "workspace/symbol", {"query": "ADD"})
+    req("shutdown", "shutdown", None)
+    c.notify("exit", {})
+    c.p.wait(timeout=10)
+    out["exitcode"] = c.p.returncode
+    return out
+
+
 def pipelined(argv, env=None):
     """Three messages in ONE write: byte-exact framing must not over-read."""
     c = Client(argv, env)
@@ -317,6 +368,29 @@ def main():
             check(f"scenario {k}", py[k] == hs[k],
                   f"\n  py: {json.dumps(py[k])[:300]}"
                   f"\n  hs: {json.dumps(hs[k])[:300]}")
+
+        ws = os.path.join(td, "ws")
+        os.makedirs(ws)
+        with open(os.path.join(ws, "mod_util.holy"), "w",
+                  encoding="utf-8") as f:
+            f.write("def add_two(a, b):\n  return a + b\nVERSION = 2\n")
+        with open(os.path.join(ws, "main.holy"), "w", encoding="utf-8") as f:
+            f.write("import mod_util\n"
+                    "def add_three(a, b, c):\n"
+                    "  return a + b + c\n"
+                    "print mod_util.add_two(1, 2)\n"
+                    "x = mod_util.VERSION\n"
+                    "y = 1\n"
+                    "def local():\n"
+                    "  return y\n"
+                    "z = add_three(1, 2, 3)\n"
+                    "w = open(\"f\", \"r\")\n")
+        wpy = scenario_ws([sys.executable, os.path.join(ROOT, "lsp.py")], ws)
+        whs = scenario_ws([exe], ws)
+        for k in wpy:
+            check(f"ws {k}", wpy[k] == whs[k],
+                  f"\n  py: {json.dumps(wpy[k])[:300]}"
+                  f"\n  hs: {json.dumps(whs[k])[:300]}")
 
         pin = py["init"]["result"]
         check("initialize capabilities shape",
