@@ -4,6 +4,7 @@
 # x64 backend; input()/getline would over-read pipelined messages), raw
 # flushed writes to /dev/stdout for output.
 import check
+import fmtlib
 import lspdata
 import normalize
 import parselib
@@ -1072,6 +1073,22 @@ def signature_help(params):
     sig["activeParameter"] = ap
   return {"signatures": [sig], "activeSignature": 0, "activeParameter": ap}
 
+def formatting(params):
+  doc = pyrt.py_get(DOCS, params["textDocument"]["uri"], null)
+  if doc == null or doc["ast"] == null:
+    return []
+  newtext = ""
+  try:
+    newtext = fmtlib.fmt_source(doc["text"], true) + "\n"
+  except as e:
+    return []
+  if newtext == doc["text"]:
+    return []
+  lines = split(doc["text"], "\n")
+  nlines = len(lines)
+  last = lines[nlines - 1]
+  return [{"range": {"start": {"line": 0, "character": 0}, "end": {"line": nlines - 1, "character": utf16_len(last)}}, "newText": newtext}]
+
 def set_doc(uri, text, version):
   path = uri_to_path(uri)
   apath = path
@@ -1131,6 +1148,8 @@ def handle(msg):
     reply(mid, signature_help(params))
   elif method == "workspace/symbol":
     reply(mid, workspace_symbol(params))
+  elif method == "textDocument/formatting":
+    reply(mid, formatting(params))
   elif method == "textDocument/documentSymbol":
     uri = params["textDocument"]["uri"]
     doc = pyrt.py_get(DOCS, uri, null)

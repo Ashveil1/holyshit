@@ -249,6 +249,23 @@ def scenario(argv, env=None):
         "textDocument": {"uri": "file:///tmp/never_opened.holy"},
         "position": {"line": 0, "character": 0}})
 
+    # formatting: messy doc, clean doc, comment-heavy doc, parse-error doc
+    MESSY = "x   =   1\ndef f( a,b ):\n  return a+b\n\n\ny = f(1,2)\n"
+    COMMENTS = "# header comment\nx = 1  # trailing\n# lone comment\nprint x\n"
+    for tag, text in [("fmt_messy", MESSY), ("fmt_clean", GOOD),
+                      ("fmt_comments", COMMENTS),
+                      ("fmt_parse_err", PARSE_ERR)]:
+        u = "file:///tmp/lsp_native_%s.holy" % tag
+        c.diags.clear()
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": u, "languageId": "holyshit", "version": 1,
+            "text": text}})
+        c.drain()
+        out[tag] = c.request("textDocument/formatting",
+                             {"textDocument": {"uri": u}})
+    out["fmt_unknown"] = c.request("textDocument/formatting", {
+        "textDocument": {"uri": "file:///tmp/never_opened.holy"}})
+
     out["unknown"] = c.request("workspace/doesNotExist", {})
     out["shutdown"] = c.request("shutdown", None)
     c.notify("exit", {})
