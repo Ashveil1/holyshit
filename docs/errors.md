@@ -365,7 +365,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p, v)`
 - `{t} not allowed in unsafe`
 
-## x64gen.py - direct x86-64 backend (xbuild/xkernel) (118)
+## x64gen.py - direct x86-64 backend (xbuild/xkernel) (119)
 
 - `'{n}' already defined in this scope`
 - `Int literal {v} is outside the 62-bit range`
@@ -436,6 +436,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `module '{m['name']}' has no attribute '{name}'`
 - `module '{name}' is not a first-class value in x64 subset (use mod.attr)`
 - `module '{target['name']}' is not a first-class value in x64 subset (use mod.attr)`
+- `mouse_event takes no args`
 - `only alloc/load/store/as_* calls allowed in unsafe (x64)`
 - `only modules have attributes`
 - `open wants open(path, mode)`
@@ -667,4 +668,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-621 messages total - duplicates across files are counted once per file
+622 messages total - duplicates across files are counted once per file

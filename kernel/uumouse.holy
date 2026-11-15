@@ -1,0 +1,19 @@
+# ring 3 pointer-event probe: reads events through SYS_MOUSE_READ only and
+# prints the decoded triple per event. Exits after 5 events or when the
+# spin bound trips, so a broken path shows as a short count, not a hang.
+SYS_EXIT = 60
+SYS_MOUSE_READ = 90
+def sc(nr, a1, a2, a3, a4, a5, a6):
+  return scall(nr, a1, a2, a3, a4, a5, a6)
+got = 0
+spins = 0
+while got < 5:
+  if spins >= 1000000:
+    break
+  ev = sc(SYS_MOUSE_READ, 0, 0, 0, 0, 0, 0)
+  if ev != 0:
+    print "mse", ev & 7, ev >> 3 & 1023 - 512, ev >> 13 & 1023 - 512
+    got = got + 1
+  spins = spins + 1
+print "uumouse events", got
+sc(SYS_EXIT, 0, 0, 0, 0, 0, 0)

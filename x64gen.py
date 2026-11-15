@@ -872,7 +872,7 @@ class Gen:
             # become unbound globals (runtime error).
             if name in ("print", "len", "range", "str", "int", "float", "input",
                         "open", "read", "write", "close", "argv", "env", "system",
-                        "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event",
+                        "append", "split", "find", "join", "has", "contains", "keys", "values", "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "mouse_event",
                         "byte_len", "byte_find", "byte_at",
                         "pmm_alloc", "meminfo", "tcp_connect", "tcp_send",
                         "tcp_recv", "tcp_close", "tcp_listen", "tcp_accept",
@@ -2391,7 +2391,7 @@ class Gen:
         if fn["t"] == "var" and fn["name"] in (
                 "input", "open", "read",
                 "write", "close", "argv", "env", "system", "ticks",
-                "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "pmm_total",
+                "readkey", "readkey_code", "readkey_nav", "readkey_event", "mouse_event", "pmm_alloc", "pmm_total",
                 "pmm_free", "meminfo", "mb_info", "mb_magic",
                 "image_end", "cr2", "cr3", "set_cr3", "invlpg", "tlb_flush",
                 "ctx_swap", "task_run", "task_init",
@@ -2404,7 +2404,7 @@ class Gen:
                 "json_str", "json_load", "json_save", "write_bytes",
                 "append_bytes", "asm"):
             if self.freestanding and fn["name"] in (
-                    "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "pmm_alloc", "pmm_total", "pmm_free",
+                    "ticks", "readkey", "readkey_code", "readkey_nav", "readkey_event", "mouse_event", "pmm_alloc", "pmm_total", "pmm_free",
                     "mb_info", "mb_magic", "image_end", "cr2", "cr3",
                     "set_cr3", "invlpg", "tlb_flush",
                     "ctx_swap", "task_run", "task_init",
@@ -2657,6 +2657,21 @@ class Gen:
             if args:
                 raise HSErr("readkey_event takes no args", ln)
             a.call("event_dequeue")
+            lab_none, lab_done = self.new_tmp("rkc"), self.new_tmp("rkc")
+            a.test_rr("rax", "rax")
+            a.jcc("e", lab_none)
+            self.tag_box()
+            a.jmp(lab_done)
+            a.label(lab_none)
+            a.mov_ri64("rax", Gen.HS_NULL)
+            a.label(lab_done)
+            return
+        if name == "mouse_event":
+            if args:
+                raise HSErr("mouse_event takes no args", ln)
+            # PS/2 mouse FIFO: status | dx<<8 | dy<<16 (never 0 when a packet
+            # is present, so 0/Null means empty), drop-newest, 64 slots.
+            a.call("ms_dequeue")
             lab_none, lab_done = self.new_tmp("rkc"), self.new_tmp("rkc")
             a.test_rr("rax", "rax")
             a.jcc("e", lab_none)
