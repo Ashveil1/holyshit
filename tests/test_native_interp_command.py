@@ -30,8 +30,8 @@ with tempfile.TemporaryDirectory(prefix='hs interp source space ') as d:
  r=run('print "before"\nprint 1 / 0\n')
  assert r.returncode==1 and r.stdout=='before\n' and 'division by zero' in r.stderr,(r.stdout,r.stderr)
  passed+=1
- r=run('print "must not run"\nunsafe:\n  Ptr p = alloc(8)\n')
- assert r.returncode==3 and not r.stdout and 'irinterp: unsupported' in r.stderr,(r.returncode,r.stdout,r.stderr)
+ r=run('print "unsafe runs"\nunsafe:\n  Ptr p = alloc(8)\n  store8(p, 7)\n  print load8(p)\n')
+ assert r.returncode==0 and r.stdout=='unsafe runs\n7\n',(r.returncode,r.stdout,r.stderr)
  passed+=1
  r=run('def broken(:\n')
  assert r.returncode==1 and not r.stdout,(r.stdout,r.stderr)
