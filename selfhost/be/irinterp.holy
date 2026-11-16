@@ -11,6 +11,7 @@ import irbuild
 import verify
 import pyrt
 import irprofile
+import parselib
 JUMP = "u0001IRJUMPu0001"
 def trailing_line(s):
   n = len(s)
@@ -307,6 +308,7 @@ def mod_wrap(name, e, ln):
 def mod_build(name, path):
   src = read_text(path)
   prog = normalize.parse(src)
+  merge_structs()
   sub = irbuild.build_module(prog, name + ".")
   verify.verify_module(sub)
   return sub
@@ -496,7 +498,10 @@ def step(st, ins, temps, frame, prev):
   if op == "const":
     temps[ins["dest"]] = ins["val"]
   elif op == "load":
-    temps[ins["dest"]] = frame_get(frame, ins["name"], ln)
+    v = frame_get(frame, ins["name"], ln)
+    if is_uv(v):
+      v = uv_box(v[1], v[2], ln)
+    temps[ins["dest"]] = v
   elif op == "stvar":
     frame_set(frame, ins["name"], temps[ins["src"]])
   elif op == "stglobal":
@@ -558,6 +563,85 @@ def step(st, ins, temps, frame, prev):
       if pyrt.py_type(hi) != "int":
         fail("slice index must be Int", ln)
     temps[ins["dest"]] = do_slice(temps[ins["obj"]], lo, hi, ln)
+  elif op == "sconst":
+    temps[ins["dest"]] = uvmk(ins["stype"], ins["val"])
+  elif op == "sload":
+    temps[ins["dest"]] = sload_exec(frame, ins["name"], ln)
+  elif op == "sdecl":
+    sdecl_exec(frame, ins["name"], ins["utype"], temps[ins["src"]], ln)
+  elif op == "sset":
+    sset_exec(frame, ins["name"], temps[ins["src"]], ln)
+  elif op == "dset":
+    v = temps[ins["src"]]
+    f = frame
+    done = false
+    while f != null:
+      if ins["name"] in f["vars"]:
+        old = f["vars"][ins["name"]]
+        if is_uv(old):
+          f["vars"][ins["name"]] = uvmk(old[1], uv_unbox(v, old[1], ln))
+        else:
+          f["vars"][ins["name"]] = v
+        done = true
+        break
+      f = f["parent"]
+    if not done:
+      frame_set(frame, ins["name"], v)
+  elif op == "sstore":
+    pv = temps[ins["ptr"]]
+    vv = temps[ins["val"]]
+    if not uv_is_ptr(pv[1]):
+      fail("cannot store through " + pv[1] + " (need Ptr)", ln)
+    if vv[1] != "LIT" and vv[1] != "I64" and vv[1] != "U64":
+      fail("cannot store " + vv[1] + " to memory (need integer)", ln)
+    us_store(st, pv[2], 8, uv_coerce(vv[1], vv[2], "I64", ln), ln)
+  elif op == "sfstore":
+    sfstore_exec(st, temps[ins["obj"]], ins["name"], temps[ins["idx"]] if ins["idx"] != null else null, temps[ins["val"]], ln)
+  elif op == "sbin":
+    temps[ins["dest"]] = do_sbinop(st, ins["binop"], temps[ins["l"]], temps[ins["r"]], ln)
+  elif op == "sun":
+    temps[ins["dest"]] = do_sunop(ins["unop"], temps[ins["v"]], ln)
+  elif op == "scall":
+    sargs = []
+    for a in ins["args"]:
+      append(sargs, temps[a])
+    temps[ins["dest"]] = do_scall(st, ins["name"], sargs, ln)
+  elif op == "sderef":
+    v = temps[ins["v"]]
+    if not uv_is_ptr(v[1]):
+      fail("cannot dereference " + v[1] + " (need Ptr)", ln)
+    temps[ins["dest"]] = uvmk("I64", us_load(st, v[2], 8, ln))
+  elif op == "sfield":
+    temps[ins["dest"]] = sfield_exec(st, temps[ins["obj"]], ins["name"], temps[ins["idx"]] if ins["idx"] != null else null, ln)
+  elif op == "box":
+    v = temps[ins["src"]]
+    temps[ins["dest"]] = uv_box(v[1], v[2], ln)
+  elif op == "sraw":
+    temps[ins["dest"]] = temps[ins["src"]][2]
+  elif op == "snz":
+    v = temps[ins["src"]]
+    if not is_uv(v):
+      fail("IR: snz of dynamic", ln)
+    temps[ins["dest"]] = uvmk("I64", 0 if v[2] == 0 else 1)
+  elif op == "svarptr":
+    v = sload_exec(frame, ins["var"], ln)
+    if ins["conv"] == "as_ptr":
+      if v[1] != "LIT" and v[1] != "I64" and v[1] != "U64" and not uv_is_ptr(v[1]):
+        fail("as_ptr needs an integer, got " + v[1], ln)
+      temps[ins["dest"]] = uvmk("Ptr", uv_unbox(v[2], "Ptr", ln))
+    else:
+      if not uv_is_ptr(v[1]):
+        fail("as_int needs Ptr, got " + v[1], ln)
+      temps[ins["dest"]] = uvmk("U64", v[2])
+  elif op == "sstr":
+    temps[ins["dest"]] = ins["val"]
+  elif op == "serr":
+    fail(ins["imsg"], ln)
+  elif op == "ssizeof":
+    if ins["stype"] == "I64" or ins["stype"] == "U64" or ins["stype"] == "Ptr":
+      temps[ins["dest"]] = uvmk("I64", 8)
+    else:
+      temps[ins["dest"]] = uvmk("I64", struct_lookup(ins["stype"], ln)["size"])
   elif op == "setindex":
     if pyrt.py_type(temps[ins["obj"]]) not in ["list", "dict"]:
       fail("cannot assign into " + type_name(temps[ins["obj"]]), ln)
@@ -625,7 +709,10 @@ def step(st, ins, temps, frame, prev):
       present = bound[nm]
     if not present:
       fail("module '" + obj["hs_ir_mod"] + "' has no attribute '" + nm + "'", ln)
-    temps[ins["dest"]] = mvs[nm]
+    v = mvs[nm]
+    if is_uv(v):
+      v = uv_box(v[1], v[2], ln)
+    temps[ins["dest"]] = v
   elif op == "setattr":
     obj = temps[ins["obj"]]
     if not is_mod(obj):
@@ -722,9 +809,450 @@ def run_fn(st, key, fdef, frame):
         append(st["active"], [msg, eline])
         lab = tgt[1]
         prev = null
-SUPPORTED = ["const", "load", "stvar", "stglobal", "mkfunc", "bin", "un", "call", "print", "build_list", "build_dict", "index", "slice", "setindex", "iterseq", "copy", "phi", "try_push", "try_pop", "exc_str", "exc_pop", "unbind", "reraise", "import", "attr", "setattr"]
+SUPPORTED = ["const", "load", "stvar", "stglobal", "mkfunc", "bin", "un", "call", "print", "build_list", "build_dict", "index", "slice", "setindex", "iterseq", "copy", "phi", "try_push", "try_pop", "exc_str", "exc_pop", "unbind", "reraise", "import", "attr", "setattr", "sconst", "sdecl", "sset", "dset", "sstore", "sfstore", "sload", "sderef", "sfield", "sbin", "sun", "scall", "snz", "svarptr", "sstr", "serr", "ssizeof", "box", "sraw"]
 BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find", "join", "has", "contains", "keys", "values", "read_text", "write_bytes", "write_text", "append_text", "append_bytes", "exists", "ls", "mkdir", "env", "argv", "input", "json_parse", "json_str", "json_load", "json_save", "open", "read", "write", "close", "system"]
 OTHER_BUILTINS = ["byte_len", "byte_find", "byte_at", "alloc", "as_int", "as_ptr", "http_get", "load32", "load64", "load8", "meminfo", "pmm_alloc", "pmm_free", "pmm_total", "read_mem", "readkey", "readkey_code", "readkey_nav", "readkey_event", "store32", "store64", "store8", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks"]
+
+# ---- unsafe static execution ----
+# Guest UnsafeVal = [UVTAG, utype, val]; utype in I64/U64/LIT/Ptr/Ptr:Struct.
+# val is a plain hs Int holding the signed 64-bit interpretation. Words whose
+# value escapes the 62-bit Int range follow the hosted backends' box behavior
+# rather than interp.py's exact big-int arithmetic (documented tier boundary);
+# everything inside the range is exact.
+UVTAG = "\0uv"
+def is_uv(v):
+  return pyrt.py_type(v) == "list" and len(v) == 3 and v[0] == UVTAG
+def uvmk(utype, val):
+  return [UVTAG, utype, val]
+def uv_is_ptr(t):
+  return t == "Ptr" or t[0:4] == "Ptr:"
+def uv_ptr_struct(t):
+  if t[0:4] == "Ptr:":
+    return t[4:]
+  return null
+
+# Host-side helpers: one unsafe op each, so guest 64-bit arithmetic uses real
+# hardware wrap semantics instead of trapping on the host's 62-bit Int range.
+def h_alloc(n):
+  unsafe:
+    return as_int(alloc(n))
+def h_load(base, addr, size):
+  unsafe:
+    Ptr p = as_ptr(base + addr)
+    I64 r = 0
+    I64 i = 0
+    while i < size:
+      r = r | (load8(p + i) << (i * 8))
+      i = i + 1
+    return r
+def h_store(base, addr, size, v):
+  unsafe:
+    Ptr p = as_ptr(base + addr)
+    I64 vv = v
+    I64 i = 0
+    while i < size:
+      store8(p + i, (vv >> (i * 8)) & 255)
+      i = i + 1
+    return 0
+def h_i64add(a, b):
+  unsafe:
+    I64 x = a
+    I64 y = b
+    return x + y
+def h_i64sub(a, b):
+  unsafe:
+    I64 x = a
+    I64 y = b
+    return x - y
+def h_i64mul(a, b):
+  unsafe:
+    I64 x = a
+    I64 y = b
+    return x * y
+def h_i64div(a, b):
+  unsafe:
+    I64 x = a
+    I64 y = b
+    return x / y
+def h_i64mod(a, b):
+  unsafe:
+    I64 x = a
+    I64 y = b
+    return x % y
+def h_u64div(a, b):
+  unsafe:
+    U64 x = a
+    U64 y = b
+    return x / y
+def h_u64mod(a, b):
+  unsafe:
+    U64 x = a
+    U64 y = b
+    return x % y
+def h_i64shl(a, b):
+  unsafe:
+    I64 x = a
+    I64 y = b
+    return x << y
+def h_i64neg(a):
+  unsafe:
+    I64 x = a
+    return 0 - x
+
+# Struct layouts accumulate per program across module parses (interp.py's
+# HS_STRUCTS lifetime); parselib resets P["structs"] on each parse, so every
+# parse result is merged here right after the parse call.
+ISTRUCTS = {}
+def merge_structs():
+  for k in keys(parselib.P["structs"]):
+    lay = parselib.P["structs"][k]
+    if has(ISTRUCTS, k) and ISTRUCTS[k] != lay:
+      raise "struct '" + k + "' redefined with a different layout"
+    ISTRUCTS[k] = lay
+def struct_lookup(sname, ln):
+  if not has(ISTRUCTS, sname):
+    fail("unknown struct '" + sname + "'", ln)
+  return ISTRUCTS[sname]
+def struct_field_of(sname, fname, ln):
+  lay = struct_lookup(sname, ln)
+  if not has(lay["fields"], fname):
+    fail("struct '" + sname + "' has no field '" + fname + "'", ln)
+  return lay["fields"][fname]
+
+# Guest simulated memory: 1MB, addresses are indices, 0 = NULL, US_TOP = 8.
+def us_mem(st):
+  if st["us_base"] == 0:
+    st["us_base"] = h_alloc(1048576)
+  return st["us_base"]
+def us_check(addr, size, ln):
+  if addr == 0:
+    fail("null pointer dereference", ln)
+  if addr < 0 or addr + size > 1048576:
+    fail("unsafe: address out of bounds", ln)
+def us_load(st, addr, size, ln):
+  us_check(addr, size, ln)
+  return h_load(us_mem(st), addr, size)
+def us_store(st, addr, size, v, ln):
+  us_check(addr, size, ln)
+  h_store(us_mem(st), addr, size, v)
+def us_alloc(st, n, ln):
+  if n < 0:
+    fail("alloc of negative size " + str(n), ln)
+  n = (n + 7) - (n + 7) % 8
+  if st["us_top"] + n > 1048576:
+    fail("unsafe: out of memory (1MB sim)", ln)
+  addr = st["us_top"]
+  base = us_mem(st)
+  i = 0
+  while i < n:
+    h_store(base, addr + i, 1, 0)
+    i = i + 1
+  st["us_top"] = addr + n
+  return addr
+
+def uv_box(utype, v, ln):
+  if utype == "I64" or utype == "LIT" or utype == "U64" or uv_is_ptr(utype):
+    return v
+  fail("bad static type " + utype, ln)
+def uv_unbox(v, target, ln):
+  if pyrt.py_type(v) == "bool":
+    if v:
+      v = 1
+    else:
+      v = 0
+  if target == "I64":
+    if pyrt.py_type(v) == "int":
+      return v
+    fail("cannot use " + type_name(v) + " as I64", ln)
+  if target == "U64" or uv_is_ptr(target):
+    if pyrt.py_type(v) == "int":
+      if v < 0:
+        fail("negative value " + str(v) + " as " + target, ln)
+      return v
+    fail("cannot use " + type_name(v) + " as " + target, ln)
+  fail("bad static type " + target, ln)
+def uv_coerce(st_, sv, target, ln):
+  if st_ == "LIT":
+    return uv_unbox(sv, target, ln)
+  if st_ == target:
+    return sv
+  if uv_is_ptr(st_) and uv_is_ptr(target):
+    return sv
+  if target == "I64" and st_ == "U64":
+    return sv
+  if target == "U64" and st_ == "I64":
+    if sv < 0:
+      fail("negative value " + str(sv) + " as U64", ln)
+    return sv
+  fail("cannot convert " + st_ + " to " + target, ln)
+
+def do_sbinop(st, op, l, r, ln):
+  lt = l[1]
+  lv = l[2]
+  rt = r[1]
+  rv = r[2]
+  if op == "==" or op == "!=":
+    if uv_is_ptr(lt) or uv_is_ptr(rt):
+      if not (uv_is_ptr(lt) and uv_is_ptr(rt)):
+        fail("cannot compare " + lt + " and " + rt, ln)
+      eq = lv == rv
+    else:
+      kset = {}
+      if lt != "LIT":
+        kset[lt] = true
+      if rt != "LIT":
+        kset[rt] = true
+      if len(kset) == 2 and has(kset, "I64") and has(kset, "U64"):
+        fail("cannot compare I64 and U64 (convert explicitly)", ln)
+      tgt = "I64"
+      if len(kset) > 0:
+        tgt = keys(kset)[0]
+      eq = uv_coerce(lt, lv, tgt, ln) == uv_coerce(rt, rv, tgt, ln)
+    if op == "==":
+      return uvmk("I64", 1 if eq else 0)
+    return uvmk("I64", 0 if eq else 1)
+  if op == "<" or op == ">" or op == "<=" or op == ">=":
+    if uv_is_ptr(lt) or uv_is_ptr(rt):
+      fail("cannot order pointers (use == / !=)", ln)
+    if lt != rt and ((lt == "I64" and rt == "U64") or (lt == "U64" and rt == "I64")):
+      fail("cannot compare I64 and U64 (convert explicitly)", ln)
+    tgt = lt
+    if lt == "LIT":
+      tgt = rt
+    if tgt == "LIT":
+      tgt = "I64"
+    a = uv_coerce(lt, lv, tgt, ln)
+    b = uv_coerce(rt, rv, tgt, ln)
+    res = false
+    if op == "<":
+      res = a < b
+    elif op == ">":
+      res = a > b
+    elif op == "<=":
+      res = a <= b
+    else:
+      res = a >= b
+    return uvmk("I64", 1 if res else 0)
+  if uv_is_ptr(lt) or uv_is_ptr(rt):
+    lxs = uv_ptr_struct(lt)
+    rxs = uv_ptr_struct(rt)
+    if op == "+" and lxs != null and (rt == "I64" or rt == "U64" or rt == "LIT"):
+      return uvmk(lt, h_i64add(lv, h_i64mul(uv_coerce(rt, rv, "I64", ln), struct_lookup(lxs, ln)["size"])))
+    if op == "+" and rxs != null and (lt == "I64" or lt == "U64" or lt == "LIT"):
+      return uvmk(rt, h_i64add(rv, h_i64mul(uv_coerce(lt, lv, "I64", ln), struct_lookup(rxs, ln)["size"])))
+    if op == "-" and lxs != null and (rt == "I64" or rt == "U64" or rt == "LIT"):
+      return uvmk(lt, h_i64sub(lv, h_i64mul(uv_coerce(rt, rv, "I64", ln), struct_lookup(lxs, ln)["size"])))
+    if op == "-" and lxs != null and rxs != null and lxs == rxs:
+      d = h_i64sub(lv, rv)
+      q = h_i64div(d if d >= 0 else 0 - d, struct_lookup(lxs, ln)["size"])
+      return uvmk("I64", 0 - q if d < 0 else q)
+    if lt == "Ptr" or rt == "Ptr":
+      if op == "+" and lt == "Ptr" and (rt == "I64" or rt == "U64" or rt == "LIT"):
+        return uvmk("Ptr", h_i64add(lv, uv_coerce(rt, rv, "I64", ln)))
+      if op == "+" and rt == "Ptr" and (lt == "I64" or lt == "U64" or lt == "LIT"):
+        return uvmk("Ptr", h_i64add(rv, uv_coerce(lt, lv, "I64", ln)))
+      if op == "-" and lt == "Ptr" and (rt == "I64" or rt == "U64" or rt == "LIT"):
+        return uvmk("Ptr", h_i64sub(lv, uv_coerce(rt, rv, "I64", ln)))
+      if op == "-" and lt == "Ptr" and rt == "Ptr":
+        return uvmk("I64", h_i64sub(lv, rv))
+    fail("cannot apply '" + op + "' to pointers", ln)
+  tgt = lt
+  if lt == "LIT":
+    tgt = rt
+  if tgt == "LIT":
+    tgt = "I64"
+  a = uv_coerce(lt, lv, tgt, ln)
+  b = uv_coerce(rt, rv, tgt, ln)
+  res = 0
+  if op == "+":
+    res = h_i64add(a, b)
+  elif op == "-":
+    res = h_i64sub(a, b)
+  elif op == "*":
+    res = h_i64mul(a, b)
+  elif op == "/":
+    if b == 0:
+      fail("division by zero", ln)
+    if tgt == "U64":
+      res = h_u64div(a, b)
+    else:
+      res = h_i64div(a, b)
+  elif op == "%":
+    if b == 0:
+      fail("division by zero", ln)
+    if tgt == "U64":
+      res = h_u64mod(a, b)
+    else:
+      res = h_i64mod(a, b)
+  elif op == "&":
+    res = a & b
+  elif op == "|":
+    res = a | b
+  elif op == "^":
+    res = a ^ b
+  elif op == "<<":
+    if b < 0 or b > 63:
+      fail("shift count " + str(b) + " out of range (0..63)", ln)
+    res = h_i64shl(a, b)
+  elif op == ">>":
+    if b < 0 or b > 63:
+      fail("shift count " + str(b) + " out of range (0..63)", ln)
+    res = a >> b
+  else:
+    fail("bad operator " + op, ln)
+  return uvmk(tgt, res)
+
+def do_sunop(op, v, ln):
+  st_ = v[1]
+  sv = v[2]
+  if op == "neg":
+    if uv_is_ptr(st_):
+      fail("cannot negate Ptr", ln)
+    if st_ == "LIT":
+      return uvmk("LIT", 0 - sv)
+    if st_ == "I64":
+      return uvmk("I64", h_i64neg(sv))
+    return uvmk("U64", h_i64neg(sv))
+  if op == "unot":
+    if uv_is_ptr(st_):
+      fail("cannot bitwise-not Ptr", ln)
+    return uvmk(st_, 0 - sv - 1)
+  if op == "not":
+    return uvmk("I64", 0 if sv != 0 else 1)
+  fail("IR: bad sunop '" + op + "'", ln)
+
+def do_scall(st, name, args, ln):
+  if name not in ["alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int", "asm", "call0"]:
+    fail("cannot call '" + name + "' from unsafe (only: alloc, as_int, as_ptr, asm, call0, load32, load64, load8, store32, store64, store8)", ln)
+  if name == "call0":
+    if len(args) != 1:
+      fail("call0 wants call0(p)", ln)
+    if not uv_is_ptr(args[0][1]):
+      fail("call0 needs Ptr", ln)
+    if args[0][2] == 0:
+      fail("call0 needs non-null Ptr", ln)
+    fail("call0 needs foreign executable memory", ln)
+  if name == "alloc":
+    if len(args) != 1:
+      fail("alloc wants alloc(n)", ln)
+    return uvmk("Ptr", us_alloc(st, uv_coerce(args[0][1], args[0][2], "I64", ln), ln))
+  if name == "load8" or name == "load32" or name == "load64":
+    if len(args) != 1:
+      fail(name + " wants " + name + "(p)", ln)
+    if not uv_is_ptr(args[0][1]):
+      fail(name + " needs Ptr, got " + args[0][1], ln)
+    sz = 1
+    if name == "load32":
+      sz = 4
+    if name == "load64":
+      sz = 8
+    return uvmk("I64", us_load(st, args[0][2], sz, ln))
+  if name == "store8" or name == "store32" or name == "store64":
+    if len(args) != 2:
+      fail(name + " wants " + name + "(p, v)", ln)
+    if not uv_is_ptr(args[0][1]):
+      fail(name + " needs Ptr, got " + args[0][1], ln)
+    vv = uv_coerce(args[1][1], args[1][2], "I64", ln)
+    sz = 1
+    mask = 255
+    if name == "store32":
+      sz = 4
+      mask = 4294967295
+    if name == "store64":
+      sz = 8
+      mask = 0
+    us_store(st, args[0][2], sz, vv, ln)
+    if mask == 0:
+      return uvmk("I64", vv)
+    return uvmk("I64", vv & mask)
+  if name == "as_ptr":
+    if len(args) != 1:
+      fail("as_ptr wants as_ptr(int)", ln)
+    at = args[0][1]
+    if at != "LIT" and at != "I64" and at != "U64" and not uv_is_ptr(at):
+      fail("as_ptr needs an integer, got " + at, ln)
+    return uvmk("Ptr", uv_unbox(args[0][2], "Ptr", ln))
+  if name == "as_int":
+    if len(args) != 1:
+      fail("as_int wants as_int(p)", ln)
+    if not uv_is_ptr(args[0][1]):
+      fail("as_int needs Ptr, got " + args[0][1], ln)
+    return uvmk("U64", args[0][2])
+  if name == "asm":
+    fail("asm requires native build (hs.py build)", ln)
+  fail("bad unsafe call " + name, ln)
+
+def sdecl_exec(frame, name, utype, v, ln):
+  if name in frame["vars"]:
+    fail("'" + name + "' already defined in this scope", ln)
+  frame["vars"][name] = uvmk(utype, uv_coerce(v[1], v[2], utype, ln))
+  frame["bound"][name] = true
+def sset_exec(frame, name, v, ln):
+  f = frame
+  while f != null:
+    if name in f["vars"]:
+      old = f["vars"][name]
+      if is_uv(old):
+        f["vars"][name] = uvmk(old[1], uv_coerce(v[1], v[2], old[1], ln))
+      else:
+        frame_set(frame, name, uv_box(v[1], v[2], ln))
+      return
+    f = f["parent"]
+  frame_set(frame, name, uv_box(v[1], v[2], ln))
+def sload_exec(frame, name, ln):
+  f = frame
+  while f != null:
+    if name in f["vars"]:
+      v = f["vars"][name]
+      if is_uv(v):
+        return v
+      return uvmk("I64", uv_unbox(v, "I64", ln))
+    f = f["parent"]
+  fail("unknown variable '" + name + "'", ln)
+def sfield_exec(st, obj, name, idx, ln):
+  st_ = obj[1]
+  sv = obj[2]
+  xs = uv_ptr_struct(st_)
+  if xs == null:
+    fail("cannot access field of " + st_ + " (need a struct pointer)", ln)
+  if sv == 0:
+    fail("null pointer dereference", ln)
+  f = struct_field_of(xs, name, ln)
+  ft = f[0]
+  off = f[1]
+  count = f[2]
+  i = 0
+  if count > 1:
+    if idx == null:
+      fail("array field '" + name + "' needs an index", ln)
+    i = uv_coerce(idx[1], idx[2], "I64", ln)
+    if i < 0 or i >= count:
+      fail("index " + str(i) + " out of range for '" + name + "'[" + str(count) + "]", ln)
+  else:
+    if idx != null:
+      fail("field '" + name + "' is not an array", ln)
+  return uvmk(ft, us_load(st, sv + off + i * 8, 8, ln))
+def sfstore_exec(st, obj, name, idx, val, ln):
+  xs = uv_ptr_struct(obj[1])
+  if xs == null:
+    fail("cannot store field of " + obj[1] + " (need a struct pointer)", ln)
+  if obj[2] == 0:
+    fail("null pointer dereference", ln)
+  f = struct_field_of(xs, name, ln)
+  ft = f[0]
+  off = f[1]
+  count = f[2]
+  i = 0
+  if count > 1:
+    if idx == null:
+      fail("array field '" + name + "' needs an index", ln)
+    i = uv_coerce(idx[1], idx[2], "I64", ln)
+    if i < 0 or i >= count:
+      fail("index " + str(i) + " out of range for '" + name + "'[" + str(count) + "]", ln)
+  else:
+    if idx != null:
+      fail("field '" + name + "' is not an array", ln)
+  us_store(st, obj[2] + off + i * 8, 8, uv_coerce(val[1], val[2], ft, ln), ln)
 def preflight(irmod):
   # Returns null when every instruction is supported, else a refusal message.
   # Builtins outside the supported subset are refused when the program loads
@@ -790,7 +1318,7 @@ def preflight_imports(irmod, basedir):
             append(queue, [sub, pyrt.py_os_path_dirname(path)])
   return null
 def create(irmod, basedir):
-  st = {"funcs": {}, "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"], "basedir": basedir, "broot": null, "profile": null, "dispatch": null, "mods": {}, "shells": {}}
+  st = {"funcs": {}, "by": {}, "handlers": [], "active": [], "jump": null, "nid": 0, "entry": irmod["entry"], "basedir": basedir, "broot": null, "profile": null, "dispatch": null, "mods": {}, "shells": {}, "us_base": 0, "us_top": 8}
   for key in irmod["order"]:
     st["funcs"][key] = irmod["funcs"][key]
     by = {}
