@@ -20,18 +20,26 @@ Supported: the dynamic core (variables, closures, calls, lists, dicts, slices,
 iteration, try/except/finally, raise, print), `import` (including dotted module
 paths and package shells) with `attr`/`setattr` on modules, and the builtins
 `len str int float range append split find join has contains keys values`,
-plus the file (including `write_bytes`), env, argv, input, json and system builtins. The import graph is
+plus the file (including `write_bytes`), env, argv, input, json and system builtins.
+`unsafe` blocks execute too: struct declarations, the `s*` IR ops, pointer
+arithmetic and the memory builtins (`alloc`, `free`, `read*`/`write*`) run
+against a 1 MiB guest memory arena with the same bounds and null checks as
+`interp.py`. Unsafe words follow the native boxing boundary: guest I64/U64
+values wrap as host 64-bit words inside unsafe code, and boxing one into a
+safe Int truncates to the 62-bit signed range (`2^61-1 + 1` boxes to
+`-2^61`), where `interp.py` keeps exact big integers. Outputs inside the
+62-bit range are byte-identical. The import graph is
 walked statically at preflight (parse + irbuild only, no execution), so modules
 using unsupported ops are still refused before any output; missing, broken or
 circular imports reproduce interp.py's rc-1 errors at runtime.
 
 Refused up front (rc 3, `error: irinterp: unsupported ...`, before any output):
-unsafe/`s*` ops, `ffi`, and builtins outside the
+`ffi`, and builtins outside the
 subset when the program uses one without binding it. These are the next steps.
 
 `tests/test_irinterp.py` runs every `tests/*.holy` through `interp.py` and the
-driver and compares exit code, stdout and stderr byte for byte (67 programs
-match; 17 are pinned as refused; `t_load64` is a documented 62-bit vs 64-bit
+driver and compares exit code, stdout and stderr byte for byte (85 programs
+match; 11 are pinned as refused; `t_load64` is a documented 62-bit vs 64-bit
 Int divergence).
 
 Callable values now use opaque host closures, not guest Dict records. Ordinary
@@ -181,8 +189,8 @@ It validates path/List shape and every Int byte (0..255, excluding Bool) before
 opening the output. Seventeen value/error/file-content programs check empty
 output, embedded zero/high bytes, alias calls, argument counts, invalid paths
 and preservation of an existing file on validation failure, for361 parity
-classifications. Unsafe memory and network builtins remain refused; this is
-binary file output, not broader unsafe or FFI support.
+classifications. Network builtins remain refused; this is
+binary file output, not FFI support.
 
 Modulo checks numeric guest kinds before calling the host helper. Invalid
 Bool/Null/Str/List/Dict/Func/Builtin/Module operands now report `%` and the

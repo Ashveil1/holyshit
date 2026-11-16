@@ -812,7 +812,6 @@ def run_fn(st, key, fdef, frame):
 SUPPORTED = ["const", "load", "stvar", "stglobal", "mkfunc", "bin", "un", "call", "print", "build_list", "build_dict", "index", "slice", "setindex", "iterseq", "copy", "phi", "try_push", "try_pop", "exc_str", "exc_pop", "unbind", "reraise", "import", "attr", "setattr", "sconst", "sdecl", "sset", "dset", "sstore", "sfstore", "sload", "sderef", "sfield", "sbin", "sun", "scall", "snz", "svarptr", "sstr", "serr", "ssizeof", "box", "sraw"]
 BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find", "join", "has", "contains", "keys", "values", "read_text", "write_bytes", "write_text", "append_text", "append_bytes", "exists", "ls", "mkdir", "env", "argv", "input", "json_parse", "json_str", "json_load", "json_save", "open", "read", "write", "close", "system"]
 OTHER_BUILTINS = ["byte_len", "byte_find", "byte_at", "alloc", "as_int", "as_ptr", "http_get", "load32", "load64", "load8", "meminfo", "pmm_alloc", "pmm_free", "pmm_total", "read_mem", "readkey", "readkey_code", "readkey_nav", "readkey_event", "store32", "store64", "store8", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks"]
-
 # ---- unsafe static execution ----
 # Guest UnsafeVal = [UVTAG, utype, val]; utype in I64/U64/LIT/Ptr/Ptr:Struct.
 # val is a plain hs Int holding the signed 64-bit interpretation. Words whose
@@ -830,7 +829,6 @@ def uv_ptr_struct(t):
   if t[0:4] == "Ptr:":
     return t[4:]
   return null
-
 # Host-side helpers: one unsafe op each, so guest 64-bit arithmetic uses real
 # hardware wrap semantics instead of trapping on the host's 62-bit Int range.
 def h_alloc(n):
@@ -851,7 +849,7 @@ def h_store(base, addr, size, v):
     I64 vv = v
     I64 i = 0
     while i < size:
-      store8(p + i, (vv >> (i * 8)) & 255)
+      store8(p + i, vv >> (i * 8) & 255)
       i = i + 1
     return 0
 def h_i64add(a, b):
@@ -898,7 +896,6 @@ def h_i64neg(a):
   unsafe:
     I64 x = a
     return 0 - x
-
 # Struct layouts accumulate per program across module parses (interp.py's
 # HS_STRUCTS lifetime); parselib resets P["structs"] on each parse, so every
 # parse result is merged here right after the parse call.
@@ -918,7 +915,6 @@ def struct_field_of(sname, fname, ln):
   if not has(lay["fields"], fname):
     fail("struct '" + sname + "' has no field '" + fname + "'", ln)
   return lay["fields"][fname]
-
 # Guest simulated memory: 1MB, addresses are indices, 0 = NULL, US_TOP = 8.
 def us_mem(st):
   if st["us_base"] == 0:
@@ -938,7 +934,7 @@ def us_store(st, addr, size, v, ln):
 def us_alloc(st, n, ln):
   if n < 0:
     fail("alloc of negative size " + str(n), ln)
-  n = (n + 7) - (n + 7) % 8
+  n = n + 7 - (n + 7) % 8
   if st["us_top"] + n > 1048576:
     fail("unsafe: out of memory (1MB sim)", ln)
   addr = st["us_top"]
@@ -949,7 +945,6 @@ def us_alloc(st, n, ln):
     i = i + 1
   st["us_top"] = addr + n
   return addr
-
 def uv_box(utype, v, ln):
   if utype == "I64" or utype == "LIT" or utype == "U64" or uv_is_ptr(utype):
     return v
@@ -985,7 +980,6 @@ def uv_coerce(st_, sv, target, ln):
       fail("negative value " + str(sv) + " as U64", ln)
     return sv
   fail("cannot convert " + st_ + " to " + target, ln)
-
 def do_sbinop(st, op, l, r, ln):
   lt = l[1]
   lv = l[2]
@@ -1014,7 +1008,7 @@ def do_sbinop(st, op, l, r, ln):
   if op == "<" or op == ">" or op == "<=" or op == ">=":
     if uv_is_ptr(lt) or uv_is_ptr(rt):
       fail("cannot order pointers (use == / !=)", ln)
-    if lt != rt and ((lt == "I64" and rt == "U64") or (lt == "U64" and rt == "I64")):
+    if lt != rt and (lt == "I64" and rt == "U64" or lt == "U64" and rt == "I64"):
       fail("cannot compare I64 and U64 (convert explicitly)", ln)
     tgt = lt
     if lt == "LIT":
@@ -1101,7 +1095,6 @@ def do_sbinop(st, op, l, r, ln):
   else:
     fail("bad operator " + op, ln)
   return uvmk(tgt, res)
-
 def do_sunop(op, v, ln):
   st_ = v[1]
   sv = v[2]
@@ -1120,7 +1113,6 @@ def do_sunop(op, v, ln):
   if op == "not":
     return uvmk("I64", 0 if sv != 0 else 1)
   fail("IR: bad sunop '" + op + "'", ln)
-
 def do_scall(st, name, args, ln):
   if name not in ["alloc", "load8", "load32", "load64", "store8", "store32", "store64", "as_ptr", "as_int", "asm", "call0"]:
     fail("cannot call '" + name + "' from unsafe (only: alloc, as_int, as_ptr, asm, call0, load32, load64, load8, store32, store64, store8)", ln)
@@ -1181,7 +1173,6 @@ def do_scall(st, name, args, ln):
   if name == "asm":
     fail("asm requires native build (hs.py build)", ln)
   fail("bad unsafe call " + name, ln)
-
 def sdecl_exec(frame, name, utype, v, ln):
   if name in frame["vars"]:
     fail("'" + name + "' already defined in this scope", ln)
