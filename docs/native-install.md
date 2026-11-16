@@ -10,6 +10,7 @@ sh scripts/install-native.sh "$HOME/holyshit-native"
 "$HOME/holyshit-native/bin/hs" fmt examples/hello.holy
 "$HOME/holyshit-native/bin/hs" check examples/hello.holy
 "$HOME/holyshit-native/bin/hs" test examples
+"$HOME/holyshit-native/bin/hs" lsp
 ```
 
 The parent must already exist and the destination must not. Paths with spaces
@@ -17,11 +18,11 @@ work. The installer checks the host and delegates to the audited bundle
 builder: verify pinned compiler checksum, stage a separate directory, build
 the eager driver, existing hs-written IR interpreter, hs formatter, hs
 checker, hs tester, hs explainer, hs-written subset compiler and hs IR
-dumper with the native compiler, then publish
-without overwriting. All eight must build before the staged directory is
+dumper and hs language server with the native compiler, then publish
+without overwriting. All nine must build before the staged directory is
 published; failure leaves no partial installation.
 It downloads nothing, uses no Python/gcc, changes no profile/PATH, creates no
-system-wide link and needs no sudo. Building eight drivers takes additional
+system-wide link and needs no sudo. Building nine drivers takes additional
 installation time and disk space; none is rebuilt for each invocation.
 
 Keep the whole installed directory together. The launcher resolves compiler,

@@ -1,7 +1,9 @@
 # holyshit LSP (`lsp.py` + `hs.py lsp`)
 
 A language server over stdio (JSON-RPC, nothing extra to install).
-Run it with `python3 hs.py lsp` or `python3 lsp.py` directly.
+Run it with `python3 hs.py lsp` or `python3 lsp.py` directly. An installed
+native bundle ([native-install.md](native-install.md)) serves the same
+protocol from the hs-written server with `<install>/bin/hs lsp`, no Python.
 
 ## Capabilities
 

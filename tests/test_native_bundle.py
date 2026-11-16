@@ -65,6 +65,12 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     failed_ir_install=d/'failed IR dumper install'
     r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_ir_install)],env=env,capture_output=True,text=True,timeout=240)
     check(r.returncode!=0 and not failed_ir_install.exists() and not list(d.glob('.holyshit-bundle.*')),'IR dumper build failure cleans staging without publishing')
+    # The ninth build must also fail without publishing the first eight drivers.
+    shutil.copyfile(ROOT/'selfhost/ir_run.holy',broken/'selfhost/ir_run.holy')
+    (broken/'selfhost/lsp.holy').write_text('def broken(:\n')
+    failed_lsp_install=d/'failed language server install'
+    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_lsp_install)],env=env,capture_output=True,text=True,timeout=240)
+    check(r.returncode!=0 and not failed_lsp_install.exists() and not list(d.glob('.holyshit-bundle.*')),'language server build failure cleans staging without publishing')
     original=d/'original';moved=d/'moved bundle'
     started=time.monotonic()
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(original)],env=env,capture_output=True,text=True,timeout=240)
@@ -399,6 +405,27 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     irdriver.write_bytes(irdriver_bytes);irdriver.chmod(0o755)
     r=subprocess.run(['/bin/sh',str(launcher),'ir',str(irsource)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==0 and r.stdout.startswith('func enumerate$L1(xs):\n'),'restored IR dumper dumps')
+    # Installed language server (hs lsp) answers an initialize handshake over stdio.
+    def lsp_frame(obj):
+        body=json.dumps(obj).encode()
+        return b'Content-Length: '+str(len(body)).encode()+b'\r\n\r\n'+body
+    lsp_input=lsp_frame({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":None,"rootPath":None,"capabilities":{}}})+lsp_frame({"jsonrpc":"2.0","id":2,"method":"shutdown"})+lsp_frame({"jsonrpc":"2.0","method":"exit"})
+    r=subprocess.run(['/bin/sh',str(launcher),'lsp'],env=env,input=lsp_input,capture_output=True,timeout=60)
+    check(r.returncode==0 and b'"capabilities"' in r.stdout and b'holyshit-lsp' in r.stdout,'relocated lsp initialize/shutdown handshake '+repr((r.returncode,r.stdout[:200],r.stderr[-150:])))
+    lspdriver=moved/'bin/hs-lsp';lspdriver_bytes=lspdriver.read_bytes()
+    lspdriver.write_bytes(lspdriver_bytes+b'changed')
+    r=subprocess.run(['/bin/sh',str(launcher),'lsp'],env=env,input=lsp_input,capture_output=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'language server checksum failed' in r.stderr,'corrupt language server refused before serving')
+    lspdriver.write_bytes(lspdriver_bytes)
+    lsums=moved/'LSP_SHA256SUMS';saved_lsums=lsums.read_bytes();lsums.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'lsp'],env=env,input=lsp_input,capture_output=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing language server manifest reports incomplete bundle')
+    lsums.write_bytes(saved_lsums);lspdriver.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'lsp'],env=env,input=lsp_input,capture_output=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing language server binary reports incomplete bundle')
+    lspdriver.write_bytes(lspdriver_bytes);lspdriver.chmod(0o755)
+    r=subprocess.run(['/bin/sh',str(launcher),'lsp'],env=env,input=lsp_input,capture_output=True,timeout=60)
+    check(r.returncode==0 and b'"capabilities"' in r.stdout,'restored language server serves')
     source.write_text('print 1 / 0\n')
     r=subprocess.run(['/bin/sh',str(launcher),'run',str(source)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode!=0 and 'division by zero' in r.stderr,'runtime error status')
