@@ -12,22 +12,59 @@
 # the window origin is never 0; drain returns 0 for an empty queue.
 import kcomp
 import kinput
+import ksurface
 
 QUEUE_MAX = 64
 
-# State: [compositor, wids, queues, created, key_wids, key_queues];
+# State: [compositor, wids, queues, created, key_wids, key_queues,
+#         optional kernel-owned framebuffer, desktop RGB24];
 # queues[i] holds pointer events for
 # wids[i], oldest first; created tracks sys_create windows so sys_exit
 # can close them. sys_router is the instance the syscall layer drains.
 sys_router = null
 
 def create(c):
-  return [c, [], [], [], [], []]
+  return [c, [], [], [], [], [], null, 0]
 
 def bind(r):
   global sys_router
   sys_router = r
   return true
+
+def bind_frame(r, frame, background):
+  # Only the kernel provides this descriptor. Ring 3 never supplies a
+  # framebuffer address; match the scene to a mapped RGB24/32 target.
+  if len(frame) != 8:
+    return false
+  s = r[0][4]
+  if frame[0] <= 0 or frame[2] != s[0] or frame[3] != s[1]:
+    return false
+  if frame[4] != 3 and frame[4] != 4:
+    return false
+  if frame[1] < frame[2] * frame[4]:
+    return false
+  i = 5
+  while i < 8:
+    if frame[i] < 0 or frame[i] >= frame[4]:
+      return false
+    i = i + 1
+  if frame[5] == frame[6] or frame[5] == frame[7] or frame[6] == frame[7]:
+    return false
+  if background < 0 or background > 16777215:
+    return false
+  r[6] = frame
+  r[7] = background
+  return true
+
+def present(r):
+  if r[6] == null:
+    return -19
+  s = r[0][4]
+  # Full repaint deliberately clears old window and cursor locations.
+  # This is correct but not an incremental damage compositor yet.
+  ksurface.rect(s, 0, 0, s[0], s[1], r[7])
+  kcomp.compose(r[0])
+  return ksurface.flush(s, r[6])
 
 def qfind(r, wid):
   i = 0
@@ -153,6 +190,10 @@ def sys_close(wid):
       append(cs, sys_router[3][j])
     j = j + 1
   sys_router[3] = cs
+  # Closing a visible window clears its old pixels immediately when a
+  # target is bound, including the normal SYS_EXIT cleanup path.
+  if sys_router[6] != null:
+    present(sys_router)
   return 0
 
 def sys_close_all():
@@ -263,3 +304,14 @@ def sys_key_read(wid):
       return out
     if ticks() >= t0 + 400:
       return 0
+
+def sys_present():
+  # SYS_WIN_PRESENT: no user pointers. Process input before composing so
+  # pending pointer focus/drag changes are visible in the presented scene.
+  if sys_router == null:
+    return -19
+  if sys_router[6] == null:
+    return -19
+  irq_on()
+  pump(sys_router)
+  return present(sys_router)

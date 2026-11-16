@@ -29,6 +29,7 @@ SYS_WIN_CREATE = 93
 SYS_WIN_CLOSE = 94
 SYS_WIN_KEY_READ = 95
 SYS_WIN_FILL = 96
+SYS_WIN_PRESENT = 97
 # user pages live in PML4 slot 1 and up, so a user address space can be built
 # without ever touching the kernel half (PML4[0])
 USER_BIAS = 0x80000000000
@@ -282,6 +283,8 @@ def sys_win_event_read(wid):
   # oldest routed window-relative event for the window; blocks in ring 0
   # (interrupts on, FIFO pumped) up to a bounded wait, 0 when empty
   return kwinroute.sys_read(wid)
+def sys_win_present():
+  return kwinroute.sys_present()
 def sys_win_fill(wid, x, y, width, height, color):
   return kwinroute.sys_fill(wid, x, y, width, height, color)
 def sys_win_key_read(wid):
@@ -331,6 +334,8 @@ def dispatch(nr, a1, a2, a3, a4, a5, a6):
     return sys_win_key_read(a1)
   if nr == SYS_WIN_FILL:
     return sys_win_fill(a1, a2, a3, a4, a5, a6)
+  if nr == SYS_WIN_PRESENT:
+    return sys_win_present()
   if nr == SYS_EXEC:
     return sys_exec(a1, a2)
   return -38

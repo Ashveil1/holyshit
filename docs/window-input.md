@@ -10,6 +10,7 @@ This is a BIOS/QEMU experiment, not a process-isolated desktop or a scheduler.
 | 94 | SYS_WIN_CLOSE | window id | 0 on removal, -22 if missing |
 | 95 | SYS_WIN_KEY_READ | window id | keyboard code, or 0 |
 | 96 | SYS_WIN_FILL | window id, x, y, width, height, RGB24 | 0, -22 for invalid arguments, -12 for unavailable body storage |
+| 97 | SYS_WIN_PRESENT | none | full scene pixel count, -19 without a bound target |
 
 Exit closes windows created through SYS_WIN_CREATE and drops their input queues.
 Window ids are scene-local, not permission tokens. There is no multi-process
@@ -63,11 +64,12 @@ removal or app exit frees the body buffer. Creation without drawing remains
 lazy and uses the original solid-color body path.
 
 Drawing changes stored content, not the hardware framebuffer directly.
-The kernel compositor must still compose the scene and flush its surface.
+The app can request composition and flush through SYS_WIN_PRESENT after
+the kernel binds a framebuffer target.
 This interface does not add a display server, automatic repaint loop,
 user-mapped pixel buffers, text rendering, alpha blending or resizing.
-Existing scene-background clearing remains the caller's responsibility
-before recomposing after a move or removal.
+Direct callers of kcomp.compose still own scene-background clearing; the
+presentation path described below clears it automatically.
 
 `tests/test_winpaint.py` tests body clipping, title protection, retained
 content on raise/move, errors, failed allocation and heap reclamation.
@@ -76,3 +78,33 @@ A test-only exit observer captures the live scene before normal exit
 cleanup, composing and flushing to a mock RGB32 framebuffer. Python checks
 every one of its 3072 RGB pixels against a separate raster oracle, on IR
 and AST kernels. This is not a physical-display or real-hardware test.
+
+## Explicit scene presentation
+
+The kernel calls `kwinroute.bind_frame(router, descriptor, background)`
+with its own mapped framebuffer descriptor and desktop RGB24 color.
+The descriptor must match the scene dimensions, use 3 or 4 bytes per pixel,
+have enough row pitch, and have three distinct channel offsets inside a
+pixel. Invalid binds return false without changing an existing binding.
+The kernel is responsible for the descriptor's mapped, writable memory
+and lifetime; structural checks are not address-space validation.
+
+Ring 3 supplies no framebuffer pointer. SYS_WIN_PRESENT processes pending
+pointer and key input, clears the whole back buffer to the desktop color,
+composes all windows and the cursor, then flushes the complete scene to the
+bound target. It returns width times height, or -19 if no router or target
+is bound. Every present is a full repaint, not incremental damage tracking.
+This clears stale window/cursor pixels after movement and removal. Closing
+a window also presents the remaining scene when a target is bound, including
+close calls made by normal app-exit cleanup. Without a target, old headless
+routing/drawing behavior is unchanged.
+
+This is still cooperative: drawing and queued input do not repaint until
+present or close runs. There is no background display task, resize event,
+frame timing guarantee or physical-display validation in this milestone.
+`tests/test_winpresent.py` uses a kernel-bound mock framebuffer. It checks
+padded RGB24 rows and guards, descriptor failures, movement/cursor clearing,
+and preservation of unused RGB32 bytes. A ring-3 app paints two windows,
+presents, closes the top window, and exits. All 9216 RGB pixels across those
+three target states are compared to a separate Python oracle on IR and AST.
+The test observer only reads target memory; it does not compose or flush.
