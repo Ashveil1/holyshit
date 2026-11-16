@@ -4688,12 +4688,16 @@ class Gen:
         seen = set()
 
         def walk(node, shadowed):
-            if isinstance(node, (dict, list)):
-                key = (id(node), bool(shadowed))
+            if isinstance(node, dict):
+                # arithmetic key: even = unshadowed visit, odd = shadowed.
+                # Dicts only: the be.holy port's py_id stores "_id" in the
+                # dict itself, and list cycles are impossible (every
+                # back-reference in the module graph is a module dict), so
+                # list nodes walk unmemoized.
+                key = id(node) * 2 + (1 if shadowed else 0)
                 if key in seen:
                     return False
                 seen.add(key)
-            if isinstance(node, dict):
                 t = node.get("t")
                 if t == "call":
                     fn = node.get("fn") or {}
@@ -4751,15 +4755,17 @@ class Gen:
 
         def walk(node):
             # prog embeds the cyclic module graph (see scan_uses_bytes).
-            if isinstance(node, (dict, list)):
-                if id(node) in seen:
-                    return
-                seen.add(id(node))
+            # Dicts only, same py_id reason as scan_uses_bytes.
             if isinstance(node, list):
                 for x in node:
                     walk(x)
                 return
             if not isinstance(node, dict):
+                return
+            if id(node) in seen:
+                return
+            seen.add(id(node))
+            if "nloc" in node:
                 return
             if node.get("t") == "call":
                 fn = node.get("fn")
