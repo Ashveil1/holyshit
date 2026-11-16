@@ -5,9 +5,7 @@ Builds the real bundle, moves it, then compares the installed `hs test`
 against the Python CLI over a curated corpus: exit codes and exact stdout
 for both text and --json modes, covering discovery order, selection rules,
 crash and parse errors, imports, state sharing, marker spoofing and missing
-files. The one intentional deviation is pinned: a file using unsafe runs
-under the CPython interpreter but is reported failed with the hs
-interpreter's refusal line by the native driver.
+files, including unsafe execution.
 """
 from pathlib import Path
 import json, os, shutil, subprocess, sys, tempfile
@@ -82,14 +80,12 @@ with tempfile.TemporaryDirectory(prefix='hs native test ') as temp:
             label = ' '.join(args) + (' --json' if as_json else '')
             check(py.returncode == nv.returncode and py.stdout == nv.stdout, label,
                   repr((py.returncode, nv.returncode, py.stdout[:300], nv.stdout[:300], nv.stderr[-150:])))
-    # Pinned deviation: unsafe runs under the CPython interpreter; the native
-    # driver's hs interpreter subset refuses it before running (rc 3 text as
-    # the failure line), matching the documented irinterp subset.
+    # Unsafe tests must match the Python CLI too.
     py = subprocess.run([sys.executable, str(ROOT / 'hs.py'), 'test', 'unsafe'], cwd=base, capture_output=True, text=True, timeout=120)
     nv = subprocess.run([str(launcher), 'test', 'unsafe'], cwd=base, capture_output=True, text=True, timeout=120)
     check(py.returncode == 0 and 'ok   unsafe/test_unsafe.holy::test_ptr' in py.stdout
-          and nv.returncode == 1 and 'irinterp: unsupported' in nv.stdout and '0 passed, 1 failed' in nv.stdout,
-          'pinned deviation: unsafe refused natively, runs under Python',
+          and nv.returncode == py.returncode and nv.stdout == py.stdout,
+          'unsafe native/Python test parity',
           repr((py.returncode, py.stdout[:200], nv.returncode, nv.stdout[:300])))
 print(f'{passed}/{passed+failed} native test differential gates')
 sys.exit(bool(failed))

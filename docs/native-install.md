@@ -46,8 +46,8 @@ cross-platform claim. The build output behavior is unchanged.
 
 `interpret SOURCE [args...]` explicitly selects the existing hs-written IR
 interpreter, prebuilt at installation. It supports the documented dynamic core,
-imports and supported builtins, with runtime errors and argument forwarding.
-Unsupported unsafe/FFI operations (including in imports) refuse before target
+imports, unsafe memory operations and supported builtins, with runtime errors
+and argument forwarding. Unsupported operations, including FFI, refuse before target
 effects with exit code 3. Parse/runtime failures use exit code 1; a missing
 source argument uses exit code 2. See [the interpreter subset](irinterp.md).
 This is neither JIT nor a universal language-parity claim. No automatic fallback
@@ -102,7 +102,7 @@ object the Python CLI prints. Tests execute one generated sibling driver file
 per source file on the installed hs interpreter, so the file's top-level code
 runs once and imports resolve as usual. Deviation from the Python CLI: the
 installed interpreter has the documented irinterp subset, so files using
-unsafe/ffi or out-of-subset builtins are reported failed with the refusal
+FFI or out-of-subset builtins are reported failed with the refusal
 line instead of executing; the Python CLI runs them under CPython. Discovery
 uses the system `find` utility. The tester checksum is verified before every
 launch with the same accidental-corruption limits above; a missing tester

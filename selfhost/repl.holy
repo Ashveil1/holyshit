@@ -62,6 +62,7 @@ def merge_module(st, irmod):
   st["entry"] = irmod["entry"]
 def session_init(basedir):
   irmod = irbuild.build_module(normalize.parse(PRELUDE), "")
+  irinterp.merge_structs()
   st = irinterp.create(irmod, basedir)
   root = irinterp.new_frame(st, null, null, [])
   root["root"] = root
@@ -86,6 +87,7 @@ def run_src(sess, src, line0, nlines):
   if nlines == 1 and len(body) == 1 and body[0]["t"] == "expr":
     src = "__repl_print(" + line0 + ")\n"
   irmod = irbuild.build_module(normalize.parse(src), "")
+  irinterp.merge_structs()
   refusal = irinterp.preflight(irmod)
   if refusal == null:
     refusal = irinterp.preflight_imports(irmod, sess["basedir"])

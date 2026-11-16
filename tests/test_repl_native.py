@@ -2,9 +2,7 @@
 """Native repl differential: python3 tests/test_repl_native.py
 Builds selfhost/repl.holy with xbuild and runs scripted stdin sessions
 against it and `python3 interp.py --repl` (non-tty, so no prompts/banner),
-requiring byte-identical stdout and exit codes. The one pinned deviation is
-unsafe/ffi input: refused up front by the native session (irinterp
-preflight), executed by the CPython interpreter.
+requiring byte-identical stdout and exit codes, including unsafe sessions.
 """
 import os
 import subprocess
@@ -46,10 +44,8 @@ SESSIONS = {
     "eof_in_block": "def f():\n  return 1\n",
     "loop_state": "total = 0\nfor i in range(4):\n  total = total + i\n"
                   "\ntotal\n",
+    "unsafe": "unsafe:\n  Ptr p = alloc(8)\n\n4 + 4\n",
 }
-
-UNSAFE_SESSION = "unsafe:\n  Ptr p = alloc(8)\n\n4 + 4\n"
-
 
 def run(argv, script, cwd):
     return subprocess.run(argv, input=script, capture_output=True,
@@ -88,18 +84,6 @@ def main():
                   == (hs.returncode, hs.stdout, hs.stderr),
                   f"\n  py: {py.returncode} {py.stdout!r} {py.stderr[-120:]!r}"
                   f"\n  hs: {hs.returncode} {hs.stdout!r} {hs.stderr[-120:]!r}")
-
-        # Pinned deviation: a file using unsafe ops runs under the CPython
-        # interpreter; the native session refuses it up front and goes on.
-        py = run(py_argv, UNSAFE_SESSION, td)
-        hs = run([exe], UNSAFE_SESSION, td)
-        check("pinned deviation: unsafe refused natively, runs under Python",
-              py.returncode == 0 and py.stdout == "8\n"
-              and hs.returncode == 0
-              and hs.stdout.startswith("error: irinterp: unsupported ")
-              and hs.stdout.endswith("8\n"),
-              f"\n  py: {py.returncode} {py.stdout!r}"
-              f"\n  hs: {hs.returncode} {hs.stdout!r}")
 
     print(f"{total - fails}/{total} passed")
     sys.exit(bool(fails))

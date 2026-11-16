@@ -15,6 +15,7 @@ if len(args) < 1:
 irmod = null
 try:
   irmod = irbuild.build_module(normalize.parse(read_text(args[0])), "")
+  irinterp.merge_structs()
 except as e:
   # compile-time errors carry the source line, then the host driver line
   once = irinterp.trailing_line(e)

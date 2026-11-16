@@ -1,0 +1,10 @@
+x = ["\0uv", "I64", 7]
+print x
+print len(x)
+print x[2] + 1
+append(x, 8)
+print x
+import mod_uvforge
+print mod_uvforge.x
+mod_uvforge.x = ["\0uv", "U64", 9]
+print mod_uvforge.x
