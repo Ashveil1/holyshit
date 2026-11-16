@@ -1,0 +1,117 @@
+# Explicit ring-3 present into a kernel-bound framebuffer target.
+import kmb
+import kpmm
+import kheap
+import ksyscall
+import kvfs
+import kramdisk
+import kuser
+import kinput
+import ksurface
+import kcomp
+import kwinroute
+import kframebuffer
+import kpage
+fails = 0
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("heap init", kheap.init(64), true)
+expect("heap ready", kheap.ready(), true)
+expect("vfs ready", kvfs.vfs_init(), true)
+expect("ramdisk loads", kramdisk.load() > 0, true)
+expect("uutext present", kvfs.is_file("/bin/uutext"), true)
+
+def address(text):
+  unsafe:
+    return as_int(as_ptr(text)) + 16
+
+def peek8(addr):
+  unsafe:
+    return load8(as_ptr(addr))
+
+c0 = kcomp.create(ksurface.create(64, 48))
+r0 = kwinroute.create(c0)
+kwinroute.bind(r0)
+w = kwinroute.sys_create(0, 0, 30, 30, 0x112233)
+before = kheap.free_bytes()
+expect("unknown window", kwinroute.sys_text(99, 0, 0, "A", 0), -22)
+expect("invalid color", kwinroute.sys_text(w, 0, 0, "A", -1), -22)
+expect("invalid coordinate", kwinroute.sys_text(w, 1048577, 0, "A", 0), -22)
+expect("empty text", kwinroute.sys_text(w, 0, 0, "", 0), 0)
+expect("empty text does not allocate", kheap.free_bytes(), before)
+expect("kernel pointer rejected", ksyscall.sys_win_text(w, 0, 0, address("A"), 1, 0), -14)
+expect("unmapped pointer rejected", ksyscall.sys_win_text(w, 0, 0, 0x90000000000, 1, 0), -14)
+expect("noncanonical pointer rejected", ksyscall.sys_win_text(w, 0, 0, 140737488355328, 1, 0), -14)
+expect("negative length rejected", ksyscall.sys_win_text(w, 0, 0, 0, -1, 0), -22)
+expect("long length rejected", ksyscall.sys_win_text(w, 0, 0, 0, 257, 0), -22)
+# Map one user page to test endpoint and ancestor permission checks.
+u = ksyscall.USER_BIAS + 0x20000000
+expect("test user page mapped", ksyscall.map_user_pages(u, 4096, 7), 1)
+unsafe:
+  store8(as_ptr(u + 4095), 65)
+expect("page end readable", ksyscall.text_span_readable(u + 4095, 1), true)
+expect("cross absent page rejected", ksyscall.sys_win_text(w, 0, 0, u + 4095, 2, 0), -14)
+expect("single byte at page end draws", ksyscall.sys_win_text(w, 0, 0, u + 4095, 1, 0xffffff), 0)
+root = cr3()
+idx = kpage.level_index(u, 4)
+parent = kpage.entry_get(root, idx)
+kpage.entry_set(root, idx, parent & ~4)
+expect("supervisor ancestor rejected", ksyscall.text_span_readable(u, 1), false)
+kpage.entry_set(root, idx, parent)
+pte = kpage.pte_get(root, u)
+kpage.pte_set(root, u, pte & ~4)
+expect("supervisor leaf rejected", ksyscall.text_span_readable(u, 1), false)
+kpage.pte_set(root, u, pte)
+expect("valid mapping restored", ksyscall.text_span_readable(u, 1), true)
+expect("offscreen limit draws no exception", kwinroute.sys_text(w, 1048576, 1048576, "HI", 0), 0)
+expect("body allocated", c0[1][0][6] != null, true)
+expect("close text window", kwinroute.sys_close(w), 0)
+expect("text body heap reclaimed", kheap.free_bytes(), before)
+
+c = kcomp.create(ksurface.create(64, 48))
+r = kwinroute.create(c)
+kwinroute.bind(r)
+kcomp.cursor_move(c, 55, 40)
+mock = kheap.malloc(64 * 48 * 4)
+frame = [mock, 256, 64, 48, 4, 2, 1, 0]
+expect("frame bound", kwinroute.bind_frame(r, frame, 0x16324f), true)
+snapshots = 0
+def observe(nr, a1, a2, a3, a4, a5, a6):
+  global snapshots
+  result = ksyscall.dispatch(nr, a1, a2, a3, a4, a5, a6)
+  if nr == 97:
+    snapshots = snapshots + 1
+    print "text-pixels-begin"
+    y = 0
+    while y < 48:
+      x = 0
+      while x < 64:
+        base = mock + (y * 64 + x) * 4
+        unsafe:
+          print load8(as_ptr(base + 2)) << 16 + load8(as_ptr(base + 1)) << 8 + load8(as_ptr(base))
+        x = x + 1
+      y = y + 1
+    print "text-pixels-end"
+  return result
+data = kvfs.read("/bin/uutext")
+expect("app readable", data != null, true)
+expect("app loads", kuser.load_image(kuser.payload_addr(data), len(data)), 1)
+expect("observer registered", ksyscall.register(observe), true)
+expect("exec enabled", kuser.enable_exec(), true)
+before = kheap.free_bytes()
+kuser.run()
+expect("one target snapshot", snapshots, 1)
+expect("user stopped", ksyscall.user_stopped(), true)
+expect("exit code", ksyscall.user_exit_code(), 0)
+expect("windows closed", len(c[1]), 0)
+expect("text body reclaimed on exit", kheap.free_bytes(), before)
+print "fails", fails
+print "wintext-done"

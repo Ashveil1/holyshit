@@ -6,6 +6,7 @@
 # syscall binding; this module owns persistent bodies and composition.
 import ksurface
 import kinput
+import kfont
 
 # 7x7 NW-pointing cursor: per-row bitmasks, column 0 is bit 6.
 CURSOR_OUT = [96, 80, 72, 68, 66, 92, 96]
@@ -197,6 +198,53 @@ def win_fill(c, wid, x, y, width, height, color):
       return -12
     ksurface.rect(w[6], 0, 0, w[3], bh, w[5])
   ksurface.rect(w[6], x, y, width, height, color)
+  return 0
+
+def text_address(text):
+  unsafe:
+    return as_int(as_ptr(text)) + 16
+
+def win_text(c, wid, x, y, text, color):
+  # Byte-oriented 5x7 text, fixed scale 1, transparent background.
+  # The syscall layer copies and validates the full user span first.
+  i = win_find(c, wid)
+  if i < 0:
+    return -22
+  if x < -1048576 or x > 1048576 or y < -1048576 or y > 1048576:
+    return -22
+  if color < 0 or color > 16777215 or byte_len(text) > 256:
+    return -22
+  w = c[1][i]
+  bh = w[4] - title_h(w)
+  if byte_len(text) == 0 or bh <= 0:
+    return 0
+  if w[6] == null:
+    result = win_fill(c, wid, 0, 0, 1, 1, w[5])
+    if result != 0:
+      return result
+  address = text_address(text)
+  left = x
+  index = 0
+  while index < byte_len(text):
+    code = kfont.byte_at(address, index)
+    if code == 10:
+      x = left
+      y = y + 8
+    else:
+      bits = kfont.rows_byte(code)
+      row = 0
+      while row < 7:
+        col = 0
+        while col < 5:
+          if bits[row] & (1 << (4 - col)):
+            # Clip before calling surface helpers: long lines near the
+            # coordinate limit must not raise partway through drawing.
+            if x + col >= 0 and x + col < w[3] and y + row >= 0 and y + row < bh:
+              ksurface.pixel(w[6], x + col, y + row, color)
+          col = col + 1
+        row = row + 1
+      x = x + 6
+    index = index + 1
   return 0
 
 def compose(c):

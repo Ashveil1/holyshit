@@ -1,0 +1,22 @@
+# Ring-3 text spans use raw UTF-8 bytes; unsupported bytes draw '?'.
+SYS_EXIT = 60
+SYS_WIN_CREATE = 93
+SYS_WIN_PRESENT = 97
+SYS_WIN_TEXT = 98
+def sc(nr, a1, a2, a3, a4, a5, a6):
+  return scall(nr, a1, a2, a3, a4, a5, a6)
+def address(text):
+  unsafe:
+    return as_int(as_ptr(text)) + 16
+def label(wid, x, y, text, color):
+  return sc(SYS_WIN_TEXT, wid, x, y, address(text), byte_len(text), color)
+a = sc(SYS_WIN_CREATE, 4, 4, 38, 35, 0x112233, 0)
+print "text-result", label(a, 2, 2, "Hi A\nI?", 0xffffff)
+print "text-result", label(a, -2, 20, "A@", 0xff8800)
+print "text-result", label(a, 32, 25, "HI", 0x22bb66)
+print "text-badptr", sc(SYS_WIN_TEXT, a, 0, 0, 0, 1, 0)
+print "text-unmapped", sc(SYS_WIN_TEXT, a, 0, 0, 0x90000000000, 1, 0)
+print "text-badlen", sc(SYS_WIN_TEXT, a, 0, 0, address("A"), 257, 0)
+print "text-color", label(a, 0, 0, "H", -1)
+print "text-present", sc(SYS_WIN_PRESENT, 0, 0, 0, 0, 0, 0)
+sc(SYS_EXIT, 0, 0, 0, 0, 0, 0)
