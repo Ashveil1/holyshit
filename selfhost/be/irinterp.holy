@@ -814,11 +814,16 @@ BUILTIN_NAMES = ["len", "str", "int", "float", "range", "append", "split", "find
 OTHER_BUILTINS = ["byte_len", "byte_find", "byte_at", "alloc", "as_int", "as_ptr", "http_get", "load32", "load64", "load8", "meminfo", "pmm_alloc", "pmm_free", "pmm_total", "read_mem", "readkey", "readkey_code", "readkey_nav", "readkey_event", "store32", "store64", "store8", "tcp_accept", "tcp_close", "tcp_connect", "tcp_listen", "tcp_recv", "tcp_send", "ticks"]
 # ---- unsafe static execution ----
 # Guest UnsafeVal = [UVTAG, utype, val]; utype in I64/U64/LIT/Ptr/Ptr:Struct.
+# UVTAG is a private function value: tag checks are identity comparisons, so
+# guest data can never forge an UnsafeVal (a plain ["\0uv", ...] list stays a
+# plain list).
 # val is a plain hs Int holding the signed 64-bit interpretation. Words whose
 # value escapes the 62-bit Int range follow the hosted backends' box behavior
 # rather than interp.py's exact big-int arithmetic (documented tier boundary);
 # everything inside the range is exact.
-UVTAG = "\0uv"
+def uv_tag():
+  return 0
+UVTAG = uv_tag
 def is_uv(v):
   return pyrt.py_type(v) == "list" and len(v) == 3 and v[0] == UVTAG
 def uvmk(utype, val):

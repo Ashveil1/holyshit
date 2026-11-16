@@ -22,7 +22,8 @@ paths and package shells) with `attr`/`setattr` on modules, and the builtins
 `len str int float range append split find join has contains keys values`,
 plus the file (including `write_bytes`), env, argv, input, json and system builtins.
 `unsafe` blocks execute too: struct declarations, the `s*` IR ops, pointer
-arithmetic and the memory builtins (`alloc`, `free`, `read*`/`write*`) run
+arithmetic and the memory builtins (`alloc`, `load8`/`load32`/`load64`,
+`store8`/`store32`/`store64`, plus the `as_int`/`as_ptr` casts) run
 against a 1 MiB guest memory arena with the same bounds and null checks as
 `interp.py`. Unsafe words follow the native boxing boundary: guest I64/U64
 values wrap as host 64-bit words inside unsafe code, and boxing one into a
@@ -38,7 +39,7 @@ Refused up front (rc 3, `error: irinterp: unsupported ...`, before any output):
 subset when the program uses one without binding it. These are the next steps.
 
 `tests/test_irinterp.py` runs every `tests/*.holy` through `interp.py` and the
-driver and compares exit code, stdout and stderr byte for byte (85 programs
+driver and compares exit code, stdout and stderr byte for byte (87 programs
 match; 11 are pinned as refused; `t_load64` is a documented 62-bit vs 64-bit
 Int divergence).
 
