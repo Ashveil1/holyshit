@@ -30,6 +30,7 @@ SYS_WIN_CLOSE = 94
 SYS_WIN_KEY_READ = 95
 SYS_WIN_FILL = 96
 SYS_WIN_PRESENT = 97
+SYS_WIN_TEXT = 98
 # user pages live in PML4 slot 1 and up, so a user address space can be built
 # without ever touching the kernel half (PML4[0])
 USER_BIAS = 0x80000000000
@@ -283,6 +284,42 @@ def sys_win_event_read(wid):
   # oldest routed window-relative event for the window; blocks in ring 0
   # (interrupts on, FIFO pumped) up to a bounded wait, 0 when empty
   return kwinroute.sys_read(wid)
+def text_span_readable(addr, n):
+  # Bound this new pointer-taking syscall to present user mappings at
+  # every paging level, not merely the numerical user-address range.
+  if n < 0 or n > 256 or addr < USER_BIAS or addr >= 140737488355328:
+    return false
+  if addr + n > 140737488355328:
+    return false
+  end = addr + n
+  page = addr
+  root = cr3()
+  while page < end:
+    table = root
+    level = 4
+    while level >= 1:
+      entry = kpage.entry_get(table, kpage.level_index(page, level))
+      if entry & 5 != 5:
+        return false
+      if level == 1:
+        break
+      if entry & 128 != 0:
+        # No huge mappings are needed by this single-app ABI.
+        return false
+      table = entry & kpage.PAGE_MASK
+      level = level - 1
+    page = page & -4096 + 4096
+  return true
+
+def sys_win_text(wid, x, y, address, length, color):
+  if length < 0 or length > 256:
+    return -22
+  if not text_span_readable(address, length):
+    return -14
+  if length == 0:
+    return kwinroute.sys_text(wid, x, y, "", color)
+  return kwinroute.sys_text(wid, x, y, read_mem(address, length), color)
+
 def sys_win_present():
   return kwinroute.sys_present()
 def sys_win_fill(wid, x, y, width, height, color):
@@ -336,6 +373,8 @@ def dispatch(nr, a1, a2, a3, a4, a5, a6):
     return sys_win_fill(a1, a2, a3, a4, a5, a6)
   if nr == SYS_WIN_PRESENT:
     return sys_win_present()
+  if nr == SYS_WIN_TEXT:
+    return sys_win_text(a1, a2, a3, a4, a5, a6)
   if nr == SYS_EXEC:
     return sys_exec(a1, a2)
   return -38

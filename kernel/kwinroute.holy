@@ -175,6 +175,11 @@ def sys_fill(wid, x, y, width, height, color):
     return -22
   return kcomp.win_fill(sys_router[0], wid, x, y, width, height, color)
 
+def sys_text(wid, x, y, text, color):
+  if sys_router == null:
+    return -22
+  return kcomp.win_text(sys_router[0], wid, x, y, text, color)
+
 def sys_close(wid):
   # SYS_WIN_CLOSE: remove the window and drop its queue; 0 ok, -22 bad id.
   if sys_router == null:

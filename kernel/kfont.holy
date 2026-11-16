@@ -54,19 +54,22 @@ def draw(frame, x, y, text, color, scale):
 def byte_at(address, index):
   unsafe:
     return load8(as_ptr(address + index))
+def glyph_address(text):
+  unsafe:
+    return as_int(as_ptr(text)) + 16
 def glyph_byte(byte):
   if byte >= 97 and byte <= 122:
     byte = byte - 32
-  characters = std.font.characters
-  unsafe:
-    Ptr data = as_ptr(characters)
-    address = as_int(data) + 16
+  address = glyph_address(std.font.characters)
   index = 0
   while index < len(std.font.characters):
     if byte_at(address, index) == byte:
       return index
     index = index + 1
   return 41
+def rows_byte(byte):
+  # Shared immutable rows for a byte glyph; callers must not mutate them.
+  return std.font.rows[glyph_byte(byte)]
 # Valid spans/rendering use no source allocation after module initialization.
 # Like other raw framebuffer helpers this is not a hostile-pointer boundary.
 def draw_bytes(frame, x, y, address, length, color, scale):

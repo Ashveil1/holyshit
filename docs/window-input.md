@@ -11,6 +11,7 @@ This is a BIOS/QEMU experiment, not a process-isolated desktop or a scheduler.
 | 95 | SYS_WIN_KEY_READ | window id | keyboard code, or 0 |
 | 96 | SYS_WIN_FILL | window id, x, y, width, height, RGB24 | 0, -22 for invalid arguments, -12 for unavailable body storage |
 | 97 | SYS_WIN_PRESENT | none | full scene pixel count, -19 without a bound target |
+| 98 | SYS_WIN_TEXT | window id, x, y, byte address, byte length, RGB24 | 0, -22 for invalid drawing arguments, -14 for an unreadable span, -12 for body storage failure |
 
 Exit closes windows created through SYS_WIN_CREATE and drops their input queues.
 Window ids are scene-local, not permission tokens. There is no multi-process
@@ -108,3 +109,31 @@ and preservation of unused RGB32 bytes. A ring-3 app paints two windows,
 presents, closes the top window, and exits. All 9216 RGB pixels across those
 three target states are compared to a separate Python oracle on IR and AST.
 The test observer only reads target memory; it does not compose or flush.
+
+## Byte text in window bodies
+
+SYS_WIN_TEXT draws transparent-background 5x7 bitmap labels at fixed scale 1,
+using body-local coordinates. ASCII lowercase folds to uppercase, newline
+moves down 8 pixels and returns to the call's original x, and unsupported
+bytes draw '?'. UTF-8 is treated as individual bytes, not Unicode glyphs.
+The horizontal advance is 6 pixels. Every glyph pixel clips to the body,
+including negative origins and the right/bottom edges. Existing pixels are
+preserved wherever the glyph has no set bit. Present is still explicit.
+
+Calls accept at most 256 bytes. Before copying the span, the new syscall
+checks the lower canonical user range and present/user bits at every page
+level touched. Missing or supervisor mappings and spans that cross into an
+absent page return -14 without reading memory. Huge-page spans are rejected
+by this initial interface. A zero-length span still needs a canonical user
+address but does not require a mapped page or allocate a body. This check
+is local to this new syscall, not a retrofit of older pointer syscalls.
+Coordinates must be -1048576..1048576 and colors RGB24; invalid drawing
+arguments or length return -22. Body allocation uses the same limits and
+cleanup as fills. Text is copied before drawing, so changes to the source
+later do not affect stored content. The current single-app model has no
+concurrent page-table mutation or multi-process memory ownership guarantee.
+
+`tests/test_wintext.py` exercises page-boundary and ancestor/leaf permission
+rejection, empty text, drawing errors, allocation cleanup, and a ring-3 app
+using text/present syscalls. An independent raster oracle checks all 3072
+pixels for lowercase, newlines, fallback glyphs and clipping on both kernels.
