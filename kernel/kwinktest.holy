@@ -1,0 +1,108 @@
+# Focused-window keyboard routing: policy pins and real ring-3 IRQ1 delivery.
+import kmb
+import kpmm
+import kheap
+import ksyscall
+import kvfs
+import kramdisk
+import kuser
+import kinput
+import ksurface
+import kcomp
+import kwinroute
+fails = 0
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("heap init", kheap.init(64), true)
+expect("heap ready", kheap.ready(), true)
+expect("vfs ready", kvfs.vfs_init(), true)
+expect("ramdisk loads", kramdisk.load() > 0, true)
+expect("uukeys present", kvfs.is_file("/bin/uukeys"), true)
+
+# Routing policy on a private scene with two separated windows.
+c0 = kcomp.create(ksurface.create(64, 48))
+r0 = kwinroute.create(c0)
+kwinroute.bind(r0)
+w1 = kwinroute.sys_create(2, 2, 25, 30, 0x224488)
+w2 = kwinroute.sys_create(34, 2, 25, 30, 0x882244)
+expect("no focus drops key", kwinroute.handle_key(r0, 97), false)
+expect("unfocused queue empty", kwinroute.key_drain(r0, w1), 0)
+# Click the body of window 1, then move without clicking over window 2.
+kwinroute.handle(r0, 1 + (10 + 512) << 3 + (15 + 512) << 13)
+kwinroute.handle(r0, 0 + (30 + 512) << 3 + (0 + 512) << 13)
+expect("hover does not change focus", c0[5], w1)
+expect("focused ascii accepted", kwinroute.handle_key(r0, 97), true)
+expect("focused up accepted", kwinroute.handle_key(r0, 128), true)
+expect("other window gets nothing", kwinroute.key_drain(r0, w2), 0)
+expect("key order ascii", kwinroute.key_drain(r0, w1), 97)
+expect("key order up", kwinroute.key_drain(r0, w1), 128)
+expect("key queue empty", kwinroute.key_drain(r0, w1), 0)
+expect("zero rejected", kwinroute.handle_key(r0, 0), false)
+expect("unknown code rejected", kwinroute.handle_key(r0, 130), false)
+# A queued key retains its original recipient across the focus switch.
+kwinroute.handle_key(r0, 99)
+# Click window 2: subsequent keys must follow focus, not the old window.
+kwinroute.handle(r0, 1 + (0 + 512) << 3 + (0 + 512) << 13)
+expect("second click focuses", c0[5], w2)
+kwinroute.handle_key(r0, 129)
+expect("new focus receives down", kwinroute.key_drain(r0, w2), 129)
+expect("queued key stays with old focus", kwinroute.key_drain(r0, w1), 99)
+expect("old focus gets no new key", kwinroute.key_drain(r0, w1), 0)
+# Drop newest on overflow and retain every accepted key in FIFO order.
+i = 0
+while i < 64:
+  kwinroute.handle_key(r0, i + 1)
+  i = i + 1
+expect("overflow drops newest", kwinroute.handle_key(r0, 97), false)
+ordered = true
+i = 0
+while i < 64:
+  if kwinroute.key_drain(r0, w2) != i + 1:
+    ordered = false
+  i = i + 1
+expect("overflow retains oldest in order", ordered, true)
+expect("overflow queue drained", kwinroute.key_drain(r0, w2), 0)
+kwinroute.handle_key(r0, 98)
+expect("close focused window", kwinroute.sys_close(w2), 0)
+expect("close drops key queue", kwinroute.key_find(r0, w2), -1)
+expect("closed focus cleared", c0[5], -1)
+expect("closed window read returns 0", kwinroute.sys_key_read(w2), 0)
+c0[5] = w2
+expect("stale focus drops key", kwinroute.handle_key(r0, 99), false)
+c0[5] = w1
+# Desktop press clears focus; its subsequent key must be dropped.
+kwinroute.handle(r0, 0 + (0 + 512) << 3 + (0 + 512) << 13)
+kwinroute.handle(r0, 1 + (23 + 512) << 3 + (-30 + 512) << 13)
+expect("desktop clears focus", c0[5], -1)
+expect("desktop key dropped", kwinroute.handle_key(r0, 100), false)
+expect("pointer queue independent", kwinroute.drain(r0, w1) != 0, true)
+
+# Ring-3 app creates both windows, then waits while QMP clicks and types.
+c = kcomp.create(ksurface.create(64, 48))
+r = kwinroute.create(c)
+expect("live router binds", kwinroute.bind(r), true)
+data = kvfs.read("/bin/uukeys")
+expect("uukeys readable", data != null, true)
+expect("uukeys loads", kuser.load_image(kuser.payload_addr(data), len(data)), 1)
+expect("handler registered", ksyscall.start(), true)
+expect("exec enabled", kuser.enable_exec(), true)
+print "winkey-ready"
+kuser.run()
+expect("user stopped", ksyscall.user_stopped(), true)
+expect("exit code", ksyscall.user_exit_code(), 0)
+expect("key syscalls served", ksyscall.calls() >= 8, true)
+expect("windows auto-closed", len(c[1]), 0)
+expect("key queues dropped", len(r[4]), 0)
+expect("focus cleared", c[5], -1)
+expect("pointer queues dropped", len(r[1]), 0)
+expect("kernel alive", cr3() != 0, true)
+print "fails", fails
+print "winkey-done"
