@@ -633,9 +633,9 @@
              return true
          return false
        if pyrt.py_isinstance(node, ["list"]):
-@@ -4126,7 +4226,8 @@
-     seen = _t4121[0]
-     todo = _t4121[1]
+@@ -4132,7 +4232,8 @@
+     seen = _t4127[0]
+     todo = _t4127[1]
      while todo:
 -      m = pyrt.py_pop(todo)
 +      m = todo[len(todo) - 1]
@@ -852,7 +852,7 @@
      asm.imul_rr("rax", "r8")
      asm.mov_rr("rdx", "rax")
      asm.shr_ri8("rdx", 32)
-@@ -8839,7 +8943,7 @@
+@@ -8850,7 +8954,7 @@
      asm.label(lab_hstr)
      asm.mov_rr("r10", "rdi")
      asm.mov_rm("rcx", "r10", 8)
@@ -860,7 +860,7 @@
 +    asm.mov_ri64_bytes("rax", [37, 35, 34, 132, 228, 156, 242, 203])
      asm.mov_ri64("r8", 1099511628211)
      asm.mov_ri32("rdx", 0)
-     _t8840 = [self.new_tmp("dc"), self.new_tmp("dc")]
+     _t8851 = [self.new_tmp("dc"), self.new_tmp("dc")]
 @@ -9542,7 +9646,7 @@
      asm.mov_ri32("rcx", 1)
      asm.label(lab_lp)
@@ -939,9 +939,9 @@
      self._moddir["<json>"] = pyrt.py_os_path_dirname(path)
      self.js_entries = {}
      for k in sub["order"]:
-@@ -11477,6 +11581,13 @@
-           _top = _t11504[0]
-           chain = _t11504[1]
+@@ -11488,6 +11592,13 @@
+           _top = _t11515[0]
+           chain = _t11515[1]
            ins["_chain"] = chain
 +  def _resolve_path(self, dotted, from_dir, ln, last):
 +    try:
@@ -1085,7 +1085,7 @@
        return null
      if self._classify(key, nm) in ["global", "auto", "cap"]:
        return gk
-@@ -11888,37 +11997,32 @@
+@@ -11899,37 +12008,32 @@
      cand = pyrt.py_set(null)
      if self.freestanding:
        fnmap = {}
@@ -1097,10 +1097,10 @@
        for key in self.allorder:
          f = self.frames[key]
          iv0 = self._compute_ivars(key, self.allfuncs[key], f["is_entry"])
--        _t11924 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, false)
--        iraw = _t11924[0]
--        ivars = _t11924[1]
--        rawcalls = _t11924[2]
+-        _t11935 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, false)
+-        iraw = _t11935[0]
+-        ivars = _t11935[1]
+-        rawcalls = _t11935[2]
 -        f["iraw"] = iraw
 -        f["ivars"] = ivars
 -        f["rawcalls"] = rawcalls
@@ -1109,10 +1109,10 @@
 +        f["ivars"] = r[1]
 +        f["rawcalls"] = r[2]
          if key in cand:
--          _t11932 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, true)
--          iraw_r = _t11932[0]
--          ivars_r = _t11932[1]
--          rawcalls_r = _t11932[2]
+-          _t11943 = self._compute_iraw(key, self.allfuncs[key], iv0, cand, fnmap, true)
+-          iraw_r = _t11943[0]
+-          ivars_r = _t11943[1]
+-          rawcalls_r = _t11943[2]
 -          f["iraw_r"] = iraw_r
 -          f["ivars_r"] = ivars_r
 -          f["rawcalls_r"] = rawcalls_r
@@ -1204,15 +1204,15 @@
      elif pyrt.py_isinstance(v, ["str"]) and self.freestanding:
        asm.lea_rip("rdi", self.rstr(v))
        asm.mov_ri32("rsi", len(pyrt.py_encode(v, null)))
-@@ -12155,11 +12274,16 @@
+@@ -12166,11 +12285,16 @@
        self.emit_add(ln)
        return null
      if op in ["==", "!="]:
--      _t12184 = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
--      lab_eq_ne = _t12184[0]
--      lab_eq_slow = _t12184[1]
--      lab_eq_done = _t12184[2]
--      lab_eq_noteq = _t12184[3]
+-      _t12195 = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
+-      lab_eq_ne = _t12195[0]
+-      lab_eq_slow = _t12195[1]
+-      lab_eq_done = _t12195[2]
+-      lab_eq_noteq = _t12195[3]
 +      _teqf = [self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf"), self.new_tmp("eqf")]
 +      lab_eq_ne = _teqf[0]
 +      lab_eq_slow = _teqf[1]
@@ -1226,13 +1226,13 @@
        asm.cmp_rr("rax", "rcx")
        asm.jcc("ne", lab_eq_ne)
        asm.mov_rr("r11", "rax")
-@@ -12203,9 +12327,10 @@
+@@ -12214,9 +12338,10 @@
          asm.xor_rax_8()
        return null
      if op in ["<", ">", "<=", ">="]:
--      _t12232 = [self.new_tmp("ii"), self.new_tmp("ii")]
--      lab_ii = _t12232[0]
--      lab_iidone = _t12232[1]
+-      _t12243 = [self.new_tmp("ii"), self.new_tmp("ii")]
+-      lab_ii = _t12243[0]
+-      lab_iidone = _t12243[1]
 +      _tii = [self.new_tmp("ii"), self.new_tmp("ii")]
 +      lab_ii = _tii[0]
 +      lab_iidone = _tii[1]
@@ -1258,11 +1258,11 @@
        if L == null:
          return null
        f = pyrt.py_get(L["fields"], ins["name"], null)
-@@ -12568,14 +12693,20 @@
+@@ -12579,14 +12704,20 @@
        ft = f[0]
        return pyrt.py_tail(ft, 4) if pyrt.py_startswith(ft, "Ptr:") else null
      if op == "phi":
--      xs = pyrt.py_set([self._struct_of(fr, _p12597_0[1], seen) for _p12597_0 in ins["arms"]])
+-      xs = pyrt.py_set([self._struct_of(fr, _p12608_0[1], seen) for _p12608_0 in ins["arms"]])
 -      xs[null] = false
 -      return pyrt.py_pop(xs) if len(xs) == 1 else null
 +      xs = []
@@ -1283,7 +1283,7 @@
      asm.mov_mr("rbp", "rax", fr["slots"][dest])
    def _sload(self, fr, dest, name, ln):
      if name in pyrt.py_get(fr, "rawnames", []):
-@@ -12634,9 +12765,9 @@
+@@ -12645,9 +12776,9 @@
      asm.mov_mr("rax", "rcx", 0)
    def _sfstore(self, fr, obj, name, idx, val, ln):
      xs = self._struct_of(fr, obj, null)
@@ -1294,8 +1294,8 @@
 +    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
      if f == null:
        raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-     _t12668 = f
-@@ -12840,9 +12971,9 @@
+     _t12679 = f
+@@ -12851,9 +12982,9 @@
      asm.mov_mr("rbp", "rax", fr["slots"][dest])
    def _sfield(self, fr, dest, obj, name, idx, ln):
      xs = self._struct_of(fr, obj, null)
@@ -1306,7 +1306,7 @@
 +    f = pyrt.py_get(parselib.P["structs"][xs]["fields"], name, null)
      if f == null:
        raise pyrt.py_err("struct '" + str(xs) + "' has no field '" + str(name) + "'", ln)
-     _t12874 = f
+     _t12885 = f
 @@ -13237,7 +13368,7 @@
    def _call(self, fr, dest, fn, args, ln):
      p = pyrt.py_get(fr["prov"], fn, null)
@@ -1471,17 +1471,17 @@
      asm.label(lab_done)
      asm.ret()
    def _emit_ifunc(self, key):
-@@ -14689,20 +14823,18 @@
+@@ -14700,20 +14834,18 @@
      else:
        asm.label(self.flabel[key])
      self._emit_frame_body(key, fdef, fr)
 -    if key in pyrt.py_getattr(self, "rawabi", []):
 +    if key in pyrt.py_getattr(self, "rawabi", pyrt.py_set(null)):
        saved = [fr["iraw"], fr["ivars"], fr["rawcalls"]]
--      _t14719 = [fr["iraw_r"], fr["ivars_r"], fr["rawcalls_r"]]
--      fr["iraw"] = _t14719[0]
--      fr["ivars"] = _t14719[1]
--      fr["rawcalls"] = _t14719[2]
+-      _t14730 = [fr["iraw_r"], fr["ivars_r"], fr["rawcalls_r"]]
+-      fr["iraw"] = _t14730[0]
+-      fr["ivars"] = _t14730[1]
+-      fr["rawcalls"] = _t14730[2]
 +      fr["iraw"] = fr["iraw_r"]
 +      fr["ivars"] = fr["ivars_r"]
 +      fr["rawcalls"] = fr["rawcalls_r"]
@@ -1489,17 +1489,17 @@
        asm.label(self.rawlabel[key])
        self._emit_frame_body(key, fdef, fr)
        self._rawabi_emit = false
--      _t14727 = saved
--      fr["iraw"] = _t14727[0]
--      fr["ivars"] = _t14727[1]
--      fr["rawcalls"] = _t14727[2]
+-      _t14738 = saved
+-      fr["iraw"] = _t14738[0]
+-      fr["ivars"] = _t14738[1]
+-      fr["rawcalls"] = _t14738[2]
 +      fr["iraw"] = saved[0]
 +      fr["ivars"] = saved[1]
 +      fr["rawcalls"] = saved[2]
    def _emit_frame_body(self, key, fdef, fr):
      asm.push_r("rbp")
      asm.mov_rr("rbp", "rsp")
-@@ -14714,23 +14846,24 @@
+@@ -14725,23 +14857,24 @@
        asm.mov_mr("rbp", "r10", fr["slots"]["%cline"])
      self._gc_point()
      by = pyrt.py_dict([[b["label"], b] for b in fdef["blocks"]])
@@ -1526,7 +1526,7 @@
 -      return Gen.emit_main(self, mod)
 +      return self._base_emit_main(mod)
      self.emit_longmode_tail(mod)
-     inits = pyrt.py_set([_p14760_0[1] for _p14760_0 in pyrt.py_items(self.mod_entries) if _p14760_0[0] != ""])
+     inits = pyrt.py_set([_p14771_0[1] for _p14771_0 in pyrt.py_items(self.mod_entries) if _p14771_0[0] != ""])
      for key in self.allorder:
 @@ -14748,7 +14881,7 @@
      for nm in pyrt.py_sorted(self.mglob, null):
