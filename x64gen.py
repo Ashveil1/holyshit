@@ -4689,7 +4689,8 @@ class Gen:
 
         def walk(node, shadowed):
             if isinstance(node, (dict, list)):
-                key = (id(node), bool(shadowed))
+                # arithmetic key: even = unshadowed visit, odd = shadowed
+                key = id(node) * 2 + (1 if shadowed else 0)
                 if key in seen:
                     return False
                 seen.add(key)
