@@ -4186,12 +4186,11 @@ class Gen:
   def scan_uses_bytes(self, main_mod):
     seen = pyrt.py_set(null)
     def walk(node, shadowed):
-      if pyrt.py_isinstance(node, ["dict", "list"]):
+      if pyrt.py_isinstance(node, ["dict"]):
         key = pyrt.py_id(node) * 2 + (1 if shadowed else 0)
         if key in seen:
           return false
         pyrt.py_add(seen, key)
-      if pyrt.py_isinstance(node, ["dict"]):
         t = pyrt.py_get(node, "t", null)
         if t == "call":
           fn = pyrt.py_get(node, "fn", null)
@@ -4228,9 +4227,9 @@ class Gen:
         return false
       return false
     mods = [main_mod] + [m for m in self.modules if pyrt.py_get(m, "collected", null)]
-    _t4127 = [pyrt.py_set(null), pyrt.py_list(mods)]
-    seen = _t4127[0]
-    todo = _t4127[1]
+    _t4126 = [pyrt.py_set(null), pyrt.py_list(mods)]
+    seen = _t4126[0]
+    todo = _t4126[1]
     while todo:
       m = todo[len(todo) - 1]
       todo = todo[0:len(todo) - 1]
@@ -4246,15 +4245,16 @@ class Gen:
     hit = [false]
     seen = pyrt.py_set(null)
     def walk(node):
-      if pyrt.py_isinstance(node, ["dict", "list"]):
-        if pyrt.py_id(node) in seen:
-          return null
-        pyrt.py_add(seen, pyrt.py_id(node))
       if pyrt.py_isinstance(node, ["list"]):
         for x in node:
           walk(x)
         return null
-      if not pyrt.py_isinstance(node, ["dict"]) or has(node, "nloc"):
+      if not pyrt.py_isinstance(node, ["dict"]):
+        return null
+      if pyrt.py_id(node) in seen:
+        return null
+      pyrt.py_add(seen, pyrt.py_id(node))
+      if "nloc" in node:
         return null
       if pyrt.py_get(node, "t", null) == "call":
         fn = pyrt.py_get(node, "fn", null)

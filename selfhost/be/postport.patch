@@ -600,8 +600,8 @@
    def emit_longmode_tail(self, mod):
      asm.label("long_mode")
      asm.mov_ax_imm16(16)
-@@ -4095,21 +4188,28 @@
-       if pyrt.py_isinstance(node, ["dict"]):
+@@ -4100,21 +4100,28 @@
+         pyrt.py_add(seen, key)
          t = pyrt.py_get(node, "t", null)
          if t == "call":
 -          fn = pyrt.py_get(node, "fn", null) or {}
@@ -633,9 +633,9 @@
              return true
          return false
        if pyrt.py_isinstance(node, ["list"]):
-@@ -4132,7 +4232,8 @@
-     seen = _t4127[0]
-     todo = _t4127[1]
+@@ -4131,7 +4231,8 @@
+     seen = _t4126[0]
+     todo = _t4126[1]
      while todo:
 -      m = pyrt.py_pop(todo)
 +      m = todo[len(todo) - 1]
@@ -643,15 +643,6 @@
        key = pyrt.py_id(m)
        if key in seen:
          continue
-@@ -4142,7 +4243,7 @@
-         for x in node:
-           walk(x)
-         return null
--      if not pyrt.py_isinstance(node, ["dict"]):
-+      if not pyrt.py_isinstance(node, ["dict"]) or has(node, "nloc"):
-         return null
-       if pyrt.py_get(node, "t", null) == "call":
-         fn = pyrt.py_get(node, "fn", null)
 @@ -4163,7 +4264,7 @@
        pyrt.py_close(f)
      except as e:

@@ -16,7 +16,7 @@ x86-64 only, 10,588,936 bytes. It uses the repository source and runtime data;
 it is not a standalone distribution. To rebuild without trusting the seed,
 use `scripts/bootstrap-hosted.sh` (Python stage zero, native later stages).
 
-SHA256: `c64f024edbd05956947d5ade00df00d79382c48aeb67ba77af26a705eaf519b3`.
+SHA256: `36a0f304f8ffa771a2bea7a1cb794063c3aed152774f11a5223e4c73dfeb244e`.
 Changing compiler sources may change the fixed point. Regenerate and verify
 the seed rather than silently accepting an old binary or updating the hash.
 
