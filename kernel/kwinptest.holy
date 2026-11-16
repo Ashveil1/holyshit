@@ -1,0 +1,149 @@
+# App-drawn body surfaces: ring-0 pins and a ring-3 syscall pixel oracle.
+import kmb
+import kpmm
+import kheap
+import ksyscall
+import kvfs
+import kramdisk
+import kuser
+import kinput
+import ksurface
+import kcomp
+import kwinroute
+fails = 0
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+    return
+  print "FAIL", label, got, want
+  fails = fails + 1
+
+expect("boot info found", kmb.usable(), true)
+expect("pmm ready", kpmm.init() > 0, true)
+expect("heap init", kheap.init(64), true)
+expect("heap ready", kheap.ready(), true)
+expect("vfs ready", kvfs.vfs_init(), true)
+expect("ramdisk loads", kramdisk.load() > 0, true)
+expect("uupaint present", kvfs.is_file("/bin/uupaint"), true)
+
+# Ring-0 body clipping, persistence, and heap lifecycle pins.
+c0 = kcomp.create(ksurface.create(64, 48))
+r0 = kwinroute.create(c0)
+kwinroute.bind(r0)
+w0 = kwinroute.sys_create(5, 5, 12, 16, 0x112233)
+before = kheap.free_bytes()
+expect("lazy body buffer", c0[1][0][6], null)
+expect("unknown window", kwinroute.sys_fill(9, 0, 0, 1, 1, 0), -22)
+expect("bad color", kwinroute.sys_fill(w0, 0, 0, 1, 1, -1), -22)
+expect("oversize color", kwinroute.sys_fill(w0, 0, 0, 1, 1, 16777216), -22)
+expect("huge coordinate", kwinroute.sys_fill(w0, 1048577, 0, 1, 1, 0), -22)
+expect("huge width", kwinroute.sys_fill(w0, 0, 0, 1048577, 1, 0), -22)
+expect("empty rect succeeds", kwinroute.sys_fill(w0, 0, 0, 0, 1, 0), 0)
+expect("outside rect succeeds", kwinroute.sys_fill(w0, 12, 0, 1, 1, 0), 0)
+expect("no-op does not allocate", kheap.free_bytes(), before)
+expect("clipped fill succeeds", kwinroute.sys_fill(w0, -2, -3, 5, 5, 0xaabbcc), 0)
+expect("body allocation used heap", kheap.free_bytes() < before, true)
+body = c0[1][0][6]
+expect("clipped top left", ksurface.sample(body, 0, 0), 0xaabbcc)
+expect("clipped last pixel", ksurface.sample(body, 2, 1), 0xaabbcc)
+expect("background to right", ksurface.sample(body, 3, 1), 0x112233)
+expect("background below", ksurface.sample(body, 2, 2), 0x112233)
+expect("body width", body[0], 12)
+expect("body height excludes title", body[1], 10)
+c0[5] = w0
+expect("raise succeeds", kcomp.win_raise(c0, w0), true)
+expect("raise preserves focus", c0[5], w0)
+expect("raise preserves buffer", c0[1][0][6][2], body[2])
+kcomp.cursor_move(c0, 55, 40)
+kcomp.compose(c0)
+expect("title protected", ksurface.sample(c0[4], 5, 5), kcomp.TITLE_FOCUS)
+expect("body origin below title", ksurface.sample(c0[4], 5, 11), 0xaabbcc)
+kcomp.win_move(c0, w0, 20, 10)
+ksurface.rect(c0[4], 0, 0, 64, 48, 0)
+kcomp.compose(c0)
+expect("moved body follows window", ksurface.sample(c0[4], 20, 16), 0xaabbcc)
+expect("old position cleared by scene reset", ksurface.sample(c0[4], 5, 11), 0)
+expect("close painted window", kwinroute.sys_close(w0), 0)
+expect("body heap reclaimed", kheap.free_bytes(), before)
+expect("destroyed buffer inert", body[2], 0)
+expect("double destroy rejected", ksurface.destroy(body), false)
+cycle_ok = true
+j = 0
+while j < 10:
+  temp = kwinroute.sys_create(0, 0, 12, 16, 0)
+  kwinroute.sys_fill(temp, 0, 0, 3, 3, 0x123456)
+  kwinroute.sys_close(temp)
+  if kheap.free_bytes() != before:
+    cycle_ok = false
+  j = j + 1
+expect("ten draw close cycles reclaim heap", cycle_ok, true)
+short = kwinroute.sys_create(0, 0, 5, 4, 0)
+expect("title-only fill no-op", kwinroute.sys_fill(short, 0, 0, 2, 2, 1), 0)
+expect("title-only no body", c0[1][0][6], null)
+kwinroute.sys_close(short)
+large = kwinroute.sys_create(0, 0, 4097, 20, 0)
+expect("oversize body returns ENOMEM", kwinroute.sys_fill(large, 0, 0, 1, 1, 0), -12)
+kwinroute.sys_close(large)
+large = kwinroute.sys_create(0, 0, 1024, 1024, 0)
+expect("heap exhausted returns ENOMEM", kwinroute.sys_fill(large, 0, 0, 1, 1, 0), -12)
+expect("failed allocation leaves body null", c0[1][0][6], null)
+kwinroute.sys_close(large)
+expect("failed allocations preserve heap", kheap.free_bytes(), before)
+
+# A distinct-surface blit clips negative and right/bottom edges.
+src = ksurface.create(3, 3)
+ksurface.rect(src, 0, 0, 3, 3, 0x778899)
+dst = ksurface.create(4, 4)
+expect("negative blit succeeds", ksurface.blit(dst, src, -1, -1), true)
+expect("negative blit pixel", ksurface.sample(dst, 0, 0), 0x778899)
+expect("negative blit outside", ksurface.sample(dst, 2, 2), 0)
+expect("right bottom blit", ksurface.blit(dst, src, 3, 3), true)
+expect("right bottom pixel", ksurface.sample(dst, 3, 3), 0x778899)
+expect("alias blit rejected", ksurface.blit(dst, dst, 0, 0), false)
+ksurface.destroy(src)
+expect("dead source rejected", ksurface.blit(dst, src, 0, 0), false)
+ksurface.destroy(dst)
+
+# The exit observer snapshots the live scene before production SYS_EXIT
+# cleanup. All drawing still goes through production syscall 96 dispatch.
+c = kcomp.create(ksurface.create(64, 48))
+r = kwinroute.create(c)
+kwinroute.bind(r)
+kcomp.cursor_move(c, 55, 40)
+snapshots = 0
+def observe(nr, a1, a2, a3, a4, a5, a6):
+  global snapshots
+  if nr == 60:
+    snapshots = snapshots + 1
+    kcomp.compose(c)
+    mock = kheap.malloc(64 * 48 * 4)
+    frame = [mock, 256, 64, 48, 4, 2, 1, 0]
+    expect("painted frame flushes", ksurface.flush(c[4], frame) > 0, true)
+    print "paint-pixels-begin"
+    y = 0
+    while y < 48:
+      x = 0
+      while x < 64:
+        base = mock + (y * 64 + x) * 4
+        unsafe:
+          print load8(as_ptr(base + 2)) << 16 + load8(as_ptr(base + 1)) << 8 + load8(as_ptr(base))
+        x = x + 1
+      y = y + 1
+    print "paint-pixels-end"
+    kheap.free(mock)
+  return ksyscall.dispatch(nr, a1, a2, a3, a4, a5, a6)
+data = kvfs.read("/bin/uupaint")
+expect("uupaint readable", data != null, true)
+expect("uupaint loads", kuser.load_image(kuser.payload_addr(data), len(data)), 1)
+expect("observer registered", ksyscall.register(observe), true)
+expect("exec enabled", kuser.enable_exec(), true)
+before_app = kheap.free_bytes()
+kuser.run()
+expect("one live scene snapshot", snapshots, 1)
+expect("user stopped", ksyscall.user_stopped(), true)
+expect("exit code", ksyscall.user_exit_code(), 0)
+expect("windows auto-closed", len(c[1]), 0)
+expect("body allocations reclaimed on exit", kheap.free_bytes(), before_app)
+print "fails", fails
+print "winpaint-done"

@@ -1,0 +1,15 @@
+# Ring-3 app draws into two compositor-owned body buffers via syscall 96.
+SYS_EXIT = 60
+SYS_WIN_CREATE = 93
+SYS_WIN_FILL = 96
+def sc(nr, a1, a2, a3, a4, a5, a6):
+  return scall(nr, a1, a2, a3, a4, a5, a6)
+a = sc(SYS_WIN_CREATE, 4, 4, 28, 28, 0x112233, 0)
+b = sc(SYS_WIN_CREATE, 22, 14, 26, 25, 0x445566, 0)
+print "paint-fill", sc(SYS_WIN_FILL, a, -3, -2, 12, 10, 0xff8800)
+print "paint-fill", sc(SYS_WIN_FILL, a, 12, 5, 20, 20, 0x22bb66)
+print "paint-fill", sc(SYS_WIN_FILL, b, 3, 3, 14, 10, 0x9966dd)
+print "paint-fill", sc(SYS_WIN_FILL, b, 20, 15, 20, 20, 0xffcc44)
+print "paint-bad", sc(SYS_WIN_FILL, 999, 0, 0, 1, 1, 0)
+print "paint-color", sc(SYS_WIN_FILL, a, 0, 0, 1, 1, -1)
+sc(SYS_EXIT, 0, 0, 0, 0, 0, 0)
