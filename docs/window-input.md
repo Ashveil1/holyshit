@@ -9,6 +9,7 @@ This is a BIOS/QEMU experiment, not a process-isolated desktop or a scheduler.
 | 93 | SYS_WIN_CREATE | x, y, width, height, color | window id, -22 for nonpositive size, -1 without a bound router |
 | 94 | SYS_WIN_CLOSE | window id | 0 on removal, -22 if missing |
 | 95 | SYS_WIN_KEY_READ | window id | keyboard code, or 0 |
+| 96 | SYS_WIN_FILL | window id, x, y, width, height, RGB24 | 0, -22 for invalid arguments, -12 for unavailable body storage |
 
 Exit closes windows created through SYS_WIN_CREATE and drops their input queues.
 Window ids are scene-local, not permission tokens. There is no multi-process
@@ -44,3 +45,34 @@ queue isolation and cleanup in ring 0, then uses QMP clicks and keys while a
 ring-3 app waits on its two app-created windows. It checks the exact sequence
 window 1: a / Up / Enter, window 2: b / Down, on IR and AST kernels.
 It does not claim hardware, Unicode, shift, USB, or multi-process validation.
+
+## Persistent app-drawn bodies
+
+SYS_WIN_FILL paints an opaque RGB24 rectangle in the window's body, with
+(0,0) immediately below the title bar. Rectangles clip to the body, so an
+app cannot paint over title chrome or another window. Colors must be
+0..16777215 and coordinates/dimensions must be within -1048576..1048576.
+An unknown window or an out-of-range argument returns -22. Nonpositive or
+fully clipped rectangles are successful no-ops with no allocation.
+
+The first visible fill lazily allocates a body buffer and initializes it to
+the window's original background color. Buffers are limited to 4096 pixels
+per dimension and 4194304 pixels total; an oversized body or failed heap
+allocation returns -12. Moving or raising a window preserves its body;
+removal or app exit frees the body buffer. Creation without drawing remains
+lazy and uses the original solid-color body path.
+
+Drawing changes stored content, not the hardware framebuffer directly.
+The kernel compositor must still compose the scene and flush its surface.
+This interface does not add a display server, automatic repaint loop,
+user-mapped pixel buffers, text rendering, alpha blending or resizing.
+Existing scene-background clearing remains the caller's responsibility
+before recomposing after a move or removal.
+
+`tests/test_winpaint.py` tests body clipping, title protection, retained
+content on raise/move, errors, failed allocation and heap reclamation.
+A ring-3 app creates two overlapping windows and sends four fill syscalls.
+A test-only exit observer captures the live scene before normal exit
+cleanup, composing and flushing to a mock RGB32 framebuffer. Python checks
+every one of its 3072 RGB pixels against a separate raster oracle, on IR
+and AST kernels. This is not a physical-display or real-hardware test.

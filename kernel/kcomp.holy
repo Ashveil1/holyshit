@@ -2,8 +2,8 @@
 # title-bar drag driven by packed kinput pointer events, and full-scene
 # composition onto a ksurface double buffer, plus a software cursor drawn
 # last. All drawing goes through ksurface, so the dirty-rect flush to the
-# framebuffer stays exact. Ring-3 window content and per-window event
-# routing are later milestones (B4); this is the kernel core.
+# framebuffer stays exact. kwinroute owns the ring-3 event and drawing
+# syscall binding; this module owns persistent bodies and composition.
 import ksurface
 import kinput
 
@@ -19,7 +19,7 @@ TITLE_DIM = 0x555a66
 
 # State: [next_id, windows bottom..top, cursor_x, cursor_y, surface,
 # focus_wid, drag_wid, grab_dx, grab_dy, prev_buttons].
-# Window: [id, x, y, width, height, color].
+# Window: [id, x, y, width, height, color, optional body surface].
 def create(surface):
   return [1, [], 0, 0, surface, -1, -1, 0, 0, 0]
 
@@ -36,13 +36,15 @@ def win_add(c, x, y, width, height, color):
     raise "window needs positive size"
   wid = c[0]
   c[0] = wid + 1
-  append(c[1], [wid, x, y, width, height, color])
+  append(c[1], [wid, x, y, width, height, color, null])
   return wid
 
 def win_remove(c, wid):
   i = win_find(c, wid)
   if i < 0:
     return false
+  if c[1][i][6] != null:
+    ksurface.destroy(c[1][i][6])
   out = []
   j = 0
   while j < len(c[1]):
@@ -61,7 +63,15 @@ def win_raise(c, wid):
   if i < 0:
     return false
   w = c[1][i]
-  win_remove(c, wid)
+  # Reorder without removing: removal frees the content buffer and
+  # clears focus/drag, which raising must preserve.
+  out = []
+  j = 0
+  while j < len(c[1]):
+    if j != i:
+      append(out, c[1][j])
+    j = j + 1
+  c[1] = out
   append(c[1], w)
   return true
 
@@ -160,6 +170,35 @@ def cursor_move(c, nx, ny):
   c[3] = ny
   return moved
 
+def win_fill(c, wid, x, y, width, height, color):
+  # Body-local origin (0,0) is just below the title bar. Validate before
+  # gfx helpers so bad syscall arguments return errors rather than raise.
+  i = win_find(c, wid)
+  if i < 0:
+    return -22
+  if x < -1048576 or x > 1048576 or y < -1048576 or y > 1048576:
+    return -22
+  if width < -1048576 or width > 1048576 or height < -1048576 or height > 1048576:
+    return -22
+  if color < 0 or color > 16777215:
+    return -22
+  w = c[1][i]
+  bh = w[4] - title_h(w)
+  if width <= 0 or height <= 0 or bh <= 0:
+    return 0
+  if x >= w[3] or y >= bh or x + width <= 0 or y + height <= 0:
+    return 0
+  if w[6] == null:
+    if w[3] > 4096 or bh > 4096 or w[3] * bh > 4194304:
+      return -12
+    try:
+      w[6] = ksurface.create(w[3], bh)
+    except as e:
+      return -12
+    ksurface.rect(w[6], 0, 0, w[3], bh, w[5])
+  ksurface.rect(w[6], x, y, width, height, color)
+  return 0
+
 def compose(c):
   # Redraw the whole scene bottom-to-top, cursor last. Each window is a
   # title bar (bright when focused) over its body. ksurface records the
@@ -174,7 +213,10 @@ def compose(c):
       tcol = TITLE_FOCUS
     ksurface.rect(s, w[1], w[2], w[3], th, tcol)
     if w[4] > th:
-      ksurface.rect(s, w[1], w[2] + th, w[3], w[4] - th, w[5])
+      if w[6] == null:
+        ksurface.rect(s, w[1], w[2] + th, w[3], w[4] - th, w[5])
+      else:
+        ksurface.blit(s, w[6], w[1], w[2] + th)
     i = i + 1
   dy = 0
   while dy < 7:

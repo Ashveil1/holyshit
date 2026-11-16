@@ -120,6 +120,41 @@ def sample(s, x, y):
   unsafe:
     return load32(as_ptr(address))
 
+def destroy(s):
+  # Release this surface's heap back buffer once. The descriptor remains
+  # inert; callers must stop using it after destruction.
+  if s[2] == 0:
+    return false
+  kheap.free(s[2])
+  s[2] = 0
+  s[3] = 0
+  s[4] = []
+  return true
+
+def blit(dst, src, x, y):
+  # Opaque copy of a distinct live surface, clipped to the destination.
+  # This is not an in-place overlapping copy API.
+  x = std.gfx.coordinate(x)
+  y = std.gfx.coordinate(y)
+  if dst[2] == 0 or src[2] == 0 or dst[2] == src[2]:
+    return false
+  left = 0 if x < 0 else x
+  top = 0 if y < 0 else y
+  right = dst[0] if x + src[0] > dst[0] else x + src[0]
+  bottom = dst[1] if y + src[1] > dst[1] else y + src[1]
+  row = top
+  while row < bottom:
+    col = left
+    while col < right:
+      source = src[2] + ((row - y) * src[0] + col - x) * 4
+      target = dst[2] + (row * dst[0] + col) * 4
+      unsafe:
+        store32(as_ptr(target), load32(as_ptr(source)))
+      col = col + 1
+    row = row + 1
+  mark(dst, left, top, right, bottom)
+  return true
+
 def flush(s, frame):
   # Copy every dirty rect to the hardware framebuffer, then clear the
   # dirty list. Returns the number of pixels written (overlap-free by the
