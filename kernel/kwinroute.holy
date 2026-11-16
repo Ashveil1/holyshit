@@ -15,13 +15,14 @@ import kinput
 
 QUEUE_MAX = 64
 
-# State: [compositor, wids, queues, created]; queues[i] holds events for
+# State: [compositor, wids, queues, created, key_wids, key_queues];
+# queues[i] holds pointer events for
 # wids[i], oldest first; created tracks sys_create windows so sys_exit
 # can close them. sys_router is the instance the syscall layer drains.
 sys_router = null
 
 def create(c):
-  return [c, [], [], []]
+  return [c, [], [], [], [], []]
 
 def bind(r):
   global sys_router
@@ -139,6 +140,7 @@ def sys_close(wid):
   if not kcomp.win_remove(sys_router[0], wid):
     return -22
   qdrop(sys_router, wid)
+  key_drop(sys_router, wid)
   cs = []
   j = 0
   while j < len(sys_router[3]):
@@ -156,25 +158,102 @@ def sys_close_all():
     sys_close(sys_router[3][0])
   return true
 
+def key_find(r, wid):
+  i = 0
+  while i < len(r[4]):
+    if r[4][i] == wid:
+      return i
+    i = i + 1
+  return -1
+
+def handle_key(r, code):
+  # ASCII make codes plus Up=128/Down=129, as readkey_event spells them.
+  # Focus is click-driven; no focus (or stale focus) drops input.
+  if code < 1 or code > 129:
+    return false
+  wid = r[0][5]
+  if kcomp.win_find(r[0], wid) < 0:
+    return false
+  i = key_find(r, wid)
+  if i < 0:
+    append(r[4], wid)
+    append(r[5], [code])
+    return true
+  if len(r[5][i]) >= QUEUE_MAX:
+    return false
+  append(r[5][i], code)
+  return true
+
+def key_drain(r, wid):
+  i = key_find(r, wid)
+  if i < 0 or len(r[5][i]) == 0:
+    return 0
+  code = r[5][i][0]
+  out = []
+  j = 1
+  while j < len(r[5][i]):
+    append(out, r[5][i][j])
+    j = j + 1
+  r[5][i] = out
+  return code
+
+def key_drop(r, wid):
+  ws = []
+  qs = []
+  i = 0
+  while i < len(r[4]):
+    if r[4][i] != wid:
+      append(ws, r[4][i])
+      append(qs, r[5][i])
+    i = i + 1
+  r[4] = ws
+  r[5] = qs
+
+def pump(r):
+  # Both wait paths service both FIFOs. Pointer batches run first so a
+  # pending click updates focus before pending keyboard input is routed.
+  # The two hardware FIFOs do not carry a shared cross-device timestamp.
+  n = 0
+  while n < 64:
+    pev = kinput.read()
+    if pev == 0:
+      break
+    handle(r, pev)
+    n = n + 1
+  n = 0
+  while n < 64:
+    code = readkey_event()
+    if code == null:
+      break
+    handle_key(r, code)
+    n = n + 1
+
 def sys_read(wid):
-  # SYS_WIN_EVENT_READ: oldest routed event for the window, 0 when empty
-  # or when no router is bound. Ring 3 runs with IF clear by design, so
-  # the read opens a ring-0 interrupt window (up to ~400 ticks) and pumps
-  # the hardware FIFO through the router while it waits: a polling app
-  # keeps the machine fed exactly as a blocking read would.
+  # SYS_WIN_EVENT_READ: bounded ring-0 wait, 0 on empty/no router.
   if sys_router == null:
     return 0
   irq_on()
   t0 = ticks()
   while true:
-    n = 0
-    while n < 64:
-      pev = kinput.read()
-      if pev == 0:
-        break
-      handle(sys_router, pev)
-      n = n + 1
+    pump(sys_router)
     out = drain(sys_router, wid)
+    if out != 0:
+      return out
+    if ticks() >= t0 + 400:
+      return 0
+
+def sys_key_read(wid):
+  # SYS_WIN_KEY_READ: oldest focused-window key, 0 on empty/bad window.
+  # The same bounded wait as pointer reads keeps IRQ1 and IRQ12 alive.
+  if sys_router == null:
+    return 0
+  if kcomp.win_find(sys_router[0], wid) < 0:
+    return 0
+  irq_on()
+  t0 = ticks()
+  while true:
+    pump(sys_router)
+    out = key_drain(sys_router, wid)
     if out != 0:
       return out
     if ticks() >= t0 + 400:
