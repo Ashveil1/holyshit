@@ -104,6 +104,7 @@ SUITES = [
     ("test_examples.py", "examples"),
     ("test_lsp.py", "language server"),
     ("test_lsp_native.py", "native language server differential vs lsp.py"),
+    ("test_repl_native.py", "native repl session differential vs interp.py --repl"),
     ("test_docs.py", "docs"),
     ("test_selfhost.py", "self-hosted lexer/parser/fmt vs Python"),
     ("test_selfhost_fmt_comments.py", "optional hs formatter comments vs Python oracle"),

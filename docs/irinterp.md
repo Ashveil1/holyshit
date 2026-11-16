@@ -8,6 +8,14 @@ re-lined to the failing instruction, so stderr matches `interp.py`.
 `selfhost/be/irinterp_run.holy SOURCE [args]` is the driver. Build it with the
 pinned seed: `bootstrap/hs-hosted-x86_64 selfhost/be/irinterp_run.holy OUT`.
 
+`selfhost/repl.holy` is a native read-eval-print session built on the same
+executor. Build it with `python3 hs.py xbuild selfhost/repl.holy -o hs-repl`
+(or the pinned seed). On a non-tty stdin it runs the same protocol as
+`python3 interp.py --repl` (multi-line defs, one shared context across
+statements, display of non-null results, errors reported then the session
+continues) with byte-identical stdout; on a tty it shows the `hs>`/`...`
+prompts and a banner.
+
 Supported: the dynamic core (variables, closures, calls, lists, dicts, slices,
 iteration, try/except/finally, raise, print), `import` (including dotted module
 paths and package shells) with `attr`/`setattr` on modules, and the builtins

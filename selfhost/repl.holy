@@ -1,0 +1,155 @@
+# Native hs repl: read-eval-print with one persistent global session over the
+# hs IR interpreter (be/irinterp.holy). Matches `python3 interp.py --repl`
+# on a non-tty stdin byte-for-byte: a line ending with ':' continues until a
+# blank line, a bare expression line prints its value (null prints nothing),
+# errors are reported and the session goes on, EOF exits 0.
+# Known deviations from interp.py --repl: unsafe/ffi input is refused up
+# front (irinterp preflight, same policy as the native tester); a function
+# redefined in a later line keeps one IR key, so older references see the new
+# body; guest argv() is the repl process's own argv.
+import normalize
+import parselib
+import irbuild
+import irinterp
+import pyrt
+unsafe:
+  CWDB = alloc(4096)
+  TTYB = alloc(64)
+PRELUDE = "def __repl_print(v):\n  if v != null:\n    print v\n"
+def cwd():
+  n = scall(79, CWDB, 4096, 0, 0, 0, 0)
+  if n <= 0:
+    return ""
+  return read_mem(CWDB, n - 1)
+def isatty():
+  # ioctl(0, TCGETS=0x5401, buf) succeeds only on a terminal.
+  return scall(16, 0, 21505, TTYB, 0, 0, 0) == 0
+def rstrip(s):
+  n = len(s)
+  while n > 0:
+    c = s[n - 1:n]
+    if c != " " and c != "\t" and c != "\r":
+      break
+    n = n - 1
+  return s[0:n]
+def blank(s):
+  for i in range(len(s)):
+    c = s[i:i + 1]
+    if c != " " and c != "\t" and c != "\n" and c != "\r":
+      return false
+  return true
+def err_text(e):
+  if find(e, pyrt.EMARK) >= 0:
+    msg = irinterp.ir_emsg(e)
+    line = irinterp.ir_eline(e)
+    if line != null:
+      return msg + " at line " + str(line)
+    return msg
+  # A plain host-carried string may carry the original raise's line suffix
+  # plus one more appended while crossing this driver's frames; drop the
+  # outer one only (same pattern as irinterp_run.holy).
+  once = irinterp.trailing_line(e)
+  if once[1] != null and irinterp.trailing_line(once[0])[1] != null:
+    return once[0]
+  return e
+def merge_module(st, irmod):
+  for key in irmod["order"]:
+    st["funcs"][key] = irmod["funcs"][key]
+    by = {}
+    for block in irmod["funcs"][key]["blocks"]:
+      by[block["label"]] = block
+    st["by"][key] = by
+  st["entry"] = irmod["entry"]
+def session_init(basedir):
+  irmod = irbuild.build_module(normalize.parse(PRELUDE), "")
+  st = irinterp.create(irmod, basedir)
+  root = irinterp.new_frame(st, null, null, [])
+  root["root"] = root
+  root["basedir"] = basedir
+  st["broot"] = root
+  for name in irinterp.BUILTIN_NAMES:
+    irinterp.bind(root, name, irinterp.callable_handle({"hs_ir_builtin": name}))
+  fn = st["funcs"][st["entry"]]
+  frame = irinterp.new_frame(st, root, root, fn["globals"])
+  frame["root"] = frame
+  frame["basedir"] = basedir
+  irinterp.run_fn(st, st["entry"], fn, frame)
+  sess = {}
+  sess["st"] = st
+  sess["frame"] = frame
+  sess["basedir"] = basedir
+  return sess
+def run_src(sess, src, line0, nlines):
+  st = sess["st"]
+  frame = sess["frame"]
+  body = parselib.parse(src)
+  if nlines == 1 and len(body) == 1 and body[0]["t"] == "expr":
+    src = "__repl_print(" + line0 + ")\n"
+  irmod = irbuild.build_module(normalize.parse(src), "")
+  refusal = irinterp.preflight(irmod)
+  if refusal == null:
+    refusal = irinterp.preflight_imports(irmod, sess["basedir"])
+  if refusal != null:
+    print "error: " + refusal
+    return
+  merge_module(st, irmod)
+  fn = st["funcs"][st["entry"]]
+  frame["globals"] = fn["globals"]
+  st["handlers"] = []
+  st["active"] = []
+  st["jump"] = null
+  try:
+    irinterp.run_fn(st, st["entry"], fn, frame)
+  except as e:
+    print "error: " + err_text(e)
+  st["handlers"] = []
+  st["active"] = []
+  st["jump"] = null
+def main():
+  bd = cwd()
+  if bd == "":
+    bd = "."
+  tty = isatty()
+  sess = session_init(bd)
+  out = null
+  if tty:
+    ver = "unknown"
+    hr = env("HSROOT")
+    if hr != null:
+      try:
+        ver = read_text(hr + "/VERSION")
+        ver = rstrip(ver)
+      except as e:
+        ver = "unknown"
+    print "hs " + ver + " repl (ctrl-d to quit)"
+    out = open("/dev/stdout", "w")
+  while true:
+    if tty:
+      write(out, ">>> ")
+    line = null
+    try:
+      line = input()
+    except as e:
+      break
+    lines = [line]
+    rs = rstrip(line)
+    if len(rs) > 0 and rs[len(rs) - 1:len(rs)] == ":":
+      while true:
+        if tty:
+          write(out, "... ")
+        more = null
+        try:
+          more = input()
+        except as e:
+          more = ""
+        if blank(more):
+          break
+        append(lines, more)
+    src = join("\n", lines) + "\n"
+    if blank(src):
+      continue
+    try:
+      run_src(sess, src, line, len(lines))
+    except as e:
+      print "error: " + err_text(e)
+main()
