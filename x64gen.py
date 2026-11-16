@@ -4680,8 +4680,24 @@ class Gen:
         doubt counts as True (over-enabling is safe: it only emits the
         extra Bytes runtime; under-enabling would miscompile).
         """
+        # import statements embed the module graph (s["_mods"], whose module
+        # dicts carry imports/submods back-references - a package cycle like
+        # std.font -> std.gfx -> std makes the raw structure cyclic). Memoize
+        # visited containers; (id, shadowed) pairs so a node first seen under
+        # a shadowing scope is still re-examined unshadowed (doubt enables).
+        seen = set()
+
         def walk(node, shadowed):
             if isinstance(node, dict):
+                # arithmetic key: even = unshadowed visit, odd = shadowed.
+                # Dicts only: the be.holy port's py_id stores "_id" in the
+                # dict itself, and list cycles are impossible (every
+                # back-reference in the module graph is a module dict), so
+                # list nodes walk unmemoized.
+                key = id(node) * 2 + (1 if shadowed else 0)
+                if key in seen:
+                    return False
+                seen.add(key)
                 t = node.get("t")
                 if t == "call":
                     fn = node.get("fn") or {}
@@ -4735,13 +4751,21 @@ class Gen:
         """True when the program mentions one of the json_* builtins."""
         want = set(self.JSON_CALLS)
         hit = [False]
+        seen = set()
 
         def walk(node):
+            # prog embeds the cyclic module graph (see scan_uses_bytes).
+            # Dicts only, same py_id reason as scan_uses_bytes.
             if isinstance(node, list):
                 for x in node:
                     walk(x)
                 return
             if not isinstance(node, dict):
+                return
+            if id(node) in seen:
+                return
+            seen.add(id(node))
+            if "nloc" in node:
                 return
             if node.get("t") == "call":
                 fn = node.get("fn")
