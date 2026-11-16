@@ -72,6 +72,7 @@ SUITES = [
     ("test_winlifecycle.py", "ring-3 window create/close lifecycle + blocking routed reads on QEMU"),
     ("test_winkeys.py", "focused-window keyboard routing + ring-3 injected delivery on QEMU"),
     ("test_winpaint.py", "ring-3 window body fills, clipping, cleanup and compositor pixels on QEMU"),
+    ("test_winpresent.py", "ring-3 present and close/exit repaint into kernel-bound targets on QEMU"),
     ("test_timer_irq.py", "deterministic timer IRQ GPR preservation"),
     ("test_kernel_ir.py", "retained AST kernel reference on QEMU"),
     ("test_kernel_default.py", "public kernel IR selection"),
@@ -192,7 +193,7 @@ SUITES = [
 ]
 
 
-QUICK_SKIP = ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
+QUICK_SKIP = ("test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
 
 
 def main(argv):
