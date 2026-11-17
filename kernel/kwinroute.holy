@@ -225,9 +225,9 @@ def key_find(r, wid):
   return -1
 
 def handle_key(r, code):
-  # ASCII make codes plus Up=128/Down=129, as readkey_event spells them.
+  # ASCII plus navigation128..135, as readkey_event spells them.
   # Focus is click-driven; no focus (or stale focus) drops input.
-  if code < 1 or code > 129:
+  if code < 1 or code > 135:
     return false
   wid = r[0][5]
   if kcomp.win_find(r[0], wid) < 0:

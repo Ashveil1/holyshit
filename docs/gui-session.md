@@ -81,13 +81,17 @@ qemu-system-x86_64 -cdrom /tmp/hs-desktop.iso -boot d -m 256M -nic none -serial 
 The default build remains the original scratchpad. The explicit `desktop`
 option packages a different ring-3 app, with two independent note windows
 and a persistent launcher window. Both notes open at startup. Click a note
-to type; Backspace deletes, Enter starts a new line, Up clears and Down
-closes that note. Each note holds three lines of up to32 printable bytes
-each. A full line wraps on the next printable key; a full third line
-ignores more text or Enter. Closing retains the text in the app's RAM.
-Click the launcher and press 1 or 2 to reopen a closed note. Pressing an
-already-open note's number does not create a duplicate. Down in the launcher
-exits the whole session and clears every window. No note is saved to disk.
+to type at its caret. Left/Right move one source byte, Up/Down move to the
+closest column on the adjacent visual row, and Home/End move within the
+current visual row. Backspace removes the preceding byte; Delete removes
+the following byte. Enter inserts a newline. Each note holds three visual
+rows of up to32 printable bytes each, with automatic wrapping. An insertion
+that would need a fourth row is ignored without changing the text or caret.
+Escape closes the focused note and keeps its text and caret in RAM. Click
+the launcher and press 1 or 2 to reopen a closed note; pressing an already-open
+note's number does not create a duplicate. Launcher keys3 and4 clear note1
+and note2 respectively, including a closed note. Escape in the launcher
+exits the session and clears every window. No note is saved to disk.
 
 All three windows belong to one process. This does not add a scheduler,
 separate processes, private address spaces or process isolation. Clicks
@@ -124,22 +128,33 @@ existing edit/focus/overlap/reopen/cap/exit coverage. This is pixel scaling
 of the existing font, not a new font engine or Unicode text shaping.
 
 
-## Bounded multiline editing
+## Bounded cursor editing
 
-The desktop notes are append-only editors, not full cursor editors. Each
-buffer has128 allocated bytes and stores at most98 source bytes:96 printable
-bytes plus two newline bytes. Newlines are stored explicitly, including
-automatic wraps, so Backspace can erase a newline and move to the end of
-the previous line. Enter on an empty line is allowed until the third row;
-no fourth row is created. Up clears the focused note, not the other note.
-The caret remains after the final byte and cannot move into earlier text.
-No selection, undo, scrolling, Unicode shaping or disk storage is added.
+Each note has128 bytes of source storage and128 bytes of reusable rendered
+storage. It stores at most98 source bytes: up to96 printable bytes plus two
+explicit newline bytes. Automatic wraps are computed rather than stored,
+so insertion and deletion in the middle reflow later text. Backspace or
+Delete at an explicit newline joins its two rows. Enter on an empty row is
+allowed until the third row; no fourth row is created. A proposed insertion
+is checked against the complete resulting buffer before any bytes move.
+
+The caret is a source-byte offset, retained across close/reopen and reset
+by clear. At a soft-wrap boundary it belongs to the next visual row when
+there is another character there. At the end of a full row it may sit after
+column32. Vertical movement chooses the nearest available column in the
+adjacent row, with the first matching stop winning a tie. It does not retain
+a separate preferred column through a shorter row. The blue block marks
+the caret. No selection, undo, scrolling, Shift input, Unicode shaping or
+disk storage is added. The original default single-line scratchpad is unchanged.
 
 `kernel/unotebuf.holy` owns these bounds independently of the GUI. Its
-hosted x86 test checks both compiler backends, exact text/cursor transitions,
-wrap and newline erasure, ignored edits at capacity, independent notes,
-canaries around all128 buffer bytes, spare bytes after the98-byte maximum,
-and50 repeated full edit/clear cycles. The required desktop GRUB test also
-checks every RGB field byte for manual newlines, cross-line Backspace,
-wrap, full capacity, retained multiline reopen and complete exit cleanup.
-The original default single-line scratchpad is unchanged.
+hosted x86 tests check both compiler backends with45 direct pins, source
+storage canaries, spare bytes, independent notes, close/reopen, and30
+repeated full edit/reflow cycles. An independent Python model compares
+source bytes, caret offset, visual position and rendered bytes after each
+of420 deterministic mixed edits on both backends. The required desktop
+GRUB test checks every RGB field byte for middle insertion/deletion,
+Home/End, cross-line arrows, manual newlines, reflow, full capacity,
+retained text/caret on reopen and complete exit cleanup. Event codes128
+through135 pass through the existing focused window queues; ASCII input
+and legacy Up/Down codes retain their backend meanings.
