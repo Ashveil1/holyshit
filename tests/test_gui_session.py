@@ -9,6 +9,8 @@ import contextlib, io, json, os, re, shutil, socket, subprocess, sys, tempfile, 
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+# Python build helpers also resolve std.* when the caller is outside ROOT.
+os.environ['HSPATH'] = str(ROOT) + os.pathsep + os.environ.get('HSPATH', '')
 from x64gen import build_x64, build_xkernel
 qemu = os.environ.get('HS_TEST_QEMU') or shutil.which('qemu-system-x86_64')
 if not qemu or not shutil.which('grub-mkrescue') or not shutil.which('xorriso'):
@@ -24,15 +26,15 @@ FORMS = {'H':[17,17,17,31,17,17,17], 'I':[31,4,4,4,4,4,31],
          'A':[14,17,17,31,17,17,17]}
 
 
-def boot(d, ir_backend, desktop=False):
+def boot(d, ir_backend, desktop=False, disk=False):
     tree = d/'tree'; (tree/'boot/grub').mkdir(parents=True)
     user = d/'uunote'; kernel = tree/'boot/kernel.elf'
     with contextlib.redirect_stdout(io.StringIO()):
         assert build_x64(str(ROOT/('kernel/uudesk.holy' if desktop else 'kernel/uunote.holy')), str(user)) == 0
-        assert build_xkernel(str(ROOT/'kernel/kgui.holy'), str(kernel), ir_backend=ir_backend) == 0
+        assert build_xkernel(str(ROOT/('kernel/kguidisk.holy' if disk else 'kernel/kgui.holy')), str(kernel), ir_backend=ir_backend) == 0
     if ir_backend:
         # Test the actual user-facing packaging entry point, not a lookalike.
-        subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'gui.iso')]+(['desktop'] if desktop else []),
+        subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'gui.iso')]+(['desktop-disk' if disk else 'desktop'] if desktop else []),
                        env=env, check=True, capture_output=True, timeout=300)
         before = (d/'gui.iso').read_bytes()
         again = subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'gui.iso')],

@@ -1,0 +1,49 @@
+# Small ring-3 file bridge. No disk access without explicit GUI mode marker.
+import unotebuf
+def diskcall(nr, a, b, c):
+  return scall(nr, a, b, c, 0, 0, 0)
+def strptr(text):
+  unsafe:
+    return as_int(as_ptr(text)) + 16
+def read_file(path):
+  fd = diskcall(2, strptr(path), byte_len(path), 0)
+  if fd < 0:
+    return null
+  buffer = unotebuf.buffer()
+  count = diskcall(0, fd, buffer, 100)
+  diskcall(3, fd, 0, 0)
+  return read_mem(buffer, count) if count >= 0 else null
+def mode():
+  value = read_file("/desktop-mode")
+  if value == null:
+    return 0
+  return 1 if value == "ready" else -1
+def load_note(note, path):
+  text = read_file(path)
+  if text == null:
+    return 0
+  if byte_len(text) > 98:
+    return -1
+  candidate = unotebuf.create()
+  for i in range(byte_len(text)):
+    byte = unotebuf.byte_at(strptr(text) + i)
+    if byte != 10 and (byte < 32 or byte > 126):
+      return -1
+    if not unotebuf.edit(candidate, byte):
+      return -1
+  for i in range(candidate[2]):
+    unotebuf.put(note[1] + i, unotebuf.byte_at(candidate[1] + i))
+  note[2] = candidate[2]
+  note[3] = candidate[3]
+  return 1
+def write_note(note, path):
+  fd = diskcall(2, strptr(path), byte_len(path), 1)
+  if fd < 0:
+    return false
+  count = diskcall(1, fd, note[1], note[2])
+  closed = diskcall(3, fd, 0, 0)
+  return count == note[2] and closed == 0
+def save_both(notes):
+  if not write_note(notes[0], "/note1") or not write_note(notes[1], "/note2"):
+    return false
+  return diskcall(74, 0, 0, 0) == 0

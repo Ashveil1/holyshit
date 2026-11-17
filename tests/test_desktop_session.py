@@ -8,11 +8,13 @@ ROOT = Path(__file__).resolve().parent.parent
 FORMS['B'] = [30,17,17,30,17,17,30]
 
 
-def run(d):
+def run(d, disk=None):
     serial = d/'serial'; qmp = d/'qmp'; serial.unlink(missing_ok=True); qmp.unlink(missing_ok=True)
     err = (d/'qemu.stderr').open('wb')
-    p = subprocess.Popen([qemu,'-cdrom',str(d/'gui.iso'),'-boot','d','-m','256M','-nic','none',
-        '-display','none','-serial','file:'+str(serial),'-qmp','unix:'+str(qmp)+',server=on,wait=off'],stderr=err)
+    args = [qemu,'-cdrom',str(d/'gui.iso'),'-boot','d','-m','256M','-nic','none',
+        '-display','none','-serial','file:'+str(serial),'-qmp','unix:'+str(qmp)+',server=on,wait=off']
+    if disk:args+=['-drive','file='+str(disk)+',if=ide,format=raw']
+    p = subprocess.Popen(args,stderr=err)
     s = None
     def out(): return serial.read_text(errors='replace') if serial.exists() else ''
     def wait_for(test, label, seconds=15):
@@ -163,6 +165,10 @@ if __name__=='__main__':
             backends = (sys.argv[sys.argv.index('--backend')+1] == 'ir',)
         for ir_backend in backends:
             with tempfile.TemporaryDirectory(prefix='desktop-'+('ir-' if ir_backend else 'ast-')) as temp:
-                d=Path(temp);boot(d,ir_backend,desktop=True);run(d)
+                d=Path(temp);boot(d,ir_backend,desktop=True)
+                disk=d/'untouched.img';before=b'NOT A KVOL DISK'+bytes(1024*1024-15);disk.write_bytes(before)
+                run(d,disk)
+                assert disk.read_bytes()==before, 'default GUI wrote attached disk'
+                assert 'GUI VOLUME' not in (d/'serial').read_text(), 'default GUI probed volume'
             print('ok real multi-window desktop focus/edit/raise/drag/reopen/exit', 'ir' if ir_backend else 'ast')
         print(str(len(backends))+'/'+str(len(backends))+' desktop session gates; native IR bytes verified when selected')

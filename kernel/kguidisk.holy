@@ -1,0 +1,3 @@
+# Explicit QEMU disposable-volume GUI only. No real-hardware disk support.
+import kguisession
+kguisession.run(true)
