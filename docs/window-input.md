@@ -137,3 +137,12 @@ concurrent page-table mutation or multi-process memory ownership guarantee.
 rejection, empty text, drawing errors, allocation cleanup, and a ring-3 app
 using text/present syscalls. An independent raster oracle checks all 3072
 pixels for lowercase, newlines, fallback glyphs and clipping on both kernels.
+
+## Bootable session
+
+`docs/gui-session.md` describes the single-app GRUB/ring-3 scratchpad.
+Window input waits now repaint a bound target after a nonempty pointer
+batch, so cursor/focus/drag changes are visible while an app waits for a
+key. Without a target, the existing in-memory routing behavior is unchanged.
+`pump` returns the number of pointer events processed; existing callers
+may ignore it. Keyboard-only pumping does not trigger an extra repaint.

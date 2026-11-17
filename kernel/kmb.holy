@@ -16,7 +16,7 @@
 #     +0 total_size, then 8-byte-aligned {type, size} tags; the memory map
 #     is tag 6: +8 entry_size, +12 entry_version, +16 first entry
 #     entry: +0 base (u64), +8 length (u64), +16 type (u32)
-#     module tags are not decoded yet, so mods_count() reports 0 here
+#     module tag 3: +8 start, +12 end, +16 NUL-terminated command line
 #
 # Helpers come before their users: the x64 backend resolves module names
 # statically. Every function returns a normal (tagged) Int.
@@ -214,8 +214,58 @@ def mem_upper():
     return rd32(info() + 16)
   return 0
 
+def mb2_module_at(base, index):
+  # Validate the complete bounded tag chain before returning any module.
+  # index=-1 returns its count. Malformed data returns -1, never a pointer.
+  if base < 8 or base >= 1073676288 or base % 8 != 0 or index < -1:
+    return -1
+  total = rd32(base)
+  if rd32(base + 4) != 0:
+    return -1
+  if total < 16 or total > 65536 or total % 8 != 0 or base + total > 1073741824:
+    return -1
+  off = 8
+  count = 0
+  found = -1
+  while off + 8 <= total:
+    tag = base + off
+    kind = rd32(tag)
+    size = rd32(tag + 4)
+    if size < 8 or off + size > total:
+      return -1
+    if kind == 0:
+      if size != 8 or off + 8 != total:
+        return -1
+      if index == -1:
+        return count
+      return found
+    if kind == 3:
+      # At least one command-line byte; endpoints must stay within the
+      # initial identity mapping, outside the runtime's bump arena.
+      if size < 17:
+        return -1
+      start = rd32(tag + 8)
+      end = rd32(tag + 12)
+      if start < image_end() or end <= start or end > 1073741824:
+        return -1
+      if start < RUNTIME_BUMP_BASE + RUNTIME_BUMP_SIZE and end > RUNTIME_BUMP_BASE:
+        return -1
+      if start < base + total and end > base:
+        return -1
+      unsafe:
+        if load8(as_ptr(tag + size - 1)) != 0:
+          return -1
+      if count == index:
+        found = tag
+      count = count + 1
+    off = (off + size + 7) & -8
+  return -1
+
 def mods_count():
-  # multiboot modules (QEMU -initrd lands here); 0 when none
+  # Modules: QEMU -initrd or GRUB module2. Reject malformed MB2 chains.
+  if abi() == ABI_MB2:
+    n = mb2_module_at(info(), -1)
+    return 0 if n < 0 else n
   if abi() == ABI_QEMU:
     return rd32(info() + 20)
   if abi() == ABI_SPEC:
@@ -223,6 +273,11 @@ def mods_count():
   return 0
 
 def mod_addr(i):
+  if i < 0 or i >= mods_count():
+    return 0
+  if abi() == ABI_MB2:
+    tag = mb2_module_at(info(), i)
+    return 0 if tag < 0 else tag + 8
   if abi() == ABI_QEMU:
     return rd32(info() + 24) + i * 16
   if abi() == ABI_SPEC:
@@ -230,10 +285,12 @@ def mod_addr(i):
   return 0
 
 def mod_start(i):
-  return rd32(mod_addr(i))
+  addr = mod_addr(i)
+  return 0 if addr == 0 else rd32(addr)
 
 def mod_end(i):
-  return rd32(mod_addr(i) + 4)
+  addr = mod_addr(i)
+  return 0 if addr == 0 else rd32(addr + 4)
 
 def mod_len(i):
   return mod_end(i) - mod_start(i)
