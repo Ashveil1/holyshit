@@ -81,8 +81,10 @@ qemu-system-x86_64 -cdrom /tmp/hs-desktop.iso -boot d -m 256M -nic none -serial 
 The default build remains the original scratchpad. The explicit `desktop`
 option packages a different ring-3 app, with two independent note windows
 and a persistent launcher window. Both notes open at startup. Click a note
-to type; Backspace deletes, Enter clears and Down closes that note. Each
-note holds up to 32 bytes. Closing retains its text in the app's RAM.
+to type; Backspace deletes, Enter starts a new line, Up clears and Down
+closes that note. Each note holds three lines of up to32 printable bytes
+each. A full line wraps on the next printable key; a full third line
+ignores more text or Enter. Closing retains the text in the app's RAM.
 Click the launcher and press 1 or 2 to reopen a closed note. Pressing an
 already-open note's number does not create a duplicate. Down in the launcher
 exits the whole session and clears every window. No note is saved to disk.
@@ -97,7 +99,7 @@ waiting on an inactive note's four-second timeout before serving another.
 
 `tests/test_desktop_session.py` boots both kernel backends and checks literal
 RGB glyph pixels, independent edits, overlap/raise/drag, both notes closed
-with launcher intact, retained text after reopen, the 32-byte cap, focus
+with launcher intact, retained multiline text after reopen, the three-line cap, focus
 loss and complete session exit cleanup. Native IR kernel/user image identity
 and no-clobber ISO packaging checks apply here too. Full CI runs this as an
 explicit required step and collects screenshots on failure.
@@ -107,7 +109,7 @@ explicit required step and collects screenshots on failure.
 
 The desktop option draws labels and editable note text at scale2: each
 5x7 glyph becomes10x14 pixels, with12-pixel character advance. The two
-440x150 notes keep32-byte fields that fit entirely in the640x480 desktop.
+440x150 notes keep three-line fields that fit entirely in the640x480 desktop.
 The launcher uses the same larger text. The default scratchpad retains
 its original scale1 layout and60-byte field; the scale change is only
 for the explicit desktop option. The title drag strip remains six pixels.
@@ -120,3 +122,24 @@ invalid styles and user span rejection. Desktop tests independently
 check each expanded glyph pixel in real GRUB screenshots, retaining the
 existing edit/focus/overlap/reopen/cap/exit coverage. This is pixel scaling
 of the existing font, not a new font engine or Unicode text shaping.
+
+
+## Bounded multiline editing
+
+The desktop notes are append-only editors, not full cursor editors. Each
+buffer has128 allocated bytes and stores at most98 source bytes:96 printable
+bytes plus two newline bytes. Newlines are stored explicitly, including
+automatic wraps, so Backspace can erase a newline and move to the end of
+the previous line. Enter on an empty line is allowed until the third row;
+no fourth row is created. Up clears the focused note, not the other note.
+The caret remains after the final byte and cannot move into earlier text.
+No selection, undo, scrolling, Unicode shaping or disk storage is added.
+
+`kernel/unotebuf.holy` owns these bounds independently of the GUI. Its
+hosted x86 test checks both compiler backends, exact text/cursor transitions,
+wrap and newline erasure, ignored edits at capacity, independent notes,
+canaries around all128 buffer bytes, spare bytes after the98-byte maximum,
+and50 repeated full edit/clear cycles. The required desktop GRUB test also
+checks every RGB field byte for manual newlines, cross-line Backspace,
+wrap, full capacity, retained multiline reopen and complete exit cleanup.
+The original default single-line scratchpad is unchanged.

@@ -54,19 +54,23 @@ def run(d):
             return data
         def pixel(im,x,y):return im[(y*640+x)*3:(y*640+x)*3+3]
         def field(im,text,x,y):
-            want=bytearray(WHITE*(416*32))
-            for idx,ch in enumerate(text):
+            want=bytearray(WHITE*(416*56))
+            row_index=0; column=0
+            for ch in text:
+                if ch == '\n':
+                    row_index+=1;column=0;continue
                 for row,bits in enumerate(FORMS[ch]):
                     for col in range(5):
                         if bits & (1<<(4-col)):
                             for dy in range(2):
                                 for dx in range(2):
-                                    at=((8+row*2+dy)*416+4+idx*12+col*2+dx)*3
+                                    at=((8+row_index*16+row*2+dy)*416+4+column*12+col*2+dx)*3
                                     want[at:at+3]=INK
+                column+=1
             for row in range(14):
                 for col in range(10):
-                    at=((8+row)*416+4+len(text)*12+col)*3;want[at:at+3]=CARET
-            got=b''.join(im[((y+60+dy)*640+x+12)*3:((y+60+dy)*640+x+428)*3] for dy in range(32))
+                    at=((8+row_index*16+row)*416+4+column*12+col)*3;want[at:at+3]=CARET
+            got=b''.join(im[((y+60+dy)*640+x+12)*3:((y+60+dy)*640+x+428)*3] for dy in range(56))
             assert got==want,('field mismatch',text[:5],len(text),x,y)
         initial=snap('initial');field(initial,'',24,132);field(initial,'',176,308)
         click(48,170);key('h');key('i')
@@ -81,7 +85,7 @@ def run(d):
         assert pixel(overlap,176,450)==BG,'old note2 location remains'
         # Note1's exposed title raises it over note2 without changing text.
         click(48,135)
-        wait_for(lambda:pixel(snap('raised'),180,172)==bytes.fromhex('e8edf2'),'note1 raise')
+        wait_for(lambda:pixel(snap('raised'),24,132)==bytes.fromhex('2a6fdb'),'note1 raise')
         raised=snap('raised');field(raised,'HA',24,132)
         # Close note2 through its exposed body, then close note1.
         click(550,200);key('down');field(snap('one-note'),'HA',24,132)
@@ -93,10 +97,21 @@ def run(d):
         reopened=snap('reopened');field(reopened,'HA',24,132);field(reopened,'B',176,308)
         before=count();key('1',False);key('2',False);assert count()==before, 'duplicate note opened'
         # Note1 cap is independent of note2 and ignored keys create no edits.
-        click(48,170);key('ret')
-        for _ in range(32):key('a')
-        before=count();key('a',False);key('up',False);assert count()==before
-        capped=snap('capped');field(capped,'A'*32,24,132);field(capped,'B',176,308)
+        click(48,170);key('up')
+        key('h');key('ret');key('i');field(snap('multiline'),'H\nI',24,132)
+        key('backspace');key('backspace');key('a');field(snap('joined'),'HA',24,132)
+        key('ret');key('b');field(snap('manual-line'),'HA\nB',24,132)
+        key('down');click(60,50);key('1')
+        field(snap('multiline-reopened'),'HA\nB',24,132)
+        click(48,170);key('up')
+        for _ in range(96):key('a')
+        before=count();key('a',False);key('ret',False);assert count()==before
+        capped=snap('capped');field(capped,'A'*32+'\n'+'A'*32+'\n'+'A'*32,24,132);field(capped,'B',176,308)
+        # Erase the whole last row and its automatic newline, then append.
+        for _ in range(33):key('backspace')
+        field(snap('wrap-erased'),'A'*32+'\n'+'A'*32,24,132)
+        key('b');field(snap('rewrapped'),'A'*32+'\n'+'A'*32+'\nB',24,132)
+        before=count()
         # No focused window means a key does not reach either note.
         click(620,470);key('h',False);assert count()==before
         click(60,50);key('down',False)
@@ -123,8 +138,11 @@ if __name__=='__main__':
     if '--run-prepared' in sys.argv:
         run(Path(sys.argv[sys.argv.index('--run-prepared')+1]));print('ok prepared desktop session')
     else:
-        for ir_backend in (True,False):
+        backends = (True,False)
+        if '--backend' in sys.argv:
+            backends = (sys.argv[sys.argv.index('--backend')+1] == 'ir',)
+        for ir_backend in backends:
             with tempfile.TemporaryDirectory(prefix='desktop-'+('ir-' if ir_backend else 'ast-')) as temp:
                 d=Path(temp);boot(d,ir_backend,desktop=True);run(d)
             print('ok real multi-window desktop focus/edit/raise/drag/reopen/exit', 'ir' if ir_backend else 'ast')
-        print('2/2 desktop session gates; native IR kernel and user bytes verified')
+        print(str(len(backends))+'/'+str(len(backends))+' desktop session gates; native IR bytes verified when selected')

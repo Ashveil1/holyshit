@@ -1,5 +1,6 @@
 # Two independent scratch buffers plus a persistent keyboard launcher.
 # One process owns all three windows. No disk writes or command execution.
+import unotebuf
 SYS_EXIT = 60
 SYS_WIN_CREATE = 93
 SYS_WIN_CLOSE = 94
@@ -12,18 +13,16 @@ def sc(nr, a1, a2, a3, a4, a5, a6):
 def address(text):
   unsafe:
     return as_int(as_ptr(text)) + 16
-def buffer():
-  unsafe:
-    return as_int(alloc(64))
 def label(wid, x, y, text, color):
   return sc(SYS_WIN_TEXT, wid, x, y, address(text), byte_len(text), color + 16777216)
 def present():
   return sc(SYS_WIN_PRESENT, 0, 0, 0, 0, 0, 0)
 def input_draw(note):
   wid = note[0]
-  sc(SYS_WIN_FILL, wid, 12, 54, 416, 32, 0xffffff)
+  sc(SYS_WIN_FILL, wid, 12, 54, 416, 56, 0xffffff)
   label(wid, 16, 62, read_mem(note[1], note[2]), 0x16324f)
-  sc(SYS_WIN_FILL, wid, 16 + note[2] * 12, 62, 10, 14, 0x386fa4)
+  pos = unotebuf.position(note)
+  sc(SYS_WIN_FILL, wid, 16 + pos[1] * 12, 62 + pos[0] * 16, 10, 14, 0x386fa4)
 def open_note(note, number):
   if note[0] != 0:
     return false
@@ -34,11 +33,11 @@ def open_note(note, number):
     return false
   note[0] = wid
   label(wid, 12, 12, "NOTE " + str(number) + " - RAM ONLY", 0x16324f)
-  label(wid, 12, 30, "ENTER CLEAR. DOWN CLOSE.", 0x16324f)
-  label(wid, 12, 116, "32 BYTES. DRAG TITLE. NOT SAVED.", 0x16324f)
+  label(wid, 12, 30, "ENTER NEWLINE. DOWN CLOSE.", 0x16324f)
+  label(wid, 12, 116, "UP CLEAR. 3 X 32. NOT SAVED.", 0x16324f)
   input_draw(note)
   return true
-notes = [[0, buffer(), 0], [0, buffer(), 0]]
+notes = [[0, unotebuf.buffer(), 0], [0, unotebuf.buffer(), 0]]
 launcher = sc(SYS_WIN_CREATE, 16, 16, 608, 100, 0x224466, 0)
 if launcher < 0:
   sc(SYS_EXIT, 1, 0, 0, 0, 0, 0)
@@ -71,19 +70,7 @@ while true:
             note[0] = 0
             print "DESKTOP CLOSE", i + 1
           else:
-            changed = false
-            if key == 10:
-              note[2] = 0
-              changed = true
-            elif key == 8 and note[2] > 0:
-              note[2] = note[2] - 1
-              changed = true
-            elif key >= 32 and key <= 126 and note[2] < 32:
-              p = note[1] + note[2]
-              unsafe:
-                store8(as_ptr(p), key)
-              note[2] = note[2] + 1
-              changed = true
+            changed = unotebuf.edit(note, key)
             if changed:
               input_draw(note)
               present()
