@@ -271,6 +271,7 @@ def pump(r):
       break
     handle(r, pev)
     n = n + 1
+  moved = n
   n = 0
   while n < 64:
     code = readkey_event()
@@ -278,6 +279,7 @@ def pump(r):
       break
     handle_key(r, code)
     n = n + 1
+  return moved
 
 def sys_read(wid):
   # SYS_WIN_EVENT_READ: bounded ring-0 wait, 0 on empty/no router.
@@ -286,7 +288,9 @@ def sys_read(wid):
   irq_on()
   t0 = ticks()
   while true:
-    pump(sys_router)
+    moved = pump(sys_router)
+    if moved > 0 and sys_router[6] != null:
+      present(sys_router)
     out = drain(sys_router, wid)
     if out != 0:
       return out
@@ -303,7 +307,9 @@ def sys_key_read(wid):
   irq_on()
   t0 = ticks()
   while true:
-    pump(sys_router)
+    moved = pump(sys_router)
+    if moved > 0 and sys_router[6] != null:
+      present(sys_router)
     out = key_drain(sys_router, wid)
     if out != 0:
       return out

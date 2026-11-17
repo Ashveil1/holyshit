@@ -21,12 +21,12 @@ def create(width, height):
   buf = kheap.malloc(width * height * 4)
   if buf == 0:
     raise "surface allocation failed"
-  i = 0
   total = width * height
-  while i < total:
-    unsafe:
+  unsafe:
+    I64 i = 0
+    while i < total:
       store32(as_ptr(buf + i * 4), 0)
-    i = i + 1
+      i = i + 1
   # [width, height, backbuf, ndirty, flat rects x0 y0 x1 y1 ...]
   return [width, height, buf, 0, []]
 
@@ -99,15 +99,16 @@ def rect(s, x, y, width, height, color):
   right = s[0] if x + width > s[0] else x + width
   bottom = s[1] if y + height > s[1] else y + height
   buf = s[2]
-  row = top
-  while row < bottom:
-    col = left
-    while col < right:
-      address = buf + (row * s[0] + col) * 4
-      unsafe:
-        store32(as_ptr(address), color)
-      col = col + 1
-    row = row + 1
+  stride = s[0] * 4
+  unsafe:
+    I64 row = top
+    while row < bottom:
+      I64 target = buf + row * stride + left * 4
+      I64 stop = buf + row * stride + right * 4
+      while target < stop:
+        store32(as_ptr(target), color)
+        target = target + 4
+      row = row + 1
   mark(s, left, top, right, bottom)
 
 def sample(s, x, y):
@@ -142,16 +143,21 @@ def blit(dst, src, x, y):
   top = 0 if y < 0 else y
   right = dst[0] if x + src[0] > dst[0] else x + src[0]
   bottom = dst[1] if y + src[1] > dst[1] else y + src[1]
-  row = top
-  while row < bottom:
-    col = left
-    while col < right:
-      source = src[2] + ((row - y) * src[0] + col - x) * 4
-      target = dst[2] + (row * dst[0] + col) * 4
-      unsafe:
+  source_buf = src[2]
+  target_buf = dst[2]
+  source_stride = src[0] * 4
+  target_stride = dst[0] * 4
+  unsafe:
+    I64 row = top
+    while row < bottom:
+      I64 source = source_buf + (row - y) * source_stride + (left - x) * 4
+      I64 target = target_buf + row * target_stride + left * 4
+      I64 stop = target_buf + row * target_stride + right * 4
+      while target < stop:
         store32(as_ptr(target), load32(as_ptr(source)))
-      col = col + 1
-    row = row + 1
+        source = source + 4
+        target = target + 4
+      row = row + 1
   mark(dst, left, top, right, bottom)
   return true
 
@@ -167,27 +173,28 @@ def flush(s, frame):
     y0 = s[4][i * 4 + 1]
     x1 = s[4][i * 4 + 2]
     y1 = s[4][i * 4 + 3]
-    row = y0
-    while row < y1:
-      base = frame[0] + row * frame[1]
-      col = x0
-      while col < x1:
-        source = buf + (row * s[0] + col) * 4
-        address = base + col * frame[4]
-        red_address = address + frame[5]
-        green_address = address + frame[6]
-        blue_address = address + frame[7]
-        # Keep each load and its use in one unsafe statement: the AST
-        # backend does not carry a plain local assigned in unsafe out of
-        # the block (reads Unbound); single-expression load-store matches
-        # kconsole_buffer and compiles under both backends.
-        unsafe:
-          store8(as_ptr(red_address), load32(as_ptr(source)) >> 16 & 255)
-          store8(as_ptr(green_address), load32(as_ptr(source)) >> 8 & 255)
-          store8(as_ptr(blue_address), load32(as_ptr(source)) & 255)
-        written = written + 1
-        col = col + 1
-      row = row + 1
+    source_stride = s[0] * 4
+    target_buf = frame[0]
+    target_stride = frame[1]
+    bpp = frame[4]
+    red = frame[5]
+    green = frame[6]
+    blue = frame[7]
+    unsafe:
+      I64 row = y0
+      while row < y1:
+        I64 source = buf + row * source_stride + x0 * 4
+        I64 target = target_buf + row * target_stride + x0 * bpp
+        I64 stop = buf + row * source_stride + x1 * 4
+        while source < stop:
+          I64 color = load32(as_ptr(source))
+          store8(as_ptr(target + red), color >> 16 & 255)
+          store8(as_ptr(target + green), color >> 8 & 255)
+          store8(as_ptr(target + blue), color & 255)
+          source = source + 4
+          target = target + bpp
+        row = row + 1
+    written = written + (x1 - x0) * (y1 - y0)
     i = i + 1
   s[3] = 0
   s[4] = []
