@@ -29,7 +29,8 @@ SYS_WIN_KEY_READ returns the oldest accepted key for the requested window,
 not necessarily the window currently focused. It returns 0 for a missing
 window, no bound router, or a wait that expires with no key. Codes follow
 [the ordered keyboard stream](keyboard-events.md): ASCII byte codes and
-Up=128 / Down=129. They are translated make events, not raw scancodes or
+Up=128 / Down=129 / Left=130 / Right=131 / Home=132 / End=133 /
+Delete=134 / Escape=135. They are translated make events, not raw scancodes or
 key-up events. Each window queue holds 64 keys and drops newest on overflow.
 Pointer events use separate queues and keep their existing packed format.
 
@@ -187,3 +188,15 @@ Every block clips before drawing, including partially visible scaled
 glyphs at negative offsets or at the right/bottom body edges. No user
 framebuffer pointer is accepted. Legacy98 stays fixed-scale1 and keeps
 its existing result/validation behavior.
+
+
+### Keyboard editing event codes
+
+The backend decodes set-1 E0 make sequences `E0 4B` (Left), `E0 4D`
+(Right), `E0 47` (Home), `E0 4F` (End), and `E0 53` (Delete) as ordered
+input events 130..134. The normal unprefixed Escape make `01` is event 135.
+These events do not enter the legacy ASCII or Up/Down navigation queues.
+Up/Down retain both their event codes and legacy navigation values 1/2.
+Break codes, unknown E0 sequences and E0 fake shifts are ignored. Repeated
+E0 prefixes keep the next byte extended; an ordinary key after a complete
+extended sequence is decoded normally. Unprefixed keypad codes are unchanged.

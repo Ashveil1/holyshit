@@ -71,6 +71,22 @@ def probe(g,mod):
     get(98);get(99);get(10);get(0)
     for n in [1,2,0]:
         a.call('nav_dequeue');number();expected.append(str(n)+'\n')
+    # Set-1 E0 editing keys use event-only codes; Escape is unprefixed.
+    # Releases, unknown E0 keys and fake-shift bytes must not leak as ASCII.
+    for scan_code, event in [(0x4B,130),(0x4D,131),(0x47,132),(0x4F,133),(0x53,134)]:
+        scan(0xE0);scan(scan_code)
+        scan(0xE0);scan(scan_code|0x80)
+        a.call('event_dequeue');number();expected.append(str(event)+'\n')
+        a.call('event_dequeue');number();expected.append('0\n')
+        get(0)
+        a.call('nav_dequeue');number();expected.append('0\n')
+    for n in [0x4B,0xCB,0x4D,0xCD,0x47,0xC7,0x4F,0xCF,0x53,0xD3,
+              0x01,0x81,0xE0,0x01,0xE0,0x2A,0xE0,0xAA,
+              0xE0,0xE0,0x4B,0xE0,0xCB,0x1E,0x9E]:scan(n)
+    for n in [135,130,97,0]:
+        a.call('event_dequeue');number();expected.append(str(n)+'\n')
+    get(97);get(0)
+    a.call('nav_dequeue');number();expected.append('0\n')
     # A full event queue cannot corrupt either legacy queue. Wrapping keeps
     # oldest accepted input and drop-newest counts each rejected event.
     for n in range(65):scan(0x1E)
