@@ -1,0 +1,85 @@
+import unotebuf
+fails = 0
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+  else:
+    print "FAIL", label, got, want
+    fails = fails + 1
+def text(note):
+  return read_mem(note[1], note[2])
+a = [0, unotebuf.buffer(), 0]
+b = [0, unotebuf.buffer(), 0]
+expect("empty backspace unchanged", unotebuf.edit(a, 8), false)
+expect("empty clear unchanged", unotebuf.edit(a, 128), false)
+expect("printable accepted", unotebuf.edit(a, 104), true)
+expect("second printable accepted", unotebuf.edit(a, 105), true)
+expect("initial text", text(a), "hi")
+expect("enter creates newline", unotebuf.edit(a, 10), true)
+expect("position after newline", unotebuf.position(a), [1, 0])
+unotebuf.edit(a, 97)
+expect("two lines", text(a), "hi\na")
+unotebuf.edit(a, 8)
+expect("erase last character", text(a), "hi\n")
+unotebuf.edit(a, 8)
+expect("erase newline joins cursor", unotebuf.position(a), [0, 2])
+expect("joined text", text(a), "hi")
+expect("independent note untouched", text(b), "")
+unotebuf.edit(a, 128)
+expect("clear empties note", text(a), "")
+# Canaries surround the entire128-byte storage, including spare bytes.
+def guarded():
+  unsafe:
+    return as_int(alloc(160))
+guard = guarded()
+for i in range(160):
+  unsafe:
+    store8(as_ptr(guard + i), 90)
+a[1] = guard + 16
+for i in range(32):
+  unotebuf.edit(a, 97)
+expect("first row can be full", unotebuf.position(a), [0, 32])
+expect("wrap accepts next printable", unotebuf.edit(a, 98), true)
+expect("wrap stores newline", unotebuf.byte_at(a[1] + 32), 10)
+expect("wrapped cursor", unotebuf.position(a), [1, 1])
+for i in range(63):
+  unotebuf.edit(a, 98)
+expect("three full lines", unotebuf.position(a), [2, 32])
+expect("maximum source length", a[2], 98)
+expect("overflow character refused", unotebuf.edit(a, 99), false)
+expect("overflow enter refused", unotebuf.edit(a, 10), false)
+expect("rejected edits preserve length", a[2], 98)
+canaries = true
+for i in range(16):
+  if unotebuf.byte_at(guard + i) != 90 or unotebuf.byte_at(guard + 144 + i) != 90:
+    canaries = false
+for i in range(98, 128):
+  if unotebuf.byte_at(a[1] + i) != 90:
+    canaries = false
+expect("storage canaries preserved", canaries, true)
+for i in range(33):
+  unotebuf.edit(a, 8)
+expect("backspace crosses automatic newline", unotebuf.position(a), [1, 32])
+expect("backspace drops exactly33bytes", a[2], 65)
+unotebuf.edit(a, 128)
+unotebuf.edit(a, 10)
+unotebuf.edit(a, 10)
+expect("two empty lines allowed", text(a), "\n\n")
+expect("fourth empty row refused", unotebuf.edit(a, 10), false)
+expect("unsupported navigation ignored", unotebuf.edit(a, 129), false)
+expect("NUL ignored", unotebuf.edit(a, 0), false)
+expect("DEL ignored", unotebuf.edit(a, 127), false)
+expect("high byte ignored", unotebuf.edit(a, 255), false)
+# Repeat bounded edit/clear cycles to ensure counters never escape bounds.
+valid = true
+for cycle in range(50):
+  unotebuf.edit(a, 128)
+  for i in range(120):
+    unotebuf.edit(a, 97)
+  pos = unotebuf.position(a)
+  if a[2] != 98 or pos != [2, 32]:
+    valid = false
+expect("repeated bounded cycles", valid, true)
+print "fails", fails
+print "notebuf-done"

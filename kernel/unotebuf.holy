@@ -1,0 +1,49 @@
+# Bounded append-only three-line RAM note editor; no window or I/O effects.
+def buffer():
+  unsafe:
+    return as_int(alloc(128))
+def byte_at(p):
+  unsafe:
+    return load8(as_ptr(p))
+def position(note):
+  row = 0
+  col = 0
+  for i in range(note[2]):
+    if byte_at(note[1] + i) == 10:
+      row = row + 1
+      col = 0
+    else:
+      col = col + 1
+  return [row, col]
+def put_byte(note, key):
+  p = note[1] + note[2]
+  unsafe:
+    store8(as_ptr(p), key)
+  note[2] = note[2] + 1
+def edit(note, key):
+  # The cursor is append-only. At most3 rows of32 printable bytes,
+  # with at most2 explicit stored newline bytes:98 bytes fit in128.
+  if key == 128:
+    if note[2] == 0:
+      return false
+    note[2] = 0
+    return true
+  if key == 8:
+    if note[2] == 0:
+      return false
+    note[2] = note[2] - 1
+    return true
+  pos = position(note)
+  if key == 10:
+    if pos[0] >= 2:
+      return false
+    put_byte(note, 10)
+    return true
+  if key >= 32 and key <= 126:
+    if pos[1] >= 32:
+      if pos[0] >= 2:
+        return false
+      put_byte(note, 10)
+    put_byte(note, key)
+    return true
+  return false
