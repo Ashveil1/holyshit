@@ -73,6 +73,7 @@ for key in keys:
     want.append([text.copy(),caret,list(where),display])
 with tempfile.TemporaryDirectory() as temp:
     d=Path(temp);source=d/'sequence.holy'
+    shutil.copyfile(ROOT/'kernel/unotebuf.holy', d/'unotebuf.holy')
     source.write_text('import unotebuf\ndef address(text):\n  unsafe:\n    return as_int(as_ptr(text)) + 16\nnote = unotebuf.create()\nkeys = '+str(keys)+'\n'
         'for key in keys:\n  if key == -1:\n    unotebuf.clear(note)\n  else:\n    unotebuf.edit(note, key)\n'
         '  bytes = []\n  for i in range(note[2]):\n    append(bytes, unotebuf.byte_at(note[1] + i))\n'
