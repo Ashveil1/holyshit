@@ -146,3 +146,21 @@ batch, so cursor/focus/drag changes are visible while an app waits for a
 key. Without a target, the existing in-memory routing behavior is unchanged.
 `pump` returns the number of pointer events processed; existing callers
 may ignore it. Keyboard-only pumping does not trigger an extra repaint.
+
+## Any-window keyboard wait (99)
+
+`SYS_WIN_KEY_ANY=99` takes no arguments and returns zero after the existing
+bounded four-second wait, or `wid * 256 + code` for an accepted key. Decode
+with `wid = result >> 8` and `code = result & 255`. It pumps the same mouse
+and keyboard FIFOs and repaints a bound frame on pointer batches. No router
+returns zero. It never invents a recipient based on the focus at read time:
+queued keys keep their original window id; closing drops that window's queue.
+
+Each window remains FIFO. Nonempty queues are served round-robin, not in a
+global cross-window timestamp order. Mixing the old per-window read and
+this read consumes from the same queues, without duplicating keys. The
+existing single-process ownership model still applies. Window ids stop at
+9007199254740991, ensuring every encoded event fits exactly in a signed
+62-bit hs Int; further creates return -12 without creating a window.
+`tests/test_winkey_any.py` pins routing, rotation, old/new read interaction,
+close cleanup and the largest representable event on both kernel backends.

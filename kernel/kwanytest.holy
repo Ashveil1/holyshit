@@ -1,0 +1,61 @@
+# Any-window keyboard policy: per-window FIFO, recipient identity, fairness.
+import kpmm
+import kheap
+import ksurface
+import kcomp
+import kwinroute
+import ksyscall
+fails = 0
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+  else:
+    print "FAIL", label, got, want
+    fails = fails + 1
+expect("pmm ready", kpmm.init() > 0, true)
+expect("heap ready", kheap.init(64), true)
+expect("unbound any read", kwinroute.sys_key_any(), 0)
+c = kcomp.create(ksurface.create(64, 48))
+r = kwinroute.create(c)
+kwinroute.bind(r)
+a = kwinroute.sys_create(0, 0, 20, 20, 0)
+b = kwinroute.sys_create(30, 0, 20, 20, 0)
+expect("empty any drain", kwinroute.key_any(r), 0)
+expect("no focus drops input", kwinroute.handle_key(r, 97), false)
+c[5] = a
+kwinroute.handle_key(r, 97)
+kwinroute.handle_key(r, 98)
+c[5] = b
+kwinroute.handle_key(r, 99)
+kwinroute.handle_key(r, 129)
+expect("first recipient retained", kwinroute.key_any(r), a * 256 + 97)
+expect("second queue served fairly", kwinroute.key_any(r), b * 256 + 99)
+expect("first FIFO retained", kwinroute.key_any(r), a * 256 + 98)
+expect("second FIFO retained", kwinroute.key_any(r), b * 256 + 129)
+expect("all queues drained", kwinroute.key_any(r), 0)
+c[5] = a
+kwinroute.handle_key(r, 100)
+c[5] = -1
+expect("focus loss does not retarget queued key", kwinroute.key_any(r), a * 256 + 100)
+c[5] = a
+kwinroute.handle_key(r, 101)
+expect("close queued recipient", kwinroute.sys_close(a), 0)
+expect("closed queue dropped", kwinroute.key_any(r), 0)
+c[5] = b
+kwinroute.handle_key(r, 102)
+expect("old per-window syscall can drain", kwinroute.sys_key_read(b), 102)
+kwinroute.handle_key(r, 103)
+expect("new syscall dispatch returns identity", ksyscall.dispatch(99, 0, 0, 0, 0, 0, 0), b * 256 + 103)
+c[0] = 9007199254740991
+last = kwinroute.sys_create(0, 0, 1, 1, 0)
+expect("maximum packed window id", last, 9007199254740991)
+c[5] = last
+kwinroute.handle_key(r, 129)
+expect("maximum event is exact", kwinroute.key_any(r), 2305843009213693825)
+expect("unpackable window id refused", kwinroute.sys_create(0, 0, 1, 1, 0), -12)
+kwinroute.sys_close_all()
+expect("all windows close", len(c[1]), 0)
+expect("all queues close", len(r[4]), 0)
+print "fails", fails
+print "wany-done"
