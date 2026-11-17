@@ -172,7 +172,7 @@ def run(d, iso):
         hmp('mouse_move 120 -150'); click(); key('backspace')
         input_pixels(snap('refocused'),'A'*59,110,120)
         key('down',False)
-        wait_for(lambda:'GUI SESSION STOPPED' in output(), 'ring3 exit cleanup', 10)
+        wait_for(lambda:re.search(r'GUI SESSION STOPPED\s+0\s+0\s+0\s+0',output()), 'complete ring3 exit cleanup', 10)
         assert re.search(r'GUI SESSION STOPPED\s+0\s+0\s+0\s+0', output()), output()
         closed = snap('closed')
         # Only the 7x7 software cursor may remain on the desktop.

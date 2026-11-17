@@ -137,7 +137,7 @@ def run(d, disk=None):
         # No focused window means a key does not reach either note.
         click(620,470);key('h',False);assert count()==before
         click(60,50);key('esc',False)
-        wait_for(lambda:'GUI SESSION STOPPED' in out(),'session exit')
+        wait_for(lambda:re.search(r'GUI SESSION STOPPED\s+0\s+0\s+0\s+0',out()),'complete session exit')
         assert re.search(r'GUI SESSION STOPPED\s+0\s+0\s+0\s+0',out()),out()
         closed=snap('closed')
         for y in range(480):
