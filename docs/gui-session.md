@@ -82,7 +82,7 @@ The default build remains the original scratchpad. The explicit `desktop`
 option packages a different ring-3 app, with two independent note windows
 and a persistent launcher window. Both notes open at startup. Click a note
 to type; Backspace deletes, Enter clears and Down closes that note. Each
-note holds up to 54 bytes. Closing retains its text in the app's RAM.
+note holds up to 32 bytes. Closing retains its text in the app's RAM.
 Click the launcher and press 1 or 2 to reopen a closed note. Pressing an
 already-open note's number does not create a duplicate. Down in the launcher
 exits the whole session and clears every window. No note is saved to disk.
@@ -97,7 +97,26 @@ waiting on an inactive note's four-second timeout before serving another.
 
 `tests/test_desktop_session.py` boots both kernel backends and checks literal
 RGB glyph pixels, independent edits, overlap/raise/drag, both notes closed
-with launcher intact, retained text after reopen, the 54-byte cap, focus
+with launcher intact, retained text after reopen, the 32-byte cap, focus
 loss and complete session exit cleanup. Native IR kernel/user image identity
 and no-clobber ISO packaging checks apply here too. Full CI runs this as an
 explicit required step and collects screenshots on failure.
+
+
+## Readable desktop text
+
+The desktop option draws labels and editable note text at scale2: each
+5x7 glyph becomes10x14 pixels, with12-pixel character advance. The two
+440x150 notes keep32-byte fields that fit entirely in the640x480 desktop.
+The launcher uses the same larger text. The default scratchpad retains
+its original scale1 layout and60-byte field; the scale change is only
+for the explicit desktop option. The title drag strip remains six pixels.
+
+Scaled drawing uses the new syscall100; legacy syscall98 remains fixed
+at scale1. `tests/test_winscale.py` verifies all4096 RGB pixels of a real
+ring3 drawing on both kernel backends, with all four scales, legacy98 in
+the same image, lowercase/fallback/newline, left/right/bottom clipping,
+invalid styles and user span rejection. Desktop tests independently
+check each expanded glyph pixel in real GRUB screenshots, retaining the
+existing edit/focus/overlap/reopen/cap/exit coverage. This is pixel scaling
+of the existing font, not a new font engine or Unicode text shaping.

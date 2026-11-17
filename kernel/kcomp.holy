@@ -204,15 +204,35 @@ def text_address(text):
   unsafe:
     return as_int(as_ptr(text)) + 16
 
-def win_text(c, wid, x, y, text, color):
-  # Byte-oriented 5x7 text, fixed scale 1, transparent background.
+def text_row(buf, width, height, x, y, mask, color, scale):
+  # Caller validated the live body, scale and bounded coordinates. Only
+  # clipped pixels reach its back buffer; no per-pixel list allocations.
+  unsafe:
+    I64 col = 0
+    while col < 5:
+      if mask & (1 << (4 - col)):
+        I64 dx = 0
+        while dx < scale:
+          I64 px = x + col * scale + dx
+          if px >= 0 and px < width:
+            I64 dy = 0
+            while dy < scale:
+              I64 py = y + dy
+              if py >= 0 and py < height:
+                store32(as_ptr(buf + (py * width + px) * 4), color)
+              dy = dy + 1
+          dx = dx + 1
+      col = col + 1
+
+def win_text_scaled(c, wid, x, y, text, color, scale):
+  # Byte-oriented 5x7 text, integer scale 1..4, transparent background.
   # The syscall layer copies and validates the full user span first.
   i = win_find(c, wid)
   if i < 0:
     return -22
   if x < -1048576 or x > 1048576 or y < -1048576 or y > 1048576:
     return -22
-  if color < 0 or color > 16777215 or byte_len(text) > 256:
+  if color < 0 or color > 16777215 or byte_len(text) > 256 or scale < 1 or scale > 4:
     return -22
   w = c[1][i]
   bh = w[4] - title_h(w)
@@ -229,23 +249,20 @@ def win_text(c, wid, x, y, text, color):
     code = kfont.byte_at(address, index)
     if code == 10:
       x = left
-      y = y + 8
+      y = y + 8 * scale
     else:
       bits = kfont.rows_byte(code)
       row = 0
       while row < 7:
-        col = 0
-        while col < 5:
-          if bits[row] & (1 << (4 - col)):
-            # Clip before calling surface helpers: long lines near the
-            # coordinate limit must not raise partway through drawing.
-            if x + col >= 0 and x + col < w[3] and y + row >= 0 and y + row < bh:
-              ksurface.pixel(w[6], x + col, y + row, color)
-          col = col + 1
+        text_row(w[6][2], w[3], bh, x, y + row * scale, bits[row], color, scale)
         row = row + 1
-      x = x + 6
+      x = x + 6 * scale
     index = index + 1
+  ksurface.mark(w[6], 0, 0, w[3], bh)
   return 0
+
+def win_text(c, wid, x, y, text, color):
+  return win_text_scaled(c, wid, x, y, text, color, 1)
 
 def compose(c):
   # Redraw the whole scene bottom-to-top, cursor last. Each window is a
