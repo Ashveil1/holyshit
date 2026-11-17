@@ -19,58 +19,65 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     check(r.returncode==2 and 'usage:' in r.stderr,'installer requires explicit destination')
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(d/'absent'/'install')],env=env,capture_output=True,text=True,timeout=10)
     check(r.returncode!=0 and not (d/'absent').exists(),'missing parent does not create or change directories')
-    # A second-driver build failure must not publish a partial installation.
-    broken=d/'broken checkout'
-    broken.mkdir()
-    for name in ('scripts','bootstrap','selfhost','runtime','std','docs'):
-        shutil.copytree(ROOT/name,broken/name)
-    shutil.copyfile(ROOT/'VERSION',broken/'VERSION')
-    (broken/'selfhost/be/irinterp_run.holy').write_text('def broken(:\n')
-    failed_install=d/'failed install'
-    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_install)],env=env,capture_output=True,text=True,timeout=240)
-    check(r.returncode!=0 and not failed_install.exists() and not list(d.glob('.holyshit-bundle.*')),'interpreter build failure cleans staging without publishing')
-    # The third build must also fail without publishing the first two drivers.
-    shutil.copyfile(ROOT/'selfhost/be/irinterp_run.holy',broken/'selfhost/be/irinterp_run.holy')
-    (broken/'selfhost/fmt.holy').write_text('def broken(:\n')
-    failed_fmt_install=d/'failed formatter install'
-    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_fmt_install)],env=env,capture_output=True,text=True,timeout=240)
-    check(r.returncode!=0 and not failed_fmt_install.exists() and not list(d.glob('.holyshit-bundle.*')),'formatter build failure cleans staging without publishing')
-    # The fourth build must also fail without publishing the first three drivers.
-    shutil.copyfile(ROOT/'selfhost/fmt.holy',broken/'selfhost/fmt.holy')
-    (broken/'selfhost/check_run.holy').write_text('def broken(:\n')
-    failed_check_install=d/'failed checker install'
-    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_check_install)],env=env,capture_output=True,text=True,timeout=240)
-    check(r.returncode!=0 and not failed_check_install.exists() and not list(d.glob('.holyshit-bundle.*')),'checker build failure cleans staging without publishing')
-    # The fifth build must also fail without publishing the first four drivers.
-    shutil.copyfile(ROOT/'selfhost/check_run.holy',broken/'selfhost/check_run.holy')
-    (broken/'selfhost/test_run.holy').write_text('def broken(:\n')
-    failed_test_install=d/'failed tester install'
-    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_test_install)],env=env,capture_output=True,text=True,timeout=240)
-    check(r.returncode!=0 and not failed_test_install.exists() and not list(d.glob('.holyshit-bundle.*')),'tester build failure cleans staging without publishing')
-    # The sixth build must also fail without publishing the first five drivers.
-    shutil.copyfile(ROOT/'selfhost/test_run.holy',broken/'selfhost/test_run.holy')
-    (broken/'selfhost/explain_run.holy').write_text('def broken(:\n')
-    failed_explain_install=d/'failed explainer install'
-    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_explain_install)],env=env,capture_output=True,text=True,timeout=240)
-    check(r.returncode!=0 and not failed_explain_install.exists() and not list(d.glob('.holyshit-bundle.*')),'explainer build failure cleans staging without publishing')
-    # The seventh build must also fail without publishing the first six drivers.
-    shutil.copyfile(ROOT/'selfhost/explain_run.holy',broken/'selfhost/explain_run.holy')
-    (broken/'selfhost/cc.holy').write_text('def broken(:\n')
-    failed_cc_install=d/'failed compiler install'
-    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_cc_install)],env=env,capture_output=True,text=True,timeout=240)
-    check(r.returncode!=0 and not failed_cc_install.exists() and not list(d.glob('.holyshit-bundle.*')),'compiler build failure cleans staging without publishing')
-    # The eighth build must also fail without publishing the first seven drivers.
-    shutil.copyfile(ROOT/'selfhost/cc.holy',broken/'selfhost/cc.holy')
-    (broken/'selfhost/ir_run.holy').write_text('def broken(:\n')
-    failed_ir_install=d/'failed IR dumper install'
-    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_ir_install)],env=env,capture_output=True,text=True,timeout=240)
-    check(r.returncode!=0 and not failed_ir_install.exists() and not list(d.glob('.holyshit-bundle.*')),'IR dumper build failure cleans staging without publishing')
-    # The ninth build must also fail without publishing the first eight drivers.
-    shutil.copyfile(ROOT/'selfhost/ir_run.holy',broken/'selfhost/ir_run.holy')
-    (broken/'selfhost/lsp.holy').write_text('def broken(:\n')
-    failed_lsp_install=d/'failed language server install'
-    r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_lsp_install)],env=env,capture_output=True,text=True,timeout=240)
-    check(r.returncode!=0 and not failed_lsp_install.exists() and not list(d.glob('.holyshit-bundle.*')),'language server build failure cleans staging without publishing')
+    if '--skip-failure-builds' not in sys.argv:
+        # A second-driver build failure must not publish a partial installation.
+        broken=d/'broken checkout'
+        broken.mkdir()
+        for name in ('scripts','bootstrap','selfhost','runtime','std','docs'):
+            shutil.copytree(ROOT/name,broken/name)
+        shutil.copyfile(ROOT/'VERSION',broken/'VERSION')
+        (broken/'selfhost/be/irinterp_run.holy').write_text('def broken(:\n')
+        failed_install=d/'failed install'
+        r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_install)],env=env,capture_output=True,text=True,timeout=240)
+        check(r.returncode!=0 and not failed_install.exists() and not list(d.glob('.holyshit-bundle.*')),'interpreter build failure cleans staging without publishing')
+        # The third build must also fail without publishing the first two drivers.
+        shutil.copyfile(ROOT/'selfhost/be/irinterp_run.holy',broken/'selfhost/be/irinterp_run.holy')
+        (broken/'selfhost/fmt.holy').write_text('def broken(:\n')
+        failed_fmt_install=d/'failed formatter install'
+        r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_fmt_install)],env=env,capture_output=True,text=True,timeout=240)
+        check(r.returncode!=0 and not failed_fmt_install.exists() and not list(d.glob('.holyshit-bundle.*')),'formatter build failure cleans staging without publishing')
+        # The fourth build must also fail without publishing the first three drivers.
+        shutil.copyfile(ROOT/'selfhost/fmt.holy',broken/'selfhost/fmt.holy')
+        (broken/'selfhost/check_run.holy').write_text('def broken(:\n')
+        failed_check_install=d/'failed checker install'
+        r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_check_install)],env=env,capture_output=True,text=True,timeout=240)
+        check(r.returncode!=0 and not failed_check_install.exists() and not list(d.glob('.holyshit-bundle.*')),'checker build failure cleans staging without publishing')
+        # The fifth build must also fail without publishing the first four drivers.
+        shutil.copyfile(ROOT/'selfhost/check_run.holy',broken/'selfhost/check_run.holy')
+        (broken/'selfhost/test_run.holy').write_text('def broken(:\n')
+        failed_test_install=d/'failed tester install'
+        r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_test_install)],env=env,capture_output=True,text=True,timeout=240)
+        check(r.returncode!=0 and not failed_test_install.exists() and not list(d.glob('.holyshit-bundle.*')),'tester build failure cleans staging without publishing')
+        # The sixth build must also fail without publishing the first five drivers.
+        shutil.copyfile(ROOT/'selfhost/test_run.holy',broken/'selfhost/test_run.holy')
+        (broken/'selfhost/explain_run.holy').write_text('def broken(:\n')
+        failed_explain_install=d/'failed explainer install'
+        r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_explain_install)],env=env,capture_output=True,text=True,timeout=240)
+        check(r.returncode!=0 and not failed_explain_install.exists() and not list(d.glob('.holyshit-bundle.*')),'explainer build failure cleans staging without publishing')
+        # The seventh build must also fail without publishing the first six drivers.
+        shutil.copyfile(ROOT/'selfhost/explain_run.holy',broken/'selfhost/explain_run.holy')
+        (broken/'selfhost/cc.holy').write_text('def broken(:\n')
+        failed_cc_install=d/'failed compiler install'
+        r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_cc_install)],env=env,capture_output=True,text=True,timeout=240)
+        check(r.returncode!=0 and not failed_cc_install.exists() and not list(d.glob('.holyshit-bundle.*')),'compiler build failure cleans staging without publishing')
+        # The eighth build must also fail without publishing the first seven drivers.
+        shutil.copyfile(ROOT/'selfhost/cc.holy',broken/'selfhost/cc.holy')
+        (broken/'selfhost/ir_run.holy').write_text('def broken(:\n')
+        failed_ir_install=d/'failed IR dumper install'
+        r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_ir_install)],env=env,capture_output=True,text=True,timeout=240)
+        check(r.returncode!=0 and not failed_ir_install.exists() and not list(d.glob('.holyshit-bundle.*')),'IR dumper build failure cleans staging without publishing')
+        # The ninth build must also fail without publishing the first eight drivers.
+        shutil.copyfile(ROOT/'selfhost/ir_run.holy',broken/'selfhost/ir_run.holy')
+        (broken/'selfhost/lsp.holy').write_text('def broken(:\n')
+        failed_lsp_install=d/'failed language server install'
+        r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_lsp_install)],env=env,capture_output=True,text=True,timeout=240)
+        check(r.returncode!=0 and not failed_lsp_install.exists() and not list(d.glob('.holyshit-bundle.*')),'language server build failure cleans staging without publishing')
+        # The tenth build must not publish the first nine drivers on failure.
+        shutil.copyfile(ROOT/'selfhost/lsp.holy',broken/'selfhost/lsp.holy')
+        (broken/'selfhost/repl.holy').write_text('def broken(:\n')
+        failed_repl_install=d/'failed repl install'
+        r=subprocess.run(['/bin/sh',str(broken/'scripts/install-native.sh'),str(failed_repl_install)],env=env,capture_output=True,text=True,timeout=240)
+        check(r.returncode!=0 and not failed_repl_install.exists() and not list(d.glob('.holyshit-bundle.*')),'repl build failure cleans staging without publishing')
     original=d/'original';moved=d/'moved bundle'
     started=time.monotonic()
     r=subprocess.run(['/bin/sh',str(ROOT/'scripts/install-native.sh'),str(original)],env=env,capture_output=True,text=True,timeout=240)
@@ -79,7 +86,7 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     if r.returncode:sys.exit(1)
     original.rename(moved)
     launcher=moved/'bin/hs';compiler=moved/'bootstrap/hs-hosted-x86_64'
-    r=subprocess.run(['/bin/sh',str(launcher),'repl','input.holy'],env=env,capture_output=True,text=True,timeout=10)
+    r=subprocess.run(['/bin/sh',str(launcher),'unknown-development-command','input.holy'],env=env,capture_output=True,text=True,timeout=10)
     check(r.returncode==2 and 'unknown command' in r.stderr,'unsupported development command is explicit, no fallback')
     source=d/'main file.holy';module=d/'support.holy';module.write_text('value = 19\n')
     source.write_text('import support\nprint support.value\nprint json_str([1, "ok"])\nprint argv()\nextern:\n  I64 printf(Str format, ..., I64 n)\nprintf("value=%lld\\n", 27)\n')
@@ -407,6 +414,69 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     irdriver.write_bytes(irdriver_bytes);irdriver.chmod(0o755)
     r=subprocess.run(['/bin/sh',str(launcher),'ir',str(irsource)],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==0 and r.stdout.startswith('func enumerate$L1(xs):\n'),'restored IR dumper dumps')
+    # Relocated native REPL, isolated PATH, no launch-time compiler or Python.
+    from test_repl_native import SESSIONS
+    repl=moved/'bin/hs-repl';repl_bytes=repl.read_bytes();repl_mtime=repl.stat().st_mtime_ns
+    module.write_text('value = 19\n')
+    sessions=dict(SESSIONS, imported='import support\nsupport.value\n')
+    for label,script in sorted(sessions.items()):
+        expected_repl=subprocess.run([sys.executable,str(ROOT/'interp.py'),'--repl'],input=script,cwd=d,capture_output=True,text=True,timeout=30)
+        r=subprocess.run(['/bin/sh',str(launcher),'repl'],input=script,cwd=d,env=env,capture_output=True,text=True,timeout=30)
+        check((r.returncode,r.stdout,r.stderr)==(expected_repl.returncode,expected_repl.stdout,expected_repl.stderr),'relocated repl differential '+label+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    for args in [[],['ignored.holy'],['--json']]:
+        r=subprocess.run(['/bin/sh',str(launcher),'repl']+args,input='',cwd=d,env=env,capture_output=True,text=True,timeout=30)
+        check(r.returncode==0 and not r.stdout and not r.stderr,'repl EOF and ignored extras '+repr(args))
+    r=subprocess.run(['/bin/sh',str(launcher),'repl'],input='extern:\n  I64 puts(Str s)\n\n4 + 4\n',cwd=d,env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and 'unsupported instruction ffi' in r.stdout and r.stdout.endswith('8\n') and not r.stderr,'repl FFI refusal then session recovery')
+    # A real pseudo-terminal exercises the banner/prompts and ctrl-D path.
+    import errno,pty,select
+    master,slave=pty.openpty()
+    proc=subprocess.Popen(['/bin/sh',str(launcher),'repl'],stdin=slave,stdout=slave,stderr=slave,cwd=d,env=env)
+    os.close(slave)
+    tty_output=b''
+    def tty_until(marker):
+        global tty_output
+        deadline=time.monotonic()+15
+        while marker not in tty_output:
+            remaining=deadline-time.monotonic()
+            if remaining<=0 or not select.select([master],[],[],remaining)[0]:
+                raise AssertionError(('repl tty timeout',tty_output))
+            try:chunk=os.read(master,4096)
+            except OSError as e:
+                if e.errno==errno.EIO:break
+                raise
+            if not chunk:break
+            tty_output+=chunk
+        return marker in tty_output
+    try:
+        ready=tty_until(b'>>> ')
+        os.write(master,b'def twice(n):\n  return n * 2\n\n')
+        continued=tty_until(b'... ')
+        os.write(master,b'twice(21)\n')
+        evaluated=tty_until(b'42\r\n')
+        os.write(master,b'\x04')
+        rc=proc.wait(timeout=15)
+        check(ready and continued and evaluated and rc==0 and b'repl (ctrl-d to quit)' in tty_output,'relocated repl terminal banner/multiline/prompts/evaluation/EOF '+repr(tty_output))
+    finally:
+        if proc.poll() is None:proc.kill();proc.wait()
+        os.close(master)
+    check(repl.read_bytes()==repl_bytes and repl.stat().st_mtime_ns==repl_mtime,'repl never rebuilds installed driver')
+    repl.write_bytes(repl_bytes+b'changed')
+    r=subprocess.run(['/bin/sh',str(launcher),'repl'],input='print "TARGET RAN"\n',cwd=d,env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'repl checksum failed' in r.stderr,'corrupt repl refused before stdin execution')
+    source.write_text('print 47\n')
+    r=subprocess.run(['/bin/sh',str(launcher),'interpret',str(source)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='47\n','interpret independent of repl checksum')
+    repl.write_bytes(repl_bytes)
+    sums=moved/'REPL_SHA256SUMS';saved_repl_sums=sums.read_bytes();sums.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'repl'],input='2+2\n',env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing repl manifest reports incomplete bundle')
+    sums.write_bytes(saved_repl_sums);repl.unlink()
+    r=subprocess.run(['/bin/sh',str(launcher),'repl'],input='2+2\n',env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==1 and not r.stdout and 'install a new complete bundle' in r.stderr,'missing repl binary reports incomplete bundle')
+    repl.write_bytes(repl_bytes);repl.chmod(0o755)
+    r=subprocess.run(['/bin/sh',str(launcher),'repl'],input='2+2\n',env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and r.stdout=='4\n' and not r.stderr,'restored repl evaluates')
     # Installed language server (hs lsp) answers an initialize handshake over stdio.
     def lsp_frame(obj):
         body=json.dumps(obj).encode()

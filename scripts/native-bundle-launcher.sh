@@ -2,7 +2,7 @@
 # Installed as BUNDLE/bin/hs. Resolve data relative to the moved bundle.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs test FILE|DIR... | hs build SOURCE OUTPUT | hs explain "<error message>" | hs cc SOURCE [-o OUTPUT] | hs ir SOURCE | hs lsp | hs SOURCE.holy [args...]'
+USAGE='usage: hs run SOURCE [args...] | hs interpret SOURCE [args...] | hs fmt SOURCE | hs check SOURCE | hs test FILE|DIR... | hs build SOURCE OUTPUT | hs explain "<error message>" | hs cc SOURCE [-o OUTPUT] | hs ir SOURCE | hs lsp | hs repl | hs SOURCE.holy [args...]'
 if [ "$#" -lt 1 ]; then
   printf '%s\n' "$USAGE" >&2
   exit 2
@@ -58,6 +58,20 @@ if [ "$COMMAND" = "explain" ]; then
     exec "$ROOT/bin/hs-explain" "$@" --json
   fi
   exec "$ROOT/bin/hs-explain" "$@"
+fi
+if [ "$COMMAND" = "repl" ]; then
+  # No source or positional arguments: like hs.py repl, ignore extras.
+  export HSROOT="$ROOT"
+  export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT/std${HSPATH:+:$HSPATH}"
+  if [ ! -f "$ROOT/bin/hs-repl" ] || [ ! -f "$ROOT/REPL_SHA256SUMS" ]; then
+    printf '%s\n' 'installed repl is missing; install a new complete bundle' >&2
+    exit 1
+  fi
+  (cd "$ROOT" && sha256sum --status -c REPL_SHA256SUMS) || {
+    printf '%s\n' 'installed repl checksum failed' >&2
+    exit 1
+  }
+  exec "$ROOT/bin/hs-repl"
 fi
 if [ "$COMMAND" = "lsp" ]; then
   # The language server speaks stdio JSON-RPC and takes no source path;
