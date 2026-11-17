@@ -1,0 +1,107 @@
+# Synthetic MB2 module tags plus the real loader's module reservations.
+import kmb
+import kpmm
+fails = 0
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+  else:
+    print "FAIL", label, got, want
+    fails = fails + 1
+def make():
+  unsafe:
+    return as_int(alloc(128))
+def put(p, value):
+  unsafe:
+    store32(as_ptr(p), value)
+def seed(p):
+  for i in range(32):
+    put(p + i * 4, 0)
+  put(p, 40)
+  put(p + 8, 3)
+  put(p + 12, 17)
+  put(p + 16, 0x5000000)
+  put(p + 20, 0x5002000)
+  put(p + 36, 8)
+p = make()
+seed(p)
+expect("one valid module", kmb.mb2_module_at(p, -1), 1)
+expect("module tag address", kmb.mb2_module_at(p, 0), p + 8)
+expect("module index absent", kmb.mb2_module_at(p, 1), -1)
+expect("negative index rejected", kmb.mb2_module_at(p, -2), -1)
+expect("null info rejected", kmb.mb2_module_at(0, -1), -1)
+expect("high info rejected", kmb.mb2_module_at(1073741824, -1), -1)
+expect("unaligned info rejected", kmb.mb2_module_at(p + 1, -1), -1)
+put(p, 8)
+expect("short info rejected", kmb.mb2_module_at(p, -1), -1)
+put(p, 65544)
+expect("large info rejected", kmb.mb2_module_at(p, -1), -1)
+put(p, 39)
+expect("unaligned size rejected", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 4, 1)
+expect("reserved header rejected", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 12, 7)
+expect("undersized tag rejected", kmb.mb2_module_at(p, -1), -1)
+put(p + 12, 40)
+expect("overrun tag rejected", kmb.mb2_module_at(p, -1), -1)
+put(p + 12, 16)
+expect("missing command byte rejected", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 24, 1)
+expect("unterminated command rejected", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 20, 0x5000000)
+expect("empty range rejected", kmb.mb2_module_at(p, -1), -1)
+put(p + 20, 0x4ffffff)
+expect("reversed range rejected", kmb.mb2_module_at(p, -1), -1)
+put(p + 20, 1073741825)
+expect("unmapped range rejected", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 16, 0)
+expect("low range rejected", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 16, kmb.RUNTIME_BUMP_BASE)
+put(p + 20, kmb.RUNTIME_BUMP_BASE + 4096)
+expect("runtime overlap rejected", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 32, 1)
+expect("missing end tag rejected", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 36, 7)
+expect("bad end tag rejected", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 12, 32)
+expect("end marker required", kmb.mb2_module_at(p, -1), -1)
+seed(p)
+put(p + 8, 42)
+expect("unknown tag skipped", kmb.mb2_module_at(p, -1), 0)
+seed(p)
+put(p, 16)
+put(p + 8, 0)
+put(p + 12, 8)
+expect("empty chain valid", kmb.mb2_module_at(p, -1), 0)
+seed(p)
+put(p, 64)
+put(p + 32, 3)
+put(p + 36, 17)
+put(p + 40, 0x6000000)
+put(p + 44, 0x6001000)
+put(p + 60, 8)
+expect("two valid modules", kmb.mb2_module_at(p, -1), 2)
+expect("second module address", kmb.mb2_module_at(p, 1), p + 32)
+put(p + 44, 0)
+expect("later malformed range rejects count", kmb.mb2_module_at(p, -1), -1)
+expect("later malformed range rejects first", kmb.mb2_module_at(p, 0), -1)
+seed(p)
+put(p, 48)
+expect("trailing bytes after end rejected", kmb.mb2_module_at(p, -1), -1)
+# The GRUB integration suite also verifies real module2 endpoints and
+# reservation before any heap/surface allocation in kgui.
+expect("real pmm starts", kpmm.init() > 0, true)
+expect("invalid real module start", kmb.mod_start(-1), 0)
+expect("invalid real module end", kmb.mod_end(kmb.mods_count()), 0)
+print "fails", fails
+print "mbmods-done"

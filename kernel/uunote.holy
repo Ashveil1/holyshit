@@ -1,0 +1,51 @@
+# Display-only scratch text. No commands, disk writes or exec.
+SYS_EXIT = 60
+SYS_WIN_CREATE = 93
+SYS_WIN_KEY_READ = 95
+SYS_WIN_FILL = 96
+SYS_WIN_PRESENT = 97
+SYS_WIN_TEXT = 98
+def sc(nr, a1, a2, a3, a4, a5, a6):
+  return scall(nr, a1, a2, a3, a4, a5, a6)
+def address(text):
+  unsafe:
+    return as_int(as_ptr(text)) + 16
+def label(wid, x, y, text, color):
+  return sc(SYS_WIN_TEXT, wid, x, y, address(text), byte_len(text), color)
+def redraw(wid, buffer, used):
+  sc(SYS_WIN_FILL, wid, 16, 84, 444, 24, 0xffffff)
+  label(wid, 20, 92, read_mem(buffer, used), 0x16324f)
+  sc(SYS_WIN_FILL, wid, 20 + used * 6, 92, 5, 7, 0x386fa4)
+  sc(SYS_WIN_PRESENT, 0, 0, 0, 0, 0, 0)
+unsafe:
+  buffer = as_int(alloc(64))
+used = 0
+wid = sc(SYS_WIN_CREATE, 80, 100, 480, 180, 0xe8edf2, 0)
+if wid < 0:
+  sc(SYS_EXIT, 1, 0, 0, 0, 0, 0)
+label(wid, 16, 16, "HS SCRATCHPAD - RING 3", 0x16324f)
+label(wid, 16, 36, "CLICK TO TYPE. DRAG THE BLUE STRIP.", 0x16324f)
+label(wid, 16, 52, "ENTER CLEARS. DOWN CLOSES. NOT SAVED.", 0x16324f)
+label(wid, 16, 132, "60 ASCII BYTES. NO COMMANDS ARE EXECUTED.", 0x16324f)
+redraw(wid, buffer, used)
+print "GUI APP READY"
+while true:
+  key = sc(SYS_WIN_KEY_READ, wid, 0, 0, 0, 0, 0)
+  changed = false
+  if key == 129:
+    break
+  if key == 10:
+    used = 0
+    changed = true
+  elif key == 8 and used > 0:
+    used = used - 1
+    changed = true
+  elif key >= 32 and key <= 126 and used < 60:
+    unsafe:
+      store8(as_ptr(buffer + used), key)
+    used = used + 1
+    changed = true
+  if changed:
+    redraw(wid, buffer, used)
+    print "GUI EDIT", used
+sc(SYS_EXIT, 0, 0, 0, 0, 0, 0)
