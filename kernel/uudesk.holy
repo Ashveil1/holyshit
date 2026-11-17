@@ -5,7 +5,7 @@ SYS_WIN_CREATE = 93
 SYS_WIN_CLOSE = 94
 SYS_WIN_FILL = 96
 SYS_WIN_PRESENT = 97
-SYS_WIN_TEXT = 98
+SYS_WIN_TEXT = 100
 SYS_WIN_KEY_ANY = 99
 def sc(nr, a1, a2, a3, a4, a5, a6):
   return scall(nr, a1, a2, a3, a4, a5, a6)
@@ -16,35 +16,35 @@ def buffer():
   unsafe:
     return as_int(alloc(64))
 def label(wid, x, y, text, color):
-  return sc(SYS_WIN_TEXT, wid, x, y, address(text), byte_len(text), color)
+  return sc(SYS_WIN_TEXT, wid, x, y, address(text), byte_len(text), color + 16777216)
 def present():
   return sc(SYS_WIN_PRESENT, 0, 0, 0, 0, 0, 0)
 def input_draw(note):
   wid = note[0]
-  sc(SYS_WIN_FILL, wid, 12, 54, 352, 24, 0xffffff)
+  sc(SYS_WIN_FILL, wid, 12, 54, 416, 32, 0xffffff)
   label(wid, 16, 62, read_mem(note[1], note[2]), 0x16324f)
-  sc(SYS_WIN_FILL, wid, 16 + note[2] * 6, 62, 5, 7, 0x386fa4)
+  sc(SYS_WIN_FILL, wid, 16 + note[2] * 12, 62, 10, 14, 0x386fa4)
 def open_note(note, number):
   if note[0] != 0:
     return false
-  x = 36 if number == 1 else 224
-  y = 112 if number == 1 else 252
-  wid = sc(SYS_WIN_CREATE, x, y, 380, 130, 0xe8edf2, 0)
+  x = 24 if number == 1 else 176
+  y = 132 if number == 1 else 308
+  wid = sc(SYS_WIN_CREATE, x, y, 440, 150, 0xe8edf2, 0)
   if wid < 0:
     return false
   note[0] = wid
-  label(wid, 12, 12, "NOTE " + str(number) + " - INDEPENDENT SCRATCH BUFFER", 0x16324f)
-  label(wid, 12, 30, "ENTER CLEARS. DOWN CLOSES. NOT SAVED.", 0x16324f)
-  label(wid, 12, 100, "CLICK TO TYPE. 54 BYTES. DRAG TITLE.", 0x16324f)
+  label(wid, 12, 12, "NOTE " + str(number) + " - RAM ONLY", 0x16324f)
+  label(wid, 12, 30, "ENTER CLEAR. DOWN CLOSE.", 0x16324f)
+  label(wid, 12, 116, "32 BYTES. DRAG TITLE. NOT SAVED.", 0x16324f)
   input_draw(note)
   return true
 notes = [[0, buffer(), 0], [0, buffer(), 0]]
-launcher = sc(SYS_WIN_CREATE, 16, 16, 608, 76, 0x224466, 0)
+launcher = sc(SYS_WIN_CREATE, 16, 16, 608, 100, 0x224466, 0)
 if launcher < 0:
   sc(SYS_EXIT, 1, 0, 0, 0, 0, 0)
-label(launcher, 12, 10, "HS DESKTOP - ONE PROCESS, TWO NOTES", 0xffffff)
-label(launcher, 12, 28, "CLICK HERE: 1 OR 2 OPENS A CLOSED NOTE. DOWN EXITS.", 0xffffff)
-label(launcher, 12, 46, "CLOSE RETAINS TEXT IN RAM. NOTHING IS SAVED TO DISK.", 0xffffff)
+label(launcher, 12, 10, "HS DESKTOP - TWO NOTES", 0xffffff)
+label(launcher, 12, 34, "CLICK HERE: 1/2 OPEN NOTE. DOWN EXITS.", 0xffffff)
+label(launcher, 12, 62, "CLOSE KEEPS RAM TEXT. NOT SAVED TO DISK.", 0xffffff)
 open_note(notes[0], 1)
 open_note(notes[1], 2)
 present()
@@ -78,7 +78,7 @@ while true:
             elif key == 8 and note[2] > 0:
               note[2] = note[2] - 1
               changed = true
-            elif key >= 32 and key <= 126 and note[2] < 54:
+            elif key >= 32 and key <= 126 and note[2] < 32:
               p = note[1] + note[2]
               unsafe:
                 store8(as_ptr(p), key)

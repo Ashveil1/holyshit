@@ -164,3 +164,26 @@ existing single-process ownership model still applies. Window ids stop at
 62-bit hs Int; further creates return -12 without creating a window.
 `tests/test_winkey_any.py` pins routing, rotation, old/new read interaction,
 close cleanup and the largest representable event on both kernel backends.
+
+
+## Scaled body text (100)
+
+`SYS_WIN_TEXT_SCALED=100(wid,x,y,address,length,style)` preserves six
+argument slots by packing RGB24 into `style` bits0..23 and `scale-1`
+into bits24..25. Style must be0..67108863, giving integer scales1..4.
+For example white at scale2 is `0xffffff + 16777216`. Higher/negative
+style values return-22. Coordinates and byte length have the same bounds
+as syscall98, and the entire user span goes through the same canonical,
+present/user-permission checks before it is copied. Invalid spans return
+-14. Empty text still requires a valid span start, but does not allocate
+a body. Unknown windows, invalid coordinates/style/length return-22;
+body allocation failure returns-12.
+
+Text is transparent and body-local below the protected title strip.
+Each font bit becomes a clipped `scale * scale` block. Character advance
+is `6 * scale`, newline advance is `8 * scale`, and unsupported bytes
+use the existing question-mark glyph. Lowercase still folds uppercase.
+Every block clips before drawing, including partially visible scaled
+glyphs at negative offsets or at the right/bottom body edges. No user
+framebuffer pointer is accepted. Legacy98 stays fixed-scale1 and keeps
+its existing result/validation behavior.

@@ -182,6 +182,11 @@ def sys_text(wid, x, y, text, color):
     return -22
   return kcomp.win_text(sys_router[0], wid, x, y, text, color)
 
+def sys_text_scaled(wid, x, y, text, color, scale):
+  if sys_router == null:
+    return -22
+  return kcomp.win_text_scaled(sys_router[0], wid, x, y, text, color, scale)
+
 def sys_close(wid):
   # SYS_WIN_CLOSE: remove the window and drop its queue; 0 ok, -22 bad id.
   if sys_router == null:

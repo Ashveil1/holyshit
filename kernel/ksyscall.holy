@@ -32,6 +32,7 @@ SYS_WIN_FILL = 96
 SYS_WIN_PRESENT = 97
 SYS_WIN_TEXT = 98
 SYS_WIN_KEY_ANY = 99
+SYS_WIN_TEXT_SCALED = 100
 # user pages live in PML4 slot 1 and up, so a user address space can be built
 # without ever touching the kernel half (PML4[0])
 USER_BIAS = 0x80000000000
@@ -321,6 +322,18 @@ def sys_win_text(wid, x, y, address, length, color):
     return kwinroute.sys_text(wid, x, y, "", color)
   return kwinroute.sys_text(wid, x, y, read_mem(address, length), color)
 
+def sys_win_text_scaled(wid, x, y, address, length, style):
+  # Six syscall argument slots: RGB24 in bits0..23, scale-1 in bits24..25.
+  if style < 0 or style > 67108863 or length < 0 or length > 256:
+    return -22
+  if not text_span_readable(address, length):
+    return -14
+  color = style & 16777215
+  scale = style >> 24 + 1
+  if length == 0:
+    return kwinroute.sys_text_scaled(wid, x, y, "", color, scale)
+  return kwinroute.sys_text_scaled(wid, x, y, read_mem(address, length), color, scale)
+
 def sys_win_present():
   return kwinroute.sys_present()
 def sys_win_fill(wid, x, y, width, height, color):
@@ -376,6 +389,8 @@ def dispatch(nr, a1, a2, a3, a4, a5, a6):
     return sys_win_present()
   if nr == SYS_WIN_TEXT:
     return sys_win_text(a1, a2, a3, a4, a5, a6)
+  if nr == SYS_WIN_TEXT_SCALED:
+    return sys_win_text_scaled(a1, a2, a3, a4, a5, a6)
   if nr == SYS_WIN_KEY_ANY:
     return kwinroute.sys_key_any()
   if nr == SYS_EXEC:

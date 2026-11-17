@@ -1,0 +1,27 @@
+# Scaled ring-3 text ABI100, plus legacy98 compatibility in one image.
+SYS_EXIT = 60
+SYS_WIN_CREATE = 93
+SYS_WIN_PRESENT = 97
+SYS_WIN_TEXT = 98
+SYS_WIN_TEXT_SCALED = 100
+def sc(nr, a1, a2, a3, a4, a5, a6):
+  return scall(nr, a1, a2, a3, a4, a5, a6)
+def address(text):
+  unsafe:
+    return as_int(as_ptr(text)) + 16
+def label(wid, x, y, text, color, scale):
+  return sc(SYS_WIN_TEXT_SCALED, wid, x, y, address(text), byte_len(text), color + (scale - 1) * 16777216)
+a = sc(SYS_WIN_CREATE, 3, 2, 58, 60, 0x112233, 0)
+print "scale-result", label(a, 0, 0, "h", 0xffffff, 1)
+print "scale-result", label(a, 8, 0, "A", 0xff8800, 2)
+print "scale-result", label(a, 24, 0, "I", 0x22bb66, 3)
+print "scale-result", label(a, 40, 0, "@", 0x4466ff, 4)
+print "scale-result", label(a, -3, 30, "A\ni", 0xffffff, 2)
+print "scale-result", label(a, 48, 42, "HI", 0xff8800, 3)
+print "scale-legacy", sc(SYS_WIN_TEXT, a, 20, 30, address("Hi"), 2, 0x22bb66)
+print "scale-badptr", label(a, 0, 0, "", 0, 0)
+print "scale-unmapped", sc(SYS_WIN_TEXT_SCALED, a, 0, 0, 0x90000000000, 1, 16777216)
+print "scale-badlen", sc(SYS_WIN_TEXT_SCALED, a, 0, 0, address("A"), 257, 16777216)
+print "scale-style", sc(SYS_WIN_TEXT_SCALED, a, 0, 0, address("A"), 1, 67108864)
+print "scale-present", sc(SYS_WIN_PRESENT, 0, 0, 0, 0, 0, 0)
+sc(SYS_EXIT, 0, 0, 0, 0, 0, 0)
