@@ -11,18 +11,19 @@ sh scripts/install-native.sh "$HOME/holyshit-native"
 "$HOME/holyshit-native/bin/hs" check examples/hello.holy
 "$HOME/holyshit-native/bin/hs" test examples
 "$HOME/holyshit-native/bin/hs" lsp
+"$HOME/holyshit-native/bin/hs" repl
 ```
 
 The parent must already exist and the destination must not. Paths with spaces
 work. The installer checks the host and delegates to the audited bundle
 builder: verify pinned compiler checksum, stage a separate directory, build
 the eager driver, existing hs-written IR interpreter, hs formatter, hs
-checker, hs tester, hs explainer, hs-written subset compiler and hs IR
-dumper and hs language server with the native compiler, then publish
-without overwriting. All nine must build before the staged directory is
+checker, hs tester, hs explainer, hs-written subset compiler, hs IR
+dumper, hs language server and hs REPL with the native compiler, then publish
+without overwriting. All ten must build before the staged directory is
 published; failure leaves no partial installation.
 It downloads nothing, uses no Python/gcc, changes no profile/PATH, creates no
-system-wide link and needs no sudo. Building nine drivers takes additional
+system-wide link and needs no sudo. Building ten drivers takes additional
 installation time and disk space; none is rebuilt for each invocation.
 
 Keep the whole installed directory together. The launcher resolves compiler,
@@ -166,7 +167,29 @@ status 1. IR dumper corruption does not block the other commands.
 `--version` (or `-V`) prints `hs ` plus the bundled VERSION file's contents
 wherever the flag appears, like the Python CLI.
 
-REPL/LSP and source/bootstrap audits remain development tools
-that use Python. The Python formatter remains available for `-w`/`--check`. Kernel building has its existing separate native script;
+Source/bootstrap audits remain development tools that use Python. The Python formatter remains available for `-w`/`--check`. Kernel building has its existing separate native script;
 it is not an installed launcher command. Python reference/testing tools are
 kept deliberately and are not being deleted in this stage.
+
+## Installed REPL
+
+`hs repl` starts the prebuilt hs-written interpreter session without a source
+path, Python, gcc or a launch-time build. It preserves one global session across
+statements and multiline definitions. Bare expressions display non-Null results;
+parse/runtime errors print to stdout and the session continues. Piped input has
+no banner or prompts and EOF exits 0. On a terminal it uses the existing REPL's
+banner and `>>>`/`...` prompts. Extra positional arguments are ignored, as in the
+Python CLI. `--json` does not turn session output into JSON.
+
+Imports resolve from the invocation directory and HSPATH. Unsafe memory runs in
+the interpreter's checked guest arena. FFI remains refused before the affected
+input block runs; this route does not enable the separate hosted FFI driver.
+The existing REPL's limits remain: redefining a function updates older references
+to the same IR key, and guest argv() belongs to the REPL process. This is not a
+JIT, sandbox, line editor, command history or full-language parity claim.
+
+The REPL checksum is checked before stdin is evaluated. Missing binary/manifest
+reports an incomplete install; corruption refuses with exit 1. Other commands
+remain independent of this checksum. Older bundles require a new complete
+install, not a copied launcher. Checksums guard accidental corruption, not an
+attacker who can replace both the binary and its manifest.
