@@ -75,7 +75,7 @@ SUITES = [
     ("test_winpresent.py", "ring-3 present and close/exit repaint into kernel-bound targets on QEMU"),
     ("test_mbmodules.py", "bounded MB2 module decoding and malformed-chain pins"),
     ("test_winkey_any.py", "any-window keyboard recipient identity and fair queues"),
-    ("test_notebuf.py", "bounded three-line note editor wrap/erase/canaries on both x64 backends"),
+    ("test_notebuf.py", "bounded cursor note editor and independent edit oracle on both x64 backends"),
     ("test_desktop_session.py", "GRUB multi-window notes and persistent launcher"),
     ("test_gui_session.py", "GRUB ring3 scratchpad focus/edit/drag/exit framebuffer"),
     ("test_winscale.py", "ring3 scaled body text1x..4x and clipped pixel oracle"),

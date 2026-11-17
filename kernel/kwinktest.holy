@@ -45,8 +45,13 @@ expect("other window gets nothing", kwinroute.key_drain(r0, w2), 0)
 expect("key order ascii", kwinroute.key_drain(r0, w1), 97)
 expect("key order up", kwinroute.key_drain(r0, w1), 128)
 expect("key queue empty", kwinroute.key_drain(r0, w1), 0)
+for code in range(130, 136):
+  expect("editor event accepted", kwinroute.handle_key(r0, code), true)
+for code in range(130, 136):
+  expect("editor event FIFO", kwinroute.key_drain(r0, w1), code)
+expect("editor events do not leak", kwinroute.key_drain(r0, w2), 0)
 expect("zero rejected", kwinroute.handle_key(r0, 0), false)
-expect("unknown code rejected", kwinroute.handle_key(r0, 130), false)
+expect("unknown code rejected", kwinroute.handle_key(r0, 136), false)
 # A queued key retains its original recipient across the focus switch.
 kwinroute.handle_key(r0, 99)
 # Click window 2: subsequent keys must follow focus, not the old window.

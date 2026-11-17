@@ -53,10 +53,15 @@ def run(d):
                 data=im.read();assert len(data)==640*480*3
             return data
         def pixel(im,x,y):return im[(y*640+x)*3:(y*640+x)*3+3]
-        def field(im,text,x,y):
+        def field(im,text,x,y,caret=None):
             want=bytearray(WHITE*(416*56))
             row_index=0; column=0
-            for ch in text:
+            caret_pos=None
+            if caret is None:caret=len(text)
+            for offset,ch in enumerate(text):
+                if ch != '\n' and column==32:
+                    row_index+=1;column=0
+                if offset==caret:caret_pos=(row_index,column)
                 if ch == '\n':
                     row_index+=1;column=0;continue
                 for row,bits in enumerate(FORMS[ch]):
@@ -67,9 +72,10 @@ def run(d):
                                     at=((8+row_index*16+row*2+dy)*416+4+column*12+col*2+dx)*3
                                     want[at:at+3]=INK
                 column+=1
+            if caret_pos is None:caret_pos=(row_index,column)
             for row in range(14):
                 for col in range(10):
-                    at=((8+row_index*16+row)*416+4+column*12+col)*3;want[at:at+3]=CARET
+                    at=((8+caret_pos[0]*16+row)*416+4+caret_pos[1]*12+col)*3;want[at:at+3]=CARET
             got=b''.join(im[((y+60+dy)*640+x+12)*3:((y+60+dy)*640+x+428)*3] for dy in range(56))
             assert got==want,('field mismatch',text[:5],len(text),x,y)
         initial=snap('initial');field(initial,'',24,132);field(initial,'',176,308)
@@ -88,8 +94,8 @@ def run(d):
         wait_for(lambda:pixel(snap('raised'),24,132)==bytes.fromhex('2a6fdb'),'note1 raise')
         raised=snap('raised');field(raised,'HA',24,132)
         # Close note2 through its exposed body, then close note1.
-        click(550,200);key('down');field(snap('one-note'),'HA',24,132)
-        click(48,170);key('down')
+        click(550,200);key('esc');field(snap('one-note'),'HA',24,132)
+        click(48,170);key('esc')
         empty=snap('launcher-only')
         for x,y in [(24,132),(100,210),(176,308),(400,410)]:assert pixel(empty,x,y)==BG
         # Launcher survives both closes and reopens retained independent RAM text.
@@ -97,24 +103,38 @@ def run(d):
         reopened=snap('reopened');field(reopened,'HA',24,132);field(reopened,'B',176,308)
         before=count();key('1',False);key('2',False);assert count()==before, 'duplicate note opened'
         # Note1 cap is independent of note2 and ignored keys create no edits.
-        click(48,170);key('up')
+        click(60,50);key('3');click(48,170)
         key('h');key('ret');key('i');field(snap('multiline'),'H\nI',24,132)
         key('backspace');key('backspace');key('a');field(snap('joined'),'HA',24,132)
         key('ret');key('b');field(snap('manual-line'),'HA\nB',24,132)
-        key('down');click(60,50);key('1')
+        key('esc');click(60,50);key('1')
         field(snap('multiline-reopened'),'HA\nB',24,132)
-        click(48,170);key('up')
+        click(60,50);key('3');click(48,170)
         for _ in range(96):key('a')
         before=count();key('a',False);key('ret',False);assert count()==before
         capped=snap('capped');field(capped,'A'*32+'\n'+'A'*32+'\n'+'A'*32,24,132);field(capped,'B',176,308)
-        # Erase the whole last row and its automatic newline, then append.
-        for _ in range(33):key('backspace')
+        # Erase the whole last implicit row, then append and wrap again.
+        for _ in range(32):key('backspace')
         field(snap('wrap-erased'),'A'*32+'\n'+'A'*32,24,132)
         key('b');field(snap('rewrapped'),'A'*32+'\n'+'A'*32+'\nB',24,132)
+        # Middle insertion/delete and visual-row caret movement on real keys.
+        click(60,50);key('3');click(48,170)
+        key('h');key('i');key('ret');key('a');key('b')
+        key('left');key('i');field(snap('inserted'),'HI\nAIB',24,132,5)
+        key('delete');field(snap('deleted'),'HI\nAI',24,132,5)
+        key('home');field(snap('home'),'HI\nAI',24,132,3)
+        key('up');field(snap('up'),'HI\nAI',24,132,0)
+        key('end');key('down');field(snap('down'),'HI\nAI',24,132,5)
+        key('left');key('backspace');field(snap('backspace-middle'),'HI\nI',24,132,3)
+        key('home',False);key('left');key('delete');field(snap('delete-newline'),'HII',24,132,2)
+        key('right');key('end',False);key('right',False)
+        # Closing/reopening preserves the in-buffer caret, not just the text.
+        key('left');key('esc');click(60,50);key('1')
+        field(snap('caret-reopened'),'HII',24,132,2)
         before=count()
         # No focused window means a key does not reach either note.
         click(620,470);key('h',False);assert count()==before
-        click(60,50);key('down',False)
+        click(60,50);key('esc',False)
         wait_for(lambda:'GUI SESSION STOPPED' in out(),'session exit')
         assert re.search(r'GUI SESSION STOPPED\s+0\s+0\s+0\s+0',out()),out()
         closed=snap('closed')

@@ -20,7 +20,7 @@ def present():
 def input_draw(note):
   wid = note[0]
   sc(SYS_WIN_FILL, wid, 12, 54, 416, 56, 0xffffff)
-  label(wid, 16, 62, read_mem(note[1], note[2]), 0x16324f)
+  label(wid, 16, 62, unotebuf.rendered(note), 0x16324f)
   pos = unotebuf.position(note)
   sc(SYS_WIN_FILL, wid, 16 + pos[1] * 12, 62 + pos[0] * 16, 10, 14, 0x386fa4)
 def open_note(note, number):
@@ -33,16 +33,16 @@ def open_note(note, number):
     return false
   note[0] = wid
   label(wid, 12, 12, "NOTE " + str(number) + " - RAM ONLY", 0x16324f)
-  label(wid, 12, 30, "ENTER NEWLINE. DOWN CLOSE.", 0x16324f)
-  label(wid, 12, 116, "UP CLEAR. 3 X 32. NOT SAVED.", 0x16324f)
+  label(wid, 12, 30, "ARROWS MOVE. ESC CLOSE.", 0x16324f)
+  label(wid, 12, 116, "HOME/END. DEL. 3 X 32. RAM ONLY.", 0x16324f)
   input_draw(note)
   return true
-notes = [[0, unotebuf.buffer(), 0], [0, unotebuf.buffer(), 0]]
+notes = [unotebuf.create(), unotebuf.create()]
 launcher = sc(SYS_WIN_CREATE, 16, 16, 608, 100, 0x224466, 0)
 if launcher < 0:
   sc(SYS_EXIT, 1, 0, 0, 0, 0, 0)
 label(launcher, 12, 10, "HS DESKTOP - TWO NOTES", 0xffffff)
-label(launcher, 12, 34, "CLICK HERE: 1/2 OPEN NOTE. DOWN EXITS.", 0xffffff)
+label(launcher, 12, 34, "1/2 OPEN. 3/4 CLEAR NOTE. ESC EXITS.", 0xffffff)
 label(launcher, 12, 62, "CLOSE KEEPS RAM TEXT. NOT SAVED TO DISK.", 0xffffff)
 open_note(notes[0], 1)
 open_note(notes[1], 2)
@@ -54,8 +54,16 @@ while true:
     wid = ev >> 8
     key = ev & 255
     if wid == launcher:
-      if key == 129:
+      if key == 135:
         break
+      if key == 51 or key == 52:
+        number = key - 50
+        note = notes[number - 1]
+        if unotebuf.clear(note):
+          if note[0] != 0:
+            input_draw(note)
+            present()
+          print "DESKTOP EDIT", number, note[2]
       if key == 49 or key == 50:
         number = key - 48
         if open_note(notes[number - 1], number):
@@ -65,7 +73,7 @@ while true:
       for i in range(2):
         note = notes[i]
         if note[0] == wid:
-          if key == 129:
+          if key == 135:
             sc(SYS_WIN_CLOSE, wid, 0, 0, 0, 0, 0)
             note[0] = 0
             print "DESKTOP CLOSE", i + 1

@@ -1,49 +1,157 @@
-# Bounded append-only three-line RAM note editor; no window or I/O effects.
+# Bounded three-line insert editor. State: wid, storage, byte count,
+# caret byte offset, reusable rendered storage. No window or I/O effects.
+LEFT = 130
+RIGHT = 131
+HOME = 132
+END = 133
+DELETE = 134
+ESCAPE = 135
 def buffer():
   unsafe:
     return as_int(alloc(128))
 def byte_at(p):
   unsafe:
     return load8(as_ptr(p))
-def position(note):
+def put(p, byte):
+  unsafe:
+    store8(as_ptr(p), byte)
+def create():
+  return [0, buffer(), 0, 0, buffer()]
+def at(note, offset):
   row = 0
   col = 0
-  for i in range(note[2]):
-    if byte_at(note[1] + i) == 10:
+  for i in range(offset):
+    byte = byte_at(note[1] + i)
+    if byte == 10:
       row = row + 1
       col = 0
     else:
+      if col == 32:
+        row = row + 1
+        col = 0
       col = col + 1
+  # At a soft-wrap boundary a caret before the next character belongs
+  # to the next row; an end-of-buffer caret may remain after column32.
+  if col == 32 and offset < note[2] and byte_at(note[1] + offset) != 10:
+    row = row + 1
+    col = 0
   return [row, col]
-def put_byte(note, key):
-  p = note[1] + note[2]
-  unsafe:
-    store8(as_ptr(p), key)
+def position(note):
+  return at(note, note[3])
+def rendered(note):
+  # Expand implicit wraps into newline bytes, using reusable storage.
+  col = 0
+  count = 0
+  for i in range(note[2]):
+    byte = byte_at(note[1] + i)
+    if byte != 10 and col == 32:
+      put(note[4] + count, 10)
+      count = count + 1
+      col = 0
+    put(note[4] + count, byte)
+    count = count + 1
+    if byte == 10:
+      col = 0
+    else:
+      col = col + 1
+  return read_mem(note[4], count)
+def valid_insert(note, key):
+  if note[2] >= 98:
+    return false
+  row = 0
+  col = 0
+  for i in range(note[2] + 1):
+    byte = key
+    if i < note[3]:
+      byte = byte_at(note[1] + i)
+    elif i > note[3]:
+      byte = byte_at(note[1] + i - 1)
+    if byte == 10:
+      row = row + 1
+      col = 0
+    else:
+      if col == 32:
+        row = row + 1
+        col = 0
+      col = col + 1
+    if row >= 3:
+      return false
+  return true
+def insert(note, key):
+  if not valid_insert(note, key):
+    return false
+  i = note[2]
+  while i > note[3]:
+    put(note[1] + i, byte_at(note[1] + i - 1))
+    i = i - 1
+  put(note[1] + note[3], key)
   note[2] = note[2] + 1
-def edit(note, key):
-  # The cursor is append-only. At most3 rows of32 printable bytes,
-  # with at most2 explicit stored newline bytes:98 bytes fit in128.
-  if key == 128:
-    if note[2] == 0:
-      return false
-    note[2] = 0
-    return true
-  if key == 8:
-    if note[2] == 0:
-      return false
-    note[2] = note[2] - 1
-    return true
+  note[3] = note[3] + 1
+  return true
+def erase(note, offset):
+  i = offset
+  while i + 1 < note[2]:
+    put(note[1] + i, byte_at(note[1] + i + 1))
+    i = i + 1
+  note[2] = note[2] - 1
+  if note[3] > note[2]:
+    note[3] = note[2]
+  return true
+def move_to(note, offset):
+  if note[3] == offset:
+    return false
+  note[3] = offset
+  return true
+def vertical(note, delta):
   pos = position(note)
-  if key == 10:
-    if pos[0] >= 2:
+  target = pos[0] + delta
+  if target < 0 or target > 2:
+    return false
+  best = -1
+  distance = 1000
+  for i in range(note[2] + 1):
+    where = at(note, i)
+    if where[0] == target:
+      gap = where[1] - pos[1]
+      if gap < 0:
+        gap = 0 - gap
+      if gap < distance:
+        best = i
+        distance = gap
+  if best < 0:
+    return false
+  return move_to(note, best)
+def edit(note, key):
+  if key == LEFT:
+    return move_to(note, note[3] - 1) if note[3] > 0 else false
+  if key == RIGHT:
+    return move_to(note, note[3] + 1) if note[3] < note[2] else false
+  if key == 128:
+    return vertical(note, -1)
+  if key == 129:
+    return vertical(note, 1)
+  if key == HOME or key == END:
+    pos = position(note)
+    found = note[3]
+    for i in range(note[2] + 1):
+      if at(note, i)[0] == pos[0]:
+        found = i
+        if key == HOME:
+          break
+    return move_to(note, found)
+  if key == 8:
+    if note[3] == 0:
       return false
-    put_byte(note, 10)
-    return true
-  if key >= 32 and key <= 126:
-    if pos[1] >= 32:
-      if pos[0] >= 2:
-        return false
-      put_byte(note, 10)
-    put_byte(note, key)
-    return true
+    note[3] = note[3] - 1
+    return erase(note, note[3])
+  if key == DELETE:
+    return erase(note, note[3]) if note[3] < note[2] else false
+  if key == 10 or key >= 32 and key <= 126:
+    return insert(note, key)
   return false
+def clear(note):
+  if note[2] == 0:
+    return false
+  note[2] = 0
+  note[3] = 0
+  return true
