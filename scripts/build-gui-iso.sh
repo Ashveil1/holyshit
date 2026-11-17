@@ -2,10 +2,12 @@
 # Native hs kernel/user compilation plus GRUB BIOS ISO packaging.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-if [ "$#" -ne 1 ]; then
-  printf '%s\n' 'usage: scripts/build-gui-iso.sh OUTPUT.iso' >&2
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+  printf '%s\n' 'usage: scripts/build-gui-iso.sh OUTPUT.iso [scratchpad|desktop]' >&2
   exit 2
 fi
+APP=${2:-scratchpad}
+case "$APP" in scratchpad) SOURCE=uunote ;; desktop) SOURCE=uudesk ;; *) printf '%s\n' 'unknown GUI app' >&2; exit 2 ;; esac
 OUTPUT=$1
 case "$OUTPUT" in /*) ;; *) OUTPUT="$(pwd)/$OUTPUT" ;; esac
 if [ -e "$OUTPUT" ]; then
@@ -21,7 +23,7 @@ mkdir -p "$WORK/tree/boot/grub" "$WORK/stage/bin"
 export HSROOT="$ROOT"
 export HSPATH="$ROOT:$ROOT/kernel:$ROOT/selfhost:$ROOT/selfhost/be${HSPATH:+:$HSPATH}"
 "$ROOT/bootstrap/hs-hosted-x86_64" "$ROOT/selfhost/be/compile.holy" "$WORK/compiler"
-"$WORK/compiler" "$ROOT/kernel/uunote.holy" "$WORK/stage/bin/uunote"
+"$WORK/compiler" "$ROOT/kernel/$SOURCE.holy" "$WORK/stage/bin/uunote"
 "$ROOT/scripts/build-kernel-native.sh" "$ROOT/kernel/kgui.holy" "$WORK/tree/boot/kernel.elf"
 python3 "$ROOT/scripts/mkramdisk.py" "$WORK/stage" "$WORK/tree/boot/ramdisk.krfs"
 cat > "$WORK/tree/boot/grub/grub.cfg" <<'GRUB'

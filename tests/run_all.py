@@ -74,6 +74,8 @@ SUITES = [
     ("test_winpaint.py", "ring-3 window body fills, clipping, cleanup and compositor pixels on QEMU"),
     ("test_winpresent.py", "ring-3 present and close/exit repaint into kernel-bound targets on QEMU"),
     ("test_mbmodules.py", "bounded MB2 module decoding and malformed-chain pins"),
+    ("test_winkey_any.py", "any-window keyboard recipient identity and fair queues"),
+    ("test_desktop_session.py", "GRUB multi-window notes and persistent launcher"),
     ("test_gui_session.py", "GRUB ring3 scratchpad focus/edit/drag/exit framebuffer"),
     ("test_wintext.py", "ring-3 clipped body text and user span validation on QEMU"),
     ("test_timer_irq.py", "deterministic timer IRQ GPR preservation"),
@@ -197,7 +199,7 @@ SUITES = [
 ]
 
 
-QUICK_SKIP = ("test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
+QUICK_SKIP = ("test_winkey_any.py", "test_desktop_session.py", "test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
 
 
 def main(argv):

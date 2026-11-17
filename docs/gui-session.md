@@ -70,3 +70,34 @@ stability, multitasking isolation, storage, GPU acceleration, UEFI and
 real-machine keyboard/mouse/display support are not established. Do not
 write the ISO to a physical disk as part of this workflow. Hardware boot
 is a separate user decision.
+
+## Multi-window desktop option
+
+```
+scripts/build-gui-iso.sh /tmp/hs-desktop.iso desktop
+qemu-system-x86_64 -cdrom /tmp/hs-desktop.iso -boot d -m 256M -nic none -serial stdio
+```
+
+The default build remains the original scratchpad. The explicit `desktop`
+option packages a different ring-3 app, with two independent note windows
+and a persistent launcher window. Both notes open at startup. Click a note
+to type; Backspace deletes, Enter clears and Down closes that note. Each
+note holds up to 54 bytes. Closing retains its text in the app's RAM.
+Click the launcher and press 1 or 2 to reopen a closed note. Pressing an
+already-open note's number does not create a duplicate. Down in the launcher
+exits the whole session and clears every window. No note is saved to disk.
+
+All three windows belong to one process. This does not add a scheduler,
+separate processes, private address spaces or process isolation. Clicks
+still choose focus and raise a window; its title strip can be dragged.
+Overlapping notes retain their independent contents when raised or moved.
+The kernel's new any-window key read preserves the recipient chosen when
+the key entered its window queue, even if focus later changes. This avoids
+waiting on an inactive note's four-second timeout before serving another.
+
+`tests/test_desktop_session.py` boots both kernel backends and checks literal
+RGB glyph pixels, independent edits, overlap/raise/drag, both notes closed
+with launcher intact, retained text after reopen, the 54-byte cap, focus
+loss and complete session exit cleanup. Native IR kernel/user image identity
+and no-clobber ISO packaging checks apply here too. Full CI runs this as an
+explicit required step and collects screenshots on failure.
