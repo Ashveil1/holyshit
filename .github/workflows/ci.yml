@@ -104,6 +104,8 @@ jobs:
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-gui-evidence python3 tests/test_console_fixed.py
       - name: ring3 GUI module2 boot, focus, text, drag and exit (required)
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-ring3-gui-evidence python3 tests/test_gui_session.py
+      - name: multi-window desktop focus, raise, reopen and exit (required)
+        run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-desktop-evidence python3 tests/test_desktop_session.py
       - name: separate command console help/echo and actual result pixels (required)
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-command-evidence python3 tests/test_command_console.py
       - uses: actions/upload-artifact@v4
@@ -114,6 +116,7 @@ jobs:
             ${{ runner.temp }}/hs-gui-evidence
             ${{ runner.temp }}/hs-command-evidence
             ${{ runner.temp }}/hs-ring3-gui-evidence
+            ${{ runner.temp }}/hs-desktop-evidence
       - name: owned address-space allocation rollback and 100-cycle reclamation (required)
         run: HS_REQUIRE_KOWNED=1 python3 tests/test_owned_space.py
       - name: private-root static ELF load and ring3 run (required)

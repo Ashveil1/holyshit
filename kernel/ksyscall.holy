@@ -31,6 +31,7 @@ SYS_WIN_KEY_READ = 95
 SYS_WIN_FILL = 96
 SYS_WIN_PRESENT = 97
 SYS_WIN_TEXT = 98
+SYS_WIN_KEY_ANY = 99
 # user pages live in PML4 slot 1 and up, so a user address space can be built
 # without ever touching the kernel half (PML4[0])
 USER_BIAS = 0x80000000000
@@ -375,6 +376,8 @@ def dispatch(nr, a1, a2, a3, a4, a5, a6):
     return sys_win_present()
   if nr == SYS_WIN_TEXT:
     return sys_win_text(a1, a2, a3, a4, a5, a6)
+  if nr == SYS_WIN_KEY_ANY:
+    return kwinroute.sys_key_any()
   if nr == SYS_EXEC:
     return sys_exec(a1, a2)
   return -38

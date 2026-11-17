@@ -24,15 +24,15 @@ FORMS = {'H':[17,17,17,31,17,17,17], 'I':[31,4,4,4,4,4,31],
          'A':[14,17,17,31,17,17,17]}
 
 
-def boot(d, ir_backend):
+def boot(d, ir_backend, desktop=False):
     tree = d/'tree'; (tree/'boot/grub').mkdir(parents=True)
     user = d/'uunote'; kernel = tree/'boot/kernel.elf'
     with contextlib.redirect_stdout(io.StringIO()):
-        assert build_x64(str(ROOT/'kernel/uunote.holy'), str(user)) == 0
+        assert build_x64(str(ROOT/('kernel/uudesk.holy' if desktop else 'kernel/uunote.holy')), str(user)) == 0
         assert build_xkernel(str(ROOT/'kernel/kgui.holy'), str(kernel), ir_backend=ir_backend) == 0
     if ir_backend:
         # Test the actual user-facing packaging entry point, not a lookalike.
-        subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'gui.iso')],
+        subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'gui.iso')]+(['desktop'] if desktop else []),
                        env=env, check=True, capture_output=True, timeout=300)
         before = (d/'gui.iso').read_bytes()
         again = subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'gui.iso')],
@@ -192,16 +192,17 @@ def run(d, iso):
                     shutil.copyfile(path,dest/path.name)
 
 
-if '--prepare' in sys.argv:
-    d = Path(sys.argv[sys.argv.index('--prepare')+1]); d.mkdir(parents=True, exist_ok=True)
-    boot(d, '--ast' not in sys.argv)
-    print('prepared native-verified IR ISO' if '--ast' not in sys.argv else 'prepared AST ISO')
-elif '--run-prepared' in sys.argv:
-    d = Path(sys.argv[sys.argv.index('--run-prepared')+1]); run(d,d/'gui.iso')
-    print('ok prepared GUI session')
-else:
-    for ir_backend in (True,False):
-        with tempfile.TemporaryDirectory(prefix='gui-'+('ir-' if ir_backend else 'ast-')) as temp:
-            d = Path(temp); run(d,boot(d,ir_backend))
-        print('ok GRUB module2/ring3 keyboard, focus, drag, glyph RGB, cap and exit', 'ir' if ir_backend else 'ast')
-    print('2/2 interactive GUI session gates; IR native kernel/user bytes verified')
+if __name__ == '__main__':
+    if '--prepare' in sys.argv:
+        d = Path(sys.argv[sys.argv.index('--prepare')+1]); d.mkdir(parents=True, exist_ok=True)
+        boot(d, '--ast' not in sys.argv)
+        print('prepared native-verified IR ISO' if '--ast' not in sys.argv else 'prepared AST ISO')
+    elif '--run-prepared' in sys.argv:
+        d = Path(sys.argv[sys.argv.index('--run-prepared')+1]); run(d,d/'gui.iso')
+        print('ok prepared GUI session')
+    else:
+        for ir_backend in (True,False):
+            with tempfile.TemporaryDirectory(prefix='gui-'+('ir-' if ir_backend else 'ast-')) as temp:
+                d = Path(temp); run(d,boot(d,ir_backend))
+            print('ok GRUB module2/ring3 keyboard, focus, drag, glyph RGB, cap and exit', 'ir' if ir_backend else 'ast')
+        print('2/2 interactive GUI session gates; IR native kernel/user bytes verified')
