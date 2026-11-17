@@ -233,3 +233,37 @@ kind, preserving `cannot assign into <kind>` for Str and scalar/opaque values.
 Eleven programs cover64 caught combinations, an uncaught error, valid mutations
 and RHS evaluation before the error, for443 parity classifications. List/Dict
 mutation rules and expression evaluation order are unchanged.
+
+## Opt-in hosted foreign calls
+
+`selfhost/be/irinterp_ffi_run.holy SOURCE [args...]` adds real fixed-signature
+C calls on Linux x86-64/SysV. Build it with the hosted seed, using the same
+`HSPATH` as the portable driver. The portable driver, native bundle and REPL
+keep their existing no-FFI behavior. This is a separate, explicit entry point.
+
+The hosted driver accepts `I64`, `U64`, `F64`, `Ptr`, `Str` and `U0` returns;
+arguments accept the same types except `U0`. It checks all argument types
+before loading a library or making the call. It supports both register banks
+and stack arguments, libc, libm, and shared-library paths relative to the
+module declaring the function. Strings cross as rooted UTF-8 C-string copies;
+valid UTF-8 string returns are copied back, and a null string returns Null.
+Returned pointers are opaque integer addresses that can be passed to another
+foreign function. They do not turn the portable guest memory arena into host
+memory. Int returns outside the safe 62-bit range exit 97 rather than silently
+losing high bits.
+
+`selfhost/irffi.holy` emits only small foreign-call adapters, not guest program
+code. Adapters are writable during construction, executable only after W^X
+publication, and unmapped after each call, including error paths. Loaded
+libraries remain open for the process lifetime. The x86-64 adapter uses the
+hosted String/Float layouts; its ABI tests cover UTF-8, exact Float payloads,
+signed bounds, register/stack arguments and cleanup. This is not a sandbox:
+foreign code has the process's normal native-code access and can crash it.
+
+Variadics, C-source compilation, callbacks, aggregate-by-value signatures and
+more than 256 arguments stay refused at preflight, including in imports,
+before guest output. Library and symbol lookup is lazy at the call site.
+This first hosted path is not enabled on arm64 or in freestanding kernels.
+It does not claim all library discovery or foreign-error wording matches the
+Python reference. `tests/test_irinterp_ffi.py` checks the supported calls and
+conversion errors against the reference and pins the unsupported boundaries.

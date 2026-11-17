@@ -174,6 +174,7 @@ SUITES = [
     ("test_hotleaf.py", "opt-in x64 hot pure-leaf threshold, guard and ownership checks"),
     ("test_irprofile_hs.py", "bounded opt-in hs interpreter function/block counters"),
     ("test_irinterp.py", "hs-written IR interpreter tier: byte parity vs interp.py, pinned refusals"),
+    ("test_irinterp_ffi.py", "opt-in hosted IR FFI: fixed SysV scalar calls, checked conversions and W^X adapters"),
     ("test_jit_startup.py", "JIT startup: <50ms driver gate + launcher verification memoization"),
     ("test_ir_unbox.py", "raw-Int unboxed arithmetic parity: outputs, errors, exit codes"),
     ("test_ir_params.py", "raw-ABI direct-call parity: outputs, errors, exit codes"),
