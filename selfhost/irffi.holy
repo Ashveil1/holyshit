@@ -1,0 +1,214 @@
+# Explicit Linux x86-64/SysV foreign-call backend for the portable IR executor.
+# The portable driver never imports this module. Call adapters are W^X maps,
+# not guest-program compilation. Only checked typed payloads cross the ABI.
+import asm
+import jitmem
+import pyrt
+extern:
+  Ptr dlopen(Str path, I64 flags)
+  Ptr dlsym(Ptr handle, Str name)
+  I64 fflush(Ptr stream)
+  Ptr malloc(U64 size)
+  U0 free(Ptr pointer)
+HANDLES = {}
+TYPES = ["I64", "U64", "F64", "Ptr", "Str", "U0"]
+def fail(msg, ln):
+  raise pyrt.py_err(msg, ln)
+def preflight(ins):
+  if len(ins["ptypes"]) > 256:
+    return "irinterp: unsupported ffi signature above 256 arguments"
+  if ins["rtype"] not in TYPES:
+    return "irinterp: unsupported ffi result " + ins["rtype"]
+  for t in ins["ptypes"]:
+    if t not in TYPES or t == "U0":
+      return "irinterp: unsupported ffi argument " + t
+  if "fixed" in ins:
+    return "irinterp: unsupported variadic ffi"
+  lib = ins["lib"]
+  if lib != null:
+    if lib[len(lib) - 2:len(lib)] == ".c":
+      return "irinterp: unsupported ffi C source (use a shared library)"
+  return null
+def address(value):
+  unsafe:
+    return as_int(as_ptr(value))
+def bytes_at(ptr, n):
+  out = []
+  for i in range(n):
+    b = 0
+    unsafe:
+      b = load8(as_ptr(ptr + i))
+    append(out, b)
+  return out
+def integer_bytes(value):
+  out = []
+  for i in range(8):
+    append(out, value >> (i * 8) & 255)
+  return out
+def overflow():
+  f = open("/dev/stderr", "w")
+  write(f, "error: Int outside the 62-bit range\n")
+  close(f)
+  scall(60, 97, 0, 0, 0, 0, 0)
+def integer_back(bs, unsigned, ln):
+  # Do not let call0's tagged return silently discard the top two bits.
+  hi = bs[7] * 256 + bs[6]
+  negative = not unsigned and bs[7] >= 128
+  if negative:
+    if hi < 57344:
+      overflow()
+    value = 0 - 1
+  else:
+    if hi >= 8192:
+      overflow()
+    value = 0
+  for i in range(8):
+    value = value * 256 + bs[7 - i]
+  return value
+def float_bytes(value):
+  # Hosted Float layout is [kind][IEEE binary64], verified by ABI tests.
+  value = float(value)
+  return bytes_at(address(value) + 8, 8)
+def float_back(bs):
+  # Parsing allocates a fresh Float; never mutate an interned literal.
+  value = float("0.0")
+  p = address(value) + 8
+  for i in range(8):
+    b = bs[i]
+    unsafe:
+      store8(as_ptr(p + i), b)
+  return value
+def string_back(ptr):
+  if ptr == 0:
+    return null
+  n = 0
+  while true:
+    b = 0
+    unsafe:
+      b = load8(as_ptr(ptr + n))
+    if b == 0:
+      break
+    n = n + 1
+  # Native strings are UTF-8 byte strings, [kind][byte length][data][NUL].
+  parts = []
+  for i in range(n):
+    append(parts, " ")
+  value = join("", parts)
+  p = address(value) + 16
+  for i in range(n):
+    unsafe:
+      store8(as_ptr(p + i), load8(as_ptr(ptr + i)))
+  return value
+def symbol(ins, basedir, ln):
+  lib = ins["lib"]
+  if lib == null or lib == "c":
+    lib = "libc.so.6"
+  elif lib == "m":
+    lib = "libm.so.6"
+  elif "/" in lib or lib[len(lib) - 3:len(lib)] in [".so", ".o", ".a"]:
+    if lib[0:1] != "/":
+      lib = basedir + "/" + lib
+    if not pyrt.py_os_path_isfile(lib):
+      fail("cannot find ffi library '" + ins["lib"] + "'", ln)
+  elif lib[len(lib) - 3:len(lib)] != ".so" and find(lib, ".so.") < 0:
+    lib = "lib" + lib + ".so"
+  if lib not in HANDLES:
+    h = dlopen(lib, 2)
+    if h == 0:
+      fail("cannot load ffi library '" + ins["lib"] + "'", ln)
+    HANDLES[lib] = h
+  p = dlsym(HANDLES[lib], ins["sym"])
+  if p == 0:
+    fail("unknown ffi symbol '" + ins["sym"] + "'", ln)
+  return p
+def call(ins, args, basedir, ln, guest_type):
+  # Validate all arguments before loading libraries or calling a C function.
+  words = []
+  copies = []
+  for i in range(len(args)):
+    value = args[i]
+    t = ins["ptypes"][i]
+    k = pyrt.py_type(value)
+    ok = false
+    if t in ["I64", "U64", "Ptr"]:
+      ok = k == "int"
+      if t == "U64" and k == "int":
+        ok = value >= 0
+    elif t == "F64":
+      ok = k in ["int", "float"]
+    elif t == "Str":
+      ok = k == "str"
+    if not ok:
+      fail("ffi '" + ins["sym"] + "' arg " + str(i + 1) + " wants " + t + ", got " + guest_type(value), ln)
+    if t == "F64":
+      append(words, float_bytes(value))
+    elif t == "Str":
+      # Give C a writable, rooted copy, never a guest literal/object header.
+      copy = value + "\0"
+      append(copies, copy)
+      append(words, integer_bytes(address(copy) + 16))
+    else:
+      append(words, integer_bytes(value))
+  pointer = symbol(ins, basedir, ln)
+  result_addr = malloc(8)
+  if result_addr == 0:
+    fail("ffi allocation failed", ln)
+  asm.reset()
+  regs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"]
+  ni = 0
+  nf = 0
+  stack = []
+  for i in range(len(args)):
+    if ins["ptypes"][i] == "F64":
+      if nf < 8:
+        asm.mov_ri64_bytes("rax", words[i])
+        asm.movq_xr(nf, "rax")
+        nf = nf + 1
+      else:
+        append(stack, words[i])
+    elif ni < 6:
+      asm.mov_ri64_bytes(regs[ni], words[i])
+      ni = ni + 1
+    else:
+      append(stack, words[i])
+  # On adapter entry rsp % 16 == 8; align the C call and spill in order.
+  slots = len(stack)
+  if slots % 2 == 0:
+    slots = slots + 1
+  asm.sub_ri32("rsp", slots * 8)
+  for i in range(len(stack)):
+    asm.mov_ri64_bytes("rax", stack[i])
+    asm.mov_mr("rsp", "rax", i * 8)
+  asm.mov_ri64("r11", pointer)
+  asm.mov_ri32("rax", nf)
+  asm.call_r11()
+  if ins["rtype"] == "F64":
+    asm.movq_rx("rax", 0)
+  asm.mov_ri64("r11", result_addr)
+  asm.mov_mr("r11", "rax", 0)
+  asm.mov_ri32("rax", 0)
+  asm.add_ri32("rsp", slots * 8)
+  asm.ret()
+  image = null
+  try:
+    image = jitmem.publish(asm.state()["code"])
+    entry = image["ptr"]
+    unsafe:
+      I64 ignored = call0(as_ptr(entry))
+    fflush(0)
+    bs = bytes_at(result_addr, 8)
+  finally:
+    if image != null:
+      jitmem.release(image)
+    free(result_addr)
+  t = ins["rtype"]
+  if t == "U0":
+    return null
+  if t == "F64":
+    return float_back(bs)
+  value = integer_back(bs, t == "U64" or t == "Ptr" or t == "Str", ln)
+  if t == "Str":
+    return string_back(value)
+  return value
+def backend():
+  return {"preflight": preflight, "call": call}

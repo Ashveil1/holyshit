@@ -1,6 +1,7 @@
 # Full-semantics IR interpreter tier, written in holyshit. Values are plain hs
 # values; the structure mirrors the Python reference executor (ir.py _exec).
-# Unsafe s* ops, ffi and builtins outside the subset are refused up front by
+# FFI without an explicit hosted backend, and builtins outside the subset,
+# are refused up front by
 # preflight so no program output happens before a refusal. import/attr/setattr
 # are supported: preflight_imports statically walks the import graph (parse +
 # irbuild only, no execution) so unsupported ops inside modules are also
@@ -12,6 +13,7 @@ import verify
 import pyrt
 import irprofile
 import parselib
+FFI = null
 JUMP = "u0001IRJUMPu0001"
 def trailing_line(s):
   n = len(s)
@@ -280,6 +282,7 @@ def call_value(st, fn, args, ln):
       if native[0]:
         return native[1]
     fr = new_frame(st, record["closure"], record["closure"]["root"], fdef["globals"])
+    fr["call_ln"] = ln
     i = 0
     while i < len(args):
       bind(fr, fdef["params"][i], args[i])
@@ -508,6 +511,12 @@ def step(st, ins, temps, frame, prev):
     bind(frame["root"], ins["name"], temps[ins["src"]])
   elif op == "mkfunc":
     temps[ins["dest"]] = callable_handle({"hs_ir_fn": ins["func"], "closure": frame, "name": st["funcs"][ins["func"]]["dispname"]})
+  elif op == "ffi":
+    args = []
+    for name in ins["pnames"]:
+      append(args, frame_get(frame, name, ln))
+    call_ln = frame["call_ln"] if "call_ln" in frame else ln
+    temps[ins["dest"]] = FFI["call"](ins, args, frame_basedir(frame), call_ln, type_name)
   elif op == "bin":
     temps[ins["dest"]] = do_binop(ins["binop"], temps[ins["l"]], temps[ins["r"]], ln)
   elif op == "un":
@@ -1266,7 +1275,11 @@ def preflight(irmod):
     fn = irmod["funcs"][key]
     for block in fn["blocks"]:
       for ins in block["instrs"]:
-        if ins["op"] not in SUPPORTED:
+        if ins["op"] == "ffi" and FFI != null:
+          refusal = FFI["preflight"](ins)
+          if refusal != null:
+            return refusal
+        elif ins["op"] not in SUPPORTED:
           return "irinterp: unsupported instruction " + ins["op"]
         if ins["op"] == "load" and ins["name"] in OTHER_BUILTINS and ins["name"] not in assigned:
           return "irinterp: unsupported builtin " + ins["name"]
