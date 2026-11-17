@@ -1,6 +1,10 @@
 # Two independent scratch buffers plus a persistent keyboard launcher.
-# One process owns all three windows. No disk writes or command execution.
+# One process owns all three windows. Disk mode requires kguidisk. No commands.
 import unotebuf
+import udisknote
+storage = udisknote.mode()
+saved = [null, null]
+status = [0, 0]
 SYS_EXIT = 60
 SYS_WIN_CREATE = 93
 SYS_WIN_CLOSE = 94
@@ -17,6 +21,28 @@ def label(wid, x, y, text, color):
   return sc(SYS_WIN_TEXT, wid, x, y, address(text), byte_len(text), color + 16777216)
 def present():
   return sc(SYS_WIN_PRESENT, 0, 0, 0, 0, 0, 0)
+def source_text(note):
+  return read_mem(note[1], note[2])
+def note_status(note, number):
+  if storage == 0:
+    return
+  wid = note[0]
+  if wid == 0:
+    return
+  text = "UNSAVED. LAUNCHER5 SAVES BOTH."
+  if storage < 0:
+    text = "DISK UNAVAILABLE. RAM ONLY."
+  if status[number - 1] == 1:
+    text = "SAVED. NORMAL REBOOT ONLY."
+  if status[number - 1] == -1:
+    text = "SAVE FAILED. TEXT STILL IN RAM."
+  if status[number - 1] == -2:
+    text = "LOAD FAILED. NOT OVERWRITTEN."
+  sc(SYS_WIN_FILL, wid, 12, 116, 416, 20, 0xe8edf2)
+  label(wid, 12, 116, text, 0x16324f)
+def update_dirty(note, number):
+  if storage != 0:
+    status[number - 1] = 1 if saved[number - 1] != null and source_text(note) == saved[number - 1] else 0
 def input_draw(note):
   wid = note[0]
   sc(SYS_WIN_FILL, wid, 12, 54, 416, 56, 0xffffff)
@@ -32,18 +58,37 @@ def open_note(note, number):
   if wid < 0:
     return false
   note[0] = wid
-  label(wid, 12, 12, "NOTE " + str(number) + " - RAM ONLY", 0x16324f)
+  title = " - RAM ONLY" if storage == 0 else " - DISK NOTES"
+  label(wid, 12, 12, "NOTE " + str(number) + title, 0x16324f)
   label(wid, 12, 30, "ARROWS MOVE. ESC CLOSE.", 0x16324f)
   label(wid, 12, 116, "HOME/END. DEL. 3 X 32. RAM ONLY.", 0x16324f)
   input_draw(note)
+  note_status(note, number)
   return true
 notes = [unotebuf.create(), unotebuf.create()]
+if storage == 1:
+  for i in range(2):
+    loaded = udisknote.load_note(notes[i], "/note" + str(i + 1))
+    if loaded == 1:
+      saved[i] = source_text(notes[i])
+      status[i] = 1
+    elif loaded < 0:
+      status[i] = -2
+      # A failed load is not permission to overwrite its source on save.
+      storage = -1
+
 launcher = sc(SYS_WIN_CREATE, 16, 16, 608, 100, 0x224466, 0)
 if launcher < 0:
   sc(SYS_EXIT, 1, 0, 0, 0, 0, 0)
 label(launcher, 12, 10, "HS DESKTOP - TWO NOTES", 0xffffff)
-label(launcher, 12, 34, "1/2 OPEN. 3/4 CLEAR NOTE. ESC EXITS.", 0xffffff)
-label(launcher, 12, 62, "CLOSE KEEPS RAM TEXT. NOT SAVED TO DISK.", 0xffffff)
+if storage == 0:
+  label(launcher, 12, 34, "1/2 OPEN. 3/4 CLEAR NOTE. ESC EXITS.", 0xffffff)
+else:
+  label(launcher, 12, 34, "1/2 OPEN. 3/4 CLEAR. 5 SAVE. ESC EXIT.", 0xffffff)
+if storage == 0:
+  label(launcher, 12, 62, "CLOSE KEEPS RAM TEXT. NOT SAVED TO DISK.", 0xffffff)
+else:
+  label(launcher, 12, 62, "EXPLICIT SAVE. NOT POWER-LOSS SAFE.", 0xffffff)
 open_note(notes[0], 1)
 open_note(notes[1], 2)
 present()
@@ -56,12 +101,25 @@ while true:
     if wid == launcher:
       if key == 135:
         break
+      if key == 53 and storage != 0:
+        success = false
+        if storage == 1:
+          success = udisknote.save_both(notes)
+        for i in range(2):
+          status[i] = 1 if success else -1
+          if success:
+            saved[i] = source_text(notes[i])
+          note_status(notes[i], i + 1)
+        present()
+        print "DESKTOP SAVE", success
       if key == 51 or key == 52:
         number = key - 50
         note = notes[number - 1]
         if unotebuf.clear(note):
+          update_dirty(note, number)
           if note[0] != 0:
             input_draw(note)
+            note_status(note, number)
             present()
           print "DESKTOP EDIT", number, note[2]
       if key == 49 or key == 50:
@@ -80,7 +138,10 @@ while true:
           else:
             changed = unotebuf.edit(note, key)
             if changed:
+              if key < 128 or key == 134:
+                update_dirty(note, i + 1)
               input_draw(note)
+              note_status(note, i + 1)
               present()
               print "DESKTOP EDIT", i + 1, note[2]
 sc(SYS_EXIT, 0, 0, 0, 0, 0, 0)

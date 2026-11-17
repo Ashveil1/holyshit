@@ -3,11 +3,12 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  printf '%s\n' 'usage: scripts/build-gui-iso.sh OUTPUT.iso [scratchpad|desktop]' >&2
+  printf '%s\n' 'usage: scripts/build-gui-iso.sh OUTPUT.iso [scratchpad|desktop|desktop-disk]' >&2
   exit 2
 fi
 APP=${2:-scratchpad}
-case "$APP" in scratchpad) SOURCE=uunote ;; desktop) SOURCE=uudesk ;; *) printf '%s\n' 'unknown GUI app' >&2; exit 2 ;; esac
+KERNEL=kgui
+case "$APP" in scratchpad) SOURCE=uunote ;; desktop) SOURCE=uudesk ;; desktop-disk) SOURCE=uudesk; KERNEL=kguidisk ;; *) printf '%s\n' 'unknown GUI app' >&2; exit 2 ;; esac
 OUTPUT=$1
 case "$OUTPUT" in /*) ;; *) OUTPUT="$(pwd)/$OUTPUT" ;; esac
 if [ -e "$OUTPUT" ]; then
@@ -24,7 +25,7 @@ export HSROOT="$ROOT"
 export HSPATH="$ROOT:$ROOT/kernel:$ROOT/selfhost:$ROOT/selfhost/be${HSPATH:+:$HSPATH}"
 "$ROOT/bootstrap/hs-hosted-x86_64" "$ROOT/selfhost/be/compile.holy" "$WORK/compiler"
 "$WORK/compiler" "$ROOT/kernel/$SOURCE.holy" "$WORK/stage/bin/uunote"
-"$ROOT/scripts/build-kernel-native.sh" "$ROOT/kernel/kgui.holy" "$WORK/tree/boot/kernel.elf"
+"$ROOT/scripts/build-kernel-native.sh" "$ROOT/kernel/$KERNEL.holy" "$WORK/tree/boot/kernel.elf"
 python3 "$ROOT/scripts/mkramdisk.py" "$WORK/stage" "$WORK/tree/boot/ramdisk.krfs"
 cat > "$WORK/tree/boot/grub/grub.cfg" <<'GRUB'
 set timeout=0

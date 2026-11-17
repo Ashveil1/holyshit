@@ -158,3 +158,65 @@ Home/End, cross-line arrows, manual newlines, reflow, full capacity,
 retained text/caret on reopen and complete exit cleanup. Event codes128
 through135 pass through the existing focused window queues; ASCII input
 and legacy Up/Down codes retain their backend meanings.
+
+
+## Explicit disposable-disk desktop (QEMU only)
+
+The `desktop` and default scratchpad options still do not mount a disk.
+A separate `desktop-disk` build opts into the existing primary-IDE KVOL
+prototype. Use only a new disposable raw image, never a physical disk,
+partition, host block device or an image containing data you need:
+
+```
+scripts/build-gui-iso.sh /tmp/hs-desktop-disk.iso desktop-disk
+python3 - <<'PYDISK'
+with open('/tmp/hs-notes.img', 'xb') as image:
+    image.truncate(1024 * 1024)
+PYDISK
+qemu-system-x86_64 -cdrom /tmp/hs-desktop-disk.iso -boot d -m 256M -nic none -serial stdio -drive file=/tmp/hs-notes.img,if=ide,format=raw
+```
+
+Creating an image this way refuses to overwrite an existing file. On later
+boots, reuse that same image without recreating it. The application loads
+`/note1` and `/note2` automatically. Click the launcher and press5 to save
+both notes explicitly. A note footer distinguishes unsaved text, saved
+text, failed save and unavailable storage. Navigation alone does not make
+saved text dirty. Returning to the last saved text restores its saved
+status. Close/reopen retains the current RAM edit and caret; reboot loads
+only the last explicit save and puts the caret at its end. Escape exits
+without saving. Clearing a note is not a disk deletion until5 saves it.
+
+A missing disk, corrupt recognized volume or invalid saved note leaves the
+GUI usable in RAM and refuses saves. A saved note containing control bytes,
+high bytes, more than98 source bytes or more than three visual rows is
+rejected as a whole, not interpreted as editor keys or silently truncated.
+Invalid saved data is not overwritten. An unrecognized non-KVOL disk is
+still treated as an empty volume by the existing storage prototype, so
+this option is ONLY for the disposable image above. It is not a safe disk
+installer or a hardware storage probe.
+
+The disk kernel reloads the trusted app from the boot ramdisk after mounting
+the volume, copies its ELF to user pages, then removes that app file from
+the VFS before saves. This keeps executable bytes out of the128KiB volume
+budget. The application receives storage readiness through a kernel-written
+`/desktop-mode` file. It uses existing file syscalls and explicit sync74;
+no new syscall, background autosave or hardware controller support is added.
+`kguisession` shares boot/display/cleanup logic between the RAM and disk
+kernels. ATA IDENTIFY now requires an actual data phase and rejects absent
+or ATAPI slots before volume reads, including CD-only QEMU boots.
+
+The KVOL format overwrites its payload in place and has no checksum,
+dual-slot commit or ATA cache-flush barrier. A successful save is tested
+through ordinary QEMU shutdown/reboot, NOT power-loss or interrupted-save
+safety. The allocation-only runtime and whole-tree sync also remain bounded
+prototype limits, not a long-running editor guarantee.
+
+`tests/test_desktop_disk.py` boots real GRUB images on both backends, edits
+notes through PS/2 input, checks literal field pixels and dirty-status
+transitions, explicitly saves, kills QEMU and verifies two later boot
+restores. It checks unsaved exit leaves the disk unchanged, a saved empty
+note, missing-disk refusal, corrupt volume refusal, and malformed/oversized
+note refusal with exact host-side disk-byte equality. The IR packaging
+case checks full native-seed kernel and app ELF equality. Full CI requires
+this suite and retains screenshots on failure. No real-machine trial is
+part of this workflow.

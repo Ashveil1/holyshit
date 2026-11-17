@@ -65,9 +65,13 @@ def present():
   ioport_out(LBA2, 0, 1)
   ioport_out(STATUS, CMD_IDENTIFY, 1)
   s = spin()
-  if s == 0xFF:
+  if s == 0 or s == 0xFF or s & ST_ERR != 0:
     return false
-  return s & ST_ERR == 0
+  # An absent slot or ATAPI device is not a usable ATA disk. IDENTIFY
+  # must actually offer its data phase before callers drain512 bytes.
+  if ioport_in(LBA1, 1) != 0 or ioport_in(LBA2, 1) != 0:
+    return false
+  return wait_drq()
 def read_identify(buf):
   i = 0
   while i < 512:

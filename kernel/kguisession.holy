@@ -1,0 +1,57 @@
+# Single ring-3 GUI session on a validated Multiboot framebuffer.
+import kmb
+import kpmm
+import kheap
+import kframebuffer
+import ksurface
+import kcomp
+import kwinroute
+import kvfs
+import kramdisk
+import kuser
+import ksyscall
+import kvol
+def run(disk):
+  if kpmm.init() <= 0:
+    raise "GUI PMM init failed"
+  if kmb.mods_count() != 1:
+    raise "GUI needs one valid module"
+  if not kpmm.busy(kmb.mod_start(0)) or not kpmm.busy(kmb.mod_end(0) - 1):
+    raise "GUI module not reserved"
+  if not kheap.init(1024):
+    raise "GUI heap init failed"
+  frame = kframebuffer.descriptor()
+  kframebuffer.map(frame)
+  if frame[2] < 640 or frame[3] < 480:
+    raise "GUI needs at least 640x480"
+  scene = ksurface.create(frame[2], frame[3])
+  c = kcomp.create(scene)
+  r = kwinroute.create(c)
+  kwinroute.bind(r)
+  if not kwinroute.bind_frame(r, frame, 0x16324f):
+    raise "GUI target rejected"
+  if not kvfs.vfs_init() or kramdisk.load() <= 0:
+    raise "GUI ramdisk missing"
+  storage = 0
+  if disk:
+    storage = kvol.mount()
+    print "GUI VOLUME", storage
+  # Reload the trusted packaged app after volume contents.
+  if disk and kramdisk.load() <= 0:
+    raise "GUI disk ramdisk missing"
+  data = kvfs.read("/bin/uunote")
+  if data == null:
+    raise "GUI app missing"
+  if kuser.load_image(kuser.payload_addr(data), byte_len(data)) != 1:
+    raise "GUI app rejected"
+  if disk:
+    # Executable bytes are already copied to user pages, not part of saves.
+    kvfs.unlink("/bin/uunote")
+    kvfs.write("/desktop-mode", "ready" if storage >= 0 else "blocked")
+  ksyscall.start()
+  # No exec hook: this session launches only its packaged text app.
+  print "GUI KERNEL READY", frame[2], frame[3]
+  kuser.run()
+  print "GUI SESSION STOPPED", ksyscall.user_exit_code(), len(c[1]), len(r[4]), len(r[1])
+  while true:
+    pass
