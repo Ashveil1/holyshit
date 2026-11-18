@@ -1,0 +1,5 @@
+# Opt-in QEMU q35 disposable SATA disk, exactly32MiB, port0.
+import kahcicheck
+kahcicheck.run(0, 65536)
+while true:
+  pass
