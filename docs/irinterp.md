@@ -236,7 +236,7 @@ mutation rules and expression evaluation order are unchanged.
 
 ## Opt-in hosted foreign calls
 
-`selfhost/be/irinterp_ffi_run.holy SOURCE [args...]` adds real fixed-signature
+`selfhost/be/irinterp_ffi_run.holy SOURCE [args...]` adds real fixed-signature and typed variadic
 C calls on Linux x86-64/SysV. Build it with the hosted seed, using the same
 `HSPATH` as the portable driver. The portable driver, native bundle and REPL
 keep their existing no-FFI behavior. This is a separate, explicit entry point.
@@ -260,10 +260,26 @@ hosted String/Float layouts; its ABI tests cover UTF-8, exact Float payloads,
 signed bounds, register/stack arguments and cleanup. This is not a sandbox:
 foreign code has the process's normal native-code access and can crash it.
 
-Variadics, C-source compilation, callbacks, aggregate-by-value signatures and
+C-source compilation, callbacks, aggregate-by-value signatures and
 more than 256 arguments stay refused at preflight, including in imports,
 before guest output. Library and symbol lookup is lazy at the call site.
 This first hosted path is not enabled on arm64 or in freestanding kernels.
 It does not claim all library discovery or foreign-error wording matches the
 Python reference. `tests/test_irinterp_ffi.py` checks the supported calls and
 conversion errors against the reference and pins the unsupported boundaries.
+
+Typed variadic declarations use the existing `..., TYPE name` syntax: every
+argument, including the tail, has a declared ABI type and an exact argument
+count. The hosted driver checks all arguments before foreign effects and sets
+the SysV vector-register count for Float arguments. Register and stack overflow
+arguments preserve declaration order across the integer/Float banks. Supported
+types are already full-width ABI values, so there are no small-integer or Float32
+promotion rules to infer. This is not an untyped/open-ended varargs interface or
+format-string validation. Portable/default interpreter and REPL still refuse
+all FFI. The native adapter remains Linux x86-64 only.
+
+Wrong argument counts are rejected by the existing IR function wrapper before
+foreign code runs. Its diagnostic says `NAME wants N args, got M`, whereas the
+Python reference prefixes that message with `ffi 'NAME'`. This existing wording
+gap also applies to fixed-signature foreign functions; no wrapper semantics are
+changed by variadic support.
