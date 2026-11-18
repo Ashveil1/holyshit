@@ -26,7 +26,7 @@ FORMS = {'H':[17,17,17,31,17,17,17], 'I':[31,4,4,4,4,4,31],
          'A':[14,17,17,31,17,17,17]}
 
 
-def boot(d, ir_backend, desktop=False, disk=False):
+def boot(d, ir_backend, desktop=False, disk=False, uefi=False):
     tree = d/'tree'; (tree/'boot/grub').mkdir(parents=True)
     user = d/'uunote'; kernel = tree/'boot/kernel.elf'
     with contextlib.redirect_stdout(io.StringIO()):
@@ -34,7 +34,7 @@ def boot(d, ir_backend, desktop=False, disk=False):
         assert build_xkernel(str(ROOT/('kernel/kguidisk.holy' if disk else 'kernel/kgui.holy')), str(kernel), ir_backend=ir_backend) == 0
     if ir_backend:
         # Test the actual user-facing packaging entry point, not a lookalike.
-        subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'gui.iso')]+(['desktop-disk' if disk else 'desktop'] if desktop else []),
+        subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'gui.iso')]+(['desktop-disk' if disk else 'desktop'] if desktop else ['scratchpad'])+(['uefi'] if uefi else []),
                        env=env, check=True, capture_output=True, timeout=300)
         before = (d/'gui.iso').read_bytes()
         again = subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'gui.iso')],
@@ -64,6 +64,9 @@ def boot(d, ir_backend, desktop=False, disk=False):
     (tree/'boot/grub/grub.cfg').write_text('set timeout=0\nset default=0\ninsmod all_video\n'
         'set gfxmode=640x480x32\nset gfxpayload=keep\nterminal_output gfxterm\n'
         'menuentry hs {\n multiboot2 /boot/kernel.elf\n module2 /boot/ramdisk.krfs\n boot\n}\n')
+    if uefi:
+        subprocess.run([str(ROOT/'scripts/package-gui-uefi.sh'),str(tree),str(d/'gui.iso')],env=env,check=True,capture_output=True,timeout=60)
+        return d/'gui.iso'
     cmd = ['grub-mkrescue']
     if os.environ.get('HS_TEST_GRUB_DIR'): cmd += ['-d', os.environ['HS_TEST_GRUB_DIR']]
     subprocess.run(cmd+['-o', str(d/'gui.iso'), str(tree)], env=env, check=True, capture_output=True)

@@ -4,7 +4,8 @@ import contextlib, io, os, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from x64gen import build_xkernel
+from x64gen import build_xkernel, KBASE
+assert KBASE == 0x100000, "kmb.KERNEL_BASE must track physical linker base"
 qemu = os.environ.get('HS_TEST_QEMU') or shutil.which('qemu-system-x86_64')
 if not qemu:
     print('skip MB2 module kernel pins: QEMU unavailable'); sys.exit(0)
@@ -23,7 +24,7 @@ for ir_backend in (True, False):
                 if 'mbmods-done\n' in out or p.poll() is not None: break
                 time.sleep(.05)
             assert 'mbmods-done\n' in out and '\nfails 0\n' in out, out
-            assert out.count('ok ') == 33, out
+            assert out.count('ok ') == 42, out
         finally:
             p.kill(); p.wait()
     print('ok MB2 module boundary/malformed pins', 'ir' if ir_backend else 'ast')

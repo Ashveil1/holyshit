@@ -1,12 +1,14 @@
 #!/bin/sh
-# Native hs kernel/user compilation plus GRUB BIOS ISO packaging.
+# Native hs kernel/user compilation plus explicit BIOS or x86-64 EFI ISO.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  printf '%s\n' 'usage: scripts/build-gui-iso.sh OUTPUT.iso [scratchpad|desktop|desktop-disk]' >&2
+if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
+  printf '%s\n' 'usage: scripts/build-gui-iso.sh OUTPUT.iso [scratchpad|desktop|desktop-disk] [bios|uefi]' >&2
   exit 2
 fi
 APP=${2:-scratchpad}
+FIRMWARE=${3:-bios}
+case "$FIRMWARE" in bios|uefi) ;; *) printf '%s\n' 'unknown GUI firmware' >&2; exit 2 ;; esac
 KERNEL=kgui
 case "$APP" in scratchpad) SOURCE=uunote ;; desktop) SOURCE=uudesk ;; desktop-disk) SOURCE=uudesk; KERNEL=kguidisk ;; *) printf '%s\n' 'unknown GUI app' >&2; exit 2 ;; esac
 OUTPUT=$1
@@ -40,7 +42,9 @@ menuentry hs {
   boot
 }
 GRUB
-if [ -n "${HS_TEST_GRUB_DIR:-}" ]; then
+if [ "$FIRMWARE" = uefi ]; then
+  "$ROOT/scripts/package-gui-uefi.sh" "$WORK/tree" "$WORK/gui.iso"
+elif [ -n "${HS_TEST_GRUB_DIR:-}" ]; then
   grub-mkrescue -d "$HS_TEST_GRUB_DIR" -o "$WORK/gui.iso" "$WORK/tree"
 else
   grub-mkrescue -o "$WORK/gui.iso" "$WORK/tree"

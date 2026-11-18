@@ -102,7 +102,12 @@ def loader_top():
   return top + FRAME_BYTES - top % FRAME_BYTES
 
 def reserve_loader():
-  return reserve(image_end(), loader_top())
+  count = reserve(image_end(), loader_top())
+  # Modules need not follow the image (EFI GRUB uses low free memory).
+  # Low spans are already counted by the initial image reservation.
+  for i in range(kmb.mods_count()):
+    reserve(kmb.mod_start(i), kmb.mod_end(i))
+  return count
 
 def init():
   # build the pool; returns the number of frames it manages
