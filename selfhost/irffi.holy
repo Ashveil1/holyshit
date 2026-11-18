@@ -22,8 +22,6 @@ def preflight(ins):
   for t in ins["ptypes"]:
     if t not in TYPES or t == "U0":
       return "irinterp: unsupported ffi argument " + t
-  if "fixed" in ins:
-    return "irinterp: unsupported variadic ffi"
   lib = ins["lib"]
   if lib != null:
     if lib[len(lib) - 2:len(lib)] == ".c":
@@ -180,6 +178,8 @@ def call(ins, args, basedir, ln, guest_type):
     asm.mov_ri64_bytes("rax", stack[i])
     asm.mov_mr("rsp", "rax", i * 8)
   asm.mov_ri64("r11", pointer)
+  # SysV variadics require AL = number of used vector argument registers.
+  # All declared tail types are already ABI-sized (F64/I64/U64/Ptr/Str).
   asm.mov_ri32("rax", nf)
   asm.call_r11()
   if ins["rtype"] == "F64":
