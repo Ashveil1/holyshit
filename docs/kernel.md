@@ -37,6 +37,10 @@ QEMU tests: `kpmmtest` `kheaptest` `kaddrtest` `ktasktest` `kpreempt`
 - ATA: `kata` (primary/master/LBA28, PIO) - `present()`, `read_identify()`,
   `sectors()`, `model()`, `read`/`write(lba, count, buf)` (count 1..256);
   the `katatest` test boots with `-drive if=ide`
+- Opt-in read-only AHCI: `kahci`, explicit controller/port selection,
+  LBA48 SATA reads, one pinned DMA buffer, terminal error/timeout handling.
+  No desktop/volume integration or physical-hardware claim. See
+  [AHCI scope and QEMU proof](ahci.md).
 - `import` works (plain `.holy` modules), `try` works (halt when no handler)
 
 ## memory management (pure `.holy`)

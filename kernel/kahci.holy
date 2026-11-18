@@ -1,0 +1,253 @@
+# Opt-in read-only AHCI, one explicitly selected PCI function and SATA port.
+# Polling slot0, one PRDT, IDENTIFY/READ DMA EXT only. No reset, IRQ, NCQ,
+# ATAPI, port multiplier, power management or storage-write command.
+# DMA comes from pinned identity-mapped runtime alloc(), not the virtual heap.
+import kpci
+import kpage
+SPIN = 20000000
+TIMEOUT_TICKS = 100
+MAX_SECTORS = 8
+attempted = false
+active = false
+controller = -1
+abar = 0
+port = 0
+arena = 0
+payload = 0
+capacity = 0
+valid_bytes = 0
+issued = 0
+failure = "not initialized"
+def rd32(address):
+  unsafe:
+    return load32(as_ptr(address))
+def wr32(address, value):
+  unsafe:
+    store32(as_ptr(address), value)
+def rd8(address):
+  unsafe:
+    return load8(as_ptr(address))
+def wr8(address, value):
+  unsafe:
+    store8(as_ptr(address), value)
+def zero(address, count):
+  unsafe:
+    I64 i = 0
+    while i < count:
+      store8(as_ptr(address + i), 0)
+      i = i + 1
+def dma_arena():
+  unsafe:
+    Ptr memory = alloc(16384)
+    I64 base = as_int(memory)
+    return (base + 4095) & -4096
+def config(reg):
+  return kpci.rd32(kpci.bus(controller), kpci.dev(controller), kpci.fn(controller), reg)
+def command(value):
+  # Upper PCI status is RW1C: never echo it back in a command update.
+  ioport_out(kpci.CONFIG_ADDR, kpci.addr(kpci.bus(controller), kpci.dev(controller), kpci.fn(controller), 4), 4)
+  ioport_out(kpci.CONFIG_DATA, value & 65535, 4)
+def wait_clear(address, mask):
+  i = 0
+  start = ticks()
+  while i < SPIN and ticks() - start < TIMEOUT_TICKS:
+    if rd32(address) & mask == 0:
+      return true
+    i = i + 1
+  return false
+def fail(reason):
+  global failure, active, valid_bytes
+  failure = reason
+  active = false
+  valid_bytes = 0
+  return false
+def poison(reason):
+  # A timed-out HBA may still DMA. Disable bus mastering; keep the whole
+  # pinned arena forever and never reinitialize or reuse it in this boot.
+  command(config(4) & ~4)
+  return fail(reason)
+def stop():
+  wr32(port + 24, rd32(port + 24) & ~1)
+  if not wait_clear(port + 24, 32768):
+    return false
+  wr32(port + 24, rd32(port + 24) & ~16)
+  return wait_clear(port + 24, 16384)
+def issue(opcode, lba, count):
+  global valid_bytes, issued
+  valid_bytes = 0
+  if not active:
+    return false
+  # Even this low-level helper refuses all other ATA commands before MMIO.
+  if opcode != 0xEC and opcode != 0x25:
+    return false
+  if count < 1 or count > MAX_SECTORS or lba < 0 or lba >= 281474976710656:
+    return false
+  if opcode == 0x25 and (lba >= capacity or count > capacity - lba):
+    return false
+  if opcode == 0xEC and (lba != 0 or count != 1):
+    return false
+  if rd32(port + 56) != 0 or rd32(port + 52) != 0:
+    return poison("AHCI slot busy")
+  if not wait_clear(port + 32, 0x88):
+    return poison("AHCI device busy")
+  zero(arena, 1024)
+  zero(arena + 1280, 256)
+  zero(payload, 4096)
+  # CFL=5 DWORDs, PRDTL=1, W=0, ATAPI=0, PMP=0, slot0.
+  wr32(arena, 65541)
+  wr32(arena + 8, arena + 1280)
+  table = arena + 1280
+  wr8(table, 0x27)
+  wr8(table + 1, 0x80)
+  wr8(table + 2, opcode)
+  wr8(table + 7, 0x40)
+  wr8(table + 4, lba & 255)
+  wr8(table + 5, lba >> 8 & 255)
+  wr8(table + 6, lba >> 16 & 255)
+  wr8(table + 8, lba >> 24 & 255)
+  wr8(table + 9, lba >> 32 & 255)
+  wr8(table + 10, lba >> 40 & 255)
+  if opcode == 0x25:
+    wr8(table + 12, count)
+  wr32(table + 128, payload)
+  wr32(table + 140, count * 512 - 1)
+  wr32(port + 16, 0xFFFFFFFF)
+  wr32(port + 48, 0xFFFFFFFF)
+  # MMIO read drains posted writes before the command doorbell.
+  rd32(port + 24)
+  issued = issued + 1
+  wr32(port + 56, 1)
+  i = 0
+  start = ticks()
+  while i < SPIN and ticks() - start < TIMEOUT_TICKS:
+    status = rd32(port + 16)
+    # Task-file, host-bus fatal/data, interface fatal and overflow errors.
+    if status & 0x7D000000 != 0:
+      return poison("AHCI command error")
+    if rd32(port + 56) & 1 == 0:
+      if rd32(port + 32) & 0x89 != 0 or rd32(arena + 4) != count * 512:
+        return poison("AHCI short or failed transfer")
+      valid_bytes = count * 512
+      return true
+    i = i + 1
+  return poison("AHCI command timeout")
+def word(index):
+  return rd8(payload + index * 2) | (rd8(payload + index * 2 + 1) << 8)
+def init(index, number):
+  global attempted, controller, abar, port, arena, payload, active, capacity, failure
+  if attempted:
+    return false
+  attempted = true
+  if index < 0 or index >= kpci.count() or number < 0 or number >= 32:
+    return fail("AHCI selection invalid")
+  if kpci.classof(index) != 1 or kpci.subclass(index) != 6 or kpci.progif(index) != 1:
+    return fail("not an AHCI controller")
+  controller = index
+  raw = config(36)
+  # Only a 32-bit non-prefetchable memory BAR, above managed low RAM.
+  if raw & 15 != 0:
+    return fail("AHCI BAR type unsupported")
+  abar = raw & 0xFFFFFFF0
+  if abar < 1073741824 or abar > 4294959104:
+    return fail("AHCI BAR address unsupported")
+  first = abar & -4096
+  last = (abar + 4352 + 4095) & -4096
+  page = first
+  while page < last:
+    if not kpage.map(cr3(), page, page, 27):
+      return fail("AHCI MMIO map failed")
+    page = page + 4096
+  command(config(4) | 2)
+  version = rd32(abar + 16)
+  if version < 0x10000 or version > 0x10301:
+    return fail("AHCI version unsupported")
+  if rd32(abar + 12) & (1 << number) == 0 or number > rd32(abar) & 31:
+    return fail("AHCI port not implemented")
+  if version >= 0x10200 and rd32(abar + 36) & 1 != 0:
+    ownership = rd32(abar + 40)
+    # No pretend millisecond handshake using an instruction-count timeout.
+    if ownership & 17 != 0:
+      return fail("AHCI firmware still owns controller")
+    wr32(abar + 40, ownership & ~8 | 2)
+  # Do not change AHCI-enable mode on a controller left in legacy mode.
+  if rd32(abar + 4) & 0x80000000 == 0:
+    return fail("AHCI mode disabled")
+  port = abar + 256 + number * 128
+  if rd32(port + 40) & 0xF0F != 0x103:
+    return fail("AHCI port not active")
+  if rd32(port + 36) != 0x101:
+    return fail("AHCI device is not SATA disk")
+  if rd32(port + 56) != 0 or rd32(port + 52) != 0 or rd32(port + 64) & 1 != 0:
+    return fail("AHCI port not idle or uses switching")
+  # Reject outstanding work on every implemented port before enabling DMA.
+  # The explicitly owned HBA has no other driver. Quiesce all its receive
+  # engines too, so firmware's old FIS pointers cannot DMA into reused RAM.
+  implemented = rd32(abar + 12)
+  selected = port
+  for n in range(32):
+    if implemented & (1 << n) != 0:
+      if n > rd32(abar) & 31:
+        return fail("AHCI port map invalid")
+      other = abar + 256 + n * 128
+      if rd32(other + 56) != 0 or rd32(other + 52) != 0:
+        return fail("AHCI controller has outstanding work")
+  wr32(abar + 4, rd32(abar + 4) & ~2)
+  for n in range(32):
+    if implemented & (1 << n) != 0:
+      port = abar + 256 + n * 128
+      if not stop():
+        return poison("AHCI engine stop timeout")
+      wr32(port + 20, 0)
+  port = selected
+  command(config(4) & ~4)
+  arena = dma_arena()
+  # Runtime bump allocations must be low identity-mapped physical memory.
+  if arena < 0x2000000 or arena + 12288 > 0x3000000:
+    return fail("AHCI DMA address unsupported")
+  zero(arena, 12288)
+  payload = arena + 4096
+  wr32(port + 20, 0)
+  wr32(port, arena)
+  wr32(port + 4, 0)
+  wr32(port + 8, arena + 1024)
+  wr32(port + 12, 0)
+  wr32(port + 16, 0xFFFFFFFF)
+  wr32(port + 48, 0xFFFFFFFF)
+  command(config(4) | 6)
+  wr32(port + 24, rd32(port + 24) | 16)
+  if not wait_clear(port + 32, 0x89):
+    return poison("AHCI device not ready to start")
+  wr32(port + 24, rd32(port + 24) | 1)
+  active = true
+  if not issue(0xEC, 0, 1):
+    return false
+  if word(0) & 0x8000 != 0 or word(83) & 0xC400 != 0x4400:
+    return poison("AHCI disk needs LBA48")
+  if word(106) & 0xC000 == 0x4000 and word(106) & 0x1000 != 0:
+    if word(117) != 256 or word(118) != 0:
+      return poison("AHCI sector size unsupported")
+  capacity = word(100) | (word(101) << 16) | (word(102) << 32)
+  if word(103) != 0 or capacity < 1:
+    return poison("AHCI capacity unsupported")
+  failure = "ready"
+  return true
+def read(lba, count):
+  global valid_bytes
+  valid_bytes = 0
+  if not active or lba < 0 or count < 1 or count > MAX_SECTORS:
+    return false
+  if lba >= capacity or count > capacity - lba:
+    return false
+  return issue(0x25, lba, count)
+def byte_at(index):
+  if index < 0 or index >= valid_bytes:
+    return -1
+  return rd8(payload + index)
+def sectors():
+  return capacity if active else 0
+def ready():
+  return active
+def error():
+  return failure
+def commands():
+  return issued
