@@ -20,6 +20,7 @@ def run(disk):
     raise "GUI module not reserved"
   if not kheap.init(1024):
     raise "GUI heap init failed"
+  print "GUI MODULE", kmb.mod_start(0), kmb.mod_end(0)
   frame = kframebuffer.descriptor()
   kframebuffer.map(frame)
   if frame[2] < 640 or frame[3] < 480:

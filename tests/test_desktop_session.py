@@ -8,11 +8,15 @@ ROOT = Path(__file__).resolve().parent.parent
 FORMS['B'] = [30,17,17,30,17,17,30]
 
 
-def run(d, disk=None):
+def run(d, disk=None, firmware=None, firmware_vars=None):
     serial = d/'serial'; qmp = d/'qmp'; serial.unlink(missing_ok=True); qmp.unlink(missing_ok=True)
     err = (d/'qemu.stderr').open('wb')
     args = [qemu,'-cdrom',str(d/'gui.iso'),'-boot','d','-m','256M','-nic','none',
         '-display','none','-serial','file:'+str(serial),'-qmp','unix:'+str(qmp)+',server=on,wait=off']
+    if firmware_vars:
+        args+=['-drive','if=pflash,format=raw,readonly=on,file='+str(firmware),
+               '-drive','if=pflash,format=raw,file='+str(firmware_vars)]
+    elif firmware:args+=['-bios',str(firmware)]
     if disk:args+=['-drive','file='+str(disk)+',if=ide,format=raw']
     p = subprocess.Popen(args,stderr=err)
     s = None

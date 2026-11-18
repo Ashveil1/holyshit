@@ -76,6 +76,7 @@ SUITES = [
     ("test_mbmodules.py", "bounded MB2 module decoding and malformed-chain pins"),
     ("test_winkey_any.py", "any-window keyboard recipient identity and fair queues"),
     ("test_notebuf.py", "bounded cursor note editor and independent edit oracle on both x64 backends"),
+    ("test_uefi_desktop.py", "OVMF UEFI GRUB low-module desktop and untouched disk"),
     ("test_desktop_disk.py", "explicit disposable-disk note saves and full reboot restores"),
     ("test_desktop_session.py", "GRUB multi-window notes and persistent launcher"),
     ("test_gui_session.py", "GRUB ring3 scratchpad focus/edit/drag/exit framebuffer"),
@@ -203,7 +204,7 @@ SUITES = [
 ]
 
 
-QUICK_SKIP = ("test_desktop_disk.py", "test_winscale.py", "test_winkey_any.py", "test_desktop_session.py", "test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
+QUICK_SKIP = ("test_uefi_desktop.py", "test_desktop_disk.py", "test_winscale.py", "test_winkey_any.py", "test_desktop_session.py", "test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
 
 
 def main(argv):

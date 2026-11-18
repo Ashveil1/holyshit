@@ -98,7 +98,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev zlib1g-dev qemu-system-x86 qemu-user grub-pc-bin grub-common xorriso
+      - run: sudo apt-get update && sudo apt-get install -y gcc libgc-dev zlib1g-dev qemu-system-x86 qemu-user grub-pc-bin grub-efi-amd64-bin grub-common xorriso mtools ovmf
       - run: mkdir -p /tmp/opencode
       - name: fixed framebuffer console boot and cursor boundaries (required)
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-gui-evidence python3 tests/test_console_fixed.py
@@ -106,6 +106,8 @@ jobs:
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-ring3-gui-evidence python3 tests/test_gui_session.py
       - name: multi-window desktop focus, raise, reopen and exit (required)
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-desktop-evidence python3 tests/test_desktop_session.py
+      - name: UEFI GRUB desktop input, framebuffer and low-module boot (required)
+        run: HS_REQUIRE_GUI=1 HS_REQUIRE_UEFI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-uefi-evidence python3 tests/test_uefi_desktop.py
       - name: explicit disk desktop save, restore and refusal (required)
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-desktop-disk-evidence python3 tests/test_desktop_disk.py
       - name: separate command console help/echo and actual result pixels (required)
@@ -120,6 +122,7 @@ jobs:
             ${{ runner.temp }}/hs-ring3-gui-evidence
             ${{ runner.temp }}/hs-desktop-evidence
             ${{ runner.temp }}/hs-desktop-disk-evidence
+            ${{ runner.temp }}/hs-uefi-evidence
       - name: owned address-space allocation rollback and 100-cycle reclamation (required)
         run: HS_REQUIRE_KOWNED=1 python3 tests/test_owned_space.py
       - name: private-root static ELF load and ring3 run (required)

@@ -30,6 +30,10 @@ MB2_MAGIC = 0x36d76289
 MB2_TAG_MMAP = 6
 
 FRAME_BYTES = 4096
+# Physical load base mirrored from the freestanding image linker.
+KERNEL_BASE = 0x100000
+# Deliberately accept only the lower640KiB for a below-image module.
+LOW_MODULE_LIMIT = 0xA0000
 
 # the runtime's own bump allocator window, mirrored from x64gen.KHEAP_BASE /
 # x64gen.KHEAP_SIZE. alloc() (and with it every Str/List payload, every
@@ -246,7 +250,13 @@ def mb2_module_at(base, index):
         return -1
       start = rd32(tag + 8)
       end = rd32(tag + 12)
-      if start < image_end() or end <= start or end > 1073741824:
+      if start < FRAME_BYTES or end <= start or end > 1073741824:
+        return -1
+      # EFI GRUB may put modules below the kernel. Accept only a complete
+      # disjoint range, never a span into the image, stack or page tables.
+      if start < KERNEL_BASE and end > LOW_MODULE_LIMIT:
+        return -1
+      if start < image_end() and end > KERNEL_BASE:
         return -1
       if start < RUNTIME_BUMP_BASE + RUNTIME_BUMP_SIZE and end > RUNTIME_BUMP_BASE:
         return -1

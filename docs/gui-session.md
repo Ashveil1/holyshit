@@ -36,8 +36,11 @@ it, for example `/usr/lib/grub/i386-pc`.
 GRUB supplies one `module2` KRFS ramdisk. The new MB2 decoder validates the
 whole bounded tag chain, module endpoints, command-string termination,
 end marker and initial identity-map range before exposing any module.
-Modules below the kernel image, overlapping the runtime bump arena or
-boot-info block, or outside the initial 1GiB mapping are rejected. Invalid
+Modules overlapping the kernel image, runtime bump arena or boot-info
+block, or outside the initial 1GiB mapping are rejected. A module below
+the kernel is accepted only within the conservative range4096..655360;
+spans through the gap below the1MiB image base are rejected. EFI GRUB
+uses this low-module placement. The first page remains forbidden. Invalid
 module indexes return zero endpoints. Existing QEMU/spec module layouts
 remain supported. The GUI requires exactly one module and verifies the
 PMM reserved both endpoints before allocating its heap or loading the app.
@@ -66,8 +69,9 @@ kernel backends. Adjacent surface/window suites check RGB24/32 behavior.
 Local edit-to-present timings are printed as diagnostics, not a hardware
 performance promise. This remains a single-app experimental session with
 an allocation-only language runtime and busy waits. Long-running memory
-stability, multitasking isolation, storage, GPU acceleration, UEFI and
-real-machine keyboard/mouse/display support are not established. Do not
+stability, multitasking isolation, GPU acceleration and real-machine
+keyboard/mouse/display support are not established. UEFI is tested only
+with emulated OVMF, as described below. Do not
 write the ISO to a physical disk as part of this workflow. Hardware boot
 is a separate user decision.
 
@@ -220,3 +224,64 @@ note refusal with exact host-side disk-byte equality. The IR packaging
 case checks full native-seed kernel and app ELF equality. Full CI requires
 this suite and retains screenshots on failure. No real-machine trial is
 part of this workflow.
+
+
+## Opt-in x86-64 UEFI desktop (OVMF only)
+
+BIOS remains the default. A third build argument selects an EFI-only optical
+image without changing the kernel compiler or native seed:
+
+```
+scripts/build-gui-iso.sh /tmp/hs-uefi.iso desktop uefi
+```
+
+This requires GRUB x86-64 EFI modules, `grub-mkimage`, mtools and xorriso in
+addition to the normal build tools. On Debian/Ubuntu the extra packages are
+`grub-efi-amd64-bin`, `mtools` and `ovmf`. `HS_GRUB_EFI_DIR` overrides the
+module directory (default `/usr/lib/grub/x86_64-efi`). The same explicit
+firmware argument also packages scratchpad or disposable-disk mode; the
+required UEFI GUI gate uses only the no-disk desktop.
+
+`scripts/package-gui-uefi.sh` packages an existing boot tree, embeds the
+GRUB modules in `EFI/BOOT/BOOTX64.EFI`, creates a small FAT El Torito image,
+and boots the existing Multiboot2 kernel and module. An embedded GRUB
+configuration finds the optical boot tree through its marker file. Outputs
+are never overwritten. This is not an installer, a signed Secure Boot image,
+or a tested bootable USB layout. Do not write it to physical media as part
+of this workflow.
+
+Run the required emulator gate with:
+
+```
+HS_REQUIRE_GUI=1 HS_REQUIRE_UEFI=1 python3 tests/test_uefi_desktop.py
+```
+
+It locates an OVMF code/variables pair, or accepts `HS_OVMF_CODE` and
+`HS_OVMF_VARS`. The matching standard variables filename is inferred when
+only the code path is supplied. Code is attached read-only and the variables
+template is copied to a disposable file. The source files are checked
+unchanged afterward; no host firmware or real NVRAM is accessed. Both the
+2MiB and4MiB OVMF layouts have been checked locally. Use matching code and
+variables files with Secure Boot disabled and no enrolled keys.
+
+EFI GRUB can place the ramdisk below the kernel rather than after it.
+`kmb` now accepts only bounded low ranges disjoint from the image, runtime
+arena and boot information. `kpmm` explicitly reserves module spans; the
+existing low-memory/image reservation also covers low modules. Synthetic
+pins exercise both sides of the low-limit/image boundaries and retain all
+malformed-chain refusals. The GUI checks both module endpoint pages are
+reserved before allocating or running user code.
+
+The UEFI gate verifies an actual EFI El Torito boot catalog, the module
+range in serial output, the640x480 framebuffer and every existing desktop
+pixel/input case: PS/2 typing, middle edits, caret movement, focus, raise,
+drag, close/reopen and full cleanup. A sentinel disk stays byte-identical
+and no volume probe occurs. Local OVMF runs exercise the low placement;
+other firmware versions may place a valid module above the image. The native IR case uses the actual packaging
+script and checks all kernel/app ELF bytes; the AST kernel boots too. Full
+CI requires the UEFI gate and retains screenshots on failure.
+
+This establishes an OVMF boot path, not compatibility with Ash's HP. Secure
+Boot, USB keyboard/mouse, laptop touchpad buses, actual firmware graphics
+modes, storage controllers and hybrid GPU behavior remain unverified. No
+HP trial or firmware change is authorized by this emulator test.
