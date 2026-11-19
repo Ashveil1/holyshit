@@ -1,0 +1,5 @@
+# Opt-in QEMU q35 qemu-xhci, boot keyboard on root port 1.
+import kxhcicheck
+kxhcicheck.run_keyboard(5)
+while true:
+  pass

@@ -1,0 +1,136 @@
+# Shared QEMU-only xHCI gate body. Host injects real input over QMP after
+# the guest prints XHCI READY, then the guest asserts the decoded reports.
+import kpci
+import kxhci
+fails = 0
+kbd_codes = [4, 0, 5, 0, 40, 0]
+mouse_buttons = [0, 1, 0]
+mouse_dx = [10, 0, 0]
+mouse_dy = [5, 0, 0]
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+  else:
+    print "FAIL", label, got, want
+    fails = fails + 1
+def discover():
+  kpci.init()
+  idx = kpci.find(6966, 13)
+  print "XHCI PCI", idx
+  if idx >= 0:
+    print "XHCI BDF", kpci.bus(idx), kpci.dev(idx), kpci.fn(idx), kpci.vendor(idx), kpci.device(idx)
+  return idx
+def guard_set():
+  for i in range(1024, 4096):
+    kxhci.wr8(kxhci.cmdring + i, 0xA5)
+    kxhci.wr8(kxhci.evtring + i, 0xA5)
+    kxhci.wr8(kxhci.ep0ring + i, 0xA5)
+    kxhci.wr8(kxhci.hidring + i, 0xA5)
+    kxhci.wr8(kxhci.dcbaa + i, 0x5A)
+  for i in range(16, 4096):
+    kxhci.wr8(kxhci.erst + i, 0xA5)
+  for i in range(2176, 4096):
+    kxhci.wr8(kxhci.ictx + i, 0xA5)
+  for i in range(2112, 4096):
+    kxhci.wr8(kxhci.dctx + i, 0xA5)
+  for i in range(64, 4096):
+    kxhci.wr8(kxhci.databuf + i, 0x5A)
+    kxhci.wr8(kxhci.snaps + i, 0x5A)
+def guards():
+  for i in range(1024, 4096):
+    if kxhci.rd8(kxhci.cmdring + i) != 0xA5:
+      return false
+    if kxhci.rd8(kxhci.evtring + i) != 0xA5:
+      return false
+    if kxhci.rd8(kxhci.ep0ring + i) != 0xA5:
+      return false
+    if kxhci.rd8(kxhci.hidring + i) != 0xA5:
+      return false
+    if kxhci.rd8(kxhci.dcbaa + i) != 0x5A:
+      return false
+  for i in range(16, 4096):
+    if kxhci.rd8(kxhci.erst + i) != 0xA5:
+      return false
+  for i in range(2176, 4096):
+    if kxhci.rd8(kxhci.ictx + i) != 0xA5:
+      return false
+  for i in range(2112, 4096):
+    if kxhci.rd8(kxhci.dctx + i) != 0xA5:
+      return false
+  for i in range(64, 4096):
+    if kxhci.rd8(kxhci.databuf + i) != 0x5A:
+      return false
+    if kxhci.rd8(kxhci.snaps + i) != 0x5A:
+      return false
+  return true
+def collect(count):
+  got = 0
+  start = ticks()
+  while got < count and ticks() - start < 1200:
+    if kxhci.poll() != 0:
+      print "XHCI EVENT", kxhci.report_bytes(), kxhci.report_byte(0), kxhci.report_byte(1), kxhci.report_byte(2)
+      got = got + 1
+  return got
+def check_kbd_event(i):
+  expect("kbd report len", kxhci.report_bytes(), 8)
+  expect("kbd modifiers", kxhci.report_byte(0), 0)
+  expect("kbd key", kxhci.report_byte(2), kbd_codes[i])
+def check_mouse_event(i):
+  expect("mouse buttons", kxhci.report_byte(0), mouse_buttons[i])
+  expect("mouse dx", kxhci.report_byte(1), mouse_dx[i])
+  expect("mouse dy", kxhci.report_byte(2), mouse_dy[i])
+def run_keyboard(port):
+  print "XHCI START"
+  idx = discover()
+  expect("init", kxhci.init(idx, port, 1), true)
+  expect("ready", kxhci.ready(), true)
+  expect("reason", kxhci.error(), "ready")
+  guard_set()
+  print "XHCI READY"
+  got = 0
+  start = ticks()
+  while got < 6 and ticks() - start < 1200:
+    if kxhci.poll() != 0:
+      check_kbd_event(got)
+      got = got + 1
+  expect("kbd event count", got, 6)
+  expect("events counted", kxhci.events(), 6)
+  expect("report drained", kxhci.poll(), 0)
+  expect("DMA guards", guards(), true)
+  print "XHCI DONE", fails
+def run_mouse(port):
+  print "XHCI START"
+  idx = discover()
+  expect("init", kxhci.init(idx, port, 2), true)
+  expect("ready", kxhci.ready(), true)
+  expect("reason", kxhci.error(), "ready")
+  guard_set()
+  print "XHCI READY"
+  got = 0
+  start = ticks()
+  while got < 3 and ticks() - start < 1200:
+    if kxhci.poll() != 0:
+      check_mouse_event(got)
+      got = got + 1
+  expect("mouse event count", got, 3)
+  expect("events counted", kxhci.events(), 3)
+  expect("DMA guards", guards(), true)
+  print "XHCI DONE", fails
+def run_stall(port):
+  print "XHCI START"
+  idx = discover()
+  expect("init", kxhci.init(idx, port, 1), true)
+  expect("ready", kxhci.ready(), true)
+  guard_set()
+  before = kxhci.issued()
+  expect("stall hook", kxhci.test_stall(), false)
+  expect("reason", kxhci.error(), "xHCI control transfer failed")
+  expect("not ready", kxhci.ready(), false)
+  expect("bus master disabled", kxhci.config(4) & 4, 0)
+  expect("no report", kxhci.report_byte(0), -1)
+  expect("no reinit", kxhci.init(idx, port, 1), false)
+  expect("no new command", kxhci.issued(), before)
+  expect("no event", kxhci.poll(), 0)
+  expect("DMA guards", guards(), true)
+  print "XHCI DONE", fails
