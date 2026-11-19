@@ -98,6 +98,18 @@ with tempfile.TemporaryDirectory(prefix='hs bundle space ') as temp:
     r=subprocess.run(['/bin/sh',str(launcher),'build',source.name,str(exe)],cwd=d,env=env,capture_output=True,text=True,timeout=60)
     if r.returncode==0:r=subprocess.run([str(exe),'hello world','$5'],env=env,capture_output=True,text=True,timeout=30)
     check(r.returncode==0 and r.stdout==expected,'relocated AOT '+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    # Dotted std imports must work outside the checkout, with no caller HSPATH.
+    path_source=d/'stdlib path.holy'
+    path_source.write_text('import std.path\nimport std.str\nprint std.path.normpath("//a/../b")\nprint std.path.join("a", "b")\nprint std.str.trim(" hi ")\n')
+    for command in ('run','interpret'):
+        r=subprocess.run(['/bin/sh',str(launcher),command,path_source.name],cwd=d,env=env,capture_output=True,text=True,timeout=30)
+        check(r.returncode==0 and not r.stderr and r.stdout=='//b\na/b\nhi\n','relocated dotted std import '+command+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    path_exe=d/'stdlib program'
+    r=subprocess.run(['/bin/sh',str(launcher),'build',path_source.name,str(path_exe)],cwd=d,env=env,capture_output=True,text=True,timeout=60)
+    if r.returncode==0:r=subprocess.run([str(path_exe)],env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and not r.stderr and r.stdout=='//b\na/b\nhi\n','relocated dotted std import build'+repr((r.returncode,r.stdout,r.stderr[-150:])))
+    r=subprocess.run(['/bin/sh',str(launcher),'repl'],input='if true:\n  import std.path\n  print std.path.normpath("a/../b")\n\n',cwd=d,env=env,capture_output=True,text=True,timeout=30)
+    check(r.returncode==0 and not r.stderr and r.stdout=='b\n','relocated dotted std import repl'+repr((r.returncode,r.stdout,r.stderr[-150:])))
     local=dict(env,HSROOT=str(moved),HSPATH=str(moved/'selfhost')+':'+str(moved/'selfhost/be'))
     stage=d/'stage2'
     if '--skip-selfcompile' not in sys.argv:
