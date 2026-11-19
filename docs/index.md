@@ -16,6 +16,7 @@ references (builtins.md, api.json, errors.md) are checked by tests.
 | Write my own `std.*` / use std | `stdlib.md` |
 | Run without gcc / go bare metal | `x64-subset.md`, `kernel.md` |
 | Test opt-in read-only SATA DMA on QEMU | [AHCI scope and gates](ahci.md) |
+| Test opt-in USB HID input over xHCI on QEMU | [xHCI scope and gates](xhci.md) |
 | Hook up an editor / let AI drive the language | `lsp.md`, `for-agents.md` |
 | Let a program read the language (JSON) | `api.json` |
 | Design rationale + phase history | `../SPEC-v1.md` |

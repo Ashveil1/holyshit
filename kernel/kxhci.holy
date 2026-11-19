@@ -1,0 +1,545 @@
+# Opt-in USB HID input over xHCI, one explicitly selected PCI function and
+# one explicitly selected root port. Polling only: no IRQs, no MSI. QEMU
+# qemu-xhci (1b36:000d) with QEMU boot-protocol keyboard/mouse (0627:0001/
+# 0627:0002) only. One device per boot. No USB storage, hubs, hotplug or
+# desktop input-queue integration; PS/2 input stays the default path.
+import kpci
+import kpage
+SPIN = 20000000
+TIMEOUT_TICKS = 100
+RING = 64
+attempted = false
+active = false
+controller = -1
+xbar = 0
+opreg = 0
+dbreg = 0
+rtreg = 0
+port = 0
+portsc = 0
+csize = 32
+slotid = 0
+arena = 0
+dcbaa = 0
+cmdring = 0
+evtring = 0
+erst = 0
+ictx = 0
+dctx = 0
+ep0ring = 0
+hidring = 0
+databuf = 0
+snaps = 0
+cmd_i = 0
+cmd_c = 1
+ep0_i = 0
+ep0_c = 1
+hid_i = 0
+hid_c = 1
+evt_i = 0
+evt_c = 1
+kind = 0
+iface = 0
+hid_dci = 0
+hid_len = 0
+report_len = 0
+commands = 0
+transfers = 0
+dead = false
+last_ptr = 0
+last_dw2 = 0
+last_dw3 = 0
+have_pend = false
+pend_ptr = 0
+pend_dw2 = 0
+failure = "not initialized"
+def config_raw(i, reg):
+  return kpci.rd32(kpci.bus(i), kpci.dev(i), kpci.fn(i), reg)
+def command_on(i, value):
+  ioport_out(kpci.CONFIG_ADDR, kpci.addr(kpci.bus(i), kpci.dev(i), kpci.fn(i), 4), 4)
+  ioport_out(kpci.CONFIG_DATA, value & 65535, 4)
+def rd32(address):
+  unsafe:
+    return load32(as_ptr(address))
+def wr32(address, value):
+  unsafe:
+    store32(as_ptr(address), value)
+def rd8(address):
+  unsafe:
+    return load8(as_ptr(address))
+def wr8(address, value):
+  unsafe:
+    store8(as_ptr(address), value)
+def zero(address, count):
+  unsafe:
+    I64 i = 0
+    while i < count:
+      store8(as_ptr(address + i), 0)
+      i = i + 1
+def dma_arena(bytes_total):
+  unsafe:
+    Ptr memory = alloc(bytes_total + 4096)
+    I64 base = as_int(memory)
+    return (base + 4095) & -4096
+def config(reg):
+  return kpci.rd32(kpci.bus(controller), kpci.dev(controller), kpci.fn(controller), reg)
+def command(value):
+  # Upper PCI status is RW1C: never echo it back in a command update.
+  ioport_out(kpci.CONFIG_ADDR, kpci.addr(kpci.bus(controller), kpci.dev(controller), kpci.fn(controller), 4), 4)
+  ioport_out(kpci.CONFIG_DATA, value & 65535, 4)
+def wait_set(address, mask):
+  i = 0
+  start = ticks()
+  while i < SPIN and ticks() - start < TIMEOUT_TICKS:
+    if rd32(address) & mask != 0:
+      return true
+    i = i + 1
+  return false
+def wait_clear(address, mask):
+  i = 0
+  start = ticks()
+  while i < SPIN and ticks() - start < TIMEOUT_TICKS:
+    if rd32(address) & mask == 0:
+      return true
+    i = i + 1
+  return false
+def fail(reason):
+  global failure, active, report_len, dead
+  failure = reason
+  active = false
+  report_len = 0
+  dead = true
+  return false
+def poison(reason):
+  # A timed-out or faulted controller may still DMA. Stop it and disable
+  # bus mastering; keep the pinned arena forever, no reinit this boot.
+  wr32(opreg, rd32(opreg) & ~1)
+  wait_set(opreg + 4, 1)
+  command(config(4) & ~4)
+  return fail(reason)
+def trb(ring, index, lo, hi, dw2, dw3):
+  base = ring + index * 16
+  wr32(base, lo)
+  wr32(base + 4, hi)
+  wr32(base + 8, dw2)
+  wr32(base + 12, dw3)
+def ring_put(name, lo, hi, dw2, dw3):
+  # name: 0 command, 1 ep0, 2 interrupt-IN. Handles the link TRB wrap.
+  global cmd_i, cmd_c, ep0_i, ep0_c, hid_i, hid_c
+  if name == 0:
+    ring = cmdring
+    i = cmd_i
+    c = cmd_c
+  if name == 1:
+    ring = ep0ring
+    i = ep0_i
+    c = ep0_c
+  if name == 2:
+    ring = hidring
+    i = hid_i
+    c = hid_c
+  if i == RING - 1:
+    # Link TRB at the final slot: back to segment start, toggle cycle.
+    trb(ring, i, ring, 0, 0, 6 << 10 | 2 | c)
+    i = 0
+    if c == 1:
+      c = 0
+    else:
+      c = 1
+  trb(ring, i, lo, hi, dw2, dw3 | c)
+  # MMIO read drains posted writes before the doorbell.
+  rd32(opreg)
+  i = i + 1
+  if name == 0:
+    cmd_i = i
+    cmd_c = c
+  if name == 1:
+    ep0_i = i
+    ep0_c = c
+  if name == 2:
+    hid_i = i
+    hid_c = c
+  return 0
+def doorbell(target):
+  wr32(dbreg + slotid * 4, target)
+def evt_ptr():
+  return rd32(evtring + evt_i * 16) | (rd32(evtring + evt_i * 16 + 4) << 32)
+def evt_dw2():
+  return rd32(evtring + evt_i * 16 + 8)
+def evt_dw3():
+  return rd32(evtring + evt_i * 16 + 12)
+def evt_take():
+  # 0 none, 1 command completion, 2 ep0 transfer event, 3 interrupt-IN
+  # transfer event (stashed), 4 consumed/ignored. ERDP acknowledges.
+  global evt_i, evt_c, last_ptr, last_dw2, last_dw3, have_pend, pend_ptr, pend_dw2
+  if rd32(evtring + evt_i * 16 + 12) & 1 != evt_c:
+    return 0
+  type = evt_dw3() >> 10 & 63
+  last_ptr = evt_ptr()
+  last_dw2 = evt_dw2()
+  last_dw3 = evt_dw3()
+  evt_i = evt_i + 1
+  if evt_i == RING:
+    evt_i = 0
+    if evt_c == 1:
+      evt_c = 0
+    else:
+      evt_c = 1
+  wr32(rtreg + 0x18, evtring + (evt_i * 16) | 8)
+  if type == 33:
+    return 1
+  if type == 32:
+    if last_ptr >= ep0ring and last_ptr < ep0ring + RING * 16:
+      return 2
+    if have_pend:
+      poison("xHCI event overflow")
+      return 4
+    have_pend = true
+    pend_ptr = last_ptr
+    pend_dw2 = last_dw2
+    return 3
+  return 4
+def cmd_exec(lo, hi, dw2, dw3):
+  # Enqueue a command TRB and wait for its completion event. Returns the
+  # completion parameter word, or -1 on error/timeout (terminal).
+  global commands
+  if dead:
+    return -1
+  ring_put(0, lo, hi, dw2, dw3)
+  want = cmdring + (cmd_i - 1) * 16
+  commands = commands + 1
+  wr32(dbreg, 0)
+  i = 0
+  start = ticks()
+  while i < SPIN and ticks() - start < TIMEOUT_TICKS:
+    if rd32(opreg + 4) & 0x1004 != 0:
+      poison("xHCI host controller error")
+      return -1
+    got = evt_take()
+    if got == 1:
+      if last_ptr != want or last_dw2 >> 24 & 255 != 1:
+        poison("xHCI command error")
+        return -1
+      return last_dw2 & 0xFFFFFF
+    i = i + 1
+  poison("xHCI command timeout")
+  return -1
+def control(bmreq, req, val, idx, length, direction):
+  # One ep0 transfer: setup, optional IN data stage, status. Returns bytes
+  # received (0 for no-data) or -1; any error/timeout is terminal.
+  if not attempted or dead or slotid < 1:
+    return -1
+  if direction < 0 or direction > 1 or length < 0 or length > 512:
+    return -1
+  if direction == 0 and length != 0:
+    return -1
+  zero(databuf, 64)
+  lo = bmreq | (req << 8) | (val & 65535 << 16)
+  hi = idx & 65535 | (length << 16)
+  trt = 0
+  if direction == 1:
+    trt = 3
+  ring_put(1, lo, hi, 8, 2 << 10 | 64 | (trt << 16))
+  if direction == 1:
+    ring_put(1, databuf, 0, length, 3 << 10 | 4 | (1 << 16))
+    ring_put(1, 0, 0, 0, 4 << 10 | 32)
+  else:
+    ring_put(1, 0, 0, 0, 4 << 10 | 32 | (1 << 16))
+  want = ep0ring + (ep0_i - 1) * 16
+  doorbell(1)
+  i = 0
+  start = ticks()
+  while i < SPIN and ticks() - start < TIMEOUT_TICKS:
+    if rd32(opreg + 4) & 0x1004 != 0:
+      poison("xHCI host controller error")
+      return -1
+    got = evt_take()
+    if got == 2:
+      code = last_dw2 >> 24 & 255
+      if code != 1 and code != 13:
+        poison("xHCI control transfer failed")
+        return -1
+      if last_ptr != want:
+        poison("xHCI control event mismatch")
+        return -1
+      left = last_dw2 & 0xFFFFFF
+      if direction == 0 or left > length:
+        return 0
+      return length - left
+    i = i + 1
+  poison("xHCI control timeout")
+  return -1
+def init(index, number, want):
+  global attempted, active, controller, xbar, opreg, dbreg, rtreg, port
+  global portsc, csize, slotid, arena, dcbaa, cmdring, evtring, erst, ictx
+  global dctx, ep0ring, hidring, databuf, snaps, kind, iface, hid_dci
+  global hid_len, failure
+  if attempted:
+    return false
+  attempted = true
+  if index < 0 or index >= kpci.count() or number < 1 or number > 31:
+    return fail("xHCI selection invalid")
+  if want != 1 and want != 2:
+    return fail("USB HID kind invalid")
+  if kpci.classof(index) != 12 or kpci.subclass(index) != 3 or kpci.progif(index) != 48:
+    return fail("not an xHCI controller")
+  if kpci.vendor(index) != 6966 or kpci.device(index) != 13:
+    return fail("xHCI vendor unsupported")
+  controller = index
+  raw = config(16)
+  # Only a 64-bit memory BAR; OVMF assigns it above 4GiB, SeaBIOS below.
+  if raw & 15 != 4:
+    return fail("xHCI BAR type unsupported")
+  xbar = raw & 0xFFFFFFF0 | (config(20) << 32)
+  if xbar < 1073741824 or xbar > 140737488289792:
+    return fail("xHCI BAR address unsupported")
+  if not kpage.map(cr3(), xbar & -4096, xbar & -4096, 27):
+    return fail("xHCI MMIO map failed")
+  command(config(4) | 2)
+  caplen = rd8(xbar)
+  version = rd32(xbar) >> 16 & 65535
+  if version < 256 or version > 288:
+    return fail("xHCI version unsupported")
+  hcsp1 = rd32(xbar + 4)
+  maxslots = hcsp1 & 255
+  maxintrs = hcsp1 >> 8 & 2047
+  maxports = hcsp1 >> 24 & 255
+  if maxslots < 1 or maxintrs < 1:
+    return fail("xHCI capacity unsupported")
+  if number > maxports:
+    return fail("xHCI port not implemented")
+  hcsp2 = rd32(xbar + 8)
+  if hcsp2 >> 21 & 31 != 0 or hcsp2 >> 27 & 31 != 0:
+    return fail("xHCI scratchpads unsupported")
+  hccp1 = rd32(xbar + 16)
+  xecp = hccp1 >> 16
+  steps = 0
+  while xecp != 0 and steps < 16:
+    cap = rd32(xbar + xecp << 2)
+    if cap & 255 == 1:
+      return fail("xHCI legacy support unsupported")
+    xecp = xecp + cap >> 8 & 255
+    steps = steps + 1
+  if hccp1 & 4 != 0:
+    csize = 64
+  dboff = rd32(xbar + 20) & -4
+  rtsoff = rd32(xbar + 24) & -32
+  opreg = xbar + caplen
+  dbreg = xbar + dboff
+  rtreg = xbar + rtsoff + 32
+  need = caplen + 1024 + maxports * 16
+  if dboff + 4 + maxslots * 4 > need:
+    need = dboff + 4 + maxslots * 4
+  if rtsoff + 32 + maxintrs * 32 > need:
+    need = rtsoff + 32 + maxintrs * 32
+  if need > 65536:
+    return fail("xHCI register space unsupported")
+  first = xbar & -4096
+  last = (xbar + need + 4095) & -4096
+  page = first + 4096
+  while page < last:
+    if not kpage.map(cr3(), page, page, 27):
+      return fail("xHCI MMIO map failed")
+    page = page + 4096
+  command(config(4) | 2)
+  if rd32(opreg + 8) & 1 == 0:
+    return fail("xHCI page size unsupported")
+  wr32(opreg, rd32(opreg) & ~1)
+  if not wait_set(opreg + 4, 1):
+    return poison("xHCI stop timeout")
+  wr32(opreg, rd32(opreg) | 2)
+  if not wait_clear(opreg, 2):
+    return poison("xHCI reset timeout")
+  if not wait_clear(opreg + 4, 2048):
+    return poison("xHCI not ready after reset")
+  if rd32(opreg + 4) & 0x1004 != 0:
+    return fail("xHCI controller error")
+  arena = dma_arena(40960)
+  if arena < 0x2000000 or arena + 40960 > 0x3000000:
+    return fail("xHCI DMA address unsupported")
+  zero(arena, 40960)
+  dcbaa = arena
+  cmdring = arena + 4096
+  evtring = arena + 8192
+  erst = arena + 12288
+  ictx = arena + 16384
+  dctx = arena + 20480
+  ep0ring = arena + 24576
+  hidring = arena + 28672
+  databuf = arena + 32768
+  snaps = arena + 36864
+  wr32(erst, evtring)
+  wr32(erst + 8, RING)
+  wr32(opreg + 48, dcbaa)
+  wr32(opreg + 52, 0)
+  wr32(opreg + 24, cmdring | 1)
+  wr32(opreg + 28, 0)
+  wr32(opreg + 56, 1)
+  wr32(rtreg + 8, 1)
+  wr32(rtreg + 16, erst)
+  wr32(rtreg + 20, 0)
+  wr32(rtreg, 1)
+  wr32(rtreg + 24, evtring | 8)
+  wr32(rtreg + 28, 0)
+  command(config(4) | 6)
+  wr32(opreg, rd32(opreg) | 1)
+  if not wait_clear(opreg + 4, 1):
+    return poison("xHCI run timeout")
+  port = number
+  portsc = opreg + 1024 + (number - 1) * 16
+  cur = rd32(portsc)
+  if cur & 1 == 0:
+    return fail("xHCI port has no device")
+  wr32(portsc, cur & 512 | 0x1FE0000)
+  cur = rd32(portsc)
+  wr32(portsc, cur & 512 | 16)
+  if not wait_set(portsc, 2):
+    return poison("xHCI port reset timeout")
+  if not wait_clear(portsc, 16):
+    return poison("xHCI port reset timeout")
+  wr32(portsc, rd32(portsc) & 514 | 0x1FE0000)
+  if rd32(portsc) >> 10 & 15 != 3:
+    return fail("USB HID speed unsupported")
+  if cmd_exec(0, 0, 0, 9 << 10) < 0:
+    return false
+  slotid = last_dw3 >> 24 & 255
+  if slotid != 1:
+    return poison("xHCI slot id unexpected")
+  wr32(dcbaa + slotid * 8, dctx)
+  wr32(ictx + 4, 3)
+  wr32(ictx + csize, 3 << 20 | (1 << 27))
+  wr32(ictx + csize + 4, port << 16)
+  wr32(ictx + 2 * csize + 4, 3 << 1 | (4 << 3) | (64 << 16))
+  wr32(ictx + 2 * csize + 8, ep0ring | 1)
+  wr32(ictx + 2 * csize + 16, 8)
+  if cmd_exec(ictx, 0, 0, 11 << 10 | (slotid << 24)) < 0:
+    return false
+  if rd32(dctx + 12) >> 27 & 31 != 2:
+    return poison("xHCI device not addressed")
+  got = control(128, 6, 256, 0, 18, 1)
+  if got < 0:
+    return false
+  if got != 18:
+    return poison("xHCI device descriptor short")
+  if rd8(databuf + 1) != 1 or rd8(databuf + 7) != 64:
+    return fail("USB device descriptor unsupported")
+  if rd8(databuf + 8) | (rd8(databuf + 9) << 8) != 1575:
+    return fail("USB vendor unsupported")
+  if control(128, 6, 512, 0, 9, 1) != 9:
+    return poison("xHCI config descriptor failed")
+  total = rd8(databuf + 2) | (rd8(databuf + 3) << 8)
+  if total < 9 or total > 512:
+    return fail("USB config descriptor unsupported")
+  if control(128, 6, 512, 0, total, 1) != total:
+    return poison("xHCI config descriptor failed")
+  found = false
+  match = false
+  epnum = 0
+  mps = 0
+  interval = 8
+  pos = 0
+  while pos + 2 <= total:
+    length = rd8(databuf + pos)
+    if length < 2 or pos + length > total:
+      return fail("USB descriptor parse error")
+    dtype = rd8(databuf + pos + 1)
+    if dtype == 4:
+      iface = rd8(databuf + pos + 2)
+      match = false
+      if rd8(databuf + pos + 5) == 3 and rd8(databuf + pos + 6) == 1 and rd8(databuf + pos + 7) == want:
+        match = true
+    if dtype == 5 and match and not found:
+      if rd8(databuf + pos + 2) & 128 != 0 and rd8(databuf + pos + 3) & 3 == 3:
+        epnum = rd8(databuf + pos + 2) & 15
+        mps = rd8(databuf + pos + 4) | (rd8(databuf + pos + 5) << 8)
+        interval = rd8(databuf + pos + 6)
+        found = true
+    pos = pos + length
+  if not found:
+    if want == 1:
+      return fail("USB device is not boot keyboard")
+    return fail("USB device is not boot mouse")
+  if mps < 1 or mps > 16:
+    return fail("USB HID report size unsupported")
+  if interval < 1 or interval > 16:
+    interval = 8
+  if control(0, 9, 1, 0, 0, 0) < 0:
+    return false
+  if control(33, 11, 0, iface, 0, 0) < 0:
+    return false
+  if control(33, 10, 0, iface, 0, 0) < 0:
+    return false
+  hid_dci = epnum * 2 + 1
+  zero(ictx, 4096)
+  wr32(ictx + 4, 1 | (1 << hid_dci))
+  wr32(ictx + csize, 3 << 20 | (hid_dci << 27))
+  wr32(ictx + csize + 4, port << 16)
+  wr32(ictx + (1 + hid_dci) * csize, interval << 16)
+  wr32(ictx + (1 + hid_dci) * csize + 4, 3 << 1 | (7 << 3) | (mps << 16))
+  wr32(ictx + (1 + hid_dci) * csize + 8, hidring | 1)
+  wr32(ictx + (1 + hid_dci) * csize + 16, 8)
+  if cmd_exec(ictx, 0, 0, 12 << 10 | (slotid << 24)) < 0:
+    return false
+  if rd32(dctx + 12) >> 27 & 31 != 3:
+    return poison("xHCI endpoint not configured")
+  kind = want
+  hid_len = mps
+  zero(databuf, 64)
+  zero(snaps, 64)
+  ring_put(2, databuf, 0, hid_len, 1 << 10 | 32)
+  doorbell(hid_dci)
+  active = true
+  failure = "ready"
+  return true
+def poll():
+  # One interrupt-IN completion per call: 1 keyboard, 2 mouse, 0 nothing.
+  # The report is snapshotted before the next transfer is armed.
+  global report_len, transfers, have_pend
+  if not active:
+    return 0
+  if rd32(opreg + 4) & 0x1004 != 0:
+    poison("xHCI host controller error")
+    return 0
+  drained = 0
+  while drained < 8:
+    if evt_take() == 0:
+      drained = 8
+    drained = drained + 1
+  if not have_pend:
+    return 0
+  have_pend = false
+  code = pend_dw2 >> 24 & 255
+  if code != 1 and code != 13:
+    poison("xHCI transfer error")
+    return 0
+  got = hid_len - pend_dw2 & 0xFFFFFF
+  if got < 1 or got > hid_len:
+    poison("xHCI report length invalid")
+    return 0
+  for i in range(got):
+    wr8(snaps + i, rd8(databuf + i))
+  report_len = got
+  ring_put(2, databuf, 0, hid_len, 1 << 10 | 32)
+  doorbell(hid_dci)
+  transfers = transfers + 1
+  return kind
+def test_stall():
+  # Deliberate USB-level stall: descriptor type 9 does not exist on this
+  # device. Exercises the terminal error path against real device behavior.
+  if not active:
+    return false
+  return control(128, 6, 2304, 0, 18, 1) >= 0
+def report_byte(index):
+  if index < 0 or index >= report_len:
+    return -1
+  return rd8(snaps + index)
+def report_bytes():
+  return report_len
+def ready():
+  return active
+def error():
+  return failure
+def issued():
+  return commands
+def events():
+  return transfers

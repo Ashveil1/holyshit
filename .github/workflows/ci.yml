@@ -110,6 +110,8 @@ jobs:
         run: HS_REQUIRE_GUI=1 HS_REQUIRE_UEFI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-uefi-evidence python3 tests/test_uefi_desktop.py
       - name: opt-in read-only AHCI DMA, high LBA, UEFI and terminal failure (required)
         run: HS_REQUIRE_AHCI=1 HS_REQUIRE_UEFI=1 HS_AHCI_EVIDENCE=${{ runner.temp }}/hs-ahci-evidence python3 tests/test_ahci.py
+      - name: opt-in USB HID over xHCI, injected reports and terminal stall (required)
+        run: HS_REQUIRE_XHCI=1 HS_XHCI_EVIDENCE=${{ runner.temp }}/hs-xhci-evidence python3 tests/test_xhci.py
       - name: explicit disk desktop save, restore and refusal (required)
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-desktop-disk-evidence python3 tests/test_desktop_disk.py
       - name: separate command console help/echo and actual result pixels (required)
@@ -126,6 +128,7 @@ jobs:
             ${{ runner.temp }}/hs-desktop-disk-evidence
             ${{ runner.temp }}/hs-uefi-evidence
             ${{ runner.temp }}/hs-ahci-evidence
+            ${{ runner.temp }}/hs-xhci-evidence
       - name: owned address-space allocation rollback and 100-cycle reclamation (required)
         run: HS_REQUIRE_KOWNED=1 python3 tests/test_owned_space.py
       - name: private-root static ELF load and ring3 run (required)
