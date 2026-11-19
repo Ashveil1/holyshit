@@ -37,6 +37,45 @@ print std.str.starts_with("holyshit", "holy")
 
 Runs on x64 (xbuild/xkernel) - uses only slice/index/while/len.
 
+## std.path - lexical POSIX paths
+
+All arguments are Str. Only `/` is a separator; backslashes and drive letters
+are ordinary text. These helpers never access the filesystem. They do not
+resolve symlinks, check existence or permissions, or prove a path stays inside
+a directory. In particular, lexical `..` removal can change a symlinked path's
+meaning. Do not use it as a sandbox or containment check.
+
+| Function | What it does |
+|---|---|
+| `isabs(path)` | true when the first character is `/` |
+| `join(base, path)` | join two paths; an absolute right argument replaces the base; an empty right argument preserves/adds a trailing slash |
+| `basename(path)` | last component; empty for a trailing slash |
+| `dirname(path)` | directory component; drops trailing slashes except when the head is all slashes |
+| `splitext(path)` | `[root, extension]`, extension includes its dot; leading dots alone do not count |
+| `normpath(path)` | collapse repeated separators, `.` and lexical `..`; empty becomes `.`; preserve exactly two initial slashes, reduce three or more to one |
+
+`normpath` preserves unresolved leading `..` in relative paths and never climbs
+above an absolute root. It removes trailing separators except at roots.
+These are POSIX string rules, not Windows path rules. `join` takes exactly two
+strings, and does not normalize its result.
+
+```hs
+import std.path
+print std.path.join("cache", "runs/model.json")  # cache/runs/model.json
+print std.path.normpath("//cache/a/../b/")       # //cache/b
+print std.path.basename("cache/")               # empty string
+print std.path.dirname("report.txt")            # empty string
+print std.path.splitext(".cache.tar.gz")         # [.cache.tar, .gz]
+```
+
+The installed native bundle supplies the library search path automatically,
+including after relocation. `hs run`, `hs build`, `hs interpret` and `hs repl`
+can import `std.path` without a checkout or Python. In the REPL, import and
+use the module in the same submission (for example, one multiline block);
+module-name parsing does not persist between submissions. The corpus tests compare
+with Python's `posixpath` on edge cases, deterministic random paths, Unicode,
+control characters and long paths across reference, IR and native routes.
+
 ## std.list - functional list helpers
 
 | Function | What it does |

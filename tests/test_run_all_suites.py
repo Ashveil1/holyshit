@@ -14,3 +14,8 @@ assert "test_append_bytes_x64.py" in quick_selected, "append_bytes suite must ru
 assert "test_append_bytes_x64.py" in names, "append_bytes suite must run on the full path"
 assert os.path.isfile(os.path.join(HERE, "test_append_bytes_x64.py")), "registered suite file must exist on disk"
 print("1/1 run_all registers test_append_bytes_x64.py exactly once; selected on quick and full paths")
+
+assert names.count("test_std_path.py") == 1
+assert "test_std_path.py" in quick_selected
+assert os.path.isfile(os.path.join(HERE, "test_std_path.py"))
+print("1/1 run_all registers std.path exactly once on quick and full paths")

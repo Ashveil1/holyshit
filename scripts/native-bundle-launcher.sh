@@ -45,7 +45,7 @@ if [ "$COMMAND" = "explain" ]; then
     exit 2
   fi
   export HSROOT="$ROOT"
-  export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT/std${HSPATH:+:$HSPATH}"
+  export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT:$ROOT/std${HSPATH:+:$HSPATH}"
   if [ ! -f "$ROOT/bin/hs-explain" ] || [ ! -f "$ROOT/EXPLAIN_SHA256SUMS" ]; then
     printf '%s\n' 'installed explainer is missing; install a new complete bundle' >&2
     exit 1
@@ -62,7 +62,7 @@ fi
 if [ "$COMMAND" = "repl" ]; then
   # No source or positional arguments: like hs.py repl, ignore extras.
   export HSROOT="$ROOT"
-  export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT/std${HSPATH:+:$HSPATH}"
+  export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT:$ROOT/std${HSPATH:+:$HSPATH}"
   if [ ! -f "$ROOT/bin/hs-repl" ] || [ ! -f "$ROOT/REPL_SHA256SUMS" ]; then
     printf '%s\n' 'installed repl is missing; install a new complete bundle' >&2
     exit 1
@@ -77,7 +77,7 @@ if [ "$COMMAND" = "lsp" ]; then
   # The language server speaks stdio JSON-RPC and takes no source path;
   # extra arguments are ignored, like the Python CLI (`hs.py lsp`).
   export HSROOT="$ROOT"
-  export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT/std${HSPATH:+:$HSPATH}"
+  export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT:$ROOT/std${HSPATH:+:$HSPATH}"
   if [ ! -f "$ROOT/bin/hs-lsp" ] || [ ! -f "$ROOT/LSP_SHA256SUMS" ]; then
     printf '%s\n' 'installed language server is missing; install a new complete bundle' >&2
     exit 1
@@ -111,7 +111,7 @@ case "$COMMAND" in
   *) case "$SOURCE" in /*) ;; *) SOURCE="$(pwd)/$SOURCE" ;; esac ;;
 esac
 export HSROOT="$ROOT"
-export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT/std${HSPATH:+:$HSPATH}"
+export HSPATH="$ROOT/selfhost:$ROOT/selfhost/be:$ROOT:$ROOT/std${HSPATH:+:$HSPATH}"
 case "$COMMAND" in
   run)
     # Verify the audited driver against its published checksum before
