@@ -68,6 +68,29 @@ print std.str.strip("..hi..", ".")
 # => hi
 ```
 
+## std.fmt - string formatting
+
+`format(template, args)` substitutes sequential `{}` placeholders from the
+List `args` using `str()` conversion. Extra arguments are ignored (like
+Python); a `{}` with no argument left raises. `{{` and `}}` are literal
+braces. Anything else inside braces raises: there are no positional `{0}`,
+named `{name}` or format-spec fields, and a lone `}` raises.
+
+All scanning looks for the ASCII tokens `{` and `}` and rebuilds the output
+from original slices, so the reference interpreter (per-character indexing)
+and the compiled x64 backends (per-byte indexing) agree for every template
+and argument.
+
+```hs
+import std.fmt
+print std.fmt.format("{} + {} = {}", [2, 3, 5])
+print std.fmt.format("{{{}?}}", ["no"])
+print std.fmt.format("{} and {}", ["hi", [1, true]])
+# => 2 + 3 = 5
+# => {no?}
+# => hi and [1, true]
+```
+
 ## std.path - lexical POSIX paths
 
 All arguments are Str. Only `/` is a separator; backslashes and drive letters
