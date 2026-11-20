@@ -182,6 +182,13 @@ def firmware_paths():
         variables = Path(os.environ.get('HS_OVMF_VARS', str(path.with_name('OVMF_VARS_4M.fd' if '4M' in path.name else 'OVMF_VARS.fd'))))
         if not variables.is_file(): raise SystemExit('FAIL matching OVMF variables template missing')
         return path, variables
+    # Same default-path fallback as test_uefi_desktop.py, so the UEFI leg
+    # also runs where the runner installs OVMF without HS_OVMF_CODE set.
+    for name in ['/usr/share/OVMF/OVMF_CODE_4M.fd', '/usr/share/OVMF/OVMF_CODE.fd',
+                 '/usr/share/edk2/ovmf/OVMF_CODE.fd']:
+        path = Path(name)
+        variables = path.with_name('OVMF_VARS_4M.fd' if '4M' in path.name else 'OVMF_VARS.fd')
+        if path.is_file() and variables.is_file(): return path, variables
     if os.environ.get('HS_REQUIRE_UEFI') == '1': raise SystemExit('FAIL required UEFI test: OVMF firmware missing')
     return None, None
 
