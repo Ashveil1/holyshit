@@ -1,0 +1,43 @@
+# std.fmt - string formatting (pure hs)
+#
+# format(template, args) substitutes sequential {} placeholders from the
+# List `args` (str() conversion, extra arguments are ignored like Python)
+# and treats {{ and }} as literal braces. Anything else inside braces
+# raises: there are no positional {0}, named {name} or format-spec
+# fields. A lone } raises. A {} with no argument left raises.
+#
+# All scanning looks for the ASCII tokens { and } and rebuilds the output
+# from original slices, so the reference interpreter (per-character
+# indexing) and the compiled x64 backends (per-byte indexing) agree for
+# every template and argument.
+
+def format(template, args):
+  out = ""
+  rest = template
+  next_arg = 0
+  going = true
+  while going:
+    o = find(rest, "{")
+    c = find(rest, "}")
+    if o < 0 and c < 0:
+      out = out + rest
+      going = false
+    elif c >= 0 and (o < 0 or c < o):
+      if rest[c:c + 2] == "}}":
+        out = out + rest[:c] + "}"
+        rest = rest[c + 2:]
+      else:
+        raise "std.fmt.format: single } in template"
+    else:
+      if rest[o:o + 2] == "{{":
+        out = out + rest[:o] + "{"
+        rest = rest[o + 2:]
+      elif rest[o:o + 2] == "{}":
+        if next_arg >= len(args):
+          raise "std.fmt.format: not enough arguments"
+        out = out + rest[:o] + str(args[next_arg])
+        next_arg = next_arg + 1
+        rest = rest[o + 2:]
+      else:
+        raise "std.fmt.format: unsupported field"
+  return out
