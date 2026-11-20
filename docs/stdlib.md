@@ -34,8 +34,39 @@ print std.str.starts_with("holyshit", "holy")
 | `pad_left(s, w)` / `pad_right(s, w)` | pad with spaces to width `w` |
 | `starts_with(s, pre)` / `ends_with(s, suf)` | prefix/suffix check |
 | `lines(s)` | split into a List of lines (`split(s, "\n")`) |
+| `lower(s)` / `upper(s)` | ASCII case mapping; every other character passes through byte-identical on every backend |
+| `replace(s, old, new)` | non-overlapping replacement, left to right; an empty `old` raises |
+| `count(s, sub)` | non-overlapping occurrences; an empty `sub` raises |
+| `find_from(s, sub, start)` | `find` with a start index; a negative start counts from the end; -1 when absent |
+| `split_n(s, sep, maxsplit)` | `split` with a split limit (negative = no limit, 0 returns `[s]`); an empty separator raises |
+| `strip(s, chars)` / `lstrip(s, chars)` / `rstrip(s, chars)` | strip any character in `chars` (printable ASCII plus `\t` `\n` `\r`); an empty `chars` strips nothing |
 
 Runs on x64 (xbuild/xkernel) - uses only slice/index/while/len.
+
+Backend note: the reference interpreter indexes strings per character,
+while the compiled x64 backends index per byte (a known language-level
+divergence for non-ASCII text). These helpers give the same result under
+both models: `lower`/`upper` only transform ASCII bytes, which never
+appear inside multi-byte UTF-8 sequences, and `replace`, `count`,
+`split_n` and the `strip` family rebuild their output from original
+slices. Inputs whose answer would depend on the indexing model raise
+instead of silently diverging: an empty `old` in `replace`, an empty
+`sub` in `count`, and non-ASCII `chars` in the `strip` family. Like the
+builtin `find`, the index returned by `find_from` counts characters on
+the reference interpreter and bytes on compiled x64; the models agree on
+plain ASCII text.
+
+```hs
+import std.str
+print std.str.replace("a-b-c", "-", "+")
+print std.str.upper("mix Ed 123")
+print std.str.split_n("a,b,c,d", ",", 2)
+print std.str.strip("..hi..", ".")
+# => a+b+c
+# => MIX ED 123
+# => [a, b, c,d]
+# => hi
+```
 
 ## std.path - lexical POSIX paths
 

@@ -19,3 +19,8 @@ assert names.count("test_std_path.py") == 1
 assert "test_std_path.py" in quick_selected
 assert os.path.isfile(os.path.join(HERE, "test_std_path.py"))
 print("1/1 run_all registers std.path exactly once on quick and full paths")
+
+assert names.count("test_std_str.py") == 1
+assert "test_std_str.py" in quick_selected
+assert os.path.isfile(os.path.join(HERE, "test_std_str.py"))
+print("1/1 run_all registers std.str helpers exactly once on quick and full paths")

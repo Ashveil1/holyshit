@@ -42,6 +42,7 @@ SUITES = [
     ("test_ir.py", "IR (build/verify/exec)"),
     ("test_write_bytes_x64.py", "x64 write_bytes matches interp output and validation"),
     ("test_std_path.py", "pure-hs POSIX lexical paths across reference/IR/native routes"),
+    ("test_std_str.py", "pure-hs std.str text helpers across reference/IR/native routes"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),
     ("test_parselib_builtins.py", "parselib BUILTINS reserved-name sync with interp"),
