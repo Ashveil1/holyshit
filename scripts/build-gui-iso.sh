@@ -3,14 +3,14 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
-  printf '%s\n' 'usage: scripts/build-gui-iso.sh OUTPUT.iso [scratchpad|desktop|desktop-disk] [bios|uefi]' >&2
+  printf '%s\n' 'usage: scripts/build-gui-iso.sh OUTPUT.iso [scratchpad|desktop|desktop-disk|desktop-usb] [bios|uefi]' >&2
   exit 2
 fi
 APP=${2:-scratchpad}
 FIRMWARE=${3:-bios}
 case "$FIRMWARE" in bios|uefi) ;; *) printf '%s\n' 'unknown GUI firmware' >&2; exit 2 ;; esac
 KERNEL=kgui
-case "$APP" in scratchpad) SOURCE=uunote ;; desktop) SOURCE=uudesk ;; desktop-disk) SOURCE=uudesk; KERNEL=kguidisk ;; *) printf '%s\n' 'unknown GUI app' >&2; exit 2 ;; esac
+case "$APP" in scratchpad) SOURCE=uunote ;; desktop) SOURCE=uudesk ;; desktop-disk) SOURCE=uudesk; KERNEL=kguidisk ;; desktop-usb) SOURCE=uudesk; KERNEL=kguiusb ;; *) printf '%s\n' 'unknown GUI app' >&2; exit 2 ;; esac
 OUTPUT=$1
 case "$OUTPUT" in /*) ;; *) OUTPUT="$(pwd)/$OUTPUT" ;; esac
 if [ -e "$OUTPUT" ]; then

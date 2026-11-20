@@ -170,11 +170,16 @@ def uefi_check(d,image):
 
 
 def main():
+    # --only ir|ast runs one backend half (suites exceed CI step limits whole).
+    only=None
+    if len(sys.argv)>2 and sys.argv[1]=='--only':
+        only=sys.argv[2];assert only in ('ir','ast'),only
     subprocess.run(['sha256sum','-c','SHA256SUMS'],cwd=ROOT/'bootstrap',
                    env=ENV,capture_output=True,check=True,timeout=30)
     with tempfile.TemporaryDirectory(prefix='xhci-hid-') as temp:
         d=Path(temp);uefi_boots=0
         for ir in (True,False):
+            if only and only!=('ir' if ir else 'ast'):continue
             mode='ir' if ir else 'ast';work=d/mode;work.mkdir()
             source=ROOT/'kernel/kxhcitest.holy';reference=work/'reference.elf';build(source,reference,ir)
             compiler=native_compiler(work,ir);image=native_identity(work,source,reference,compiler,ir)
@@ -203,6 +208,7 @@ def main():
             ]:
                 negative(work,ir,name,selection,number,want,reason,args)
             print(f'ok XHCI {mode}: native full ELF, keyboard/mouse reports, stall terminal, 9 refusals',flush=True)
+    if only:print(f'1/1 XHCI gate half ({only})');return
     print(f'2/2 XHCI gates ({26+uefi_boots} real QEMU boots, both kernel backends)')
 
 if __name__=='__main__':

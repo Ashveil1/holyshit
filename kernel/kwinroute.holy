@@ -22,6 +22,11 @@ QUEUE_MAX = 64
 # wids[i], oldest first; created tracks sys_create windows so sys_exit
 # can close them. sys_router is the instance the syscall layer drains.
 sys_router = null
+# Optional USB input hooks, installed by kusbin.start. When usb_only is
+# set the PS/2 FIFOs are drop-drained so only xHCI input is routed.
+usb_pointer_fn = null
+usb_key_fn = null
+usb_only = false
 
 def create(c):
   return [c, [], [], [], [], [], null, 0]
@@ -293,21 +298,43 @@ def pump(r):
   # Both wait paths service both FIFOs. Pointer batches run first so a
   # pending click updates focus before pending keyboard input is routed.
   # The two hardware FIFOs do not carry a shared cross-device timestamp.
+  # USB hooks (kusbin) drain in the same order, pointer before keys; in
+  # usb_only mode the PS/2 FIFOs are drop-drained instead of routed.
+  moved = 0
   n = 0
   while n < 64:
     pev = kinput.read()
     if pev == 0:
       break
-    handle(r, pev)
+    if not usb_only:
+      handle(r, pev)
+      moved = moved + 1
     n = n + 1
-  moved = n
+  if usb_pointer_fn != null:
+    n = 0
+    while n < 64:
+      pev = usb_pointer_fn()
+      if pev == 0:
+        break
+      handle(r, pev)
+      moved = moved + 1
+      n = n + 1
   n = 0
   while n < 64:
     code = readkey_event()
     if code == null:
       break
-    handle_key(r, code)
+    if not usb_only:
+      handle_key(r, code)
     n = n + 1
+  if usb_key_fn != null:
+    n = 0
+    while n < 64:
+      code = usb_key_fn()
+      if code == 0:
+        break
+      handle_key(r, code)
+      n = n + 1
   return moved
 
 def sys_read(wid):

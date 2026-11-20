@@ -43,7 +43,8 @@ QEMU tests: `kpmmtest` `kheaptest` `kaddrtest` `ktasktest` `kpreempt`
   [AHCI scope and QEMU proof](ahci.md).
 - Opt-in USB HID over xHCI: `kxhci`, explicit controller/port/kind selection,
   polling-only QEMU keyboard/mouse reports, PS/2 default unchanged, terminal
-  failure model: [xHCI scope and QEMU proof](xhci.md).
+  failure model; opt-in desktop routing via `kusbin`/`kguiusb` with PS/2
+  drop-drained: [xHCI scope and QEMU proof](xhci.md).
 - `import` works (plain `.holy` modules), `try` works (halt when no handler)
 
 ## memory management (pure `.holy`)
