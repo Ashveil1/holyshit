@@ -9,9 +9,11 @@ This is tested on QEMU, not on an HP or any physical USB hardware.
 
 A caller first runs `kpci.init()`, then calls `kxhci.init(pci_index, port,
 kind)` with an explicit PCI function, root port and device kind (1 keyboard,
-2 mouse). There is no port scan or automatic device selection. One device is
-enumerated per boot; initialization is one attempt. All work is polled: no
-xHCI interrupts, MSI or event-ring IRQ delivery are used anywhere.
+2 mouse). There is no port scan or automatic device selection. At most two
+devices are brought up per boot, one keyboard and one mouse on their own
+root ports, each with a separate `init` call; initialization is one attempt
+per device. All work is polled: no xHCI interrupts, MSI or event-ring IRQ
+delivery are used anywhere.
 
 Supported here:
 
@@ -33,15 +35,29 @@ Supported here:
   and a single outstanding interrupt transfer that is re-armed after every
   report. Full-speed and low-speed devices are refused before any reset.
 
-This does not implement USB hubs or tiered topology, more than one device,
-USB storage or any non-HID class, EHCI/UHCI companion controllers, SuperSpeed
-root ports, interrupt-driven completion, endpoint halting/recovery, device
-removal, port power management, streams, or any desktop/ring-3 input-queue
-integration. Reading keys through the desktop still uses the PS/2 path;
-routing USB reports into windows is future work and needs no new syscall for
-this module itself (it is kernel-internal like `kahci`).
+This does not implement USB hubs or tiered topology, more than the one
+keyboard plus one mouse pair, USB storage or any non-HID class, EHCI/UHCI
+companion controllers, SuperSpeed root ports, interrupt-driven completion,
+endpoint halting/recovery, device removal, port power management, or
+streams.
 
-Polls and command waits have both a 100-PIT-tick limit and a finite iteration
+Desktop integration exists as a separate opt-in layer. `kernel/kusbin.holy`
+translates the boot reports into the PS/2-spelling events the window router
+already speaks (keyboard usages edge-detected into `readkey_event` codes;
+mouse buttons and deltas into packed pointer words, in report order, so a
+click edge always lands at the final cursor position). `kwinroute` grows
+three hooks - `usb_pointer_fn`, `usb_key_fn` and `usb_only` - drained by
+`pump` after the PS/2 FIFOs; with `usb_only` set the PS/2 FIFOs are
+drop-drained, so routed input provably arrived over xHCI. The
+`kernel/kguiusb.holy` entry runs the normal desktop session on USB input.
+Nothing changes for the default entries: with no hooks installed the router
+behaves exactly as before, and no new syscall is added (the bridge is
+kernel-internal like `kahci`).
+
+Completed interrupt reports are queued per device (depth 32, drop-newest)
+between the event-ring drain and the caller's poll, so a host-side pause
+that lets completions burst cannot poison the controller. Polls and command
+waits have both a 100-PIT-tick limit and a finite iteration
 budget. These are conservative prototype limits, not a real-hardware timing
 or recovery claim. Any command error, transfer error, descriptor rejection or
 timeout stops the controller, disables PCI bus mastering, invalidates the
@@ -54,13 +70,15 @@ retry or reinitialization path.
 
 `init(index, port, kind)` returns true only after the device is addressed,
 configured and the first interrupt transfer is armed. One attempt is allowed
-per boot. `ready()` reports whether polling is usable; `error()` returns the
-current initialization/terminal-failure status.
+per device. `ready()` reports whether polling is usable; `error()` returns
+the current initialization/terminal-failure status.
 
-`poll()` returns 0 when no report completed, otherwise the device kind. Each
-completion is copied to a snapshot buffer before the next transfer is armed,
-so the report stays stable while polled. `report_bytes()` is the snapshot
-length and `report_byte(index)` returns one byte (`-1` outside). Boot
+`poll()` returns 0 when no report completed, otherwise the device kind; the
+second device uses `poll1()`. Each completion is copied to a snapshot buffer
+before the next transfer is armed, so the report stays stable while polled.
+`report_bytes()` is the snapshot length and `report_byte(index)` returns one
+byte (`-1` outside); `report1_bytes()`/`report1_byte(index)` mirror that for
+the second device. Boot
 keyboard reports are 8 bytes (modifiers, reserved, six usage IDs); mouse
 reports are buttons plus signed deltas. `issued()` counts command-ring
 commands and `events()` counts completed interrupt transfers; both back the
@@ -82,6 +100,16 @@ USB stall (requesting descriptor type 9, which the device rejects). DMA guard
 regions around every ring and buffer are verified untouched after all of it.
 
     HS_REQUIRE_XHCI=1 python3 tests/test_xhci.py
+
+`tests/test_usb_desktop.py` boots the `kguiusb` desktop entry with PS/2
+drop-drained, injects keys and pointer over QMP, and proves in screendump
+pixels that USB input routes into windows: typed characters land in a note
+(exactly one edit per injected key) and a window drag lands once. Both
+backends and both firmware paths run; the IR leg packages through the real
+`build-gui-iso.sh desktop-usb` mode and checks the packaged kernel against
+the reference build.
+
+    HS_REQUIRE_GUI=1 HS_REQUIRE_XHCI=1 HS_REQUIRE_UEFI=1 python3 tests/test_usb_desktop.py
 
 Run from the repository root. QEMU provides the controller and devices; no
 hardware access, root privileges or host USB involvement is needed.

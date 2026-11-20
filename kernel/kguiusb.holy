@@ -1,0 +1,9 @@
+# Opt-in USB-input desktop entry: the same session as kgui, but keyboard
+# and mouse arrive over xHCI (QEMU qemu-xhci root ports 5 and 6) instead
+# of PS/2. exclusive=true drop-drains the PS/2 FIFOs in the router, so
+# QMP-injected input reaches the desktop only through USB.
+import kguisession
+import kusbin
+if not kusbin.start(5, 6, true):
+  raise "USB input unavailable"
+kguisession.run(false)
