@@ -80,6 +80,9 @@ L("test_al_imm8", 7)
 L("xchg_rip", "rcx", "dd"); L("inc_mrip", "dd"); L("dec_mrip", "dd")
 L("data_label", "dd"); L("data_qword", -5); L("data_qword", 1 << 40)
 L("lea_rip", "rcx", "dd")
+# qword emissions 8-align (mirror of test_asm.py's fill-poisoning case)
+L("data_bytes", "b1,2,3"); L("data_label", "gg"); L("data_qword", 11); L("lea_rip", "rdx", "gg")
+L("data_bytes", "b9"); L("data_label", "gh"); L("data_qword", 43); L("lea_rip", "rbx", "gh")
 for cc in ("e", "ne", "b", "ae", "s", "ns", "l", "ge", "le", "g", "o", "no", "a", "be"):
     L("setcc_al", cc)
     L("jcc", cc, "back")
@@ -107,8 +110,20 @@ def py_asm():
         w = ln.split()
         op, args = w[0], w[1:]
         conv = [int(x) if x.lstrip("-").isdigit() else x for x in args]
-        getattr(a, op if op != "label" else "label")(*conv)
-    return a.resolve(0x400000, 0x500000)
+        if op == "data_bytes":
+            a.data_bytes(bytes(int(x) for x in conv[0][1:].split(",")))
+        else:
+            getattr(a, op if op != "label" else "label")(*conv)
+    return a
+
+
+_pa = py_asm()
+assert _pa.data_labels["gg"] == 24, _pa.data_labels
+assert _pa.data_labels["gh"] == 40, _pa.data_labels
+assert bytes(_pa.data[16:24]) == b"\x01\x02\x03" + b"\0" * 5
+assert bytes(_pa.data[24:32]) == (11).to_bytes(8, "little")
+assert bytes(_pa.data[32:40]) == b"\x09" + b"\0" * 7
+assert bytes(_pa.data[40:48]) == (43).to_bytes(8, "little")
 
 with tempfile.TemporaryDirectory() as d:
     p = os.path.join(d, "s.txt")
@@ -119,7 +134,7 @@ with tempfile.TemporaryDirectory() as d:
     r = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"), "run",
                         os.path.join(ROOT, "selfhost", "a64", "asm_run.holy"),
                         "--backend", "interp", p], capture_output=True, text=True, env=env)
-want = py_asm().hex()
+want = py_asm().resolve(0x400000, 0x500000).hex()
 got = r.stdout.strip()
 ok = r.returncode == 0 and got == want
 if not ok:

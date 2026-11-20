@@ -843,6 +843,16 @@ class Gen:
         a = self.a
         if name in a.data_labels:
             raise HSErr(f"dup data reserve {name}")
+        # 8-align reserved regions: they hold qword-structured tables and
+        # the kernel stacks, and stack alignment is what makes an overflow
+        # fill land exactly on a qword global (see Asm.data_qword).
+        pad = -len(a.data) % 8
+        if pad:
+            end = len(a.data)
+            a.data += b"\0" * pad
+            for lname, loff in a.data_labels.items():
+                if loff == end:
+                    a.data_labels[lname] = end + pad
         off = len(a.data)
         a.data_labels[name] = off
         a.data += b"\0" * nbytes
