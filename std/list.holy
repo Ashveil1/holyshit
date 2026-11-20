@@ -28,3 +28,95 @@ def all(f, xs):
     if not f(x):
       return false
   return true
+
+# --- C14: everyday list helpers --------------------------------------------
+
+def reverse(xs):
+  out = []
+  i = len(xs)
+  while i > 0:
+    i = i - 1
+    append(out, xs[i])
+  return out
+
+def enumerate(xs):
+  out = []
+  i = 0
+  while i < len(xs):
+    append(out, [i, xs[i]])
+    i = i + 1
+  return out
+
+def zip(a, b):
+  out = []
+  n = len(a)
+  if len(b) < n:
+    n = len(b)
+  i = 0
+  while i < n:
+    append(out, [a[i], b[i]])
+    i = i + 1
+  return out
+
+def sum(xs):
+  total = 0
+  i = 0
+  while i < len(xs):
+    total = total + xs[i]
+    i = i + 1
+  return total
+
+def min(xs):
+  if len(xs) == 0:
+    raise "std.list.min: empty list"
+  m = xs[0]
+  i = 1
+  while i < len(xs):
+    if xs[i] < m:
+      m = xs[i]
+    i = i + 1
+  return m
+
+def max(xs):
+  if len(xs) == 0:
+    raise "std.list.max: empty list"
+  m = xs[0]
+  i = 1
+  while i < len(xs):
+    if xs[i] > m:
+      m = xs[i]
+    i = i + 1
+  return m
+
+def _merge(a, b):
+  out = []
+  i = 0
+  j = 0
+  while i < len(a) and j < len(b):
+    if a[i] <= b[j]:
+      append(out, a[i])
+      i = i + 1
+    else:
+      append(out, b[j])
+      j = j + 1
+  while i < len(a):
+    append(out, a[i])
+    i = i + 1
+  while j < len(b):
+    append(out, b[j])
+    j = j + 1
+  return out
+
+# Stable mergesort over the builtin < comparison: sort homogeneous Int,
+# Float or Str lists (mixed Int/Float compares numerically, like Python).
+# String ordering follows the builtin <: the reference interpreter orders
+# by Unicode codepoint while the compiled x64 backends order bytes as
+# signed (a pre-existing language-level divergence); ASCII text sorts
+# identically on every backend.
+def sort(xs):
+  if len(xs) <= 1:
+    return xs
+  mid = int(len(xs) / 2)
+  left = sort(xs[:mid])
+  right = sort(xs[mid:])
+  return _merge(left, right)

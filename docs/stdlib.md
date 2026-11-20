@@ -138,8 +138,29 @@ control characters and long paths across reference, IR and native routes.
 | `filter(f, xs)` | only elements where `f(x)` is true |
 | `fold(f, acc, xs)` | accumulate `acc = f(acc, x)` |
 | `any(f, xs)` / `all(f, xs)` | whether any/every element is true |
+| `reverse(xs)` | new List in reverse order |
+| `sort(xs)` | new List, stable mergesort over `<`; homogeneous Int/Float/Str (mixed Int/Float compares numerically) |
+| `zip(a, b)` | List of `[a[i], b[i]]` pairs, stopping at the shorter input |
+| `enumerate(xs)` | List of `[index, element]` pairs from 0 |
+| `sum(xs)` | `0 + xs[0] + ...`; Int stays Int, Float promotes like `+` |
+| `min(xs)` / `max(xs)` | smallest/largest element over `<`; an empty list raises |
 
 Runs on x64 (demonstrates closures too)
+
+String ordering in `sort`/`min`/`max` follows the builtin `<`: the
+reference interpreter orders by Unicode codepoint while the compiled x64
+backends order bytes as signed (a pre-existing language-level divergence).
+ASCII text sorts identically on every backend.
+
+```hs
+import std.list
+print std.list.sort([3, 1, 2, 1])
+print std.list.zip([1, 2, 3], ["a", "b"])
+print std.list.enumerate(["x", "y"])
+# => [1, 1, 2, 3]
+# => [[1, a], [2, b]]
+# => [[0, x], [1, y]]
+```
 
 ## std.bitmap - bit set over bytes (for frame allocators, GDT/IDT slots)
 
