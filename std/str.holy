@@ -31,3 +31,160 @@ def ends_with(s, suf):
 
 def lines(s):
   return split(s, "\n")
+
+# --- C12: everyday text helpers -------------------------------------------
+
+# Backend note: the reference interpreter indexes strings per character,
+# while the compiled x64 backends index per byte (a known language-level
+# divergence for non-ASCII text). Every helper below is written so both
+# models give the same result: transformations only touch ASCII bytes
+# (which never appear inside multi-byte UTF-8 sequences), outputs are
+# rebuilt from original slices, and inputs whose semantics would depend on
+# the indexing model raise instead of silently diverging.
+
+# ASCII case tables: lower/upper map ASCII letters only; every other
+# character (digits, punctuation, Thai, emoji, accented letters) passes
+# through unchanged, byte-identical on every backend.
+_CASE_LOWER = "abcdefghijklmnopqrstuvwxyz"
+_CASE_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+def lower(s):
+  out = ""
+  i = 0
+  while i < len(s):
+    c = s[i]
+    k = find(_CASE_UPPER, c)
+    if k >= 0:
+      out = out + _CASE_LOWER[k]
+    else:
+      out = out + c
+    i = i + 1
+  return out
+
+def upper(s):
+  out = ""
+  i = 0
+  while i < len(s):
+    c = s[i]
+    k = find(_CASE_LOWER, c)
+    if k >= 0:
+      out = out + _CASE_UPPER[k]
+    else:
+      out = out + c
+    i = i + 1
+  return out
+
+# Python-compatible replace: non-overlapping, left to right. An empty `old`
+# raises: inserting "between every character" depends on the backend's
+# string indexing model, so it fails loudly instead of mangling text.
+def replace(s, old, new):
+  if len(old) == 0:
+    raise "std.str.replace: empty pattern"
+  out = ""
+  i = 0
+  n = len(old)
+  while i + n <= len(s):
+    if s[i:i + n] == old:
+      out = out + new
+      i = i + n
+    else:
+      out = out + s[i]
+      i = i + 1
+  return out + s[i:]
+
+# Python-compatible count: non-overlapping occurrences. An empty `sub`
+# raises (Python's len(s) + 1 answer depends on the indexing model).
+def count(s, sub):
+  if len(sub) == 0:
+    raise "std.str.count: empty pattern"
+  n = 0
+  i = 0
+  m = len(sub)
+  while i + m <= len(s):
+    if s[i:i + m] == sub:
+      n = n + 1
+      i = i + m
+    else:
+      i = i + 1
+  return n
+
+# find with an explicit start index (the builtin find takes no start
+# argument). A negative start counts from the end like Python; returns -1
+# when absent. Like the builtin find, the returned index counts characters
+# on the reference interpreter and bytes on the compiled x64 backends;
+# the models agree on plain ASCII text.
+def find_from(s, sub, start):
+  n = len(s)
+  if start < 0:
+    start = n + start
+    if start < 0:
+      start = 0
+  if len(sub) == 0:
+    if start <= n:
+      return start
+    return -1
+  i = start
+  while i + len(sub) <= n:
+    if s[i:i + len(sub)] == sub:
+      return i
+    i = i + 1
+  return -1
+
+# split with a split limit like Python's maxsplit: negative splits
+# everywhere, 0 returns [s], otherwise at most maxsplit splits. An empty
+# separator raises (Python raises ValueError).
+def split_n(s, sep, maxsplit):
+  if len(sep) == 0:
+    raise "std.str.split_n: empty separator"
+  parts = []
+  rest = s
+  n = 0
+  going = true
+  while going and (maxsplit < 0 or n < maxsplit):
+    i = find(rest, sep)
+    if i < 0:
+      going = false
+    else:
+      append(parts, rest[:i])
+      rest = rest[i + len(sep):]
+      n = n + 1
+  append(parts, rest)
+  return parts
+
+def _in_chars(c, chars):
+  return find(chars, c) >= 0
+
+# Printable ASCII plus \t \n \r; used to reject charsets whose matching
+# would depend on the backend's string indexing model. Works on every
+# backend: a multi-byte character never matches a table entry, whether it
+# is iterated as one character (interp) or as raw bytes (compiled x64).
+_ASCII_CHARS = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\t\n\r"
+
+def _require_ascii(chars, who):
+  i = 0
+  while i < len(chars):
+    if find(_ASCII_CHARS, chars[i]) < 0:
+      raise who + ": chars must be ASCII"
+    i = i + 1
+
+# strip/lstrip/rstrip remove any character found in `chars` (trim covers
+# plain whitespace). An empty `chars` strips nothing, like Python. `chars`
+# must be ASCII: matching multi-byte characters would depend on the
+# backend's string indexing model, so it raises instead.
+def lstrip(s, chars):
+  _require_ascii(chars, "std.str.lstrip")
+  i = 0
+  while i < len(s) and _in_chars(s[i], chars):
+    i = i + 1
+  return s[i:]
+
+def rstrip(s, chars):
+  _require_ascii(chars, "std.str.rstrip")
+  j = len(s)
+  while j > 0 and _in_chars(s[j - 1], chars):
+    j = j - 1
+  return s[:j]
+
+def strip(s, chars):
+  _require_ascii(chars, "std.str.strip")
+  return rstrip(lstrip(s, chars), chars)
