@@ -45,6 +45,7 @@ EFAULT = 14
 brk = USER_BIAS + 0x10000000
 handler = null
 exec_fn = null
+con_fn = null
 n_calls = 0
 last_nr = 0
 last_arg = 0
@@ -116,7 +117,10 @@ def sys_write(fd, buf, n):
       return -EFAULT
     if n <= 0:
       return 0
-    print read_mem(buf, n)
+    s = read_mem(buf, n)
+    print s
+    if con_fn != null:
+      con_fn(s)
     return n
   # user fds start at 3 (0/1/2 are stdin/stdout/stderr); kvfs owns the table
   if fd < 3 or not kvfs.fd_valid(fd - 3):
@@ -162,6 +166,12 @@ def bs_char():
   if bs_cached == null:
     bs_cached = read_mem(poke_bs(), 1)
   return bs_cached
+def set_console(f):
+  # optional framebuffer console sink: receives the exact bytes of every
+  # fd 1/2 write and the readline echo (chars, backspace, enter). Serial
+  # output is unchanged. kshell wires kfbcon here; tests leave it null.
+  global con_fn
+  con_fn = f
 def readline():
   # blocking line input for fd 0: spin on readkey with IRQs on (the stub
   # runs with IF clear, so without sti the keyboard IRQ never arrives).
@@ -174,12 +184,18 @@ def readline():
     if k == null:
       continue
     if k == "\n":
+      if con_fn != null:
+        con_fn(k)
       break
     if k == bs:
       if len(out) > 0:
         out = out[:len(out) - 1]
+        if con_fn != null:
+          con_fn(k)
       continue
     out = out + k
+    if con_fn != null:
+      con_fn(k)
   irq_off()
   return out
 def sys_read(fd, buf, n):
@@ -312,7 +328,6 @@ def text_span_readable(addr, n):
       level = level - 1
     page = page & -4096 + 4096
   return true
-
 def sys_win_text(wid, x, y, address, length, color):
   if length < 0 or length > 256:
     return -22
@@ -321,7 +336,6 @@ def sys_win_text(wid, x, y, address, length, color):
   if length == 0:
     return kwinroute.sys_text(wid, x, y, "", color)
   return kwinroute.sys_text(wid, x, y, read_mem(address, length), color)
-
 def sys_win_text_scaled(wid, x, y, address, length, style):
   # Six syscall argument slots: RGB24 in bits0..23, scale-1 in bits24..25.
   if style < 0 or style > 67108863 or length < 0 or length > 256:
@@ -333,7 +347,6 @@ def sys_win_text_scaled(wid, x, y, address, length, style):
   if length == 0:
     return kwinroute.sys_text_scaled(wid, x, y, "", color, scale)
   return kwinroute.sys_text_scaled(wid, x, y, read_mem(address, length), color, scale)
-
 def sys_win_present():
   return kwinroute.sys_present()
 def sys_win_fill(wid, x, y, width, height, color):

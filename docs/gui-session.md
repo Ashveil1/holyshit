@@ -82,7 +82,7 @@ scripts/build-gui-iso.sh /tmp/hs-desktop.iso desktop
 qemu-system-x86_64 -cdrom /tmp/hs-desktop.iso -boot d -m 256M -nic none -serial stdio
 ```
 
-The default build remains the original scratchpad. The explicit `desktop`
+The default build of the packaging scripts is the shell (see [shell.md](shell.md)); pass `scratchpad` explicitly for the original single-line app. The explicit `desktop`
 option packages a different ring-3 app, with two independent note windows
 and a persistent launcher window. Both notes open at startup. Click a note
 to type at its caret. Left/Right move one source byte, Up/Down move to the

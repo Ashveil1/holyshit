@@ -1,5 +1,8 @@
 # Fixed storage for ASCII console edits/history. Trusted opaque state only.
 # No string/list construction in feed/reset/history addressing after create.
+def storage(size):
+  unsafe:
+    return as_int(alloc(size))
 def create(capacity, retained):
   capacity = capacity | 0
   retained = retained | 0
@@ -7,9 +10,7 @@ def create(capacity, retained):
     raise "console byte capacity must be 1..256"
   if retained < 1 or retained > 16:
     raise "console byte retained lines must be 1..16"
-  unsafe:
-    Ptr data = alloc((retained + 1) * capacity)
-    address = as_int(data)
+  address = storage((retained + 1) * capacity)
   lengths = []
   i = 0
   while i < retained:

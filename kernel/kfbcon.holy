@@ -1,0 +1,60 @@
+# framebuffer console for the ring3 shell: sys_write bytes and readline
+# echo rendered byte-exact (8 = backspace, 10 = newline, 32..126 glyphs)
+# on the boot framebuffer. Serial keeps its own line discipline; this is
+# the screen the person at the machine actually sees. Storage is the
+# house byte ring (kconsole_buffer, 16 retained lines of 48 columns);
+# rendering redraws the active row per keystroke and all rows on scroll.
+import kframebuffer
+import kfont
+import kconsole_buffer
+FG = 0xdde3ea
+BG = 0x101418
+state = null
+view = null
+def init(frame):
+  global state, view
+  state = kconsole_buffer.create(48, 16)
+  view = [frame, 8, 8, frame[2] - 16, frame[3]]
+  kfont.fill(frame, 0, 0, frame[2], frame[3], BG)
+def row_y(index):
+  return view[2] + index * 16
+def draw_row(index):
+  y = row_y(index)
+  kfont.fill(view[0], view[1], y, view[3], 16, BG)
+  n = kconsole_buffer.history_length(state, index)
+  if n > 0:
+    kfont.draw_bytes(view[0], view[1], y, kconsole_buffer.history_address(state, index), n, FG, 2)
+def draw_active():
+  y = row_y(state[6])
+  kfont.fill(view[0], view[1], y, view[3], 16, BG)
+  if state[3] > 0:
+    kfont.draw_bytes(view[0], view[1], y, state[0], state[3], FG, 2)
+def redraw():
+  kfont.fill(view[0], 0, 0, view[0][2], view[4], BG)
+  i = 0
+  while i < state[6]:
+    draw_row(i)
+    i = i + 1
+  draw_active()
+def str_addr(s):
+  unsafe:
+    return as_int(as_ptr(s)) + 16
+def load_byte(address, index):
+  unsafe:
+    return load8(as_ptr(address + index))
+def put_str(s):
+  address = str_addr(s)
+  i = 0
+  scrolled = false
+  while i < len(s):
+    byte = load_byte(address, i)
+    if state[3] == state[1] and byte >= 32:
+      kconsole_buffer.feed(state, 10)
+      scrolled = true
+    if kconsole_buffer.feed(state, byte):
+      scrolled = true
+    i = i + 1
+  if scrolled:
+    redraw()
+  else:
+    draw_active()
