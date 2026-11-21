@@ -41,6 +41,10 @@ QEMU tests: `kpmmtest` `kheaptest` `kaddrtest` `ktasktest` `kpreempt`
   LBA48 SATA reads, one pinned DMA buffer, terminal error/timeout handling.
   No desktop/volume integration or physical-hardware claim. See
   [AHCI scope and QEMU proof](ahci.md).
+- Opt-in read-only NVMe: `knvme`, explicit controller selection, namespace 1,
+  512-byte sectors, one pinned DMA arena, polled phase-tag completions,
+  terminal error/timeout handling. No desktop/volume integration or
+  physical-hardware claim. See [NVMe scope and QEMU proof](nvme.md).
 - Opt-in USB HID over xHCI: `kxhci`, explicit controller/port/kind selection,
   polling-only QEMU keyboard/mouse reports, PS/2 default unchanged, terminal
   failure model; opt-in desktop routing via `kusbin`/`kguiusb` with PS/2

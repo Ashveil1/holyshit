@@ -115,6 +115,7 @@ SUITES = [
     ("test_framebuffer_kernel.py", "GRUB framebuffer native image and guest pixels"),
     ("test_ksurface.py", "GRUB double-buffered surface full and partial flush pixels"),
     ("test_ahci.py", "opt-in AHCI read-only DMA, high LBA, UEFI, EIO/timeout and immutable disks"),
+    ("test_nvme.py", "opt-in NVMe read-only DMA, high LBA, UEFI, EIO/timeout and immutable disks"),
     ("test_xhci.py", "opt-in USB HID over xHCI, QMP-injected reports, stall terminal and refusals"),
     ("test_usb_desktop.py", "opt-in USB xHCI desktop input routing, QMP typing and window drag in pixels"),
     ("test_pci.py", "QEMU PCI config-space enumeration pinned vs monitor topology"),
@@ -211,7 +212,7 @@ SUITES = [
 ]
 
 
-QUICK_SKIP = ("test_ahci.py", "test_xhci.py", "test_usb_desktop.py", "test_uefi_desktop.py", "test_desktop_disk.py", "test_winscale.py", "test_winkey_any.py", "test_desktop_session.py", "test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
+QUICK_SKIP = ("test_ahci.py", "test_nvme.py", "test_xhci.py", "test_usb_desktop.py", "test_uefi_desktop.py", "test_desktop_disk.py", "test_winscale.py", "test_winkey_any.py", "test_desktop_session.py", "test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
 
 
 def main(argv):

@@ -1,0 +1,94 @@
+# Shared QEMU-only NVMe gate body. Host verifies disk bytes and PCI topology.
+import kpci
+import knvme
+fails = 0
+def expect(label, got, want):
+  global fails
+  if got == want:
+    print "ok", label
+  else:
+    print "FAIL", label, got, want
+    fails = fails + 1
+def pattern(lba, offset):
+  if offset < 6:
+    return lba >> (offset * 8) & 255
+  return (lba * 17 + offset * 7 + int(offset / 251) * 31) & 255
+def verify(lba, count):
+  if not knvme.read(lba, count):
+    return false
+  for i in range(count * 512):
+    if knvme.byte_at(i) != pattern(lba + int(i / 512), i % 512):
+      print "MISMATCH", lba, i, knvme.byte_at(i)
+      return false
+  return true
+def guard_set():
+  for i in range(24576, 26624):
+    knvme.wr8(knvme.arena + i, 0xA5)
+  for i in range(28672, 30720):
+    knvme.wr8(knvme.arena + i, 0x5A)
+def guards():
+  for i in range(24576, 26624):
+    if knvme.rd8(knvme.arena + i) != 0xA5:
+      return false
+  for i in range(28672, 30720):
+    if knvme.rd8(knvme.arena + i) != 0x5A:
+      return false
+  return true
+def opcode_refusals():
+  for opcode in range(256):
+    if opcode != 2:
+      if knvme.issue(opcode, 0, 1):
+        return false
+  return true
+def discover():
+  kpci.init()
+  idx = kpci.find_class(1, 8)
+  print "NVME PCI", idx
+  if idx >= 0:
+    print "NVME BDF", kpci.bus(idx), kpci.dev(idx), kpci.fn(idx), kpci.vendor(idx), kpci.device(idx)
+  return idx
+def run(number, expected):
+  # number is reserved for a future namespace selector; only namespace 1 exists.
+  print "NVME START"
+  idx = discover()
+  ok = knvme.init(idx)
+  print "NVME INIT", ok, knvme.error()
+  if not ok:
+    expect("initialization", ok, true)
+    print "NVME DONE", fails
+    return
+  expect("capacity", knvme.sectors(), expected)
+  expect("DMA alignment", knvme.arena & 4095, 0)
+  expect("DMA low physical", knvme.arena >= 0x2000000 and knvme.arena + 32768 <= 0x3000000, true)
+  expect("controller ready", knvme.rd32(knvme.bar + 28) & 1, 1)
+  expect("no controller fault", knvme.rd32(knvme.bar + 28) & 2, 0)
+  guard_set()
+  expect("read first", verify(0, 1), true)
+  expect("read eight", verify(4, 8), true)
+  expect("read middle", verify(32767, 3), true)
+  expect("read last", verify(expected - 1, 1), true)
+  expect("read last eight", verify(expected - 8, 8), true)
+  if expected == 65536:
+    for count in range(4, 8):
+      expect("read span4..7", verify(100 + count * 8, count), true)
+  if expected > 4294967296:
+    expect("cross LBA28", verify(268435455, 3), true)
+    expect("cross LBA32", verify(4294967295, 3), true)
+  before = knvme.commands()
+  expect("reject negative lba", knvme.read(-1, 1), false)
+  expect("reject zero count", knvme.read(0, 0), false)
+  expect("reject ninth sector", knvme.read(0, 9), false)
+  expect("reject end lba", knvme.read(expected, 1), false)
+  expect("reject crossing end", knvme.read(expected - 1, 2), false)
+  expect("reject huge lba", knvme.read(281474976710656, 1), false)
+  expect("reject every other opcode", opcode_refusals(), true)
+  expect("reject raw past end", knvme.issue(2, expected, 1), false)
+  expect("no invalid commands", knvme.commands(), before)
+  expect("invalid result hidden", knvme.byte_at(0), -1)
+  expect("read after refusal", verify(13, 2), true)
+  expect("negative byte", knvme.byte_at(-1), -1)
+  expect("past byte", knvme.byte_at(1024), -1)
+  expect("DMA guards", guards(), true)
+  expect("single init", knvme.init(idx), false)
+  expect("still ready", knvme.ready(), true)
+  print "NVME DONE", fails

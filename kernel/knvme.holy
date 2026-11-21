@@ -1,0 +1,254 @@
+# Opt-in read-only NVMe, one explicitly selected PCI function and namespace 1.
+# Admin plus one IO queue pair in a pinned DMA arena, polling completions by
+# phase tag, PRP only, IDENTIFY/READ only. No writes, MSI, SGL, namespaces
+# beyond 1, shutdown notification, removal, recovery or storage-write command.
+# DMA comes from pinned identity-mapped runtime alloc(), not the virtual heap.
+import kpci
+import kpage
+SPIN = 20000000
+TIMEOUT_TICKS = 100
+MAX_SECTORS = 8
+DEPTH = 8
+attempted = false
+active = false
+controller = -1
+bar = 0
+arena = 0
+payload = 0
+capacity = 0
+valid_bytes = 0
+issued = 0
+failure = "not initialized"
+sq0t = 0
+cq0h = 0
+sq1t = 0
+cq1h = 0
+tails = [0, 0]
+heads = [0, 0]
+phases = [1, 1]
+cids = [0, 0]
+cres0 = 0
+cstatus = 0
+def rd32(address):
+  unsafe:
+    return load32(as_ptr(address))
+def wr32(address, value):
+  unsafe:
+    store32(as_ptr(address), value)
+def rd8(address):
+  unsafe:
+    return load8(as_ptr(address))
+def wr8(address, value):
+  unsafe:
+    store8(as_ptr(address), value)
+def zero(address, count):
+  unsafe:
+    I64 i = 0
+    while i < count:
+      store8(as_ptr(address + i), 0)
+      i = i + 1
+def dma_arena():
+  unsafe:
+    Ptr memory = alloc(32768 + 4096)
+    I64 base = as_int(memory)
+    return (base + 4095) & -4096
+def config(reg):
+  return kpci.rd32(kpci.bus(controller), kpci.dev(controller), kpci.fn(controller), reg)
+def command(value):
+  # Upper PCI status is RW1C: never echo it back in a command update.
+  ioport_out(kpci.CONFIG_ADDR, kpci.addr(kpci.bus(controller), kpci.dev(controller), kpci.fn(controller), 4), 4)
+  ioport_out(kpci.CONFIG_DATA, value & 65535, 4)
+def wait_clear(address, mask):
+  i = 0
+  start = ticks()
+  while i < SPIN and ticks() - start < TIMEOUT_TICKS:
+    if rd32(address) & mask == 0:
+      return true
+    i = i + 1
+  return false
+def wait_set(address, mask):
+  i = 0
+  start = ticks()
+  while i < SPIN and ticks() - start < TIMEOUT_TICKS:
+    if rd32(address) & mask != 0:
+      return true
+    i = i + 1
+  return false
+def fail(reason):
+  global failure, active, valid_bytes
+  failure = reason
+  active = false
+  valid_bytes = 0
+  return false
+def poison(reason):
+  # A timed-out controller may still DMA. Disable bus mastering; keep the
+  # whole pinned arena forever and never reinitialize or reuse it this boot.
+  command(config(4) & ~4)
+  return fail(reason)
+def kick(sq, sq_db, cq, cq_db, q, op, nsid, prp1, d10, d11, d12):
+  # One 64-byte command in queue q (0 admin, 1 IO), one outstanding command
+  # per queue, completion polled by phase tag with a bounded wait.
+  global issued, cres0, cstatus
+  cids[q] = cids[q] + 1
+  if cids[q] > 65535:
+    cids[q] = 1
+  cid = cids[q]
+  slot = tails[q]
+  entry = sq + slot * 64
+  zero(entry, 64)
+  wr32(entry, op | (cid << 16))
+  wr32(entry + 4, nsid)
+  wr32(entry + 24, prp1 & 4294967295)
+  wr32(entry + 28, prp1 >> 32 & 4294967295)
+  wr32(entry + 40, d10)
+  wr32(entry + 44, d11)
+  wr32(entry + 48, d12)
+  tails[q] = slot + 1
+  if tails[q] >= DEPTH:
+    tails[q] = 0
+  # MMIO read drains posted writes before the queue doorbell.
+  rd32(bar)
+  issued = issued + 1
+  wr32(sq_db, tails[q])
+  i = 0
+  start = ticks()
+  while i < SPIN and ticks() - start < TIMEOUT_TICKS:
+    dw3 = rd32(cq + heads[q] * 16 + 12)
+    if dw3 >> 16 & 1 == phases[q]:
+      cres0 = rd32(cq + heads[q] * 16)
+      cstatus = dw3 >> 17 & 2047
+      got = dw3 & 65535
+      heads[q] = heads[q] + 1
+      if heads[q] >= DEPTH:
+        heads[q] = 0
+        phases[q] = phases[q] ^ 1
+      wr32(cq_db, heads[q])
+      if cstatus != 0 or got != cid:
+        return false
+      return true
+    i = i + 1
+  return false
+def admin_cmd(op, nsid, prp1, d10, d11):
+  return kick(arena, sq0t, arena + 4096, cq0h, 0, op, nsid, prp1, d10, d11, 0)
+def init(index):
+  global attempted, controller, bar, arena, payload, active, capacity, failure, sq0t, cq0h, sq1t, cq1h
+  if attempted:
+    return false
+  attempted = true
+  if index < 0 or index >= kpci.count():
+    return fail("NVMe selection invalid")
+  if kpci.classof(index) != 1 or kpci.subclass(index) != 8 or kpci.progif(index) != 2:
+    return fail("not an NVMe controller")
+  controller = index
+  raw = config(16)
+  # Only a 64-bit memory BAR; both the below-4GiB SeaBIOS and above-4GiB
+  # OVMF assignments are mapped where the firmware put them.
+  if raw & 7 != 4:
+    return fail("NVMe BAR type unsupported")
+  bar = raw & 0xFFFFFFF0 + config(20) * 4294967296
+  if bar < 4096:
+    return fail("NVMe BAR address unsupported")
+  first = bar & -4096
+  last = (bar + 8192 + 4095) & -4096
+  page = first
+  while page < last:
+    if not kpage.map(cr3(), page, page, 27):
+      return fail("NVMe MMIO map failed")
+    page = page + 4096
+  command(config(4) | 6)
+  cap = rd32(bar) + rd32(bar + 4) * 4294967296
+  if cap & 65535 < 7:
+    return fail("NVMe queue entries unsupported")
+  if cap >> 16 & 1 != 1:
+    return fail("NVMe contig queues unsupported")
+  if cap >> 32 & 15 > 4:
+    return fail("NVMe doorbell stride unsupported")
+  if cap >> 37 & 1 != 1:
+    return fail("NVMe command set unsupported")
+  if cap >> 48 & 15 != 0:
+    return fail("NVMe page size unsupported")
+  vs = rd32(bar + 8)
+  if vs >> 16 != 1:
+    return fail("NVMe version unsupported")
+  if rd32(bar + 20) & 1 != 0:
+    wr32(bar + 20, 0)
+    if not wait_clear(bar + 28, 1):
+      return poison("NVMe disable timeout")
+  if rd32(bar + 28) & 2 != 0:
+    return fail("NVMe controller fatal")
+  arena = dma_arena()
+  # Runtime bump allocations must be low identity-mapped physical memory.
+  if arena < 0x2000000 or arena + 32768 > 0x3000000:
+    return fail("NVMe DMA address unsupported")
+  zero(arena, 32768)
+  payload = arena + 20480
+  wr32(bar + 36, 7 << 16 | 7)
+  wr32(bar + 40, arena)
+  wr32(bar + 44, 0)
+  wr32(bar + 48, arena + 4096)
+  wr32(bar + 52, 0)
+  # EN, NVM command set, 4K pages, round robin, 64B SQ and 16B CQ entries.
+  wr32(bar + 20, 0x460001)
+  if not wait_set(bar + 28, 1):
+    return poison("NVMe enable timeout")
+  if rd32(bar + 28) & 2 != 0:
+    return poison("NVMe controller fatal")
+  stride = 4 << (cap >> 32 & 15)
+  sq0t = bar + 4096
+  cq0h = sq0t + stride
+  sq1t = sq0t + stride * 2
+  cq1h = sq0t + stride * 3
+  zero(arena + 16384, 4096)
+  if not admin_cmd(6, 0, arena + 16384, 1, 0):
+    return poison("NVMe identify controller failed")
+  if rd32(arena + 16384 + 516) < 1:
+    return fail("NVMe namespace missing")
+  zero(arena + 16384, 4096)
+  if not admin_cmd(6, 1, arena + 16384, 0, 0):
+    return poison("NVMe identify namespace failed")
+  nsze = rd32(arena + 16384) + rd32(arena + 16384 + 4) * 4294967296
+  flbas = rd8(arena + 16384 + 26) & 15
+  lbads = rd8(arena + 16384 + 128 + flbas * 4 + 2)
+  if lbads != 9:
+    return fail("NVMe sector size unsupported")
+  if nsze < 1:
+    return fail("NVMe capacity unsupported")
+  capacity = nsze
+  if not admin_cmd(5, 0, arena + 12288, 7 << 16 | 1, 1):
+    return poison("NVMe IO CQ create failed")
+  if not admin_cmd(1, 0, arena + 8192, 7 << 16 | 1, 1 << 16 | 1):
+    return poison("NVMe IO SQ create failed")
+  active = true
+  failure = "ready"
+  return true
+def issue(opcode, lba, count):
+  global valid_bytes
+  valid_bytes = 0
+  if not active:
+    return false
+  # Even this low-level helper refuses all other NVM commands before MMIO.
+  if opcode != 2:
+    return false
+  if count < 1 or count > MAX_SECTORS or lba < 0 or lba >= 281474976710656:
+    return false
+  if lba >= capacity or count > capacity - lba:
+    return false
+  zero(payload, 4096)
+  if not kick(arena + 8192, sq1t, arena + 12288, cq1h, 1, 2, 1, payload, lba & 4294967295, lba >> 32 & 4294967295, (count - 1) & 65535):
+    return poison("NVMe read failed")
+  valid_bytes = count * 512
+  return true
+def read(lba, count):
+  return issue(2, lba, count)
+def byte_at(index):
+  if index < 0 or index >= valid_bytes:
+    return -1
+  return rd8(payload + index)
+def sectors():
+  return capacity if active else 0
+def ready():
+  return active
+def error():
+  return failure
+def commands():
+  return issued

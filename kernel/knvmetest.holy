@@ -1,0 +1,5 @@
+# Opt-in QEMU q35 disposable NVMe namespace, exactly32MiB, namespace1.
+import knvmecheck
+knvmecheck.run(0, 65536)
+while true:
+  pass
