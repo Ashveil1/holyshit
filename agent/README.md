@@ -44,6 +44,52 @@ Commands: `remember <thing> is <fact>`, `remember <thing> is also <fact>`,
 `list`, `say <text>`, `help`. One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
+## Hosted resource benchmark (v0.4 core, commit a6c628b)
+
+Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
+facts only). Method, per number: wall = `perf_counter` around the whole
+process; cold startup = process wall for an immediate `quit` (loads and
+re-saves the seeded store); latency = (session wall - startup) /
+commands; peak RSS = the child process's own kernel-reported
+`ru_maxrss` (wait4), per-process, not system-wide use. These are
+HOSTED numbers (a Linux process running the hs runtime); future in-OS
+(kernel-hosted) numbers are a separate milestone and must not be
+conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
+3.10.12 for the interp route.
+
+| backend | facts | cold startup | peak RSS | recall | honest miss |
+| --- | --- | --- | --- | --- | --- |
+| interp (reference) | 0 | 0.06 s | 22.5 MiB | - | 1.6 ms |
+| interp (reference) | 1,000 | 0.06 s | 23.3 MiB | 1.8 ms | 482 ms |
+| interp (reference) | 10,000 | 0.15 s | 31.0 MiB | 8.0 ms | 4,840 ms |
+| ir-x64 (native) | 0 | <0.01 s | 20.7 MiB | <0.01 ms | 0.01 ms |
+| ir-x64 (native) | 1,000 | 0.03 s | 20.7 MiB | <0.01 ms | 2.8 ms |
+| ir-x64 (native) | 10,000 | 0.41 s | 76.4 MiB | <0.01 ms | 39.9 ms |
+
+4 GiB probe (RLIMIT_AS on the child, 10k facts, mixed recall/miss
+session): both backends complete - interp in 24.4 s at 30.9 MiB peak,
+native in 0.6 s at 60.4 MiB peak. Memory is far inside a 4 GiB budget;
+miss latency on the interp route is the real scaling wall.
+
+Honest readings:
+- Memory footprint is small and grows slowly: interp adds ~8.5 MiB for
+  10k taught facts over its 22.5 MiB interpreter floor; the native
+  image has a ~20.7 MiB runtime floor and holds 10k facts in ~40-56
+  MiB more (its store representation is less compact).
+- Recalls stay fast at every scale (the fact Dict does the work).
+- Honest misses and `did you mean` checks scan every taught key with
+  no index: cost grows linearly (~0.5 ms/key interp, ~0.004 ms/key
+  native). At 10k facts a native miss is 40 ms, an interp miss is
+  ~4.8 s. Retrieval without an index is the known limitation, now
+  quantified.
+- The held-out Thai/English dialogue (24 lines: 7 recalls incl. alias
+  and Thai, 2 clarifications, 3 honest misses, 1 correction) scores
+  full marks on both backends at every scale - but it is small; treat
+  it as a smoke check of behavior, not an accuracy study.
+
+`tests/test_agent_bench.py` gates the dialogue check and a tiny-scale
+smoke run in CI; the full run is manual.
+
 ## What it is not
 
 It is not a language model and does not understand language. It cannot
