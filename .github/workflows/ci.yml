@@ -118,6 +118,8 @@ jobs:
         run: HS_REQUIRE_GUI=1 HS_REQUIRE_XHCI=1 HS_REQUIRE_UEFI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-usbdesk-evidence python3 tests/test_usb_desktop.py
       - name: GPT/ESP USB image boot as usb-storage under OVMF (required)
         run: HS_REQUIRE_GUI=1 HS_REQUIRE_UEFI=1 HS_USB_BOOT_EVIDENCE=${{ runner.temp }}/hs-usbboot-evidence python3 tests/test_usb_boot.py
+      - name: shell-first default boot, typed session and framebuffer console (required)
+        run: HS_REQUIRE_GUI=1 HS_REQUIRE_UEFI=1 HS_SHELL_BOOT_EVIDENCE=${{ runner.temp }}/hs-shellboot-evidence python3 tests/test_shell_boot.py
       - name: explicit disk desktop save, restore and refusal (required)
         run: HS_REQUIRE_GUI=1 HS_GUI_EVIDENCE=${{ runner.temp }}/hs-desktop-disk-evidence python3 tests/test_desktop_disk.py
       - name: separate command console help/echo and actual result pixels (required)
@@ -138,6 +140,7 @@ jobs:
             ${{ runner.temp }}/hs-xhci-evidence
             ${{ runner.temp }}/hs-usbdesk-evidence
             ${{ runner.temp }}/hs-usbboot-evidence
+            ${{ runner.temp }}/hs-shellboot-evidence
       - name: owned address-space allocation rollback and 100-cycle reclamation (required)
         run: HS_REQUIRE_KOWNED=1 python3 tests/test_owned_space.py
       - name: private-root static ELF load and ring3 run (required)

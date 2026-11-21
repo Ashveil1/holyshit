@@ -19,6 +19,7 @@ references (builtins.md, api.json, errors.md) are checked by tests.
 | Test opt-in read-only NVMe DMA on QEMU | [NVMe scope and gates](nvme.md) |
 | Test opt-in USB HID input over xHCI on QEMU | [xHCI scope and gates](xhci.md) |
 | Boot the desktop from a USB stick image on QEMU | [USB image scope and gates](usb-boot.md) |
+| Boot straight into a text shell (the default image) | [Shell scope and gates](shell.md) |
 | Hook up an editor / let AI drive the language | `lsp.md`, `for-agents.md` |
 | Let a program read the language (JSON) | `api.json` |
 | Design rationale + phase history | `../SPEC-v1.md` |

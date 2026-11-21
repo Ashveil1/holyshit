@@ -1,0 +1,41 @@
+# shell-first boot (B22a): the machine comes up straight into the ring3
+# shell (uush) with the boot framebuffer as its console - Arch-style text
+# mode. This is the DEFAULT app of the packaging scripts; the desktop
+# stays in the tree as an explicit app target. Serial keeps the raw byte
+# log for the gates; the screen shows the session. `exit` respawns the
+# shell (getty-style) after normal exit.
+import kframebuffer
+import kmb
+import kpmm
+import ksyscall
+import kvfs
+import kramdisk
+import kuser
+import kfbcon
+if not kmb.usable():
+  raise "multiboot2 boot info missing"
+if kpmm.init() == 0:
+  raise "pmm init failed"
+frame = kframebuffer.descriptor()
+kframebuffer.map(frame)
+kfbcon.init(frame)
+kfbcon.put_str("holyshit os - shell\n")
+if not kvfs.vfs_init():
+  raise "vfs init failed"
+if kramdisk.load() <= 0:
+  raise "ramdisk module missing"
+ksyscall.set_console(kfbcon.put_str)
+while true:
+  data = kvfs.read("/bin/uush")
+  if data == null:
+    raise "/bin/uush missing from ramdisk"
+  if kuser.load_image(kuser.payload_addr(data), len(data)) != 1:
+    raise "shell image rejected"
+  if not ksyscall.start():
+    raise "syscall handler failed"
+  if not kuser.enable_exec():
+    raise "exec enable failed"
+  print "shell start"
+  kuser.run()
+  print "shell exit", ksyscall.user_exit_code()
+  kfbcon.put_str("[sh exited - restarting]\n")
