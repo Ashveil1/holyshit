@@ -53,7 +53,7 @@ def lower_ascii(s):
     i = i + 1
   return out
 def new_state():
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}}
 def _has(state, key):
   for k in state["order"]:
     if k == key:
@@ -144,12 +144,14 @@ def _teach(state, key, value):
   if _has(state, key):
     return "updated " + key + " is " + value
   append(state["order"], key)
+  _index_key(state, key)
   return "remembered " + key + " is " + value
 def _teach_also(state, key, value):
   state["topic"] = key
   if not _has(state, key):
     state["facts"][key] = [value]
     append(state["order"], key)
+    _index_key(state, key)
     return "remembered " + key + " is " + value
   for v in state["facts"][key]:
     if v == value:
@@ -157,23 +159,93 @@ def _teach_also(state, key, value):
   append(state["facts"][key], value)
   return "added: " + key + " is " + value
 # Candidate keys/paraphrases for a miss: every word of the asked phrase
+# Word index (derived, never persisted): "windex" maps every taught key
+# word to the keys containing it; "nw" is the same map restricted to
+# non-ASCII words. Candidate lookup then touches only words, not every
+# key: the A5 benchmark measured the full scan at ~0.5 ms/key (interp)
+# per miss, which made misses unusable at 10k taught facts.
+def _index_key(state, key):
+  for w in _words(key):
+    if not (w in state["windex"]):
+      state["windex"][w] = []
+    if not (key in state["windex"][w]):
+      append(state["windex"][w], key)
+    if _nonascii(w):
+      if not (w in state["nw"]):
+        state["nw"][w] = []
+      if not (key in state["nw"][w]):
+        append(state["nw"][w], key)
+def _unindex_key(state, key):
+  for w in _words(key):
+    if w in state["windex"]:
+      kept = []
+      for k in state["windex"][w]:
+        if k != key:
+          append(kept, k)
+      state["windex"][w] = kept
+    if w in state["nw"]:
+      kept = []
+      for k in state["nw"][w]:
+        if k != key:
+          append(kept, k)
+      state["nw"][w] = kept
+# Keys whose words match the asked word w, exactly mirroring _wmatch:
+# - exact word hits come straight from the index;
+# - a non-ASCII asked word also matches any taught word found inside it
+#   (substring enumeration - the _sub needle guard skips single ASCII
+#   letters, and byte-vs-char slicing differences are harmless because a
+#   mid-character byte slice is never a taught word);
+# - the asked word found inside a taught non-ASCII word comes from the
+#   small non-ASCII word list (same guard).
+def _whits(state, w):
+  res = []
+  if _nonascii(w):
+    i = 0
+    while i < len(w):
+      j = i + 1
+      while j <= len(w):
+        s = w[i:j]
+        if (s != s[:1] or _nonascii(s)) and s in state["windex"]:
+          for k in state["windex"][s]:
+            if not (k in res):
+              append(res, k)
+        j = j + 1
+      i = i + 1
+  else:
+    if w in state["windex"]:
+      for k in state["windex"][w]:
+        append(res, k)
+  if w != w[:1] or _nonascii(w):
+    for t in state["nw"]:
+      if w != t and find(t, w) >= 0:
+        for k in state["nw"][t]:
+          if not (k in res):
+            append(res, k)
+  return res
+# Candidate keys/paraphrases for a miss: every word of the asked phrase
 # matches some word of the candidate (exact, or Thai-aware substring).
-# Deterministic (insertion order).
+# Deterministic (insertion order). The key side uses _whits (identical
+# match condition, no full scan); paraphrases are few and stay a loop.
 def _candidates(state, phrase):
   words = _words(phrase)
   cands = []
   keys = []
   if len(words) > 0:
+    base = null
+    for w in words:
+      hits = _whits(state, w)
+      if base == null:
+        base = {}
+        for k in hits:
+          base[k] = true
+      else:
+        nb = {}
+        for k in hits:
+          if k in base:
+            nb[k] = true
+        base = nb
     for k in state["order"]:
-      ok = true
-      for w in words:
-        hit = false
-        for kw in _words(k):
-          if _wmatch(w, kw):
-            hit = true
-        if not hit:
-          ok = false
-      if ok and phrase != k:
+      if k in base and phrase != k:
         append(cands, k)
         append(keys, k)
     for a in state["aliases"]:
@@ -227,6 +299,7 @@ def _forget(state, key):
   state["facts"] = facts
   state["order"] = order
   state["aliases"] = aliases
+  _unindex_key(state, key)
   if state["topic"] == key:
     state["topic"] = null
   return "forgot " + key

@@ -298,8 +298,8 @@ def report(rows, mode):
         print('  cold startup: %.2fs, peak RSS %.1f MiB'
               % (r['startup_s'], r['startup_rss_kb'] / 1024))
         print('  latency: recall %.2f ms/cmd, miss %.2f ms/cmd'
-              ' (miss scans every taught key; count capped at large scales)'
-              % (r['recall_ms'], r['miss_ms']))
+              ' (word-indexed miss lookup; non-ASCII containment scans'
+              ' only the non-ASCII word list)' % (r['recall_ms'], r['miss_ms']))
         print('  peak RSS (sessions): %.1f MiB' % (r['session_rss_kb'] / 1024))
         print('  held-out dialogue: %s' % fmt_counts(r['dialogue']))
         print()

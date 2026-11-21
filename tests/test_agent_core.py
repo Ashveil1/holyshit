@@ -311,7 +311,7 @@ class Oracle:
 rng = random.Random(20261121)
 
 KEYS = ['paris', 'milo', '曼谷', 'ไทย', 'café', 'x', 'my cat', 'a=b',
-        'Tokyo', 'the answer', 'z', 'felix']
+        'Tokyo', 'the answer', 'z', 'felix', 'c', 'แมวcat', 'red car']
 # Overlapping content words across values exercise association recall.
 VALUES = ['nice', 'a cat', 'a big cat', 'likes fish', 'a dog', 'blue fish',
           'ประเทศไทย', 'คนไทย', 'เมืองใหญ่', 'ไทยแลนด์', '42',
@@ -328,7 +328,7 @@ ALIASES = ['do you know', 'tell me about', 'who is', 'where is']
 # keys by a word (to trigger the clarification dialogue).
 PHRASES = ['the capital of france', 'kitty', 'สวัสดี', 'big answer']
 MISSES = ['cat', 'answer', 'my', 'capital', 'ghost town', 'nothing',
-          'คนไทย', 'ประเทศ']
+          'คนไทย', 'ประเทศ', 'c', 'แมว', 'แมวc', 'car', 'red']
 
 
 def mangle(word):

@@ -30,6 +30,9 @@ def load(path):
       state["aliases"] = data["aliases"]
     except:
       state["aliases"] = {}
+    # The word index is derived state: rebuild it from what was loaded.
+    for k in state["order"]:
+      agent.core._index_key(state, k)
     return state
   except:
     return agent.core.new_state()
