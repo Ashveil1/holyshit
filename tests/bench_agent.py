@@ -95,10 +95,13 @@ DIALOGUE = [
     ('what does mean mean',
      'mean means the definitional relation: X mean Y says the definition of X is Y',
      'inference'),
-    ('remember แมว อยู่ สวน', 'remembered แมว อยู่ สวน', 'teach'),
+    # แมว is already a key, so the additive teach answers 'added:'.
+    ('remember แมว อยู่ สวน', 'added: แมว อยู่ สวน', 'teach'),
     ('แมว อยู่ไหน', 'แมว อยู่ สวน', 'inference'),
-    ('remember milo is fond of fish', 'remembered milo is fond of fish',
-     'teach'),
+    # 'fond of fish' matches no relation shape, so it files a bare
+    # kind-of edge and the reply says so.
+    ('remember milo is fond of fish',
+     'remembered milo is fond of fish (filed as a kind-of)', 'teach'),
     ('what is fish',
      'i was never taught fish, but from how you used it, fish seems related '
      'to milo and fond',
@@ -136,10 +139,38 @@ DIALOGUE += [
      'i was taught both: a bat is a mammal and a bat is not a mammal'
      ' - i cannot say which is true', 'contradiction'),
 ]
+DIALOGUE += [
+    # A14: compositional rules over typed relations, numbered-step
+    # reasoning, the can-stays-can axiom, and a rule-derived positive
+    # colliding with a taught negative (shown, never resolved).
+    ('remember a car has an engine', 'remembered a car has an engine', 'teach'),
+    ('remember an engine uses energy', 'remembered an engine uses energy', 'teach'),
+    ('does a car use energy',
+     'yes: a car uses energy. reasoning:\n'
+     '(1) a car has an engine + an engine uses energy => a car uses energy [rule has+uses]',
+     'rule'),
+    ('remember energy can produce motion',
+     'remembered energy can produce motion', 'teach'),
+    ('can a car produce motion',
+     'yes: a car can produce motion. reasoning:\n'
+     '(1) an engine uses energy + energy can produce motion => an engine can produce motion [rule uses+can]\n'
+     '(2) a car has an engine + an engine can produce motion => a car can produce motion [rule has+can]',
+     'rule'),
+    # 'can produce' evidence never answers a 'produces' question.
+    ('does a car produce motion', 'not that i know', 'unknown'),
+    ('remember a car does not use gasoline',
+     'added: a car does not use gasoline', 'teach'),
+    ('remember an engine uses gasoline', 'added: an engine uses gasoline', 'teach'),
+    ('does a car use gasoline',
+     'i was taught a car does not use gasoline, but the rules derive a car uses gasoline'
+     ' - i cannot say which is true. reasoning:\n'
+     '(1) a car has an engine + an engine uses gasoline => a car uses gasoline [rule has+uses]',
+     'contradiction'),
+]
 
 SCORED = ('recall', 'clarify', 'miss', 'correction', 'pleasantry', 'open',
           'infer', 'passive', 'unknown', 'negative', 'contradiction',
-          'chain', 'inference', 'usage', 'unparsed')
+          'rule', 'chain', 'inference', 'usage', 'unparsed')
 
 
 def git_head():
@@ -182,6 +213,16 @@ def infer_script(store, n):
         return []
     return ['does ' + keys[(j * 7919) % len(keys)] + ' need energy'
             for j in range(n)]
+
+
+def derive_script(n):
+    # A14 rule-derivation latency: a two-step composed proof (uses+can
+    # feeding has+can), re-derived from scratch on every query - no
+    # cross-query caching exists. The three teaches seed the world.
+    setup = ['remember a car has an engine',
+             'remember an engine uses energy',
+             'remember energy can produce motion']
+    return setup + ['can a car produce motion'] * max(1, n - len(setup))
 
 
 def dialogue_script():
@@ -254,18 +295,33 @@ def run_proc(argv, stdin_text, cwd, limit_bytes=None):
 
 
 def score_dialogue(stdout):
-    replies = stdout.split('\n')[1:-1]  # drop banner and trailing ''
-    lines = [l for l, _, _ in DIALOGUE]
-    assert len(replies) == len(lines) + 1, (len(replies), len(lines), stdout[-400:])
-    assert replies[-1] == 'bye', replies[-1]
+    # Replies can span several lines (A14 reasoning steps), so split
+    # the stream by matching each expected reply (possibly multi-line)
+    # in order. A mismatch consumes one line (the historical shape) so
+    # later replies stay aligned; the final position assert catches
+    # any drift. Banner, trailing '' and the closing 'bye' are dropped.
+    body = stdout.split('\n')[1:-1]
+    assert body and body[-1] == 'bye', (body[-3:], stdout[-400:])
+    body = body[:-1]
     counts = {c: [0, 0] for c in SCORED}  # category -> [ok, total]
-    for (line, want, cat), got in zip(DIALOGUE, replies):
+    pos = 0
+    for line, want, cat in DIALOGUE:
+        want_lines = want.split('\n')
+        got_lines = body[pos:pos + len(want_lines)]
+        got = '\n'.join(got_lines)
+        if got == want:
+            pos += len(want_lines)
+        else:
+            # Fallback for an unexpected reply: consume one line (the
+            # historical single-line shape) so scoring stays aligned.
+            got = body[pos] if pos < len(body) else '<missing>'
+            pos += 1
+            print('MISMATCH %r: want %r got %r' % (line, want, got))
         if cat in counts:
             counts[cat][1] += 1
             if got == want:
                 counts[cat][0] += 1
-            else:
-                print('MISMATCH %r: want %r got %r' % (line, want, got))
+    assert pos == len(body), (pos, len(body), body[pos:pos + 4])
     return counts
 
 
@@ -278,39 +334,69 @@ def bench_session(argv, cwd, store, script, label, rows, limit_bytes=None):
     return wall, peak, out
 
 
-def bench_backend(name, argv, tmp, scales, n_cmds, limit_run):
+ALL_SESSIONS = ('startup', 'recall', 'miss', 'infer', 'derive', 'dialogue')
+
+
+def bench_backend(name, argv, tmp, scales, n_cmds, limit_run,
+                  only=ALL_SESSIONS):
     rows = []
     for scale in scales:
         store = synth_store(scale)
         d = tmp / ('%s-%d' % (name.replace('/', '_'), scale))
         d.mkdir()
-        t_start, rss_start, _ = bench_session(argv, d, store, [], 'startup', rows)
-        n_rec_cmds = n_cmds if scale else n_cmds
+        # Each field is measured by the same code path regardless of
+        # the --sessions filter, so rows from chunked runs (long 10k
+        # interp sessions split across invocations) merge field-wise;
+        # session_rss_kb merges as the max.
+        row = {'backend': name, 'facts': scale}
+        rss_peaks = []
+        # Latency is (session wall - startup wall), so the startup
+        # session runs whenever any latency session does, even if it
+        # was filtered out of the report fields.
+        need_start = bool(set(only) & {'startup', 'recall', 'miss', 'infer', 'derive'})
+        t_start = None
+        if need_start:
+            t_start, rss_start, _ = bench_session(argv, d, store, [], 'startup', rows)
+            if 'startup' in only:
+                row['startup_s'] = t_start
+                row['startup_rss_kb'] = rss_start
+        if 'recall' in only:
+            n_rec_cmds = n_cmds if scale else n_cmds
+            t_rec, rss_rec, _ = bench_session(argv, d, store,
+                                              recall_script(store, n_rec_cmds), 'recall', rows)
+            # max(0, ...): at scale 0 the recall session is quit-only and
+            # scheduling noise can make the difference slightly negative.
+            row['recall_ms'] = max(0.0, 1000.0 * (t_rec - t_start) / n_rec_cmds)
+            rss_peaks.append(rss_rec)
         # Misses scan every taught key (no index): ~0.5 ms/key on the
         # interp route, so cap the miss count at large scales; the
         # per-command mean stays comparable.
-        n_mis_cmds = n_cmds if scale <= 1000 else 5
-        t_rec, rss_rec, _ = bench_session(argv, d, store,
-                                          recall_script(store, n_rec_cmds), 'recall', rows)
-        t_mis, rss_mis, _ = bench_session(argv, d, store,
-                                          miss_script(n_mis_cmds), 'miss', rows)
-        n_inf_cmds = n_cmds if scale else n_cmds
-        t_inf, rss_inf, _ = bench_session(argv, d, store,
-                                          infer_script(store, n_inf_cmds), 'infer', rows)
-        t_dlg, rss_dlg, out = bench_session(argv, d, store,
-                                            dialogue_script(), 'dialogue', rows)
-        counts = score_dialogue(out)
-        rows.append({
-            'backend': name, 'facts': scale,
-            'startup_s': t_start, 'startup_rss_kb': rss_start,
-            # max(0, ...): at scale 0 the recall session is quit-only and
-            # scheduling noise can make the difference slightly negative.
-            'recall_ms': max(0.0, 1000.0 * (t_rec - t_start) / n_rec_cmds),
-            'miss_ms': max(0.0, 1000.0 * (t_mis - t_start) / n_mis_cmds),
-            'infer_ms': max(0.0, 1000.0 * (t_inf - t_start) / n_inf_cmds),
-            'session_rss_kb': max(rss_rec, rss_mis, rss_dlg, rss_inf),
-            'dialogue': counts,
-        })
+        if 'miss' in only:
+            n_mis_cmds = n_cmds if scale <= 1000 else 5
+            t_mis, rss_mis, _ = bench_session(argv, d, store,
+                                              miss_script(n_mis_cmds), 'miss', rows)
+            row['miss_ms'] = max(0.0, 1000.0 * (t_mis - t_start) / n_mis_cmds)
+            rss_peaks.append(rss_mis)
+        if 'infer' in only:
+            n_inf_cmds = n_cmds if scale else n_cmds
+            t_inf, rss_inf, _ = bench_session(argv, d, store,
+                                              infer_script(store, n_inf_cmds), 'infer', rows)
+            row['infer_ms'] = max(0.0, 1000.0 * (t_inf - t_start) / n_inf_cmds)
+            rss_peaks.append(rss_inf)
+        if 'derive' in only:
+            n_drv_cmds = n_cmds if scale else n_cmds
+            t_drv, rss_drv, _ = bench_session(argv, d, store,
+                                              derive_script(n_drv_cmds), 'derive', rows)
+            row['derive_ms'] = max(0.0, 1000.0 * (t_drv - t_start) / n_drv_cmds)
+            rss_peaks.append(rss_drv)
+        if 'dialogue' in only:
+            t_dlg, rss_dlg, out = bench_session(argv, d, store,
+                                                dialogue_script(), 'dialogue', rows)
+            row['dialogue'] = score_dialogue(out)
+            rss_peaks.append(rss_dlg)
+        if rss_peaks:
+            row['session_rss_kb'] = max(rss_peaks)
+        rows.append(row)
     if limit_run and scales:
         scale = scales[-1]
         store = synth_store(scale)
@@ -374,15 +460,23 @@ def report(rows, mode):
                       % (r['backend'], r['facts'], r.get('detail', '')))
             continue
         print('[%s] facts=%d' % (r['backend'], r['facts']))
-        print('  cold startup: %.2fs, peak RSS %.1f MiB'
-              % (r['startup_s'], r['startup_rss_kb'] / 1024))
-        print('  latency: recall %.2f ms/cmd, miss %.2f ms/cmd,'
-              ' inference %.2f ms/cmd'
-              ' (word-indexed miss lookup; inheritance walks the is-a'
-              ' graph with O(1) edge checks)' % (r['recall_ms'], r['miss_ms'],
-                                                 r['infer_ms']))
-        print('  peak RSS (sessions): %.1f MiB' % (r['session_rss_kb'] / 1024))
-        print('  held-out dialogue: %s' % fmt_counts(r['dialogue']))
+        if 'startup_s' in r:
+            print('  cold startup: %.2fs, peak RSS %.1f MiB'
+                  % (r['startup_s'], r['startup_rss_kb'] / 1024))
+        lat_parts = []
+        for key, label in (('recall_ms', 'recall'), ('miss_ms', 'miss'),
+                           ('infer_ms', 'inference'), ('derive_ms', 'rule-derive')):
+            if key in r:
+                lat_parts.append('%s %.2f ms/cmd' % (label, r[key]))
+        if lat_parts:
+            print('  latency: ' + ', '.join(lat_parts) +
+                  ' (word-indexed miss lookup; inheritance walks the is-a'
+                  ' graph with O(1) edge checks; rule-derive is a two-step'
+                  ' composed proof re-derived per query)')
+        if 'session_rss_kb' in r:
+            print('  peak RSS (sessions): %.1f MiB' % (r['session_rss_kb'] / 1024))
+        if 'dialogue' in r:
+            print('  held-out dialogue: %s' % fmt_counts(r['dialogue']))
         print()
 
 
@@ -398,6 +492,11 @@ def main():
                     help='write rows as JSON to this path instead of reporting')
     ap.add_argument('--report', default='',
                     help='read rows JSON from this path and print the report')
+    ap.add_argument('--sessions', default='',
+                    help='comma subset of startup,recall,miss,infer,derive,'
+                    'dialogue; for chunking long runs (rows merge field-wise)')
+    ap.add_argument('--no-probe', action='store_true',
+                    help='skip the 4 GiB limit probe')
     args = ap.parse_args()
     full = args.full and not args.quick
     if args.report:
@@ -409,6 +508,10 @@ def main():
     n_cmds = 200 if full else 30
     names = (args.backends.split(',') if args.backends
              else (['interp', 'ir-x64'] if full else ['interp']))
+    only = (tuple(args.sessions.split(',')) if args.sessions
+            else ALL_SESSIONS)
+    for s in only:
+        assert s in ALL_SESSIONS, s
     workdir = Path(tempfile.mkdtemp(prefix='hs-agent-bench-'))
     rows = []
     for name in names:
@@ -417,8 +520,9 @@ def main():
         else:
             argv = build_native(workdir)
         rows += bench_backend(name, argv, workdir, scales, n_cmds,
-                              full and not args.scales or
-                              (full and str(scales[-1]) == '10000'))
+                              (full and not args.no_probe and
+                               (not args.scales or
+                                str(scales[-1]) == '10000')), only)
     if args.out:
         Path(args.out).write_text(json.dumps(rows), encoding='utf-8')
         print('wrote %d rows to %s' % (len(rows), args.out))

@@ -823,6 +823,17 @@ _VERBT = [[" does not need ", "needs", true], [" do not need ", "needs", true], 
 _VERBQ = [[" need ", "needs"], [" needs ", "needs"], [" use ", "uses"], [" uses ", "uses"], [" produce ", "produces"], [" produces ", "produces"], [" cause ", "causes"], [" causes ", "causes"], [" have ", "has"], [" has ", "has"]]
 # Passive question markers 'is O <verbed> by S' as [marker, relation].
 _VERBP = [[" needed by ", "needs"], [" used by ", "uses"], [" produced by ", "produces"], [" caused by ", "causes"]]
+# A14: compositional inference rules - a fixed, inspectable table,
+# NOT hidden logic. Each rule is [first premise relation, second
+# premise relation, conclusion relation, display name]: rel(X,Y) +
+# rel(Y,Z) => rel(X,Z). Only the rules listed here fire; there is no
+# invented inference. The can-stays-can axiom: every rule with a 'can'
+# premise concludes 'can' - capability never becomes a doing or a
+# having-done fact (no such relation exists). 'has' is never a
+# conclusion (non-transitive by design) and 'needs'/'causes' appear
+# in no rule at all.
+_RULES = [["has", "uses", "uses", "has+uses"], ["has", "can", "can", "has+can"], ["uses", "can", "can", "uses+can"], ["has", "produces", "produces", "has+produces"], ["uses", "produces", "produces", "uses+produces"]]
+_RULECAP = 6
 def _negphrase(pred):
   for r in _RELNEG:
     if r[0] == pred:
@@ -1032,6 +1043,151 @@ def _means_check(state, x, y, sep):
       if y in state["relset"][x]["means"]:
         return "yes: " + x + sep + y
   return "not that i know"
+# A14 rule engine. A proof is either ['edge', path, edge, rel] -
+# taught or is-a-inherited evidence, rendered exactly like the A13
+# chains - or ['rule', rule name, premise-1 proof, premise-2 proof,
+# [subject, object], rel].
+#
+# _enum collects every object related to start by rel: taught or
+# inherited edges first (each confirmed by _inherit, so nearest-wins
+# and taught negatives apply to premises exactly as they do to direct
+# questions), then rule-derived objects. memo caches per (start, rel)
+# for one query; storing the in-progress list before recursing breaks
+# cycles, and the depth cap bounds the search.
+def _enum(state, start, rel, depth, memo):
+  mkey = _stripart(start) + "|" + rel
+  if mkey in memo:
+    return memo[mkey]
+  memo[mkey] = []
+  cands = []
+  seen = {}
+  frontier = [[_stripart(start), []]]
+  visited = {}
+  dist = 0
+  while len(frontier) > 0 and dist <= 8:
+    nxt = []
+    for item in frontier:
+      node = item[0]
+      path = item[1]
+      if not (node in visited):
+        visited[node] = true
+        if rel in state["relby"]:
+          if node in state["relby"][rel]:
+            for e in state["relby"][rel][node]:
+              o = _stripart(e[1])
+              if not (o in seen):
+                seen[o] = true
+                append(cands, e[1])
+        if dist < 8:
+          if "is-a" in state["relby"]:
+            if node in state["relby"]["is-a"]:
+              for e in state["relby"]["is-a"][node]:
+                ns = _stripart(e[1])
+                if not (ns in visited):
+                  np2 = []
+                  for pe in path:
+                    append(np2, pe)
+                  append(np2, e)
+                  append(nxt, [ns, np2])
+    frontier = nxt
+    dist = dist + 1
+  out = []
+  for c in cands:
+    r = _inherit(state, start, rel, c)
+    if r[0] == "true":
+      append(out, [c, ["edge", r[1], r[2], rel]])
+  if depth < _RULECAP:
+    for rule in _RULES:
+      if rule[2] == rel:
+        for yit in _enum(state, start, rule[0], depth + 1, memo):
+          for zit in _enum(state, yit[0], rule[1], depth + 1, memo):
+            o = _stripart(zit[0])
+            if not (o in seen):
+              seen[o] = true
+              append(out, [zit[0], ["rule", rule[3], yit[1], zit[1], [start, zit[0]], rel]])
+  memo[mkey] = out
+  return out
+# Prove (start, pred, goal) from the rule table alone: for each rule
+# concluding pred, enumerate middle objects for its first premise and
+# prove the second premise recursively. A premise with taught negative
+# or contradicted evidence is never built on - rules under-infer
+# rather than overclaim. First complete proof wins (rule table order,
+# then edge insertion order: deterministic).
+def _rule_prove(state, start, pred, goal, depth, memo, pseen):
+  if depth >= _RULECAP:
+    return null
+  anyrule = false
+  for rule in _RULES:
+    if rule[2] == pred:
+      anyrule = true
+  if not anyrule:
+    return null
+  pkey = _stripart(start) + "|" + pred + "|" + _stripart(goal)
+  if pkey in pseen:
+    return null
+  pseen[pkey] = true
+  for rule in _RULES:
+    if rule[2] == pred:
+      for yit in _enum(state, start, rule[0], depth + 1, memo):
+        r2 = _inherit(state, yit[0], rule[1], goal)
+        if r2[0] == "true":
+          return ["rule", rule[3], yit[1], ["edge", r2[1], r2[2], rule[1]], [start, goal], pred]
+        if r2[0] == "":
+          p2 = _rule_prove(state, yit[0], rule[1], goal, depth + 1, memo, pseen)
+          if p2 != null:
+            return ["rule", rule[3], yit[1], p2, [start, goal], pred]
+  return null
+# A14 query path: taught/inherited evidence first (the A13 engine,
+# unchanged); only when that knows nothing or found a taught negative
+# do the compositional rules fire. A rule-derived positive conflicting
+# with a taught negative is a contradiction - shown with its
+# reasoning, never silently resolved. Verdicts: true/false/both (pure
+# A13), rule (derived positive), rule-both (derived vs taught
+# negative).
+def _derive(state, x, pred, y):
+  r = _inherit(state, x, pred, y)
+  v = r[0]
+  if v == "true" or v == "both":
+    return [v, r, null]
+  p = _rule_prove(state, x, pred, y, 0, {}, {})
+  if p == null:
+    return [v, r, null]
+  if v == "false":
+    return ["rule-both", r, p]
+  return ["rule", null, p]
+# Inline text of a proof's conclusion.
+def _proof_text(proof):
+  if proof[0] == "edge":
+    return _pathfmt(proof[1]) + _edgefmt(proof[2], proof[3], false)
+  return _edgefmt(proof[4], proof[5], false)
+# Flatten a rule proof into numbered derivation steps, premises first;
+# each step names the rule that fired and the two premises it used.
+def _proof_steps(proof, steps, done):
+  t = _proof_text(proof)
+  if proof[0] == "edge":
+    return t
+  t1 = _proof_steps(proof[2], steps, done)
+  t2 = _proof_steps(proof[3], steps, done)
+  if not (t in done):
+    done[t] = true
+    append(steps, "(" + str(len(steps) + 1) + ") " + t1 + " + " + t2 + " => " + t + " [rule " + proof[1] + "]")
+  return t
+def _derive_render(state, x, pred, y, d):
+  if d[0] == "rule" or d[0] == "rule-both":
+    steps = []
+    _proof_steps(d[2], steps, {})
+    out = ""
+    if d[0] == "rule":
+      out = "yes: " + x + " " + _posphrase(pred) + " " + y + ". reasoning:"
+    else:
+      r = d[1]
+      out = "i was taught " + _pathfmt(r[1]) + _edgefmt(r[2], pred, true) + ", but the rules derive " + x + " " + _posphrase(pred) + " " + y + " - i cannot say which is true. reasoning:"
+    for s in steps:
+      out = out + "\n" + s
+    return out
+  return _inherit_reply(state, x, pred, y)
+def _derive_reply(state, x, pred, y):
+  return _derive_render(state, x, pred, y, _derive(state, x, pred, y))
 # A13: parse 'remember <subj> <verb> <obj>' - [split, relation,
 # negated, object start]; negatives are checked before positives.
 def _verb_teach_parse(mrest):
@@ -1046,7 +1202,7 @@ def _verb_q(state, rest):
   for vm in _VERBQ:
     k = find(rest, vm[0])
     if k > 0 and k + len(vm[0]) < len(rest):
-      return _inherit_reply(state, rest[:k], vm[1], rest[k + len(vm[0]):])
+      return _derive_reply(state, rest[:k], vm[1], rest[k + len(vm[0]):])
   return "i do not understand"
 # A13: 'can a doctor learn' - subject/object split is ambiguous, so
 # try every word boundary left to right (same rule as the bare is-a
@@ -1059,9 +1215,9 @@ def _can_q(state, rest):
   i = 1
   while i < len(ws):
     y = rest[len(x) + 1:]
-    r = _inherit(state, x, "can", y)
-    if r[0] != "":
-      return _inherit_reply(state, x, "can", y)
+    d = _derive(state, x, "can", y)
+    if d[0] != "":
+      return _derive_render(state, x, "can", y, d)
     x = x + " " + ws[i]
     i = i + 1
   return "not that i know"
@@ -1070,7 +1226,7 @@ def _passive_reply(state, rest3):
   for vp in _VERBP:
     k = find(rest3, vp[0])
     if k > 0 and k + len(vp[0]) < len(rest3):
-      return _inherit_reply(state, rest3[k + len(vp[0]):], vp[1], rest3[:k])
+      return _derive_reply(state, rest3[k + len(vp[0]):], vp[1], rest3[:k])
   return null
 def _where_reply(state, x, sep):
   path = _where_chain(state, x)

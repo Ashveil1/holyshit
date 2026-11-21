@@ -4,7 +4,7 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.8)
+## What it is today (v0.9)
 
 - An ordered pattern-rule matcher: a fixed set of command patterns is
   checked in order and the first match wins.
@@ -99,6 +99,25 @@ no dependencies beyond the language itself.
   never silently resolved. Query forms normalize through a FIXED
   verb-form table (active `does X need Y`, `can X Y`, passive
   `is Y needed by X`); it is a lookup table, not morphology.
+- Compositional inference rules: a fixed, inspectable rule table (in
+  `agent/core.holy`, data not hidden logic) composes two relation
+  edges into one derived edge. The five rules: `has+uses => uses`,
+  `has+can => can`, `uses+can => can`, `has+produces => produces`,
+  `uses+produces => produces`. Only listed rules fire - there is no
+  invented inference - and rules compose recursively (depth cap 6,
+  cycle-safe), so `can a car produce motion` answers yes from
+  `a car has an engine` + `an engine uses energy` +
+  `energy can produce motion`, showing each rule step with its
+  premises. Two hard guarantees: capability stays capability (every
+  rule with a `can` premise concludes `can`; nothing ever turns
+  `can` into a doing or having-done fact), and `has` stays
+  non-transitive (no rule concludes `has`, so
+  `does a car have motion` stays honestly unknown). Rules never build
+  on a premise with taught negative or contradicted evidence; a
+  rule-derived positive that collides with a taught negative is
+  reported as a contradiction with its reasoning, never silently
+  resolved. Rules are pure query-time derivation - the store format
+  is unchanged.
 - Bounded self-knowledge: `what do you know` counts taught things and
   names the 5 most recent, `what did you forget` lists the tombstones
   it keeps (last 20), `what did we talk about` replays the session log
@@ -136,7 +155,7 @@ how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุ�
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (measured at A13, verb relations and three-valued inference)
+## Hosted resource benchmark (measured at A14, compositional inference rules)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -149,27 +168,44 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A13; A12 numbers in parentheses where they differ).
-A13 added relation-derivation prefix checks at load and the
-inheritance walk at query time; the dialogue gained five scored
-categories (infer 2/2, passive 1/1, unknown 2/2, negative 1/1,
-contradiction 1/1 - full marks at every scale on both backends).
+Current numbers (A14; A13 numbers in parentheses where they differ).
+A14 adds the rule engine at query time only - the load path is
+untouched - plus one scored dialogue category (rule 2/2; the A13
+categories keep full marks at every scale on both backends).
 
-| backend | facts | miss (A12) | recall (A12) | inference | startup (A12) | peak RSS (A12) |
-| --- | --- | --- | --- | --- | --- | --- |
-| interp | 0 | 2.2 ms (2.1) | - | 0.02 ms | 0.09 s (0.08) | 24.7 MiB (24.1) |
-| interp | 1,000 | 4.8 ms (4.2) | 1.1 ms (0.6) | 1.47 ms | 2.02 s (1.85) | 27.4 MiB (27.0) |
-| interp | 10,000 | 15.4 ms (23.0) | 0.8 ms (0.7) | 2.07 ms | 19.0 s (16.9) | 58.0 MiB (57.6) |
-| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 ms | <0.01 s | 29.6 MiB (27.3) |
-| ir-x64 | 1,000 | 0.04 ms | <0.01 ms (0.03) | 0.03 ms | 0.07 s (0.06) | 29.6 MiB (27.3) |
-| ir-x64 | 10,000 | <0.01 ms | <0.01 ms | <0.01 ms | 1.19 s (0.88) | 193.7 MiB (177.4) |
+| backend | facts | miss | recall | inference | rule-derive | startup (A13) | peak RSS (A13) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| interp | 0 | 2.3 ms | - | <0.01 ms | 3.0 ms | 0.12 s (0.09) | 25.1 MiB (24.7) |
+| interp | 1,000 | 5.1 ms | 1.3 ms | 2.06 ms | 3.2 ms | 1.94 s (2.02) | 27.8 MiB (27.4) |
+| interp | 10,000 | see note | 0.8 ms | 2.08 ms | 4.1 ms | 18.7 s (19.0) | 58.4 MiB (58.0) |
+| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 ms | 0.03 ms | <0.01 s | 30.1 MiB (29.6) |
+| ir-x64 | 1,000 | 0.03 ms | <0.01 ms | <0.01 ms | <0.01 ms | 0.07 s | 30.1 MiB (29.6) |
+| ir-x64 | 10,000 | <0.01 ms | <0.01 ms | <0.01 ms | <0.01 ms | 1.01 s (1.19) | 209.7 MiB (193.7) |
 
 4 GiB probe (RLIMIT_AS on the child, 10k facts, mixed recall/miss
-session): both backends complete - interp 19.3 s at 57.7 MiB peak,
-native 1.09 s at 193.9 MiB peak. Memory stays far inside a 4 GiB
+session): both backends complete - interp 19.0 s at 58.3 MiB peak,
+native 1.05 s at 193.9 MiB peak. Memory stays far inside a 4 GiB
 budget.
 
 Honest readings:
+- Rule derivation costs what it costs: 3-4 ms/cmd on the interp for a
+  two-step composed proof, re-derived from scratch on every query
+  (there is deliberately no cross-query cache - the reasoning shown
+  always reflects the current store). Sub-0.1 ms on native. Honest
+  UNKNOWN verb questions now also pay a rule search; it is absorbed
+  in the unchanged 2.08 ms inference number because the synthetic
+  store has no has/uses edges to enumerate.
+- interp miss latency at 10k read 74 ms on one run and 0 ms on an
+  isolated re-run (the 10k miss sample is 5 commands; single-run
+  readings on this box stay suspect, as documented since A11). No
+  A14 code touches the miss path.
+- Native session RSS at 10k grew 194 -> 210 MiB and the reading is
+  STABLE across re-runs this time: the rule engine's per-query memo
+  and proof allocations grow the GC heap during derivation sessions.
+  Still ~5% of the 4 GiB budget; interp is flat (58.4 vs 58.0 MiB).
+- A14 leaves the load path untouched: interp 10k cold startup is
+  18.7 s vs A13's 19.0 s (the one-time v3->v5 migration documented at
+  A12/A13; v5 stores re-load at A11 speed).
 - A13's interp load increase (+2.1 s at 10k synth facts) comes from
   three extra prefix checks per value in relation derivation
   (lower-casing 4/6/7-character prefixes for the negation shapes).
@@ -182,12 +218,6 @@ Honest readings:
   10k facts (a full is-a walk with O(1) edge checks per node),
   sub-0.1 ms on native. The nearest-node-wins scan never touches
   facts outside the chain.
-- Native startup RSS grew 177 -> 194 MiB at 10k with the same edges
-  persisted (bigger compiled core, GC heap shape); interp is flat.
-  One chunked run produced a 209 MiB session-RSS reading at 0 facts;
-  re-measured in isolation it is 30 MiB and the artifact was
-  discarded - single-run readings on this box stay suspect, as
-  before.
 - A12's interp load increase is a ONE-TIME migration cost, not steady
   state. A pre-v5 store re-derives relation edges on first load, and
   A12 adds a bare is-a edge for every value that matches no other

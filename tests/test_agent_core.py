@@ -119,6 +119,17 @@ VERBQ = [(' need ', 'needs'), (' needs ', 'needs'),
          (' have ', 'has'), (' has ', 'has')]
 VERBP = [(' needed by ', 'needs'), (' used by ', 'uses'),
          (' produced by ', 'produces'), (' caused by ', 'causes')]
+# A14: compositional inference rules [first premise, second premise,
+# conclusion, display name] - a fixed inspectable table, the mirror of
+# _RULES in agent/core.holy. can-stays-can: every rule with a 'can'
+# premise concludes 'can'. 'has' is never a conclusion (non-transitive
+# by design); 'needs'/'causes' appear in no rule.
+RULES = [('has', 'uses', 'uses', 'has+uses'),
+         ('has', 'can', 'can', 'has+can'),
+         ('uses', 'can', 'can', 'uses+can'),
+         ('has', 'produces', 'produces', 'has+produces'),
+         ('uses', 'produces', 'produces', 'uses+produces')]
+RULECAP = 6
 
 
 def negphrase(pred):
@@ -404,6 +415,127 @@ class Oracle:
     def _inherit_reply(self, x, pred, y):
         return self._verdict_reply(self._inherit(x, pred, y), pred, False)
 
+    # A14 rule engine, mirroring _enum/_rule_prove/_derive/_proof_*
+    # in agent/core.holy. Proofs are ('edge', path, edge, rel) or
+    # ('rule', name, premise1 proof, premise2 proof, [subject, object],
+    # rel).
+    def _enum(self, start, rel, depth, memo):
+        mkey = stripart(start) + '|' + rel
+        if mkey in memo:
+            return memo[mkey]
+        memo[mkey] = []
+        cands = []
+        seen = set()
+        frontier = [(stripart(start), [])]
+        visited = set()
+        dist = 0
+        while frontier and dist <= 8:
+            nxt = []
+            for node, path in frontier:
+                if node in visited:
+                    continue
+                visited.add(node)
+                for e in self.relby.get(rel, {}).get(node, []):
+                    o = stripart(e[1])
+                    if o not in seen:
+                        seen.add(o)
+                        cands.append(e[1])
+                if dist < 8:
+                    for e in self.relby.get('is-a', {}).get(node, []):
+                        ns = stripart(e[1])
+                        if ns not in visited:
+                            nxt.append((ns, path + [e]))
+            frontier = nxt
+            dist += 1
+        out = []
+        for c in cands:
+            r = self._inherit(start, rel, c)
+            if r[0] == 'true':
+                out.append([c, ('edge', r[1], r[2], rel)])
+        if depth < RULECAP:
+            for ra, rb, rc, name in RULES:
+                if rc == rel:
+                    for yobj, yproof in self._enum(start, ra, depth + 1, memo):
+                        for zobj, zproof in self._enum(yobj, rb, depth + 1, memo):
+                            o = stripart(zobj)
+                            if o not in seen:
+                                seen.add(o)
+                                out.append([zobj, ('rule', name, yproof, zproof,
+                                                   [start, zobj], rel)])
+        memo[mkey] = out
+        return out
+
+    def _rule_prove(self, start, pred, goal, depth, memo, pseen):
+        if depth >= RULECAP:
+            return None
+        if not any(rc == pred for _, _, rc, _ in RULES):
+            return None
+        pkey = stripart(start) + '|' + pred + '|' + stripart(goal)
+        if pkey in pseen:
+            return None
+        pseen.add(pkey)
+        for ra, rb, rc, name in RULES:
+            if rc == pred:
+                for yobj, yproof in self._enum(start, ra, depth + 1, memo):
+                    r2 = self._inherit(yobj, rb, goal)
+                    if r2[0] == 'true':
+                        return ('rule', name, yproof,
+                                ('edge', r2[1], r2[2], rb), [start, goal], pred)
+                    if r2[0] == '':
+                        p2 = self._rule_prove(yobj, rb, goal, depth + 1,
+                                              memo, pseen)
+                        if p2 is not None:
+                            return ('rule', name, yproof, p2,
+                                    [start, goal], pred)
+        return None
+
+    def _derive(self, x, pred, y):
+        r = self._inherit(x, pred, y)
+        v = r[0]
+        if v in ('true', 'both'):
+            return [v, r, None]
+        p = self._rule_prove(x, pred, y, 0, {}, set())
+        if p is None:
+            return [v, r, None]
+        if v == 'false':
+            return ['rule-both', r, p]
+        return ['rule', None, p]
+
+    def _proof_text(self, proof):
+        if proof[0] == 'edge':
+            return self._pathfmt(proof[1]) + self._edgefmt(proof[2], proof[3], False)
+        return self._edgefmt(proof[4], proof[5], False)
+
+    def _proof_steps(self, proof, steps, done):
+        t = self._proof_text(proof)
+        if proof[0] == 'edge':
+            return t
+        t1 = self._proof_steps(proof[2], steps, done)
+        t2 = self._proof_steps(proof[3], steps, done)
+        if t not in done:
+            done.add(t)
+            steps.append('(' + str(len(steps) + 1) + ') ' + t1 + ' + ' +
+                         t2 + ' => ' + t + ' [rule ' + proof[1] + ']')
+        return t
+
+    def _derive_render(self, x, pred, y, d):
+        if d[0] in ('rule', 'rule-both'):
+            steps = []
+            self._proof_steps(d[2], steps, set())
+            if d[0] == 'rule':
+                out = 'yes: ' + x + ' ' + posphrase(pred) + ' ' + y + '. reasoning:'
+            else:
+                r = d[1]
+                out = ('i was taught ' + self._pathfmt(r[1]) +
+                       self._edgefmt(r[2], pred, True) +
+                       ', but the rules derive ' + x + ' ' + posphrase(pred) +
+                       ' ' + y + ' - i cannot say which is true. reasoning:')
+            return out + ''.join('\n' + s for s in steps)
+        return self._verdict_reply(d[1], pred, False)
+
+    def _derive_reply(self, x, pred, y):
+        return self._derive_render(x, pred, y, self._derive(x, pred, y))
+
     def _verdict_reply(self, r, pred, isa):
         v = r[0]
         if v == '':
@@ -430,7 +562,7 @@ class Oracle:
         for marker, pred in VERBQ:
             k = rest.find(marker)
             if k > 0 and k + len(marker) < len(rest):
-                return self._inherit_reply(rest[:k], pred, rest[k + len(marker):])
+                return self._derive_reply(rest[:k], pred, rest[k + len(marker):])
         return 'i do not understand'
 
     def _can_q(self, rest):
@@ -441,9 +573,9 @@ class Oracle:
         i = 1
         while i < len(ws):
             y = rest[len(x) + 1:]
-            r = self._inherit(x, 'can', y)
-            if r[0] != '':
-                return self._inherit_reply(x, 'can', y)
+            d = self._derive(x, 'can', y)
+            if d[0] != '':
+                return self._derive_render(x, 'can', y, d)
             x = x + ' ' + ws[i]
             i += 1
         return 'not that i know'
@@ -452,7 +584,7 @@ class Oracle:
         for marker, pred in VERBP:
             k = rest3.find(marker)
             if k > 0 and k + len(marker) < len(rest3):
-                return self._inherit_reply(rest3[k + len(marker):], pred, rest3[:k])
+                return self._derive_reply(rest3[k + len(marker):], pred, rest3[:k])
         return None
 
     def _verb_teach_parse(self, mrest):
@@ -1174,6 +1306,36 @@ A13_SCENARIOS = [
 ]
 
 
+# Coherent A14 scenarios: compositional rule chains, nested rules,
+# the can-stays-can axiom, rule-vs-taught-negative contradictions,
+# cycle termination. Deterministic fresh sessions, same reason as A13.
+A14_SCENARIOS = [
+    # R1 has+uses and its passive form; unknown subject stays unknown.
+    ['remember a car has an engine', 'remember an engine uses energy',
+     'does a car use energy', 'is energy used by a car',
+     'does a truck use energy'],
+    # R3 then R2: two composed rule steps; capability evidence never
+    # answers a doing question (can-stays-can axiom).
+    ['remember a car has an engine', 'remember an engine uses energy',
+     'remember energy can produce motion', 'can a car produce motion',
+     'does a car produce motion'],
+    # Nested rule derivation (R5 feeding R4); has stays non-transitive.
+    ['remember a car has an engine', 'remember an engine uses steam',
+     'remember steam produces motion', 'does a car produce motion',
+     'is motion produced by a car', 'does a car have steam'],
+    # Rule-derived positive vs taught negative: a contradiction that is
+    # shown with its reasoning, never silently resolved.
+    ['remember a car does not use gasoline', 'remember a car has an engine',
+     'remember an engine uses gasoline', 'does a car use gasoline'],
+    # A has-cycle terminates; a taught negative still beats inherited
+    # positive evidence with no rule involvement.
+    ['remember a motor has a rotor', 'remember a rotor has a motor',
+     'remember a rotor can spin', 'can a motor spin', 'can a motor fly',
+     'remember a bird can fly', 'remember a penguin is a bird',
+     'remember a penguin cannot fly', 'can a penguin fly'],
+]
+
+
 def a13_line():
     r = rng.random()
     if r < 0.22:
@@ -1303,7 +1465,7 @@ sessions = [make_session() for _ in range(25)]
 # A13 scenarios are semantic, not probabilistic: run each in its own
 # fresh session so every inheritance/negative/contradiction path is
 # covered on every run.
-for _sc in A13_SCENARIOS:
+for _sc in A13_SCENARIOS + A14_SCENARIOS:
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))
