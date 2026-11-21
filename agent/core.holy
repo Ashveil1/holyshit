@@ -153,23 +153,48 @@ def _resolve(state, key):
 # token (the length check is ASCII-only so the char/byte len()
 # difference between backends can never diverge on Thai text).
 def _cwords(s):
+  # One fused pass: lowercase ASCII letters and split on spaces in the
+  # same walk (same result as _words(lower_ascii(s)) - lowercasing is a
+  # pure per-character map, so fusing cannot change the words). A10
+  # profiling showed this extraction, not the pair counting, dominated
+  # interp cold loads: two full string rebuilds per call, called once
+  # per key and once per fact value.
   out = []
-  for w in _words(lower_ascii(s)):
-    if not _stop(w) and (len(w) >= 3 or _nonascii(w)):
-      if not _in(w, out):
-        append(out, w)
+  cur = ""
+  i = 0
+  while i < len(s):
+    c = s[i]
+    if c == " ":
+      if len(cur) >= 3 or _nonascii(cur):
+        if not _stop(cur) and not _in(cur, out):
+          append(out, cur)
+      cur = ""
+    else:
+      if c >= "A" and c <= "Z":
+        cur = cur + _LOWER[find(_UPPER, c)]
+      else:
+        cur = cur + c
+    i = i + 1
+  if len(cur) >= 3 or _nonascii(cur):
+    if not _stop(cur) and not _in(cur, out):
+      append(out, cur)
   return out
+# A11: the context-row lookup is hoisted out of the inner loop -
+# counting is the same arithmetic with the same insertion orders, just
+# far fewer dict operations per fact. (An index-based while-loop rewrite
+# measured SLOWER on the interp than for-in iteration, so the loops
+# stay for-in.)
 def _cooc_add(state, key, value):
   ws = _cwords(key)
   for w in _cwords(value):
     if not _in(w, ws):
       append(ws, w)
   for w in ws:
+    if not (w in state["cooc"]):
+      state["cooc"][w] = {}
+    ctx = state["cooc"][w]
     for u in ws:
       if u != w:
-        if not (w in state["cooc"]):
-          state["cooc"][w] = {}
-        ctx = state["cooc"][w]
         if u in ctx:
           ctx[u] = ctx[u] + 1
         else:
@@ -455,8 +480,12 @@ def _list_reply(state):
   if n == 1:
     return "i know 1 thing: " + joined
   return "i know " + str(n) + " things: " + joined
-# Glue words that must not create associations on their own.
+# Glue words that must not create associations on their own. A11: the
+# length guard comes first (every glue word is at most 4 letters) so
+# long content words skip the string compares.
 def _stop(w):
+  if len(w) > 4:
+    return false
   return w == "the" or w == "and" or w == "for" or w == "are" or w == "with" or w == "that" or w == "this"
 def _value_words(state, key):
   out = []
@@ -543,22 +572,31 @@ def _stripart(s):
     return s[2:]
   return s
 def _learn_rel(state, key, value):
-  v = lower_ascii(value)
-  if v[:3] == "in " and len(v) > 3:
-    _add_rel(state, key, "is-in", v[3:])
-  if v[:2] == "a " and len(v) > 2 or v[:3] == "an " and len(v) > 3:
-    _add_rel(state, key, "is-a", v)
-  if v[:4] == "has " and len(v) > 4:
-    _add_rel(state, key, "has", v[4:])
+  # A11: only the 4-character prefix is lowered up front; the full
+  # per-character lowering pass runs only when an ASCII shape actually
+  # matches (rare), instead of for every taught value on every load.
+  # (An earlier _nonascii guard here measured SLOWER on the interp:
+  # its per-character calls cost more than the Thai find()s they
+  # skipped. lower_ascii leaves non-ASCII characters untouched and
+  # preserves length in both the char and byte model, so running the
+  # Thai find()s on the raw value matches exactly what they matched on
+  # the lowered one.)
+  p = lower_ascii(value[:4])
+  if p[:3] == "in " and len(value) > 3:
+    _add_rel(state, key, "is-in", lower_ascii(value)[3:])
+  if p[:2] == "a " and len(value) > 2 or p[:3] == "an " and len(value) > 3:
+    _add_rel(state, key, "is-a", lower_ascii(value))
+  if p == "has " and len(value) > 4:
+    _add_rel(state, key, "has", lower_ascii(value)[4:])
   p1 = "อยู่ "
-  if find(v, p1) == 0 and len(v) > len(p1):
-    _add_rel(state, key, "is-in", v[len(p1):])
+  if find(value, p1) == 0 and len(value) > len(p1):
+    _add_rel(state, key, "is-in", value[len(p1):])
   p2 = "คือ "
-  if find(v, p2) == 0 and len(v) > len(p2):
-    _add_rel(state, key, "means", v[len(p2):])
+  if find(value, p2) == 0 and len(value) > len(p2):
+    _add_rel(state, key, "means", value[len(p2):])
   p3 = "หมายความว่า "
-  if find(v, p3) == 0 and len(v) > len(p3):
-    _add_rel(state, key, "means", v[len(p3):])
+  if find(value, p3) == 0 and len(value) > len(p3):
+    _add_rel(state, key, "means", value[len(p3):])
 # Built-in self-knowledge: hard-coded definitions of the agent's own
 # relation words (documented as hard-coded, never learned). Queried by
 # 'what does X mean' alongside taught means-edges; never persisted.

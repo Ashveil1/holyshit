@@ -99,7 +99,7 @@ how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุ�
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (measured at A10, usage counting)
+## Hosted resource benchmark (measured at A11, load-time optimization)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -112,21 +112,22 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A10, usage counting; A7 numbers in parentheses where
-they differ - A8/A9 moved nothing measurable):
+Current numbers (A11; A7 numbers in parentheses where they differ -
+A8/A9 moved nothing measurable, A10 added the usage-count load cost
+that A11 then cut):
 
 | backend | facts | miss (A7) | recall (A7) | startup (A7) | peak RSS (A7) |
 | --- | --- | --- | --- | --- | --- |
-| interp | 0 | 2.3 ms (1.8) | - | 0.07 s | 23.5 MiB |
-| interp | 1,000 | 5.0 ms (4.6) | 1.2 ms (1.1) | 2.12 s (0.31) | 25.4 MiB (23.7) |
-| interp | 10,000 | 25.5 ms (43.5) | 0.8 ms (1.3) | 20.9 s (2.59) | 45.9 MiB (33.9) |
-| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 s | 25.5 MiB |
-| ir-x64 | 1,000 | 0.01 ms | <0.01 ms | 0.06 s (0.03) | 25.6 MiB |
-| ir-x64 | 10,000 | <0.01 ms | <0.01 ms | 0.81 s (0.38) | 139.6 MiB (92.9) |
+| interp | 0 | 2.1 ms (1.8) | - | 0.08 s | 23.6 MiB |
+| interp | 1,000 | 4.9 ms (4.6) | 0.9 ms (1.1) | 1.33 s (0.31) | 25.6 MiB (23.7) |
+| interp | 10,000 | 31.7 ms (43.5) | 1.0 ms (1.3) | 12.4 s (2.59) | 46.9 MiB (33.9) |
+| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 s | 25.7 MiB |
+| ir-x64 | 1,000 | 0.02 ms | <0.01 ms | 0.04 s (0.03) | 25.7 MiB |
+| ir-x64 | 10,000 | <0.01 ms | 0.09 ms | 0.67 s (0.38) | 124.1 MiB (92.9) |
 
 4 GiB probe (RLIMIT_AS on the child, 10k facts, mixed recall/miss
-session): both backends complete - interp 21.1 s at 45.7 MiB peak,
-native 0.76 s at 139.8 MiB peak. Memory stays far inside a 4 GiB
+session): both backends complete - interp 12.7 s at 45.9 MiB peak,
+native 0.66 s at 124.3 MiB peak. Memory stays far inside a 4 GiB
 budget.
 
 Honest readings:
@@ -137,13 +138,26 @@ Honest readings:
   Association recall (`what do you know about`) is an intentional full
   scan.
 - Usage counting is real work at LOAD time, and the interpreter route
-  shows it: rebuilding the counts for 10k taught facts takes the
-  interp cold startup from 2.6 s to 20.9 s (native: 0.38 to 0.81 s).
-  That is the honest price of the feature on the slow route; if the
-  interp load time ever matters, the counting is the first place to
-  optimize.
-- The counts cost memory: native peak RSS at 10k facts rose 93 -> 140
-  MiB, interp 34 -> 46 MiB. Still far inside the 4 GiB story.
+  shows it. A10 shipped it at 20.9 s interp cold startup for 10k
+  facts; A11 profiled that cost and cut it to 12.4 s (A7 was 2.6 s).
+  Profiling showed the price was never the counting itself (~3 s) but
+  per-character string passes: lowercasing and splitting ran as two
+  full string rebuilds per key and per value (~11 s), and relation
+  derivation lowercased every whole value to check four ASCII
+  prefixes (~4 s, a cost A9 shipped unmeasured). A11 fuses lowercase
+  + split into one pass, lowers only the 4-character prefix unless a
+  shape actually matches, hoists per-pair dict lookups out of the
+  counting loop, and guards the glue-word compares with a length
+  check. Two plausible rewrites measured SLOWER on the interp and
+  were reverted rather than kept on faith: index-based while loops
+  instead of for-in iteration (+5 s), and a non-ASCII guard in front
+  of the Thai pattern checks (its per-character calls cost +4 s more
+  than the find()s they skipped). The remaining load cost is the
+  interpreter's per-character loop overhead; there is no large win
+  left on this route without a runtime-level string operation.
+- Native load IMPROVED with the same changes: 0.81 s -> 0.67 s cold
+  startup at 10k facts, and peak RSS 140 -> 124 MiB (interp RSS is
+  flat, ~47 MiB). Still far inside the 4 GiB story.
 - Query paths got no slower: misses and recalls hold their A7 latency
   (the interp 10k miss measured faster than A7's, 25.5 vs 43.5 ms -
   both are word-index lookups; the usage merge is skipped when the
