@@ -82,6 +82,12 @@ def handle(conn, path):
         # then close without sending the promised bytes
     elif path.startswith("/malformed"):
         conn.sendall(b"this is not an HTTP response at all")
+    elif path.startswith("/thai"):
+        thai = "<html><body><p>\u0e19\u0e01\u0e21\u0e35\u0e1b\u0e35\u0e01\u0020\u0e41\u0e25\u0e30\u0e1e\u0e27\u0e01\u0e21\u0e31\u0e19\u0e1a\u0e34\u0e19\u0e44\u0e14\u0e49</p><p>a hornbill is a bird.</p></body></html>".encode("utf-8")
+        conn.sendall(page(thai))
+    elif path.startswith("/cl-oversized"):
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
+                     b"Content-Length: 2000000\r\n\r\n" + CLEAN)
     elif path.startswith("/queryecho"):
         conn.sendall(page(b"<p>a bicycle is a vehicle.</p>"))
     elif path.startswith("/timeout"):

@@ -72,9 +72,9 @@ def _parse_headers(head_ints):
     line = lines[i]
     c = find(line, ":")
     if c > 0:
-      name = lower_ascii(line[:c])
+      name = agent.core.lower_ascii(line[:c])
       val = _hdr_value(line)
-      lv = lower_ascii(val)
+      lv = agent.core.lower_ascii(val)
       if name == "content-type":
         if len(lv) < 5 or lv[:5] != "text/":
           return ["binary or unsupported content type", -1]
@@ -215,7 +215,7 @@ def _fetch(norm):
 # Crude, honest HTML to text: drop script/style blocks, drop tags,
 # decode six common entities, collapse whitespace runs to one space.
 def _html_text(s):
-  ls = lower_ascii(s)
+  ls = agent.core.lower_ascii(s)
   for tag in ["script", "style"]:
     i = find(ls, "<" + tag)
     while i >= 0:
@@ -237,13 +237,15 @@ def _html_text(s):
     ch = s[i]
     if ch == "<":
       intag = true
+      i = i + 1
     elif ch == ">" and intag:
       intag = false
       if not lastsp:
         append(out, " ")
         lastsp = true
+      i = i + 1
     elif intag:
-      intag = true
+      i = i + 1
     elif ch == "&":
       ent = ""
       adv = 0
