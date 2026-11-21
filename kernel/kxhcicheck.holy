@@ -16,7 +16,7 @@ def expect(label, got, want):
     fails = fails + 1
 def discover():
   kpci.init()
-  idx = kpci.find(6966, 13)
+  idx = kpci.find_class_pi(12, 3, 48)
   print "XHCI PCI", idx
   if idx >= 0:
     print "XHCI BDF", kpci.bus(idx), kpci.dev(idx), kpci.fn(idx), kpci.vendor(idx), kpci.device(idx)
