@@ -203,7 +203,7 @@ def start(kbd_port, mouse_port, exclusive):
   if started:
     return false
   kpci.init()
-  idx = kpci.find(6966, 13)
+  idx = kpci.find_class_pi(12, 3, 48)
   if idx < 0:
     return false
   if not kxhci.init(idx, kbd_port, 1):

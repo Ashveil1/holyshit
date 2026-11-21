@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Opt-in USB HID over xHCI on disposable QEMU devices only.
 
-Real q35 qemu-xhci boots with QMP-injected keys and pointer deltas into
-usb-kbd/usb-mouse, init refusals on wrong hardware, a real USB stall for the
+Real q35 qemu-xhci and nec-usb-xhci boots with QMP-injected keys and
+pointer deltas into usb-kbd/usb-mouse, init refusals on wrong hardware, a real USB stall for the
 terminal path, and PCI monitor cross-checks. Both kernel backends with
 native/reference full-ELF identity.
 """
@@ -47,7 +47,7 @@ def native_identity(d,source,reference,compiler,ir):
 def qmp(sock,command,args=None):
     sock.sendall((json.dumps({'execute':command,'arguments':args or {}})+'\r\n').encode())
 
-def boot(d,image,args,want_pci=False,actions=(),firmware=None,allow_stderr=None):
+def boot(d,image,args,want_pci=False,actions=(),firmware=None,allow_stderr=None,want_vid=('XHCI BDF 0 2 0 6966 13','1b36:000d')):
     d.mkdir(parents=True,exist_ok=True);serial=d/'serial';err=d/'stderr';monitor=d/'qmp'
     cmd=[QEMU,'-machine',args[0],'-m','256M','-serial','file:'+str(serial),
          '-display','none','-nic','none','-no-reboot','-qmp','unix:'+str(monitor)+',server=on,wait=off']
@@ -105,9 +105,9 @@ def boot(d,image,args,want_pci=False,actions=(),firmware=None,allow_stderr=None)
                 pci=call('human-monitor-command',{'command-line':'info pci'})
                 (d/'pci.txt').write_text(pci)
                 # Same BDF/vendor/device as the guest's class-selected function.
-                assert 'XHCI BDF 0 2 0 6966 13' in out,out
+                assert want_vid[0] in out,out
                 assert re.search(r'Bus\s+0, device\s+2, function\s+0:',pci),pci
-                assert '1b36:000d' in pci,pci
+                assert want_vid[1] in pci,pci
             return out
         finally:
             p.kill();p.wait(timeout=10)
@@ -185,6 +185,12 @@ def main():
             compiler=native_compiler(work,ir);image=native_identity(work,source,reference,compiler,ir)
             out=boot(work/'keyboard',image,usb('usb-kbd','usb-mouse'),True,KEYS)
             assert out.count('\nok ')==25,out
+            # Class-based detection on a second, non-QEMU-whitelisted xHCI model:
+            # the same image brings up NEC's uPD72020x (1033:0194) and reports keys.
+            nec=['q35','-device','nec-usb-xhci,id=xhci','-device','usb-kbd,bus=xhci.0',
+                 '-device','usb-mouse,bus=xhci.0']
+            out=boot(work/'nec',image,nec,True,KEYS,want_vid=('XHCI BDF 0 2 0 4147 404','1033:0194'))
+            assert out.count('\nok ')==25,out
             uefi_boots+=uefi_check(work,image)
             image=wrapper(work,'mouse','import kxhcicheck\nkxhcicheck.run_mouse(6)',ir)
             out=boot(work/'mouse',image,usb('usb-kbd','usb-mouse'),True,POINTER)
@@ -192,24 +198,31 @@ def main():
             image=wrapper(work,'stall','import kxhcicheck\nkxhcicheck.run_stall(5)',ir)
             out=boot(work/'stall',image,usb('usb-kbd'),True,allow_stderr='unknown type 9')
             assert out.count('\nok ')==11,out
+            (work/'mass.img').write_bytes(bytes(1048576))
             for name,selection,number,want,reason,args in [
                 ('bad-index','kpci.count()',1,1,'xHCI selection invalid',usb('usb-kbd')),
-                ('bad-kind','kpci.find(6966, 13)',1,9,'USB HID kind invalid',usb('usb-kbd')),
+                ('bad-kind','kpci.find_class_pi(12, 3, 48)',1,9,'USB HID kind invalid',usb('usb-kbd')),
                 ('no-controller','-1',1,1,'xHCI selection invalid',['pc']),
                 ('wrong-class','kpci.find_class(3, 0)',1,1,'not an xHCI controller',usb('usb-kbd')),
-                ('wrong-vendor','kpci.find_class(12, 3)',1,1,'xHCI vendor unsupported',
-                 ['q35','-device','nec-usb-xhci,id=xhci','-device','usb-kbd,bus=xhci.0']),
-                ('port-range','kpci.find(6966, 13)',31,1,'xHCI port not implemented',usb('usb-kbd')),
-                ('empty-port','kpci.find(6966, 13)',3,1,'xHCI port has no device',usb('usb-kbd')),
-                ('full-speed','kpci.find(6966, 13)',6,1,'USB HID speed unsupported',
+                # USB2-only controller variant: the SuperSpeed-capable mass
+                # storage device must enumerate high-speed, so it passes the
+                # speed gate and reaches the HID-class refusal like any
+                # real-world wrong device would.
+                ('not-hid','kpci.find_class_pi(12, 3, 48)',2,1,'USB device is not boot keyboard',
+                 ['q35','-device','qemu-xhci,id=xhci,p2=8,p3=0','-device','usb-kbd,bus=xhci.0',
+                  '-device','usb-storage,bus=xhci.0,drive=mass',
+                  '-drive','id=mass,if=none,format=raw,file='+str(work/'mass.img')]),
+                ('port-range','kpci.find_class_pi(12, 3, 48)',31,1,'xHCI port not implemented',usb('usb-kbd')),
+                ('empty-port','kpci.find_class_pi(12, 3, 48)',3,1,'xHCI port has no device',usb('usb-kbd')),
+                ('full-speed','kpci.find_class_pi(12, 3, 48)',6,1,'USB HID speed unsupported',
                  usb('usb-kbd','usb-wacom-tablet')),
-                ('wrong-device','kpci.find(6966, 13)',6,1,'USB device is not boot keyboard',
+                ('wrong-device','kpci.find_class_pi(12, 3, 48)',6,1,'USB device is not boot keyboard',
                  usb('usb-kbd','usb-mouse')),
             ]:
                 negative(work,ir,name,selection,number,want,reason,args)
-            print(f'ok XHCI {mode}: native full ELF, keyboard/mouse reports, stall terminal, 9 refusals',flush=True)
+            print(f'ok XHCI {mode}: native full ELF, keyboard/mouse reports on qemu-xhci and nec-usb-xhci, stall terminal, 9 refusals',flush=True)
     if only:print(f'1/1 XHCI gate half ({only})');return
-    print(f'2/2 XHCI gates ({26+uefi_boots} real QEMU boots, both kernel backends)')
+    print(f'2/2 XHCI gates ({28+uefi_boots} real QEMU boots, both kernel backends)')
 
 if __name__=='__main__':
     main()

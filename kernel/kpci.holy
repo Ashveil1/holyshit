@@ -94,3 +94,11 @@ def find_class(class_code, sub):
       return i
     i = i + 1
   return -1
+
+def find_class_pi(class_code, sub, pi):
+  i = 0
+  while i < ndev:
+    if recs[i][5] == class_code and recs[i][6] == sub and recs[i][7] == pi:
+      return i
+    i = i + 1
+  return -1

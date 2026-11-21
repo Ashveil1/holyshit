@@ -1,9 +1,12 @@
 # Opt-in USB HID input over xHCI, one explicitly selected PCI function and
 # up to two explicitly selected root ports (boot keyboard plus boot mouse).
-# Polling only: no IRQs, no MSI. QEMU qemu-xhci (1b36:000d) with QEMU boot-
-# protocol keyboard/mouse (0627:0001/0627:0002) only. No USB storage, hubs,
-# hotplug or desktop input-queue integration; PS/2 input stays the default
-# path.
+# Polling only: no IRQs, no MSI. Any PCI 0C/03/30 xHCI controller that
+# passes the capability checks below (BAR, version window, capacity, no
+# scratchpads, 4K pages, bounded register space); any USB boot-protocol HID
+# keyboard/mouse (interface class 3, subclass 1, protocol 1/2). Exercised
+# on QEMU qemu-xhci and nec-usb-xhci; real controllers are unproven.
+# No USB storage, hubs, hotplug or desktop input-queue integration; PS/2
+# input stays the default path.
 import kpci
 import kpage
 SPIN = 20000000
@@ -319,8 +322,6 @@ def ctrl_bringup(index, number):
   global dctx1, ep0ring1, hidring1, databuf1, snaps1
   if kpci.classof(index) != 12 or kpci.subclass(index) != 3 or kpci.progif(index) != 48:
     return fail("not an xHCI controller")
-  if kpci.vendor(index) != 6966 or kpci.device(index) != 13:
-    return fail("xHCI vendor unsupported")
   controller = index
   raw = config(16)
   # Only a 64-bit memory BAR; OVMF assigns it above 4GiB, SeaBIOS below.
@@ -524,8 +525,6 @@ def init(index, number, want):
     return poison("xHCI device descriptor short")
   if rd8(l_databuf + 1) != 1 or rd8(l_databuf + 7) != 64:
     return fail("USB device descriptor unsupported")
-  if rd8(l_databuf + 8) | (rd8(l_databuf + 9) << 8) != 1575:
-    return fail("USB vendor unsupported")
   if second:
     got = ctl1(128, 6, 512, 0, 9, 1)
   else:

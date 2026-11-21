@@ -17,18 +17,21 @@ delivery are used anywhere.
 
 Supported here:
 
-- PCI class/subclass/prog-if `0C/03/30`, exactly the QEMU `qemu-xhci`
-  controller (vendor `1b36`, device `000d`); NEC and all other controllers
-  are refused;
+- any PCI class/subclass/prog-if `0C/03/30` xHCI controller that passes
+  the capability checks below; exercised on QEMU's `qemu-xhci` (`1b36:000d`)
+  and `nec-usb-xhci` (NEC uPD72020x, `1033:0194`). Other controllers are
+  unproven, not refused by vendor: bring-up stops honestly at whichever
+  capability check the controller cannot satisfy;
 - a 64-bit memory BAR anywhere in the firmware-assigned physical map (both
   the SeaBIOS below-4GiB and the OVMF above-4GiB assignments are covered);
   xHCI versions 1.0 through 1.2, 4K page size, no
   scratchpad buffers and no USB legacy-support extended capability (a
   legacy-support capability is refused, never taken over);
-- exactly the QEMU boot-protocol HID devices (vendor `0627`): the QEMU USB
-  Keyboard on one root port or the QEMU USB Mouse, high-speed only, with an
-  8-byte keyboard or small mouse boot report on a single interrupt-IN
-  endpoint;
+- any boot-protocol HID keyboard or mouse (interface class 3, subclass 1,
+  protocol 1 or 2), one keyboard and one mouse on their own root ports,
+  high-speed only, with an 8-byte keyboard or small mouse boot report on a
+  single interrupt-IN endpoint; exercised with the QEMU USB Keyboard and
+  USB Mouse;
 - controller stop/reset with bounded waits, one enabled slot, device
   addressing, descriptor parsing (device and configuration), SET_CONFIGURATION,
   boot protocol and idle-rate requests, one configured interrupt endpoint,
@@ -92,9 +95,10 @@ ever passed through. `tests/test_xhci.py` boots real q35 kernels built by
 both backends, plus the actual OVMF/GRUB UEFI boot path with firmware-owned
 controller takeover, checks native-compiler full-ELF identity, injects real keys
 (`sendkey`) and pointer deltas (`mouse_move`/`mouse_button`) over QMP into
-`usb-kbd`/`usb-mouse`, asserts the decoded boot reports in-guest, cross-checks
-the PCI topology with the QEMU monitor, runs nine init-refusal configurations
-(wrong class, NEC controller, empty/unimplemented ports, full-speed device,
+`usb-kbd`/`usb-mouse` on both qemu-xhci and nec-usb-xhci, asserts the
+decoded boot reports in-guest, cross-checks the PCI topology with the QEMU
+monitor, runs nine init-refusal configurations (wrong controller class, USB
+storage on the HID port, empty/unimplemented ports, full-speed device,
 wrong device kind, and more), and exercises the terminal path with a real
 USB stall (requesting descriptor type 9, which the device rejects). DMA guard
 regions around every ring and buffer are verified untouched after all of it.
