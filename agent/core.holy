@@ -1,13 +1,27 @@
 # agent/core.holy — a small local agent core in pure hs.
 #
-# What it is: an ordered pattern-rule matcher with a teachable key->value
-# memory. What it is not: a language model. Everything it "knows" was
-# taught with `remember`; anything else gets an honest fallback reply.
+# What it is: an ordered pattern-rule matcher with a teachable memory
+# (several facts per thing), user-taught paraphrases, short-term session
+# notes, and a little dialogue context (it tracks the current topic,
+# follows "it", and asks which thing you meant when a miss has a handful
+# of plausible candidates). What it is not: a language model. Everything
+# it "knows" was taught; anything else gets an honest fallback reply.
 #
 # The core is pure: respond(state, line) only reads/mutates the state
-# Dict and returns the reply Str. State is JSON-serializable
-# ({"facts": {...}, "order": [...]}), so agent/store.holy can persist it
-# and a future kernel port can carry it as plain data.
+# Dict and returns the reply Str. State is JSON-serializable:
+#   {"facts": {k: [v, ...]}, "order": [...], "aliases": {phrase: k},
+#     "rels": [[subject, predicate, object], ...]}
+#     persistent, saved by store.holy
+#    "notes": [...], "topic": k|null, "pending": {...}|null}
+#     session-only, never saved
+#    "windex"/"nw"/"keyset"/"cooc": derived lookup structures, rebuilt
+#     on load, never saved
+# rels are relation edges derived from taught fact shapes ("in X",
+# "a X"/"an X", "has X", Thai อยู่/คือ/หมายความว่า) plus means-teaches;
+# they back the inference queries (is-in/is-a chains, where-is,
+# what-does-mean).
+# so agent/store.holy can persist the durable part and a future kernel
+# port can carry the whole thing as plain data.
 #
 # Backend parity discipline (same as std.str): all matching is ASCII-only
 # and byte-based. Non-ASCII text passes through untouched, so interp and
@@ -46,22 +60,367 @@ def lower_ascii(s):
     i = i + 1
   return out
 def new_state():
-  return {"facts": {}, "order": []}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}}
 def _has(state, key):
-  for k in state["order"]:
-    if k == key:
+  # O(1) membership; keyset mirrors order exactly (built from it on
+  # load, maintained on teach/forget), including for hand-edited files.
+  return key in state["keyset"]
+# Split normalized text into words (single-space separated by construction).
+def _words(s):
+  out = []
+  cur = ""
+  i = 0
+  while i < len(s):
+    c = s[i]
+    if c == " ":
+      if len(cur) > 0:
+        append(out, cur)
+      cur = ""
+    else:
+      cur = cur + c
+    i = i + 1
+  if len(cur) > 0:
+    append(out, cur)
+  return out
+def _in(word, words):
+  for w in words:
+    if w == word:
       return true
   return false
-def _teach(state, key, value):
+# A one-byte string is ASCII when it is whitespace or printable ASCII.
+def _ascii_byte(c):
+  return c == "\t" or c == "\n" or c == "\r" or c >= " " and c <= "~"
+# True when the token holds at least one non-ASCII byte (Thai, accents).
+def _nonascii(s):
+  i = 0
+  while i < len(s):
+    if not _ascii_byte(s[i]):
+      return true
+    i = i + 1
+  return false
+# Non-ASCII tokens (Thai has no spaces or case) also match by substring:
+# one side found inside the other counts as a match. Two guards keep it
+# honest and byte/char-model independent (interp counts characters, the
+# compiled backends count bytes, so no length threshold is ever used):
+# ASCII-only pairs stay exact-only ("cat" never matches "catalog"), and
+# the needle must be substantial - never empty or a single ASCII letter.
+# A single non-ASCII letter counts as substantial: on interp it equals
+# its first element while on the byte backends it does not, so the
+# _nonascii disjunct is what keeps both models agreeing.
+def _sub(w, t):
+  if not (_nonascii(w) or _nonascii(t)):
+    return false
+  if w != t:
+    if find(t, w) >= 0 and (w != w[:1] or _nonascii(w)):
+      return true
+    if find(w, t) >= 0 and (t != t[:1] or _nonascii(t)):
+      return true
+  return false
+def _wmatch(w, t):
+  return w == t or _sub(w, t)
+# Join fact values: v | v1 and v2 | v1, v2 and v3.
+def _join(values):
+  n = len(values)
+  if n == 1:
+    return values[0]
+  if n == 2:
+    return values[0] + " and " + values[1]
+  out = values[0]
+  i = 1
+  while i < n - 1:
+    out = out + ", " + values[i]
+    i = i + 1
+  return out + " and " + values[n - 1]
+# Resolve a asked phrase to a fact key: direct hit wins, then a taught
+# paraphrase (one hop, no chains). Returns null when nothing matches.
+def _resolve(state, key):
   if _has(state, key):
-    state["facts"][key] = value
+    return key
+  aliases = state["aliases"]
+  for a in aliases:
+    if a == key:
+      target = aliases[a]
+      if _has(state, target):
+        return target
+      return null
+  return null
+# Usage learning (A10): "cooc" maps every content word appearing in a
+# taught fact (key or value) to the other content words of the same
+# facts, with counts. Derived, never persisted: rebuilt on load,
+# maintained on teach/forget. It is co-occurrence counting, not
+# understanding - it can say two words appeared together, never how.
+# Content words: non-glue tokens, ASCII of length 3+ or any non-ASCII
+# token (the length check is ASCII-only so the char/byte len()
+# difference between backends can never diverge on Thai text).
+def _cwords(s):
+  out = []
+  for w in _words(lower_ascii(s)):
+    if not _stop(w) and (len(w) >= 3 or _nonascii(w)):
+      if not _in(w, out):
+        append(out, w)
+  return out
+def _cooc_add(state, key, value):
+  ws = _cwords(key)
+  for w in _cwords(value):
+    if not _in(w, ws):
+      append(ws, w)
+  for w in ws:
+    for u in ws:
+      if u != w:
+        if not (w in state["cooc"]):
+          state["cooc"][w] = {}
+        ctx = state["cooc"][w]
+        if u in ctx:
+          ctx[u] = ctx[u] + 1
+        else:
+          ctx[u] = 1
+def _cooc_remove(state, key, value):
+  ws = _cwords(key)
+  for w in _cwords(value):
+    if not _in(w, ws):
+      append(ws, w)
+  for w in ws:
+    if w in state["cooc"]:
+      ctx = state["cooc"][w]
+      for u in ws:
+        if u != w and u in ctx and ctx[u] > 0:
+          ctx[u] = ctx[u] - 1
+def _teach(state, key, value):
+  state["topic"] = key
+  if _has(state, key):
+    for v in state["facts"][key]:
+      _cooc_remove(state, key, v)
+  state["facts"][key] = [value]
+  _drop_rels(state, key)
+  _learn_rel(state, key, value)
+  _cooc_add(state, key, value)
+  if _has(state, key):
     return "updated " + key + " is " + value
-  state["facts"][key] = value
   append(state["order"], key)
+  _index_key(state, key)
   return "remembered " + key + " is " + value
+def _teach_also(state, key, value):
+  state["topic"] = key
+  _learn_rel(state, key, value)
+  if not _has(state, key):
+    state["facts"][key] = [value]
+    append(state["order"], key)
+    _index_key(state, key)
+    _cooc_add(state, key, value)
+    return "remembered " + key + " is " + value
+  for v in state["facts"][key]:
+    if v == value:
+      return "i already know that " + key + " is " + value
+  append(state["facts"][key], value)
+  _cooc_add(state, key, value)
+  return "added: " + key + " is " + value
+# Candidate keys/paraphrases for a miss: every word of the asked phrase
+# Word index (derived, never persisted): "windex" maps every taught key
+# word to the keys containing it; "nw" is the same map restricted to
+# non-ASCII words. Candidate lookup then touches only words, not every
+# key: the A5 benchmark measured the full scan at ~0.5 ms/key (interp)
+# per miss, which made misses unusable at 10k taught facts.
+def _index_key(state, key):
+  state["keyset"][key] = true
+  for w in _words(key):
+    if not (w in state["windex"]):
+      state["windex"][w] = []
+    if not (key in state["windex"][w]):
+      append(state["windex"][w], key)
+    if _nonascii(w):
+      if not (w in state["nw"]):
+        state["nw"][w] = []
+      if not (key in state["nw"][w]):
+        append(state["nw"][w], key)
+def _unindex_key(state, key):
+  kept = {}
+  for k in state["keyset"]:
+    if k != key:
+      kept[k] = true
+  state["keyset"] = kept
+  for w in _words(key):
+    if w in state["windex"]:
+      kept = []
+      for k in state["windex"][w]:
+        if k != key:
+          append(kept, k)
+      state["windex"][w] = kept
+    if w in state["nw"]:
+      kept = []
+      for k in state["nw"][w]:
+        if k != key:
+          append(kept, k)
+      state["nw"][w] = kept
+# How strongly a candidate connects to the asked words in counted usage:
+# the sum of co-occurrences between the candidate's content words and
+# the asked phrase's content words.
+def _usage_score(state, cand, awords):
+  score = 0
+  for w in _cwords(cand):
+    if w in state["cooc"]:
+      ctx = state["cooc"][w]
+      for a in awords:
+        if a != w and a in ctx:
+          score = score + ctx[a]
+  return score
+# Usage-based fallback for a clean miss: the words that showed up
+# alongside the asked words in taught facts, honestly framed as usage
+# correlation, never as knowledge. Top 3 by count, ties in first-seen
+# order.
+def _usage_reply(state, asked):
+  awords = _cwords(asked)
+  merged = {}
+  morder = []
+  for w in awords:
+    if w in state["cooc"]:
+      for u in state["cooc"][w]:
+        c = state["cooc"][w][u]
+        if c > 0 and not _in(u, awords):
+          if u in merged:
+            merged[u] = merged[u] + c
+          else:
+            merged[u] = c
+            append(morder, u)
+  if len(morder) == 0:
+    return "i do not know " + asked
+  i = 0
+  while i < len(morder):
+    best = i
+    j = i + 1
+    while j < len(morder):
+      if merged[morder[j]] > merged[morder[best]]:
+        best = j
+      j = j + 1
+    if best != i:
+      tmp = morder[i]
+      morder[i] = morder[best]
+      morder[best] = tmp
+    i = i + 1
+  top = []
+  i = 0
+  while i < len(morder) and i < 3:
+    append(top, morder[i])
+    i = i + 1
+  return "i was never taught " + asked + ", but from how you used it, " + asked + " seems related to " + _join(top)
+# Keys whose words match the asked word w, exactly mirroring _wmatch:
+# - exact word hits come straight from the index;
+# - a non-ASCII asked word also matches any taught word found inside it
+#   (substring enumeration - the _sub needle guard skips single ASCII
+#   letters, and byte-vs-char slicing differences are harmless because a
+#   mid-character byte slice is never a taught word);
+# - the asked word found inside a taught non-ASCII word comes from the
+#   small non-ASCII word list (same guard).
+def _whits(state, w):
+  res = []
+  if _nonascii(w):
+    i = 0
+    while i < len(w):
+      j = i + 1
+      while j <= len(w):
+        s = w[i:j]
+        if (s != s[:1] or _nonascii(s)) and s in state["windex"]:
+          for k in state["windex"][s]:
+            if not (k in res):
+              append(res, k)
+        j = j + 1
+      i = i + 1
+  else:
+    if w in state["windex"]:
+      for k in state["windex"][w]:
+        append(res, k)
+  if w != w[:1] or _nonascii(w):
+    for t in state["nw"]:
+      if w != t and find(t, w) >= 0:
+        for k in state["nw"][t]:
+          if not (k in res):
+            append(res, k)
+  return res
+# Candidate keys/paraphrases for a miss: every word of the asked phrase
+# matches some word of the candidate (exact, or Thai-aware substring).
+# Deterministic (insertion order). The key side uses _whits (identical
+# match condition, no full scan); paraphrases are few and stay a loop.
+def _candidates(state, phrase):
+  words = _words(phrase)
+  cands = []
+  keys = []
+  if len(words) > 0:
+    base = null
+    for w in words:
+      hits = _whits(state, w)
+      if base == null:
+        base = {}
+        for k in hits:
+          base[k] = true
+      else:
+        nb = {}
+        for k in hits:
+          if k in base:
+            nb[k] = true
+        base = nb
+    for k in state["order"]:
+      if k in base and phrase != k:
+        append(cands, k)
+        append(keys, k)
+    for a in state["aliases"]:
+      target = state["aliases"][a]
+      if _has(state, target):
+        ok = true
+        for w in words:
+          hit = false
+          for aw in _words(a):
+            if _wmatch(w, aw):
+              hit = true
+          if not hit:
+            ok = false
+        if ok and phrase != a:
+          append(cands, a)
+          append(keys, target)
+  return [cands, keys]
+def _recall(state, asked):
+  key = _resolve(state, asked)
+  if key != null:
+    state["topic"] = key
+    return "i know " + key + " is " + _join(state["facts"][key])
+  both = _candidates(state, asked)
+  cands = both[0]
+  keys = both[1]
+  # Usage-informed ranking: candidates tied to the asked words in
+  # counted usage come first; ties keep insertion order. Still a
+  # guess, just a usage-informed one.
+  if len(cands) > 1:
+    awords = _cwords(asked)
+    i = 0
+    while i < len(cands):
+      best = i
+      j = i + 1
+      while j < len(cands):
+        if _usage_score(state, cands[j], awords) > _usage_score(state, cands[best], awords):
+          best = j
+        j = j + 1
+      if best != i:
+        tmp = cands[i]
+        cands[i] = cands[best]
+        cands[best] = tmp
+        tmp = keys[i]
+        keys[i] = keys[best]
+        keys[best] = tmp
+      i = i + 1
+  if len(cands) > 0 and len(cands) <= 3:
+    state["pending"] = {"cands": cands, "keys": keys}
+    joined = cands[0]
+    i = 1
+    while i < len(cands):
+      joined = joined + ", " + cands[i]
+      i = i + 1
+    return "did you mean " + joined + "?"
+  if len(cands) > 3:
+    return "i do not know " + asked
+  return _usage_reply(state, asked)
 def _forget(state, key):
   if not _has(state, key):
     return "i do not know " + key
+  for v in state["facts"][key]:
+    _cooc_remove(state, key, v)
   facts = {}
   for k in state["facts"]:
     if k != key:
@@ -70,8 +429,18 @@ def _forget(state, key):
   for k in state["order"]:
     if k != key:
       append(order, k)
+  # Paraphrases pointing at the forgotten key die with it.
+  aliases = {}
+  for a in state["aliases"]:
+    if state["aliases"][a] != key:
+      aliases[a] = state["aliases"][a]
   state["facts"] = facts
   state["order"] = order
+  state["aliases"] = aliases
+  _unindex_key(state, key)
+  _drop_rels(state, key)
+  if state["topic"] == key:
+    state["topic"] = null
   return "forgot " + key
 def _list_reply(state):
   order = state["order"]
@@ -86,30 +455,373 @@ def _list_reply(state):
   if n == 1:
     return "i know 1 thing: " + joined
   return "i know " + str(n) + " things: " + joined
-_HELP = "commands: remember <thing> is <fact> | what is <thing> | forget <thing> | list | say <text> | help"
+# Glue words that must not create associations on their own.
+def _stop(w):
+  return w == "the" or w == "and" or w == "for" or w == "are" or w == "with" or w == "that" or w == "this"
+def _value_words(state, key):
+  out = []
+  for v in state["facts"][key]:
+    for w in _words(lower_ascii(v)):
+      if not _in(w, out):
+        append(out, w)
+  return out
+# Recall plus association: facts whose values share a content word
+# (ASCII-lowercased, length >= 3, not a glue word) with this one's values.
+def _about_reply(state, asked):
+  key = _resolve(state, asked)
+  if key == null:
+    return "i do not know " + asked
+  state["topic"] = key
+  reply = "i know " + key + " is " + _join(state["facts"][key])
+  words = _value_words(state, key)
+  for k in state["order"]:
+    if k != key:
+      kwords = _value_words(state, k)
+      shared = false
+      for w in words:
+        if len(w) >= 3 and not _stop(w):
+          for kw in kwords:
+            if _wmatch(w, kw):
+              shared = true
+      if shared:
+        reply = reply + "; also " + k + " is " + _join(state["facts"][k])
+  return reply
+def _notes_reply(state):
+  notes = state["notes"]
+  n = len(notes)
+  if n == 0:
+    return "no notes yet"
+  reply = "note 1: " + notes[0]
+  i = 1
+  while i < n:
+    reply = reply + "; note " + str(i + 1) + ": " + notes[i]
+    i = i + 1
+  return reply
+# A pending clarification is answered by yes (one candidate), by naming
+# one of the candidates, or by no. Any other line drops it and is
+# processed normally. Returns [handled, reply].
+def _pending_reply(state, m):
+  p = state["pending"]
+  if m == "yes":
+    if len(p["cands"]) == 1:
+      state["pending"] = null
+      return [true, _recall(state, p["cands"][0])]
+    return [true, "please say which one"]
+  if m == "no":
+    state["pending"] = null
+    return [true, "ok"]
+  i = 0
+  while i < len(p["cands"]):
+    if p["cands"][i] == m:
+      state["pending"] = null
+      return [true, _recall(state, p["cands"][i])]
+    i = i + 1
+  state["pending"] = null
+  return [false, ""]
+# An open question (how/why/when/about) gets the taught facts read back
+# with honest framing - it never pretends to answer the how or why.
+# Relations: structured edges [subject, predicate, object] derived from
+# the SHAPES of taught values (remember paris is in france -> is-in
+# edge) plus has/อยู่/คือ/หมายความว่า forms. Predicates: is-in, is-a,
+# has, means. Only is-in and is-a chain transitively; articles on
+# is-a objects are kept for display and stripped for node matching.
+def _add_rel(state, s, p, o):
+  for e in state["rels"]:
+    if e[0] == s and e[1] == p and e[2] == o:
+      return
+  append(state["rels"], [s, p, o])
+def _drop_rels(state, key):
+  kept = []
+  for e in state["rels"]:
+    if e[0] != key:
+      append(kept, e)
+  state["rels"] = kept
+def _stripart(s):
+  if s[:3] == "an ":
+    return s[3:]
+  if s[:2] == "a ":
+    return s[2:]
+  return s
+def _learn_rel(state, key, value):
+  v = lower_ascii(value)
+  if v[:3] == "in " and len(v) > 3:
+    _add_rel(state, key, "is-in", v[3:])
+  if v[:2] == "a " and len(v) > 2 or v[:3] == "an " and len(v) > 3:
+    _add_rel(state, key, "is-a", v)
+  if v[:4] == "has " and len(v) > 4:
+    _add_rel(state, key, "has", v[4:])
+  p1 = "อยู่ "
+  if find(v, p1) == 0 and len(v) > len(p1):
+    _add_rel(state, key, "is-in", v[len(p1):])
+  p2 = "คือ "
+  if find(v, p2) == 0 and len(v) > len(p2):
+    _add_rel(state, key, "means", v[len(p2):])
+  p3 = "หมายความว่า "
+  if find(v, p3) == 0 and len(v) > len(p3):
+    _add_rel(state, key, "means", v[len(p3):])
+# Built-in self-knowledge: hard-coded definitions of the agent's own
+# relation words (documented as hard-coded, never learned). Queried by
+# 'what does X mean' alongside taught means-edges; never persisted.
+_BUILTIN_RELS = [["mean", "means", "the definitional relation: X mean Y says the definition of X is Y"], ["is-in", "means", "the containment relation: X is in Y says X is inside Y"], ["is-a", "means", "the kind relation: X is a Y says X is a kind of Y"], ["has", "means", "the part relation: X has Y says Y is part of X"]]
+# Transitive chain over one predicate: BFS in edge-insertion order,
+# visited set against cycles, depth cap 8. Node identity strips a/an.
+# Returns the path as [[subject, object], ...] or null.
+# A teach reply for a relation sub-pattern reads with the relation word,
+# not the generic 'is': 'remembered cat has whiskers', never
+# 'remembered cat is has whiskers'.
+def _unteach_is(reply, word):
+  p = find(reply, " is " + word + " ")
+  if p < 0:
+    return reply
+  return reply[:p] + " " + word + reply[p + 4 + len(word):]
+def _chain(state, start, pred, goal):
+  g = _stripart(goal)
+  visited = {}
+  queue = [[_stripart(start), []]]
+  qi = 0
+  while qi < len(queue):
+    item = queue[qi]
+    qi = qi + 1
+    node = item[0]
+    path = item[1]
+    if node == g and len(path) > 0:
+      return path
+    if len(path) < 8 and not (node in visited):
+      visited[node] = true
+      for e in state["rels"]:
+        if e[1] == pred and _stripart(e[0]) == node:
+          np = []
+          for pe in path:
+            append(np, pe)
+          append(np, [e[0], e[2]])
+          append(queue, [_stripart(e[2]), np])
+  return null
+# The is-in chain outward from X, cycle-safe: [[subject, object], ...].
+def _where_chain(state, start):
+  node = _stripart(start)
+  path = []
+  visited = {}
+  found = true
+  while not (node in visited) and len(path) < 8 and found:
+    visited[node] = true
+    found = false
+    for e in state["rels"]:
+      if e[1] == "is-in" and _stripart(e[0]) == node and not found:
+        found = true
+        append(path, [e[0], e[2]])
+        node = _stripart(e[2])
+  return path
+def _chain_reply(state, x, pred, y):
+  path = _chain(state, x, pred, y)
+  if path == null:
+    return "not that i know"
+  out = "yes:"
+  for e in path:
+    if pred == "is-in":
+      out = out + " " + e[0] + " is in " + e[1] + ","
+    if pred == "is-a":
+      out = out + " " + e[0] + " is " + e[1] + ","
+  return out[:len(out) - 1]
+def _where_reply(state, x, sep):
+  path = _where_chain(state, x)
+  if len(path) == 0:
+    return _recall(state, x)
+  out = ""
+  for e in path:
+    out = out + e[0] + sep + e[1] + ", "
+  return out[:len(out) - 2]
+def _mean_reply(state, x, sep):
+  defs = []
+  for e in _BUILTIN_RELS:
+    if e[0] == x:
+      append(defs, e[2])
+  for e in state["rels"]:
+    if e[0] == x and e[1] == "means":
+      append(defs, e[2])
+  if len(defs) > 0:
+    return x + sep + _join(defs)
+  return _recall(state, x)
+def _open_reply(state, thing):
+  resolved = _resolve(state, thing)
+  if resolved != null:
+    state["topic"] = resolved
+    return "all i know about " + resolved + " is " + _join(state["facts"][resolved])
+  return _recall(state, thing)
+# "what else" continues the session topic: remaining facts, or an
+# honest that-is-all.
+def _else_reply(state):
+  if state["topic"] == null:
+    return "i have no topic yet"
+  facts = state["facts"][state["topic"]]
+  if len(facts) <= 1:
+    return "that is all i know about " + state["topic"]
+  return "about " + state["topic"] + ": " + _join(facts[1:])
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
   text = normalize(line)
+  # One trailing ? or . is punctuation, not part of the words.
+  if len(text) > 0:
+    last = text[len(text) - 1:]
+    if last == "?" or last == ".":
+      text = text[:len(text) - 1]
   m = lower_ascii(text)
+  if state["pending"] != null:
+    r = _pending_reply(state, m)
+    if r[0]:
+      return r[1]
   if m == "help":
     return _HELP
   if m == "list":
     return _list_reply(state)
+  if m == "notes":
+    return _notes_reply(state)
+  if m == "clear notes":
+    state["notes"] = []
+    return "notes cleared"
+  if m[:5] == "note " and len(text) > 5:
+    append(state["notes"], text[5:])
+    return "noted"
+  if m == "what about it":
+    if state["topic"] == null:
+      return "i have no topic yet"
+    return _recall(state, state["topic"])
+  # Pleasantries: fixed strings, visibly mechanical, never a claimed
+  # feeling. English and Thai.
+  if m == "hello" or m == "hi" or m == "hey":
+    return "hello - teach me something with: remember <thing> is <fact>"
+  if m == "how are you":
+    return "i am a pattern matcher, not a person - but the patterns are working"
+  if m == "thanks" or m == "thank you":
+    return "noted - i do not feel it, but the fact store appreciates the exercise"
+  if m == "bye" or m == "goodbye":
+    return "type quit to leave, or keep teaching me"
+  if m == "สวัสดี":
+    return "สวัสดี - สอนผมได้ด้วย: remember <thing> is <fact>"
+  if m == "ขอบคุณ":
+    return "ยินดี - ผมไม่ได้รู้สึก แค่จับคู่รูปแบบ"
+  if m == "what else" or m == "anything else":
+    return _else_reply(state)
+  if m[:4] == "and " and len(m) > 4:
+    return _recall(state, m[4:])
+  # Open questions (how/why/when/about), English and Thai.
+  if m[:7] == "how is ":
+    return _open_reply(state, m[7:])
+  if m[:7] == "why is ":
+    return _open_reply(state, m[7:])
+  if m[:8] == "when is ":
+    return _open_reply(state, m[8:])
+  if m[:10] == "how about ":
+    return _open_reply(state, m[10:])
+  if m[:25] == "tell me everything about ":
+    return _open_reply(state, m[25:])
+  p = "เกี่ยวกับ "
+  if find(m, p) == 0:
+    return _open_reply(state, m[len(p):])
+  # Thai what-is: "<thing> คืออะไร" (suffix form).
+  k = find(m, " คืออะไร")
+  if k > 0 and k + len(" คืออะไร") == len(m):
+    return _recall(state, m[:k])
+  if m == "forget it":
+    if state["topic"] == null:
+      return "i have no topic yet"
+    return _forget(state, state["topic"])
+  if m[:23] == "what do you know about ":
+    return _about_reply(state, m[23:])
   if m[:9] == "remember ":
     rest = text[9:]
     mrest = m[9:]
+    k = find(mrest, " is also ")
+    if k > 0 and k + 9 < len(mrest):
+      return _teach_also(state, mrest[:k], rest[k + 9:])
     k = find(mrest, " is ")
     if k > 0 and k + 4 < len(mrest):
       return _teach(state, mrest[:k], rest[k + 4:])
+    k = find(mrest, " has ")
+    if k > 0 and k + 5 < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "has")
+    k = find(mrest, " อยู่ ")
+    if k > 0 and k + len(" อยู่ ") < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "อยู่")
+    k = find(mrest, " คือ ")
+    if k > 0 and k + len(" คือ ") < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "คือ")
     return "i do not understand"
+  # 'what does X mean' answers from the means relation (taught +
+  # built-in self-knowledge), falling back to taught facts, then miss.
+  if m[:10] == "what does " and len(m) > 15 and m[len(m) - 5:] == " mean":
+    return _mean_reply(state, m[10:len(m) - 5], " means ")
+  # 'is X in Y' / 'is X a Y': transitive check; the shown chain is the
+  # reasoning, and the negative is open-world honest ('not that i know').
+  if m[:3] == "is ":
+    rest3 = m[3:]
+    k = find(rest3, " in ")
+    if k > 0:
+      return _chain_reply(state, rest3[:k], "is-in", rest3[k + 4:])
+    k = find(rest3, " an ")
+    if k > 0:
+      return _chain_reply(state, rest3[:k], "is-a", rest3[k + 4:])
+    k = find(rest3, " a ")
+    if k > 0:
+      return _chain_reply(state, rest3[:k], "is-a", rest3[k + 3:])
+    return "i do not understand"
+  k = find(m, " หมายความว่าอะไร")
+  if k > 0 and k + len(" หมายความว่าอะไร") == len(m):
+    return _mean_reply(state, m[:k], " คือ ")
+  k = find(m, " อยู่ไหน")
+  if k > 0 and k + len(" อยู่ไหน") == len(m):
+    return _where_reply(state, m[:k], " อยู่ ")
   if m[:8] == "what is ":
-    key = m[8:]
-    if _has(state, key):
-      return "i know " + key + " is " + state["facts"][key]
-    return "i do not know " + key
+    return _recall(state, m[8:])
+  if m[:12] == "do you know ":
+    return _recall(state, m[12:])
+  if m[:15] == "tell me about ":
+    return _recall(state, m[15:])
+  if m[:7] == "who is ":
+    return _recall(state, m[7:])
+  if m[:9] == "where is ":
+    return _where_reply(state, m[9:], " is in ")
   if m[:7] == "forget ":
     return _forget(state, m[7:])
   if m[:4] == "say " and len(text) > 4:
     return text[4:]
+  if m[:4] == "no, ":
+    # Teaching by correction: "no, X is Z" replaces X's facts; when X
+    # names a taught paraphrase the correction lands on its target.
+    rest = text[4:]
+    mrest = m[4:]
+    k = find(mrest, " is ")
+    if k > 0 and k + 4 < len(mrest):
+      key = mrest[:k]
+      resolved = _resolve(state, key)
+      if resolved != null:
+        key = resolved
+      return _teach(state, key, rest[k + 4:])
+    return "i do not understand"
+  # The definitional relation, unified across languages:
+  # 'X means Y', 'X หมายความว่า Y', 'X คือ Y' all write the same edge.
+  # A taught-key target also records a paraphrase alias (A3 role);
+  # a free-text target is a plain definition (A9: no longer an error).
+  means_p = ""
+  k = find(m, " means ")
+  if k > 0:
+    means_p = " means "
+  else:
+    k = find(m, " หมายความว่า ")
+    if k > 0:
+      means_p = " หมายความว่า "
+    else:
+      k = find(m, " คือ ")
+      if k > 0:
+        means_p = " คือ "
+  if k > 0 and k + len(means_p) < len(m):
+    phrase = m[:k]
+    target = m[k + len(means_p):]
+    if phrase == target:
+      return "i do not understand"
+    _add_rel(state, phrase, "means", target)
+    if _has(state, target):
+      state["aliases"][phrase] = target
+    return "ok, " + phrase + means_p + target
   return "i do not understand"

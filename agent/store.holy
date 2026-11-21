@@ -2,18 +2,52 @@
 #
 # The core (agent/core.holy) is pure and never touches the filesystem;
 # this module is the thin hosted-only shell that saves and loads the
-# state Dict as JSON. A missing or unreadable/corrupt file loads as a
-# fresh empty state rather than crashing the chat.
+# durable part of the state (facts + order + aliases) as JSON.
+# Session-only state (notes, topic, pending clarifications) is never
+# written: a fresh chat starts with empty notes, no topic, nothing
+# pending. A missing or unreadable/corrupt file loads as a fresh empty
+# state rather than crashing the chat.
+#
+# On-disk format v4: {"facts": {key: [value, ...]}, "order": [...],
+# "aliases": {phrase: key}, "rels": [[subject, predicate, object], ...]}.
+# Files from v0.1/v0.2 (facts values were plain strings, no aliases) load
+# fine: string values are wrapped into one-fact lists and aliases default
+# empty. Files without "rels" (pre-v4) load fine: relation edges are
+# derived from the recognized shapes of the loaded fact values.
 import agent.core
 def load(path):
+  state = agent.core.new_state()
   if not exists(path):
-    return agent.core.new_state()
+    return state
   try:
     data = json_load(path)
     facts = data["facts"]
-    order = data["order"]
-    return {"facts": facts, "order": order}
+    # Migrate pre-v3 files: a plain-string value becomes a one-fact list.
+    for k in facts:
+      if json_str(facts[k])[:1] == "\"":
+        facts[k] = [facts[k]]
+    state["facts"] = facts
+    state["order"] = data["order"]
+    try:
+      state["aliases"] = data["aliases"]
+    except:
+      state["aliases"] = {}
+    # The word index and the usage counts are derived state: rebuild
+    # them from what was loaded.
+    for k in state["order"]:
+      agent.core._index_key(state, k)
+      for v in state["facts"][k]:
+        agent.core._cooc_add(state, k, v)
+    # Relations: persisted at v4; older files derive edges from the
+    # recognized shapes of their fact values.
+    try:
+      state["rels"] = data["rels"]
+    except:
+      for k in state["order"]:
+        for v in state["facts"][k]:
+          agent.core._learn_rel(state, k, v)
+    return state
   except:
     return agent.core.new_state()
 def save(state, path):
-  json_save(path, state)
+  json_save(path, {"facts": state["facts"], "order": state["order"], "aliases": state["aliases"], "rels": state["rels"]})
