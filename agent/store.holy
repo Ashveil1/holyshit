@@ -8,10 +8,12 @@
 # pending. A missing or unreadable/corrupt file loads as a fresh empty
 # state rather than crashing the chat.
 #
-# On-disk format v3: {"facts": {key: [value, ...]}, "order": [...],
-# "aliases": {phrase: key}}. Files from v0.1/v0.2 (facts values were
-# plain strings, no aliases) load fine: string values are wrapped into
-# one-element lists and aliases default to empty.
+# On-disk format v4: {"facts": {key: [value, ...]}, "order": [...],
+# "aliases": {phrase: key}, "rels": [[subject, predicate, object], ...]}.
+# Files from v0.1/v0.2 (facts values were plain strings, no aliases) load
+# fine: string values are wrapped into one-fact lists and aliases default
+# empty. Files without "rels" (pre-v4) load fine: relation edges are
+# derived from the recognized shapes of the loaded fact values.
 import agent.core
 def load(path):
   state = agent.core.new_state()
@@ -33,8 +35,16 @@ def load(path):
     # The word index is derived state: rebuild it from what was loaded.
     for k in state["order"]:
       agent.core._index_key(state, k)
+    # Relations: persisted at v4; older files derive edges from the
+    # recognized shapes of their fact values.
+    try:
+      state["rels"] = data["rels"]
+    except:
+      for k in state["order"]:
+        for v in state["facts"][k]:
+          agent.core._learn_rel(state, k, v)
     return state
   except:
     return agent.core.new_state()
 def save(state, path):
-  json_save(path, {"facts": state["facts"], "order": state["order"], "aliases": state["aliases"]})
+  json_save(path, {"facts": state["facts"], "order": state["order"], "aliases": state["aliases"], "rels": state["rels"]})

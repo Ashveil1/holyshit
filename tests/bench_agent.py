@@ -83,10 +83,22 @@ DIALOGUE = [
     ('what else', 'that is all i know about bangkok', 'chain'),
     ('and my cat', 'i know my cat is milo', 'chain'),
     ('แมว คืออะไร', 'i know แมว is สัตว์เลี้ยง', 'open'),
+    ('remember paris is in france', 'remembered paris is in france', 'teach'),
+    ('remember france is in europe', 'remembered france is in europe', 'teach'),
+    ('is paris in europe', 'yes: paris is in france, france is in europe',
+     'inference'),
+    ('is paris in asia', 'not that i know', 'inference'),
+    ('where is paris', 'paris is in france, france is in europe', 'inference'),
+    ('what does kitty mean', 'kitty means my cat', 'inference'),
+    ('what does mean mean',
+     'mean means the definitional relation: X mean Y says the definition of X is Y',
+     'inference'),
+    ('remember แมว อยู่ สวน', 'remembered แมว อยู่ สวน', 'teach'),
+    ('แมว อยู่ไหน', 'แมว อยู่ สวน', 'inference'),
     ('blorf zingle', 'i do not understand', 'unparsed'),
 ]
 SCORED = ('recall', 'clarify', 'miss', 'correction', 'pleasantry', 'open',
-          'chain', 'unparsed')
+          'chain', 'inference', 'unparsed')
 
 
 def git_head():

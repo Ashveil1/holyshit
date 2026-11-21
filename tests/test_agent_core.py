@@ -32,9 +32,12 @@ env = dict(os.environ, HSROOT=str(ROOT), HSPATH=os.pathsep.join([
     str(ROOT), str(ROOT/'selfhost'), str(ROOT/'selfhost/be')]))
 
 HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
-        "<fact> | no, <thing> is <fact> | what is <thing> | "
-        "do you know <thing> | what do you know about <thing> | "
+        "<fact> | remember <thing> has <part> | no, <thing> is <fact> | "
+        "what is <thing> | do you know <thing> | what does <thing> mean | "
+        "is <thing> in <thing> | where is <thing> | "
+        "what do you know about <thing> | "
         "how is <thing> | how about <thing> | <thing> คืออะไร | "
+        "<thing> หมายความว่าอะไร | <thing> อยู่ไหน | "
         "and <thing> | what else | what about it | <phrase> means <thing> | "
         "forget <thing> | "
         "forget it | note <text> | notes | clear notes | list | "
@@ -87,6 +90,29 @@ def wmatch(w, t):
     return w == t or sub_match(w, t)
 
 
+BUILTIN_RELS = [
+    ['mean', 'means', 'the definitional relation: X mean Y says the definition of X is Y'],
+    ['is-in', 'means', 'the containment relation: X is in Y says X is inside Y'],
+    ['is-a', 'means', 'the kind relation: X is a Y says X is a kind of Y'],
+    ['has', 'means', 'the part relation: X has Y says Y is part of X'],
+]
+
+
+def stripart(s):
+    if s[:3] == 'an ':
+        return s[3:]
+    if s[:2] == 'a ':
+        return s[2:]
+    return s
+
+
+def unteach_is(reply, word):
+    p = reply.find(' is ' + word + ' ')
+    if p < 0:
+        return reply
+    return reply[:p] + ' ' + word + reply[p + 4 + len(word):]
+
+
 def join_values(values):
     n = len(values)
     if n == 1:
@@ -106,6 +132,86 @@ class Oracle:
         self.notes = []
         self.topic = None
         self.pending = None  # {'cands': [...], 'keys': [...]}
+        self.rels = []       # [subject, predicate, object]
+
+    # --- A9 relations, mirroring core.holy ---
+    def _add_rel(self, s, p, o):
+        if [s, p, o] not in self.rels:
+            self.rels.append([s, p, o])
+
+    def _drop_rels(self, key):
+        self.rels = [e for e in self.rels if e[0] != key]
+
+    def _learn_rel(self, key, value):
+        v = lower_ascii(value)
+        if v[:3] == 'in ' and len(v) > 3:
+            self._add_rel(key, 'is-in', v[3:])
+        if (v[:2] == 'a ' and len(v) > 2) or (v[:3] == 'an ' and len(v) > 3):
+            self._add_rel(key, 'is-a', v)
+        if v[:4] == 'has ' and len(v) > 4:
+            self._add_rel(key, 'has', v[4:])
+        for p, pred in (('อยู่ ', 'is-in'), ('คือ ', 'means'),
+                        ('หมายความว่า ', 'means')):
+            if v.startswith(p) and len(v) > len(p):
+                self._add_rel(key, pred, v[len(p):])
+
+    def _chain(self, start, pred, goal):
+        g = stripart(goal)
+        visited = set()
+        queue = [(stripart(start), [])]
+        qi = 0
+        while qi < len(queue):
+            node, path = queue[qi]
+            qi += 1
+            if node == g and path:
+                return path
+            if len(path) < 8 and node not in visited:
+                visited.add(node)
+                for e in self.rels:
+                    if e[1] == pred and stripart(e[0]) == node:
+                        queue.append((stripart(e[2]), path + [[e[0], e[2]]]))
+        return None
+
+    def _where_chain(self, start):
+        node = stripart(start)
+        path = []
+        visited = set()
+        while node not in visited and len(path) < 8:
+            visited.add(node)
+            found = None
+            for e in self.rels:
+                if e[1] == 'is-in' and stripart(e[0]) == node and found is None:
+                    found = e
+            if found is None:
+                break
+            path.append([found[0], found[2]])
+            node = stripart(found[2])
+        return path
+
+    def _chain_reply(self, x, pred, y):
+        path = self._chain(x, pred, y)
+        if path is None:
+            return 'not that i know'
+        out = 'yes:'
+        for s, o in path:
+            if pred == 'is-in':
+                out += ' ' + s + ' is in ' + o + ','
+            if pred == 'is-a':
+                out += ' ' + s + ' is ' + o + ','
+        return out[:-1]
+
+    def _where_reply(self, x, sep):
+        path = self._where_chain(x)
+        if not path:
+            return self._recall(x)
+        return ', '.join(s + sep + o for s, o in path)
+
+    def _mean_reply(self, x, sep):
+        defs = [e[2] for e in BUILTIN_RELS if e[0] == x]
+        defs += [e[2] for e in self.rels if e[0] == x and e[1] == 'means']
+        if defs:
+            return x + sep + join_values(defs)
+        return self._recall(x)
 
     def respond(self, line):
         text = normalize(line)
@@ -184,7 +290,36 @@ class Oracle:
             k = mrest.find(' is ')
             if k > 0 and k + 4 < len(mrest):
                 return self._teach(mrest[:k], rest[k + 4:])
+            k = mrest.find(' has ')
+            if k > 0 and k + 5 < len(mrest):
+                return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'has')
+            k = mrest.find(' อยู่ ')
+            if k > 0 and k + len(' อยู่ ') < len(mrest):
+                return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'อยู่')
+            k = mrest.find(' คือ ')
+            if k > 0 and k + len(' คือ ') < len(mrest):
+                return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'คือ')
             return 'i do not understand'
+        if m[:10] == 'what does ' and len(m) > 15 and m[-5:] == ' mean':
+            return self._mean_reply(m[10:-5], ' means ')
+        if m[:3] == 'is ':
+            rest3 = m[3:]
+            k = rest3.find(' in ')
+            if k > 0:
+                return self._chain_reply(rest3[:k], 'is-in', rest3[k + 4:])
+            k = rest3.find(' an ')
+            if k > 0:
+                return self._chain_reply(rest3[:k], 'is-a', rest3[k + 4:])
+            k = rest3.find(' a ')
+            if k > 0:
+                return self._chain_reply(rest3[:k], 'is-a', rest3[k + 3:])
+            return 'i do not understand'
+        k = m.find(' หมายความว่าอะไร')
+        if k > 0 and k + len(' หมายความว่าอะไร') == len(m):
+            return self._mean_reply(m[:k], ' คือ ')
+        k = m.find(' อยู่ไหน')
+        if k > 0 and k + len(' อยู่ไหน') == len(m):
+            return self._where_reply(m[:k], ' อยู่ ')
         if m[:8] == 'what is ':
             return self._recall(m[8:])
         if m[:12] == 'do you know ':
@@ -194,7 +329,7 @@ class Oracle:
         if m[:7] == 'who is ':
             return self._recall(m[7:])
         if m[:9] == 'where is ':
-            return self._recall(m[9:])
+            return self._where_reply(m[9:], ' is in ')
         if m[:7] == 'forget ':
             return self._forget(m[7:])
         if m[:4] == 'say ' and len(text) > 4:
@@ -210,16 +345,21 @@ class Oracle:
                     key = resolved
                 return self._teach(key, rest[k + 4:])
             return 'i do not understand'
-        k = m.find(' means ')
-        if k > 0 and k + 7 < len(m):
+        means_p = None
+        for p in (' means ', ' หมายความว่า ', ' คือ '):
+            k = m.find(p)
+            if k > 0:
+                means_p = p
+                break
+        if means_p is not None and k + len(means_p) < len(m):
             phrase = m[:k]
-            target = m[k + 7:]
+            target = m[k + len(means_p):]
             if phrase == target:
                 return 'i do not understand'
+            self._add_rel(phrase, 'means', target)
             if target in self.facts:
                 self.aliases[phrase] = target
-                return 'ok, ' + phrase + ' means ' + target
-            return 'i do not know ' + target
+            return 'ok, ' + phrase + means_p + target
         return 'i do not understand'
 
     def _pending_reply(self, m):
@@ -277,6 +417,8 @@ class Oracle:
     def _teach(self, key, value):
         self.topic = key
         self.facts[key] = [value]
+        self._drop_rels(key)
+        self._learn_rel(key, value)
         if key in self.order:
             return 'updated ' + key + ' is ' + value
         self.order.append(key)
@@ -284,6 +426,7 @@ class Oracle:
 
     def _teach_also(self, key, value):
         self.topic = key
+        self._learn_rel(key, value)
         if key not in self.facts:
             self.facts[key] = [value]
             self.order.append(key)
@@ -310,6 +453,7 @@ class Oracle:
         del self.facts[key]
         self.order.remove(key)
         self.aliases = {a: t for a, t in self.aliases.items() if t != key}
+        self._drop_rels(key)
         if self.topic == key:
             self.topic = None
         return 'forgot ' + key
@@ -394,6 +538,49 @@ def a8_line():
     if r < 0.90:
         return mangle('and') + ' ' + mangle(rng.choice(KEYS + MISSES))
     return mangle(rng.choice(CHAINS))
+# Relation pools for the A9 inference lines.
+PLACES = ['paris', 'france', 'europe', 'tokyo', 'japan', 'asia',
+          'bangkok', 'thailand', 'garden']
+KINDS = ['animal', 'mammal', 'cat', 'dog', 'bird', 'fish', 'pet']
+
+
+def a9_line():
+    r = rng.random()
+    if r < 0.18:
+        return (mangle('remember') + ' ' + rng.choice(PLACES) + ' ' +
+                mangle('is in') + ' ' + rng.choice(PLACES))
+    if r < 0.34:
+        return (mangle('remember') + ' ' + rng.choice(KINDS) + ' ' +
+                mangle('is') + ' ' + rng.choice(['a', 'an']) + ' ' +
+                rng.choice(KINDS))
+    if r < 0.44:
+        return (mangle('remember') + ' ' + rng.choice(KINDS) + ' ' +
+                mangle('has') + ' ' + rng.choice(VALUES))
+    if r < 0.52:
+        return (mangle('remember') + ' ' + rng.choice(KEYS + PLACES) +
+                ' อยู่ ' + rng.choice(VALUES + PLACES))
+    if r < 0.66:
+        return (mangle('is') + ' ' + rng.choice(PLACES) + ' ' +
+                mangle('in') + ' ' + rng.choice(PLACES + MISSES[:4]))
+    if r < 0.76:
+        return (mangle('is') + ' ' + rng.choice(KINDS) + ' ' +
+                rng.choice(['a', 'an']) + ' ' +
+                rng.choice(KINDS + MISSES[:4]))
+    if r < 0.82:
+        return mangle('where is') + ' ' + rng.choice(PLACES + KEYS[:4])
+    if r < 0.89:
+        return (mangle('what does') + ' ' +
+                rng.choice(KEYS + PHRASES + ['mean', 'is-in', 'is-a', 'has',
+                                             'ghost']) + ' ' +
+                mangle('mean'))
+    if r < 0.95:
+        return (rng.choice(PHRASES + ['hello world', 'paris']) +
+                rng.choice([' means ', ' หมายความว่า ', ' คือ ']) +
+                rng.choice(VALUES + MISSES[:4]))
+    return (rng.choice(KEYS + PLACES[:4]) +
+            rng.choice([' อยู่ไหน', ' หมายความว่าอะไร']))
+
+
 # Phrases for user-taught paraphrases, and miss-askings that overlap real
 # keys by a word (to trigger the clarification dialogue).
 PHRASES = ['the capital of france', 'kitty', 'สวัสดี', 'big answer']
@@ -415,6 +602,24 @@ def punctuate(line):
     if rng.random() < 0.25:
         return line + rng.choice(['?', '.'])
     return line
+
+
+# Coherent A9 scenarios spliced into sessions: random lines alone rarely
+# line up a teach with its chain query, so these guarantee positive
+# inference coverage (chains, where-is, built-in self-knowledge, Thai).
+A9_SCENARIOS = [
+    ['remember paris is in france', 'remember france is in europe',
+     'is paris in europe', 'is paris in asia', 'where is paris',
+     'where is ghost'],
+    ['kitty means my cat', 'what does kitty mean',
+     'what does mean mean', 'what does is-in mean',
+     'what does is-a mean', 'what does has mean', 'what does ghost mean'],
+    ['remember cat is a animal', 'remember animal is a living thing',
+     'is cat a living thing', 'is cat a fish', 'remember cat has whiskers'],
+    ['remember แมว อยู่ สวน', 'แมว อยู่ไหน',
+     'remember ลิง คือ สัตว์', 'ลิง หมายความว่าอะไร',
+     'ลิง คือ ตัวอะไร'],
+]
 
 
 def make_session():
@@ -466,17 +671,22 @@ def make_session():
             line = mangle('clear notes')
         elif r < 0.93:
             line = mangle('list')
-        elif r < 0.945:
+        elif r < 0.94:
             line = mangle('say') + ' ' + rng.choice(VALUES + ['Mixed CASE text'])
-        elif r < 0.95:
+        elif r < 0.945:
             line = mangle('help')
-        elif r < 0.99:
+        elif r < 0.975:
             line = a8_line()
+        elif r < 0.99:
+            line = a9_line()
         else:
             line = rng.choice(GARBAGE)
         line = punctuate(line)
         lines.append(line)
-        replies.append(oracle.respond(line))
+    if rng.random() < 0.7:
+        pos = rng.randrange(len(lines) + 1)
+        lines[pos:pos] = list(rng.choice(A9_SCENARIOS))
+    replies = [oracle.respond(line) for line in lines]
     return lines, replies, oracle
 
 
@@ -491,6 +701,9 @@ for lines, replies, oracle in sessions:
     expected_lines.append('aliases ' + str(len(oracle.aliases)))
     for a, t in oracle.aliases.items():
         expected_lines.append(a + ' ~> ' + t)
+    expected_lines.append('rels ' + str(len(oracle.rels)))
+    for edge in oracle.rels:
+        expected_lines.append('rel ' + ' | '.join(edge))
     expected_lines.append('notes ' + str(len(oracle.notes)))
     for i, note in enumerate(oracle.notes):
         expected_lines.append('note ' + str(i + 1) + ' = ' + note)
@@ -526,6 +739,9 @@ text += '    print k + " => " + joined\n'
 text += '  print "aliases " + str(len(state["aliases"]))\n'
 text += '  for a in state["aliases"]:\n'
 text += '    print a + " ~> " + state["aliases"][a]\n'
+text += '  print "rels " + str(len(state["rels"]))\n'
+text += '  for r in state["rels"]:\n'
+text += '    print "rel " + r[0] + " | " + r[1] + " | " + r[2]\n'
 text += '  print "notes " + str(len(state["notes"]))\n'
 text += '  i = 0\n'
 text += '  while i < len(state["notes"]):\n'
@@ -545,10 +761,15 @@ print agent.core.respond(s, "remember alpha is one")
 print agent.core.respond(s, "remember alpha is also two")
 print agent.core.respond(s, "a1 means alpha")
 print agent.core.respond(s, "note buy milk")
+print agent.core.respond(s, "remember paris is in france")
+print agent.core.respond(s, "remember france is in europe")
 agent.store.save(s, p)
 s2 = agent.store.load(p)
 print agent.core.respond(s2, "what is alpha")
 print agent.core.respond(s2, "what is a1")
+print agent.core.respond(s2, "is paris in europe")
+print agent.core.respond(s2, "is paris in asia")
+print agent.core.respond(s2, "where is paris")
 print agent.core.respond(s2, "list")
 print agent.core.respond(s2, "notes")
 print agent.core.respond(s2, "forget alpha")
@@ -556,12 +777,19 @@ print agent.core.respond(s2, "what is a1")
 agent.store.save(s2, p)
 s3 = agent.store.load(p)
 print agent.core.respond(s3, "list")
+print agent.core.respond(s3, "is paris in europe")
 '''
 STORE_WANT = ('remembered alpha is one\nadded: alpha is two\n'
               'ok, a1 means alpha\nnoted\n'
+              'remembered paris is in france\n'
+              'remembered france is in europe\n'
               'i know alpha is one and two\ni know alpha is one and two\n'
-              'i know 1 thing: alpha\nno notes yet\nforgot alpha\n'
-              'i do not know a1\ni know nothing yet\n')
+              'yes: paris is in france, france is in europe\n'
+              'not that i know\nparis is in france, france is in europe\n'
+              'i know 3 things: alpha, paris, france\nno notes yet\n'
+              'forgot alpha\n'
+              'i do not know a1\ni know 2 things: paris, france\n'
+              'yes: paris is in france, france is in europe\n')
 
 FRESH_PROG = '''import agent.core
 import agent.store
@@ -585,6 +813,18 @@ print agent.core.respond(s2, "what is a")
 '''
 V02_WANT = ('i know a is 1\ni know 1 thing: a\nno notes yet\n'
             'i know a is 1\n')
+
+# A v3 on-disk file (list-shaped facts + aliases, no "rels" key) must
+# load: relation edges are derived from the fact values' shapes.
+V03_PROG = '''import agent.core
+import agent.store
+s = agent.store.load({path})
+print agent.core.respond(s, "is paris in europe")
+print agent.core.respond(s, "where is paris")
+agent.store.save(s, {path})
+'''
+V03_WANT = ('yes: paris is in france, france is in europe\n'
+            'paris is in france, france is in europe\n')
 
 
 def run_ref(source_path, timeout=120):
@@ -621,7 +861,19 @@ def check_store_routes():
         r = run_ref(vprog)
         assert r.returncode == 0 and r.stdout == V02_WANT, (r.returncode,
                                                             r.stdout, r.stderr[-500:])
-    print('ok agent.store roundtrip + 4 fresh-load cases + pre-v3 migration (reference route)', flush=True)
+        # A v3 file (no "rels") derives relation edges on load.
+        v03 = d/'v03.json'
+        v03.write_text('{"facts": {"paris": ["in france"], '
+                       '"france": ["in europe"]}, '
+                       '"order": ["paris", "france"], '
+                       '"aliases": {}}', encoding='utf-8')
+        v3prog = d/'v03.holy'
+        v3prog.write_text(V03_PROG.format(path=lit(str(v03))), encoding='utf-8')
+        r = run_ref(v3prog)
+        assert r.returncode == 0 and r.stdout == V03_WANT, (r.returncode,
+                                                            r.stdout, r.stderr[-500:])
+        assert '"rels"' in v03.read_text(encoding='utf-8')
+    print('ok agent.store roundtrip + 4 fresh-load cases + pre-v3/v3 migration (reference route)', flush=True)
 
 
 def verify(label, r):

@@ -10,9 +10,14 @@
 # The core is pure: respond(state, line) only reads/mutates the state
 # Dict and returns the reply Str. State is JSON-serializable:
 #   {"facts": {k: [v, ...]}, "order": [...], "aliases": {phrase: k},
+#     "rels": [[subject, predicate, object], ...]}
 #     persistent, saved by store.holy
 #    "notes": [...], "topic": k|null, "pending": {...}|null}
 #     session-only, never saved
+# rels are relation edges derived from taught fact shapes ("in X",
+# "a X"/"an X", "has X", Thai อยู่/คือ/หมายความว่า) plus means-teaches;
+# they back the inference queries (is-in/is-a chains, where-is,
+# what-does-mean).
 # so agent/store.holy can persist the durable part and a future kernel
 # port can carry the whole thing as plain data.
 #
@@ -53,7 +58,7 @@ def lower_ascii(s):
     i = i + 1
   return out
 def new_state():
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": []}
 def _has(state, key):
   # O(1) membership; keyset mirrors order exactly (built from it on
   # load, maintained on teach/forget), including for hand-edited files.
@@ -140,6 +145,8 @@ def _resolve(state, key):
 def _teach(state, key, value):
   state["topic"] = key
   state["facts"][key] = [value]
+  _drop_rels(state, key)
+  _learn_rel(state, key, value)
   if _has(state, key):
     return "updated " + key + " is " + value
   append(state["order"], key)
@@ -147,6 +154,7 @@ def _teach(state, key, value):
   return "remembered " + key + " is " + value
 def _teach_also(state, key, value):
   state["topic"] = key
+  _learn_rel(state, key, value)
   if not _has(state, key):
     state["facts"][key] = [value]
     append(state["order"], key)
@@ -305,6 +313,7 @@ def _forget(state, key):
   state["order"] = order
   state["aliases"] = aliases
   _unindex_key(state, key)
+  _drop_rels(state, key)
   if state["topic"] == key:
     state["topic"] = null
   return "forgot " + key
@@ -386,6 +395,127 @@ def _pending_reply(state, m):
   return [false, ""]
 # An open question (how/why/when/about) gets the taught facts read back
 # with honest framing - it never pretends to answer the how or why.
+# Relations: structured edges [subject, predicate, object] derived from
+# the SHAPES of taught values (remember paris is in france -> is-in
+# edge) plus has/อยู่/คือ/หมายความว่า forms. Predicates: is-in, is-a,
+# has, means. Only is-in and is-a chain transitively; articles on
+# is-a objects are kept for display and stripped for node matching.
+def _add_rel(state, s, p, o):
+  for e in state["rels"]:
+    if e[0] == s and e[1] == p and e[2] == o:
+      return
+  append(state["rels"], [s, p, o])
+def _drop_rels(state, key):
+  kept = []
+  for e in state["rels"]:
+    if e[0] != key:
+      append(kept, e)
+  state["rels"] = kept
+def _stripart(s):
+  if s[:3] == "an ":
+    return s[3:]
+  if s[:2] == "a ":
+    return s[2:]
+  return s
+def _learn_rel(state, key, value):
+  v = lower_ascii(value)
+  if v[:3] == "in " and len(v) > 3:
+    _add_rel(state, key, "is-in", v[3:])
+  if v[:2] == "a " and len(v) > 2 or v[:3] == "an " and len(v) > 3:
+    _add_rel(state, key, "is-a", v)
+  if v[:4] == "has " and len(v) > 4:
+    _add_rel(state, key, "has", v[4:])
+  p1 = "อยู่ "
+  if find(v, p1) == 0 and len(v) > len(p1):
+    _add_rel(state, key, "is-in", v[len(p1):])
+  p2 = "คือ "
+  if find(v, p2) == 0 and len(v) > len(p2):
+    _add_rel(state, key, "means", v[len(p2):])
+  p3 = "หมายความว่า "
+  if find(v, p3) == 0 and len(v) > len(p3):
+    _add_rel(state, key, "means", v[len(p3):])
+# Built-in self-knowledge: hard-coded definitions of the agent's own
+# relation words (documented as hard-coded, never learned). Queried by
+# 'what does X mean' alongside taught means-edges; never persisted.
+_BUILTIN_RELS = [["mean", "means", "the definitional relation: X mean Y says the definition of X is Y"], ["is-in", "means", "the containment relation: X is in Y says X is inside Y"], ["is-a", "means", "the kind relation: X is a Y says X is a kind of Y"], ["has", "means", "the part relation: X has Y says Y is part of X"]]
+# Transitive chain over one predicate: BFS in edge-insertion order,
+# visited set against cycles, depth cap 8. Node identity strips a/an.
+# Returns the path as [[subject, object], ...] or null.
+# A teach reply for a relation sub-pattern reads with the relation word,
+# not the generic 'is': 'remembered cat has whiskers', never
+# 'remembered cat is has whiskers'.
+def _unteach_is(reply, word):
+  p = find(reply, " is " + word + " ")
+  if p < 0:
+    return reply
+  return reply[:p] + " " + word + reply[p + 4 + len(word):]
+def _chain(state, start, pred, goal):
+  g = _stripart(goal)
+  visited = {}
+  queue = [[_stripart(start), []]]
+  qi = 0
+  while qi < len(queue):
+    item = queue[qi]
+    qi = qi + 1
+    node = item[0]
+    path = item[1]
+    if node == g and len(path) > 0:
+      return path
+    if len(path) < 8 and not (node in visited):
+      visited[node] = true
+      for e in state["rels"]:
+        if e[1] == pred and _stripart(e[0]) == node:
+          np = []
+          for pe in path:
+            append(np, pe)
+          append(np, [e[0], e[2]])
+          append(queue, [_stripart(e[2]), np])
+  return null
+# The is-in chain outward from X, cycle-safe: [[subject, object], ...].
+def _where_chain(state, start):
+  node = _stripart(start)
+  path = []
+  visited = {}
+  found = true
+  while not (node in visited) and len(path) < 8 and found:
+    visited[node] = true
+    found = false
+    for e in state["rels"]:
+      if e[1] == "is-in" and _stripart(e[0]) == node and not found:
+        found = true
+        append(path, [e[0], e[2]])
+        node = _stripart(e[2])
+  return path
+def _chain_reply(state, x, pred, y):
+  path = _chain(state, x, pred, y)
+  if path == null:
+    return "not that i know"
+  out = "yes:"
+  for e in path:
+    if pred == "is-in":
+      out = out + " " + e[0] + " is in " + e[1] + ","
+    if pred == "is-a":
+      out = out + " " + e[0] + " is " + e[1] + ","
+  return out[:len(out) - 1]
+def _where_reply(state, x, sep):
+  path = _where_chain(state, x)
+  if len(path) == 0:
+    return _recall(state, x)
+  out = ""
+  for e in path:
+    out = out + e[0] + sep + e[1] + ", "
+  return out[:len(out) - 2]
+def _mean_reply(state, x, sep):
+  defs = []
+  for e in _BUILTIN_RELS:
+    if e[0] == x:
+      append(defs, e[2])
+  for e in state["rels"]:
+    if e[0] == x and e[1] == "means":
+      append(defs, e[2])
+  if len(defs) > 0:
+    return x + sep + _join(defs)
+  return _recall(state, x)
 def _open_reply(state, thing):
   resolved = _resolve(state, thing)
   if resolved != null:
@@ -401,7 +531,7 @@ def _else_reply(state):
   if len(facts) <= 1:
     return "that is all i know about " + state["topic"]
   return "about " + state["topic"] + ": " + _join(facts[1:])
-_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -483,7 +613,40 @@ def respond(state, line):
     k = find(mrest, " is ")
     if k > 0 and k + 4 < len(mrest):
       return _teach(state, mrest[:k], rest[k + 4:])
+    k = find(mrest, " has ")
+    if k > 0 and k + 5 < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "has")
+    k = find(mrest, " อยู่ ")
+    if k > 0 and k + len(" อยู่ ") < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "อยู่")
+    k = find(mrest, " คือ ")
+    if k > 0 and k + len(" คือ ") < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "คือ")
     return "i do not understand"
+  # 'what does X mean' answers from the means relation (taught +
+  # built-in self-knowledge), falling back to taught facts, then miss.
+  if m[:10] == "what does " and len(m) > 15 and m[len(m) - 5:] == " mean":
+    return _mean_reply(state, m[10:len(m) - 5], " means ")
+  # 'is X in Y' / 'is X a Y': transitive check; the shown chain is the
+  # reasoning, and the negative is open-world honest ('not that i know').
+  if m[:3] == "is ":
+    rest3 = m[3:]
+    k = find(rest3, " in ")
+    if k > 0:
+      return _chain_reply(state, rest3[:k], "is-in", rest3[k + 4:])
+    k = find(rest3, " an ")
+    if k > 0:
+      return _chain_reply(state, rest3[:k], "is-a", rest3[k + 4:])
+    k = find(rest3, " a ")
+    if k > 0:
+      return _chain_reply(state, rest3[:k], "is-a", rest3[k + 3:])
+    return "i do not understand"
+  k = find(m, " หมายความว่าอะไร")
+  if k > 0 and k + len(" หมายความว่าอะไร") == len(m):
+    return _mean_reply(state, m[:k], " คือ ")
+  k = find(m, " อยู่ไหน")
+  if k > 0 and k + len(" อยู่ไหน") == len(m):
+    return _where_reply(state, m[:k], " อยู่ ")
   if m[:8] == "what is ":
     return _recall(state, m[8:])
   if m[:12] == "do you know ":
@@ -493,7 +656,7 @@ def respond(state, line):
   if m[:7] == "who is ":
     return _recall(state, m[7:])
   if m[:9] == "where is ":
-    return _recall(state, m[9:])
+    return _where_reply(state, m[9:], " is in ")
   if m[:7] == "forget ":
     return _forget(state, m[7:])
   if m[:4] == "say " and len(text) > 4:
@@ -511,14 +674,29 @@ def respond(state, line):
         key = resolved
       return _teach(state, key, rest[k + 4:])
     return "i do not understand"
+  # The definitional relation, unified across languages:
+  # 'X means Y', 'X หมายความว่า Y', 'X คือ Y' all write the same edge.
+  # A taught-key target also records a paraphrase alias (A3 role);
+  # a free-text target is a plain definition (A9: no longer an error).
+  means_p = ""
   k = find(m, " means ")
-  if k > 0 and k + 7 < len(m):
+  if k > 0:
+    means_p = " means "
+  else:
+    k = find(m, " หมายความว่า ")
+    if k > 0:
+      means_p = " หมายความว่า "
+    else:
+      k = find(m, " คือ ")
+      if k > 0:
+        means_p = " คือ "
+  if k > 0 and k + len(means_p) < len(m):
     phrase = m[:k]
-    target = m[k + 7:]
+    target = m[k + len(means_p):]
     if phrase == target:
       return "i do not understand"
+    _add_rel(state, phrase, "means", target)
     if _has(state, target):
       state["aliases"][phrase] = target
-      return "ok, " + phrase + " means " + target
-    return "i do not know " + target
+    return "ok, " + phrase + means_p + target
   return "i do not understand"

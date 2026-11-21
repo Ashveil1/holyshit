@@ -4,10 +4,27 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.5)
+## What it is today (v0.6)
 
 - An ordered pattern-rule matcher: a fixed set of command patterns is
   checked in order and the first match wins.
+- Relations and small inference: taught facts whose values take a
+  recognized shape also record a relation edge - `remember paris is in
+  france` records (paris is-in france), `remember cat is an animal`
+  records (cat is-a animal, article kept), `remember cat has whiskers`
+  records (cat has whiskers), and Thai `remember แมว อยู่ สวน` /
+  `remember ลิง คือ สัตว์` record the same is-in / means edges.
+  `is paris in europe` then answers by transitive closure over those
+  edges and shows the chain it used (`yes: paris is in france, france
+  is in europe`); a miss is open-world honest (`not that i know`,
+  never a claimed `no`). `where is paris` walks the is-in chain
+  outward, `what does X mean` answers from taught means-edges plus a
+  small hard-coded self-knowledge set defining the agent's own
+  relation words (mean/is-in/is-a/has - documented as hard-coded, not
+  learned), and `<phrase> means <free text>` now defines a phrase
+  directly instead of erroring on unknown targets. `means`,
+  `หมายความว่า` and `คือ` write the same edge. Thai questions get
+  Thai-framed replies (`แมว อยู่ไหน` -> `แมว อยู่ สวน`).
 - A teachable memory: several facts per thing (`remember X is Y` sets,
   `remember X is also Y` adds), user-taught paraphrases
   (`<phrase> means <thing>`), kept in a plain JSON-serializable Dict
@@ -45,16 +62,23 @@ no dependencies beyond the language itself.
   taught fact, and membership checks use a key set instead of walking
   the key list (see the benchmark section). Both are rebuilt on load
   and maintained on teach/forget; neither is persisted.
+- Relation edges (`rels`) persist in the v4 store format; pre-v4
+  files re-derive them from their fact shapes on load, and the
+  built-in self-knowledge edges are never persisted.
 - Pure and portable: the core never does IO. `respond(state, line)`
   returns a reply, so the same core can later run freestanding in the
   kernel. Memory footprint is a few KB plus exactly what it was taught.
 
 Commands: `remember <thing> is <fact>`, `remember <thing> is also <fact>`,
-`no, <thing> is <fact>` (correction), `what is <thing>` (aliases:
-`do you know`, `tell me about`, `who is`, `where is`),
-`what do you know about <thing>`, `how is <thing>`, `why is <thing>`,
-`when is <thing>`, `how about <thing>`, `tell me everything about <thing>`,
-`เกี่ยวกับ <thing>`, `<thing> คืออะไร`, `and <thing>`, `what else`,
+`remember <thing> has <part>`, `no, <thing> is <fact>` (correction),
+`what is <thing>` (aliases: `do you know`, `tell me about`, `who is`),
+`is <thing> in <thing>`, `is <thing> a <kind>`, `where is <thing>`
+(is-in chain), `what does <thing> mean` (means relation + built-in
+self-knowledge), `what do you know about <thing>`, `how is <thing>`,
+`why is <thing>`, `when is <thing>`, `how about <thing>`,
+`tell me everything about <thing>`,
+`เกี่ยวกับ <thing>`, `<thing> คืออะไร`, `<thing> หมายความว่าอะไร`,
+`<thing> อยู่ไหน`, `and <thing>`, `what else`,
 `anything else`, `what about it`, `<phrase> means <thing>`,
 `forget <thing>`, `forget it`, `note <text>`, `notes`, `clear notes`,
 `list`, `say <text>`, `help`, plus fixed pleasantries (hello/hi/hey,
@@ -62,7 +86,7 @@ how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุ�
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (A7 core, measured at 3ffc4b1 + keyset)
+## Hosted resource benchmark (measured at A7, 3ffc4b1 + keyset)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -76,8 +100,9 @@ conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
 Current numbers (A7, keyset membership + word index; unchanged by the
-A8 dialogue rules, which add only constant-time pattern checks - the
-quick gate confirms), with the A5
+A8 dialogue rules and the A9 relation rules, which add a constant-time
+edge check per teach and a depth-capped breadth-first walk only on the
+new inference questions - the quick gate confirms), with the A5
 pre-index baseline in parentheses where it differs:
 
 | backend | facts | miss (A5) | recall (A6) | startup | peak RSS |
@@ -109,9 +134,12 @@ Honest readings:
   10k facts because it rebuilds the index while loading (native: 0.38
   s). The on-disk format is unchanged - index and keyset are derived,
   never persisted.
-- The held-out Thai/English dialogue (30 lines: 7 recalls incl. alias
-  and Thai, 2 clarifications, 3 honest misses, 1 correction, 2
-  pleasantries, 2 open questions, 2 topic chains) scores
+- The held-out Thai/English dialogue (40 lines: 7 recalls incl. alias
+  and Thai, 4 clarifications, 3 honest misses, 1 correction, 2
+  pleasantries, 2 open questions, 2 topic chains, 6 inference checks
+  covering a two-hop transitive chain with the reasoning shown, an
+  open-world negative, a where-is chain walk, taught and built-in
+  word meanings, and a Thai where-is) scores
   full marks on both backends at every stage - behavior did not move,
   only its cost. Small sample: a smoke check, not an accuracy study.
 
@@ -121,10 +149,17 @@ smoke run in CI; the full run is manual.
 ## What it is not
 
 It is not a language model and does not understand language. It cannot
-answer anything it was not taught, cannot generalize, matching is
+answer anything it was not taught, cannot generalize beyond the one
+inference it has (transitive closure over explicitly taught is-in/is-a
+edges, shown in its replies so the reasoning is inspectable, with
+open-world negatives), matching is
 literal ASCII word matching plus non-ASCII substring matching,
 "associations" are shared words between taught values, and its
-clarifications are word-overlap guesses. Thai substring matches can be
+clarifications are word-overlap guesses. The `what does X mean`
+self-knowledge for its own relation words is hard-coded text, not
+learned understanding, and an is-a object keeps the article it was
+taught with (teach `a animal` and the chain says `a animal` back -
+it echoes, it does not know grammar). Thai substring matches can be
 loose in ways a speaker would notice (a short taught key can match an
 unrelated longer word that merely contains it). Open questions get
 taught facts read back, never an answer to the actual how/why/when,
