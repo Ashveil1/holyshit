@@ -809,17 +809,29 @@ def _read_find(state, s, p, o):
       return i
     i = i + 1
   return -1
+# A17: primary skip-reason classification, mutually exclusive, one
+# count per segment, precedence quoted/attributed > modal/hedged >
+# multi-clause. The modal class is MODAL_HEDGED_UNSUPPORTED: hedging
+# words are skipped whole, while the supported 'can' forms keep
+# extracting. Skips are counted and reported, never guessed around.
 def _read_skip(sent):
-  # Multi-clause, quoted/attributed, and modal/hedged segments are
-  # skipped whole: never extract a claim the sentence may negate or
-  # qualify. Skips are counted and reported, never guessed around.
-  if find(sent, ",") >= 0 or find(sent, ";") >= 0:
-    return true
   if find(sent, "\"") >= 0 or find(sent, "'") >= 0:
-    return true
+    return "quoted"
   ls = " " + lower_ascii(sent) + " "
+  if find(ls, " says ") >= 0 or find(ls, " said ") >= 0 or find(ls, " according to ") >= 0:
+    return "quoted"
   for w in [" might ", " may ", " could ", " should ", " would ", " must ", " probably ", " maybe ", " perhaps "]:
     if find(ls, w) >= 0:
+      return "modal-hedged"
+  if find(sent, ",") >= 0 or find(sent, ";") >= 0:
+    return "multi-clause"
+  return ""
+
+# Personal-pronoun (and 'there') subjects need anaphora resolution,
+# which A17 does not do: no extraction, counted as unmatched.
+def _read_pron(subj):
+  for w in ["i", "you", "he", "she", "it", "we", "they", "there"]:
+    if subj == w:
       return true
   return false
 # Extract one typed claim from a whole segment, or null. A pattern
@@ -829,9 +841,7 @@ def _read_skip(sent):
 # exactly, so user teaching matches read candidates. 'can produce'
 # stays distinct from 'produces'; negation scope is preserved as
 # polarity on the record, never dropped.
-def _read_extract(sent):
-  if _read_skip(sent):
-    return null
+def _read_extract0(sent):
   ls = lower_ascii(sent)
   k = find(sent, " ไม่เป็น ")
   if k > 0 and k + len(" ไม่เป็น ") < len(sent):
@@ -854,7 +864,7 @@ def _read_extract(sent):
   # objects keep their leading article, matching taught relations
   k = find(ls, " is in ")
   if k > 0 and k + 7 < len(ls):
-    return [ls[:k], "is-in", ls[k + 6:], "pos", "is-in"]
+    return [ls[:k], "is-in", ls[k + 7:], "pos", "is-in"]
   k = find(ls, " is a ")
   if k > 0 and k + 6 < len(ls):
     return [ls[:k], "is-a", ls[k + 4:], "pos", "is-a"]
@@ -867,6 +877,23 @@ def _read_extract(sent):
   k = find(ls, " has ")
   if k > 0 and k + 6 < len(ls):
     return [ls[:k], "has", ls[k + 5:], "pos", "has"]
+  # A17: plural forms, distinct registered pattern ids, same
+  # teachable predicates. Negatives before positives.
+  k = find(ls, " do not have ")
+  if k > 0 and k + 13 < len(ls):
+    return [ls[:k], "has", ls[k + 13:], "neg", "not-have"]
+  k = find(ls, " does not have ")
+  if k > 0 and k + 15 < len(ls):
+    return [ls[:k], "has", ls[k + 15:], "neg", "not-have"]
+  k = find(ls, " are not ")
+  if k > 0 and k + 9 < len(ls):
+    return [ls[:k], "is-a", ls[k + 9:], "neg", "not-are"]
+  k = find(ls, " are ")
+  if k > 0 and k + 5 < len(ls):
+    return [ls[:k], "is-a", ls[k + 5:], "pos", "are"]
+  k = find(ls, " have ")
+  if k > 0 and k + 6 < len(ls):
+    return [ls[:k], "has", ls[k + 6:], "pos", "have"]
   for vt in _VERBT:
     k = find(ls, vt[0])
     if k > 0 and k + len(vt[0]) < len(ls):
@@ -877,8 +904,13 @@ def _read_extract(sent):
   return null
 # Reject an extraction whose object contains another clause's
 # relation marker ('a car is a machine and a motorcycle is not').
+def _read_extract(sent):
+  ex = _read_extract0(sent)
+  if ex != null and _read_pron(ex[0]):
+    return null
+  return ex
 def _read_obj_ok(ex):
-  if find(ex[2], " is ") >= 0:
+  if find(ex[2], " is ") >= 0 or find(ex[2], " and ") >= 0:
     return false
   return true
 # Ingest one read payload: split into segments, extract whole-
@@ -929,36 +961,70 @@ def _read_text(state, rest):
   upd = 0
   ref = 0
   dup = 0
+  sk_q = 0
+  sk_m = 0
+  sk_c = 0
+  um = 0
   for sent in segs:
-    ex = _read_extract(sent)
-    if ex != null and _read_obj_ok(ex):
-      matched = matched + 1
-      ri2 = _read_find(state, ex[0], ex[1], ex[2])
-      if ri2 >= 0:
-        r = state["readings"][ri2]
-        side = r[3]
-        if ex[3] == "neg":
-          side = r[4]
-        seen = false
-        for se in side:
-          if se[0] == src:
-            seen = true
-        if seen:
-          dup = dup + 1
-        else:
-          append(side, [src, sent, ex[4]])
-          upd = upd + 1
-      else:
-        if len(state["readings"]) >= _READ_CAP:
-          ref = ref + 1
-        else:
-          entry = [src, sent, ex[4]]
-          if ex[3] == "neg":
-            append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], "", ""])
+    sk = _read_skip(sent)
+    if sk == "quoted":
+      sk_q = sk_q + 1
+    elif sk == "modal-hedged":
+      sk_m = sk_m + 1
+    else:
+      exs = []
+      if sk == "":
+        ka = find(lower_ascii(sent), " and ")
+        if ka > 0:
+          # A17 conjunction: split at the FIRST exact ' and ' (never
+          # inside quotes: the quoted skip already ran), each side
+          # must match a complete registered pattern, strictly
+          # atomic, no recursion. Spans are the side texts.
+          exl = _read_extract(sent[:ka])
+          exr = _read_extract(sent[ka + 5:])
+          if exl != null and exr != null and _read_obj_ok(exl) and _read_obj_ok(exr):
+            append(exs, [exl, sent[:ka]])
+            append(exs, [exr, sent[ka + 5:]])
           else:
-            append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", ""])
-          newc = newc + 1
-  return src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(len(segs) - matched) + " unmatched segments"
+            sk = "multi-clause"
+        else:
+          ex = _read_extract(sent)
+          if ex != null and _read_obj_ok(ex):
+            append(exs, [ex, sent])
+          else:
+            um = um + 1
+      if sk == "multi-clause":
+        sk_c = sk_c + 1
+      for pair in exs:
+        ex = pair[0]
+        span = pair[1]
+        matched = matched + 1
+        ri2 = _read_find(state, ex[0], ex[1], ex[2])
+        if ri2 >= 0:
+          r = state["readings"][ri2]
+          side = r[3]
+          if ex[3] == "neg":
+            side = r[4]
+          seen = false
+          for se in side:
+            if se[0] == src:
+              seen = true
+          if seen:
+            dup = dup + 1
+          else:
+            append(side, [src, span, ex[4]])
+            upd = upd + 1
+        else:
+          if len(state["readings"]) >= _READ_CAP:
+            ref = ref + 1
+          else:
+            entry = [src, span, ex[4]]
+            if ex[3] == "neg":
+              append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], "", ""])
+            else:
+              append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", ""])
+            newc = newc + 1
+  return src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c) + " skipped (" + str(sk_q) + " quoted, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause), " + str(um) + " unmatched"
 def _read_ids(side):
   out = ""
   for se in side:
@@ -1139,6 +1205,16 @@ def _learn_rel(state, key, value):
     got = true
   if p == "has " and len(value) > 4:
     _add_rel(state, key, "has", lower_ascii(value)[4:])
+    got = true
+  # A17: plural value shapes, matching the reader's plural patterns.
+  if lower_ascii(value[:8]) == "are not " and len(value) > 8:
+    _add_rel(state, key, "not-is-a", lower_ascii(value)[8:])
+    return false
+  if p == "are " and len(value) > 4:
+    _add_rel(state, key, "is-a", lower_ascii(value)[4:])
+    got = true
+  if lower_ascii(value[:5]) == "have " and len(value) > 5:
+    _add_rel(state, key, "has", lower_ascii(value)[5:])
     got = true
   p1 = "อยู่ "
   if find(value, p1) == 0 and len(value) > len(p1):
@@ -1942,6 +2018,23 @@ def respond(state, line):
     k = find(mrest, " has ")
     if k > 0 and k + 5 < len(mrest):
       return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "has")
+    # A17: plural teach forms, mirroring the singular routes so every
+    # plural reading has a supported teaching shape.
+    k = find(mrest, " do not have ")
+    if k > 0 and k + 13 < len(mrest):
+      return _teach_verb(state, mrest[:k], "has", mrest[k + 13:], true)
+    k = find(mrest, " does not have ")
+    if k > 0 and k + 15 < len(mrest):
+      return _teach_verb(state, mrest[:k], "has", mrest[k + 15:], true)
+    k = find(mrest, " are not ")
+    if k > 0 and k + 9 < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "are not")
+    k = find(mrest, " have ")
+    if k > 0 and k + 6 < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "have")
+    k = find(mrest, " are ")
+    if k > 0 and k + 5 < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "are")
     k = find(mrest, " อยู่ ")
     if k > 0 and k + len(" อยู่ ") < len(mrest):
       return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "อยู่")

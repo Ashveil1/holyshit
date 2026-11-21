@@ -402,22 +402,33 @@ class Oracle:
         return -1
 
     def _read_skip(self, sent):
-        # Multi-clause, quoted/attributed, and modal/hedged segments
-        # are skipped whole.
-        if ',' in sent or ';' in sent:
-            return True
+        # A17: primary skip-reason, precedence quoted/attributed >
+        # modal/hedged > multi-clause, one count per segment.
         if '"' in sent or "'" in sent:
-            return True
+            return 'quoted'
         ls = ' ' + lower_ascii(sent) + ' '
+        if (' says ' in ls or ' said ' in ls or
+                ' according to ' in ls):
+            return 'quoted'
         for w in (' might ', ' may ', ' could ', ' should ', ' would ',
                   ' must ', ' probably ', ' maybe ', ' perhaps '):
             if w in ls:
-                return True
-        return False
+                return 'modal-hedged'
+        if ',' in sent or ';' in sent:
+            return 'multi-clause'
+        return ''
+
+    def _read_pron(self, subj):
+        return subj in ('i', 'you', 'he', 'she', 'it', 'we', 'they',
+                        'there')
 
     def _read_extract(self, sent):
-        if self._read_skip(sent):
+        ex = self._read_extract0(sent)
+        if ex is not None and self._read_pron(ex[0]):
             return None
+        return ex
+
+    def _read_extract0(self, sent):
         ls = lower_ascii(sent)
         for marker, pred, pol, pid in (
                 (' ไม่เป็น ', 'is-a', 'neg', 'thai-not-is-a'),
@@ -428,16 +439,24 @@ class Oracle:
             if k > 0 and k + len(marker) < len(sent):
                 return [sent[:k], pred, sent[k + len(marker):], pol, pid]
         # objects keep their leading article, matching taught relations
-        for marker, pred, pol, pid, off, extra in (
-                (' is not a ', 'is-a', 'neg', 'not-is-a', 8, 1),
-                (' is not an ', 'is-a', 'neg', 'not-is-a', 8, 1),
-                (' is in ', 'is-in', 'pos', 'is-in', 6, 1),
-                (' is a ', 'is-a', 'pos', 'is-a', 4, 0),
-                (' is an ', 'is-a', 'pos', 'is-a', 4, 0),
-                (' is ', 'is-a', 'pos', 'is-a-bare', 4, 0),
-                (' has ', 'has', 'pos', 'has', 5, 1)):
+        # A17: plural forms registered with distinct pattern ids,
+        # negatives before positives. The trailing constant is the
+        # exact minimum-length guard, mirroring core.holy.
+        for marker, pred, pol, pid, off, guard in (
+                (' is not a ', 'is-a', 'neg', 'not-is-a', 8, 11),
+                (' is not an ', 'is-a', 'neg', 'not-is-a', 8, 12),
+                (' is in ', 'is-in', 'pos', 'is-in', 7, 7),
+                (' is a ', 'is-a', 'pos', 'is-a', 4, 6),
+                (' is an ', 'is-a', 'pos', 'is-a', 4, 7),
+                (' is ', 'is-a', 'pos', 'is-a-bare', 4, 4),
+                (' has ', 'has', 'pos', 'has', 5, 6),
+                (' do not have ', 'has', 'neg', 'not-have', 13, 13),
+                (' does not have ', 'has', 'neg', 'not-have', 15, 15),
+                (' are not ', 'is-a', 'neg', 'not-are', 9, 9),
+                (' are ', 'is-a', 'pos', 'are', 5, 5),
+                (' have ', 'has', 'pos', 'have', 6, 6)):
             k = ls.find(marker)
-            if k > 0 and k + len(marker) + extra < len(ls):
+            if k > 0 and k + guard < len(ls):
                 return [ls[:k], pred, ls[k + off:], pol, pid]
         for marker, pred, neg in VERBT:
             k = ls.find(marker)
@@ -447,7 +466,7 @@ class Oracle:
         return None
 
     def _read_obj_ok(self, ex):
-        return ' is ' not in ex[2]
+        return ' is ' not in ex[2] and ' and ' not in ex[2]
 
     def _read_ids(self, side):
         out = ''
@@ -485,36 +504,68 @@ class Oracle:
         if cur:
             segs.append(cur)
         matched = newc = upd = ref = dup = 0
+        sk_q = sk_m = sk_c = um = 0
         for sent in segs:
-            ex = self._read_extract(sent)
-            if ex is not None and self._read_obj_ok(ex):
-                matched += 1
-                ri2 = self._read_find(ex[0], ex[1], ex[2])
-                if ri2 >= 0:
-                    r = self.readings[ri2]
-                    side = r[3] if ex[3] == 'pos' else r[4]
-                    if any(se[0] == src for se in side):
-                        dup += 1
+            sk = self._read_skip(sent)
+            if sk == 'quoted':
+                sk_q += 1
+            elif sk == 'modal-hedged':
+                sk_m += 1
+            else:
+                exs = []
+                if not sk:
+                    ka = lower_ascii(sent).find(' and ')
+                    if ka > 0:
+                        # A17: split at the FIRST exact ' and ', both
+                        # sides must match, strictly atomic, no
+                        # recursion, spans are the side texts.
+                        exl = self._read_extract(sent[:ka])
+                        exr = self._read_extract(sent[ka + 5:])
+                        if (exl is not None and exr is not None and
+                                self._read_obj_ok(exl) and
+                                self._read_obj_ok(exr)):
+                            exs.append([exl, sent[:ka]])
+                            exs.append([exr, sent[ka + 5:]])
+                        else:
+                            sk = 'multi-clause'
                     else:
-                        side.append([src, sent, ex[4]])
-                        upd += 1
-                elif len(self.readings) >= _READ_CAP:
-                    ref += 1
-                else:
-                    entry = [src, sent, ex[4]]
-                    if ex[3] == 'neg':
-                        self.readings.append(
-                            [ex[0], ex[1], ex[2], [], [entry], '', ''])
+                        ex = self._read_extract(sent)
+                        if ex is not None and self._read_obj_ok(ex):
+                            exs.append([ex, sent])
+                        else:
+                            um += 1
+                if sk == 'multi-clause':
+                    sk_c += 1
+                for ex, span in exs:
+                    matched += 1
+                    ri2 = self._read_find(ex[0], ex[1], ex[2])
+                    if ri2 >= 0:
+                        r = self.readings[ri2]
+                        side = r[3] if ex[3] == 'pos' else r[4]
+                        if any(se[0] == src for se in side):
+                            dup += 1
+                        else:
+                            side.append([src, span, ex[4]])
+                            upd += 1
+                    elif len(self.readings) >= _READ_CAP:
+                        ref += 1
                     else:
-                        self.readings.append(
-                            [ex[0], ex[1], ex[2], [entry], [], '', ''])
-                    newc += 1
+                        entry = [src, span, ex[4]]
+                        if ex[3] == 'neg':
+                            self.readings.append(
+                                [ex[0], ex[1], ex[2], [], [entry], '', ''])
+                        else:
+                            self.readings.append(
+                                [ex[0], ex[1], ex[2], [entry], [], '', ''])
+                        newc += 1
         return (src + ': ' + str(len(segs)) + ' segments in, ' +
                 str(matched) + ' pattern matches, ' + str(matched) +
                 ' candidates extracted (' + str(newc) + ' new, ' +
                 str(upd) + ' updated, ' + str(ref) + ' refused, ' +
-                str(dup) + ' repeat), ' + str(len(segs) - matched) +
-                ' unmatched segments')
+                str(dup) + ' repeat), ' + str(sk_q + sk_m + sk_c) +
+                ' skipped (' + str(sk_q) + ' quoted, ' + str(sk_m) +
+                ' modal-hedged, ' + str(sk_c) + ' multi-clause), ' +
+                str(um) + ' unmatched')
 
     def _readings_reply(self, about, detail):
         rs = self.readings
@@ -605,6 +656,16 @@ class Oracle:
             got = True
         if v[:4] == 'has ' and len(v) > 4:
             self._add_rel(key, 'has', v[4:])
+            got = True
+        # A17: plural value shapes, matching the reader patterns.
+        if v[:8] == 'are not ' and len(v) > 8:
+            self._add_rel(key, 'not-is-a', v[8:])
+            return False
+        if v[:4] == 'are ' and len(v) > 4:
+            self._add_rel(key, 'is-a', v[4:])
+            got = True
+        if v[:5] == 'have ' and len(v) > 5:
+            self._add_rel(key, 'has', v[5:])
             got = True
         for p, pred in (('อยู่ ', 'is-in'), ('คือ ', 'means'),
                         ('หมายความว่า ', 'means'), ('เป็น ', 'is-a')):
@@ -1212,6 +1273,22 @@ class Oracle:
             k = mrest.find(' has ')
             if k > 0 and k + 5 < len(mrest):
                 return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'has')
+            # A17: plural teach forms mirroring the singular routes.
+            k = mrest.find(' do not have ')
+            if k > 0 and k + 13 < len(mrest):
+                return self._teach_verb(mrest[:k], 'has', mrest[k + 13:], True)
+            k = mrest.find(' does not have ')
+            if k > 0 and k + 15 < len(mrest):
+                return self._teach_verb(mrest[:k], 'has', mrest[k + 15:], True)
+            k = mrest.find(' are not ')
+            if k > 0 and k + 9 < len(mrest):
+                return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'are not')
+            k = mrest.find(' have ')
+            if k > 0 and k + 6 < len(mrest):
+                return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'have')
+            k = mrest.find(' are ')
+            if k > 0 and k + 5 < len(mrest):
+                return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'are')
             k = mrest.find(' อยู่ ')
             if k > 0 and k + len(' อยู่ ') < len(mrest):
                 return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'อยู่')
