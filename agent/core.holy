@@ -826,7 +826,6 @@ def _read_skip(sent):
   if find(sent, ",") >= 0 or find(sent, ";") >= 0:
     return "multi-clause"
   return ""
-
 # Personal-pronoun (and 'there') subjects need anaphora resolution,
 # which A17 does not do: no extraction, counted as unmatched.
 def _read_pron(subj):

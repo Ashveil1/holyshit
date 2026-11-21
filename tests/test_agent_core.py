@@ -2175,8 +2175,38 @@ A16_SCENARIOS = [
      'clear readings', 'readings', 'readings detail'],
 ]
 
+A17_SCENARIOS = [
+    # 1. Skip-class precedence: attribution counts as quoted even
+    # with a modal present; modal beats the multi-clause class.
+    ['read the guide says a kiwi might be a bird. a bat is a bird',
+     'read a car, it seems, might fly. a frog is an animal',
+     'readings'],
+    # 2. The modal-hedged class never swallows supported can forms.
+    ['read a car can fly. a plane cannot swim', 'readings'],
+    # 3. Conjunction: first ' and ' split, both sides extract, spans
+    # are the side texts.
+    ['read a car is a machine and a bike is a vehicle', 'readings',
+     'readings detail'],
+    # 4. Conjunction is strictly atomic: one failing side skips the
+    # whole segment as multi-clause.
+    ['read a car is red and fast. a car is a machine and it is fast',
+     'readings'],
+    # 5. Plural patterns, distinct ids and polarity.
+    ['read robots are machines. cats are not dogs. birds have wings. snakes do not have legs',
+     'readings'],
+    # 6. Plural teach forms confirm plural readings; the is-in fix
+    # lets a taught is-in edge confirm a read one.
+    ['read wiki: robots are machines. paris is in france',
+     'remember robots are machines',
+     'remember paris is in france', 'readings'],
+    # 7. Pronoun and existential subjects are unmatched, never
+    # guessed.
+    ['read there are seven continents on earth. you are what you eat',
+     'readings'],
+]
+
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
-            A15_SCENARIOS + A16_SCENARIOS):
+            A15_SCENARIOS + A16_SCENARIOS + A17_SCENARIOS):
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))
