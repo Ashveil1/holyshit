@@ -28,7 +28,7 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 | `E011` | `json_parse not in x64 subset` | using `json_*` on the x64 side | see `x64-subset.md` |
 | `E012` | `cannot find module '<m>'` | `import` cannot find the file | set `HSPATH` to point at the module's directory |
 
-## interp.py - interpreter + parser (every language error) (248)
+## interp.py - interpreter + parser (every language error) (254)
 
 - `'in <Str>' needs a Str, got {tname(x)}`
 - `'in' needs a Str, List or Dict, got {tname(c)}`
@@ -125,7 +125,10 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `circular import '{name}'`
 - `close wants close(f)`
 - `collections not allowed in unsafe (use alloc/load/store)`
+- `connect blocked: private address`
+- `connect timeout`
 - `contains wants contains(container, x)`
+- `deadline exceeded`
 - `def not allowed in unsafe`
 - `default args are not supported on methods`
 - `dict key must be Str or Int`
@@ -160,11 +163,12 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `http status {status}`
 - `http_get bad port in url`
 - `http_get bad url`
-- `http_get connect failed: {e.strerror or e}`
 - `http_get failed: {e.strerror or e}`
 - `http_get got a bad response`
+- `http_get incomplete response`
 - `http_get wants an http:// url (no https in v1)`
 - `http_get wants http_get(url)`
+- `idle timeout`
 - `in module '{name}': {e.msg}`
 - `inconsistent indent`
 - `index must be Int`
@@ -242,7 +246,6 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `tcp_accept failed: {e.strerror or e}`
 - `tcp_accept wants tcp_accept(sock)`
 - `tcp_close wants tcp_close(sock)`
-- `tcp_connect failed: {e.strerror or e}`
 - `tcp_connect wants tcp_connect(host, port)`
 - `tcp_listen failed: {e.strerror or e}`
 - `tcp_listen wants tcp_listen(port)`
@@ -277,6 +280,9 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p, v)`
 - `{want}`
 - `{want} arg count mismatch`
+- `{what} failed: cannot resolve '{host}'`
+- `{what} failed: cannot resolve '{host}': {e}`
+- `{what} failed: {last.strerror or last}`
 - `{what} wants an open socket`
 
 ## hs.py - native backend via gcc (83)
@@ -668,4 +674,4 @@ Find your error: `python3 scripts/lsp_client.py --diag prog.holy`
 - `{name} wants {name}(p)`
 - `{name} wants {name}(p, v)`
 
-622 messages total - duplicates across files are counted once per file
+628 messages total - duplicates across files are counted once per file
