@@ -45,6 +45,7 @@ SUITES = [
     ("test_std_str.py", "pure-hs std.str text helpers across reference/IR/native routes"),
     ("test_std_fmt.py", "pure-hs std.fmt string formatting across reference/IR/native routes"),
     ("test_std_list.py", "pure-hs std.list everyday helpers across reference/IR/native routes"),
+    ("test_agent_core.py", "pure-hs local agent core vs Python oracle across reference/IR/native routes"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),
     ("test_parselib_builtins.py", "parselib BUILTINS reserved-name sync with interp"),

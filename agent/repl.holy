@@ -1,0 +1,28 @@
+# agent/repl.holy — chat with the local agent in a terminal.
+#
+# Run from the repo root:  hs run agent/repl.holy
+# (or: python3 interp.py agent/repl.holy)
+#
+# Memory persists to agent-memory.json in the current directory when the
+# chat ends (type `quit`, or ctrl-d). Type `help` inside for commands.
+# This is a thin IO shell: every reply comes from agent.core.respond.
+import agent.core
+import agent.store
+path = "agent-memory.json"
+state = agent.store.load(path)
+print "holyshit agent v0.1 - type 'help' for commands, 'quit' to leave"
+done = false
+while not done:
+  line = ""
+  try:
+    line = input()
+  except:
+    done = true
+  if not done:
+    m = agent.core.lower_ascii(agent.core.normalize(line))
+    if m == "quit" or m == "exit":
+      done = true
+    else:
+      print agent.core.respond(state, line)
+agent.store.save(state, path)
+print "bye"

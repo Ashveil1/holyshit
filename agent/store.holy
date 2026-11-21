@@ -1,0 +1,19 @@
+# agent/store.holy — hosted persistence edge for the agent core.
+#
+# The core (agent/core.holy) is pure and never touches the filesystem;
+# this module is the thin hosted-only shell that saves and loads the
+# state Dict as JSON. A missing or unreadable/corrupt file loads as a
+# fresh empty state rather than crashing the chat.
+import agent.core
+def load(path):
+  if not exists(path):
+    return agent.core.new_state()
+  try:
+    data = json_load(path)
+    facts = data["facts"]
+    order = data["order"]
+    return {"facts": facts, "order": order}
+  except:
+    return agent.core.new_state()
+def save(state, path):
+  json_save(path, state)
