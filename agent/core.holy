@@ -61,7 +61,7 @@ def lower_ascii(s):
   return out
 def new_state():
   # mode is session-only (like notes): strict unless the user explores.
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict"}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": []}
 def _has(state, key):
   # O(1) membership; keyset mirrors order exactly (built from it on
   # load, maintained on teach/forget), including for hand-edited files.
@@ -726,6 +726,74 @@ def _rel_index(state, s, p, o):
   if not (ns in state["relby"][p]):
     state["relby"][p][ns] = []
   append(state["relby"][p][ns], [s, o])
+# A15: bounded hypothesis learning. Explore-mode assumptions become
+# named, inspectable candidates - the missing knowledge the engine
+# leans on - exposed so the user can resolve it. A candidate is NEVER
+# a fact: nothing reads this list for inference, guards, recall,
+# contradictions or suggestions, and strict mode records nothing.
+# Hard stop at 20 with no auto-eviction (age or count cannot prove an
+# unresolved assumption safe to destroy); 'forget hypothesis ...' or
+# 'clear hypotheses' frees space. Session-only, like notes and mode.
+_HYP_CAP = 20
+_HYP_PROV_CAP = 10
+
+def _hyp_find(state, subj, domain):
+  i = 0
+  while i < len(state["hypotheses"]):
+    if state["hypotheses"][i][0] == subj and state["hypotheses"][i][1] == domain:
+      return i
+    i = i + 1
+  return -1
+
+# Record one derivation's assumptions: at most one count per
+# (subject, domain) per derivation, even when the same assumption is
+# used at several steps. Returns true when every candidate was
+# recorded; false means the list is full and some were rejected.
+def _hyp_record(state, q, assum):
+  order = []
+  by = {}
+  for a in assum:
+    mk = a[0] + "|" + a[1]
+    if mk in by:
+      by[mk][2] = by[mk][2] + ", " + a[3]
+      by[mk][3] = by[mk][3] + ", " + str(a[2])
+    else:
+      by[mk] = [a[0], a[1], a[3], str(a[2])]
+      append(order, mk)
+  ok = true
+  for mk in order:
+    c = by[mk]
+    ev = [q, c[2], c[3]]
+    i = _hyp_find(state, c[0], c[1])
+    if i >= 0:
+      h = state["hypotheses"][i]
+      h[2] = h[2] + 1
+      if len(h[4]) < _HYP_PROV_CAP:
+        append(h[4], ev)
+      else:
+        h[5] = h[5] + 1
+    else:
+      if len(state["hypotheses"]) >= _HYP_CAP:
+        ok = false
+      else:
+        append(state["hypotheses"], [c[0], c[1], 1, ev, [], 0])
+  return ok
+
+def _hyp_retire(state, s, domain, reason):
+  i = _hyp_find(state, s, domain)
+  if i >= 0:
+    h = state["hypotheses"][i]
+    append(state["hyp_retired"], [h[0], h[1], reason])
+    if len(state["hyp_retired"]) > 10:
+      state["hyp_retired"] = state["hyp_retired"][len(state["hyp_retired"]) - 10:]
+    state["hypotheses"] = state["hypotheses"][:i] + state["hypotheses"][i + 1:]
+
+def _hyp_q(x, pred, y):
+  if pred == "can":
+    return "can " + x + " " + y
+  # 'does X use energy' - the verb base form drops the trailing s.
+  return "does " + x + " " + pred[:len(pred) - 1] + " " + y
+
 def _add_rel(state, s, p, o):
   if s in state["relset"]:
     if p in state["relset"][s]:
@@ -733,6 +801,23 @@ def _add_rel(state, s, p, o):
         return
   append(state["rels"], [s, p, o])
   _rel_index(state, s, p, o)
+  # A15: a taught domain verdict retires a matching hypothesis
+  # (positive AND negative both retire; a taught conflict stays in
+  # the edges, never resolved).
+  if p == "is-a" or p == "not-is-a":
+    d = o
+    if d[:2] == "a ":
+      d = d[2:]
+    else:
+      if d[:3] == "an ":
+        d = d[3:]
+      else:
+        if d[:4] == "the ":
+          d = d[4:]
+    if p == "is-a":
+      _hyp_retire(state, s, d, "taught positive")
+    else:
+      _hyp_retire(state, s, d, "taught negative")
 def _drop_rels(state, key):
   kept = []
   for e in state["rels"]:
@@ -1229,7 +1314,7 @@ def _proof_steps(proof, steps, done, assum):
     line = line + "]"
     append(steps, "(" + str(len(steps) + 1) + ") " + line)
     if proof[6][0] == "assume":
-      append(assum, [proof[4][0], proof[6][2], len(steps)])
+      append(assum, [proof[4][0], proof[6][2], len(steps), proof[1]])
   return t
 def _derive_render(state, x, pred, y, d):
   if d[0] == "rule" or d[0] == "rule-both":
@@ -1270,6 +1355,10 @@ def _derive_render(state, x, pred, y, d):
       while i < len(merged):
         out = out + "\n(" + labels[i] + ") " + merged[i][0] + " is a " + merged[i][1] + " - assumed at step " + merged[i][2] + ", unverified"
         i = i + 1
+      # A15: these assumptions are hypothesis candidates. (assum is
+      # non-empty only in explore mode - strict records nothing.)
+      if not _hyp_record(state, _hyp_q(x, pred, y), assum):
+        out = out + "\n(hypothesis list full - teach or forget hypotheses to free space)"
     return out
   # Nothing derived: explain when a domain guard stopped a rule that
   # otherwise had premises. The three kinds stay distinct, and a
@@ -1282,6 +1371,43 @@ def _derive_render(state, x, pred, y, d):
       return "not that i know - rule " + f[0] + " applies only to " + f[2] + "s, and " + f[1] + " is not a " + f[2]
     return "not that i know - rule " + f[0] + " applies only to " + f[2] + "s, and i was taught both that " + f[1] + " is and is not a " + f[2]
   return _inherit_reply(state, x, pred, y)
+# A15 listing: entries are labelled as unresolved candidates, never
+# recommendations or beliefs. Detail mode shows the creation event
+# and the most recent uses (older ones marked omitted).
+def _hyp_reply(state, detail):
+  hs = state["hypotheses"]
+  out = ""
+  if len(hs) == 0:
+    out = "no open hypotheses"
+  else:
+    if len(hs) == 1:
+      out = "1 open hypothesis (unresolved candidates, not beliefs):"
+    else:
+      out = str(len(hs)) + " open hypotheses (unresolved candidates, not beliefs):"
+    labels = "abcdefghijklmnopqrst"
+    i = 0
+    while i < len(hs):
+      h = hs[i]
+      out = out + "\n(" + labels[i] + ") " + h[0] + " is a " + h[1] + " - assumed "
+      if h[2] == 1:
+        out = out + "once"
+      else:
+        out = out + str(h[2]) + " times"
+      out = out + ", first for '" + h[3][0] + "'"
+      if detail:
+        out = out + "\n  created for '" + h[3][0] + "' [explore, rule " + h[3][1] + ", step " + h[3][2] + "]"
+        for ev in h[4]:
+          out = out + "\n  used for '" + ev[0] + "' [explore, rule " + ev[1] + ", step " + ev[2] + "]"
+        if h[5] > 0:
+          out = out + "\n  (+" + str(h[5]) + " older uses omitted)"
+      i = i + 1
+  first = true
+  for r in state["hyp_retired"]:
+    if first:
+      out = out + "\nrecently retired:"
+      first = false
+    out = out + "\n- " + r[0] + " is a " + r[1] + " (" + r[2] + ")"
+  return out
 def _derive_reply(state, x, pred, y):
   return _derive_render(state, x, pred, y, _derive(state, x, pred, y))
 # A13: parse 'remember <subj> <verb> <obj>' - [split, relation,
@@ -1369,7 +1495,7 @@ def _else_reply(state):
   if len(facts) <= 1:
     return "that is all i know about " + state["topic"]
   return "about " + state["topic"] + ": " + _join(facts[1:])
-_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | mode | mode strict | mode explore | list | say <text> | help"
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | mode | mode strict | mode explore | hypotheses | hypotheses detail | forget hypothesis <thing> is a <kind> | clear hypotheses | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -1412,6 +1538,31 @@ def respond(state, line):
   if m == "mode strict":
     state["mode"] = "strict"
     return "strict mode: compositional rules need verified domains (this session only)"
+  # A15: hypothesis inspection and management. 'forget hypothesis'
+  # must precede the generic 'forget <thing>' route.
+  if m == "hypotheses":
+    return _hyp_reply(state, false)
+  if m == "hypotheses detail":
+    return _hyp_reply(state, true)
+  if m == "clear hypotheses":
+    state["hypotheses"] = []
+    state["hyp_retired"] = []
+    return "hypotheses cleared"
+  if m[:18] == "forget hypothesis ":
+    rest = m[18:]
+    k = find(rest, " is a ")
+    if k > 0 and k + 6 < len(rest):
+      if _hyp_find(state, rest[:k], rest[k + 6:]) >= 0:
+        _hyp_retire(state, rest[:k], rest[k + 6:], "forgotten")
+        return "forgotten: hypothesis " + rest[:k] + " is a " + rest[k + 6:]
+      return "no such hypothesis - 'hypotheses' lists the open ones"
+    k = find(rest, " is an ")
+    if k > 0 and k + 7 < len(rest):
+      if _hyp_find(state, rest[:k], rest[k + 7:]) >= 0:
+        _hyp_retire(state, rest[:k], rest[k + 7:], "forgotten")
+        return "forgotten: hypothesis " + rest[:k] + " is an " + rest[k + 7:]
+      return "no such hypothesis - 'hypotheses' lists the open ones"
+    return "forget hypothesis <thing> is a <kind>"
   if m[:5] == "note " and len(text) > 5:
     append(state["notes"], text[5:])
     return "noted"

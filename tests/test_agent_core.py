@@ -48,8 +48,9 @@ HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
         "can <thing> <verb> | is <thing> needed by <thing> | "
         "remember <thing> is not a <kind> | what do you know | "
         "what did you forget | what did we talk about | note <text> | notes | "
-        "clear notes | mode | mode strict | mode explore | list | "
-        "say <text> | help")
+        "clear notes | mode | mode strict | mode explore | hypotheses | "
+        "hypotheses detail | forget hypothesis <thing> is a <kind> | "
+        "clear hypotheses | list | say <text> | help")
 WS = ' \t\n\r'
 STOP = {'the', 'and', 'for', 'are', 'with', 'that', 'this'}
 
@@ -212,6 +213,10 @@ class Oracle:
         self.forgotten = []  # A12 tombstones, capped at 20
         self.session = []    # A12 session log, capped at 10, never saved
         self.mode = 'strict'  # A14.1: session-only, like notes
+        # A15: hypothesis candidates [subj, domain, count, created_ev,
+        # later_uses, omitted] + retired [subj, domain, reason].
+        self.hypotheses = []
+        self.hyp_retired = []
 
     # --- A10 usage counting, mirroring core.holy ---
     def _cooc_add(self, key, value):
@@ -273,6 +278,90 @@ class Oracle:
             return
         self.rels.append([s, p, o])
         self._rel_index(s, p, o)
+        # A15: a taught domain verdict retires a matching hypothesis.
+        if p in ('is-a', 'not-is-a'):
+            d = o
+            for art in ('a ', 'an ', 'the '):
+                if d.startswith(art):
+                    d = d[len(art):]
+                    break
+            self._hyp_retire(s, d,
+                             'taught positive' if p == 'is-a' else 'taught negative')
+
+    def _hyp_find(self, subj, domain):
+        for i, h in enumerate(self.hypotheses):
+            if h[0] == subj and h[1] == domain:
+                return i
+        return -1
+
+    def _hyp_record(self, q, assum):
+        order = []
+        by = {}
+        for a in assum:
+            mk = a[0] + '|' + a[1]
+            if mk in by:
+                by[mk][2] += ', ' + a[3]
+                by[mk][3] += ', ' + str(a[2])
+            else:
+                by[mk] = [a[0], a[1], a[3], str(a[2])]
+                order.append(mk)
+        ok = True
+        for mk in order:
+            c = by[mk]
+            ev = [q, c[2], c[3]]
+            i = self._hyp_find(c[0], c[1])
+            if i >= 0:
+                h = self.hypotheses[i]
+                h[2] += 1
+                if len(h[4]) < 10:
+                    h[4].append(ev)
+                else:
+                    h[5] += 1
+            elif len(self.hypotheses) >= 20:
+                ok = False
+            else:
+                self.hypotheses.append([c[0], c[1], 1, ev, [], 0])
+        return ok
+
+    def _hyp_retire(self, s, domain, reason):
+        i = self._hyp_find(s, domain)
+        if i >= 0:
+            h = self.hypotheses[i]
+            self.hyp_retired.append([h[0], h[1], reason])
+            self.hyp_retired = self.hyp_retired[-10:]
+            self.hypotheses = self.hypotheses[:i] + self.hypotheses[i + 1:]
+
+    def _hyp_q(self, x, pred, y):
+        if pred == 'can':
+            return 'can ' + x + ' ' + y
+        return 'does ' + x + ' ' + pred[:-1] + ' ' + y
+
+    def _hyp_reply(self, detail):
+        hs = self.hypotheses
+        if not hs:
+            out = 'no open hypotheses'
+        else:
+            out = (('1 open hypothesis' if len(hs) == 1 else
+                    str(len(hs)) + ' open hypotheses') +
+                   ' (unresolved candidates, not beliefs):')
+            labels = 'abcdefghijklmnopqrst'
+            for i, h in enumerate(hs):
+                out += ('\n(' + labels[i] + ') ' + h[0] + ' is a ' + h[1] +
+                        ' - assumed ' + ('once' if h[2] == 1 else str(h[2]) + ' times') +
+                        ", first for '" + h[3][0] + "'")
+                if detail:
+                    out += ("\n  created for '" + h[3][0] + "' [explore, rule " +
+                            h[3][1] + ", step " + h[3][2] + "]")
+                    for ev in h[4]:
+                        out += ("\n  used for '" + ev[0] + "' [explore, rule " +
+                                ev[1] + ", step " + ev[2] + "]")
+                    if h[5] > 0:
+                        out += '\n  (+' + str(h[5]) + ' older uses omitted)'
+        if self.hyp_retired:
+            out += '\nrecently retired:'
+            for r in self.hyp_retired:
+                out += '\n- ' + r[0] + ' is a ' + r[1] + ' (' + r[2] + ')'
+        return out
 
     def _drop_rels(self, key):
         self.rels = [e for e in self.rels if e[0] != key]
@@ -546,7 +635,7 @@ class Oracle:
             line += ']'
             steps.append('(' + str(len(steps) + 1) + ') ' + line)
             if proof[6][0] == 'assume':
-                assum.append([proof[4][0], proof[6][2], len(steps)])
+                assum.append([proof[4][0], proof[6][2], len(steps), proof[1]])
         return t
 
     def _derive_render(self, x, pred, y, d):
@@ -583,6 +672,9 @@ class Oracle:
                 for i, m in enumerate(merged):
                     out += ('\n(' + labels[i] + ') ' + m[0] + ' is a ' + m[1] +
                             ' - assumed at step ' + m[2] + ', unverified')
+                if not self._hyp_record(self._hyp_q(x, pred, y), assum):
+                    out += ('\n(hypothesis list full - teach or forget '
+                            'hypotheses to free space)')
             return out
         if d[0] == '' and d[3]:
             f = d[3][0]
@@ -783,6 +875,25 @@ class Oracle:
             self.mode = 'strict'
             return ('strict mode: compositional rules need verified domains '
                     '(this session only)')
+        if m == 'hypotheses':
+            return self._hyp_reply(False)
+        if m == 'hypotheses detail':
+            return self._hyp_reply(True)
+        if m == 'clear hypotheses':
+            self.hypotheses = []
+            self.hyp_retired = []
+            return 'hypotheses cleared'
+        if m[:18] == 'forget hypothesis ':
+            rest = m[18:]
+            for sep in (' is a ', ' is an '):
+                k = rest.find(sep)
+                if k > 0 and k + len(sep) < len(rest):
+                    subj, domain = rest[:k], rest[k + len(sep):]
+                    if self._hyp_find(subj, domain) >= 0:
+                        self._hyp_retire(subj, domain, 'forgotten')
+                        return 'forgotten: hypothesis ' + subj + sep + domain
+                    return "no such hypothesis - 'hypotheses' lists the open ones"
+            return 'forget hypothesis <thing> is a <kind>'
         if m[:5] == 'note ' and len(text) > 5:
             self.notes.append(text[5:])
             return 'noted'
@@ -1606,7 +1717,49 @@ sessions = [make_session() for _ in range(25)]
 # A13 scenarios are semantic, not probabilistic: run each in its own
 # fresh session so every inheritance/negative/contradiction path is
 # covered on every run.
-for _sc in A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS:
+# Coherent A15 scenarios: bounded hypothesis learning over A14.1
+# explore-mode assumptions. Candidates are unresolved knowledge gaps,
+# never facts; strict mode records nothing; teaching or explicit
+# forgets are the only way out.
+A15_SCENARIOS = [
+    # Recording, dedup within one derivation, listing, detail
+    # provenance, isolation (strict blocks and queries stay unknown).
+    ['mode explore', 'remember a car has an engine',
+     'remember an engine uses energy', 'remember energy can produce motion',
+     'can a car produce motion', 'can a car fly', 'hypotheses',
+     'hypotheses detail', 'mode strict', 'can a car produce motion',
+     'is a car a machine', 'hypotheses'],
+    # Teaching retires deterministically: a positive teach lets strict
+    # pass; the retired entry is shown.
+    ['mode explore', 'remember a bike has a dynamo',
+     'remember a dynamo can produce electricity',
+     'can a bike produce electricity', 'hypotheses',
+     'remember a bike is a machine', 'hypotheses',
+     'mode strict', 'can a bike produce electricity'],
+    # A negative teach retires and leaves strict blocked; a candidate
+    # is not positive evidence, so there is no conflict.
+    ['mode explore', 'remember a pilot has a license',
+     'remember a license can expire', 'can a pilot expire', 'hypotheses',
+     'remember a pilot is not a machine', 'hypotheses',
+     'can a pilot expire'],
+    # Explicit forget frees space (and reports a miss for unknown
+    # entries); clear empties both lists.
+    ['mode explore', 'remember a boat has a sail',
+     'remember a sail can catch wind', 'can a boat catch wind',
+     'forget hypothesis a boat is a machine', 'hypotheses',
+     'forget hypothesis a boat is a machine', 'clear hypotheses',
+     'hypotheses'],
+    # Thai subjects are candidates too.
+    ['mode explore', 'remember a หุ่นยนต์ has a motor',
+     'remember a motor can spin', 'can a หุ่นยนต์ spin', 'hypotheses'],
+    # Provenance bounding: 12 derivations on one candidate keep the
+    # creation event plus 10 detailed later uses; 1 marked omitted.
+    (['mode explore', 'remember a rig has a crane',
+      'remember a crane can lift'] + ['can a rig lift'] * 12 +
+     ['hypotheses detail']),
+]
+
+for _sc in A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS + A15_SCENARIOS:
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))
