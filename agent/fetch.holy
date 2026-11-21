@@ -51,7 +51,9 @@ def _hdr_value(line):
 # ("" = ok) and the content-length (-1 = absent) via a pair.
 def _parse_headers(head_ints):
   head = agent.utf8.utf8_decode_ints(head_ints)
-  lines = split(head, "\r\n")
+  # the decoder drops CR and maps LF to "\n", so header lines are
+  # separated by plain "\n" here
+  lines = split(head, "\n")
   st = lines[0]
   parts = split(st, " ")
   if len(parts) < 2 or len(parts[0]) < 5 or parts[0][:5] != "HTTP/":
@@ -216,7 +218,7 @@ def _fetch(norm):
 # decode six common entities, collapse whitespace runs to one space.
 def _html_text(s):
   ls = agent.core.lower_ascii(s)
-  for tag in ["script", "style"]:
+  for tag in ["script", "style", "title"]:
     i = find(ls, "<" + tag)
     while i >= 0:
       j = find(ls, "</" + tag + ">")
