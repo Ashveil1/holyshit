@@ -105,7 +105,40 @@ DIALOGUE = [
      'usage'),
     ('blorf zingle', 'i do not understand', 'unparsed'),
 ]
+DIALOGUE += [
+    # A13: typed verb relations, inheritance over is-a, three-valued
+    # answers, contradiction handling, passive voice. Teaches set up
+    # the world; questions are scored per category.
+    ('remember a dog is a mammal', 'remembered a dog is a mammal', 'teach'),
+    ('remember a mammal is an animal', 'remembered a mammal is an animal', 'teach'),
+    ('remember an animal is a living thing', 'remembered an animal is a living thing', 'teach'),
+    ('remember a living thing needs energy', 'remembered a living thing needs energy', 'teach'),
+    ('remember a human can learn', 'remembered a human can learn', 'teach'),
+    ('remember a doctor is a human', 'remembered a doctor is a human', 'teach'),
+    ('remember a doctor is a professional', 'added: a doctor is a professional', 'teach'),
+    ('does dog need energy',
+     'yes: a dog is a mammal, a mammal is an animal, an animal is a '
+     'living thing, a living thing needs energy', 'infer'),
+    ('is energy needed by a dog',
+     'yes: a dog is a mammal, a mammal is an animal, an animal is a '
+     'living thing, a living thing needs energy', 'passive'),
+    ('can a doctor learn', 'yes: a doctor is a human, a human can learn', 'infer'),
+    ('does dog need sleep', 'not that i know', 'unknown'),
+    ('what is a doctor', 'i know a doctor is a human and a professional', 'recall'),
+    ('remember a fish cannot fly', 'remembered a fish cannot fly', 'teach'),
+    ('can a fish fly', 'no: a fish cannot fly (taught)', 'negative'),
+    ('can a fish swim', 'not that i know', 'unknown'),
+    ('remember a bat is a mammal', 'remembered a bat is a mammal', 'teach'),
+    ('remember a bat is not a mammal',
+     'added: a bat is not a mammal (warning: this contradicts what you '
+     'taught me earlier - i hold both and will say so when asked)', 'teach'),
+    ('is bat a mammal',
+     'i was taught both: a bat is a mammal and a bat is not a mammal'
+     ' - i cannot say which is true', 'contradiction'),
+]
+
 SCORED = ('recall', 'clarify', 'miss', 'correction', 'pleasantry', 'open',
+          'infer', 'passive', 'unknown', 'negative', 'contradiction',
           'chain', 'inference', 'usage', 'unparsed')
 
 
@@ -137,6 +170,18 @@ def recall_script(store, n):
 
 def miss_script(n):
     return ['what is nosuchthing%06d' % j for j in range(n)]
+
+
+def infer_script(store, n):
+    # A13 inference latency: a verb-relation question that inherits
+    # over the is-a graph. The synth store's bare is-a edges give it
+    # a real graph to walk; there is no needs-edge, so every query
+    # also exercises the honest UNKNOWN path.
+    keys = store['order']
+    if not keys:
+        return []
+    return ['does ' + keys[(j * 7919) % len(keys)] + ' need energy'
+            for j in range(n)]
 
 
 def dialogue_script():
@@ -249,6 +294,9 @@ def bench_backend(name, argv, tmp, scales, n_cmds, limit_run):
                                           recall_script(store, n_rec_cmds), 'recall', rows)
         t_mis, rss_mis, _ = bench_session(argv, d, store,
                                           miss_script(n_mis_cmds), 'miss', rows)
+        n_inf_cmds = n_cmds if scale else n_cmds
+        t_inf, rss_inf, _ = bench_session(argv, d, store,
+                                          infer_script(store, n_inf_cmds), 'infer', rows)
         t_dlg, rss_dlg, out = bench_session(argv, d, store,
                                             dialogue_script(), 'dialogue', rows)
         counts = score_dialogue(out)
@@ -259,7 +307,8 @@ def bench_backend(name, argv, tmp, scales, n_cmds, limit_run):
             # scheduling noise can make the difference slightly negative.
             'recall_ms': max(0.0, 1000.0 * (t_rec - t_start) / n_rec_cmds),
             'miss_ms': max(0.0, 1000.0 * (t_mis - t_start) / n_mis_cmds),
-            'session_rss_kb': max(rss_rec, rss_mis, rss_dlg),
+            'infer_ms': max(0.0, 1000.0 * (t_inf - t_start) / n_inf_cmds),
+            'session_rss_kb': max(rss_rec, rss_mis, rss_dlg, rss_inf),
             'dialogue': counts,
         })
     if limit_run and scales:
@@ -327,9 +376,11 @@ def report(rows, mode):
         print('[%s] facts=%d' % (r['backend'], r['facts']))
         print('  cold startup: %.2fs, peak RSS %.1f MiB'
               % (r['startup_s'], r['startup_rss_kb'] / 1024))
-        print('  latency: recall %.2f ms/cmd, miss %.2f ms/cmd'
-              ' (word-indexed miss lookup; non-ASCII containment scans'
-              ' only the non-ASCII word list)' % (r['recall_ms'], r['miss_ms']))
+        print('  latency: recall %.2f ms/cmd, miss %.2f ms/cmd,'
+              ' inference %.2f ms/cmd'
+              ' (word-indexed miss lookup; inheritance walks the is-a'
+              ' graph with O(1) edge checks)' % (r['recall_ms'], r['miss_ms'],
+                                                 r['infer_ms']))
         print('  peak RSS (sessions): %.1f MiB' % (r['session_rss_kb'] / 1024))
         print('  held-out dialogue: %s' % fmt_counts(r['dialogue']))
         print()

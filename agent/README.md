@@ -4,7 +4,7 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.7)
+## What it is today (v0.8)
 
 - An ordered pattern-rule matcher: a fixed set of command patterns is
   checked in order and the first match wins.
@@ -86,6 +86,19 @@ no dependencies beyond the language itself.
   yes/no questions `<X> เป็น <Y> ไหม` and `<X> คือ <Y> หรือไม่` answer
   over the same chains, and a trailing `?` forces question mode
   (`apple means fruit?` checks instead of teaching).
+- Typed verb relations with three-valued answers: `needs`, `can`,
+  `uses`, `produces`, `causes` are stored as their own edge types, and
+  questions about them INHERIT down the is-a chain
+  (`does dog need energy` answers yes from dog -> mammal -> animal ->
+  living thing, showing the full chain). Answers are TRUE (direct or
+  inherited, chain shown), FALSE (an explicitly taught negative like
+  `a fish cannot fly`, chain shown) or UNKNOWN (`not that i know`) -
+  unknown is never collapsed into false. The nearest node on the
+  chain wins; opposing claims at the same distance are a
+  contradiction, flagged at teach time and reported at query time,
+  never silently resolved. Query forms normalize through a FIXED
+  verb-form table (active `does X need Y`, `can X Y`, passive
+  `is Y needed by X`); it is a lookup table, not morphology.
 - Bounded self-knowledge: `what do you know` counts taught things and
   names the 5 most recent, `what did you forget` lists the tombstones
   it keeps (last 20), `what did we talk about` replays the session log
@@ -97,9 +110,15 @@ no dependencies beyond the language itself.
 
 Commands: `remember <thing> is <fact>`, `remember <thing> is also <fact>`,
 `remember <thing> has <part>`, `remember <thing> เป็น <kind>`,
+`remember <thing> needs/uses/produces/causes <thing>`,
+`remember <thing> can <verb>`, `remember <thing> cannot <verb>` (and
+`does not need/use/produce/cause` forms),
+`remember <thing> is not a <kind>`, `remember <thing> ไม่เป็น <kind>`,
 `no, <thing> is <fact>` (correction),
 `what is <thing>` (aliases: `do you know`, `tell me about`, `who is`),
 `is <thing> in <thing>`, `is <thing> a <kind>`, `is <thing> <kind>` (bare is-a question),
+`does <thing> need/use/produce/cause/have <thing>`, `can <thing> <verb>`,
+`is <thing> needed/used/produced/caused by <thing>` (passive),
 `where is <thing>`
 (is-in chain), `what does <thing> mean` (means relation + built-in
 self-knowledge), `what do you know about <thing>`, `how is <thing>`,
@@ -117,7 +136,7 @@ how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุ�
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (measured at A12, self-knowledge and grammar gaps)
+## Hosted resource benchmark (measured at A13, verb relations and three-valued inference)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -130,24 +149,45 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A12; A11 numbers in parentheses where they differ -
-A12 changed the load path, not the query paths):
+Current numbers (A13; A12 numbers in parentheses where they differ).
+A13 added relation-derivation prefix checks at load and the
+inheritance walk at query time; the dialogue gained five scored
+categories (infer 2/2, passive 1/1, unknown 2/2, negative 1/1,
+contradiction 1/1 - full marks at every scale on both backends).
 
-| backend | facts | miss (A7) | recall (A7) | startup (A7) | peak RSS (A7) |
-| --- | --- | --- | --- | --- | --- |
-| interp | 0 | 2.1 ms (2.1) | - | 0.08 s | 24.1 MiB (23.6) |
-| interp | 1,000 | 4.2 ms (4.9) | 0.6 ms (0.9) | 1.85 s (1.33) | 27.0 MiB (25.6) |
-| interp | 10,000 | 23.0 ms (31.7) | 0.7 ms (1.0) | 16.9 s (12.4) | 57.6 MiB (46.9) |
-| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 s | 27.3 MiB (25.7) |
-| ir-x64 | 1,000 | 0.04 ms (0.02) | 0.03 ms (<0.01) | 0.06 s (0.04) | 27.3 MiB (25.7) |
-| ir-x64 | 10,000 | <0.01 ms | <0.01 ms (0.09) | 0.88 s (0.67) | 177.4 MiB (124.1) |
+| backend | facts | miss (A12) | recall (A12) | inference | startup (A12) | peak RSS (A12) |
+| --- | --- | --- | --- | --- | --- | --- |
+| interp | 0 | 2.2 ms (2.1) | - | 0.02 ms | 0.09 s (0.08) | 24.7 MiB (24.1) |
+| interp | 1,000 | 4.8 ms (4.2) | 1.1 ms (0.6) | 1.47 ms | 2.02 s (1.85) | 27.4 MiB (27.0) |
+| interp | 10,000 | 15.4 ms (23.0) | 0.8 ms (0.7) | 2.07 ms | 19.0 s (16.9) | 58.0 MiB (57.6) |
+| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 ms | <0.01 s | 29.6 MiB (27.3) |
+| ir-x64 | 1,000 | 0.04 ms | <0.01 ms (0.03) | 0.03 ms | 0.07 s (0.06) | 29.6 MiB (27.3) |
+| ir-x64 | 10,000 | <0.01 ms | <0.01 ms | <0.01 ms | 1.19 s (0.88) | 193.7 MiB (177.4) |
 
 4 GiB probe (RLIMIT_AS on the child, 10k facts, mixed recall/miss
-session): both backends complete - interp 17.2 s at 57.6 MiB peak,
-native 0.88 s at 177.7 MiB peak. Memory stays far inside a 4 GiB
+session): both backends complete - interp 19.3 s at 57.7 MiB peak,
+native 1.09 s at 193.9 MiB peak. Memory stays far inside a 4 GiB
 budget.
 
 Honest readings:
+- A13's interp load increase (+2.1 s at 10k synth facts) comes from
+  three extra prefix checks per value in relation derivation
+  (lower-casing 4/6/7-character prefixes for the negation shapes).
+  Like A12's, it is a ONE-TIME migration cost - v5 stores re-load
+  persisted edges. It could be shaved by sharing one lowered prefix;
+  we left it as-is because the code reads more honestly as three
+  named checks, and the cost is one-time (Ash's priority:
+  inspectable over fast).
+- Inference latency is real but small: 2.1 ms/cmd on the interp at
+  10k facts (a full is-a walk with O(1) edge checks per node),
+  sub-0.1 ms on native. The nearest-node-wins scan never touches
+  facts outside the chain.
+- Native startup RSS grew 177 -> 194 MiB at 10k with the same edges
+  persisted (bigger compiled core, GC heap shape); interp is flat.
+  One chunked run produced a 209 MiB session-RSS reading at 0 facts;
+  re-measured in isolation it is 30 MiB and the artifact was
+  discarded - single-run readings on this box stay suspect, as
+  before.
 - A12's interp load increase is a ONE-TIME migration cost, not steady
   state. A pre-v5 store re-derives relation edges on first load, and
   A12 adds a bare is-a edge for every value that matches no other
@@ -214,7 +254,11 @@ literal ASCII word matching plus non-ASCII substring matching,
 "associations" are shared words between taught values, and its
 clarifications are word-overlap guesses. The `what does X mean`
 self-knowledge for its own relation words is hard-coded text, not
-learned understanding, the usage learning is co-occurrence counting
+learned understanding, verb understanding is a fixed lookup table
+(not morphology - `needs`/`need`/`needed` are listed, `wanting`
+is not inferred), inheritance is nearest-node-wins over explicitly
+taught edges (not likelihood or default logic), contradictions are
+surfaced, never resolved, the usage learning is co-occurrence counting
 over taught facts only - it cannot say how two words are related,
 cannot tell synonym from antonym from mere co-mention, and small
 memories make weak statistics - and an is-a object keeps the article it was

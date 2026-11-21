@@ -254,7 +254,83 @@ def _teach_also(state, key, value):
   append(state["facts"][key], value)
   _cooc_add(state, key, value)
   _slog(state, "taught", key)
-  return "added: " + key + " is " + value + suffix
+  return "added: " + key + " is " + value + suffix + _isa_contra_warn(state, key, value)
+# A13 additive rule: kind-of-shaped values (a/an/bare/negations/เป็น)
+# ADD to an existing thing; shaped values (in/has/คือ/หมายความว่า/อยู่)
+# keep replace semantics. 'no, X is Y' always replaces.
+def _kind_value(v):
+  p = lower_ascii(v)
+  if p[:3] == "in ":
+    return false
+  if p[:4] == "has ":
+    return false
+  if find(v, "คือ ") == 0 or find(v, "หมายความว่า ") == 0 or find(v, "อยู่ ") == 0:
+    return false
+  return true
+# Contradiction warning for verb teaches: flag (never resolve) when
+# the same subject already holds the opposite polarity of this edge.
+def _contra_warn(state, key, pred, obj, neg):
+  opp = "not-" + pred
+  if neg:
+    opp = pred
+  if key in state["relset"]:
+    if opp in state["relset"][key]:
+      if obj in state["relset"][key][opp]:
+        return " (warning: this contradicts what you taught me earlier - i hold both and will say so when asked)"
+  return ""
+# Same warning for is-a teaches; edge objects keep their article.
+def _isa_contra_warn(state, key, value):
+  lv = lower_ascii(value)
+  obj = lv
+  opp = "not-is-a"
+  if lv[:4] == "not ":
+    obj = lv[4:]
+    opp = "is-a"
+  if find(lv, "ไม่เป็น ") == 0:
+    obj = lv[len("ไม่เป็น "):]
+    opp = "is-a"
+  if find(lv, "เป็น ") == 0:
+    obj = lv[len("เป็น "):]
+    opp = "not-is-a"
+  if key in state["relset"]:
+    if opp in state["relset"][key]:
+      if obj in state["relset"][key][opp]:
+        return " (warning: this contradicts what you taught me earlier - i hold both and will say so when asked)"
+  return ""
+# A13: teach a verb relation - additive by design: a verb teach never
+# replaces existing kinds or facts (the spec's doctor is both human
+# and professional; a human both is a mammal and can learn). The
+# spoken value ('needs energy') joins the fact list so recall, list,
+# forget and co-occurrence all see it; the typed edge is separate.
+def _teach_verb(state, key, pred, obj, neg):
+  state["topic"] = key
+  newkey = not _has(state, key)
+  if newkey:
+    state["facts"][key] = []
+    append(state["order"], key)
+    _index_key(state, key)
+  ph = _posphrase(pred)
+  if neg:
+    ph = _negphrase(pred)
+  val = ph + " " + obj
+  dup = false
+  for v in state["facts"][key]:
+    if v == val:
+      dup = true
+  edgepred = pred
+  if neg:
+    edgepred = "not-" + pred
+  _add_rel(state, key, edgepred, obj)
+  if not dup:
+    append(state["facts"][key], val)
+    _cooc_add(state, key, val)
+    _slog(state, "taught", key)
+  if dup:
+    return "i already know that " + key + " " + val
+  reply = "remembered " + key + " " + val
+  if not newkey:
+    reply = "added: " + key + " " + val
+  return reply + _contra_warn(state, key, pred, obj, neg)
 # Candidate keys/paraphrases for a miss: every word of the asked phrase
 # Word index (derived, never persisted): "windex" maps every taught key
 # word to the keys containing it; "nw" is the same map restricted to
@@ -417,12 +493,33 @@ def _candidates(state, phrase):
           append(cands, a)
           append(keys, target)
   return [cands, keys]
+# A13: values that carry their own verb-relation word join WITHOUT
+# the generic 'is' ('i know a fish cannot fly', never 'is cannot').
+# Plain values keep the established 'is'-joined shape exactly.
+def _relvalue(v):
+  for p in ["needs ", "can ", "uses ", "produces ", "causes ", "does not ", "cannot "]:
+    if v[:len(p)] == p:
+      return true
+  return false
+def _values_glue(values):
+  plain = []
+  relv = []
+  for v in values:
+    if _relvalue(v):
+      append(relv, v)
+    if not _relvalue(v):
+      append(plain, v)
+  if len(relv) == 0:
+    return " is " + _join(values)
+  if len(plain) == 0:
+    return " " + _join(relv)
+  return " is " + _join(plain) + " and " + _join(relv)
 def _recall(state, asked):
   key = _resolve(state, asked)
   if key != null:
     state["topic"] = key
     _slog(state, "asked", key)
-    return "i know " + key + " is " + _join(state["facts"][key])
+    return "i know " + key + _values_glue(state["facts"][key])
   both = _candidates(state, asked)
   cands = both[0]
   keys = both[1]
@@ -690,6 +787,20 @@ def _learn_rel(state, key, value):
   if find(value, p4) == 0 and len(value) > len(p4):
     _add_rel(state, key, "is-a", value[len(p4):])
     got = true
+  p5 = "not a "
+  if lower_ascii(value[:6]) == p5 and len(value) > 6:
+    _add_rel(state, key, "not-is-a", lower_ascii(value)[4:])
+    return false
+  if lower_ascii(value[:7]) == "not an " and len(value) > 7:
+    _add_rel(state, key, "not-is-a", lower_ascii(value)[4:])
+    return false
+  if lower_ascii(value[:4]) == "not " and len(value) > 4:
+    _add_rel(state, key, "not-is-a", lower_ascii(value)[4:])
+    return false
+  p6 = "ไม่เป็น "
+  if find(value, p6) == 0 and len(value) > len(p6):
+    _add_rel(state, key, "not-is-a", value[len(p6):])
+    return false
   # A12: a value matching NO recognized shape still taught something -
   # 'X is Y' reads as a kind-of. Derive the bare is-a edge and let the
   # teach reply say so. This is deliberately shallow: 'sky is blue'
@@ -701,6 +812,26 @@ def _learn_rel(state, key, value):
 # Built-in self-knowledge: hard-coded definitions of the agent's own
 # relation words (documented as hard-coded, never learned). Queried by
 # 'what does X mean' alongside taught means-edges; never persisted.
+# A13: verb relations (needs/can/uses/produces/causes) on the same
+# triple store. Fixed surface-form tables, NOT morphology: every form
+# the agent understands is listed here.
+_RELNEG = [["needs", "does not need"], ["can", "cannot"], ["uses", "does not use"], ["produces", "does not produce"], ["causes", "does not cause"], ["has", "does not have"], ["is-a", "is not"]]
+# Teach markers inside 'remember ...' as [marker, relation, negated].
+# Negatives come first: ' can not ' contains ' can '.
+_VERBT = [[" does not need ", "needs", true], [" do not need ", "needs", true], [" cannot ", "can", true], [" can not ", "can", true], [" does not use ", "uses", true], [" do not use ", "uses", true], [" does not produce ", "produces", true], [" do not produce ", "produces", true], [" does not cause ", "causes", true], [" do not cause ", "causes", true], [" needs ", "needs", false], [" need ", "needs", false], [" can ", "can", false], [" uses ", "uses", false], [" use ", "uses", false], [" produces ", "produces", false], [" produce ", "produces", false], [" causes ", "causes", false], [" cause ", "causes", false]]
+# Question markers inside 'does X ...' / 'do X ...' as [marker, relation].
+_VERBQ = [[" need ", "needs"], [" needs ", "needs"], [" use ", "uses"], [" uses ", "uses"], [" produce ", "produces"], [" produces ", "produces"], [" cause ", "causes"], [" causes ", "causes"], [" have ", "has"], [" has ", "has"]]
+# Passive question markers 'is O <verbed> by S' as [marker, relation].
+_VERBP = [[" needed by ", "needs"], [" used by ", "uses"], [" produced by ", "produces"], [" caused by ", "causes"]]
+def _negphrase(pred):
+  for r in _RELNEG:
+    if r[0] == pred:
+      return r[1]
+  return "not " + pred
+def _posphrase(pred):
+  if pred == "is-a":
+    return "is"
+  return pred
 _BUILTIN_RELS = [["mean", "means", "the definitional relation: X mean Y says the definition of X is Y"], ["is-in", "means", "the containment relation: X is in Y says X is inside Y"], ["is-a", "means", "the kind relation: X is a Y says X is a kind of Y"], ["has", "means", "the part relation: X has Y says Y is part of X"]]
 # Transitive chain over one predicate: BFS in edge-insertion order,
 # visited set against cycles, depth cap 8. Node identity strips a/an.
@@ -766,6 +897,116 @@ def _chain_reply(state, x, pred, y):
   if path == null:
     return "not that i know"
   return _chain_fmt(path, pred)
+# A13 inheritance engine: walk the is-a chain UP from the subject,
+# level by level (a direct edge is distance 0), looking for positive
+# or negative evidence for (node, pred, goal). The nearest level wins;
+# both polarities at the same level are a contradiction that is
+# REPORTED, never silently resolved. Returns [verdict, path, edge,
+# altpath, altedge] with verdict true/false/both/"" (unknown); path
+# is the is-a parent chain and edge the deciding [subject, object].
+def _inherit(state, start, pred, goal):
+  g = _stripart(goal)
+  npred = "not-" + pred
+  frontier = [[_stripart(start), []]]
+  visited = {}
+  dist = 0
+  verdict = ""
+  pos = null
+  neg = null
+  while len(frontier) > 0 and dist <= 8 and verdict == "":
+    nxt = []
+    for item in frontier:
+      node = item[0]
+      path = item[1]
+      if not (node in visited):
+        visited[node] = true
+        if pos == null:
+          if pred in state["relby"]:
+            if node in state["relby"][pred]:
+              for e in state["relby"][pred][node]:
+                if pos == null:
+                  if _stripart(e[1]) == g:
+                    pos = [path, e]
+        if neg == null:
+          if npred in state["relby"]:
+            if node in state["relby"][npred]:
+              for e in state["relby"][npred][node]:
+                if neg == null:
+                  if _stripart(e[1]) == g:
+                    neg = [path, e]
+        if dist < 8:
+          if "is-a" in state["relby"]:
+            if node in state["relby"]["is-a"]:
+              for e in state["relby"]["is-a"][node]:
+                ns = _stripart(e[1])
+                if not (ns in visited):
+                  np2 = []
+                  for pe in path:
+                    append(np2, pe)
+                  append(np2, e)
+                  append(nxt, [ns, np2])
+    if pos != null and neg != null:
+      verdict = "both"
+    if verdict == "" and pos != null:
+      verdict = "true"
+    if verdict == "" and pos == null and neg != null:
+      verdict = "false"
+    if verdict == "":
+      frontier = nxt
+      dist = dist + 1
+  if verdict == "true":
+    return [verdict, pos[0], pos[1], null, null]
+  if verdict == "false":
+    return [verdict, neg[0], neg[1], null, null]
+  if verdict == "both":
+    return [verdict, pos[0], pos[1], neg[0], neg[1]]
+  return ["", null, null, null, null]
+# Path edges are is-a: 'a dog is a mammal, a mammal is an animal, '.
+def _pathfmt(path):
+  out = ""
+  for e in path:
+    out = out + e[0] + " is " + e[1] + ", "
+  return out
+def _edgefmt(edge, pred, neg):
+  ph = _posphrase(pred)
+  if neg:
+    ph = _negphrase(pred)
+  return edge[0] + " " + ph + " " + edge[1]
+# Render an _inherit verdict: direct edges (empty path) say '(taught)',
+# inherited answers show the full reasoning chain, contradictions
+# print both claims.
+def _inherit_reply(state, x, pred, y):
+  r = _inherit(state, x, pred, y)
+  v = r[0]
+  if v == "":
+    return "not that i know"
+  if v == "both":
+    return "i was taught both: " + _pathfmt(r[1]) + _edgefmt(r[2], pred, false) + " and " + _pathfmt(r[3]) + _edgefmt(r[4], pred, true) + " - i cannot say which is true"
+  if v == "true":
+    if len(r[1]) == 0:
+      return "yes: " + _edgefmt(r[2], pred, false) + " (taught)"
+    return "yes: " + _pathfmt(r[1]) + _edgefmt(r[2], pred, false)
+  if len(r[1]) == 0:
+    return "no: " + _edgefmt(r[2], pred, true) + " (taught)"
+  return "no: " + _pathfmt(r[1]) + _edgefmt(r[2], pred, true)
+# is-a questions keep their established reply shape exactly (the chain
+# itself, no '(taught)' marker); negatives and contradictions are new.
+def _isa_reply(state, x, y):
+  r = _inherit(state, x, "is-a", y)
+  v = r[0]
+  if v == "":
+    return "not that i know"
+  if v == "both":
+    return "i was taught both: " + _pathfmt(r[1]) + _edgefmt(r[2], "is-a", false) + " and " + _pathfmt(r[3]) + _edgefmt(r[4], "is-a", true) + " - i cannot say which is true"
+  if v == "true":
+    full = []
+    for pe in r[1]:
+      append(full, pe)
+    append(full, r[2])
+    return _chain_fmt(full, "is-a")
+  if len(r[1]) == 0:
+    return "no: " + _edgefmt(r[2], "is-a", true) + " (taught)"
+  return "no: " + _pathfmt(r[1]) + _edgefmt(r[2], "is-a", true)
 # A12: 'is X Y' with no article or 'in' - the split between X and Y is
 # ambiguous, so try every word boundary left to right (X grows one word
 # at a time); the first chaining split wins, else open-world honest.
@@ -777,9 +1018,9 @@ def _is_bare_reply(state, rest3):
   i = 1
   while i < len(ws):
     y = rest3[len(x) + 1:]
-    path = _chain(state, x, "is-a", y)
-    if path != null:
-      return _chain_fmt(path, "is-a")
+    r = _inherit(state, x, "is-a", y)
+    if r[0] != "":
+      return _isa_reply(state, x, y)
     x = x + " " + ws[i]
     i = i + 1
   return "not that i know"
@@ -791,6 +1032,46 @@ def _means_check(state, x, y, sep):
       if y in state["relset"][x]["means"]:
         return "yes: " + x + sep + y
   return "not that i know"
+# A13: parse 'remember <subj> <verb> <obj>' - [split, relation,
+# negated, object start]; negatives are checked before positives.
+def _verb_teach_parse(mrest):
+  for vt in _VERBT:
+    k = find(mrest, vt[0])
+    if k > 0 and k + len(vt[0]) < len(mrest):
+      return [k, vt[1], vt[2], k + len(vt[0])]
+  return null
+# A13: 'does X need Y' / 'do X use Y' / 'does X have Y' - the fixed
+# marker table decides the relation.
+def _verb_q(state, rest):
+  for vm in _VERBQ:
+    k = find(rest, vm[0])
+    if k > 0 and k + len(vm[0]) < len(rest):
+      return _inherit_reply(state, rest[:k], vm[1], rest[k + len(vm[0]):])
+  return "i do not understand"
+# A13: 'can a doctor learn' - subject/object split is ambiguous, so
+# try every word boundary left to right (same rule as the bare is-a
+# question); the first decided split wins.
+def _can_q(state, rest):
+  ws = _words(rest)
+  if len(ws) < 2:
+    return "i do not understand"
+  x = ws[0]
+  i = 1
+  while i < len(ws):
+    y = rest[len(x) + 1:]
+    r = _inherit(state, x, "can", y)
+    if r[0] != "":
+      return _inherit_reply(state, x, "can", y)
+    x = x + " " + ws[i]
+    i = i + 1
+  return "not that i know"
+# A13: passive verb questions - 'is energy needed by a dog'.
+def _passive_reply(state, rest3):
+  for vp in _VERBP:
+    k = find(rest3, vp[0])
+    if k > 0 and k + len(vp[0]) < len(rest3):
+      return _inherit_reply(state, rest3[k + len(vp[0]):], vp[1], rest3[:k])
+  return null
 def _where_reply(state, x, sep):
   path = _where_chain(state, x)
   if len(path) == 0:
@@ -825,7 +1106,7 @@ def _else_reply(state):
   if len(facts) <= 1:
     return "that is all i know about " + state["topic"]
   return "about " + state["topic"] + ": " + _join(facts[1:])
-_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | list | say <text> | help"
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -920,6 +1201,8 @@ def respond(state, line):
       return _teach_also(state, mrest[:k], rest[k + 9:])
     k = find(mrest, " is ")
     if k > 0 and k + 4 < len(mrest):
+      if _has(state, mrest[:k]) and _kind_value(mrest[k + 4:]):
+        return _teach_also(state, mrest[:k], rest[k + 4:])
       return _teach(state, mrest[:k], rest[k + 4:])
     k = find(mrest, " has ")
     if k > 0 and k + 5 < len(mrest):
@@ -933,6 +1216,15 @@ def respond(state, line):
     k = find(mrest, " เป็น ")
     if k > 0 and k + len(" เป็น ") < len(mrest):
       return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "เป็น")
+    k = find(mrest, " ไม่เป็น ")
+    if k > 0 and k + len(" ไม่เป็น ") < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "ไม่เป็น")
+    # A13: verb relation teaches ('remember a living thing needs
+    # energy', 'remember a dog cannot fly'). Objects are matched on
+    # the lowered line so edges and stored values stay comparable.
+    vt = _verb_teach_parse(mrest)
+    if vt != null:
+      return _teach_verb(state, mrest[:vt[0]], vt[1], mrest[vt[3]:], vt[2])
     return "i do not understand"
   # 'what does X mean' answers from the means relation (taught +
   # built-in self-knowledge), falling back to taught facts, then miss.
@@ -942,15 +1234,19 @@ def respond(state, line):
   # reasoning, and the negative is open-world honest ('not that i know').
   if m[:3] == "is ":
     rest3 = m[3:]
+    # A13: passive verb questions first ('is energy needed by a dog').
+    pv = _passive_reply(state, rest3)
+    if pv != null:
+      return pv
     k = find(rest3, " in ")
     if k > 0:
       return _chain_reply(state, rest3[:k], "is-in", rest3[k + 4:])
     k = find(rest3, " an ")
     if k > 0:
-      return _chain_reply(state, rest3[:k], "is-a", rest3[k + 4:])
+      return _isa_reply(state, rest3[:k], rest3[k + 4:])
     k = find(rest3, " a ")
     if k > 0:
-      return _chain_reply(state, rest3[:k], "is-a", rest3[k + 3:])
+      return _isa_reply(state, rest3[:k], rest3[k + 3:])
     # A12: no article at all - 'is apple food' tries every split.
     return _is_bare_reply(state, rest3)
   k = find(m, " หมายความว่าอะไร")
@@ -969,6 +1265,13 @@ def respond(state, line):
     return _recall(state, m[7:])
   if m[:9] == "where is ":
     return _where_reply(state, m[9:], " is in ")
+  # A13: verb questions - does/do/can over the fixed marker tables.
+  if m[:5] == "does " and len(m) > 5:
+    return _verb_q(state, m[5:])
+  if m[:3] == "do " and len(m) > 3:
+    return _verb_q(state, m[3:])
+  if m[:4] == "can " and len(m) > 4:
+    return _can_q(state, m[4:])
   if m[:7] == "forget ":
     return _forget(state, m[7:])
   if m[:4] == "say " and len(text) > 4:
@@ -1008,10 +1311,7 @@ def respond(state, line):
     else:
       d = len(" เป็น ")
     if k > 0 and k + d < len(q):
-      path = _chain(state, q[:k], "is-a", q[k + d:])
-      if path == null:
-        return "not that i know"
-      return _chain_fmt(path, "is-a")
+      return _isa_reply(state, q[:k], q[k + d:])
     k = find(q, " คือ ")
     if k < 0:
       k = find(q, "คือ")
