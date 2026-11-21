@@ -52,7 +52,7 @@ HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
         "hypotheses detail | forget hypothesis <thing> is a <kind> | "
         "clear hypotheses | read <text> | readings | readings about <thing> | "
         "readings detail | forget reading <thing> is a <kind> | "
-        "clear readings | list | say <text> | help")
+        "clear readings | read url <url> (experimental, repl shell only) | list | say <text> | help")
 WS = ' \t\n\r'
 STOP = {'the', 'and', 'for', 'are', 'with', 'that', 'this'}
 _READ_CAP = 100
