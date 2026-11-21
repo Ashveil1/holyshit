@@ -595,6 +595,18 @@ def data_label(name):
     raise "dup data label " + name
   S["data_labels"][name] = len(S["data"])
 def data_qword(v):
+  # 8-align qword emissions (mirror of a64shim.py; same shifted-fill
+  # guard-bypass reasoning as x64). Labels at the pre-pad end track it.
+  pad = (8 - len(S["data"]) % 8) % 8
+  if pad > 0:
+    end = len(S["data"])
+    i = 0
+    while i < pad:
+      append(S["data"], 0)
+      i = i + 1
+    for name in keys(S["data_labels"]):
+      if S["data_labels"][name] == end:
+        S["data_labels"][name] = end + pad
   i = 0
   while i < 8:
     append(S["data"], (v >> (8 * i)) & 255)

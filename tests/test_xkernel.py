@@ -36,13 +36,13 @@ def check(name, cond, detail=""):
 
 
 def boot(elf, timeout=30, sendkeys=(), mem="256M", initrd=None, disk=None,
-         until=()):
+         until=(), qargs=()):
     d = tempfile.mkdtemp(prefix="xkboot_")
     slog = os.path.join(d, "serial.log")
     msock = os.path.join(d, "mon.sock")
     cmd = [QEMU, "-kernel", elf, "-serial", f"file:{slog}",
            "-display", "none", "-m", mem,
-           "-monitor", f"unix:{msock},server=on,wait=off"]
+           "-monitor", f"unix:{msock},server=on,wait=off"] + list(qargs)
     if initrd is not None:
         # multiboot module 0: the kernel reads it via kmb.mod_start(0)
         cmd += ["-initrd", initrd]
@@ -661,6 +661,45 @@ with tempfile.TemporaryDirectory() as d:
         if rc == 0 and QEMU is not None:
             out = boot(kx, timeout=8)
             check(f"{prog} reports {vec}", vec in out, out[-800:])
+    # raise-halt hardening (C15): the pre-restructure kxhci raises an
+    # unknown-variable error on the second init. Before the data/fill
+    # alignment fix, the descending qword poison fill could straddle an
+    # unaligned global and slip 0x0B<<32 past the guard, ending in a wild
+    # deref (CR2=RAX=0x0000000b00000000) with no message. The kernel must
+    # print `error:` and halt instead.
+    fixd = os.path.join(d, "raisehalt_fix")
+    os.mkdir(fixd)
+    shutil.copyfile(os.path.join(HERE, "xkernel", "xkernel_raisehalt_kxhci.holy"),
+                    os.path.join(fixd, "kxhci.holy"))
+    old_hspath = os.environ["HSPATH"]
+    os.environ["HSPATH"] = (fixd + os.pathsep + os.path.join(ROOT, "kernel")
+                            + os.pathsep + old_hspath)
+    try:
+        kr = os.path.join(d, "kraisehalt.elf")
+        rc = build_xkernel(os.path.join(HERE, "xkernel", "xkernel_raisehalt.holy"), kr)
+    finally:
+        os.environ["HSPATH"] = old_hspath
+    check("raisehalt build clean", rc == 0)
+    if rc == 0 and QEMU is not None:
+        out = boot(kr, timeout=20, until=("error:", "P6B DONE"),
+                   qargs=["-machine", "q35",
+                          "-device", "qemu-xhci,id=xhci",
+                          "-device", "usb-kbd,bus=xhci.0",
+                          "-device", "usb-mouse,bus=xhci.0"])
+        # The stale-global read that raises under the IR backend resolves
+        # silently under the retained-AST reference (pre-existing backend
+        # difference test_kernel_ir.py re-runs this file through), so the
+        # strict poison-guard discrimination is IR-only; the AST leg just
+        # proves the boot does not fault.
+        if getattr(build_xkernel, "__name__", "") == "build_xkernel":
+            check("raisehalt reported error", "error:" in out, out[-800:])
+            check("raisehalt did not complete", "P6B DONE" not in out,
+                  out[-800:])
+            check("raisehalt did not fault", "EXC " not in out, out[-800:])
+        else:
+            check("raisehalt (ast) completed", "P6B DONE" in out, out[-800:])
+            check("raisehalt (ast) did not fault", "EXC " not in out,
+                  out[-800:])
     if QEMU is None:
         print("skip boot tests (qemu-system-x86_64 not installed)")
 

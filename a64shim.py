@@ -670,6 +670,17 @@ class Asm:
         self.data_labels[name] = len(self.data)
 
     def data_qword(self, v=0):
+        # 8-align qword emissions (same reasoning as x64.py: an unaligned
+        # qword global overwritten by an aligned qword fill reads back
+        # shifted, slipping exact-value guards). Labels recorded at the
+        # pre-pad end point at this qword.
+        pad = -len(self.data) % 8
+        if pad:
+            end = len(self.data)
+            self.data += b"\0" * pad
+            for name, off in self.data_labels.items():
+                if off == end:
+                    self.data_labels[name] = end + pad
         self.data += struct.pack("<q", v)
 
     def data_bytes(self, b):

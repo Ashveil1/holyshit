@@ -117,6 +117,16 @@ L("data_label", "dd")
 L("data_qword", -5)
 L("data_qword", 1 << 40)
 L("lea_rip", "rcx", "dd")
+# qword emissions 8-align (fill/guard poisoning fix); labels at the pre-pad
+# end track their qword; the lea_rip fixups bake the resolved addresses in
+L("data_bytes", "b1,2,3")
+L("data_label", "gg")
+L("data_qword", 11)
+L("lea_rip", "rdx", "gg")
+L("data_bytes", "b9")
+L("data_label", "gh")
+L("data_qword", 43)
+L("lea_rip", "rbx", "gh")
 for s8 in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15):
     for b in REGS:
         for d in DISPS:
@@ -161,11 +171,22 @@ def py_asm():
             a.data_qword(*conv)
         elif op == "data_label":
             a.data_label(*conv)
+        elif op == "data_bytes":
+            a.data_bytes(bytes(int(x) for x in conv[0][1:].split(",")))
         elif op == "jcc":
             a.jcc(*conv)
         else:
             getattr(a, op)(*conv)
-    return a.resolve(0x400000, 0x500000)
+    return a
+
+
+_pa = py_asm()
+assert _pa.data_labels["gg"] == 24, _pa.data_labels
+assert _pa.data_labels["gh"] == 40, _pa.data_labels
+assert bytes(_pa.data[16:24]) == b"\x01\x02\x03" + b"\0" * 5
+assert bytes(_pa.data[24:32]) == (11).to_bytes(8, "little")
+assert bytes(_pa.data[32:40]) == b"\x09" + b"\0" * 7
+assert bytes(_pa.data[40:48]) == (43).to_bytes(8, "little")
 
 
 with tempfile.TemporaryDirectory() as d:
@@ -174,7 +195,7 @@ with tempfile.TemporaryDirectory() as d:
     r = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"), "run",
                         os.path.join(ROOT, "selfhost", "asm_run.holy"),
                         "--backend", "interp", p], capture_output=True, text=True)
-want = py_asm().hex()
+want = py_asm().resolve(0x400000, 0x500000).hex()
 got = r.stdout.strip()
 ok = r.returncode == 0 and got == want
 if not ok:

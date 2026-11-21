@@ -1,0 +1,13 @@
+import kpci
+import kxhci
+print "P6B START"
+kpci.init()
+idx = kpci.find(6966, 13)
+a = kxhci.init(idx, 6, 2)
+print "mouse", a
+b = kxhci.init(idx, 5, 1)
+print "kbd", b
+print "ready", kxhci.ready(), kxhci.ready1()
+print "P6B DONE"
+while true:
+  pass

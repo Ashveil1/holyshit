@@ -176,6 +176,13 @@ def run(op, a):
     asm.data_label(a[0])
   elif op == "data_qword":
     asm.data_qword(a[0])
+  elif op == "data_bytes":
+    # comma-separated byte values with a "b" prefix (keeps arg() off int())
+    xs = []
+    t = a[0]
+    for part in split(t[1:len(t)], ","):
+      append(xs, int(part))
+    asm.data_bytes(xs)
   elif op == "cli":
     asm.cli()
   elif op == "hlt":

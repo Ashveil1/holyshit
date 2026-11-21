@@ -50,6 +50,11 @@ QEMU tests: `kpmmtest` `kheaptest` `kaddrtest` `ktasktest` `kpreempt`
   failure model; opt-in desktop routing via `kusbin`/`kguiusb` with PS/2
   drop-drained: [xHCI scope and QEMU proof](xhci.md).
 - `import` works (plain `.holy` modules), `try` works (halt when no handler)
+- raise with no handler prints `error: msg at line N` on serial and halts.
+  Module globals and reserved data regions (`kstack_`, IDT, save areas) are
+  8-aligned, so the descending qword poison fill (`0x0B`) can never straddle
+  a global: a poisoned global reads exactly `Unbound` and the guard halts
+  instead of passing a shifted poison value to a wild deref.
 
 ## memory management (pure `.holy`)
 
