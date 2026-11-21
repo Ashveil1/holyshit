@@ -34,7 +34,9 @@ env = dict(os.environ, HSROOT=str(ROOT), HSPATH=os.pathsep.join([
 HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
         "<fact> | no, <thing> is <fact> | what is <thing> | "
         "do you know <thing> | what do you know about <thing> | "
-        "what about it | <phrase> means <thing> | forget <thing> | "
+        "how is <thing> | how about <thing> | <thing> คืออะไร | "
+        "and <thing> | what else | what about it | <phrase> means <thing> | "
+        "forget <thing> | "
         "forget it | note <text> | notes | clear notes | list | "
         "say <text> | help")
 WS = ' \t\n\r'
@@ -130,6 +132,43 @@ class Oracle:
             if self.topic is None:
                 return 'i have no topic yet'
             return self._recall(self.topic)
+        if m in ('hello', 'hi', 'hey'):
+            return 'hello - teach me something with: remember <thing> is <fact>'
+        if m == 'how are you':
+            return 'i am a pattern matcher, not a person - but the patterns are working'
+        if m in ('thanks', 'thank you'):
+            return 'noted - i do not feel it, but the fact store appreciates the exercise'
+        if m in ('bye', 'goodbye'):
+            return 'type quit to leave, or keep teaching me'
+        if m == 'สวัสดี':
+            return 'สวัสดี - สอนผมได้ด้วย: remember <thing> is <fact>'
+        if m == 'ขอบคุณ':
+            return 'ยินดี - ผมไม่ได้รู้สึก แค่จับคู่รูปแบบ'
+        if m in ('what else', 'anything else'):
+            if self.topic is None:
+                return 'i have no topic yet'
+            facts = self.facts[self.topic]
+            if len(facts) <= 1:
+                return 'that is all i know about ' + self.topic
+            return 'about ' + self.topic + ': ' + join_values(facts[1:])
+        if m[:4] == 'and ' and len(m) > 4:
+            return self._recall(m[4:])
+        if m[:7] == 'how is ':
+            return self._open_reply(m[7:])
+        if m[:7] == 'why is ':
+            return self._open_reply(m[7:])
+        if m[:8] == 'when is ':
+            return self._open_reply(m[8:])
+        if m[:10] == 'how about ':
+            return self._open_reply(m[10:])
+        if m[:25] == 'tell me everything about ':
+            return self._open_reply(m[25:])
+        p = 'เกี่ยวกับ '
+        if m.find(p) == 0:
+            return self._open_reply(m[len(p):])
+        k = m.find(' คืออะไร')
+        if k > 0 and k + len(' คืออะไร') == len(m):
+            return self._recall(m[:k])
         if m == 'forget it':
             if self.topic is None:
                 return 'i have no topic yet'
@@ -209,6 +248,14 @@ class Oracle:
                 return target
             return None
         return None
+
+    def _open_reply(self, thing):
+        resolved = self._resolve(thing)
+        if resolved is not None:
+            self.topic = resolved
+            return 'all i know about ' + resolved + ' is ' + \
+                join_values(self.facts[resolved])
+        return self._recall(thing)
 
     def _candidates(self, phrase):
         ws = words(phrase)
@@ -324,6 +371,29 @@ GARBAGE = ['', '   ', 'xyzzy', 'remember', 'remember x', 'remember is y',
            'means', 'x means', 'means y', 'x means x', 'remember x is also',
            'no,', 'no, x', 'no x is y']
 ALIASES = ['do you know', 'tell me about', 'who is', 'where is']
+# A8: pleasantries, open questions (EN+TH), topic chains.
+PLEASANTRIES = ['hello', 'hi', 'hey', 'how are you', 'thanks', 'thank you',
+                'bye', 'goodbye', 'สวัสดี', 'ขอบคุณ']
+CHAINS = ['what else', 'anything else']
+
+
+def a8_line():
+    r = rng.random()
+    if r < 0.20:
+        return mangle(rng.choice(PLEASANTRIES[:8]))
+    if r < 0.35:
+        return rng.choice(PLEASANTRIES[8:])
+    if r < 0.60:
+        pat = rng.choice(['how is', 'why is', 'when is', 'how about',
+                          'tell me everything about'])
+        return mangle(pat) + ' ' + mangle(rng.choice(KEYS + MISSES))
+    if r < 0.75:
+        if rng.random() < 0.5:
+            return 'เกี่ยวกับ ' + rng.choice(KEYS + MISSES)
+        return rng.choice(KEYS + MISSES) + ' คืออะไร'
+    if r < 0.90:
+        return mangle('and') + ' ' + mangle(rng.choice(KEYS + MISSES))
+    return mangle(rng.choice(CHAINS))
 # Phrases for user-taught paraphrases, and miss-askings that overlap real
 # keys by a word (to trigger the clarification dialogue).
 PHRASES = ['the capital of france', 'kitty', 'สวัสดี', 'big answer']
@@ -394,12 +464,14 @@ def make_session():
             line = mangle('notes')
         elif r < 0.91:
             line = mangle('clear notes')
-        elif r < 0.95:
+        elif r < 0.93:
             line = mangle('list')
-        elif r < 0.97:
+        elif r < 0.945:
             line = mangle('say') + ' ' + rng.choice(VALUES + ['Mixed CASE text'])
-        elif r < 0.98:
+        elif r < 0.95:
             line = mangle('help')
+        elif r < 0.99:
+            line = a8_line()
         else:
             line = rng.choice(GARBAGE)
         line = punctuate(line)

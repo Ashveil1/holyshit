@@ -74,9 +74,19 @@ DIALOGUE = [
     ('what is ดวงจันทร์', 'i do not know ดวงจันทร์', 'miss'),
     ('what is the capital of thailand',
      'i do not know the capital of thailand', 'miss'),
+    ('hello', 'hello - teach me something with: remember <thing> is <fact>',
+     'pleasantry'),
+    ('สวัสดี', 'สวัสดี - สอนผมได้ด้วย: remember <thing> is <fact>',
+     'pleasantry'),
+    ('how is bangkok', 'all i know about bangkok is the capital of thailand',
+     'open'),
+    ('what else', 'that is all i know about bangkok', 'chain'),
+    ('and my cat', 'i know my cat is milo', 'chain'),
+    ('แมว คืออะไร', 'i know แมว is สัตว์เลี้ยง', 'open'),
     ('blorf zingle', 'i do not understand', 'unparsed'),
 ]
-SCORED = ('recall', 'clarify', 'miss', 'correction', 'unparsed')
+SCORED = ('recall', 'clarify', 'miss', 'correction', 'pleasantry', 'open',
+          'chain', 'unparsed')
 
 
 def git_head():

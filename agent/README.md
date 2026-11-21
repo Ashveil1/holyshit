@@ -4,7 +4,7 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.4)
+## What it is today (v0.5)
 
 - An ordered pattern-rule matcher: a fixed set of command patterns is
   checked in order and the first match wins.
@@ -16,6 +16,14 @@ no dependencies beyond the language itself.
 - Teaching by correction: `no, X is Z` replaces the facts for X with Z
   (and updates the session topic), so a wrong or stale taught fact can
   be fixed without `forget` plus a fresh `remember`.
+- Wider dialogue, honest by construction: open questions
+  (`how is X`, `why is X`, `how about X`, `tell me everything about X`,
+  Thai `เกี่ยวกับ X`) read back the taught facts framed as
+  `all i know about X is ...` - never a pretended answer to the how or
+  why; Thai `<thing> คืออะไร` asks what-is; a small pleasantries layer
+  (hello/how are you/thanks/bye, สวัสดี/ขอบคุณ) answers with fixed,
+  visibly mechanical strings; `and X` recalls X, and `what else` /
+  `anything else` continues the session topic.
 - A little dialogue context: it tracks the current topic and follows
   `what about it` / `forget it`; when a question misses but a handful of
   taught things overlap its words it asks `did you mean ...?` and
@@ -44,9 +52,14 @@ no dependencies beyond the language itself.
 Commands: `remember <thing> is <fact>`, `remember <thing> is also <fact>`,
 `no, <thing> is <fact>` (correction), `what is <thing>` (aliases:
 `do you know`, `tell me about`, `who is`, `where is`),
-`what do you know about <thing>`, `what about it`, `<phrase> means <thing>`,
+`what do you know about <thing>`, `how is <thing>`, `why is <thing>`,
+`when is <thing>`, `how about <thing>`, `tell me everything about <thing>`,
+`เกี่ยวกับ <thing>`, `<thing> คืออะไร`, `and <thing>`, `what else`,
+`anything else`, `what about it`, `<phrase> means <thing>`,
 `forget <thing>`, `forget it`, `note <text>`, `notes`, `clear notes`,
-`list`, `say <text>`, `help`. One trailing `?` or `.` is ignored.
+`list`, `say <text>`, `help`, plus fixed pleasantries (hello/hi/hey,
+how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุณ).
+One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
 ## Hosted resource benchmark (A7 core, measured at 3ffc4b1 + keyset)
@@ -62,7 +75,9 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A7, keyset membership + word index), with the A5
+Current numbers (A7, keyset membership + word index; unchanged by the
+A8 dialogue rules, which add only constant-time pattern checks - the
+quick gate confirms), with the A5
 pre-index baseline in parentheses where it differs:
 
 | backend | facts | miss (A5) | recall (A6) | startup | peak RSS |
@@ -94,8 +109,9 @@ Honest readings:
   10k facts because it rebuilds the index while loading (native: 0.38
   s). The on-disk format is unchanged - index and keyset are derived,
   never persisted.
-- The held-out Thai/English dialogue (24 lines: 7 recalls incl. alias
-  and Thai, 2 clarifications, 3 honest misses, 1 correction) scores
+- The held-out Thai/English dialogue (30 lines: 7 recalls incl. alias
+  and Thai, 2 clarifications, 3 honest misses, 1 correction, 2
+  pleasantries, 2 open questions, 2 topic chains) scores
   full marks on both backends at every stage - behavior did not move,
   only its cost. Small sample: a smoke check, not an accuracy study.
 
@@ -110,7 +126,10 @@ literal ASCII word matching plus non-ASCII substring matching,
 "associations" are shared words between taught values, and its
 clarifications are word-overlap guesses. Thai substring matches can be
 loose in ways a speaker would notice (a short taught key can match an
-unrelated longer word that merely contains it). No reply should ever be
+unrelated longer word that merely contains it). Open questions get
+taught facts read back, never an answer to the actual how/why/when,
+and the pleasantries are fixed strings - not mood, not comprehension.
+No reply should ever be
 read as more than pattern matching over taught facts.
 
 ## Direction (not a claim)

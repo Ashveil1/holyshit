@@ -384,7 +384,24 @@ def _pending_reply(state, m):
     i = i + 1
   state["pending"] = null
   return [false, ""]
-_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what do you know about <thing> | what about it | <phrase> means <thing> | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
+# An open question (how/why/when/about) gets the taught facts read back
+# with honest framing - it never pretends to answer the how or why.
+def _open_reply(state, thing):
+  resolved = _resolve(state, thing)
+  if resolved != null:
+    state["topic"] = resolved
+    return "all i know about " + resolved + " is " + _join(state["facts"][resolved])
+  return _recall(state, thing)
+# "what else" continues the session topic: remaining facts, or an
+# honest that-is-all.
+def _else_reply(state):
+  if state["topic"] == null:
+    return "i have no topic yet"
+  facts = state["facts"][state["topic"]]
+  if len(facts) <= 1:
+    return "that is all i know about " + state["topic"]
+  return "about " + state["topic"] + ": " + _join(facts[1:])
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -415,6 +432,42 @@ def respond(state, line):
     if state["topic"] == null:
       return "i have no topic yet"
     return _recall(state, state["topic"])
+  # Pleasantries: fixed strings, visibly mechanical, never a claimed
+  # feeling. English and Thai.
+  if m == "hello" or m == "hi" or m == "hey":
+    return "hello - teach me something with: remember <thing> is <fact>"
+  if m == "how are you":
+    return "i am a pattern matcher, not a person - but the patterns are working"
+  if m == "thanks" or m == "thank you":
+    return "noted - i do not feel it, but the fact store appreciates the exercise"
+  if m == "bye" or m == "goodbye":
+    return "type quit to leave, or keep teaching me"
+  if m == "สวัสดี":
+    return "สวัสดี - สอนผมได้ด้วย: remember <thing> is <fact>"
+  if m == "ขอบคุณ":
+    return "ยินดี - ผมไม่ได้รู้สึก แค่จับคู่รูปแบบ"
+  if m == "what else" or m == "anything else":
+    return _else_reply(state)
+  if m[:4] == "and " and len(m) > 4:
+    return _recall(state, m[4:])
+  # Open questions (how/why/when/about), English and Thai.
+  if m[:7] == "how is ":
+    return _open_reply(state, m[7:])
+  if m[:7] == "why is ":
+    return _open_reply(state, m[7:])
+  if m[:8] == "when is ":
+    return _open_reply(state, m[8:])
+  if m[:10] == "how about ":
+    return _open_reply(state, m[10:])
+  if m[:25] == "tell me everything about ":
+    return _open_reply(state, m[25:])
+  p = "เกี่ยวกับ "
+  if find(m, p) == 0:
+    return _open_reply(state, m[len(p):])
+  # Thai what-is: "<thing> คืออะไร" (suffix form).
+  k = find(m, " คืออะไร")
+  if k > 0 and k + len(" คืออะไร") == len(m):
+    return _recall(state, m[:k])
   if m == "forget it":
     if state["topic"] == null:
       return "i have no topic yet"
