@@ -8,12 +8,15 @@
 # pending. A missing or unreadable/corrupt file loads as a fresh empty
 # state rather than crashing the chat.
 #
-# On-disk format v4: {"facts": {key: [value, ...]}, "order": [...],
-# "aliases": {phrase: key}, "rels": [[subject, predicate, object], ...]}.
+# On-disk format v5: {"facts": {key: [value, ...]}, "order": [...],
+# "aliases": {phrase: key}, "rels": [[subject, predicate, object], ...],
+# "forgotten": [key, ...] (A12 tombstones, capped at 20)}.
 # Files from v0.1/v0.2 (facts values were plain strings, no aliases) load
 # fine: string values are wrapped into one-fact lists and aliases default
 # empty. Files without "rels" (pre-v4) load fine: relation edges are
-# derived from the recognized shapes of the loaded fact values.
+# derived from the recognized shapes of the loaded fact values. Files
+# without "forgotten" (pre-v5) load fine: the list defaults to empty.
+# The session log is never written: it is session-only by design.
 import agent.core
 def load(path):
   state = agent.core.new_state()
@@ -38,16 +41,24 @@ def load(path):
       agent.core._index_key(state, k)
       for v in state["facts"][k]:
         agent.core._cooc_add(state, k, v)
-    # Relations: persisted at v4; older files derive edges from the
-    # recognized shapes of their fact values.
+    # Relations: persisted at v4+; older files derive edges from the
+    # recognized shapes of their fact values. Either way the derived
+    # relset/relby indexes are rebuilt here.
     try:
       state["rels"] = data["rels"]
+      for e in state["rels"]:
+        agent.core._rel_index(state, e[0], e[1], e[2])
     except:
       for k in state["order"]:
         for v in state["facts"][k]:
           agent.core._learn_rel(state, k, v)
+    # A12 tombstones: persisted at v5; older files start with none.
+    try:
+      state["forgotten"] = data["forgotten"]
+    except:
+      state["forgotten"] = []
     return state
   except:
     return agent.core.new_state()
 def save(state, path):
-  json_save(path, {"facts": state["facts"], "order": state["order"], "aliases": state["aliases"], "rels": state["rels"]})
+  json_save(path, {"facts": state["facts"], "order": state["order"], "aliases": state["aliases"], "rels": state["rels"], "forgotten": state["forgotten"]})

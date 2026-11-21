@@ -32,15 +32,19 @@ env = dict(os.environ, HSROOT=str(ROOT), HSPATH=os.pathsep.join([
     str(ROOT), str(ROOT/'selfhost'), str(ROOT/'selfhost/be')]))
 
 HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
-        "<fact> | remember <thing> has <part> | no, <thing> is <fact> | "
+        "<fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | "
+        "no, <thing> is <fact> | "
         "what is <thing> | do you know <thing> | what does <thing> mean | "
-        "is <thing> in <thing> | where is <thing> | "
+        "is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | "
+        "where is <thing> | "
         "what do you know about <thing> | "
         "how is <thing> | how about <thing> | <thing> คืออะไร | "
         "<thing> หมายความว่าอะไร | <thing> อยู่ไหน | "
+        "<thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | "
         "and <thing> | what else | what about it | <phrase> means <thing> | "
         "forget <thing> | "
-        "forget it | note <text> | notes | clear notes | list | "
+        "forget it | what do you know | what did you forget | "
+        "what did we talk about | note <text> | notes | clear notes | list | "
         "say <text> | help")
 WS = ' \t\n\r'
 STOP = {'the', 'and', 'for', 'are', 'with', 'that', 'this'}
@@ -143,6 +147,10 @@ class Oracle:
         self.pending = None  # {'cands': [...], 'keys': [...]}
         self.rels = []       # [subject, predicate, object]
         self.cooc = {}       # word -> {context word -> count}
+        self.relset = {}     # subject -> predicate -> {object: True}
+        self.relby = {}      # predicate -> stripped subject -> [[s, o], ...]
+        self.forgotten = []  # A12 tombstones, capped at 20
+        self.session = []    # A12 session log, capped at 10, never saved
 
     # --- A10 usage counting, mirroring core.holy ---
     def _cooc_add(self, key, value):
@@ -195,25 +203,47 @@ class Oracle:
                 ' seems related to ' + join_values(ranked[:3]))
 
     # --- A9 relations, mirroring core.holy ---
+    def _rel_index(self, s, p, o):
+        self.relset.setdefault(s, {}).setdefault(p, {})[o] = True
+        self.relby.setdefault(p, {}).setdefault(stripart(s), []).append([s, o])
+
     def _add_rel(self, s, p, o):
-        if [s, p, o] not in self.rels:
-            self.rels.append([s, p, o])
+        if o in self.relset.get(s, {}).get(p, {}):
+            return
+        self.rels.append([s, p, o])
+        self._rel_index(s, p, o)
 
     def _drop_rels(self, key):
         self.rels = [e for e in self.rels if e[0] != key]
+        if key in self.relset:
+            self.relset[key] = {}
+        ns = stripart(key)
+        for p in self.relby:
+            if ns in self.relby[p]:
+                self.relby[p][ns] = []
 
     def _learn_rel(self, key, value):
         v = lower_ascii(value)
+        got = False
         if v[:3] == 'in ' and len(v) > 3:
             self._add_rel(key, 'is-in', v[3:])
+            got = True
         if (v[:2] == 'a ' and len(v) > 2) or (v[:3] == 'an ' and len(v) > 3):
             self._add_rel(key, 'is-a', v)
+            got = True
         if v[:4] == 'has ' and len(v) > 4:
             self._add_rel(key, 'has', v[4:])
+            got = True
         for p, pred in (('อยู่ ', 'is-in'), ('คือ ', 'means'),
-                        ('หมายความว่า ', 'means')):
+                        ('หมายความว่า ', 'means'), ('เป็น ', 'is-a')):
             if v.startswith(p) and len(v) > len(p):
                 self._add_rel(key, pred, v[len(p):])
+                got = True
+        # A12: a value matching no recognized shape is a bare kind-of.
+        if not got:
+            self._add_rel(key, 'is-a', v)
+            return True
+        return False
 
     def _chain(self, start, pred, goal):
         g = stripart(goal)
@@ -227,9 +257,8 @@ class Oracle:
                 return path
             if len(path) < 8 and node not in visited:
                 visited.add(node)
-                for e in self.rels:
-                    if e[1] == pred and stripart(e[0]) == node:
-                        queue.append((stripart(e[2]), path + [[e[0], e[2]]]))
+                for s, o in self.relby.get(pred, {}).get(node, []):
+                    queue.append((stripart(o), path + [[s, o]]))
         return None
 
     def _where_chain(self, start):
@@ -239,19 +268,16 @@ class Oracle:
         while node not in visited and len(path) < 8:
             visited.add(node)
             found = None
-            for e in self.rels:
-                if e[1] == 'is-in' and stripart(e[0]) == node and found is None:
+            for e in self.relby.get('is-in', {}).get(node, []):
+                if found is None:
                     found = e
             if found is None:
                 break
-            path.append([found[0], found[2]])
-            node = stripart(found[2])
+            path.append(list(found))
+            node = stripart(found[1])
         return path
 
-    def _chain_reply(self, x, pred, y):
-        path = self._chain(x, pred, y)
-        if path is None:
-            return 'not that i know'
+    def _chain_fmt(self, path, pred):
         out = 'yes:'
         for s, o in path:
             if pred == 'is-in':
@@ -259,6 +285,37 @@ class Oracle:
             if pred == 'is-a':
                 out += ' ' + s + ' is ' + o + ','
         return out[:-1]
+
+    def _chain_reply(self, x, pred, y):
+        path = self._chain(x, pred, y)
+        if path is None:
+            return 'not that i know'
+        return self._chain_fmt(path, pred)
+
+    def _is_bare_reply(self, rest3):
+        ws = words(rest3)
+        if len(ws) < 2:
+            return 'i do not understand'
+        x = ws[0]
+        i = 1
+        while i < len(ws):
+            y = rest3[len(x) + 1:]
+            path = self._chain(x, 'is-a', y)
+            if path is not None:
+                return self._chain_fmt(path, 'is-a')
+            x = x + ' ' + ws[i]
+            i += 1
+        return 'not that i know'
+
+    def _means_check(self, x, y, sep):
+        if y in self.relset.get(x, {}).get('means', {}):
+            return 'yes: ' + x + sep + y
+        return 'not that i know'
+
+    def _slog(self, kind, key):
+        self.session.append([kind, key])
+        if len(self.session) > 10:
+            self.session = self.session[-10:]
 
     def _where_reply(self, x, sep):
         path = self._where_chain(x)
@@ -275,7 +332,11 @@ class Oracle:
 
     def respond(self, line):
         text = normalize(line)
-        if text and text[-1] in '?.':
+        qmark = False
+        if text and text[-1] == '?':
+            qmark = True
+            text = text[:-1]
+        if text and text[-1] == '.':
             text = text[:-1]
         m = lower_ascii(text)
         if self.pending is not None:
@@ -339,6 +400,13 @@ class Oracle:
             if self.topic is None:
                 return 'i have no topic yet'
             return self._forget(self.topic)
+        if m in ('what do you know', 'how many things do you know',
+                 'what have you learned'):
+            return self._know_reply()
+        if m in ('what did you forget', 'what have you forgotten'):
+            return self._forgotten_reply()
+        if m in ('what did we talk about', 'what happened this session'):
+            return self._session_reply()
         if m[:23] == 'what do you know about ':
             return self._about_reply(m[23:])
         if m[:9] == 'remember ':
@@ -359,6 +427,9 @@ class Oracle:
             k = mrest.find(' คือ ')
             if k > 0 and k + len(' คือ ') < len(mrest):
                 return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'คือ')
+            k = mrest.find(' เป็น ')
+            if k > 0 and k + len(' เป็น ') < len(mrest):
+                return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'เป็น')
             return 'i do not understand'
         if m[:10] == 'what does ' and len(m) > 15 and m[-5:] == ' mean':
             return self._mean_reply(m[10:-5], ' means ')
@@ -373,7 +444,7 @@ class Oracle:
             k = rest3.find(' a ')
             if k > 0:
                 return self._chain_reply(rest3[:k], 'is-a', rest3[k + 3:])
-            return 'i do not understand'
+            return self._is_bare_reply(rest3)
         k = m.find(' หมายความว่าอะไร')
         if k > 0 and k + len(' หมายความว่าอะไร') == len(m):
             return self._mean_reply(m[:k], ' คือ ')
@@ -405,6 +476,34 @@ class Oracle:
                     key = resolved
                 return self._teach(key, rest[k + 4:])
             return 'i do not understand'
+        q = m
+        isq = False
+        for suf in (' หรือไม่', 'หรือไม่', ' ไหม', 'ไหม'):
+            if len(q) > len(suf) and q.endswith(suf):
+                q = q[:-len(suf)]
+                isq = True
+        if not isq and qmark:
+            isq = True
+        if isq:
+            k = q.find(' เป็น ')
+            if k < 0:
+                k = q.find('เป็น')
+                d = len('เป็น')
+            else:
+                d = len(' เป็น ')
+            if k > 0 and k + d < len(q):
+                path = self._chain(q[:k], 'is-a', q[k + d:])
+                if path is None:
+                    return 'not that i know'
+                return self._chain_fmt(path, 'is-a')
+            k = q.find(' คือ ')
+            if k < 0:
+                k = q.find('คือ')
+                d = len('คือ')
+            else:
+                d = len(' คือ ')
+            if k > 0 and k + d < len(q):
+                return self._means_check(q[:k], q[k + d:], ' คือ ')
         means_p = None
         for p in (' means ', ' หมายความว่า ', ' คือ '):
             k = m.find(p)
@@ -416,6 +515,8 @@ class Oracle:
             target = m[k + len(means_p):]
             if phrase == target:
                 return 'i do not understand'
+            if qmark:
+                return self._means_check(phrase, target, means_p)
             self._add_rel(phrase, 'means', target)
             if target in self.facts:
                 self.aliases[phrase] = target
@@ -481,31 +582,37 @@ class Oracle:
                 self._cooc_remove(key, v)
         self.facts[key] = [value]
         self._drop_rels(key)
-        self._learn_rel(key, value)
+        bare = self._learn_rel(key, value)
         self._cooc_add(key, value)
+        self._slog('taught', key)
+        suffix = ' (filed as a kind-of)' if bare else ''
         if key in self.order:
-            return 'updated ' + key + ' is ' + value
+            return 'updated ' + key + ' is ' + value + suffix
         self.order.append(key)
-        return 'remembered ' + key + ' is ' + value
+        return 'remembered ' + key + ' is ' + value + suffix
 
     def _teach_also(self, key, value):
         self.topic = key
-        self._learn_rel(key, value)
+        bare = self._learn_rel(key, value)
+        suffix = ' (filed as a kind-of)' if bare else ''
         if key not in self.facts:
             self.facts[key] = [value]
             self.order.append(key)
             self._cooc_add(key, value)
-            return 'remembered ' + key + ' is ' + value
+            self._slog('taught', key)
+            return 'remembered ' + key + ' is ' + value + suffix
         if value in self.facts[key]:
-            return 'i already know that ' + key + ' is ' + value
+            return 'i already know that ' + key + ' is ' + value + suffix
         self.facts[key].append(value)
         self._cooc_add(key, value)
-        return 'added: ' + key + ' is ' + value
+        self._slog('taught', key)
+        return 'added: ' + key + ' is ' + value + suffix
 
     def _recall(self, asked):
         key = self._resolve(asked)
         if key is not None:
             self.topic = key
+            self._slog('asked', key)
             return 'i know ' + key + ' is ' + join_values(self.facts[key])
         cands, keys = self._candidates(asked)
         if len(cands) > 1:
@@ -533,16 +640,48 @@ class Oracle:
             self._cooc_remove(key, v)
         if self.topic == key:
             self.topic = None
+        self.forgotten.append(key)
+        if len(self.forgotten) > 20:
+            self.forgotten = self.forgotten[-20:]
+        self._slog('forgot', key)
         return 'forgot ' + key
 
     def _list_reply(self):
         n = len(self.order)
         if n == 0:
             return 'i know nothing yet'
+        if n > 50:
+            return ('i know ' + str(n) + ' things: ' +
+                    ', '.join(self.order[:50]) + ', and ' + str(n - 50) + ' more')
         joined = ', '.join(self.order)
         if n == 1:
             return 'i know 1 thing: ' + joined
         return 'i know ' + str(n) + ' things: ' + joined
+
+    def _know_reply(self):
+        n = len(self.order)
+        if n == 0:
+            return 'i know nothing yet'
+        if n <= 5:
+            return self._list_reply()
+        return ('i know ' + str(n) + ' things; most recently: ' +
+                join_values(self.order[-5:]))
+
+    def _forgotten_reply(self):
+        if not self.forgotten:
+            return 'i have not forgotten anything since i started keeping track'
+        return 'i forgot ' + join_values(self.forgotten) + ' (i only keep the last 20)'
+
+    def _session_reply(self):
+        if not self.session:
+            return 'nothing has happened yet this session'
+        out = ''
+        for kind, key in self.session:
+            if kind == 'asked':
+                out += '; asked about ' + key
+            else:
+                out += '; ' + kind + ' ' + key
+        return 'this session: ' + out[2:]
 
     def _value_words(self, key):
         out = []
@@ -728,6 +867,49 @@ A10_SCENARIOS = [
 # Coherent A9 scenarios spliced into sessions: random lines alone rarely
 # line up a teach with its chain query, so these guarantee positive
 # inference coverage (chains, where-is, built-in self-knowledge, Thai).
+A12_SCENARIOS = [
+    ['remember apple is a fruit', 'remember fruit is food',
+     'is apple food', 'is apple a drink', 'is apple a food'],
+    ['remember แมว เป็น สัตว์', 'remember สัตว์ เป็น สิ่งมีชีวิต',
+     'แมวเป็นสิ่งมีชีวิตไหม', 'แมวเป็นปลาไหม',
+     'แมว คือ สัตว์ หรือไม่', 'แมว คือ สัตว์?'],
+    ['remember apple is a fruit', 'forget apple', 'what did you forget',
+     'what have you forgotten'],
+    ['remember apple is a fruit', 'what do you know',
+     'how many things do you know', 'what did we talk about',
+     'what happened this session'],
+    ['kitty means my cat', 'kitty means my cat?',
+     'ลิง คือ สัตว์', 'ลิง คือ สัตว์ ไหม'],
+]
+
+
+def a12_line():
+    r = rng.random()
+    if r < 0.25:
+        return mangle(rng.choice(
+            ['what do you know', 'how many things do you know',
+             'what have you learned', 'what did you forget',
+             'what have you forgotten', 'what did we talk about',
+             'what happened this session']))
+    if r < 0.45:
+        return (mangle('is') + ' ' + rng.choice(KINDS) + ' ' +
+                rng.choice(KINDS + MISSES[:4]))
+    if r < 0.60:
+        return (mangle('remember') + ' ' + rng.choice(KINDS) + ' ' +
+                mangle('is') + ' ' + rng.choice(KINDS + VALUES))
+    if r < 0.75:
+        return (mangle('remember') + ' ' +
+                rng.choice(['แมว', 'ลิง', 'หมา']) + ' เป็น ' +
+                rng.choice(['สัตว์', 'สิ่งมีชีวิต', 'ปลา']))
+    if r < 0.90:
+        return (rng.choice(['แมว', 'ลิง', 'หมา']) + 'เป็น' +
+                rng.choice(['สัตว์', 'สิ่งมีชีวิต', 'ปลา', 'ผลไม้']) +
+                rng.choice(['ไหม', ' ไหม', 'หรือไม่', ' หรือไม่']))
+    return (rng.choice(PHRASES + KINDS[:3]) +
+            rng.choice([' means ', ' คือ ']) +
+            rng.choice(KEYS + VALUES[:3]) + '?')
+
+
 A9_SCENARIOS = [
     ['remember paris is in france', 'remember france is in europe',
      'is paris in europe', 'is paris in asia', 'where is paris',
@@ -800,15 +982,17 @@ def make_session():
             line = a8_line()
         elif r < 0.982:
             line = a9_line()
-        elif r < 0.995:
+        elif r < 0.992:
             line = a10_line()
+        elif r < 0.997:
+            line = a12_line()
         else:
             line = rng.choice(GARBAGE)
         line = punctuate(line)
         lines.append(line)
     if rng.random() < 0.7:
         pos = rng.randrange(len(lines) + 1)
-        lines[pos:pos] = list(rng.choice(A9_SCENARIOS + A10_SCENARIOS))
+        lines[pos:pos] = list(rng.choice(A9_SCENARIOS + A10_SCENARIOS + A12_SCENARIOS))
     replies = [oracle.respond(line) for line in lines]
     return lines, replies, oracle
 
@@ -902,7 +1086,7 @@ s3 = agent.store.load(p)
 print agent.core.respond(s3, "list")
 print agent.core.respond(s3, "is paris in europe")
 '''
-STORE_WANT = ('remembered alpha is one\nadded: alpha is two\n'
+STORE_WANT = ('remembered alpha is one (filed as a kind-of)\nadded: alpha is two (filed as a kind-of)\n'
               'ok, a1 means alpha\nnoted\n'
               'remembered paris is in france\n'
               'remembered france is in europe\n'

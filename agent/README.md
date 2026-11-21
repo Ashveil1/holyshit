@@ -75,31 +75,49 @@ no dependencies beyond the language itself.
   taught fact, and membership checks use a key set instead of walking
   the key list (see the benchmark section). Both are rebuilt on load
   and maintained on teach/forget; neither is persisted.
-- Relation edges (`rels`) persist in the v4 store format; pre-v4
-  files re-derive them from their fact shapes on load, and the
-  built-in self-knowledge edges are never persisted.
+- Relation edges (`rels`) persist in the v5 store format (which adds
+  the `forgotten` tombstone list); pre-v5 files re-derive edges from
+  their fact shapes on load, once, and the built-in self-knowledge
+  edges are never persisted.
+- A bare `X is Y` teach whose value matches no known shape still files
+  a kind-of edge and says so (`(filed as a kind-of)` in the reply) -
+  deliberately shallow: `sky is blue` files blue as a kind of sky.
+  `is X Y` asks over the is-a chain without needing an article; Thai
+  yes/no questions `<X> เป็น <Y> ไหม` and `<X> คือ <Y> หรือไม่` answer
+  over the same chains, and a trailing `?` forces question mode
+  (`apple means fruit?` checks instead of teaching).
+- Bounded self-knowledge: `what do you know` counts taught things and
+  names the 5 most recent, `what did you forget` lists the tombstones
+  it keeps (last 20), `what did we talk about` replays the session log
+  (last 10 events, this session only, never saved). Each answer
+  states its own bound.
 - Pure and portable: the core never does IO. `respond(state, line)`
   returns a reply, so the same core can later run freestanding in the
   kernel. Memory footprint is a few KB plus exactly what it was taught.
 
 Commands: `remember <thing> is <fact>`, `remember <thing> is also <fact>`,
-`remember <thing> has <part>`, `no, <thing> is <fact>` (correction),
+`remember <thing> has <part>`, `remember <thing> เป็น <kind>`,
+`no, <thing> is <fact>` (correction),
 `what is <thing>` (aliases: `do you know`, `tell me about`, `who is`),
-`is <thing> in <thing>`, `is <thing> a <kind>`, `where is <thing>`
+`is <thing> in <thing>`, `is <thing> a <kind>`, `is <thing> <kind>` (bare is-a question),
+`where is <thing>`
 (is-in chain), `what does <thing> mean` (means relation + built-in
 self-knowledge), `what do you know about <thing>`, `how is <thing>`,
 `why is <thing>`, `when is <thing>`, `how about <thing>`,
 `tell me everything about <thing>`,
 `เกี่ยวกับ <thing>`, `<thing> คืออะไร`, `<thing> หมายความว่าอะไร`,
-`<thing> อยู่ไหน`, `and <thing>`, `what else`,
+`<thing> อยู่ไหน`, `<thing> เป็น <thing> ไหม`,
+`<thing> คือ <thing> หรือไม่` (Thai yes/no questions), `and <thing>`,
+`what else`,
 `anything else`, `what about it`, `<phrase> means <thing>`,
-`forget <thing>`, `forget it`, `note <text>`, `notes`, `clear notes`,
+`forget <thing>`, `forget it`, `what do you know`,
+`what did you forget`, `what did we talk about`, `note <text>`, `notes`, `clear notes`,
 `list`, `say <text>`, `help`, plus fixed pleasantries (hello/hi/hey,
 how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุณ).
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (measured at A11, load-time optimization)
+## Hosted resource benchmark (measured at A12, self-knowledge and grammar gaps)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -112,25 +130,39 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A11; A7 numbers in parentheses where they differ -
-A8/A9 moved nothing measurable, A10 added the usage-count load cost
-that A11 then cut):
+Current numbers (A12; A11 numbers in parentheses where they differ -
+A12 changed the load path, not the query paths):
 
 | backend | facts | miss (A7) | recall (A7) | startup (A7) | peak RSS (A7) |
 | --- | --- | --- | --- | --- | --- |
-| interp | 0 | 2.1 ms (1.8) | - | 0.08 s | 23.6 MiB |
-| interp | 1,000 | 4.9 ms (4.6) | 0.9 ms (1.1) | 1.33 s (0.31) | 25.6 MiB (23.7) |
-| interp | 10,000 | 31.7 ms (43.5) | 1.0 ms (1.3) | 12.4 s (2.59) | 46.9 MiB (33.9) |
-| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 s | 25.7 MiB |
-| ir-x64 | 1,000 | 0.02 ms | <0.01 ms | 0.04 s (0.03) | 25.7 MiB |
-| ir-x64 | 10,000 | <0.01 ms | 0.09 ms | 0.67 s (0.38) | 124.1 MiB (92.9) |
+| interp | 0 | 2.1 ms (2.1) | - | 0.08 s | 24.1 MiB (23.6) |
+| interp | 1,000 | 4.2 ms (4.9) | 0.6 ms (0.9) | 1.85 s (1.33) | 27.0 MiB (25.6) |
+| interp | 10,000 | 23.0 ms (31.7) | 0.7 ms (1.0) | 16.9 s (12.4) | 57.6 MiB (46.9) |
+| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 s | 27.3 MiB (25.7) |
+| ir-x64 | 1,000 | 0.04 ms (0.02) | 0.03 ms (<0.01) | 0.06 s (0.04) | 27.3 MiB (25.7) |
+| ir-x64 | 10,000 | <0.01 ms | <0.01 ms (0.09) | 0.88 s (0.67) | 177.4 MiB (124.1) |
 
 4 GiB probe (RLIMIT_AS on the child, 10k facts, mixed recall/miss
-session): both backends complete - interp 12.7 s at 45.9 MiB peak,
-native 0.66 s at 124.3 MiB peak. Memory stays far inside a 4 GiB
+session): both backends complete - interp 17.2 s at 57.6 MiB peak,
+native 0.88 s at 177.7 MiB peak. Memory stays far inside a 4 GiB
 budget.
 
 Honest readings:
+- A12's interp load increase is a ONE-TIME migration cost, not steady
+  state. A pre-v5 store re-derives relation edges on first load, and
+  A12 adds a bare is-a edge for every value that matches no other
+  shape (all 10k synthesized values do), each with a full lowering:
+  16.9 s interp cold startup vs A11's 12.4 s. Once re-saved as v5 the
+  edges are persisted and the same 10k store loads in 12.2 s - A11
+  speed. Native rose less (0.67 -> 0.88 s) because the compiled
+  backend derives fast; its peak RSS grew 124 -> 177 MiB because those
+  ~10k extra edges now persist in memory (interp +11 MiB). The cost is
+  real and is the price of the kind-of edges; the north-star budget
+  (4 GiB) is untouched.
+- Miss/recall latency numbers swing run to run on this shared box
+  (the same interp 10k build measured 10.2 and 23.0 ms miss on two
+  runs); treat any single latency as a band, not a point. Query paths
+  were not A12's subject and moved only within that noise.
 - The A6/A7 derived structures still carry the query paths: misses and
   `did you mean` checks are word-index lookups (~100x over the pre-index
   scan at 10k facts on interp), recalls use keyset membership - no
