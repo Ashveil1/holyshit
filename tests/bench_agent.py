@@ -231,10 +231,63 @@ DIALOGUE += [
      'hypothesis'),
 ]
 
+DIALOGUE += [
+    # A16 reader: text is ingested as data; claims are reported with
+    # provenance and never believed; only user teaching verifies.
+    ('read a bicycle is a vehicle. a bicycle has two wheels. the moon might be cheese',
+     'read-1: 3 segments in, 2 pattern matches, 2 candidates extracted '
+     '(2 new, 0 updated, 0 refused, 0 repeat), 1 unmatched segments',
+     'reading'),
+    ('read manual: a bicycle is a vehicle.',
+     'manual: 1 segments in, 1 pattern matches, 1 candidates extracted '
+     '(0 new, 1 updated, 0 refused, 0 repeat), 0 unmatched segments',
+     'reading'),
+    ('readings about a bicycle',
+     '2 read candidates about a bicycle (unverified readings, not facts):\n'
+     '(a) a bicycle | is-a | a vehicle - positive support: 2 sources '
+     '(read-1, manual); MULTI_SOURCE positive; independence UNVERIFIED\n'
+     '(b) a bicycle | has | two wheels - positive support: 1 source '
+     '(read-1); UNVERIFIED',
+     'reading'),
+    ('remember a bicycle is a vehicle', 'remembered a bicycle is a vehicle', 'teach'),
+    ('readings about a bicycle',
+     '2 read candidates about a bicycle (unverified readings, not facts):\n'
+     '(a) a bicycle | is-a | a vehicle - positive support: 2 sources '
+     '(read-1, manual); USER_CONFIRMED; MULTI_SOURCE positive; '
+     'independence UNVERIFIED\n'
+     '(b) a bicycle | has | two wheels - positive support: 1 source '
+     '(read-1); UNVERIFIED',
+     'reading'),
+    ('read forum: a bicycle is not a vehicle.',
+     'forum: 1 segments in, 1 pattern matches, 1 candidates extracted '
+     '(0 new, 1 updated, 0 refused, 0 repeat), 0 unmatched segments',
+     'reading'),
+    ('readings about a bicycle',
+     '2 read candidates about a bicycle (unverified readings, not facts):\n'
+     '(a) a bicycle | is-a | a vehicle - positive support: 2 sources '
+     '(read-1, manual); negative support: 1 source (forum); '
+     'USER_CONFIRMED; CONFLICT; MULTI_SOURCE positive; '
+     'independence UNVERIFIED\n'
+     '(b) a bicycle | has | two wheels - positive support: 1 source '
+     '(read-1); UNVERIFIED',
+     'reading'),
+    # Thai read shapes, reported as segments/matches, never
+    # 'sentences understood'.
+    ('read รถยนต์ เป็น ยานพาหนะ. นก ไม่เป็น สัตว์เลี้ยง',
+     'read-2: 2 segments in, 2 pattern matches, 2 candidates extracted '
+     '(2 new, 0 updated, 0 refused, 0 repeat), 0 unmatched segments',
+     'reading'),
+    ('readings about รถยนต์',
+     '1 read candidate about รถยนต์ (unverified readings, not facts):\n'
+     '(a) รถยนต์ | is-a | ยานพาหนะ - positive support: 1 source '
+     '(read-2); UNVERIFIED',
+     'reading'),
+]
+
 SCORED = ('recall', 'clarify', 'miss', 'correction', 'pleasantry', 'open',
           'infer', 'passive', 'unknown', 'negative', 'contradiction',
           'rule', 'chain', 'inference', 'usage', 'unparsed', 'guard',
-          'hypothesis')
+          'hypothesis', 'reading')
 
 
 def git_head():
@@ -293,6 +346,15 @@ def derive_script(n):
 
 def dialogue_script():
     return [line for line, _, _ in DIALOGUE]
+
+
+def read_script(n):
+    # The same 5-sentence text re-read n times: 4 records extracted on
+    # the first pass; each later pass adds one more source to each of
+    # the 4 records (updates, never duplicates, never new slots).
+    text = ('read a bike is a vehicle. a bike has two wheels. '
+            'a bike can move. a bike needs a rider. the moon might be cheese')
+    return [text] * max(1, n)
 
 
 def read_hwm(pid):
@@ -400,7 +462,8 @@ def bench_session(argv, cwd, store, script, label, rows, limit_bytes=None):
     return wall, peak, out
 
 
-ALL_SESSIONS = ('startup', 'recall', 'miss', 'infer', 'derive', 'dialogue')
+ALL_SESSIONS = ('startup', 'recall', 'miss', 'infer', 'derive', 'dialogue',
+                'read')
 
 
 def bench_backend(name, argv, tmp, scales, n_cmds, limit_run,
@@ -419,7 +482,8 @@ def bench_backend(name, argv, tmp, scales, n_cmds, limit_run,
         # Latency is (session wall - startup wall), so the startup
         # session runs whenever any latency session does, even if it
         # was filtered out of the report fields.
-        need_start = bool(set(only) & {'startup', 'recall', 'miss', 'infer', 'derive'})
+        need_start = bool(set(only) & {'startup', 'recall', 'miss', 'infer',
+                                       'derive', 'read'})
         t_start = None
         if need_start:
             t_start, rss_start, _ = bench_session(argv, d, store, [], 'startup', rows)
@@ -460,6 +524,12 @@ def bench_backend(name, argv, tmp, scales, n_cmds, limit_run,
                                                 dialogue_script(), 'dialogue', rows)
             row['dialogue'] = score_dialogue(out)
             rss_peaks.append(rss_dlg)
+        if 'read' in only:
+            n_read_cmds = n_cmds if scale else n_cmds
+            t_read, rss_read, _ = bench_session(argv, d, store,
+                                                read_script(n_read_cmds), 'read', rows)
+            row['read_ms'] = max(0.0, 1000.0 * (t_read - t_start) / n_read_cmds)
+            rss_peaks.append(rss_read)
         if rss_peaks:
             row['session_rss_kb'] = max(rss_peaks)
         rows.append(row)
