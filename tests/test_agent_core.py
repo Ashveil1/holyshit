@@ -32,10 +32,11 @@ env = dict(os.environ, HSROOT=str(ROOT), HSPATH=os.pathsep.join([
     str(ROOT), str(ROOT/'selfhost'), str(ROOT/'selfhost/be')]))
 
 HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
-        "<fact> | what is <thing> | do you know <thing> | "
-        "what do you know about <thing> | what about it | "
-        "<phrase> means <thing> | forget <thing> | forget it | "
-        "note <text> | notes | clear notes | list | say <text> | help")
+        "<fact> | no, <thing> is <fact> | what is <thing> | "
+        "do you know <thing> | what do you know about <thing> | "
+        "what about it | <phrase> means <thing> | forget <thing> | "
+        "forget it | note <text> | notes | clear notes | list | "
+        "say <text> | help")
 WS = ' \t\n\r'
 STOP = {'the', 'and', 'for', 'are', 'with', 'that', 'this'}
 
@@ -61,6 +62,27 @@ def lower_ascii(s):
 def words(s):
     # Mirror core._words: split on single spaces, empty words dropped.
     return [w for w in s.split(' ') if w]
+
+
+def nonascii(s):
+    return any(ord(c) > 127 for c in s)
+
+
+def sub_match(w, t):
+    # Mirror core._sub: no length thresholds (interp counts characters,
+    # the compiled backends count bytes); guards are model-independent.
+    if not (nonascii(w) or nonascii(t)):
+        return False
+    if w != t:
+        if w in t and (w != w[:1] or nonascii(w)):
+            return True
+        if t in w and (t != t[:1] or nonascii(t)):
+            return True
+    return False
+
+
+def wmatch(w, t):
+    return w == t or sub_match(w, t)
 
 
 def join_values(values):
@@ -138,6 +160,17 @@ class Oracle:
             return self._forget(m[7:])
         if m[:4] == 'say ' and len(text) > 4:
             return text[4:]
+        if m[:4] == 'no, ':
+            rest = text[4:]
+            mrest = m[4:]
+            k = mrest.find(' is ')
+            if k > 0 and k + 4 < len(mrest):
+                key = mrest[:k]
+                resolved = self._resolve(key)
+                if resolved is not None:
+                    key = resolved
+                return self._teach(key, rest[k + 4:])
+            return 'i do not understand'
         k = m.find(' means ')
         if k > 0 and k + 7 < len(m):
             phrase = m[:k]
@@ -183,12 +216,13 @@ class Oracle:
         keys = []
         if ws:
             for k in self.order:
-                if k != phrase and all(w in words(k) for w in ws):
+                if k != phrase and \
+                        all(any(wmatch(w, kw) for kw in words(k)) for w in ws):
                     cands.append(k)
                     keys.append(k)
             for a, target in self.aliases.items():
                 if target in self.facts and a != phrase and \
-                        all(w in words(a) for w in ws):
+                        all(any(wmatch(w, aw) for aw in words(a)) for w in ws):
                     cands.append(a)
                     keys.append(target)
         return cands, keys
@@ -261,7 +295,8 @@ class Oracle:
             if k == key:
                 continue
             kwords = self._value_words(k)
-            if any(len(w) >= 3 and w not in STOP and w in kwords for w in words):
+            if any(len(w) >= 3 and w not in STOP and
+                   any(wmatch(w, kw) for kw in kwords) for w in words):
                 reply += '; also ' + k + ' is ' + join_values(self.facts[k])
         return reply
 
@@ -279,18 +314,21 @@ KEYS = ['paris', 'milo', '曼谷', 'ไทย', 'café', 'x', 'my cat', 'a=b',
         'Tokyo', 'the answer', 'z', 'felix']
 # Overlapping content words across values exercise association recall.
 VALUES = ['nice', 'a cat', 'a big cat', 'likes fish', 'a dog', 'blue fish',
-          'ประเทศไทย', '42', 'a City in France', 'ไม่รู้', 'x is y',
-          'blue green', 'nothing much']
+          'ประเทศไทย', 'คนไทย', 'เมืองใหญ่', 'ไทยแลนด์', '42',
+          'a City in France', 'ไม่รู้', 'x is y', 'blue green',
+          'nothing much']
 GARBAGE = ['', '   ', 'xyzzy', 'remember', 'remember x', 'remember is y',
            'what', 'what is', 'what is ', 'forget', 'say', 'say ',
            'remember x is', 'REMEMBER x IS ', 'hello there', '?', '.',
            'note', 'what do you know about', 'who is', 'where is',
-           'means', 'x means', 'means y', 'x means x', 'remember x is also']
+           'means', 'x means', 'means y', 'x means x', 'remember x is also',
+           'no,', 'no, x', 'no x is y']
 ALIASES = ['do you know', 'tell me about', 'who is', 'where is']
 # Phrases for user-taught paraphrases, and miss-askings that overlap real
 # keys by a word (to trigger the clarification dialogue).
 PHRASES = ['the capital of france', 'kitty', 'สวัสดี', 'big answer']
-MISSES = ['cat', 'answer', 'my', 'capital', 'ghost town', 'nothing']
+MISSES = ['cat', 'answer', 'my', 'capital', 'ghost town', 'nothing',
+          'คนไทย', 'ประเทศ']
 
 
 def mangle(word):
@@ -341,19 +379,22 @@ def make_session():
         elif r < 0.66:
             line = mangle(rng.choice(['what is', 'do you know'])) + ' ' + \
                 mangle(rng.choice(MISSES))
-        elif r < 0.69:
-            line = rng.choice(['yes', 'no', 'Yes', 'No', 'YES'])
+        elif r < 0.71:
+            line = 'no, ' + rng.choice(KEYS + PHRASES) + ' ' + \
+                mangle('is') + ' ' + rng.choice(VALUES)
         elif r < 0.74:
+            line = rng.choice(['yes', 'no', 'Yes', 'No', 'YES'])
+        elif r < 0.77:
             line = mangle('forget') + ' ' + mangle(rng.choice(KEYS + ['ghost']))
-        elif r < 0.78:
+        elif r < 0.81:
             line = mangle('forget it')
-        elif r < 0.84:
+        elif r < 0.86:
             line = mangle('note') + ' ' + rng.choice(VALUES + ['Mixed CASE note'])
-        elif r < 0.88:
+        elif r < 0.89:
             line = mangle('notes')
-        elif r < 0.90:
+        elif r < 0.91:
             line = mangle('clear notes')
-        elif r < 0.94:
+        elif r < 0.95:
             line = mangle('list')
         elif r < 0.97:
             line = mangle('say') + ' ' + rng.choice(VALUES + ['Mixed CASE text'])

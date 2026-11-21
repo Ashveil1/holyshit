@@ -81,6 +81,37 @@ def _in(word, words):
     if w == word:
       return true
   return false
+# A one-byte string is ASCII when it is whitespace or printable ASCII.
+def _ascii_byte(c):
+  return c == "\t" or c == "\n" or c == "\r" or c >= " " and c <= "~"
+# True when the token holds at least one non-ASCII byte (Thai, accents).
+def _nonascii(s):
+  i = 0
+  while i < len(s):
+    if not _ascii_byte(s[i]):
+      return true
+    i = i + 1
+  return false
+# Non-ASCII tokens (Thai has no spaces or case) also match by substring:
+# one side found inside the other counts as a match. Two guards keep it
+# honest and byte/char-model independent (interp counts characters, the
+# compiled backends count bytes, so no length threshold is ever used):
+# ASCII-only pairs stay exact-only ("cat" never matches "catalog"), and
+# the needle must be substantial - never empty or a single ASCII letter.
+# A single non-ASCII letter counts as substantial: on interp it equals
+# its first element while on the byte backends it does not, so the
+# _nonascii disjunct is what keeps both models agreeing.
+def _sub(w, t):
+  if not (_nonascii(w) or _nonascii(t)):
+    return false
+  if w != t:
+    if find(t, w) >= 0 and (w != w[:1] or _nonascii(w)):
+      return true
+    if find(w, t) >= 0 and (t != t[:1] or _nonascii(t)):
+      return true
+  return false
+def _wmatch(w, t):
+  return w == t or _sub(w, t)
 # Join fact values: v | v1 and v2 | v1, v2 and v3.
 def _join(values):
   n = len(values)
@@ -126,7 +157,8 @@ def _teach_also(state, key, value):
   append(state["facts"][key], value)
   return "added: " + key + " is " + value
 # Candidate keys/paraphrases for a miss: every word of the asked phrase
-# appears in the candidate's words. Deterministic (insertion order).
+# matches some word of the candidate (exact, or Thai-aware substring).
+# Deterministic (insertion order).
 def _candidates(state, phrase):
   words = _words(phrase)
   cands = []
@@ -135,7 +167,11 @@ def _candidates(state, phrase):
     for k in state["order"]:
       ok = true
       for w in words:
-        if not _in(w, _words(k)):
+        hit = false
+        for kw in _words(k):
+          if _wmatch(w, kw):
+            hit = true
+        if not hit:
           ok = false
       if ok and phrase != k:
         append(cands, k)
@@ -145,7 +181,11 @@ def _candidates(state, phrase):
       if _has(state, target):
         ok = true
         for w in words:
-          if not _in(w, _words(a)):
+          hit = false
+          for aw in _words(a):
+            if _wmatch(w, aw):
+              hit = true
+          if not hit:
             ok = false
         if ok and phrase != a:
           append(cands, a)
@@ -227,8 +267,10 @@ def _about_reply(state, asked):
       kwords = _value_words(state, k)
       shared = false
       for w in words:
-        if len(w) >= 3 and not _stop(w) and _in(w, kwords):
-          shared = true
+        if len(w) >= 3 and not _stop(w):
+          for kw in kwords:
+            if _wmatch(w, kw):
+              shared = true
       if shared:
         reply = reply + "; also " + k + " is " + _join(state["facts"][k])
   return reply
@@ -264,7 +306,7 @@ def _pending_reply(state, m):
     i = i + 1
   state["pending"] = null
   return [false, ""]
-_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | what is <thing> | do you know <thing> | what do you know about <thing> | what about it | <phrase> means <thing> | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what do you know about <thing> | what about it | <phrase> means <thing> | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -325,6 +367,19 @@ def respond(state, line):
     return _forget(state, m[7:])
   if m[:4] == "say " and len(text) > 4:
     return text[4:]
+  if m[:4] == "no, ":
+    # Teaching by correction: "no, X is Z" replaces X's facts; when X
+    # names a taught paraphrase the correction lands on its target.
+    rest = text[4:]
+    mrest = m[4:]
+    k = find(mrest, " is ")
+    if k > 0 and k + 4 < len(mrest):
+      key = mrest[:k]
+      resolved = _resolve(state, key)
+      if resolved != null:
+        key = resolved
+      return _teach(state, key, rest[k + 4:])
+    return "i do not understand"
   k = find(m, " means ")
   if k > 0 and k + 7 < len(m):
     phrase = m[:k]
