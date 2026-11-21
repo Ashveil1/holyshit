@@ -61,7 +61,7 @@ def lower_ascii(s):
   return out
 def new_state():
   # mode is session-only (like notes): strict unless the user explores.
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": []}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": [], "readings": [], "read_src": {}, "read_n": 0}
 def _has(state, key):
   # O(1) membership; keyset mirrors order exactly (built from it on
   # load, maintained on teach/forget), including for hand-edited files.
@@ -736,7 +736,6 @@ def _rel_index(state, s, p, o):
 # 'clear hypotheses' frees space. Session-only, like notes and mode.
 _HYP_CAP = 20
 _HYP_PROV_CAP = 10
-
 def _hyp_find(state, subj, domain):
   i = 0
   while i < len(state["hypotheses"]):
@@ -744,7 +743,6 @@ def _hyp_find(state, subj, domain):
       return i
     i = i + 1
   return -1
-
 # Record one derivation's assumptions: at most one count per
 # (subject, domain) per derivation, even when the same assumption is
 # used at several steps. Returns true when every candidate was
@@ -778,7 +776,6 @@ def _hyp_record(state, q, assum):
       else:
         append(state["hypotheses"], [c[0], c[1], 1, ev, [], 0])
   return ok
-
 def _hyp_retire(state, s, domain, reason):
   i = _hyp_find(state, s, domain)
   if i >= 0:
@@ -787,13 +784,271 @@ def _hyp_retire(state, s, domain, reason):
     if len(state["hyp_retired"]) > 10:
       state["hyp_retired"] = state["hyp_retired"][len(state["hyp_retired"]) - 10:]
     state["hypotheses"] = state["hypotheses"][:i] + state["hypotheses"][i + 1:]
-
 def _hyp_q(x, pred, y):
   if pred == "can":
     return "can " + x + " " + y
   # 'does X use energy' - the verb base form drops the trailing s.
   return "does " + x + " " + pred[:len(pred) - 1] + " " + y
-
+# A16: the reader - an EVIDENCE-INGESTION subsystem, not inference
+# and not automatic learning. "read <text>" extracts typed claims
+# from whole-sentence surface patterns into read candidates: each
+# carries verbatim provenance (source id, original sentence, matched
+# pattern) and positive/negative support tracked separately. A
+# candidate is NEVER a fact: nothing reads this store for inference,
+# guards, recall, suggestions or A15 hypotheses, and only explicit
+# user teaching marks a claim USER_CONFIRMED or USER_DISPUTED -
+# corroboration is metadata, never promotion. Cap 100 distinct
+# claims, no auto-eviction; updates to existing records are always
+# allowed, new ones refused and reported. Session-only.
+_READ_CAP = 100
+def _read_find(state, s, p, o):
+  i = 0
+  while i < len(state["readings"]):
+    r = state["readings"][i]
+    if r[0] == s and r[1] == p and r[2] == o:
+      return i
+    i = i + 1
+  return -1
+def _read_skip(sent):
+  # Multi-clause, quoted/attributed, and modal/hedged segments are
+  # skipped whole: never extract a claim the sentence may negate or
+  # qualify. Skips are counted and reported, never guessed around.
+  if find(sent, ",") >= 0 or find(sent, ";") >= 0:
+    return true
+  if find(sent, "\"") >= 0 or find(sent, "'") >= 0:
+    return true
+  ls = " " + lower_ascii(sent) + " "
+  for w in [" might ", " may ", " could ", " should ", " would ", " must ", " probably ", " maybe ", " perhaps "]:
+    if find(ls, w) >= 0:
+      return true
+  return false
+# Extract one typed claim from a whole segment, or null. A pattern
+# must consume the ENTIRE segment: subject is everything before the
+# marker, object everything after; a second clause marker inside the
+# object rejects the match. Canonical forms mirror the teach routes
+# exactly, so user teaching matches read candidates. 'can produce'
+# stays distinct from 'produces'; negation scope is preserved as
+# polarity on the record, never dropped.
+def _read_extract(sent):
+  if _read_skip(sent):
+    return null
+  ls = lower_ascii(sent)
+  k = find(sent, " ไม่เป็น ")
+  if k > 0 and k + len(" ไม่เป็น ") < len(sent):
+    return [sent[:k], "is-a", sent[k + len(" ไม่เป็น "):], "neg", "thai-not-is-a"]
+  k = find(sent, " เป็น ")
+  if k > 0 and k + len(" เป็น ") < len(sent):
+    return [sent[:k], "is-a", sent[k + len(" เป็น "):], "pos", "thai-is-a"]
+  k = find(sent, " อยู่ ")
+  if k > 0 and k + len(" อยู่ ") < len(sent):
+    return [sent[:k], "is-in", sent[k + len(" อยู่ "):], "pos", "thai-is-in"]
+  k = find(sent, " คือ ")
+  if k > 0 and k + len(" คือ ") < len(sent):
+    return [sent[:k], "means", sent[k + len(" คือ "):], "pos", "thai-means"]
+  k = find(ls, " is not a ")
+  if k > 0 and k + 11 < len(ls):
+    return [ls[:k], "is-a", ls[k + 8:], "neg", "not-is-a"]
+  k = find(ls, " is not an ")
+  if k > 0 and k + 12 < len(ls):
+    return [ls[:k], "is-a", ls[k + 8:], "neg", "not-is-a"]
+  # objects keep their leading article, matching taught relations
+  k = find(ls, " is in ")
+  if k > 0 and k + 7 < len(ls):
+    return [ls[:k], "is-in", ls[k + 6:], "pos", "is-in"]
+  k = find(ls, " is a ")
+  if k > 0 and k + 6 < len(ls):
+    return [ls[:k], "is-a", ls[k + 4:], "pos", "is-a"]
+  k = find(ls, " is an ")
+  if k > 0 and k + 7 < len(ls):
+    return [ls[:k], "is-a", ls[k + 4:], "pos", "is-a"]
+  k = find(ls, " is ")
+  if k > 0 and k + 4 < len(ls):
+    return [ls[:k], "is-a", ls[k + 4:], "pos", "is-a-bare"]
+  k = find(ls, " has ")
+  if k > 0 and k + 6 < len(ls):
+    return [ls[:k], "has", ls[k + 5:], "pos", "has"]
+  for vt in _VERBT:
+    k = find(ls, vt[0])
+    if k > 0 and k + len(vt[0]) < len(ls):
+      pol = "pos"
+      if vt[2]:
+        pol = "neg"
+      return [ls[:k], vt[1], ls[k + len(vt[0]):], pol, vt[1]]
+  return null
+# Reject an extraction whose object contains another clause's
+# relation marker ('a car is a machine and a motorcycle is not').
+def _read_obj_ok(ex):
+  if find(ex[2], " is ") >= 0:
+    return false
+  return true
+# Ingest one read payload: split into segments, extract whole-
+# segment claims, record with provenance. The payload is DATA: it is
+# never re-parsed as commands (an embedded 'clear readings' or
+# 'mode explore' is just text), and the input line is the unambiguous
+# end of the payload - one line per read. Counts are reported
+# honestly: segments in, pattern matches, candidates extracted with
+# new/updated/refused/repeat, unmatched segments.
+def _read_text(state, rest):
+  src = ""
+  body = rest
+  k = find(rest, ": ")
+  if k > 0 and k <= 20:
+    nm = rest[:k]
+    ok = true
+    i = 0
+    while i < len(nm):
+      ch = nm[i]
+      if not (ch >= "a" and ch <= "z" or ch >= "0" and ch <= "9" or ch == "-" or ch == "_"):
+        ok = false
+      i = i + 1
+    if ok:
+      src = nm
+      body = rest[k + 2:]
+  if src == "":
+    state["read_n"] = state["read_n"] + 1
+    src = "read-" + str(state["read_n"])
+  state["read_src"][src] = body
+  segs = []
+  cur = ""
+  i = 0
+  while i < len(body):
+    ch = body[i]
+    if (ch == "." or ch == "!" or ch == "?") and (i + 1 >= len(body) or body[i + 1] == " "):
+      if len(cur) > 0:
+        append(segs, cur)
+      cur = ""
+      if i + 1 < len(body):
+        i = i + 1
+    else:
+      cur = cur + ch
+    i = i + 1
+  if len(cur) > 0:
+    append(segs, cur)
+  matched = 0
+  newc = 0
+  upd = 0
+  ref = 0
+  dup = 0
+  for sent in segs:
+    ex = _read_extract(sent)
+    if ex != null and _read_obj_ok(ex):
+      matched = matched + 1
+      ri2 = _read_find(state, ex[0], ex[1], ex[2])
+      if ri2 >= 0:
+        r = state["readings"][ri2]
+        side = r[3]
+        if ex[3] == "neg":
+          side = r[4]
+        seen = false
+        for se in side:
+          if se[0] == src:
+            seen = true
+        if seen:
+          dup = dup + 1
+        else:
+          append(side, [src, sent, ex[4]])
+          upd = upd + 1
+      else:
+        if len(state["readings"]) >= _READ_CAP:
+          ref = ref + 1
+        else:
+          entry = [src, sent, ex[4]]
+          if ex[3] == "neg":
+            append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], ""])
+          else:
+            append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], ""])
+          newc = newc + 1
+  return src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(len(segs) - matched) + " unmatched segments"
+def _read_ids(side):
+  out = ""
+  for se in side:
+    if out == "":
+      out = se[0]
+    else:
+      out = out + ", " + se[0]
+  return out
+def _readings_reply(state, about, detail):
+  rs = state["readings"]
+  if about != "":
+    kept = []
+    for r in rs:
+      if r[0] == about:
+        append(kept, r)
+    rs = kept
+  if len(rs) == 0:
+    if about == "":
+      return "no readings"
+    return "no readings about " + about
+  out = str(len(rs)) + " read candidate"
+  if len(rs) > 1:
+    out = out + "s"
+  if about != "":
+    out = out + " about " + about
+  out = out + " (unverified readings, not facts):"
+  labels = "abcdefghijklmnopqrstuvwxyz"
+  i = 0
+  while i < len(rs):
+    r = rs[i]
+    if i < 26:
+      out = out + "\n(" + labels[i] + ") "
+    else:
+      out = out + "\n(" + str(i + 1) + ") "
+    out = out + r[0] + " | " + r[1] + " | " + r[2] + " - "
+    parts = ""
+    if len(r[3]) > 0:
+      parts = "positive support: " + str(len(r[3])) + " source"
+      if len(r[3]) > 1:
+        parts = parts + "s"
+      parts = parts + " (" + _read_ids(r[3]) + ")"
+    if len(r[4]) > 0:
+      if parts != "":
+        parts = parts + "; "
+      parts = parts + "negative support: " + str(len(r[4])) + " source"
+      if len(r[4]) > 1:
+        parts = parts + "s"
+      parts = parts + " (" + _read_ids(r[4]) + ")"
+    out = out + parts
+    if r[5] == "confirmed":
+      out = out + "; USER_CONFIRMED"
+    if r[5] == "disputed":
+      out = out + "; USER_DISPUTED"
+    if len(r[3]) > 0 and len(r[4]) > 0:
+      internal = false
+      for se in r[3]:
+        for se2 in r[4]:
+          if se[0] == se2[0]:
+            internal = true
+      if internal:
+        out = out + "; SOURCE-INTERNAL CONFLICT"
+      else:
+        out = out + "; CONFLICT"
+    tier = ""
+    if len(r[3]) >= 2:
+      tier = "MULTI_SOURCE positive"
+    if len(r[4]) >= 2:
+      if tier != "":
+        tier = tier + ", "
+      tier = tier + "MULTI_SOURCE negative"
+    if tier != "":
+      out = out + "; " + tier
+    if r[5] == "" and tier == "" and not (len(r[3]) > 0 and len(r[4]) > 0):
+      out = out + "; UNVERIFIED"
+    ids = []
+    for se in r[3]:
+      if not (se[0] in ids):
+        append(ids, se[0])
+    for se in r[4]:
+      if not (se[0] in ids):
+        append(ids, se[0])
+    if len(ids) >= 2:
+      out = out + "; independence UNVERIFIED"
+    if detail:
+      for se in r[3]:
+        out = out + "\n  " + se[0] + " (positive): \"" + se[1] + "\" [pattern " + se[2] + "]"
+      for se in r[4]:
+        out = out + "\n  " + se[0] + " (negative): \"" + se[1] + "\" [pattern " + se[2] + "]"
+    i = i + 1
+  return out
 def _add_rel(state, s, p, o):
   if s in state["relset"]:
     if p in state["relset"][s]:
@@ -801,6 +1056,28 @@ def _add_rel(state, s, p, o):
         return
   append(state["rels"], [s, p, o])
   _rel_index(state, s, p, o)
+  # A16: user teaching is the ultimate verifier. Teaching that
+  # matches the recorded readings CONFIRMs them; teaching against
+  # any recorded support DISPUTES. Teaching never promotes anything
+  # into or out of the readings store.
+  rp = p
+  rpol = "pos"
+  if len(p) > 4 and p[:4] == "not-":
+    rp = p[4:]
+    rpol = "neg"
+  ri = _read_find(state, s, rp, o)
+  if ri >= 0:
+    r = state["readings"][ri]
+    if rpol == "pos":
+      if len(r[4]) > 0:
+        r[5] = "disputed"
+      else:
+        r[5] = "confirmed"
+    else:
+      if len(r[3]) > 0:
+        r[5] = "disputed"
+      else:
+        r[5] = "confirmed"
   # A15: a taught domain verdict retires a matching hypothesis
   # (positive AND negative both retire; a taught conflict stays in
   # the edges, never resolved).
@@ -1495,7 +1772,7 @@ def _else_reply(state):
   if len(facts) <= 1:
     return "that is all i know about " + state["topic"]
   return "about " + state["topic"] + ": " + _join(facts[1:])
-_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | mode | mode strict | mode explore | hypotheses | hypotheses detail | forget hypothesis <thing> is a <kind> | clear hypotheses | list | say <text> | help"
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | mode | mode strict | mode explore | hypotheses | hypotheses detail | forget hypothesis <thing> is a <kind> | clear hypotheses | read <text> | readings | readings about <thing> | readings detail | forget reading <thing> is a <kind> | clear readings | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -1563,6 +1840,31 @@ def respond(state, line):
         return "forgotten: hypothesis " + rest[:k] + " is an " + rest[k + 7:]
       return "no such hypothesis - 'hypotheses' lists the open ones"
     return "forget hypothesis <thing> is a <kind>"
+  # A16 reader: ingest text as data (never executed), inspect and
+  # manage read candidates. 'forget reading' precedes generic forget.
+  if m == "readings":
+    return _readings_reply(state, "", false)
+  if m == "readings detail":
+    return _readings_reply(state, "", true)
+  if m[:15] == "readings about " and len(m) > 15:
+    return _readings_reply(state, m[15:], false)
+  if m == "clear readings":
+    state["readings"] = []
+    state["read_src"] = {}
+    return "readings cleared"
+  if m[:15] == "forget reading " and len(m) > 15:
+    rest = m[15:]
+    fr = _read_extract(rest)
+    if fr != null:
+      ri3 = _read_find(state, fr[0], fr[1], fr[2])
+      if ri3 >= 0:
+        r = state["readings"][ri3]
+        state["readings"] = state["readings"][:ri3] + state["readings"][ri3 + 1:]
+        return "forgotten: reading " + r[0] + " | " + r[1] + " | " + r[2]
+      return "no such reading - 'readings' lists them"
+    return "forget reading <thing> is a <kind>"
+  if m[:5] == "read " and len(text) > 5:
+    return _read_text(state, text[5:])
   if m[:5] == "note " and len(text) > 5:
     append(state["notes"], text[5:])
     return "noted"
