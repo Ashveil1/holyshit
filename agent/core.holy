@@ -1026,16 +1026,22 @@ def _url_src(state, norm):
     return ""
   append(state["url_srcs"], [norm, 0])
   return "url-" + str(len(state["url_srcs"]))
+# Query strings can carry tokens: display redacts them while the
+# registry keeps the full normalized URL for local provenance.
+def _url_disp(norm):
+  q = find(norm, "?")
+  if q >= 0:
+    return norm[:q] + "?(redacted)"
+  return norm
 def _read_url(state, raw):
+  # Validation lives here so every rejection is corpus-deterministic;
+  # the actual fetch needs tcp builtins the IR/x64 subset routes
+  # cannot compile, so valid URLs are handled by the repl shell via
+  # agent/fetch.holy (EXPERIMENTAL preview).
   r = _url_norm(raw, _url_test_mode(state))
   if not r[0]:
     return "read url: " + r[1]
-  norm = r[1]
-  src = _url_src(state, norm)
-  if src == "":
-    return "read url: source registry full (100 distinct sources); clear readings to start over"
-  # A18.1 lands the bounded fetch + text extraction behind this point.
-  return "read url: url reading is not available in this build (normalized " + norm + ")"
+  return "read url: url reading is only available in the repl shell (experimental)"
 # Ingest one read payload: split into segments, extract whole-
 # segment claims, record with provenance. The payload is DATA: it is
 # never re-parsed as commands (an embedded 'clear readings' or
@@ -1062,6 +1068,13 @@ def _read_text(state, rest):
   if src == "":
     state["read_n"] = state["read_n"] + 1
     src = "read-" + str(state["read_n"])
+  return _read_ingest(state, src, body, false)
+# Shared ingestion path for typed reads and (A18) fetched pages. The
+# 64KB cap for fetched text is applied by agent/fetch.holy BEFORE
+# this point (byte ops cannot live in the core: the self-interpreter
+# route rejects byte_len at load); the truncated flag only controls
+# the reply note.
+def _read_ingest(state, src, body, truncated):
   state["read_src"][src] = body
   segs = []
   cur = ""
@@ -1147,7 +1160,10 @@ def _read_text(state, rest):
             else:
               append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", ""])
             newc = newc + 1
-  return src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c) + " skipped (" + str(sk_q) + " quoted, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause), " + str(um) + " unmatched"
+  out = src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c) + " skipped (" + str(sk_q) + " quoted, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause), " + str(um) + " unmatched"
+  if truncated:
+    out = out + " (text truncated at 64KB)"
+  return out
 def _read_ids(side):
   out = ""
   for se in side:
@@ -1241,6 +1257,12 @@ def _readings_reply(state, about, detail):
       for se in r[4]:
         out = out + "\n  " + se[0] + " (negative): \"" + se[1] + "\" [pattern " + se[2] + "]"
     i = i + 1
+  if detail and len(state["url_srcs"]) > 0:
+    i = 0
+    while i < len(state["url_srcs"]):
+      e = state["url_srcs"][i]
+      out = out + "\nurl-" + str(i + 1) + " = " + _url_disp(e[0]) + " (fetched " + str(e[1]) + " times)"
+      i = i + 1
   return out
 def _add_rel(state, s, p, o):
   if s in state["relset"]:

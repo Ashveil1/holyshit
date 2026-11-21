@@ -1,0 +1,331 @@
+# agent/fetch.holy — EXPERIMENTAL one-page URL fetch + text extraction.
+#
+# Network and byte builtins live here, NOT in agent/core.holy: the
+# IR/x64 subset routes compile the core and reject tcp_*/byte_* at
+# build time. Only agent/repl.holy imports this module, so fetch runs
+# on the full routes (hosted interp, native x64) and never reaches the
+# subset compilers. Security policy: docs/gap-report-*.md and the A18
+# design; receive can block on a silent peer until the runtime gains
+# bounded timeouts (gap-report-bounded-recv-timeouts.md).
+import agent.core
+import agent.utf8
+def _url_split(norm):
+  rest = norm[7:]
+  p = find(rest, "/")
+  authority = rest
+  path = "/"
+  if p >= 0:
+    authority = rest[:p]
+    path = rest[p:]
+  host = authority
+  port = 80
+  c = find(authority, ":")
+  if c >= 0:
+    host = authority[:c]
+    port = int(authority[c + 1:])
+  return [host, port, path]
+# Position of the CRLFCRLF header boundary across the tail of head
+# and the fresh chunk, as byte-int lists; -1 when absent.
+def _find_crlfcrlf(head, ints):
+  allb = []
+  for v in head:
+    append(allb, v)
+  for v in ints:
+    append(allb, v)
+  i = 0
+  n = len(allb)
+  while i + 3 < n:
+    if allb[i] == 13 and allb[i + 1] == 10 and allb[i + 2] == 13 and allb[i + 3] == 10:
+      return i
+    i = i + 1
+  return -1
+def _hdr_value(line):
+  c = find(line, ":")
+  if c < 0:
+    return ""
+  v = line[c + 1:]
+  while len(v) > 0 and v[:1] == " ":
+    v = v[1:]
+  return v
+# Parse the response head (ASCII byte ints). Returns a reason string
+# ("" = ok) and the content-length (-1 = absent) via a pair.
+def _parse_headers(head_ints):
+  head = agent.utf8.utf8_decode_ints(head_ints)
+  lines = split(head, "\r\n")
+  st = lines[0]
+  parts = split(st, " ")
+  if len(parts) < 2 or len(parts[0]) < 5 or parts[0][:5] != "HTTP/":
+    return ["bad response", -1]
+  code = parts[1]
+  if len(code) != 3:
+    return ["bad response", -1]
+  i = 0
+  while i < 3:
+    if not (code[i] >= "0" and code[i] <= "9"):
+      return ["bad response", -1]
+    i = i + 1
+  if code != "200":
+    return ["http status " + code, -1]
+  clen = -1
+  i = 1
+  while i < len(lines):
+    line = lines[i]
+    c = find(line, ":")
+    if c > 0:
+      name = lower_ascii(line[:c])
+      val = _hdr_value(line)
+      lv = lower_ascii(val)
+      if name == "content-type":
+        if len(lv) < 5 or lv[:5] != "text/":
+          return ["binary or unsupported content type", -1]
+      if name == "content-encoding":
+        if lv != "identity":
+          return ["unsupported content-encoding", -1]
+      if name == "transfer-encoding":
+        if lv != "identity":
+          return ["unsupported transfer-encoding", -1]
+      if name == "content-length":
+        if len(val) == 0 or len(val) > 10:
+          return ["bad response", -1]
+        j = 0
+        while j < len(val):
+          if not (val[j] >= "0" and val[j] <= "9"):
+            return ["bad response", -1]
+          j = j + 1
+        clen = int(val)
+        if clen > 1048576:
+          return ["response too large (over 1 MiB)", -1]
+    i = i + 1
+  return ["", clen]
+# Bounded fetch of one page over the raw tcp builtins (EXPERIMENTAL:
+# receive can block on a silent peer until the runtime gains bounded
+# timeouts - docs/gap-report-bounded-recv-timeouts.md). Hard cap
+# 1 MiB counted during receive; returns [true, body-string] or
+# [false, reason]. A failure returns nothing ingestible.
+def _fetch(norm):
+  hp = _url_split(norm)
+  host = hp[0]
+  port = hp[1]
+  path = hp[2]
+  s = null
+  ok = false
+  try:
+    s = tcp_connect(host, port)
+    ok = true
+  except:
+    ok = false
+  if not ok:
+    return [false, "connect failed"]
+  ok = false
+  try:
+    tcp_send(s, "GET " + path + " HTTP/1.0\r\nHost: " + host + "\r\nUser-Agent: holyshit-agent/0.12 (experimental)\r\nAccept: text/*\r\nConnection: close\r\n\r\n")
+    ok = true
+  except:
+    ok = false
+  if not ok:
+    try:
+      tcp_close(s)
+    except:
+      ok = false
+    return [false, "send failed"]
+  head_ints = []
+  body_ints = []
+  inbody = false
+  clen = -1
+  total = 0
+  err = ""
+  done = false
+  while not done and err == "":
+    chunk = null
+    try:
+      chunk = tcp_recv(s, 16384)
+    except:
+      err = "recv failed"
+    if err == "":
+      nb = byte_len(chunk)
+      if nb == 0:
+        done = true
+      else:
+        total = total + nb
+        if total > 1048577:
+          err = "response too large (over 1 MiB)"
+        else:
+          ints = []
+          i = 0
+          while i < nb:
+            append(ints, byte_at(chunk, i))
+            i = i + 1
+          if not inbody:
+            k = _find_crlfcrlf(head_ints, ints)
+            if k < 0:
+              for v in ints:
+                append(head_ints, v)
+              if len(head_ints) > 16384:
+                err = "headers too large"
+            else:
+              allb = []
+              for v in head_ints:
+                append(allb, v)
+              for v in ints:
+                append(allb, v)
+              head_ints = allb[:k]
+              if len(head_ints) > 16384:
+                err = "headers too large"
+              if err == "":
+                i = 0
+                while i < len(head_ints):
+                  if head_ints[i] > 127:
+                    err = "malformed headers"
+                  i = i + 1
+              if err == "":
+                ph = _parse_headers(head_ints)
+                if ph[0] != "":
+                  err = ph[0]
+                else:
+                  clen = ph[1]
+                  inbody = true
+                  i = k + 4
+                  while i < len(allb):
+                    if allb[i] == 0 and len(body_ints) < 8192:
+                      err = "binary content"
+                    append(body_ints, allb[i])
+                    i = i + 1
+          else:
+            for v in ints:
+              if v == 0 and len(body_ints) < 8192:
+                err = "binary content"
+              append(body_ints, v)
+  try:
+    tcp_close(s)
+  except:
+    err = err
+  if err != "":
+    return [false, err]
+  if not inbody:
+    return [false, "bad response"]
+  if clen >= 0:
+    if len(body_ints) < clen:
+      return [false, "incomplete response"]
+    if len(body_ints) > clen:
+      return [false, "content-length mismatch"]
+  truncated = len(body_ints) > 65536
+  if truncated:
+    body_ints = body_ints[:65536]
+  return [true, agent.utf8.utf8_decode_ints(body_ints), truncated]
+# Crude, honest HTML to text: drop script/style blocks, drop tags,
+# decode six common entities, collapse whitespace runs to one space.
+def _html_text(s):
+  ls = lower_ascii(s)
+  for tag in ["script", "style"]:
+    i = find(ls, "<" + tag)
+    while i >= 0:
+      j = find(ls, "</" + tag + ">")
+      if j < 0 or j < i:
+        s = s[:i]
+        ls = ls[:i]
+        i = -1
+      else:
+        s = s[:i] + s[j + len(tag) + 3:]
+        ls = ls[:i] + ls[j + len(tag) + 3:]
+        i = find(ls, "<" + tag)
+  out = []
+  intag = false
+  lastsp = true
+  i = 0
+  n = len(s)
+  while i < n:
+    ch = s[i]
+    if ch == "<":
+      intag = true
+    elif ch == ">" and intag:
+      intag = false
+      if not lastsp:
+        append(out, " ")
+        lastsp = true
+    elif intag:
+      intag = true
+    elif ch == "&":
+      ent = ""
+      adv = 0
+      if s[i:i + 5] == "&amp;":
+        ent = "&"
+        adv = 5
+      elif s[i:i + 4] == "&lt;":
+        ent = "<"
+        adv = 4
+      elif s[i:i + 4] == "&gt;":
+        ent = ">"
+        adv = 4
+      elif s[i:i + 6] == "&quot;":
+        ent = "\""
+        adv = 6
+      elif s[i:i + 5] == "&#39;":
+        ent = "'"
+        adv = 5
+      elif s[i:i + 6] == "&nbsp;":
+        ent = " "
+        adv = 6
+      if adv > 0:
+        if ent == " ":
+          if not lastsp:
+            append(out, " ")
+            lastsp = true
+        else:
+          append(out, ent)
+          lastsp = false
+        i = i + adv
+      else:
+        append(out, ch)
+        lastsp = false
+        i = i + 1
+    elif ch == " " or ch == "\n" or ch == "\t" or ch == "\r":
+      if not lastsp:
+        append(out, " ")
+        lastsp = true
+      i = i + 1
+    else:
+      append(out, ch)
+      lastsp = false
+      i = i + 1
+  return join("", out)
+# Fetch, extract, register and ingest one page (EXPERIMENTAL). A
+# failed fetch is transactional: no candidates, no registry entry.
+def read_url(state, raw):
+  r = agent.core._url_norm(raw, state["test_fetch"])
+  if not r[0]:
+    return "read url: " + r[1]
+  norm = r[1]
+  f = _fetch(norm)
+  if not f[0]:
+    return "read url: fetch failed: " + f[1]
+  truncated = f[2]
+  text = _html_text(f[1])
+  if truncated:
+    text = _trim_partial(text)
+  src = agent.core._url_src(state, norm)
+  if src == "":
+    return "read url: source registry full (100 distinct sources); clear readings to start over"
+  i = 0
+  for e in state["url_srcs"]:
+    if e[0] == norm:
+      state["url_srcs"][i] = [e[0], e[1] + 1]
+    i = i + 1
+  return "experimental: " + agent.core._read_ingest(state, src, text, truncated)
+# After a 64KB truncation the tail segment is partial: cut the text
+# at its last sentence terminator so ingestion never sees a fragment.
+def _trim_partial(s):
+  last = -1
+  i = 0
+  n = len(s)
+  while i + 1 < n:
+    ch = s[i]
+    if (ch == "." or ch == "!" or ch == "?") and s[i + 1] == " ":
+      last = i
+    i = i + 1
+  if n > 0:
+    ch = s[n - 1]
+    if ch == "." or ch == "!" or ch == "?":
+      last = n - 1
+  if last < 0:
+    return ""
+  return s[:last + 1]

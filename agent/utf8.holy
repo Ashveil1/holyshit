@@ -15,17 +15,17 @@ def _u8_char(cp):
   if cp >= 3584 and cp < 3712:
     return _U8_THAI[cp - 3584]
   return "�"
-def _u8_cont(b, i):
-  v = byte_at(b, i)
+def _u8_cont(ns, i):
+  v = ns[i]
   return v >= 128 and v < 192
-# Decode Bytes b to a String. Never raises on malformed input:
-# malformed sequences consume one byte and yield U+FFFD.
-def utf8_decode(b):
+# Decode a list of byte ints to a String. Never raises on malformed
+# input: malformed sequences consume one byte and yield U+FFFD.
+def utf8_decode_ints(ns):
   out = []
   i = 0
-  n = byte_len(b)
+  n = len(ns)
   while i < n:
-    c = byte_at(b, i)
+    c = ns[i]
     if c < 128:
       if c == 10:
         append(out, "\n")
@@ -34,20 +34,28 @@ def utf8_decode(b):
       elif c >= 32 and c < 127:
         append(out, _U8_ASCII[c - 32])
       i = i + 1
-    elif c >= 194 and c < 224 and i + 1 < n and _u8_cont(b, i + 1):
-      append(out, _u8_char((c - 192) * 64 + byte_at(b, i + 1) - 128))
+    elif c >= 194 and c < 224 and i + 1 < n and _u8_cont(ns, i + 1):
+      append(out, _u8_char((c - 192) * 64 + ns[i + 1] - 128))
       i = i + 2
-    elif c >= 224 and c < 240 and i + 2 < n and _u8_cont(b, i + 1) and _u8_cont(b, i + 2):
-      cp = (c - 224) * 4096 + (byte_at(b, i + 1) - 128) * 64 + byte_at(b, i + 2) - 128
+    elif c >= 224 and c < 240 and i + 2 < n and _u8_cont(ns, i + 1) and _u8_cont(ns, i + 2):
+      cp = (c - 224) * 4096 + (ns[i + 1] - 128) * 64 + ns[i + 2] - 128
       if cp >= 55296 and cp < 57344:
         append(out, "�")
       else:
         append(out, _u8_char(cp))
       i = i + 3
-    elif c >= 240 and c < 245 and i + 3 < n and _u8_cont(b, i + 1) and _u8_cont(b, i + 2) and _u8_cont(b, i + 3):
+    elif c >= 240 and c < 245 and i + 3 < n and _u8_cont(ns, i + 1) and _u8_cont(ns, i + 2) and _u8_cont(ns, i + 3):
       append(out, "�")
       i = i + 4
     else:
       append(out, "�")
       i = i + 1
   return join("", out)
+# Decode Bytes b to a String.
+def utf8_decode(b):
+  ns = []
+  i = 0
+  while i < byte_len(b):
+    append(ns, byte_at(b, i))
+    i = i + 1
+  return utf8_decode_ints(ns)

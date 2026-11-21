@@ -542,16 +542,12 @@ class Oracle:
         return 'url-' + str(len(self.url_srcs))
 
     def _read_url(self, raw):
+        # Mirrors the core route: validation here, fetch in the shell.
         r = self._url_norm(raw, self._url_test_mode())
         if not r[0]:
             return 'read url: ' + r[1]
-        norm = r[1]
-        src = self._url_src(norm)
-        if src == '':
-            return ('read url: source registry full (100 distinct '
-                    'sources); clear readings to start over')
-        return ('read url: url reading is not available in this build '
-                '(normalized ' + norm + ')')
+        return ('read url: url reading is only available in the repl '
+                'shell (experimental)')
 
     def _read_ids(self, side):
         out = ''
@@ -572,6 +568,9 @@ class Oracle:
         if not src:
             self.read_n += 1
             src = 'read-' + str(self.read_n)
+        return self._read_ingest(src, body, False)
+
+    def _read_ingest(self, src, body, truncated):
         self.read_src[src] = body
         segs, cur = [], ''
         i = 0
@@ -643,14 +642,17 @@ class Oracle:
                             self.readings.append(
                                 [ex[0], ex[1], ex[2], [entry], [], '', ''])
                         newc += 1
-        return (src + ': ' + str(len(segs)) + ' segments in, ' +
-                str(matched) + ' pattern matches, ' + str(matched) +
-                ' candidates extracted (' + str(newc) + ' new, ' +
-                str(upd) + ' updated, ' + str(ref) + ' refused, ' +
-                str(dup) + ' repeat), ' + str(sk_q + sk_m + sk_c) +
-                ' skipped (' + str(sk_q) + ' quoted, ' + str(sk_m) +
-                ' modal-hedged, ' + str(sk_c) + ' multi-clause), ' +
-                str(um) + ' unmatched')
+        out = (src + ': ' + str(len(segs)) + ' segments in, ' +
+               str(matched) + ' pattern matches, ' + str(matched) +
+               ' candidates extracted (' + str(newc) + ' new, ' +
+               str(upd) + ' updated, ' + str(ref) + ' refused, ' +
+               str(dup) + ' repeat), ' + str(sk_q + sk_m + sk_c) +
+               ' skipped (' + str(sk_q) + ' quoted, ' + str(sk_m) +
+               ' modal-hedged, ' + str(sk_c) + ' multi-clause), ' +
+               str(um) + ' unmatched')
+        if truncated:
+            out += ' (text truncated at 64KB)'
+        return out
 
     def _readings_reply(self, about, detail):
         rs = self.readings
@@ -719,7 +721,16 @@ class Oracle:
                 for se in r[4]:
                     out += ('\n  ' + se[0] + ' (negative): "' + se[1] +
                             '" [pattern ' + se[2] + ']')
+        if detail and self.url_srcs:
+            for i, e in enumerate(self.url_srcs):
+                out += ('\nurl-' + str(i + 1) + ' = ' +
+                        self._url_disp(e[0]) + ' (fetched ' +
+                        str(e[1]) + ' times)')
         return out
+
+    def _url_disp(self, norm):
+        q = norm.find('?')
+        return norm[:q] + '?(redacted)' if q >= 0 else norm
 
     def _drop_rels(self, key):
         self.rels = [e for e in self.rels if e[0] != key]
@@ -2295,7 +2306,8 @@ A17_SCENARIOS = [
 
 A18_SCENARIOS = [
     # URL policy: every rejection happens before any network access,
-    # so these replies are deterministic on every route.
+    # so these replies are deterministic on every route. Valid URLs
+    # fetch, so they live in the semantic fetch tests, never here.
     ['read url https://example.com/page',
      'read url http://user:secret@example.com/x',
      'read url http://example.com:8080/x',
