@@ -2,18 +2,22 @@
 #
 # The core (agent/core.holy) is pure and never touches the filesystem;
 # this module is the thin hosted-only shell that saves and loads the
-# state Dict as JSON. A missing or unreadable/corrupt file loads as a
-# fresh empty state rather than crashing the chat.
+# durable part of the state (facts + order) as JSON. Session-only state
+# (notes, topic) is never written: a fresh chat starts with empty notes
+# and no topic. A missing or unreadable/corrupt file loads as a fresh
+# empty state rather than crashing the chat; v0.1 files (facts + order
+# only) load fine, since that is still the on-disk format.
 import agent.core
 def load(path):
+  state = agent.core.new_state()
   if not exists(path):
-    return agent.core.new_state()
+    return state
   try:
     data = json_load(path)
-    facts = data["facts"]
-    order = data["order"]
-    return {"facts": facts, "order": order}
+    state["facts"] = data["facts"]
+    state["order"] = data["order"]
+    return state
   except:
     return agent.core.new_state()
 def save(state, path):
-  json_save(path, state)
+  json_save(path, {"facts": state["facts"], "order": state["order"]})

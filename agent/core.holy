@@ -1,13 +1,17 @@
 # agent/core.holy — a small local agent core in pure hs.
 #
 # What it is: an ordered pattern-rule matcher with a teachable key->value
-# memory. What it is not: a language model. Everything it "knows" was
-# taught with `remember`; anything else gets an honest fallback reply.
+# memory, short-term session notes, and a little dialogue context (it
+# remembers the current topic and can follow "it"). What it is not: a
+# language model. Everything it "knows" was taught with `remember`;
+# anything else gets an honest fallback reply.
 #
 # The core is pure: respond(state, line) only reads/mutates the state
-# Dict and returns the reply Str. State is JSON-serializable
-# ({"facts": {...}, "order": [...]}), so agent/store.holy can persist it
-# and a future kernel port can carry it as plain data.
+# Dict and returns the reply Str. State is JSON-serializable:
+#   {"facts": {...}, "order": [...],   persistent, saved by store.holy
+#    "notes": [...], "topic": k|null}  session-only, never saved
+# so agent/store.holy can persist the durable part and a future kernel
+# port can carry the whole thing as plain data.
 #
 # Backend parity discipline (same as std.str): all matching is ASCII-only
 # and byte-based. Non-ASCII text passes through untouched, so interp and
@@ -46,19 +50,25 @@ def lower_ascii(s):
     i = i + 1
   return out
 def new_state():
-  return {"facts": {}, "order": []}
+  return {"facts": {}, "order": [], "notes": [], "topic": null}
 def _has(state, key):
   for k in state["order"]:
     if k == key:
       return true
   return false
 def _teach(state, key, value):
+  state["topic"] = key
   if _has(state, key):
     state["facts"][key] = value
     return "updated " + key + " is " + value
   state["facts"][key] = value
   append(state["order"], key)
   return "remembered " + key + " is " + value
+def _recall(state, key):
+  if _has(state, key):
+    state["topic"] = key
+    return "i know " + key + " is " + state["facts"][key]
+  return "i do not know " + key
 def _forget(state, key):
   if not _has(state, key):
     return "i do not know " + key
@@ -72,6 +82,8 @@ def _forget(state, key):
       append(order, k)
   state["facts"] = facts
   state["order"] = order
+  if state["topic"] == key:
+    state["topic"] = null
   return "forgot " + key
 def _list_reply(state):
   order = state["order"]
@@ -86,16 +98,93 @@ def _list_reply(state):
   if n == 1:
     return "i know 1 thing: " + joined
   return "i know " + str(n) + " things: " + joined
-_HELP = "commands: remember <thing> is <fact> | what is <thing> | forget <thing> | list | say <text> | help"
+# Split normalized text into words (single-space separated by construction).
+def _words(s):
+  out = []
+  cur = ""
+  i = 0
+  while i < len(s):
+    c = s[i]
+    if c == " ":
+      if len(cur) > 0:
+        append(out, cur)
+      cur = ""
+    else:
+      cur = cur + c
+    i = i + 1
+  if len(cur) > 0:
+    append(out, cur)
+  return out
+def _in(word, words):
+  for w in words:
+    if w == word:
+      return true
+  return false
+# Glue words that must not create associations on their own.
+def _stop(w):
+  return w == "the" or w == "and" or w == "for" or w == "are" or w == "with" or w == "that" or w == "this"
+# Recall plus association: facts whose values share a content word
+# (ASCII-lowercased, length >= 3, not a glue word) with this one's value.
+def _about_reply(state, key):
+  if not _has(state, key):
+    return "i do not know " + key
+  state["topic"] = key
+  reply = "i know " + key + " is " + state["facts"][key]
+  words = _words(lower_ascii(state["facts"][key]))
+  for k in state["order"]:
+    if k != key:
+      kwords = _words(lower_ascii(state["facts"][k]))
+      shared = false
+      for w in words:
+        if len(w) >= 3 and not _stop(w) and _in(w, kwords):
+          shared = true
+      if shared:
+        reply = reply + "; also " + k + " is " + state["facts"][k]
+  return reply
+def _notes_reply(state):
+  notes = state["notes"]
+  n = len(notes)
+  if n == 0:
+    return "no notes yet"
+  reply = "note 1: " + notes[0]
+  i = 1
+  while i < n:
+    reply = reply + "; note " + str(i + 1) + ": " + notes[i]
+    i = i + 1
+  return reply
+_HELP = "commands: remember <thing> is <fact> | what is <thing> | do you know <thing> | what do you know about <thing> | what about it | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
   text = normalize(line)
+  # One trailing ? or . is punctuation, not part of the words.
+  if len(text) > 0:
+    last = text[len(text) - 1:]
+    if last == "?" or last == ".":
+      text = text[:len(text) - 1]
   m = lower_ascii(text)
   if m == "help":
     return _HELP
   if m == "list":
     return _list_reply(state)
+  if m == "notes":
+    return _notes_reply(state)
+  if m == "clear notes":
+    state["notes"] = []
+    return "notes cleared"
+  if m[:5] == "note " and len(text) > 5:
+    append(state["notes"], text[5:])
+    return "noted"
+  if m == "what about it":
+    if state["topic"] == null:
+      return "i have no topic yet"
+    return _recall(state, state["topic"])
+  if m == "forget it":
+    if state["topic"] == null:
+      return "i have no topic yet"
+    return _forget(state, state["topic"])
+  if m[:23] == "what do you know about ":
+    return _about_reply(state, m[23:])
   if m[:9] == "remember ":
     rest = text[9:]
     mrest = m[9:]
@@ -104,10 +193,15 @@ def respond(state, line):
       return _teach(state, mrest[:k], rest[k + 4:])
     return "i do not understand"
   if m[:8] == "what is ":
-    key = m[8:]
-    if _has(state, key):
-      return "i know " + key + " is " + state["facts"][key]
-    return "i do not know " + key
+    return _recall(state, m[8:])
+  if m[:12] == "do you know ":
+    return _recall(state, m[12:])
+  if m[:15] == "tell me about ":
+    return _recall(state, m[15:])
+  if m[:7] == "who is ":
+    return _recall(state, m[7:])
+  if m[:9] == "where is ":
+    return _recall(state, m[9:])
   if m[:7] == "forget ":
     return _forget(state, m[7:])
   if m[:4] == "say " and len(text) > 4:

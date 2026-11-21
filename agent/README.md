@@ -4,7 +4,7 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.1)
+## What it is today (v0.2)
 
 - An ordered pattern-rule matcher: a fixed set of command patterns is
   checked in order and the first match wins.
@@ -12,19 +12,29 @@ no dependencies beyond the language itself.
   plain JSON-serializable Dict (`agent/core.holy`), with hosted file
   persistence (`agent/store.holy`) and a terminal chat loop
   (`agent/repl.holy`).
+- A little dialogue context: it tracks the current topic (the last thing
+  taught or asked about) and follows `what about it` / `forget it`, and
+  it keeps short-term session `notes` that are never saved to disk.
+- Association recall: `what do you know about X` answers with the taught
+  fact plus other taught facts whose words overlap it (ASCII word match,
+  glue words excluded) - string overlap, not understanding.
 - Pure and portable: the core never does IO. `respond(state, line)`
   returns a reply, so the same core can later run freestanding in the
   kernel. Memory footprint is a few KB plus exactly what it was taught.
 
-Commands: `remember <thing> is <fact>`, `what is <thing>`,
-`forget <thing>`, `list`, `say <text>`, `help`. Anything else gets an
-honest `i do not understand`.
+Commands: `remember <thing> is <fact>`, `what is <thing>` (aliases:
+`do you know`, `tell me about`, `who is`, `where is`),
+`what do you know about <thing>`, `what about it`, `forget <thing>`,
+`forget it`, `note <text>`, `notes`, `clear notes`, `list`, `say <text>`,
+`help`. One trailing `?` or `.` is ignored. Anything else gets an honest
+`i do not understand`.
 
 ## What it is not
 
 It is not a language model and does not understand language. It cannot
-answer anything it was not taught, cannot generalize, and matching is
-literal ASCII text matching. No reply should ever be read as more than
+answer anything it was not taught, cannot generalize, matching is
+literal ASCII text matching, and "associations" are shared words between
+taught values, nothing more. No reply should ever be read as more than
 pattern matching over taught facts.
 
 ## Direction (not a claim)
