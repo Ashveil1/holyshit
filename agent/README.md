@@ -34,8 +34,9 @@ no dependencies beyond the language itself.
   `c` still does not find `cat`.
 - A derived word index: taught key words map to their keys, so misses
   and `did you mean` checks look up words instead of scanning every
-  taught fact (see the benchmark section). The index is rebuilt on
-  load and maintained on teach/forget; it is never persisted.
+  taught fact, and membership checks use a key set instead of walking
+  the key list (see the benchmark section). Both are rebuilt on load
+  and maintained on teach/forget; neither is persisted.
 - Pure and portable: the core never does IO. `respond(state, line)`
   returns a reply, so the same core can later run freestanding in the
   kernel. Memory footprint is a few KB plus exactly what it was taught.
@@ -48,7 +49,7 @@ Commands: `remember <thing> is <fact>`, `remember <thing> is also <fact>`,
 `list`, `say <text>`, `help`. One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (A6 core, measured at 5393ad5 + word index)
+## Hosted resource benchmark (A7 core, measured at 3ffc4b1 + keyset)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -61,43 +62,42 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Before/after the A6 word index (misses and `did you mean` checks used
-to scan every taught key; A5 measured commit a6c628b, A6 re-measured
-with identical scripts and method):
+Current numbers (A7, keyset membership + word index), with the A5
+pre-index baseline in parentheses where it differs:
 
-| backend | facts | miss before | miss after | recall | startup | peak RSS |
-| --- | --- | --- | --- | --- | --- | --- |
-| interp | 0 | 1.6 ms | 1.9 ms | - | 0.06 s | 22.5 MiB |
-| interp | 1,000 | 482 ms | 6.1 ms | 1.8 ms | 0.06-0.32 s | 23.5 MiB |
-| interp | 10,000 | 4,840 ms | 48.9 ms | 8.0-8.2 ms | 0.15 -> 2.61 s | 31 -> 33 MiB |
-| ir-x64 | 0 | 0.01 ms | 0.01 ms | <0.01 ms | <0.01 s | 20.7 MiB |
-| ir-x64 | 1,000 | 2.8 ms | 0.03 ms | <0.01 ms | 0.03 s | 20.7 MiB |
-| ir-x64 | 10,000 | 39.9 ms | <0.01 ms | 0.10 ms | 0.41 s | 76 -> 92 MiB |
+| backend | facts | miss (A5) | recall (A6) | startup | peak RSS |
+| --- | --- | --- | --- | --- | --- |
+| interp | 0 | 1.8 ms (1.6) | - | 0.06 s | 22.7 MiB |
+| interp | 1,000 | 4.6 ms (482) | 1.1 ms (1.8) | 0.31 s (0.06) | 23.7 MiB |
+| interp | 10,000 | 43.5 ms (4,840) | 1.3 ms (8.0) | 2.59 s (0.15) | 33.9 MiB (31) |
+| ir-x64 | 0 | 0.01 ms | <0.01 ms | <0.01 s | 21.5 MiB |
+| ir-x64 | 1,000 | 0.01 ms (2.8) | <0.01 ms | 0.03 s | 21.5 MiB |
+| ir-x64 | 10,000 | <0.01 ms (39.9) | 0.06 ms (0.10) | 0.38 s | 92.9 MiB (76) |
 
 4 GiB probe (RLIMIT_AS on the child, 10k facts, mixed recall/miss
-session): both backends complete - interp 3.0 s at 33.1 MiB peak (was
-24.4 s), native 0.4 s at 92.3 MiB peak (was 0.6 s at 60.4 MiB). Memory
-stays far inside a 4 GiB budget.
+session): both backends complete - interp 2.8 s at 33.4 MiB peak (A5:
+24.4 s), native 0.4 s at 92.8 MiB peak. Memory stays far inside a 4
+GiB budget.
 
 Honest readings:
-- The index moved misses from ~0.5 ms/key scanned to word-dict lookups:
-  ~80-100x on the interp route, misses at native speed (a 10k-fact
-  miss costs what a recall costs). Thai substring questions still
-  consult the (usually small) non-ASCII word list, and an all-Thai
-  store keeps that scan proportional to its distinct non-ASCII words.
-- Costs of the index: native peak RSS at 10k facts rose 76 -> 92 MiB
-  (index lists), and the interp route's cold startup rose to 2.6 s at
-  10k facts because it rebuilds the index while loading (native: 0.41
-  s, unchanged). The on-disk format is unchanged - the index is
-  derived, never persisted.
-- Recall latency is unchanged (it never scanned candidates) and still
-  walks the key order list once per question on the interp route (8
-  ms at 10k facts) - conversational, but it is the next O(n) left.
+- Misses and `did you mean` checks are word-index lookups now: ~100x
+  on the interp route at 10k facts, and at native speed a miss costs
+  what a recall costs. Thai substring questions still consult the
+  (usually small) non-ASCII word list, and an all-Thai store keeps
+  that scan proportional to its distinct non-ASCII words.
+- Recalls no longer walk the key order list (keyset membership):
+  8.0 -> 1.3 ms on interp at 10k facts. No O(number of taught facts)
+  work remains on the ordinary question paths; association recall
+  (`what do you know about`) is an intentional full scan.
+- Costs of the derived structures: native peak RSS at 10k facts rose
+  76 -> 93 MiB, and the interp route's cold startup rose to 2.6 s at
+  10k facts because it rebuilds the index while loading (native: 0.38
+  s). The on-disk format is unchanged - index and keyset are derived,
+  never persisted.
 - The held-out Thai/English dialogue (24 lines: 7 recalls incl. alias
   and Thai, 2 clarifications, 3 honest misses, 1 correction) scores
-  full marks on both backends before and after - behavior did not
-  move, only its cost. Small sample: a smoke check, not an accuracy
-  study.
+  full marks on both backends at every stage - behavior did not move,
+  only its cost. Small sample: a smoke check, not an accuracy study.
 
 `tests/test_agent_bench.py` gates the dialogue check and a tiny-scale
 smoke run in CI; the full run is manual.

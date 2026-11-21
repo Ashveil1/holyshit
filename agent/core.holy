@@ -53,12 +53,11 @@ def lower_ascii(s):
     i = i + 1
   return out
 def new_state():
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}}
 def _has(state, key):
-  for k in state["order"]:
-    if k == key:
-      return true
-  return false
+  # O(1) membership; keyset mirrors order exactly (built from it on
+  # load, maintained on teach/forget), including for hand-edited files.
+  return key in state["keyset"]
 # Split normalized text into words (single-space separated by construction).
 def _words(s):
   out = []
@@ -165,6 +164,7 @@ def _teach_also(state, key, value):
 # key: the A5 benchmark measured the full scan at ~0.5 ms/key (interp)
 # per miss, which made misses unusable at 10k taught facts.
 def _index_key(state, key):
+  state["keyset"][key] = true
   for w in _words(key):
     if not (w in state["windex"]):
       state["windex"][w] = []
@@ -176,6 +176,11 @@ def _index_key(state, key):
       if not (key in state["nw"][w]):
         append(state["nw"][w], key)
 def _unindex_key(state, key):
+  kept = {}
+  for k in state["keyset"]:
+    if k != key:
+      kept[k] = true
+  state["keyset"] = kept
   for w in _words(key):
     if w in state["windex"]:
       kept = []
