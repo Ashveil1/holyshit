@@ -60,7 +60,8 @@ def lower_ascii(s):
     i = i + 1
   return out
 def new_state():
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": []}
+  # mode is session-only (like notes): strict unless the user explores.
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict"}
 def _has(state, key):
   # O(1) membership; keyset mirrors order exactly (built from it on
   # load, maintained on teach/forget), including for hand-edited files.
@@ -825,14 +826,30 @@ _VERBQ = [[" need ", "needs"], [" needs ", "needs"], [" use ", "uses"], [" uses 
 _VERBP = [[" needed by ", "needs"], [" used by ", "uses"], [" produced by ", "produces"], [" caused by ", "causes"]]
 # A14: compositional inference rules - a fixed, inspectable table,
 # NOT hidden logic. Each rule is [first premise relation, second
-# premise relation, conclusion relation, display name]: rel(X,Y) +
-# rel(Y,Z) => rel(X,Z). Only the rules listed here fire; there is no
-# invented inference. The can-stays-can axiom: every rule with a 'can'
-# premise concludes 'can' - capability never becomes a doing or a
-# having-done fact (no such relation exists). 'has' is never a
-# conclusion (non-transitive by design) and 'needs'/'causes' appear
-# in no rule at all.
-_RULES = [["has", "uses", "uses", "has+uses"], ["has", "can", "can", "has+can"], ["uses", "can", "can", "uses+can"], ["has", "produces", "produces", "has+produces"], ["uses", "produces", "produces", "uses+produces"]]
+# premise relation, conclusion relation, display name, domain]:
+# rel(X,Y) + rel(Y,Z) => rel(X,Z). Only the rules listed here fire;
+# there is no invented inference. The can-stays-can axiom: every rule
+# with a 'can' premise concludes 'can' - capability never becomes a
+# doing or a having-done fact (no such relation exists). 'has' is
+# never a conclusion (non-transitive by design) and 'needs'/'causes'
+# appear in no rule at all.
+# A14.1: every rule DECLARES its domain - the kind its conclusion's
+# subject must belong to for the rule to apply (ownership is not
+# participation; a part's capability is not the whole's). The middle
+# object is never required to be in the domain; each nested step
+# checks its own subject against its own rule's domain. The guard is
+# an inference CONDITION, not a truth claim: membership says the rule
+# may apply here, not that the composition is sound. All five current
+# rules declare the machine domain - the domain they were validated
+# in. Membership is checked through the ordinary is-a engine, so
+# subclass membership satisfies it. In strict mode (the default) an
+# unverified domain blocks the rule; in explore mode the rule fires
+# conditionally and the conclusion carries the assumption - an
+# assumption is never silently upgraded to fact. Negative or
+# CONFLICTING domain evidence blocks in both modes (conflicts are
+# reported, never resolved arbitrarily). A failed guard means only
+# that this rule cannot apply; it never proves the relation false.
+_RULES = [["has", "uses", "uses", "has+uses", "machine"], ["has", "can", "can", "has+can", "machine"], ["uses", "can", "can", "uses+can", "machine"], ["has", "produces", "produces", "has+produces", "machine"], ["uses", "produces", "produces", "uses+produces", "machine"]]
 _RULECAP = 6
 def _negphrase(pred):
   for r in _RELNEG:
@@ -1054,7 +1071,23 @@ def _means_check(state, x, y, sep):
 # questions), then rule-derived objects. memo caches per (start, rel)
 # for one query; storing the in-progress list before recursing breaks
 # cycles, and the depth cap bounds the search.
-def _enum(state, start, rel, depth, memo):
+# The guard verdict for one rule step, checked against the step's
+# OWN subject (never the middle object). Returns "ok" (membership
+# proven through the is-a chain), "assume" (unverified - allowed in
+# explore mode only), or "" (blocked: unverified in strict mode,
+# negative evidence, or conflicting evidence - conflicts are never
+# resolved arbitrarily). Blocked guards are recorded in gfail as
+# [rule name, subject, domain, kind] so the reply can explain which
+# rule could not apply and why; kind is the raw _inherit verdict.
+def _guard(state, subj, rule, gfail):
+  gr = _inherit(state, subj, "is-a", rule[4])
+  if gr[0] == "true":
+    return ["ok", gr]
+  if gr[0] == "" and state["mode"] == "explore":
+    return ["assume", gr]
+  append(gfail, [rule[3], subj, rule[4], gr[0]])
+  return ["", gr]
+def _enum(state, start, rel, depth, memo, gfail):
   mkey = _stripart(start) + "|" + rel
   if mkey in memo:
     return memo[mkey]
@@ -1099,21 +1132,28 @@ def _enum(state, start, rel, depth, memo):
   if depth < _RULECAP:
     for rule in _RULES:
       if rule[2] == rel:
-        for yit in _enum(state, start, rule[0], depth + 1, memo):
-          for zit in _enum(state, yit[0], rule[1], depth + 1, memo):
-            o = _stripart(zit[0])
-            if not (o in seen):
-              seen[o] = true
-              append(out, [zit[0], ["rule", rule[3], yit[1], zit[1], [start, zit[0]], rel]])
+        ys = _enum(state, start, rule[0], depth + 1, memo, gfail)
+        if len(ys) > 0:
+          g = _guard(state, start, rule, gfail)
+          if g[0] != "":
+            for yit in ys:
+              for zit in _enum(state, yit[0], rule[1], depth + 1, memo, gfail):
+                o = _stripart(zit[0])
+                if not (o in seen):
+                  seen[o] = true
+                  append(out, [zit[0], ["rule", rule[3], yit[1], zit[1], [start, zit[0]], rel, [g[0], g[1], rule[4]]]])
   memo[mkey] = out
   return out
 # Prove (start, pred, goal) from the rule table alone: for each rule
-# concluding pred, enumerate middle objects for its first premise and
-# prove the second premise recursively. A premise with taught negative
-# or contradicted evidence is never built on - rules under-infer
+# concluding pred, enumerate middle objects for its first premise,
+# check the domain guard on this step's own subject, and prove the
+# second premise recursively. A premise with taught negative or
+# contradicted evidence is never built on - rules under-infer
 # rather than overclaim. First complete proof wins (rule table order,
-# then edge insertion order: deterministic).
-def _rule_prove(state, start, pred, goal, depth, memo, pseen):
+# then edge insertion order: deterministic). A rule proof node is
+# ['rule', name, premise1, premise2, [subject, object], rel,
+# [guard kind, guard verdict, domain]].
+def _rule_prove(state, start, pred, goal, depth, memo, pseen, gfail):
   if depth >= _RULECAP:
     return null
   anyrule = false
@@ -1128,63 +1168,119 @@ def _rule_prove(state, start, pred, goal, depth, memo, pseen):
   pseen[pkey] = true
   for rule in _RULES:
     if rule[2] == pred:
-      for yit in _enum(state, start, rule[0], depth + 1, memo):
-        r2 = _inherit(state, yit[0], rule[1], goal)
-        if r2[0] == "true":
-          return ["rule", rule[3], yit[1], ["edge", r2[1], r2[2], rule[1]], [start, goal], pred]
-        if r2[0] == "":
-          p2 = _rule_prove(state, yit[0], rule[1], goal, depth + 1, memo, pseen)
-          if p2 != null:
-            return ["rule", rule[3], yit[1], p2, [start, goal], pred]
+      ys = _enum(state, start, rule[0], depth + 1, memo, gfail)
+      if len(ys) > 0:
+        # The guard is checked only when the rule otherwise has
+        # candidate premises, so a blocked-rule explanation always
+        # names a rule that could actually have applied.
+        g = _guard(state, start, rule, gfail)
+        if g[0] != "":
+          for yit in ys:
+            r2 = _inherit(state, yit[0], rule[1], goal)
+            if r2[0] == "true":
+              return ["rule", rule[3], yit[1], ["edge", r2[1], r2[2], rule[1]], [start, goal], pred, [g[0], g[1], rule[4]]]
+            if r2[0] == "":
+              p2 = _rule_prove(state, yit[0], rule[1], goal, depth + 1, memo, pseen, gfail)
+              if p2 != null:
+                return ["rule", rule[3], yit[1], p2, [start, goal], pred, [g[0], g[1], rule[4]]]
   return null
 # A14 query path: taught/inherited evidence first (the A13 engine,
 # unchanged); only when that knows nothing or found a taught negative
 # do the compositional rules fire. A rule-derived positive conflicting
 # with a taught negative is a contradiction - shown with its
 # reasoning, never silently resolved. Verdicts: true/false/both (pure
-# A13), rule (derived positive), rule-both (derived vs taught
-# negative).
+# A13), rule (derived positive, possibly conditional on assumptions),
+# rule-both (derived vs taught negative). The fourth slot carries the
+# guard failures when nothing could be derived.
 def _derive(state, x, pred, y):
   r = _inherit(state, x, pred, y)
   v = r[0]
   if v == "true" or v == "both":
-    return [v, r, null]
-  p = _rule_prove(state, x, pred, y, 0, {}, {})
+    return [v, r, null, null]
+  gfail = []
+  p = _rule_prove(state, x, pred, y, 0, {}, {}, gfail)
   if p == null:
-    return [v, r, null]
+    return [v, r, null, gfail]
   if v == "false":
-    return ["rule-both", r, p]
-  return ["rule", null, p]
+    return ["rule-both", r, p, null]
+  return ["rule", null, p, null]
 # Inline text of a proof's conclusion.
 def _proof_text(proof):
   if proof[0] == "edge":
     return _pathfmt(proof[1]) + _edgefmt(proof[2], proof[3], false)
   return _edgefmt(proof[4], proof[5], false)
-# Flatten a rule proof into numbered derivation steps, premises first;
-# each step names the rule that fired and the two premises it used.
-def _proof_steps(proof, steps, done):
+# Flatten a rule proof into numbered derivation steps, premises
+# first; each step names the rule that fired and the two premises it
+# used. A verified domain shows as the step's CONDITION (an inference
+# condition, not a truth claim); an unverified domain in explore mode
+# is collected into assum as [subject, domain, step number] and the
+# reply consolidates it - an assumption is named, never upgraded.
+def _proof_steps(proof, steps, done, assum):
   t = _proof_text(proof)
   if proof[0] == "edge":
     return t
-  t1 = _proof_steps(proof[2], steps, done)
-  t2 = _proof_steps(proof[3], steps, done)
+  t1 = _proof_steps(proof[2], steps, done, assum)
+  t2 = _proof_steps(proof[3], steps, done, assum)
   if not (t in done):
     done[t] = true
-    append(steps, "(" + str(len(steps) + 1) + ") " + t1 + " + " + t2 + " => " + t + " [rule " + proof[1] + "]")
+    line = t1 + " + " + t2 + " => " + t + " [rule " + proof[1]
+    if proof[6][0] == "ok":
+      line = line + "; domain: " + _pathfmt(proof[6][1][1]) + _edgefmt(proof[6][1][2], "is-a", false)
+    line = line + "]"
+    append(steps, "(" + str(len(steps) + 1) + ") " + line)
+    if proof[6][0] == "assume":
+      append(assum, [proof[4][0], proof[6][2], len(steps)])
   return t
 def _derive_render(state, x, pred, y, d):
   if d[0] == "rule" or d[0] == "rule-both":
     steps = []
-    _proof_steps(d[2], steps, {})
+    assum = []
+    _proof_steps(d[2], steps, {}, assum)
     out = ""
     if d[0] == "rule":
-      out = "yes: " + x + " " + _posphrase(pred) + " " + y + ". reasoning:"
+      if len(assum) > 0:
+        out = "yes, on " + str(len(assum)) + " assumption"
+        if len(assum) > 1:
+          out = out + "s"
+        out = out + ": "
+      else:
+        out = "yes: "
+      out = out + x + " " + _posphrase(pred) + " " + y + ". reasoning:"
     else:
       r = d[1]
       out = "i was taught " + _pathfmt(r[1]) + _edgefmt(r[2], pred, true) + ", but the rules derive " + x + " " + _posphrase(pred) + " " + y + " - i cannot say which is true. reasoning:"
     for s in steps:
       out = out + "\n" + s
+    if len(assum) > 0:
+      # Consolidate: one entry per distinct (subject, domain) with its
+      # step references merged, in order of first appearance. Distinct
+      # assumptions and their step dependencies survive long chains.
+      merged = []
+      mseen = {}
+      for a in assum:
+        mk = a[0] + "|" + a[1]
+        if mk in mseen:
+          merged[mseen[mk]][2] = merged[mseen[mk]][2] + ", " + str(a[2])
+        else:
+          mseen[mk] = len(merged)
+          append(merged, [a[0], a[1], str(a[2])])
+      labels = "abcdefghijklmnopqrstuvwxyz"
+      out = out + "\nassumptions:"
+      i = 0
+      while i < len(merged):
+        out = out + "\n(" + labels[i] + ") " + merged[i][0] + " is a " + merged[i][1] + " - assumed at step " + merged[i][2] + ", unverified"
+        i = i + 1
     return out
+  # Nothing derived: explain when a domain guard stopped a rule that
+  # otherwise had premises. The three kinds stay distinct, and a
+  # failed guard never makes the relation itself false.
+  if d[0] == "" and d[3] != null and len(d[3]) > 0:
+    f = d[3][0]
+    if f[3] == "":
+      return "not that i know - rule " + f[0] + " applies only to " + f[2] + "s, and i do not know whether " + f[1] + " is a " + f[2]
+    if f[3] == "false":
+      return "not that i know - rule " + f[0] + " applies only to " + f[2] + "s, and " + f[1] + " is not a " + f[2]
+    return "not that i know - rule " + f[0] + " applies only to " + f[2] + "s, and i was taught both that " + f[1] + " is and is not a " + f[2]
   return _inherit_reply(state, x, pred, y)
 def _derive_reply(state, x, pred, y):
   return _derive_render(state, x, pred, y, _derive(state, x, pred, y))
@@ -1213,13 +1309,24 @@ def _can_q(state, rest):
     return "i do not understand"
   x = ws[0]
   i = 1
+  blocked = null
+  bx = ""
+  by = ""
   while i < len(ws):
     y = rest[len(x) + 1:]
     d = _derive(state, x, "can", y)
     if d[0] != "":
       return _derive_render(state, x, "can", y, d)
+    # An undecided split can still carry a guard-blocked rule; keep the
+    # first so the final miss explains it (A14.1).
+    if blocked == null and d[3] != null and len(d[3]) > 0:
+      blocked = d
+      bx = x
+      by = y
     x = x + " " + ws[i]
     i = i + 1
+  if blocked != null:
+    return _derive_render(state, bx, "can", by, blocked)
   return "not that i know"
 # A13: passive verb questions - 'is energy needed by a dog'.
 def _passive_reply(state, rest3):
@@ -1262,7 +1369,7 @@ def _else_reply(state):
   if len(facts) <= 1:
     return "that is all i know about " + state["topic"]
   return "about " + state["topic"] + ": " + _join(facts[1:])
-_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | list | say <text> | help"
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | mode | mode strict | mode explore | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -1292,6 +1399,19 @@ def respond(state, line):
   if m == "clear notes":
     state["notes"] = []
     return "notes cleared"
+  # A14.1: strict mode (the default) blocks compositional rules whose
+  # domain is unverified; explore mode lets them fire conditionally.
+  # Session-only, like notes.
+  if m == "mode":
+    if state["mode"] == "explore":
+      return "explore mode: compositional rules may fire on unverified domains; conclusions list their assumptions and assumptions never become facts"
+    return "strict mode (the default): compositional rules need verified domains; 'mode explore' allows conditional conclusions"
+  if m == "mode explore":
+    state["mode"] = "explore"
+    return "explore mode: compositional rules may fire on unverified domains; conclusions list their assumptions (this session only)"
+  if m == "mode strict":
+    state["mode"] = "strict"
+    return "strict mode: compositional rules need verified domains (this session only)"
   if m[:5] == "note " and len(text) > 5:
     append(state["notes"], text[5:])
     return "noted"

@@ -4,7 +4,7 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.9)
+## What it is today (v0.9.1)
 
 - An ordered pattern-rule matcher: a fixed set of command patterns is
   checked in order and the first match wins.
@@ -118,6 +118,32 @@ no dependencies beyond the language itself.
   reported as a contradiction with its reasoning, never silently
   resolved. Rules are pure query-time derivation - the store format
   is unchanged.
+- Domain guards on those rules: every rule declares the kind its
+  conclusion's subject must belong to (all five current rules declare
+  `machine` - the domain they were validated in), because ownership is
+  not participation and a part's capability is not the whole's. The
+  guard is an inference CONDITION, not a truth claim: membership says
+  the rule may apply here, not that the composition is sound. Each
+  rule step checks only its own subject (the middle object is never
+  forced into the domain - `a pilot has a license` must not require
+  licenses to be machines), and membership goes through the ordinary
+  is-a chain, so a subclass satisfies the domain. Two modes: STRICT
+  (the default) blocks the rule and explains exactly why - the three
+  explanations stay distinct: unknown domain
+  (`i do not know whether X is a machine`), taught negative
+  (`X is not a machine`), and taught conflict (`i was taught both`),
+  and a failed guard never makes the relation itself false - a taught
+  negative still answers `no` outright when the opposing rule was
+  blocked. EXPLORE (`mode explore`, session-only, `mode` shows the
+  current one) lets the rule fire conditionally: the conclusion is
+  headed `yes, on N assumption(s):`, every assumption is consolidated
+  into one block with a step reference
+  (`(a) a car is a machine - assumed at step 2, unverified`),
+  duplicates merge, and an assumption NEVER becomes a fact -
+  conditional conclusions stay conditional downstream and strict mode
+  blocks the same world again. Thai negative domain teaches
+  (`remember a pilot ไม่เป็น machine`) participate in guards like
+  any other.
 - Bounded self-knowledge: `what do you know` counts taught things and
   names the 5 most recent, `what did you forget` lists the tombstones
   it keeps (last 20), `what did we talk about` replays the session log
@@ -155,7 +181,7 @@ how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุ�
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (measured at A14, compositional inference rules)
+## Hosted resource benchmark (measured at A14.1, domain guards)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -168,44 +194,42 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A14; A13 numbers in parentheses where they differ).
-A14 adds the rule engine at query time only - the load path is
-untouched - plus one scored dialogue category (rule 2/2; the A13
-categories keep full marks at every scale on both backends).
+Current numbers (A14.1; A14 numbers in parentheses where they
+differ). A14.1 adds the domain guard per rule step plus one scored
+dialogue category (guard 5/5; every earlier category keeps full
+marks at every scale on both backends).
 
-| backend | facts | miss | recall | inference | rule-derive | startup (A13) | peak RSS (A13) |
+| backend | facts | miss | recall | inference | rule-derive | startup (A14) | peak RSS (A14) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| interp | 0 | 2.3 ms | - | <0.01 ms | 3.0 ms | 0.12 s (0.09) | 25.1 MiB (24.7) |
-| interp | 1,000 | 5.1 ms | 1.3 ms | 2.06 ms | 3.2 ms | 1.94 s (2.02) | 27.8 MiB (27.4) |
-| interp | 10,000 | see note | 0.8 ms | 2.08 ms | 4.1 ms | 18.7 s (19.0) | 58.4 MiB (58.0) |
-| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 ms | 0.03 ms | <0.01 s | 30.1 MiB (29.6) |
-| ir-x64 | 1,000 | 0.03 ms | <0.01 ms | <0.01 ms | <0.01 ms | 0.07 s | 30.1 MiB (29.6) |
-| ir-x64 | 10,000 | <0.01 ms | <0.01 ms | <0.01 ms | <0.01 ms | 1.01 s (1.19) | 209.7 MiB (193.7) |
+| interp | 0 | 2.2 ms (2.3) | - | <0.01 ms | 3.9 ms (3.0) | 0.10 s (0.12) | 25.3 MiB (25.1) |
+| interp | 1,000 | 4.8 ms (5.1) | 1.1 ms (1.3) | 1.9 ms (2.06) | 3.9 ms (3.2) | 1.99 s (1.94) | 28.1 MiB (27.8) |
+| interp | 10,000 | see note | <0.01 ms (0.8) | <0.01 ms (2.08) | 8.5-10.0 ms (4.1) | 19.4 s (18.7) | 58.9 MiB (58.4) |
+| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 ms | 0.04 ms (0.03) | <0.01 s | 32.1 MiB (30.1) |
+| ir-x64 | 1,000 | 0.01 ms (0.03) | <0.01 ms | <0.01 ms | 0.01 ms (<0.01) | 0.07 s | 32.5 MiB (30.1) |
+| ir-x64 | 10,000 | <0.01 ms | <0.01 ms | <0.01 ms | 0.09 ms (<0.01) | 0.93 s (1.01) | 209.8 MiB (209.7) |
 
-4 GiB probe (RLIMIT_AS on the child, 10k facts, mixed recall/miss
-session): both backends complete - interp 19.0 s at 58.3 MiB peak,
-native 1.05 s at 193.9 MiB peak. Memory stays far inside a 4 GiB
-budget.
+4 GiB probe (RLIMIT_AS on the child, 10k facts, dialogue session):
+both backends complete - interp at 58.9 MiB peak, native at 209.8
+MiB peak. Memory stays far inside a 4 GiB budget.
 
 Honest readings:
-- Rule derivation costs what it costs: 3-4 ms/cmd on the interp for a
-  two-step composed proof, re-derived from scratch on every query
-  (there is deliberately no cross-query cache - the reasoning shown
-  always reflects the current store). Sub-0.1 ms on native. Honest
-  UNKNOWN verb questions now also pay a rule search; it is absorbed
-  in the unchanged 2.08 ms inference number because the synthetic
-  store has no has/uses edges to enumerate.
-- interp miss latency at 10k read 74 ms on one run and 0 ms on an
-  isolated re-run (the 10k miss sample is 5 commands; single-run
-  readings on this box stay suspect, as documented since A11). No
-  A14 code touches the miss path.
-- Native session RSS at 10k grew 194 -> 210 MiB and the reading is
-  STABLE across re-runs this time: the rule engine's per-query memo
-  and proof allocations grow the GC heap during derivation sessions.
-  Still ~5% of the 4 GiB budget; interp is flat (58.4 vs 58.0 MiB).
-- A14 leaves the load path untouched: interp 10k cold startup is
-  18.7 s vs A13's 19.0 s (the one-time v3->v5 migration documented at
-  A12/A13; v5 stores re-load at A11 speed).
+- Rule derivation now pays the guard: interp rule-derive at 10k read
+  10.0 ms on the first run and 8.5 ms on an isolated re-run, vs
+  A14's 4.1 ms. The added work is the per-step is-a membership walk
+  (car -> machine) on top of the same scratch-re-derived proof. The
+  derivation bench now also teaches the two machine domains, because
+  without them strict mode honestly measures the BLOCKED path, not
+  a derivation. Sub-0.1 ms on native, unchanged in practice.
+- interp inference and recall at 10k read 0 ms this run vs A14's
+  2.08/0.8 ms - the 10k samples are 5 commands each, so single-run
+  readings below ~2 ms stay noise on this box (documented since
+  A11); nothing in A14.1 touches the recall or inheritance paths.
+- interp 10k cold startup 19.4 s vs A14's 18.7 s: the guard table is
+  five rows read at query time; the delta is within the run-to-run
+  spread documented since A11 (18.7-19.0 across A13/A14). Native
+  session RSS is flat at ~210 MiB (~5% of the 4 GiB budget).
+- A14.1 leaves the store format and the load path untouched: mode
+  lives in session state only, like notes; nothing new persists.
 - A13's interp load increase (+2.1 s at 10k synth facts) comes from
   three extra prefix checks per value in relation derivation
   (lower-casing 4/6/7-character prefixes for the negation shapes).
