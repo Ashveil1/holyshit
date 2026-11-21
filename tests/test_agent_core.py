@@ -226,6 +226,8 @@ class Oracle:
         self.readings = []
         self.read_src = {}
         self.read_n = 0
+        self.url_srcs = []
+        self.test_fetch = False
 
     # --- A10 usage counting, mirroring core.holy ---
     def _cooc_add(self, key, value):
@@ -467,6 +469,89 @@ class Oracle:
 
     def _read_obj_ok(self, ex):
         return ' is ' not in ex[2] and ' and ' not in ex[2]
+
+    # A18 URL policy mirror (EXPERIMENTAL preview).
+    def _url_test_mode(self):
+        # Mirrors the repl-set state flag; never the process env.
+        return self.test_fetch
+
+    def _url_bad_host(self, host):
+        if not host or '..' in host:
+            return True
+        return any(not ('a' <= c <= 'z' or '0' <= c <= '9' or
+                        c in '.-') for c in host)
+
+    def _url_priv4(self, host):
+        parts = host.split('.')
+        if len(parts) != 4:
+            return False
+        nums = []
+        for p in parts:
+            if not p or len(p) > 3 or not p.isdigit():
+                return False
+            nums.append(int(p))
+        a, b = nums[0], nums[1]
+        return (a in (0, 10, 127) or a >= 224 or
+                (a == 169 and b == 254) or (a == 192 and b == 168) or
+                (a == 172 and 16 <= b <= 31))
+
+    def _url_norm(self, url, test_mode=None):
+        if '\r' in url or '\n' in url:
+            return [False, 'bad url (control characters)']
+        if len(url) < 8 or lower_ascii(url[:7]) != 'http://':
+            return [False, 'only http:// urls are supported']
+        rest = url[7:]
+        h = rest.find('#')
+        if h >= 0:
+            rest = rest[:h]
+        p = rest.find('/')
+        authority, path = (rest[:p], rest[p:]) if p >= 0 else (rest, '/')
+        if '@' in authority:
+            return [False, 'embedded credentials are not allowed']
+        host, port, hasport = authority, 80, False
+        c = authority.find(':')
+        if c >= 0:
+            host, ps = authority[:c], authority[c + 1:]
+            if not ps or len(ps) > 5 or not ps.isdigit():
+                return [False, 'bad port']
+            port = int(ps)
+            if port < 1 or port > 65535:
+                return [False, 'bad port']
+            hasport = True
+        host = lower_ascii(host)
+        if self._url_bad_host(host):
+            return [False, 'bad host']
+        if not (self._url_test_mode() if test_mode is None else test_mode):
+            if port != 80:
+                return [False, 'only port 80 is supported']
+            if self._url_priv4(host):
+                return [False,
+                        'private or reserved addresses are not allowed']
+        norm = 'http://' + host
+        if hasport and port != 80:
+            norm += ':' + str(port)
+        return [True, norm + path]
+
+    def _url_src(self, norm):
+        for i, e in enumerate(self.url_srcs):
+            if e[0] == norm:
+                return 'url-' + str(i + 1)
+        if len(self.url_srcs) >= 100:
+            return ''
+        self.url_srcs.append([norm, 0])
+        return 'url-' + str(len(self.url_srcs))
+
+    def _read_url(self, raw):
+        r = self._url_norm(raw, self._url_test_mode())
+        if not r[0]:
+            return 'read url: ' + r[1]
+        norm = r[1]
+        src = self._url_src(norm)
+        if src == '':
+            return ('read url: source registry full (100 distinct '
+                    'sources); clear readings to start over')
+        return ('read url: url reading is not available in this build '
+                '(normalized ' + norm + ')')
 
     def _read_ids(self, side):
         out = ''
@@ -1189,6 +1274,7 @@ class Oracle:
         if m == 'clear readings':
             self.readings = []
             self.read_src = {}
+            self.url_srcs = []
             return 'readings cleared'
         if m[:15] == 'forget reading ' and len(m) > 15:
             fr = self._read_extract(m[15:])
@@ -1200,6 +1286,8 @@ class Oracle:
                             ' | ' + r[2])
                 return "no such reading - 'readings' lists them"
             return 'forget reading <thing> is a <kind>'
+        if m[:9] == 'read url ' and len(text) > 9:
+            return self._read_url(text[9:])
         if m[:5] == 'read ' and len(text) > 5:
             return self._read_text(text[5:])
         if m[:5] == 'note ' and len(text) > 5:
@@ -2205,8 +2293,22 @@ A17_SCENARIOS = [
      'readings'],
 ]
 
+A18_SCENARIOS = [
+    # URL policy: every rejection happens before any network access,
+    # so these replies are deterministic on every route.
+    ['read url https://example.com/page',
+     'read url http://user:secret@example.com/x',
+     'read url http://example.com:8080/x',
+     'read url http://example.com:99999/x',
+     'read url http://127.0.0.1/admin',
+     'read url http://192.168.1.1/',
+     'read url http://EXAMPLE.com/A?B=c#frag',
+     'read url http://example.com:80/x'],
+]
+
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
-            A15_SCENARIOS + A16_SCENARIOS + A17_SCENARIOS):
+            A15_SCENARIOS + A16_SCENARIOS + A17_SCENARIOS +
+            A18_SCENARIOS):
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))
