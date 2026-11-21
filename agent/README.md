@@ -4,7 +4,7 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.11)
+## What it is today (v0.11.1)
 
 - An evidence-ingestion reader (A16): `read <text>` ingests text as
   DATA - never executed, never believed - and reports typed claims
@@ -23,9 +23,13 @@ no dependencies beyond the language itself.
   readings never enter inference, guards, recall, did-you-mean or
   hypothesis generation (a byte-identical query battery with and
   without reads proves the isolation), and only explicit user
-  teaching enters asserted knowledge - teaching that matches the
-  recorded readings marks USER_CONFIRMED, teaching against them marks
-  USER_DISPUTED, provenance retained either way. The store is
+  teaching enters asserted knowledge. User alignment is tracked PER
+  POLARITY, separate from evidence status: the taught side of a
+  record is marked USER_CONFIRMED, recorded support on the opposite
+  side is marked USER_DISPUTED, and any CONFLICT label stays -
+  confirmation never resolves external conflict, provenance is
+  retained either way, and repeated teaching changes nothing (labels
+  are assignments, never new evidence). The store is
   session-only, hard-capped at 100 claims; new claims at capacity
   are refused AND reported (N new / M updated / K refused / W
   repeat), updates always allowed, no silent eviction. One source id
