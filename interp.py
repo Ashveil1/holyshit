@@ -3181,6 +3181,94 @@ def b_system(args, ln):
     return subprocess.run(args[0], shell=True).returncode
 
 
+# ---- outbound network policy: connect-time private-network guard (R1) and
+# bounded receive timeouts (R2) ----
+# Defaults: 20s connect, 10s idle between received bytes, 30s overall
+# deadline for one http_get fetch. Raw tcp_recv carries the per-call idle
+# bound only. The guard resolves once, checks EVERY answer (any blocked
+# answer fails the whole connect - fail closed), and connects to the exact
+# checked address, so DNS rebinding between check and connect cannot bypass
+# it. Test fixtures on loopback/private space go through
+# HS_ALLOW_PRIVATE_NET=1, read by the runtime itself at every connect;
+# hs code cannot set process env, so it cannot enable the exception.
+NET_CONNECT_TIMEOUT = 20.0
+NET_IDLE_TIMEOUT = 10.0
+NET_FETCH_DEADLINE = 30.0
+
+
+def _net_allow_private():
+    import os
+    return os.environ.get("HS_ALLOW_PRIVATE_NET") == "1"
+
+
+def _v4_public(a):
+    # a: IPv4 address as a 32-bit int.
+    if a == 0:                    return False  # 0.0.0.0 unspecified
+    if (a >> 24) == 127:          return False  # 127.0.0.0/8 loopback
+    if (a >> 24) == 10:           return False  # 10.0.0.0/8 private
+    if (a >> 20) == 0xAC1:        return False  # 172.16.0.0/12 private
+    if (a >> 16) == 0xC0A8:       return False  # 192.168.0.0/16 private
+    if (a >> 16) == 0xA9FE:       return False  # 169.254.0.0/16 link-local (cloud metadata)
+    if (a >> 28) == 0xE:          return False  # 224.0.0.0/4 multicast
+    return True
+
+
+def _v6_public(b):
+    # b: IPv6 address as a 128-bit int. v4-mapped (::ffff:0:0/96) and
+    # v4-compatible (::/96) forms apply the IPv4 rules to the embedded addr.
+    if b == 0:                    return False  # :: unspecified
+    if b == 1:                    return False  # ::1 loopback
+    if (b >> 121) == 0x7E:        return False  # fc00::/7 unique-local
+    if (b >> 118) == 0x3FA:       return False  # fe80::/10 link-local
+    if (b >> 120) == 0xFF:        return False  # ff00::/8 multicast
+    hi = b >> 32
+    if hi == 0xFFFF or hi == 0:
+        return _v4_public(b & 0xFFFFFFFF)
+    return True
+
+
+def _sockaddr_public(fam, sa):
+    import socket
+    try:
+        if fam == socket.AF_INET:
+            return _v4_public(int.from_bytes(socket.inet_pton(socket.AF_INET, sa[0]), "big"))
+        if fam == socket.AF_INET6:
+            return _v6_public(int.from_bytes(socket.inet_pton(socket.AF_INET6, sa[0]), "big"))
+    except OSError:
+        pass
+    return False  # unknown family or unparseable address: fail closed
+
+
+def _net_dial(host, port, ln, what):
+    import socket
+    try:
+        infos = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
+    except OSError as e:
+        raise HSErr(f"{what} failed: cannot resolve '{host}': {e}", ln)
+    if not infos:
+        raise HSErr(f"{what} failed: cannot resolve '{host}'", ln)
+    if not _net_allow_private():
+        for fam, _t, _p, _c, sa in infos:
+            if not _sockaddr_public(fam, sa):
+                raise HSErr("connect blocked: private address", ln)
+    last = None
+    for fam, stype, proto, _c, sa in infos:
+        s = socket.socket(fam, stype, proto)
+        try:
+            s.settimeout(NET_CONNECT_TIMEOUT)
+            s.connect(sa)
+        except socket.timeout:
+            s.close()
+            raise HSErr("connect timeout", ln)
+        except OSError as e:
+            s.close()
+            last = e
+            continue
+        s.settimeout(NET_IDLE_TIMEOUT)
+        return s
+    raise HSErr(f"{what} failed: {last.strerror or last}", ln)
+
+
 class HSSock:
     def __init__(self, sock):
         self.sock = sock
@@ -3197,12 +3285,7 @@ def b_tcp_connect(args, ln):
     if len(args) != 2 or not isinstance(args[0], str) or not isinstance(args[1], int) \
             or isinstance(args[1], bool):
         raise HSErr("tcp_connect wants tcp_connect(host, port)", ln)
-    import socket
-    try:
-        s = socket.create_connection((args[0], args[1]), timeout=20)
-    except OSError as e:
-        raise HSErr(f"tcp_connect failed: {e.strerror or e}", ln)
-    return HSSock(s)
+    return HSSock(_net_dial(args[0], args[1], ln, "tcp_connect"))
 
 
 def b_tcp_send(args, ln):
@@ -3220,8 +3303,16 @@ def b_tcp_recv(args, ln):
     if len(args) != 2 or not isinstance(args[1], int) or isinstance(args[1], bool):
         raise HSErr("tcp_recv wants tcp_recv(sock, n)", ln)
     s = _sock_arg(args[0], ln, "tcp_recv")
+    import socket as _s
     try:
         data = s.recv(max(1, args[1]))
+    except _s.timeout:
+        args[0].closed = True
+        try:
+            s.close()
+        except OSError:
+            pass
+        raise HSErr("idle timeout", ln)
     except OSError as e:
         raise HSErr(f"tcp_recv failed: {e.strerror or e}", ln)
     return data
@@ -3290,16 +3381,28 @@ def b_http_get(args, ln):
         raise HSErr("http_get wants http_get(url)", ln)
     host, port, path = _http_split(args[0], ln)
     import socket
-    try:
-        s = socket.create_connection((host, port), timeout=20)
-    except OSError as e:
-        raise HSErr(f"http_get connect failed: {e.strerror or e}", ln)
+    s = _net_dial(host, port, ln, "http_get")
     req = f"GET {path} HTTP/1.0\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+    deadline = _time.monotonic() + NET_FETCH_DEADLINE
     try:
-        s.sendall(req.encode())
+        try:
+            s.sendall(req.encode())
+        except socket.timeout:
+            raise HSErr("idle timeout", ln)
+        except OSError as e:
+            raise HSErr(f"http_get failed: {e.strerror or e}", ln)
         chunks = []
         while True:
-            b = s.recv(65536)
+            remaining = deadline - _time.monotonic()
+            if remaining <= 0:
+                raise HSErr("deadline exceeded", ln)
+            s.settimeout(min(NET_IDLE_TIMEOUT, remaining))
+            try:
+                b = s.recv(65536)
+            except socket.timeout:
+                if _time.monotonic() >= deadline:
+                    raise HSErr("deadline exceeded", ln)
+                raise HSErr("idle timeout", ln)
             if not b:
                 break
             chunks.append(b)
@@ -3318,6 +3421,15 @@ def b_http_get(args, ln):
         raise HSErr("http_get got a bad response", ln)
     if not (200 <= status < 300):
         raise HSErr(f"http status {status}", ln)
+    for hl in head.lower().split(b"\r\n")[1:]:
+        if hl.startswith(b"content-length:"):
+            try:
+                want = int(hl.split(b":", 1)[1].strip())
+            except ValueError:
+                break
+            if len(body) < want:
+                raise HSErr("http_get incomplete response", ln)
+            break
     return body
 
 

@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <time.h>
 #include <dlfcn.h>
 #include <errno.h>
@@ -21,6 +22,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <poll.h>
 
 #include "rt.h"
 
@@ -1574,6 +1576,63 @@ Val b_system(Val *args, int nargs, int line) {
 // ---------- sockets ----------
 #define HSock_OF(v) ((HSock *)((v).u.p))
 
+/* ---- outbound network policy: connect-time private-network guard (R1) and
+ * bounded receive timeouts (R2). Same contract as interp.py: 20s connect,
+ * 10s idle between received bytes, 30s overall http_get deadline. Resolve
+ * once, check EVERY answer (any blocked answer fails the connect), connect
+ * to the exact checked address. HS_ALLOW_PRIVATE_NET=1 is the test-only
+ * exception, read by the runtime at each connect; hs code cannot set env. */
+#define HS_NET_CONNECT_TIMEOUT_MS 20000
+#define HS_NET_IDLE_TIMEOUT_S 10
+#define HS_NET_FETCH_DEADLINE_S 30
+
+static int hs_allow_private(void) {
+    const char *e = getenv("HS_ALLOW_PRIVATE_NET");
+    return e && strcmp(e, "1") == 0;
+}
+
+static int hs_v4_public(uint32_t a) {
+    a = ntohl(a);
+    if (a == 0)                    return 0;  /* 0.0.0.0 unspecified */
+    if ((a >> 24) == 127)          return 0;  /* 127.0.0.0/8 loopback */
+    if ((a >> 24) == 10)           return 0;  /* 10.0.0.0/8 private */
+    if ((a >> 20) == 0xAC1)        return 0;  /* 172.16.0.0/12 private */
+    if ((a >> 16) == 0xC0A8)       return 0;  /* 192.168.0.0/16 private */
+    if ((a >> 16) == 0xA9FE)       return 0;  /* 169.254.0.0/16 link-local */
+    if ((a >> 28) == 0xE)          return 0;  /* 224.0.0.0/4 multicast */
+    return 1;
+}
+
+static int hs_addr_public(const struct sockaddr *sa) {
+    if (sa->sa_family == AF_INET)
+        return hs_v4_public(((const struct sockaddr_in *)sa)->sin_addr.s_addr);
+    if (sa->sa_family == AF_INET6) {
+        const unsigned char *b = ((const struct sockaddr_in6 *)sa)->sin6_addr.s6_addr;
+        static const unsigned char z[16] = {0};
+        if (memcmp(b, z, 16) == 0)                       return 0;  /* :: */
+        if (memcmp(b, z, 15) == 0 && b[15] == 1)         return 0;  /* ::1 */
+        if ((b[0] & 0xFE) == 0xFC)                       return 0;  /* fc00::/7 */
+        if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80)       return 0;  /* fe80::/10 */
+        if (b[0] == 0xFF)                                return 0;  /* ff00::/8 */
+        if (memcmp(b, z, 10) == 0 && b[10] == 0xFF && b[11] == 0xFF) {
+            uint32_t v4; memcpy(&v4, b + 12, 4);                  /* ::ffff:0:0/96 */
+            return hs_v4_public(v4);
+        }
+        if (memcmp(b, z, 12) == 0) {
+            uint32_t v4; memcpy(&v4, b + 12, 4);                  /* ::/96 compat */
+            return hs_v4_public(v4);
+        }
+        return 1;
+    }
+    return 0;  /* unknown family: fail closed */
+}
+
+static double hs_now(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+}
+
 static HSock *hs_sock_new(int fd) {
     HSock *o = GC_MALLOC(sizeof(HSock));
     o->fd = fd;
@@ -1596,22 +1655,52 @@ static int hs_dial(const char *host, int64_t port, int line, const char *what) {
     hints.ai_socktype = SOCK_STREAM;
     if (getaddrinfo(host, ps, &hints, &res) != 0 || !res)
         hs_err(line, "%s failed: cannot resolve '%s'", what, host);
+    if (!hs_allow_private()) {
+        for (struct addrinfo *ai = res; ai; ai = ai->ai_next) {
+            if (!hs_addr_public(ai->ai_addr)) {
+                freeaddrinfo(res);
+                hs_err(line, "connect blocked: private address");
+            }
+        }
+    }
     int fd = -1;
     for (struct addrinfo *ai = res; ai; ai = ai->ai_next) {
         fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
         if (fd < 0)
             continue;
-        struct timeval tv = {20, 0};
-        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-        if (connect(fd, ai->ai_addr, ai->ai_addrlen) == 0)
+        int fl = fcntl(fd, F_GETFL, 0);
+        fcntl(fd, F_SETFL, fl | O_NONBLOCK);
+        int r = connect(fd, ai->ai_addr, ai->ai_addrlen);
+        if (r < 0 && errno == EINPROGRESS) {
+            struct pollfd pfd = { .fd = fd, .events = POLLOUT };
+            r = poll(&pfd, 1, HS_NET_CONNECT_TIMEOUT_MS);
+            if (r == 0) {
+                close(fd);
+                freeaddrinfo(res);
+                hs_err(line, "connect timeout");
+            }
+            if (r > 0) {
+                int soerr = 0;
+                socklen_t sl = sizeof(soerr);
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &soerr, &sl) < 0 || soerr)
+                    r = -1;
+                else
+                    r = 0;
+            }
+        }
+        if (r == 0) {
+            fcntl(fd, F_SETFL, fl);
             break;
+        }
         close(fd);
         fd = -1;
     }
     freeaddrinfo(res);
     if (fd < 0)
         hs_err(line, "%s failed: cannot connect to %s:%lld", what, host, (long long)port);
+    struct timeval tv = {HS_NET_IDLE_TIMEOUT_S, 0};
+    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     return fd;
 }
 
@@ -1649,6 +1738,11 @@ Val b_tcp_recv(Val *args, int nargs, int line) {
         n = 1 << 20;
     char *buf = GC_MALLOC((size_t)n);
     ssize_t r = recv(o->fd, buf, (size_t)n, 0);
+    if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        o->closed = 1;
+        close(o->fd);
+        hs_err(line, "idle timeout");
+    }
     if (r < 0)
         hs_err(line, "tcp_recv failed");
     return v_bytesn(buf, r);
@@ -1723,12 +1817,15 @@ Val b_http_get(Val *args, int nargs, int line) {
     int fd = hs_dial(host, port, line, "http_get");
     char req[1024];
     snprintf(req, sizeof(req), "GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n", path, host);
+    double deadline = hs_now() + HS_NET_FETCH_DEADLINE_S;
     size_t left = strlen(req);
     const char *pp = req;
     while (left > 0) {
         ssize_t n = send(fd, pp, left, 0);
         if (n <= 0) {
             close(fd);
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                hs_err(line, "idle timeout");
             hs_err(line, "http_get failed: send error");
         }
         pp += n;
@@ -1737,11 +1834,25 @@ Val b_http_get(Val *args, int nargs, int line) {
     size_t cap = 1 << 16, len = 0;
     char *raw = GC_MALLOC(cap);
     for (;;) {
+        double remaining = deadline - hs_now();
+        if (remaining <= 0) {
+            close(fd);
+            hs_err(line, "deadline exceeded");
+        }
+        double idle = remaining < HS_NET_IDLE_TIMEOUT_S ? remaining : HS_NET_IDLE_TIMEOUT_S;
+        struct timeval tv = {(time_t)idle, (suseconds_t)((idle - (time_t)idle) * 1e6)};
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
         if (len + 65536 > cap) {
             cap *= 2;
             raw = GC_REALLOC(raw, cap);
         }
         ssize_t n = recv(fd, raw + len, 65536, 0);
+        if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            close(fd);
+            if (hs_now() >= deadline)
+                hs_err(line, "deadline exceeded");
+            hs_err(line, "idle timeout");
+        }
         if (n < 0) {
             close(fd);
             hs_err(line, "http_get failed: recv error");
@@ -1760,7 +1871,16 @@ Val b_http_get(Val *args, int nargs, int line) {
         hs_err(line, "http_get got a bad response");
     if (status < 200 || status > 299)
         hs_err(line, "http status %d", status);
-    return v_bytesn(sep + 4, len - (size_t)(sep + 4 - raw));
+    size_t blen = len - (size_t)(sep + 4 - raw);
+    for (char *p = raw; p < sep; p++) {
+        if ((p == raw || p[-1] == '\n') && strncasecmp(p, "content-length:", 15) == 0) {
+            long want = strtol(p + 15, NULL, 10);
+            if (want >= 0 && blen < (size_t)want)
+                hs_err(line, "http_get incomplete response");
+            break;
+        }
+    }
+    return v_bytesn(sep + 4, blen);
 }
 
 // ---------- json ----------
