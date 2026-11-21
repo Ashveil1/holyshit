@@ -1,15 +1,18 @@
 # agent/core.holy — a small local agent core in pure hs.
 #
-# What it is: an ordered pattern-rule matcher with a teachable key->value
-# memory, short-term session notes, and a little dialogue context (it
-# remembers the current topic and can follow "it"). What it is not: a
-# language model. Everything it "knows" was taught with `remember`;
-# anything else gets an honest fallback reply.
+# What it is: an ordered pattern-rule matcher with a teachable memory
+# (several facts per thing), user-taught paraphrases, short-term session
+# notes, and a little dialogue context (it tracks the current topic,
+# follows "it", and asks which thing you meant when a miss has a handful
+# of plausible candidates). What it is not: a language model. Everything
+# it "knows" was taught; anything else gets an honest fallback reply.
 #
 # The core is pure: respond(state, line) only reads/mutates the state
 # Dict and returns the reply Str. State is JSON-serializable:
-#   {"facts": {...}, "order": [...],   persistent, saved by store.holy
-#    "notes": [...], "topic": k|null}  session-only, never saved
+#   {"facts": {k: [v, ...]}, "order": [...], "aliases": {phrase: k},
+#     persistent, saved by store.holy
+#    "notes": [...], "topic": k|null, "pending": {...}|null}
+#     session-only, never saved
 # so agent/store.holy can persist the durable part and a future kernel
 # port can carry the whole thing as plain data.
 #
@@ -50,54 +53,12 @@ def lower_ascii(s):
     i = i + 1
   return out
 def new_state():
-  return {"facts": {}, "order": [], "notes": [], "topic": null}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null}
 def _has(state, key):
   for k in state["order"]:
     if k == key:
       return true
   return false
-def _teach(state, key, value):
-  state["topic"] = key
-  if _has(state, key):
-    state["facts"][key] = value
-    return "updated " + key + " is " + value
-  state["facts"][key] = value
-  append(state["order"], key)
-  return "remembered " + key + " is " + value
-def _recall(state, key):
-  if _has(state, key):
-    state["topic"] = key
-    return "i know " + key + " is " + state["facts"][key]
-  return "i do not know " + key
-def _forget(state, key):
-  if not _has(state, key):
-    return "i do not know " + key
-  facts = {}
-  for k in state["facts"]:
-    if k != key:
-      facts[k] = state["facts"][k]
-  order = []
-  for k in state["order"]:
-    if k != key:
-      append(order, k)
-  state["facts"] = facts
-  state["order"] = order
-  if state["topic"] == key:
-    state["topic"] = null
-  return "forgot " + key
-def _list_reply(state):
-  order = state["order"]
-  n = len(order)
-  if n == 0:
-    return "i know nothing yet"
-  joined = order[0]
-  i = 1
-  while i < n:
-    joined = joined + ", " + order[i]
-    i = i + 1
-  if n == 1:
-    return "i know 1 thing: " + joined
-  return "i know " + str(n) + " things: " + joined
 # Split normalized text into words (single-space separated by construction).
 def _words(s):
   out = []
@@ -120,26 +81,156 @@ def _in(word, words):
     if w == word:
       return true
   return false
+# Join fact values: v | v1 and v2 | v1, v2 and v3.
+def _join(values):
+  n = len(values)
+  if n == 1:
+    return values[0]
+  if n == 2:
+    return values[0] + " and " + values[1]
+  out = values[0]
+  i = 1
+  while i < n - 1:
+    out = out + ", " + values[i]
+    i = i + 1
+  return out + " and " + values[n - 1]
+# Resolve a asked phrase to a fact key: direct hit wins, then a taught
+# paraphrase (one hop, no chains). Returns null when nothing matches.
+def _resolve(state, key):
+  if _has(state, key):
+    return key
+  aliases = state["aliases"]
+  for a in aliases:
+    if a == key:
+      target = aliases[a]
+      if _has(state, target):
+        return target
+      return null
+  return null
+def _teach(state, key, value):
+  state["topic"] = key
+  state["facts"][key] = [value]
+  if _has(state, key):
+    return "updated " + key + " is " + value
+  append(state["order"], key)
+  return "remembered " + key + " is " + value
+def _teach_also(state, key, value):
+  state["topic"] = key
+  if not _has(state, key):
+    state["facts"][key] = [value]
+    append(state["order"], key)
+    return "remembered " + key + " is " + value
+  for v in state["facts"][key]:
+    if v == value:
+      return "i already know that " + key + " is " + value
+  append(state["facts"][key], value)
+  return "added: " + key + " is " + value
+# Candidate keys/paraphrases for a miss: every word of the asked phrase
+# appears in the candidate's words. Deterministic (insertion order).
+def _candidates(state, phrase):
+  words = _words(phrase)
+  cands = []
+  keys = []
+  if len(words) > 0:
+    for k in state["order"]:
+      ok = true
+      for w in words:
+        if not _in(w, _words(k)):
+          ok = false
+      if ok and phrase != k:
+        append(cands, k)
+        append(keys, k)
+    for a in state["aliases"]:
+      target = state["aliases"][a]
+      if _has(state, target):
+        ok = true
+        for w in words:
+          if not _in(w, _words(a)):
+            ok = false
+        if ok and phrase != a:
+          append(cands, a)
+          append(keys, target)
+  return [cands, keys]
+def _recall(state, asked):
+  key = _resolve(state, asked)
+  if key != null:
+    state["topic"] = key
+    return "i know " + key + " is " + _join(state["facts"][key])
+  both = _candidates(state, asked)
+  cands = both[0]
+  keys = both[1]
+  if len(cands) > 0 and len(cands) <= 3:
+    state["pending"] = {"cands": cands, "keys": keys}
+    joined = cands[0]
+    i = 1
+    while i < len(cands):
+      joined = joined + ", " + cands[i]
+      i = i + 1
+    return "did you mean " + joined + "?"
+  return "i do not know " + asked
+def _forget(state, key):
+  if not _has(state, key):
+    return "i do not know " + key
+  facts = {}
+  for k in state["facts"]:
+    if k != key:
+      facts[k] = state["facts"][k]
+  order = []
+  for k in state["order"]:
+    if k != key:
+      append(order, k)
+  # Paraphrases pointing at the forgotten key die with it.
+  aliases = {}
+  for a in state["aliases"]:
+    if state["aliases"][a] != key:
+      aliases[a] = state["aliases"][a]
+  state["facts"] = facts
+  state["order"] = order
+  state["aliases"] = aliases
+  if state["topic"] == key:
+    state["topic"] = null
+  return "forgot " + key
+def _list_reply(state):
+  order = state["order"]
+  n = len(order)
+  if n == 0:
+    return "i know nothing yet"
+  joined = order[0]
+  i = 1
+  while i < n:
+    joined = joined + ", " + order[i]
+    i = i + 1
+  if n == 1:
+    return "i know 1 thing: " + joined
+  return "i know " + str(n) + " things: " + joined
 # Glue words that must not create associations on their own.
 def _stop(w):
   return w == "the" or w == "and" or w == "for" or w == "are" or w == "with" or w == "that" or w == "this"
+def _value_words(state, key):
+  out = []
+  for v in state["facts"][key]:
+    for w in _words(lower_ascii(v)):
+      if not _in(w, out):
+        append(out, w)
+  return out
 # Recall plus association: facts whose values share a content word
-# (ASCII-lowercased, length >= 3, not a glue word) with this one's value.
-def _about_reply(state, key):
-  if not _has(state, key):
-    return "i do not know " + key
+# (ASCII-lowercased, length >= 3, not a glue word) with this one's values.
+def _about_reply(state, asked):
+  key = _resolve(state, asked)
+  if key == null:
+    return "i do not know " + asked
   state["topic"] = key
-  reply = "i know " + key + " is " + state["facts"][key]
-  words = _words(lower_ascii(state["facts"][key]))
+  reply = "i know " + key + " is " + _join(state["facts"][key])
+  words = _value_words(state, key)
   for k in state["order"]:
     if k != key:
-      kwords = _words(lower_ascii(state["facts"][k]))
+      kwords = _value_words(state, k)
       shared = false
       for w in words:
         if len(w) >= 3 and not _stop(w) and _in(w, kwords):
           shared = true
       if shared:
-        reply = reply + "; also " + k + " is " + state["facts"][k]
+        reply = reply + "; also " + k + " is " + _join(state["facts"][k])
   return reply
 def _notes_reply(state):
   notes = state["notes"]
@@ -152,7 +243,28 @@ def _notes_reply(state):
     reply = reply + "; note " + str(i + 1) + ": " + notes[i]
     i = i + 1
   return reply
-_HELP = "commands: remember <thing> is <fact> | what is <thing> | do you know <thing> | what do you know about <thing> | what about it | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
+# A pending clarification is answered by yes (one candidate), by naming
+# one of the candidates, or by no. Any other line drops it and is
+# processed normally. Returns [handled, reply].
+def _pending_reply(state, m):
+  p = state["pending"]
+  if m == "yes":
+    if len(p["cands"]) == 1:
+      state["pending"] = null
+      return [true, _recall(state, p["cands"][0])]
+    return [true, "please say which one"]
+  if m == "no":
+    state["pending"] = null
+    return [true, "ok"]
+  i = 0
+  while i < len(p["cands"]):
+    if p["cands"][i] == m:
+      state["pending"] = null
+      return [true, _recall(state, p["cands"][i])]
+    i = i + 1
+  state["pending"] = null
+  return [false, ""]
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | what is <thing> | do you know <thing> | what do you know about <thing> | what about it | <phrase> means <thing> | forget <thing> | forget it | note <text> | notes | clear notes | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -163,6 +275,10 @@ def respond(state, line):
     if last == "?" or last == ".":
       text = text[:len(text) - 1]
   m = lower_ascii(text)
+  if state["pending"] != null:
+    r = _pending_reply(state, m)
+    if r[0]:
+      return r[1]
   if m == "help":
     return _HELP
   if m == "list":
@@ -188,6 +304,9 @@ def respond(state, line):
   if m[:9] == "remember ":
     rest = text[9:]
     mrest = m[9:]
+    k = find(mrest, " is also ")
+    if k > 0 and k + 9 < len(mrest):
+      return _teach_also(state, mrest[:k], rest[k + 9:])
     k = find(mrest, " is ")
     if k > 0 and k + 4 < len(mrest):
       return _teach(state, mrest[:k], rest[k + 4:])
@@ -206,4 +325,14 @@ def respond(state, line):
     return _forget(state, m[7:])
   if m[:4] == "say " and len(text) > 4:
     return text[4:]
+  k = find(m, " means ")
+  if k > 0 and k + 7 < len(m):
+    phrase = m[:k]
+    target = m[k + 7:]
+    if phrase == target:
+      return "i do not understand"
+    if _has(state, target):
+      state["aliases"][phrase] = target
+      return "ok, " + phrase + " means " + target
+    return "i do not know " + target
   return "i do not understand"

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """agent/core.holy conversation corpus vs an independent Python oracle.
 
-Randomized sessions over the full command surface (remember / recall and
-its aliases / association recall / topic follow-ups / session notes /
-list / say / help / garbage) run through agent.core.respond; transcripts
-(replies + final memory dump) must match the oracle byte for byte on
-every hosted execution route, and agent/store.holy save/load roundtrips
-are checked on the reference route (session state must NOT persist).
+Randomized sessions over the full command surface (remember / multi-fact
+"is also" / recall and its aliases / user-taught paraphrases /
+association recall / topic follow-ups / clarification dialogue /
+session notes / list / say / help / garbage) run through
+agent.core.respond; transcripts (replies + final memory dump) must match
+the oracle byte for byte on every hosted execution route, and
+agent/store.holy save/load roundtrips are checked on the reference route
+(session state must NOT persist; pre-v3 file formats must migrate).
 """
 import contextlib
 import io
@@ -29,10 +31,11 @@ import x64gen
 env = dict(os.environ, HSROOT=str(ROOT), HSPATH=os.pathsep.join([
     str(ROOT), str(ROOT/'selfhost'), str(ROOT/'selfhost/be')]))
 
-HELP = ("commands: remember <thing> is <fact> | what is <thing> | "
-        "do you know <thing> | what do you know about <thing> | "
-        "what about it | forget <thing> | forget it | note <text> | "
-        "notes | clear notes | list | say <text> | help")
+HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
+        "<fact> | what is <thing> | do you know <thing> | "
+        "what do you know about <thing> | what about it | "
+        "<phrase> means <thing> | forget <thing> | forget it | "
+        "note <text> | notes | clear notes | list | say <text> | help")
 WS = ' \t\n\r'
 STOP = {'the', 'and', 'for', 'are', 'with', 'that', 'this'}
 
@@ -55,20 +58,40 @@ def lower_ascii(s):
     return ''.join(chr(ord(c) + 32) if 'A' <= c <= 'Z' else c for c in s)
 
 
+def words(s):
+    # Mirror core._words: split on single spaces, empty words dropped.
+    return [w for w in s.split(' ') if w]
+
+
+def join_values(values):
+    n = len(values)
+    if n == 1:
+        return values[0]
+    if n == 2:
+        return values[0] + ' and ' + values[1]
+    return ', '.join(values[:-1]) + ' and ' + values[-1]
+
+
 class Oracle:
     """Fresh reference implementation of the agent.core spec."""
 
     def __init__(self):
-        self.facts = {}
+        self.facts = {}      # key -> [value, ...]
         self.order = []
+        self.aliases = {}    # phrase -> key
         self.notes = []
         self.topic = None
+        self.pending = None  # {'cands': [...], 'keys': [...]}
 
     def respond(self, line):
         text = normalize(line)
         if text and text[-1] in '?.':
             text = text[:-1]
         m = lower_ascii(text)
+        if self.pending is not None:
+            handled, reply = self._pending_reply(m)
+            if handled:
+                return reply
         if m == 'help':
             return HELP
         if m == 'list':
@@ -94,6 +117,9 @@ class Oracle:
         if m[:9] == 'remember ':
             rest = text[9:]
             mrest = m[9:]
+            k = mrest.find(' is also ')
+            if k > 0 and k + 9 < len(mrest):
+                return self._teach_also(mrest[:k], rest[k + 9:])
             k = mrest.find(' is ')
             if k > 0 and k + 4 < len(mrest):
                 return self._teach(mrest[:k], rest[k + 4:])
@@ -112,28 +138,97 @@ class Oracle:
             return self._forget(m[7:])
         if m[:4] == 'say ' and len(text) > 4:
             return text[4:]
+        k = m.find(' means ')
+        if k > 0 and k + 7 < len(m):
+            phrase = m[:k]
+            target = m[k + 7:]
+            if phrase == target:
+                return 'i do not understand'
+            if target in self.facts:
+                self.aliases[phrase] = target
+                return 'ok, ' + phrase + ' means ' + target
+            return 'i do not know ' + target
         return 'i do not understand'
+
+    def _pending_reply(self, m):
+        p = self.pending
+        if m == 'yes':
+            if len(p['cands']) == 1:
+                self.pending = None
+                return True, self._recall(p['cands'][0])
+            return True, 'please say which one'
+        if m == 'no':
+            self.pending = None
+            return True, 'ok'
+        for cand in p['cands']:
+            if cand == m:
+                self.pending = None
+                return True, self._recall(cand)
+        self.pending = None
+        return False, ''
+
+    def _resolve(self, key):
+        if key in self.facts:
+            return key
+        if key in self.aliases:
+            target = self.aliases[key]
+            if target in self.facts:
+                return target
+            return None
+        return None
+
+    def _candidates(self, phrase):
+        ws = words(phrase)
+        cands = []
+        keys = []
+        if ws:
+            for k in self.order:
+                if k != phrase and all(w in words(k) for w in ws):
+                    cands.append(k)
+                    keys.append(k)
+            for a, target in self.aliases.items():
+                if target in self.facts and a != phrase and \
+                        all(w in words(a) for w in ws):
+                    cands.append(a)
+                    keys.append(target)
+        return cands, keys
 
     def _teach(self, key, value):
         self.topic = key
-        if key in self.facts:
-            self.facts[key] = value
+        self.facts[key] = [value]
+        if key in self.order:
             return 'updated ' + key + ' is ' + value
-        self.facts[key] = value
         self.order.append(key)
         return 'remembered ' + key + ' is ' + value
 
-    def _recall(self, key):
-        if key in self.facts:
+    def _teach_also(self, key, value):
+        self.topic = key
+        if key not in self.facts:
+            self.facts[key] = [value]
+            self.order.append(key)
+            return 'remembered ' + key + ' is ' + value
+        if value in self.facts[key]:
+            return 'i already know that ' + key + ' is ' + value
+        self.facts[key].append(value)
+        return 'added: ' + key + ' is ' + value
+
+    def _recall(self, asked):
+        key = self._resolve(asked)
+        if key is not None:
             self.topic = key
-            return 'i know ' + key + ' is ' + self.facts[key]
-        return 'i do not know ' + key
+            return 'i know ' + key + ' is ' + join_values(self.facts[key])
+        cands, keys = self._candidates(asked)
+        if 0 < len(cands) <= 3:
+            self.pending = {'cands': cands, 'keys': keys}
+            return 'did you mean ' + ', '.join(cands) + '?'
+        return 'i do not know ' + asked
 
     def _forget(self, key):
         if key not in self.facts:
             return 'i do not know ' + key
         del self.facts[key]
         self.order.remove(key)
+        self.aliases = {a: t for a, t in self.aliases.items() if t != key}
         if self.topic == key:
             self.topic = None
         return 'forgot ' + key
@@ -147,18 +242,27 @@ class Oracle:
             return 'i know 1 thing: ' + joined
         return 'i know ' + str(n) + ' things: ' + joined
 
-    def _about_reply(self, key):
-        if key not in self.facts:
-            return 'i do not know ' + key
+    def _value_words(self, key):
+        out = []
+        for v in self.facts[key]:
+            for w in words(lower_ascii(v)):
+                if w not in out:
+                    out.append(w)
+        return out
+
+    def _about_reply(self, asked):
+        key = self._resolve(asked)
+        if key is None:
+            return 'i do not know ' + asked
         self.topic = key
-        reply = 'i know ' + key + ' is ' + self.facts[key]
-        words = lower_ascii(self.facts[key]).split(' ')
+        reply = 'i know ' + key + ' is ' + join_values(self.facts[key])
+        words = self._value_words(key)
         for k in self.order:
             if k == key:
                 continue
-            kwords = lower_ascii(self.facts[k]).split(' ')
+            kwords = self._value_words(k)
             if any(len(w) >= 3 and w not in STOP and w in kwords for w in words):
-                reply += '; also ' + k + ' is ' + self.facts[k]
+                reply += '; also ' + k + ' is ' + join_values(self.facts[k])
         return reply
 
     def _notes_reply(self):
@@ -180,8 +284,13 @@ VALUES = ['nice', 'a cat', 'a big cat', 'likes fish', 'a dog', 'blue fish',
 GARBAGE = ['', '   ', 'xyzzy', 'remember', 'remember x', 'remember is y',
            'what', 'what is', 'what is ', 'forget', 'say', 'say ',
            'remember x is', 'REMEMBER x IS ', 'hello there', '?', '.',
-           'note', 'what do you know about', 'who is', 'where is']
+           'note', 'what do you know about', 'who is', 'where is',
+           'means', 'x means', 'means y', 'x means x', 'remember x is also']
 ALIASES = ['do you know', 'tell me about', 'who is', 'where is']
+# Phrases for user-taught paraphrases, and miss-askings that overlap real
+# keys by a word (to trigger the clarification dialogue).
+PHRASES = ['the capital of france', 'kitty', 'สวัสดี', 'big answer']
+MISSES = ['cat', 'answer', 'my', 'capital', 'ghost town', 'nothing']
 
 
 def mangle(word):
@@ -204,36 +313,51 @@ def make_session():
     oracle = Oracle()
     lines = []
     replies = []
-    for _ in range(40):
+    for _ in range(45):
         r = rng.random()
-        if r < 0.24:
+        if r < 0.19:
             key = rng.choice(KEYS)
             value = rng.choice(VALUES)
             line = mangle('remember') + ' ' + mangle(key) + ' ' + \
                 mangle('is') + ' ' + value
-        elif r < 0.37:
+        elif r < 0.25:
+            key = rng.choice(KEYS)
+            value = rng.choice(VALUES)
+            line = mangle('remember') + ' ' + mangle(key) + ' ' + \
+                mangle('is also') + ' ' + value
+        elif r < 0.35:
             line = mangle('what is') + ' ' + mangle(rng.choice(KEYS))
-        elif r < 0.46:
+        elif r < 0.43:
             line = mangle(rng.choice(ALIASES)) + ' ' + mangle(rng.choice(KEYS))
-        elif r < 0.54:
+        elif r < 0.47:
+            line = mangle('what is') + ' ' + mangle(rng.choice(PHRASES))
+        elif r < 0.53:
             line = mangle('what do you know about') + ' ' + mangle(rng.choice(KEYS))
-        elif r < 0.60:
+        elif r < 0.57:
             line = mangle('what about it')
+        elif r < 0.62:
+            line = mangle(rng.choice(PHRASES)) + ' ' + mangle('means') + \
+                ' ' + mangle(rng.choice(KEYS))
         elif r < 0.66:
+            line = mangle(rng.choice(['what is', 'do you know'])) + ' ' + \
+                mangle(rng.choice(MISSES))
+        elif r < 0.69:
+            line = rng.choice(['yes', 'no', 'Yes', 'No', 'YES'])
+        elif r < 0.74:
             line = mangle('forget') + ' ' + mangle(rng.choice(KEYS + ['ghost']))
-        elif r < 0.70:
-            line = mangle('forget it')
         elif r < 0.78:
+            line = mangle('forget it')
+        elif r < 0.84:
             line = mangle('note') + ' ' + rng.choice(VALUES + ['Mixed CASE note'])
-        elif r < 0.83:
+        elif r < 0.88:
             line = mangle('notes')
-        elif r < 0.86:
+        elif r < 0.90:
             line = mangle('clear notes')
-        elif r < 0.91:
+        elif r < 0.94:
             line = mangle('list')
-        elif r < 0.95:
-            line = mangle('say') + ' ' + rng.choice(VALUES + ['Mixed CASE text'])
         elif r < 0.97:
+            line = mangle('say') + ' ' + rng.choice(VALUES + ['Mixed CASE text'])
+        elif r < 0.98:
             line = mangle('help')
         else:
             line = rng.choice(GARBAGE)
@@ -250,7 +374,10 @@ for lines, replies, oracle in sessions:
     expected_lines.extend(replies)
     expected_lines.append('keys ' + str(len(oracle.order)))
     for k in oracle.order:
-        expected_lines.append(k + ' => ' + oracle.facts[k])
+        expected_lines.append(k + ' => ' + ' | '.join(oracle.facts[k]))
+    expected_lines.append('aliases ' + str(len(oracle.aliases)))
+    for a, t in oracle.aliases.items():
+        expected_lines.append(a + ' ~> ' + t)
     expected_lines.append('notes ' + str(len(oracle.notes)))
     for i, note in enumerate(oracle.notes):
         expected_lines.append('note ' + str(i + 1) + ' = ' + note)
@@ -276,7 +403,16 @@ text += '    print agent.core.respond(state, line)\n'
 text += '    total = total + 1\n'
 text += '  print "keys " + str(len(state["order"]))\n'
 text += '  for k in state["order"]:\n'
-text += '    print k + " => " + state["facts"][k]\n'
+text += '    joined = ""\n'
+text += '    for v in state["facts"][k]:\n'
+text += '      if joined == "":\n'
+text += '        joined = v\n'
+text += '      else:\n'
+text += '        joined = joined + " | " + v\n'
+text += '    print k + " => " + joined\n'
+text += '  print "aliases " + str(len(state["aliases"]))\n'
+text += '  for a in state["aliases"]:\n'
+text += '    print a + " ~> " + state["aliases"][a]\n'
 text += '  print "notes " + str(len(state["notes"]))\n'
 text += '  i = 0\n'
 text += '  while i < len(state["notes"]):\n'
@@ -293,23 +429,26 @@ import agent.store
 p = {path}
 s = agent.core.new_state()
 print agent.core.respond(s, "remember alpha is one")
-print agent.core.respond(s, "remember beta is two")
+print agent.core.respond(s, "remember alpha is also two")
+print agent.core.respond(s, "a1 means alpha")
 print agent.core.respond(s, "note buy milk")
 agent.store.save(s, p)
 s2 = agent.store.load(p)
 print agent.core.respond(s2, "what is alpha")
+print agent.core.respond(s2, "what is a1")
 print agent.core.respond(s2, "list")
 print agent.core.respond(s2, "notes")
-print agent.core.respond(s2, "what about it")
 print agent.core.respond(s2, "forget alpha")
+print agent.core.respond(s2, "what is a1")
 agent.store.save(s2, p)
 s3 = agent.store.load(p)
 print agent.core.respond(s3, "list")
 '''
-STORE_WANT = ('remembered alpha is one\nremembered beta is two\nnoted\n'
-              'i know alpha is one\ni know 2 things: alpha, beta\n'
-              'no notes yet\ni know alpha is one\n'
-              'forgot alpha\ni know 1 thing: beta\n')
+STORE_WANT = ('remembered alpha is one\nadded: alpha is two\n'
+              'ok, a1 means alpha\nnoted\n'
+              'i know alpha is one and two\ni know alpha is one and two\n'
+              'i know 1 thing: alpha\nno notes yet\nforgot alpha\n'
+              'i do not know a1\ni know nothing yet\n')
 
 FRESH_PROG = '''import agent.core
 import agent.store
@@ -319,17 +458,19 @@ s2 = agent.store.load({path})
 print agent.core.respond(s2, "list")
 '''
 
-# A file in the original v0.1 on-disk shape (facts + order only) must
-# still load, with session state starting empty.
-V01_PROG = '''import agent.core
+# A file in the pre-v3 on-disk shape (string fact values, no aliases)
+# must load: values migrate to one-fact lists, aliases default empty.
+V02_PROG = '''import agent.core
 import agent.store
 s = agent.store.load({path})
 print agent.core.respond(s, "what is a")
 print agent.core.respond(s, "list")
 print agent.core.respond(s, "notes")
-print agent.core.respond(s, "what about it")
+agent.store.save(s, {path})
+s2 = agent.store.load({path})
+print agent.core.respond(s2, "what is a")
 '''
-V01_WANT = ('i know a is 1\ni know 1 thing: a\nno notes yet\n'
+V02_WANT = ('i know a is 1\ni know 1 thing: a\nno notes yet\n'
             'i know a is 1\n')
 
 
@@ -359,15 +500,15 @@ def check_store_routes():
             want = 'i know nothing yet\ni know nothing yet\n'
             assert r.returncode == 0 and r.stdout == want, (name, r.returncode,
                                                             r.stdout, r.stderr[-500:])
-        # v0.1 on-disk format still loads.
-        v01 = d/'v01.json'
-        v01.write_text('{"facts": {"a": "1"}, "order": ["a"]}', encoding='utf-8')
-        vprog = d/'v01.holy'
-        vprog.write_text(V01_PROG.format(path=lit(str(v01))), encoding='utf-8')
+        # Pre-v3 on-disk format migrates and round-trips into v3.
+        v02 = d/'v02.json'
+        v02.write_text('{"facts": {"a": "1"}, "order": ["a"]}', encoding='utf-8')
+        vprog = d/'v02.holy'
+        vprog.write_text(V02_PROG.format(path=lit(str(v02))), encoding='utf-8')
         r = run_ref(vprog)
-        assert r.returncode == 0 and r.stdout == V01_WANT, (r.returncode,
+        assert r.returncode == 0 and r.stdout == V02_WANT, (r.returncode,
                                                             r.stdout, r.stderr[-500:])
-    print('ok agent.store roundtrip + 4 fresh-load cases + v0.1-format load (reference route)', flush=True)
+    print('ok agent.store roundtrip + 4 fresh-load cases + pre-v3 migration (reference route)', flush=True)
 
 
 def verify(label, r):

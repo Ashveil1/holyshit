@@ -2,11 +2,16 @@
 #
 # The core (agent/core.holy) is pure and never touches the filesystem;
 # this module is the thin hosted-only shell that saves and loads the
-# durable part of the state (facts + order) as JSON. Session-only state
-# (notes, topic) is never written: a fresh chat starts with empty notes
-# and no topic. A missing or unreadable/corrupt file loads as a fresh
-# empty state rather than crashing the chat; v0.1 files (facts + order
-# only) load fine, since that is still the on-disk format.
+# durable part of the state (facts + order + aliases) as JSON.
+# Session-only state (notes, topic, pending clarifications) is never
+# written: a fresh chat starts with empty notes, no topic, nothing
+# pending. A missing or unreadable/corrupt file loads as a fresh empty
+# state rather than crashing the chat.
+#
+# On-disk format v3: {"facts": {key: [value, ...]}, "order": [...],
+# "aliases": {phrase: key}}. Files from v0.1/v0.2 (facts values were
+# plain strings, no aliases) load fine: string values are wrapped into
+# one-element lists and aliases default to empty.
 import agent.core
 def load(path):
   state = agent.core.new_state()
@@ -14,10 +19,19 @@ def load(path):
     return state
   try:
     data = json_load(path)
-    state["facts"] = data["facts"]
+    facts = data["facts"]
+    # Migrate pre-v3 files: a plain-string value becomes a one-fact list.
+    for k in facts:
+      if json_str(facts[k])[:1] == "\"":
+        facts[k] = [facts[k]]
+    state["facts"] = facts
     state["order"] = data["order"]
+    try:
+      state["aliases"] = data["aliases"]
+    except:
+      state["aliases"] = {}
     return state
   except:
     return agent.core.new_state()
 def save(state, path):
-  json_save(path, {"facts": state["facts"], "order": state["order"]})
+  json_save(path, {"facts": state["facts"], "order": state["order"], "aliases": state["aliases"]})
