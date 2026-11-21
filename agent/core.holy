@@ -14,6 +14,8 @@
 #     persistent, saved by store.holy
 #    "notes": [...], "topic": k|null, "pending": {...}|null}
 #     session-only, never saved
+#    "windex"/"nw"/"keyset"/"cooc": derived lookup structures, rebuilt
+#     on load, never saved
 # rels are relation edges derived from taught fact shapes ("in X",
 # "a X"/"an X", "has X", Thai อยู่/คือ/หมายความว่า) plus means-teaches;
 # they back the inference queries (is-in/is-a chains, where-is,
@@ -58,7 +60,7 @@ def lower_ascii(s):
     i = i + 1
   return out
 def new_state():
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": []}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}}
 def _has(state, key):
   # O(1) membership; keyset mirrors order exactly (built from it on
   # load, maintained on teach/forget), including for hand-edited files.
@@ -142,11 +144,56 @@ def _resolve(state, key):
         return target
       return null
   return null
+# Usage learning (A10): "cooc" maps every content word appearing in a
+# taught fact (key or value) to the other content words of the same
+# facts, with counts. Derived, never persisted: rebuilt on load,
+# maintained on teach/forget. It is co-occurrence counting, not
+# understanding - it can say two words appeared together, never how.
+# Content words: non-glue tokens, ASCII of length 3+ or any non-ASCII
+# token (the length check is ASCII-only so the char/byte len()
+# difference between backends can never diverge on Thai text).
+def _cwords(s):
+  out = []
+  for w in _words(lower_ascii(s)):
+    if not _stop(w) and (len(w) >= 3 or _nonascii(w)):
+      if not _in(w, out):
+        append(out, w)
+  return out
+def _cooc_add(state, key, value):
+  ws = _cwords(key)
+  for w in _cwords(value):
+    if not _in(w, ws):
+      append(ws, w)
+  for w in ws:
+    for u in ws:
+      if u != w:
+        if not (w in state["cooc"]):
+          state["cooc"][w] = {}
+        ctx = state["cooc"][w]
+        if u in ctx:
+          ctx[u] = ctx[u] + 1
+        else:
+          ctx[u] = 1
+def _cooc_remove(state, key, value):
+  ws = _cwords(key)
+  for w in _cwords(value):
+    if not _in(w, ws):
+      append(ws, w)
+  for w in ws:
+    if w in state["cooc"]:
+      ctx = state["cooc"][w]
+      for u in ws:
+        if u != w and u in ctx and ctx[u] > 0:
+          ctx[u] = ctx[u] - 1
 def _teach(state, key, value):
   state["topic"] = key
+  if _has(state, key):
+    for v in state["facts"][key]:
+      _cooc_remove(state, key, v)
   state["facts"][key] = [value]
   _drop_rels(state, key)
   _learn_rel(state, key, value)
+  _cooc_add(state, key, value)
   if _has(state, key):
     return "updated " + key + " is " + value
   append(state["order"], key)
@@ -159,11 +206,13 @@ def _teach_also(state, key, value):
     state["facts"][key] = [value]
     append(state["order"], key)
     _index_key(state, key)
+    _cooc_add(state, key, value)
     return "remembered " + key + " is " + value
   for v in state["facts"][key]:
     if v == value:
       return "i already know that " + key + " is " + value
   append(state["facts"][key], value)
+  _cooc_add(state, key, value)
   return "added: " + key + " is " + value
 # Candidate keys/paraphrases for a miss: every word of the asked phrase
 # Word index (derived, never persisted): "windex" maps every taught key
@@ -202,6 +251,57 @@ def _unindex_key(state, key):
         if k != key:
           append(kept, k)
       state["nw"][w] = kept
+# How strongly a candidate connects to the asked words in counted usage:
+# the sum of co-occurrences between the candidate's content words and
+# the asked phrase's content words.
+def _usage_score(state, cand, awords):
+  score = 0
+  for w in _cwords(cand):
+    if w in state["cooc"]:
+      ctx = state["cooc"][w]
+      for a in awords:
+        if a != w and a in ctx:
+          score = score + ctx[a]
+  return score
+# Usage-based fallback for a clean miss: the words that showed up
+# alongside the asked words in taught facts, honestly framed as usage
+# correlation, never as knowledge. Top 3 by count, ties in first-seen
+# order.
+def _usage_reply(state, asked):
+  awords = _cwords(asked)
+  merged = {}
+  morder = []
+  for w in awords:
+    if w in state["cooc"]:
+      for u in state["cooc"][w]:
+        c = state["cooc"][w][u]
+        if c > 0 and not _in(u, awords):
+          if u in merged:
+            merged[u] = merged[u] + c
+          else:
+            merged[u] = c
+            append(morder, u)
+  if len(morder) == 0:
+    return "i do not know " + asked
+  i = 0
+  while i < len(morder):
+    best = i
+    j = i + 1
+    while j < len(morder):
+      if merged[morder[j]] > merged[morder[best]]:
+        best = j
+      j = j + 1
+    if best != i:
+      tmp = morder[i]
+      morder[i] = morder[best]
+      morder[best] = tmp
+    i = i + 1
+  top = []
+  i = 0
+  while i < len(morder) and i < 3:
+    append(top, morder[i])
+    i = i + 1
+  return "i was never taught " + asked + ", but from how you used it, " + asked + " seems related to " + _join(top)
 # Keys whose words match the asked word w, exactly mirroring _wmatch:
 # - exact word hits come straight from the index;
 # - a non-ASCII asked word also matches any taught word found inside it
@@ -284,6 +384,27 @@ def _recall(state, asked):
   both = _candidates(state, asked)
   cands = both[0]
   keys = both[1]
+  # Usage-informed ranking: candidates tied to the asked words in
+  # counted usage come first; ties keep insertion order. Still a
+  # guess, just a usage-informed one.
+  if len(cands) > 1:
+    awords = _cwords(asked)
+    i = 0
+    while i < len(cands):
+      best = i
+      j = i + 1
+      while j < len(cands):
+        if _usage_score(state, cands[j], awords) > _usage_score(state, cands[best], awords):
+          best = j
+        j = j + 1
+      if best != i:
+        tmp = cands[i]
+        cands[i] = cands[best]
+        cands[best] = tmp
+        tmp = keys[i]
+        keys[i] = keys[best]
+        keys[best] = tmp
+      i = i + 1
   if len(cands) > 0 and len(cands) <= 3:
     state["pending"] = {"cands": cands, "keys": keys}
     joined = cands[0]
@@ -292,10 +413,14 @@ def _recall(state, asked):
       joined = joined + ", " + cands[i]
       i = i + 1
     return "did you mean " + joined + "?"
-  return "i do not know " + asked
+  if len(cands) > 3:
+    return "i do not know " + asked
+  return _usage_reply(state, asked)
 def _forget(state, key):
   if not _has(state, key):
     return "i do not know " + key
+  for v in state["facts"][key]:
+    _cooc_remove(state, key, v)
   facts = {}
   for k in state["facts"]:
     if k != key:

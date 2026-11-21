@@ -32,9 +32,12 @@ def load(path):
       state["aliases"] = data["aliases"]
     except:
       state["aliases"] = {}
-    # The word index is derived state: rebuild it from what was loaded.
+    # The word index and the usage counts are derived state: rebuild
+    # them from what was loaded.
     for k in state["order"]:
       agent.core._index_key(state, k)
+      for v in state["facts"][k]:
+        agent.core._cooc_add(state, k, v)
     # Relations: persisted at v4; older files derive edges from the
     # recognized shapes of their fact values.
     try:

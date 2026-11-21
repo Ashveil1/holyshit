@@ -4,10 +4,23 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.6)
+## What it is today (v0.7)
 
 - An ordered pattern-rule matcher: a fixed set of command patterns is
   checked in order and the first match wins.
+- Learning from usage, smallest honest version: for every content word
+  in every taught fact (key or value) it counts which other content
+  words appear alongside it, across all facts. Two uses, both honestly
+  framed: a miss with several `did you mean` candidates orders them by
+  co-occurrence with the asked words (was: insertion order), and a
+  clean miss on a word that shows up in taught values answers
+  `i was never taught X, but from how you used it, X seems related to
+  A, B` (top 3 by count, ties by first-seen order). It is counting,
+  not understanding: it can say two words appeared together, never
+  what the relation is. Thai words participate as whole tokens (there
+  is no segmenter). The counts are derived state, rebuilt on load like
+  the word index - nothing new is persisted and the v4 format is
+  unchanged. Corrections and forgets un-count what they remove.
 - Relations and small inference: taught facts whose values take a
   recognized shape also record a relation edge - `remember paris is in
   france` records (paris is-in france), `remember cat is an animal`
@@ -86,7 +99,7 @@ how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุ�
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (measured at A7, 3ffc4b1 + keyset)
+## Hosted resource benchmark (measured at A10, usage counting)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -99,49 +112,47 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A7, keyset membership + word index; unchanged by the
-A8 dialogue rules and the A9 relation rules, which add a constant-time
-edge check per teach and a depth-capped breadth-first walk only on the
-new inference questions - the quick gate confirms), with the A5
-pre-index baseline in parentheses where it differs:
+Current numbers (A10, usage counting; A7 numbers in parentheses where
+they differ - A8/A9 moved nothing measurable):
 
-| backend | facts | miss (A5) | recall (A6) | startup | peak RSS |
+| backend | facts | miss (A7) | recall (A7) | startup (A7) | peak RSS (A7) |
 | --- | --- | --- | --- | --- | --- |
-| interp | 0 | 1.8 ms (1.6) | - | 0.06 s | 22.7 MiB |
-| interp | 1,000 | 4.6 ms (482) | 1.1 ms (1.8) | 0.31 s (0.06) | 23.7 MiB |
-| interp | 10,000 | 43.5 ms (4,840) | 1.3 ms (8.0) | 2.59 s (0.15) | 33.9 MiB (31) |
-| ir-x64 | 0 | 0.01 ms | <0.01 ms | <0.01 s | 21.5 MiB |
-| ir-x64 | 1,000 | 0.01 ms (2.8) | <0.01 ms | 0.03 s | 21.5 MiB |
-| ir-x64 | 10,000 | <0.01 ms (39.9) | 0.06 ms (0.10) | 0.38 s | 92.9 MiB (76) |
+| interp | 0 | 2.3 ms (1.8) | - | 0.07 s | 23.5 MiB |
+| interp | 1,000 | 5.0 ms (4.6) | 1.2 ms (1.1) | 2.12 s (0.31) | 25.4 MiB (23.7) |
+| interp | 10,000 | 25.5 ms (43.5) | 0.8 ms (1.3) | 20.9 s (2.59) | 45.9 MiB (33.9) |
+| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 s | 25.5 MiB |
+| ir-x64 | 1,000 | 0.01 ms | <0.01 ms | 0.06 s (0.03) | 25.6 MiB |
+| ir-x64 | 10,000 | <0.01 ms | <0.01 ms | 0.81 s (0.38) | 139.6 MiB (92.9) |
 
 4 GiB probe (RLIMIT_AS on the child, 10k facts, mixed recall/miss
-session): both backends complete - interp 2.8 s at 33.4 MiB peak (A5:
-24.4 s), native 0.4 s at 92.8 MiB peak. Memory stays far inside a 4
-GiB budget.
+session): both backends complete - interp 21.1 s at 45.7 MiB peak,
+native 0.76 s at 139.8 MiB peak. Memory stays far inside a 4 GiB
+budget.
 
 Honest readings:
-- Misses and `did you mean` checks are word-index lookups now: ~100x
-  on the interp route at 10k facts, and at native speed a miss costs
-  what a recall costs. Thai substring questions still consult the
-  (usually small) non-ASCII word list, and an all-Thai store keeps
-  that scan proportional to its distinct non-ASCII words.
-- Recalls no longer walk the key order list (keyset membership):
-  8.0 -> 1.3 ms on interp at 10k facts. No O(number of taught facts)
-  work remains on the ordinary question paths; association recall
-  (`what do you know about`) is an intentional full scan.
-- Costs of the derived structures: native peak RSS at 10k facts rose
-  76 -> 93 MiB, and the interp route's cold startup rose to 2.6 s at
-  10k facts because it rebuilds the index while loading (native: 0.38
-  s). The on-disk format is unchanged - index and keyset are derived,
-  never persisted.
-- The held-out Thai/English dialogue (40 lines: 7 recalls incl. alias
-  and Thai, 4 clarifications, 3 honest misses, 1 correction, 2
-  pleasantries, 2 open questions, 2 topic chains, 6 inference checks
-  covering a two-hop transitive chain with the reasoning shown, an
-  open-world negative, a where-is chain walk, taught and built-in
-  word meanings, and a Thai where-is) scores
-  full marks on both backends at every stage - behavior did not move,
-  only its cost. Small sample: a smoke check, not an accuracy study.
+- The A6/A7 derived structures still carry the query paths: misses and
+  `did you mean` checks are word-index lookups (~100x over the pre-index
+  scan at 10k facts on interp), recalls use keyset membership - no
+  O(number of taught facts) work on the ordinary question paths.
+  Association recall (`what do you know about`) is an intentional full
+  scan.
+- Usage counting is real work at LOAD time, and the interpreter route
+  shows it: rebuilding the counts for 10k taught facts takes the
+  interp cold startup from 2.6 s to 20.9 s (native: 0.38 to 0.81 s).
+  That is the honest price of the feature on the slow route; if the
+  interp load time ever matters, the counting is the first place to
+  optimize.
+- The counts cost memory: native peak RSS at 10k facts rose 93 -> 140
+  MiB, interp 34 -> 46 MiB. Still far inside the 4 GiB story.
+- Query paths got no slower: misses and recalls hold their A7 latency
+  (the interp 10k miss measured faster than A7's, 25.5 vs 43.5 ms -
+  both are word-index lookups; the usage merge is skipped when the
+  asked word was never seen).
+- The held-out Thai/English dialogue (42 lines: 7 recalls incl. alias
+  and Thai, 4 clarifications, 2 honest misses, 1 correction, 2
+  pleasantries, 2 open questions, 2 topic chains, 6 inference checks,
+  2 usage-fallback checks) scores full marks on both backends at every
+  stage. Small sample: a smoke check, not an accuracy study.
 
 `tests/test_agent_bench.py` gates the dialogue check and a tiny-scale
 smoke run in CI; the full run is manual.
@@ -157,7 +168,10 @@ literal ASCII word matching plus non-ASCII substring matching,
 "associations" are shared words between taught values, and its
 clarifications are word-overlap guesses. The `what does X mean`
 self-knowledge for its own relation words is hard-coded text, not
-learned understanding, and an is-a object keeps the article it was
+learned understanding, the usage learning is co-occurrence counting
+over taught facts only - it cannot say how two words are related,
+cannot tell synonym from antonym from mere co-mention, and small
+memories make weak statistics - and an is-a object keeps the article it was
 taught with (teach `a animal` and the chain says `a animal` back -
 it echoes, it does not know grammar). Thai substring matches can be
 loose in ways a speaker would notice (a short taught key can match an

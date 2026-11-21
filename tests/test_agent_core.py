@@ -113,6 +113,15 @@ def unteach_is(reply, word):
     return reply[:p] + ' ' + word + reply[p + 4 + len(word):]
 
 
+def cwords(s):
+    out = []
+    for w in words(lower_ascii(s)):
+        if w not in STOP and (len(w) >= 3 or nonascii(w)):
+            if w not in out:
+                out.append(w)
+    return out
+
+
 def join_values(values):
     n = len(values)
     if n == 1:
@@ -133,6 +142,57 @@ class Oracle:
         self.topic = None
         self.pending = None  # {'cands': [...], 'keys': [...]}
         self.rels = []       # [subject, predicate, object]
+        self.cooc = {}       # word -> {context word -> count}
+
+    # --- A10 usage counting, mirroring core.holy ---
+    def _cooc_add(self, key, value):
+        ws = cwords(key)
+        for w in cwords(value):
+            if w not in ws:
+                ws.append(w)
+        for w in ws:
+            for u in ws:
+                if u != w:
+                    ctx = self.cooc.setdefault(w, {})
+                    ctx[u] = ctx.get(u, 0) + 1
+
+    def _cooc_remove(self, key, value):
+        ws = cwords(key)
+        for w in cwords(value):
+            if w not in ws:
+                ws.append(w)
+        for w in ws:
+            ctx = self.cooc.get(w)
+            if ctx is not None:
+                for u in ws:
+                    if u != w and ctx.get(u, 0) > 0:
+                        ctx[u] -= 1
+
+    def _usage_score(self, cand, awords):
+        score = 0
+        for w in cwords(cand):
+            ctx = self.cooc.get(w)
+            if ctx is not None:
+                for a in awords:
+                    if a != w and a in ctx:
+                        score += ctx[a]
+        return score
+
+    def _usage_reply(self, asked):
+        awords = cwords(asked)
+        merged = {}
+        for w in awords:
+            ctx = self.cooc.get(w)
+            if ctx is not None:
+                for u, c in ctx.items():
+                    if c > 0 and u not in awords:
+                        merged[u] = merged.get(u, 0) + c
+        if not merged:
+            return 'i do not know ' + asked
+        ranked = sorted(merged, key=lambda u: -merged[u])
+        return ('i was never taught ' + asked +
+                ', but from how you used it, ' + asked +
+                ' seems related to ' + join_values(ranked[:3]))
 
     # --- A9 relations, mirroring core.holy ---
     def _add_rel(self, s, p, o):
@@ -416,9 +476,13 @@ class Oracle:
 
     def _teach(self, key, value):
         self.topic = key
+        if key in self.facts:
+            for v in self.facts[key]:
+                self._cooc_remove(key, v)
         self.facts[key] = [value]
         self._drop_rels(key)
         self._learn_rel(key, value)
+        self._cooc_add(key, value)
         if key in self.order:
             return 'updated ' + key + ' is ' + value
         self.order.append(key)
@@ -430,10 +494,12 @@ class Oracle:
         if key not in self.facts:
             self.facts[key] = [value]
             self.order.append(key)
+            self._cooc_add(key, value)
             return 'remembered ' + key + ' is ' + value
         if value in self.facts[key]:
             return 'i already know that ' + key + ' is ' + value
         self.facts[key].append(value)
+        self._cooc_add(key, value)
         return 'added: ' + key + ' is ' + value
 
     def _recall(self, asked):
@@ -442,18 +508,29 @@ class Oracle:
             self.topic = key
             return 'i know ' + key + ' is ' + join_values(self.facts[key])
         cands, keys = self._candidates(asked)
+        if len(cands) > 1:
+            awords = cwords(asked)
+            scored = sorted(range(len(cands)),
+                            key=lambda i: -self._usage_score(cands[i], awords))
+            cands = [cands[i] for i in scored]
+            keys = [keys[i] for i in scored]
         if 0 < len(cands) <= 3:
             self.pending = {'cands': cands, 'keys': keys}
             return 'did you mean ' + ', '.join(cands) + '?'
-        return 'i do not know ' + asked
+        if len(cands) > 3:
+            return 'i do not know ' + asked
+        return self._usage_reply(asked)
 
     def _forget(self, key):
         if key not in self.facts:
             return 'i do not know ' + key
+        vals = self.facts[key]
         del self.facts[key]
         self.order.remove(key)
         self.aliases = {a: t for a, t in self.aliases.items() if t != key}
         self._drop_rels(key)
+        for v in vals:
+            self._cooc_remove(key, v)
         if self.topic == key:
             self.topic = None
         return 'forgot ' + key
@@ -581,6 +658,31 @@ def a9_line():
             rng.choice([' อยู่ไหน', ' หมายความว่าอะไร']))
 
 
+# Usage-cluster pools for the A10 lines: teaches share words so the
+# co-occurrence counts build up, then queries hit the usage fallback
+# and the usage-ranked clarification.
+PETS = ['milo', 'somchai', 'felix', 'luna']
+FOODS = ['fish', 'tuna', 'milk', 'rice', 'ปลา', 'ข้าว']
+
+
+def a10_line():
+    r = rng.random()
+    if r < 0.35:
+        return (mangle('remember') + ' ' + rng.choice(PETS) + ' ' +
+                mangle('is fond of') + ' ' + rng.choice(FOODS))
+    if r < 0.55:
+        return (mangle('remember') + ' ' + rng.choice(PETS) + ' ' +
+                mangle('is also') + ' ' +
+                rng.choice(['a good hunter', 'allergic to ' + rng.choice(FOODS),
+                            'fond of ' + rng.choice(FOODS)]))
+    if r < 0.75:
+        # A word that lives in taught values but is rarely a key.
+        return mangle('what is') + ' ' + rng.choice(FOODS + ['fond'])
+    if r < 0.90:
+        return mangle('what is') + ' ' + rng.choice(PETS + MISSES[:4])
+    return mangle('forget') + ' ' + rng.choice(PETS)
+
+
 # Phrases for user-taught paraphrases, and miss-askings that overlap real
 # keys by a word (to trigger the clarification dialogue).
 PHRASES = ['the capital of france', 'kitty', 'สวัสดี', 'big answer']
@@ -602,6 +704,25 @@ def punctuate(line):
     if rng.random() < 0.25:
         return line + rng.choice(['?', '.'])
     return line
+
+
+# Coherent A10 scenarios: clustered teaches build co-occurrence counts,
+# then queries exercise the usage fallback (a word that lives in values
+# but was never a key), the ranked clarification (usage beats insertion
+# order), counting after correction and forget, and Thai tokens as
+# whole words (no segmenter).
+A10_SCENARIOS = [
+    ['remember milo is fond of fish', 'remember luna is fond of fish',
+     'remember felix is fond of tuna', 'what is fish', 'what is bread'],
+    ['remember my cat is somchai', 'remember fat cat is lazy',
+     'remember the fat cat is sleepy',
+     'remember the fat cat is also very round',
+     'what is cat', 'fat cat'],
+    ['remember แมวดำ is ชอบ ปลา', 'remember หมาดำ is ชอบ กระดูก',
+     'what is ปลา'],
+    ['remember bob is fond of tea', 'remember bob is also fond of cake',
+     'what is tea', 'forget bob', 'what is tea'],
+]
 
 
 # Coherent A9 scenarios spliced into sessions: random lines alone rarely
@@ -675,17 +796,19 @@ def make_session():
             line = mangle('say') + ' ' + rng.choice(VALUES + ['Mixed CASE text'])
         elif r < 0.945:
             line = mangle('help')
-        elif r < 0.975:
+        elif r < 0.965:
             line = a8_line()
-        elif r < 0.99:
+        elif r < 0.982:
             line = a9_line()
+        elif r < 0.995:
+            line = a10_line()
         else:
             line = rng.choice(GARBAGE)
         line = punctuate(line)
         lines.append(line)
     if rng.random() < 0.7:
         pos = rng.randrange(len(lines) + 1)
-        lines[pos:pos] = list(rng.choice(A9_SCENARIOS))
+        lines[pos:pos] = list(rng.choice(A9_SCENARIOS + A10_SCENARIOS))
     replies = [oracle.respond(line) for line in lines]
     return lines, replies, oracle
 

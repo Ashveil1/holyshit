@@ -73,7 +73,9 @@ DIALOGUE = [
     ('what is the moon', 'i do not know the moon', 'miss'),
     ('what is ดวงจันทร์', 'i do not know ดวงจันทร์', 'miss'),
     ('what is the capital of thailand',
-     'i do not know the capital of thailand', 'miss'),
+     'i was never taught the capital of thailand, but from how you used it, '
+     'the capital of thailand seems related to bangkok, thai and person',
+     'usage'),
     ('hello', 'hello - teach me something with: remember <thing> is <fact>',
      'pleasantry'),
     ('สวัสดี', 'สวัสดี - สอนผมได้ด้วย: remember <thing> is <fact>',
@@ -95,10 +97,16 @@ DIALOGUE = [
      'inference'),
     ('remember แมว อยู่ สวน', 'remembered แมว อยู่ สวน', 'teach'),
     ('แมว อยู่ไหน', 'แมว อยู่ สวน', 'inference'),
+    ('remember milo is fond of fish', 'remembered milo is fond of fish',
+     'teach'),
+    ('what is fish',
+     'i was never taught fish, but from how you used it, fish seems related '
+     'to milo and fond',
+     'usage'),
     ('blorf zingle', 'i do not understand', 'unparsed'),
 ]
 SCORED = ('recall', 'clarify', 'miss', 'correction', 'pleasantry', 'open',
-          'chain', 'inference', 'unparsed')
+          'chain', 'inference', 'usage', 'unparsed')
 
 
 def git_head():
