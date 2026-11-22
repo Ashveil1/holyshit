@@ -404,7 +404,7 @@ def _search(store, ctx, key, p, co, neg):
 
 
 def _readings(readings, exclusions, cs, p, co):
-    ex = exclusions if exclusions is not None else {"version": 1, "sources": []}
+    ex = exclusions   # missing or malformed fails closed: section absent, silent
     if not isinstance(ex, dict) or ex.get("version") != 1 or \
             not isinstance(ex.get("sources"), list) or \
             any((not isinstance(x, str)) or x == "" for x in ex["sources"]):

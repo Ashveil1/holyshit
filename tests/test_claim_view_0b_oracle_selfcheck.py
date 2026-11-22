@@ -24,6 +24,9 @@ fails = 0
 SHUF = 6
 
 
+EXV = {'version': 1, 'sources': []}
+
+
 class Poison:
     accessed = 0
 
@@ -97,7 +100,7 @@ def run_case(c, rng=None):
     q = tuple(c['query'])
     exp = c['expect']
     readings = c.get('readings')
-    ro, ex = readings, None
+    ro, ex = readings, EXV
     if 'readings_store_access' in exp or 'exclusion_input_access' in exp:
         ro, ex = Poison(), Poison()
     elif c.get('readings_store') == 'empty':
@@ -162,7 +165,7 @@ def mk(edges, aliases=(), facts=(), builtins=False):
 
 def vw(st, q):
     try:
-        return o.view(st, q, [], None)
+        return o.view(st, q, [], EXV)
     except o.ImplementationError:
         return {'abort': True}
 
@@ -298,11 +301,84 @@ def lifecycle_cases():
             check('no lazy init or repair in the view', s2._index is None)
 
 
+def families_cases():
+    base = [('a robin', 'is-a', 'a bird', False)]
+    q = ('zzz', 'is-a', 'b', False)    # NONE subject: COMPLETE, readings stage runs
+
+    def rd(src, sent='x', o_='b', side='pos'):
+        return {'s': 'zzz', 'p': 'is-a', 'o': o_, 'source': src, 'sentence': sent, 'side': side}
+
+    def run(readings, ex, qq=q, st=None):
+        return o.view(st or mk(base, facts=['a robin']), qq, readings, ex)
+
+    ex0 = {'version': 1, 'sources': []}
+    r = run([rd('s2'), rd('s1'), rd('s1', 'a', side='neg')], ex0)
+    check('privacy: rows ordered by source, sentence, side', [(x['source'], x['sentence'], x['side']) for x in r['readings']] == [('s1', 'a', 'neg'), ('s1', 'x', 'pos'), ('s2', 'x', 'pos')], r)
+    r = run([rd('s1'), rd('s2')], {'version': 1, 'sources': ['s1']})
+    check('privacy: excluded source silent (no row, no hidden count)', [x['source'] for x in r['readings']] == ['s2'] and set(r) <= {'layer', 'status', 'basis', 'w_charged', 'readings', 'readings_truncated'}, r)
+    r = run([rd('s1')], {'version': 1, 'sources': ['s1']})
+    check('privacy: all excluded gives no readings section at all', 'readings' not in r and 'readings_truncated' not in r, r)
+    r = run([rd('s%d' % i) for i in range(7)], {'version': 1, 'sources': ['s0', 's1']})
+    check('privacy: eligibility before cap and count (7 rows, 2 excluded: 5 shown, 0 over)', len(r['readings']) == 5 and r['readings_truncated'] == 0, r)
+    r = run([rd('s%d' % i) for i in range(8)], ex0)
+    check('readings cap 5 with overflow count 3', len(r['readings']) == 5 and r['readings_truncated'] == 3, r)
+    r = run([rd('s1', o_='c'), rd('s2', o_='B')], ex0)
+    check('readings: exact canonical s,p,o selection only', [x['source'] for x in r['readings']] == ['s2'], r)
+    r1 = run([rd('s1', side='neg')], ex0)
+    r2 = run([rd('s1', side='neg')], ex0, ('zzz', 'is-a', 'b', True))
+    check('readings: same rows for either query polarity, status unchanged', r1['readings'] == r2['readings'] and r1['status'] == r2['status'] == 'UNKNOWN')
+    bads = [None, 'x', [], {'version': 2, 'sources': []}, {'sources': []}, {'version': 1}, {'version': 1, 'sources': 'a'},
+            {'version': 1, 'sources': [1]}, {'version': 1, 'sources': ['']}, {'version': 1, 'sources': ['ok', None]}]
+    for i, b in enumerate(bads):
+        r = run([rd('s1')], b)
+        check('malformed exclusion %d fails closed: section absent, status unchanged' % i, 'readings' not in r and r['status'] == 'UNKNOWN', r)
+    r = run([rd('')], ex0)
+    check('reading with empty source is ineligible', 'readings' not in r, r)
+    # poison: readings and exclusion input never touched outside COMPLETE non-AMBIGUOUS
+    Poison.accessed = 0
+    big = [('root', 'is-a', 'h%d' % i, False) for i in range(501)]
+    cases = [
+        ('INCOMPLETE work_limit', mk(big), ('root', 'has', 'x', False)),
+        ('OUT_OF_SCOPE', mk(base), ('a', 'can', 'b', False)),
+        ('OUT_OF_SCOPE collision', mk([('s', 'has', 'a z', False), ('s', 'has', 'z', False)]), ('s', 'has', 'q', False)),
+        ('AMBIGUOUS', mk([('k1', 'is-a', 't', False), ('k2', 'is-a', 't', False)], aliases=[('al', 'k1'), ('al', 'k2')]), ('al', 'is-a', 't', False)),
+    ]
+    for name, st, qq in cases:
+        res = o.view(st, qq, Poison(), Poison())
+        check('poisoned readings/exclusions untouched: %s (%s)' % (name, res['layer']), Poison.accessed == 0 and 'readings' not in res, res)
+    # alias-record scale (B44, B50, B52)
+    for m in (1, 499, 500, 501):
+        recs = [('z' + ' ' * (i % 7 + 1) + 'zeb', 'k') for i in range(m)]   # all canonical 'z zeb'
+        st = mk([('k', 'has', 'w', False)], aliases=recs + [('other%d' % j, 'k') for j in range(600)], facts=['k'])
+        r = o.view(st, ('z zeb', 'has', 'x', False), [], EXV)
+        total = m + 1
+        want = ('COMPLETE', total) if total <= 500 else ('INCOMPLETE', 500)
+        check('alias scale: %d matching + 600 nonmatching, %d examinations' % (m, total), (r['layer'], r['w_charged']) == want and len(st.alias_touched) == m, (r, len(st.alias_touched)))
+    st = mk([('k', 'has', 'w', False)], aliases=[('o%d' % j, 'k') for j in range(600)] + [('al', 'k')], facts=['k'])
+    r = o.view(st, ('al', 'has', 'w', False), [], EXV)
+    check('alias scale: nonmatching never touched, charged only 1 alias + 1 tuple', r['w_charged'] == 2 and st.alias_touched == [('al', 'k')], r)
+    # display caps
+    e = [('s', 'is-a', 'm%d' % i, False) for i in range(7)] + [('s', 'is-a', 'o%d' % i, False) for i in range(6)]
+    e += [('m%d' % i, 'has', 'x', False) for i in range(7)] + [('o%d' % i, 'has', 'x', True) for i in range(6)]
+    r = o.view(mk(e), ('s', 'has', 'x', False), [], EXV)
+    check('caps: 7 support lines show 5, 6 opposition show 5, overflow counts 2 and 1, still COMPLETE both_sides',
+          r['layer'] == 'COMPLETE' and r['basis'] == 'both_sides' and len(r['support']) == 5 and len(r['opposition']) == 5
+          and r['truncated'] == {'support': 2, 'opposition': 1} and r['lines'] == 13 and r['level'] == 1, r)
+    r = o.view(mk(e), ('s', 'has', 'x', False), [], EXV)
+    e2 = [('s', 'is-a', 'm', False), ('s', 'is-a', 'm', False), ('m', 'has', 'x', False), ('m', 'has', 'x', False)]
+    r = o.view(mk(e2), ('s', 'has', 'x', False), [], EXV)
+    check('caps: duplicate tuples collapse to one derived line, charged 4', r['lines'] == 1 and r['w_charged'] == 4 and r['basis'] == 'derived_only', r)
+    st = mk([('k%d' % i, 'is-a', 't', False) for i in range(7)], aliases=[('al', 'k%d' % i) for i in range(7)])
+    r = o.view(st, ('al', 'is-a', 't', False), Poison(), Poison())
+    check('caps: ambiguous candidates capped at 5, no readings access', r['status'] == 'AMBIGUOUS' and len(r['candidates']) == 5 and 'readings' not in r, r)
+
+
 if __name__ == '__main__':
     n = fixture_run()
     generated_formula_cases()
     property_cases()
     lifecycle_cases()
+    families_cases()
     print('fixtures-0b: %d/%d agree with the Oracle (DRAFT, self-conformance only)' % (n, len(FIX['cases'])))
     print('%d failures' % fails)
     sys.exit(1 if fails else 0)
