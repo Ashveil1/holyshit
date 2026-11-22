@@ -220,8 +220,9 @@ class Oracle:
         # later_uses, omitted] + retired [subj, domain, reason].
         self.hypotheses = []
         self.hyp_retired = []
-        # A16: read candidates [subj, pred, obj, pos[], neg[], status],
-        # session-only; read_src maps source id -> raw payload body.
+        # A16: read candidates [subj, pred, obj, pos[], neg[],
+        # pos_align, neg_align], session-only; read_src maps source
+        # id -> raw payload body.
         self.readings = []
         self.read_src = {}
         self.read_n = 0
@@ -286,10 +287,12 @@ class Oracle:
             return
         self.rels.append([s, p, o])
         self._rel_index(s, p, o)
-        # A16: user teaching is the ultimate verifier. Teaching that
-        # matches the recorded readings CONFIRMs them; teaching against
-        # any recorded support DISPUTES. Teaching never promotes
-        # anything into or out of the readings store.
+        # A16: user teaching is the ultimate verifier. Alignment is
+        # tracked PER POLARITY (r[5] = positive side, r[6] = negative
+        # side), separate from evidence status: the taught side is
+        # marked CONFIRMED, recorded support on the other side is
+        # marked DISPUTED, and any CONFLICT label stays. Teaching
+        # never promotes anything into or out of the readings store.
         rp, rpol = p, 'pos'
         if len(p) > 4 and p[:4] == 'not-':
             rp, rpol = p[4:], 'neg'
@@ -297,9 +300,15 @@ class Oracle:
         if ri >= 0:
             r = self.readings[ri]
             if rpol == 'pos':
-                r[5] = 'disputed' if r[4] else 'confirmed'
+                if r[3]:
+                    r[5] = 'confirmed'
+                if r[4]:
+                    r[6] = 'disputed'
             else:
-                r[5] = 'disputed' if r[3] else 'confirmed'
+                if r[4]:
+                    r[6] = 'confirmed'
+                if r[3]:
+                    r[5] = 'disputed'
         # A15: a taught domain verdict retires a matching hypothesis.
         if p in ('is-a', 'not-is-a'):
             d = o
@@ -495,10 +504,10 @@ class Oracle:
                     entry = [src, sent, ex[4]]
                     if ex[3] == 'neg':
                         self.readings.append(
-                            [ex[0], ex[1], ex[2], [], [entry], ''])
+                            [ex[0], ex[1], ex[2], [], [entry], '', ''])
                     else:
                         self.readings.append(
-                            [ex[0], ex[1], ex[2], [entry], [], ''])
+                            [ex[0], ex[1], ex[2], [entry], [], '', ''])
                     newc += 1
         return (src + ': ' + str(len(segs)) + ' segments in, ' +
                 str(matched) + ' pattern matches, ' + str(matched) +
@@ -530,17 +539,21 @@ class Oracle:
                 parts = ('positive support: ' + str(len(r[3])) +
                          ' source' + ('s' if len(r[3]) > 1 else '') +
                          ' (' + self._read_ids(r[3]) + ')')
+                if r[5] == 'confirmed':
+                    parts += ' [USER_CONFIRMED]'
+                if r[5] == 'disputed':
+                    parts += ' [USER_DISPUTED]'
             if r[4]:
                 if parts:
                     parts += '; '
                 parts += ('negative support: ' + str(len(r[4])) +
                           ' source' + ('s' if len(r[4]) > 1 else '') +
                           ' (' + self._read_ids(r[4]) + ')')
+                if r[6] == 'confirmed':
+                    parts += ' [USER_CONFIRMED]'
+                if r[6] == 'disputed':
+                    parts += ' [USER_DISPUTED]'
             out += parts
-            if r[5] == 'confirmed':
-                out += '; USER_CONFIRMED'
-            if r[5] == 'disputed':
-                out += '; USER_DISPUTED'
             if r[3] and r[4]:
                 internal = any(se[0] == se2[0]
                                for se in r[3] for se2 in r[4])
@@ -554,7 +567,8 @@ class Oracle:
                     'MULTI_SOURCE negative'
             if tier:
                 out += '; ' + tier
-            if r[5] == '' and not tier and not (r[3] and r[4]):
+            if r[5] == '' and r[6] == '' and not tier and \
+                    not (r[3] and r[4]):
                 out += '; UNVERIFIED'
             ids = []
             for se in r[3] + r[4]:
@@ -2013,8 +2027,9 @@ A16_SCENARIOS = [
      'is a zorg a machine', 'mode explore', 'is a zorg a machine',
      'can a zorg fly', 'what is a zorg', 'hypotheses', 'mode strict',
      'readings about a zorg'],
-    # 7. Teaching matching positive marks USER_CONFIRMED; teaching
-    # the opposite marks USER_DISPUTED. Provenance is retained.
+    # 7. Teaching marks USER_CONFIRMED on the matching polarity and
+    # USER_DISPUTED on recorded opposite support (v0.11.1:
+    # polarity-scoped, evidence conflict retained). Provenance kept.
     ['read a car is a machine.', 'remember a car is a machine',
      'readings about a car',
      'read wiki: a bat is not a bird.', 'remember a bat is a bird',
@@ -2048,6 +2063,31 @@ A16_SCENARIOS = [
     ['is a glorp a machine', 'mode explore', 'can a glorp fly',
      'is a glorp needed by a car', 'mode strict', 'what is a glorp',
      'do you know glorp', 'what do you know', 'hypotheses'],
+    # v0.11.1 polarity-scoped alignment, four combos: single-side
+    # confirm, single-side dispute, dual-side teach-positive and
+    # teach-negative (evidence CONFLICT retained in both).
+    ['read a car is a machine.', 'remember a car is a machine',
+     'readings about a car'],
+    ['read wiki: a bat is not a bird.', 'remember a bat is a bird',
+     'readings about a bat'],
+    ['read manual: a bat is a bird.', 'read wiki: a bat is not a bird.',
+     'remember a bat is a bird', 'readings about a bat'],
+    ['read manual: a bat is a bird.', 'read wiki: a bat is not a bird.',
+     'remember a bat is not a bird', 'readings about a bat',
+     'readings detail'],
+    # Repeated teaching: labels are assignments, evidence lists never
+    # gain duplicate entries; a contradictory later assertion goes
+    # through the asserted-store conflict mechanism.
+    ['read a car is a machine.', 'remember a car is a machine',
+     'remember a car is a machine', 'readings detail',
+     'remember a car is not a machine', 'readings about a car',
+     'is a car a machine'],
+    # Isolation with alignment set: confirmed/disputed readings still
+    # never enter strict/explore inference (zorg is untaught).
+    ['read s1: a zorg is a machine.', 'read s2: a zorg is not a machine.',
+     'remember a zorg has a wing', 'is a zorg a machine',
+     'mode explore', 'can a zorg fly', 'hypotheses', 'mode strict',
+     'readings about a zorg'],
     # Management: forget reading, clear readings, empty listings,
     # auto vs named sources.
     ['readings', 'readings about a car',

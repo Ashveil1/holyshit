@@ -954,9 +954,9 @@ def _read_text(state, rest):
         else:
           entry = [src, sent, ex[4]]
           if ex[3] == "neg":
-            append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], ""])
+            append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], "", ""])
           else:
-            append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], ""])
+            append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", ""])
           newc = newc + 1
   return src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(len(segs) - matched) + " unmatched segments"
 def _read_ids(side):
@@ -1000,6 +1000,10 @@ def _readings_reply(state, about, detail):
       if len(r[3]) > 1:
         parts = parts + "s"
       parts = parts + " (" + _read_ids(r[3]) + ")"
+      if r[5] == "confirmed":
+        parts = parts + " [USER_CONFIRMED]"
+      if r[5] == "disputed":
+        parts = parts + " [USER_DISPUTED]"
     if len(r[4]) > 0:
       if parts != "":
         parts = parts + "; "
@@ -1007,11 +1011,11 @@ def _readings_reply(state, about, detail):
       if len(r[4]) > 1:
         parts = parts + "s"
       parts = parts + " (" + _read_ids(r[4]) + ")"
+      if r[6] == "confirmed":
+        parts = parts + " [USER_CONFIRMED]"
+      if r[6] == "disputed":
+        parts = parts + " [USER_DISPUTED]"
     out = out + parts
-    if r[5] == "confirmed":
-      out = out + "; USER_CONFIRMED"
-    if r[5] == "disputed":
-      out = out + "; USER_DISPUTED"
     if len(r[3]) > 0 and len(r[4]) > 0:
       internal = false
       for se in r[3]:
@@ -1031,7 +1035,7 @@ def _readings_reply(state, about, detail):
       tier = tier + "MULTI_SOURCE negative"
     if tier != "":
       out = out + "; " + tier
-    if r[5] == "" and tier == "" and not (len(r[3]) > 0 and len(r[4]) > 0):
+    if r[5] == "" and r[6] == "" and tier == "" and not (len(r[3]) > 0 and len(r[4]) > 0):
       out = out + "; UNVERIFIED"
     ids = []
     for se in r[3]:
@@ -1056,10 +1060,12 @@ def _add_rel(state, s, p, o):
         return
   append(state["rels"], [s, p, o])
   _rel_index(state, s, p, o)
-  # A16: user teaching is the ultimate verifier. Teaching that
-  # matches the recorded readings CONFIRMs them; teaching against
-  # any recorded support DISPUTES. Teaching never promotes anything
-  # into or out of the readings store.
+  # A16: user teaching is the ultimate verifier. Alignment is
+  # tracked PER POLARITY (r[5] = positive side, r[6] = negative
+  # side), separate from evidence status: the taught side is marked
+  # CONFIRMED, recorded support on the other side is marked
+  # DISPUTED, and any CONFLICT label stays. Teaching never promotes
+  # anything into or out of the readings store.
   rp = p
   rpol = "pos"
   if len(p) > 4 and p[:4] == "not-":
@@ -1069,15 +1075,15 @@ def _add_rel(state, s, p, o):
   if ri >= 0:
     r = state["readings"][ri]
     if rpol == "pos":
-      if len(r[4]) > 0:
-        r[5] = "disputed"
-      else:
+      if len(r[3]) > 0:
         r[5] = "confirmed"
+      if len(r[4]) > 0:
+        r[6] = "disputed"
     else:
+      if len(r[4]) > 0:
+        r[6] = "confirmed"
       if len(r[3]) > 0:
         r[5] = "disputed"
-      else:
-        r[5] = "confirmed"
   # A15: a taught domain verdict retires a matching hypothesis
   # (positive AND negative both retire; a taught conflict stays in
   # the edges, never resolved).
