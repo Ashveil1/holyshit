@@ -950,30 +950,20 @@ independent Python oracle on the interpreter and native routes;
 `tests/test_agent_proposals.py` covers the proposal store, the repl
 `patterns` commands and the reader-isolation gate.
 
-## claimview-0b slice 1: exact-keyed relation index (branch agent-claimview-0b)
+## claimview-0b slices 1 and 1c: relation index, alias index, sort (branch agent-claimview-0b)
 
-`agent/relindex.holy` is a standalone module, NOT wired into `agent/core.holy`,
-with no claim view, parser, REPL route or production use. It implements only
-the contract's index lifecycle (B9, B15, B17, B18): original tuples kept with
-duplicates counted individually, an index keyed by the exact canonical subject
-("robin" and "a robin" are different keys, nothing article-stripped), a
-generation marker and a maintained count. All changes go through
-ri_load / ri_add / ri_remove / ri_drop_subject / ri_rebuild, which refuse to run
-on a broken index (fail closed, no repair) and commit tuples, index, count and
-both markers together. `ri_check` is the cheap runtime check (missing index,
-generation mismatch, count mismatch) and returns an error code, never an
-epistemic result.
+Standalone modules, NOT wired into `agent/core.holy`: `agent/relindex.holy` and `agent/cvsort.holy`. No claim view, parser, REPL route or production use. They implement only the contract's index lifecycle (B9, B15, B17, B18) and the B24 ordering. Core `state["rels"]` and `state["aliases"]` would stay authoritative when wired; this state is a derived copy.
+
+What exists:
+- Relation index keyed by the exact canonical subject ("robin" and "a robin" are different keys, nothing article-stripped); original tuples kept, duplicates individually. Alias-record index keyed by canonical alias (several records per key). One generation marker covers both.
+- One mutation path: ri_load / ri_load_all / ri_add / ri_remove / ri_drop_subject / ri_alias_add / ri_alias_remove / ri_rebuild, plus plan/commit edits ri_plan_replace / ri_plan_forget / ri_commit (one generation step, stale plans refused). Every mutation refuses on a broken index (fail closed, no repair); only load_all/rebuild replace one.
+- ri_check (cheap: missing / generation / count) returns a code, never an epistemic result. ri_read / ri_read_alias return a COPY or a code. ri_audit is an explicit O(n) full comparison for tests and load-time verification, never per view.
+- cvsort: stable merge sort with byte-wise order (tuple, alias, str keys).
 
 Limits, stated plainly:
-- The write boundary is a SOURCE-LEVEL gate, not language-level prevention.
-  Holy has no private fields; a test greps `agent/*.holy` and checks which
-  module functions write the state, but any code with the dict can still write it.
-- `ri_check` cannot see a wrong tuple that keeps the count and the marker. Index
-  content is covered by the single mutation path and the full-comparison tests
-  (the test shows this limit on purpose).
-- `ri_bucket` assumes the caller ran `ri_check`; on a missing index it is not safe.
-- ri_remove and ri_drop_subject rebuild the tuple list (O(n)); see the bench.
-- Route coverage: tests/test_claim_view_0b_relindex_routes.py runs one 2066-line op script (random lifecycle, non-ASCII keys, fault injection, readers) on all 7 execution routes, byte-identical.
-- Parity so far is lifecycle only (tests/test_claim_view_0b_relindex.py, native
-  and interp routes against the Oracle store model). Oracle parity on the 102
-  fixtures needs the view and is not claimed. No quality claim.
+- The write boundary is an AUDITED single-writer invariant, not enforcement. Holy has no private fields or closures; a test greps `agent/*.holy` and checks which functions write state, but any holder of the dict can write it.
+- ri_check cannot see same-count corruption (wrong tuple, wrong bucket, altered endpoint, wrong alias record); ri_audit catches all five tested kinds. Empty buckets are inert (no dict delete exists).
+- Atomicity covers the index only. A core-plus-index transaction does not exist in Holy; the wiring design is a failed or skipped index update leaves ordinary chat unchanged and makes only the view fail closed.
+- remove/drop/replace/forget rebuild the tuple list: O(n) each.
+- Language findings (not fixed, language lane): (1) string `<` on ir-x64, ast-x64 and seed-native compares signed bytes (non-ASCII before ASCII; a string after its own prefix), interp compares code points; cvsort avoids whole-string `<`. (2) native dict insertion degrades super-linearly with distinct key count: 1k keys/100k inserts 0.21 s, 25k keys 5.8 s, 100k keys/100k inserts 62.7 s, so index load is 1.3 s at 50k tuples. byte_at/byte_len are not in the IR subset.
+- Tests: test_claim_view_0b_relindex.py (lifecycle vs the Oracle store model plus an alias model, 8 random sequences x 60 ops, fail closed, corruption matrix, plan/commit, copy reads, write-boundary gate), test_claim_view_0b_relindex_routes.py (one 4454-line script on all 7 routes), test_claim_view_0b_cvsort.py. No Oracle parity on the 102 fixtures (that needs the view). No production, quality or 4 GB hardware claim; RSS was 40 MB at 50k tuples on the dev box only.

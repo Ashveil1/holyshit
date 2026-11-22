@@ -1,31 +1,39 @@
-# agent/relindex.holy - claimview-0b slice 1: exact-keyed relation index
-# with a single controlled mutation path (contract B9, B15, B17, B18).
+# agent/relindex.holy - claimview-0b slices 1 and 1c: exact-keyed relation
+# index and alias-record index with ONE controlled mutation path (contract
+# B9, B15, B17, B18).
 #
 # STATUS: standalone and NOT wired into agent/core.holy. No view, no
-# parser, no REPL route, no production use. Parity with the Oracle is
-# tested in tests/test_claim_view_0b_relindex.py; nothing here is a
-# correctness claim about the claim view.
+# parser, no REPL route, no production use. Parity with the Oracle model is
+# tested in tests/test_claim_view_0b_relindex*.py; nothing here is a
+# correctness claim about the claim view. Core state["rels"] and
+# state["aliases"] stay the authoritative copies when this is wired later;
+# this state is a derived copy.
 #
 # State (one dict, made only by ri_new):
-#   "t"  authoritative tuples [[subj, pred, obj, neg], ...], originals,
-#        duplicates kept individually, built-in definitions never stored
-#   "x"  exact index: canonical subject string -> [tuple, ...] (originals
-#        preserved, "robin" and "a robin" are different keys, no stripping)
-#   "xn" tuple count held by the index (maintained, never scanned)
-#   "g"  generation marker of the authoritative state
-#   "ig" generation the index was built for
-#   "wc" number of committed mutations (write instrumentation)
+#   "t"  tuples [[subj, pred, obj, neg], ...] originals, duplicates kept
+#        individually, built-in definitions never stored
+#   "x"  exact index: canonical subject -> [tuple, ...] ("robin" and
+#        "a robin" are different keys, no article stripping). Empty buckets
+#        are inert: Holy has no dict delete, so a bucket that loses its last
+#        tuple stays as []. They are never counted and never "subject keys".
+#   "xn" number of tuples across x buckets (maintained, never scanned)
+#   "at" alias records [[alias, target], ...] originals, duplicates kept
+#   "ax" alias index: canonical alias -> [record, ...]
+#   "an" number of alias records across ax buckets (maintained)
+#   "g"  generation marker; "ig" generation the indexes were built for
+#   "wc" committed mutations (write instrumentation)
 #
-# WRITE BOUNDARY (source-level, not language-level): the language has
-# no private fields. The only code that may write "t", "x", "xn", "g",
-# "ig" or "wc" is this module's ri_* mutation functions. A gate test
-# greps agent/*.holy and fails if any other file names those keys.
-# Readers use ri_check / ri_bucket / ri_count only and never write.
+# WRITE BOUNDARY (an audited single-writer invariant, NOT enforcement):
+# the language has no private fields or closures, so any holder of the
+# dict can write it. Only the ri_*/_ri_* mutation functions in this file
+# write "t","x","xn","at","ax","an","g","ig","wc"; a gate test greps
+# agent/*.holy and checks which functions here write. Callers get COPIES
+# from ri_read/ri_read_alias (never a live bucket).
 #
 # Every mutation first runs ri_check (fail closed: a bad index is never
-# repaired here, only ri_rebuild/ri_load replaces it), then prepares new
-# values without touching state, then commits tuples, index, count and
-# both markers in one straight run of assignments with no failing step.
+# repaired here, only ri_rebuild/ri_load_all replaces it). Multi-step edits
+# are ri_plan_* (validates and builds new values, touches nothing) followed
+# by ri_commit (a straight run of assignments with no failing step).
 _RI_UP = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 _RI_LO = "abcdefghijklmnopqrstuvwxyz"
 def ri_canon(s):
@@ -50,48 +58,68 @@ def ri_canon(s):
     i = i + 1
   return out
 def ri_new():
-  return {"t": [], "x": {}, "xn": 0, "g": 0, "ig": 0, "wc": 0}
+  return {"t": [], "x": {}, "xn": 0, "at": [], "ax": {}, "an": 0, "g": 0, "ig": 0, "wc": 0}
 def _ri_valid(t):
   if len(t) != 4:
     return false
   if t[3] != true and t[3] != false:
     return false
   return true
+def _ri_avalid(a):
+  return len(a) == 2
 def _ri_same(a, b):
   return a[0] == b[0] and a[1] == b[1] and a[2] == b[2] and a[3] == b[3]
+def _ri_asame(a, b):
+  return a[0] == b[0] and a[1] == b[1]
 # "" when sound, else "missing", "generation" or "count". No epistemic
-# result, no repair, no write.
+# result, no repair, no write. Cheap: never scans tuples.
 def ri_check(ri):
-  if ri["x"] == null:
+  if ri["x"] == null or ri["ax"] == null:
     return "missing"
   if ri["ig"] != ri["g"]:
     return "generation"
-  if ri["xn"] != len(ri["t"]):
+  if ri["xn"] != len(ri["t"]) or ri["an"] != len(ri["at"]):
     return "count"
   return ""
 def ri_count(ri):
   return len(ri["t"])
-# Read-only bucket for an exact canonical subject key. Caller must have
-# run ri_check; the returned list must not be written by the caller.
-def ri_bucket(ri, key):
-  # precondition: ri_check(ri) == "" (callers check first; no repair here)
-  if has(ri["x"], key):
-    return ri["x"][key]
-  return []
-def _ri_commit(ri, tuples, index, n):
-  g = ri["g"] + 1
-  ri["t"] = tuples
-  ri["x"] = index
-  ri["xn"] = n
-  ri["wc"] = ri["wc"] + 1
-  ri["g"] = g
-  ri["ig"] = g
-# load: replace everything. Allowed on a broken index (it is the way to
-# replace one). Returns "" or "invalid" (state untouched).
-def ri_load(ri, tuples):
-  for t in tuples:
-    if not _ri_valid(t):
-      return "invalid"
+def ri_alias_count(ri):
+  return len(ri["at"])
+def _ri_copy_bucket(b):
+  out = []
+  for u in b:
+    append(out, [u[0], u[1], u[2], u[3]])
+  return out
+# Checked read: ["", copy-of-bucket] or [code, []]. Never writes, never
+# repairs, never hands out a live bucket.
+def ri_read(ri, ckey):
+  e = ri_check(ri)
+  if e != "":
+    return [e, []]
+  if has(ri["x"], ckey):
+    return ["", _ri_copy_bucket(ri["x"][ckey])]
+  return ["", []]
+def ri_read_alias(ri, ckey):
+  e = ri_check(ri)
+  if e != "":
+    return [e, []]
+  out = []
+  if has(ri["ax"], ckey):
+    for a in ri["ax"][ckey]:
+      append(out, [a[0], a[1]])
+  return ["", out]
+# canonical subjects that currently have at least one tuple (empty
+# buckets and object-only endpoints are NOT subject keys).
+def ri_subject_keys(ri):
+  e = ri_check(ri)
+  if e != "":
+    return [e, []]
+  out = []
+  for k in ri["x"]:
+    if len(ri["x"][k]) > 0:
+      append(out, k)
+  return ["", out]
+def _ri_build(tuples, aliases):
   nt = []
   nx = {}
   for t in tuples:
@@ -101,12 +129,44 @@ def ri_load(ri, tuples):
     if not has(nx, k):
       nx[k] = []
     append(nx[k], c)
-  _ri_commit(ri, nt, nx, len(nt))
+  na = []
+  nax = {}
+  for a in aliases:
+    c = [a[0], a[1]]
+    append(na, c)
+    k = ri_canon(c[0])
+    if not has(nax, k):
+      nax[k] = []
+    append(nax[k], c)
+  return {"t": nt, "x": nx, "xn": len(nt), "at": na, "ax": nax, "an": len(na)}
+def _ri_install(ri, b):
+  g = ri["g"] + 1
+  ri["t"] = b["t"]
+  ri["x"] = b["x"]
+  ri["xn"] = b["xn"]
+  ri["at"] = b["at"]
+  ri["ax"] = b["ax"]
+  ri["an"] = b["an"]
+  ri["wc"] = ri["wc"] + 1
+  ri["g"] = g
+  ri["ig"] = g
+# load_all: replace tuples AND alias records. Allowed on a broken index.
+# Returns "" or "invalid" (state untouched).
+def ri_load_all(ri, tuples, aliases):
+  for t in tuples:
+    if not _ri_valid(t):
+      return "invalid"
+  for a in aliases:
+    if not _ri_avalid(a):
+      return "invalid"
+  _ri_install(ri, _ri_build(tuples, aliases))
   return ""
-# rebuild: new index from the authoritative tuples. Allowed on a broken
-# index; refuses only if the authoritative count itself cannot be built.
+# load: replace tuples, keep the current alias records.
+def ri_load(ri, tuples):
+  return ri_load_all(ri, tuples, ri["at"])
+# rebuild: new indexes from the stored tuples and alias records.
 def ri_rebuild(ri):
-  return ri_load(ri, ri["t"])
+  return ri_load_all(ri, ri["t"], ri["at"])
 def ri_add(ri, s, p, o, neg):
   e = ri_check(ri)
   if e != "":
@@ -128,8 +188,8 @@ def ri_add(ri, s, p, o, neg):
   ri["g"] = g
   ri["ig"] = g
   return ""
-# remove the first stored occurrence of an exact tuple. Returns "" when
-# removed, "absent" when not found (state untouched), or a check code.
+# remove the first stored occurrence of an exact tuple. "" removed,
+# "absent" not found (state untouched), or a check code.
 def ri_remove(ri, s, p, o, neg):
   e = ri_check(ri)
   if e != "":
@@ -164,9 +224,8 @@ def ri_remove(ri, s, p, o, neg):
   ri["g"] = g
   ri["ig"] = g
   return ""
-# drop every tuple whose ORIGINAL subject string equals s (what core's
-# forget/correct do per key). Returns the count dropped as a string
-# "n=<k>" so a check code cannot be confused with a number.
+# drop every tuple whose ORIGINAL subject string equals s. "n=<k>" or a
+# check code.
 def ri_drop_subject(ri, s):
   e = ri_check(ri)
   if e != "":
@@ -193,3 +252,198 @@ def ri_drop_subject(ri, s):
   ri["g"] = g
   ri["ig"] = g
   return "n=" + str(n)
+def ri_alias_add(ri, alias, target):
+  e = ri_check(ri)
+  if e != "":
+    return e
+  c = [alias, target]
+  k = ri_canon(alias)
+  nb = []
+  if has(ri["ax"], k):
+    for u in ri["ax"][k]:
+      append(nb, u)
+  append(nb, c)
+  ri["ax"][k] = nb
+  append(ri["at"], c)
+  ri["an"] = ri["an"] + 1
+  ri["wc"] = ri["wc"] + 1
+  g = ri["g"] + 1
+  ri["g"] = g
+  ri["ig"] = g
+  return ""
+def ri_alias_remove(ri, alias, target):
+  e = ri_check(ri)
+  if e != "":
+    return e
+  c = [alias, target]
+  k = ri_canon(alias)
+  if not has(ri["ax"], k):
+    return "absent"
+  nb = []
+  hit = false
+  for u in ri["ax"][k]:
+    if not hit and _ri_asame(u, c):
+      hit = true
+    else:
+      append(nb, u)
+  if not hit:
+    return "absent"
+  na = []
+  gone = false
+  for u in ri["at"]:
+    if not gone and _ri_asame(u, c):
+      gone = true
+    else:
+      append(na, u)
+  ri["ax"][k] = nb
+  ri["at"] = na
+  ri["an"] = ri["an"] - 1
+  ri["wc"] = ri["wc"] + 1
+  g = ri["g"] + 1
+  ri["g"] = g
+  ri["ig"] = g
+  return ""
+# --- plan / commit for multi-step edits -------------------------------
+# A plan holds every new value; ri_commit installs it in one straight run
+# of assignments. A plan made against generation g is refused if the state
+# has moved ("stale_plan"). Returns [code, plan].
+def _ri_plan_base(ri):
+  return {"g": ri["g"], "t": ri["t"], "xn": ri["xn"], "bk": {}, "at": ri["at"], "an": ri["an"], "abk": {}}
+# replace every tuple whose original subject is s by new_tuples (all of
+# which must have subject s), as one commit. The new tuples go last in the
+# global order, like core's drop-then-learn.
+def ri_plan_replace(ri, s, new_tuples):
+  e = ri_check(ri)
+  if e != "":
+    return [e, null]
+  for t in new_tuples:
+    if not _ri_valid(t) or t[0] != s:
+      return ["invalid", null]
+  k = ri_canon(s)
+  pl = _ri_plan_base(ri)
+  nt = []
+  for u in ri["t"]:
+    if u[0] != s:
+      append(nt, u)
+  nb = []
+  if has(ri["x"], k):
+    for u in ri["x"][k]:
+      if u[0] != s:
+        append(nb, u)
+  for t in new_tuples:
+    c = [t[0], t[1], t[2], t[3]]
+    append(nt, c)
+    append(nb, c)
+  pl["t"] = nt
+  pl["bk"][k] = nb
+  pl["xn"] = len(nt)
+  return ["", pl]
+# forget a key: drop relations whose subject == key and alias records
+# whose target == key (what core's _forget does), as one commit.
+def ri_plan_forget(ri, key):
+  e = ri_check(ri)
+  if e != "":
+    return [e, null]
+  pl = _ri_plan_base(ri)
+  k = ri_canon(key)
+  nt = []
+  for u in ri["t"]:
+    if u[0] != key:
+      append(nt, u)
+  nb = []
+  if has(ri["x"], k):
+    for u in ri["x"][k]:
+      if u[0] != key:
+        append(nb, u)
+  pl["t"] = nt
+  pl["bk"][k] = nb
+  pl["xn"] = len(nt)
+  na = []
+  hit = {}
+  for a in ri["at"]:
+    if a[1] != key:
+      append(na, a)
+    else:
+      hit[ri_canon(a[0])] = true
+  for ak in hit:
+    ab = []
+    for a in ri["ax"][ak]:
+      if a[1] != key:
+        append(ab, a)
+    pl["abk"][ak] = ab
+  pl["at"] = na
+  pl["an"] = len(na)
+  return ["", pl]
+def ri_commit(ri, pl):
+  if pl == null or pl["g"] != ri["g"]:
+    return "stale_plan"
+  g = ri["g"] + 1
+  ri["t"] = pl["t"]
+  for k in pl["bk"]:
+    ri["x"][k] = pl["bk"][k]
+  ri["xn"] = pl["xn"]
+  ri["at"] = pl["at"]
+  for k in pl["abk"]:
+    ri["ax"][k] = pl["abk"][k]
+  ri["an"] = pl["an"]
+  ri["wc"] = ri["wc"] + 1
+  ri["g"] = g
+  ri["ig"] = g
+  return ""
+def ri_replace_subject(ri, s, new_tuples):
+  r = ri_plan_replace(ri, s, new_tuples)
+  if r[0] != "":
+    return r[0]
+  return ri_commit(ri, r[1])
+def ri_forget_key(ri, key):
+  r = ri_plan_forget(ri, key)
+  if r[0] != "":
+    return r[0]
+  return ri_commit(ri, r[1])
+# --- explicit full audit (tests, load-time verification, owner command) --
+# NOT a per-view check and never called by a view. O(n). Returns "" or the
+# first discrepancy: "missing", "generation", "count", "placement" (a
+# tuple/record in the wrong bucket), "extra" (in a bucket but not stored),
+# "absent" (stored but not in its bucket). Empty buckets are inert.
+def _ri_enc(a):
+  out = ""
+  for f in a:
+    out = out + str(len(str(f))) + ":" + str(f) + "|"
+  return out
+def _ri_audit_set(items, idx, canon_of):
+  cnt = {}
+  for u in items:
+    kk = _ri_enc(u)
+    if has(cnt, kk):
+      cnt[kk] = cnt[kk] + 1
+    else:
+      cnt[kk] = 1
+  for k in idx:
+    for u in idx[k]:
+      if ri_canon(u[0]) != k:
+        return "placement"
+      kk = _ri_enc(u)
+      if not has(cnt, kk) or cnt[kk] == 0:
+        return "extra"
+      cnt[kk] = cnt[kk] - 1
+  for kk in cnt:
+    if cnt[kk] != 0:
+      return "absent"
+  return ""
+def ri_audit(ri):
+  if ri["x"] == null or ri["ax"] == null:
+    return "missing"
+  if ri["ig"] != ri["g"]:
+    return "generation"
+  n = 0
+  for k in ri["x"]:
+    n = n + len(ri["x"][k])
+  m = 0
+  for k in ri["ax"]:
+    m = m + len(ri["ax"][k])
+  if n != len(ri["t"]) or m != len(ri["at"]) or ri["xn"] != n or ri["an"] != m:
+    return "count"
+  e = _ri_audit_set(ri["t"], ri["x"], "t")
+  if e != "":
+    return e
+  return _ri_audit_set(ri["at"], ri["ax"], "a")

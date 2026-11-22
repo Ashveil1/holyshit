@@ -23,16 +23,31 @@ for seed in range(3):
     ops.append(['new'])
     for _ in range(50):
         k = rng.random(); t = tup(rng)
-        if k < .45: ops.append(['add'] + t)
-        elif k < .65: ops.append(['remove'] + t)
-        elif k < .75: ops.append(['drop', t[0]])
-        elif k < .85: ops.append(['load'] + sum([tup(rng) for _ in range(rng.randint(0, 5))], []))
+        if k < .30: ops.append(['add'] + t)
+        elif k < .40: ops.append(['remove'] + t)
+        elif k < .48: ops.append(['drop', t[0]])
+        elif k < .56: ops.append(['load'] + sum([tup(rng) for _ in range(rng.randint(0, 5))], []))
+        elif k < .66: ops.append(['aadd', rng.choice(VOC), rng.choice(VOC)])
+        elif k < .72: ops.append(['aremove', rng.choice(VOC), rng.choice(VOC)])
+        elif k < .82:
+            sub = rng.choice(VOC)
+            ops.append(['replace', sub] + sum([[sub] + tup(rng)[1:] for _ in range(rng.randint(0, 3))], []))
+        elif k < .90: ops.append(['forget', rng.choice(VOC)])
         else: ops.append(['rebuild'])
-        ops.append(['dump'])
-base = [['new'], ['load', 'a robin', 'is-a', 'a bird', '0', 'robin', 'has', 'wings', '0']]
-for kind in ('missing', 'stale', 'count', 'droptuple', 'swap'):
-    ops += base + [['break', kind, 'robin'], ['check'], ['add', 'x', 'is-a', 'y', '0'], ['remove', 'robin', 'has', 'wings', '0'],
-                   ['drop', 'robin'], ['dump'], ['reads', 'robin'], ['rebuild'], ['check'], ['dump']]
+        ops += [['dump'], ['audit'], ['keys'], ['bucket', 'robin'], ['abucket', 'robin']]
+base = [['new'], ['load', 'a robin', 'is-a', 'a bird', '0', 'robin', 'has', 'wings', '0'], ['aadd', 'Robin', 'a robin']]
+for kind in ('missing', 'amissing', 'stale', 'count', 'droptuple', 'swap', 'place', 'alter', 'extra', 'emptybucket', 'bump', 'awrong'):
+    ops += base + [['break', kind, 'robin'], ['check'], ['audit'], ['add', 'x', 'is-a', 'y', '0'], ['remove', 'robin', 'has', 'wings', '0'],
+                   ['drop', 'robin'], ['aadd', 'q', 'r'], ['replace', 'robin'], ['forget', 'robin'], ['plan_forget', 'robin'],
+                   ['reads', 'robin'], ['bucket', 'robin'], ['abucket', 'robin'], ['keys'], ['dump'], ['rebuild'], ['check'], ['audit'], ['dump']]
+ops += base + [['plan_replace', 'robin', 'robin', 'is-a', 'x', '0'], ['add', 'q', 'is-a', 'r', '0'], ['commit'], ['plan_replace', 'robin', 'robin', 'is-a', 'x', '0'],
+               ['commit'], ['dump'], ['plan_replace', 'robin', 'other', 'is-a', 'x', '0'], ['mutcopy', 'robin'], ['dump']]
+STR = ['ก', 'ข', 'นก', 'นกแก้ว', 'นก ตัว', 'a', 'A', 'bird', 'Bird', 'é', 'e\u0301', 'ü', 'กิ', 'ก\u0e34', 'z', 'ข้าว', 'ข้า', 'a robin', 'robin']
+rs = random.Random(5)
+for _ in range(3):
+    ops += [['sort', 'str'] + [rs.choice(STR) for _ in range(15)],
+            ['sort', 'tuple'] + sum([[rs.choice(STR), rs.choice(PRE), rs.choice(STR), rs.choice(['0', '1'])] for _ in range(12)], []),
+            ['sort', 'alias'] + sum([[rs.choice(STR), rs.choice(STR)] for _ in range(12)], [])]
 ops += [['loadbad', 'q', 'w', 'e'], ['canon', '  A  Robin'], ['canon', 'นก  ตัว'], ['canon', 'Ünï  X'], ['count']]
 lines = ['\t'.join(o) for o in ops]
 text = prelude + 'OPS = ' + json.dumps(ops, ensure_ascii=False) + '\nfor f in OPS:\n  step(f)\n'
@@ -44,7 +59,7 @@ with tempfile.TemporaryDirectory(prefix='hs-ri-') as tmp:
                        capture_output=True, text=True, timeout=300)
     assert r.returncode == 0, r.stderr[-800:]
     expected = subprocess.run([str(exe)], input='\n'.join(lines) + '\n', capture_output=True, text=True, timeout=120).stdout
-    assert expected.count('\n') > 400, expected[-300:]
+    assert expected.count('\n') > 1000, expected[-300:]
     source = d/'chat.holy'
     source.write_text(text, encoding='utf-8')
 

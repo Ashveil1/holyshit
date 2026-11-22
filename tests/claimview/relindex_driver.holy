@@ -3,17 +3,24 @@
 # dump block). Fault injection ("break") lives HERE, never in the module:
 # it writes the state dict directly on purpose to prove fail-closed.
 import agent.relindex
-H = {"ri": agent.relindex.ri_new()}
+import agent.cvsort
+H = {"ri": agent.relindex.ri_new(), "plan": null}
 def tup(f, i):
   return [f[i], f[i + 1], f[i + 2], f[i + 3] == "1"]
 def dump(r):
-  print "M\t" + str(r["g"]) + "\t" + str(r["ig"]) + "\t" + str(r["xn"]) + "\t" + str(r["wc"])
+  print "M\t" + str(r["g"]) + "\t" + str(r["ig"]) + "\t" + str(r["xn"]) + "\t" + str(r["wc"]) + "\t" + str(r["an"])
   for t in r["t"]:
     print "T\t" + t[0] + "\t" + t[1] + "\t" + t[2] + "\t" + str(t[3])
   if r["x"] != null:
     for k in r["x"]:
       for t in r["x"][k]:
         print "X\t" + k + "\t" + t[0] + "\t" + t[1] + "\t" + t[2] + "\t" + str(t[3])
+  for a in r["at"]:
+    print "A\t" + a[0] + "\t" + a[1]
+  if r["ax"] != null:
+    for k in r["ax"]:
+      for a in r["ax"][k]:
+        print "AX\t" + k + "\t" + a[0] + "\t" + a[1]
   print "END"
 def res(s):
   if s == "":
@@ -49,17 +56,102 @@ def step(f):
   elif op == "canon":
     print "[" + agent.relindex.ri_canon(f[1]) + "]"
   elif op == "bucket":
-    b = agent.relindex.ri_bucket(H["ri"], f[1])
-    print "B\t" + str(len(b))
-    for t in b:
+    rr = agent.relindex.ri_read(H["ri"], f[1])
+    print "B\t" + rr[0] + "\t" + str(len(rr[1]))
+    for t in rr[1]:
       print "T\t" + t[0] + "\t" + t[1] + "\t" + t[2] + "\t" + str(t[3])
+  elif op == "abucket":
+    rr = agent.relindex.ri_read_alias(H["ri"], f[1])
+    print "AB\t" + rr[0] + "\t" + str(len(rr[1]))
+    for a in rr[1]:
+      print "A\t" + a[0] + "\t" + a[1]
+  elif op == "mutcopy":
+    # a caller mutating a returned copy must not change the state
+    rr = agent.relindex.ri_read(H["ri"], f[1])
+    if len(rr[1]) > 0:
+      rr[1][0][2] = "MUTATED"
+      append(rr[1], ["x", "y", "z", false])
+    print "ok"
+  elif op == "keys":
+    rr = agent.relindex.ri_subject_keys(H["ri"])
+    print "K\t" + rr[0] + "\t" + join("|", rr[1])
+  elif op == "audit":
+    res(agent.relindex.ri_audit(H["ri"]))
+  elif op == "aadd":
+    res(agent.relindex.ri_alias_add(H["ri"], f[1], f[2]))
+  elif op == "aremove":
+    res(agent.relindex.ri_alias_remove(H["ri"], f[1], f[2]))
+  elif op == "loadall":
+    # loadall <ntuples> t*4 ... then alias pairs
+    nn = int(f[1])
+    ts = []
+    i = 2
+    while i < 2 + nn * 4:
+      append(ts, tup(f, i))
+      i = i + 4
+    al = []
+    while i + 1 < len(f):
+      append(al, [f[i], f[i + 1]])
+      i = i + 2
+    res(agent.relindex.ri_load_all(H["ri"], ts, al))
+  elif op == "replace":
+    ts = []
+    i = 2
+    while i + 3 < len(f):
+      append(ts, tup(f, i))
+      i = i + 4
+    res(agent.relindex.ri_replace_subject(H["ri"], f[1], ts))
+  elif op == "forget":
+    res(agent.relindex.ri_forget_key(H["ri"], f[1]))
+  elif op == "plan_replace":
+    ts = []
+    i = 2
+    while i + 3 < len(f):
+      append(ts, tup(f, i))
+      i = i + 4
+    pr = agent.relindex.ri_plan_replace(H["ri"], f[1], ts)
+    H["plan"] = pr[1]
+    res(pr[0])
+  elif op == "plan_forget":
+    pr = agent.relindex.ri_plan_forget(H["ri"], f[1])
+    H["plan"] = pr[1]
+    res(pr[0])
+  elif op == "sort":
+    # sort <kind> then items: tuple = 4 fields each, alias = 2, str = 1
+    kind = f[1]
+    its = []
+    i = 2
+    if kind == "tuple":
+      while i + 3 < len(f):
+        append(its, tup(f, i))
+        i = i + 4
+    elif kind == "alias":
+      while i + 1 < len(f):
+        append(its, [f[i], f[i + 1]])
+        i = i + 2
+    else:
+      while i < len(f):
+        append(its, f[i])
+        i = i + 1
+    for it in agent.cvsort.cv_sort(its, kind):
+      if kind == "tuple":
+        print "S\t" + it[0] + "\t" + it[1] + "\t" + it[2] + "\t" + str(it[3])
+      elif kind == "alias":
+        print "S\t" + it[0] + "\t" + it[1]
+      else:
+        print "S\t" + it
+    print "ok"
+  elif op == "commit":
+    res(agent.relindex.ri_commit(H["ri"], H["plan"]))
   elif op == "reads":
-    # exercise every reader; the test then compares dumps for writes
-    # a reader checks first and only then reads (view contract B15/B17)
-    if agent.relindex.ri_check(H["ri"]) == "":
-      agent.relindex.ri_count(H["ri"])
-      agent.relindex.ri_bucket(H["ri"], f[1])
-      agent.relindex.ri_bucket(H["ri"], "no such key")
+    # every reader, also on a broken index: they only return codes or copies
+    agent.relindex.ri_check(H["ri"])
+    agent.relindex.ri_count(H["ri"])
+    agent.relindex.ri_read(H["ri"], f[1])
+    agent.relindex.ri_read(H["ri"], "no such key")
+    agent.relindex.ri_read_alias(H["ri"], f[1])
+    agent.relindex.ri_subject_keys(H["ri"])
+    agent.relindex.ri_audit(H["ri"])
     print "ok"
   elif op == "break":
     k = f[1]
@@ -76,6 +168,32 @@ def step(f):
         append(nt, H["ri"]["t"][i])
         i = i + 1
       H["ri"]["t"] = nt
+    elif k == "place":
+      # same count, same marker: tuple moved to the wrong bucket
+      key = f[2]
+      mv = H["ri"]["x"][key][0]
+      nb2 = []
+      i = 1
+      while i < len(H["ri"]["x"][key]):
+        append(nb2, H["ri"]["x"][key][i])
+        i = i + 1
+      H["ri"]["x"][key] = nb2
+      H["ri"]["x"]["wrongkey"] = [mv]
+    elif k == "extra":
+      # extra tuple in a bucket; t and every counter untouched
+      H["ri"]["x"][f[2]] = H["ri"]["x"][f[2]] + [["extra", "is-a", "extra", false]]
+    elif k == "alter":
+      u = H["ri"]["x"][f[2]][0]
+      H["ri"]["x"][f[2]][0] = [u[0], u[1], "ALTERED", u[3]]
+    elif k == "emptybucket":
+      H["ri"]["x"]["zzz empty"] = []
+    elif k == "bump":
+      H["ri"]["g"] = H["ri"]["g"] + 1
+      H["ri"]["ig"] = H["ri"]["g"]
+    elif k == "awrong":
+      H["ri"]["ax"][f[2]][0] = ["WRONG", "WRONG"]
+    elif k == "amissing":
+      H["ri"]["ax"] = null
     elif k == "swap":
       # same count, same marker: wrong tuple in the index, undetected by ri_check
       key = f[2]
@@ -83,6 +201,44 @@ def step(f):
     print "ok"
   elif op == "dump":
     dump(H["ri"])
+  elif op == "genonly":
+    # bench split: only build the tuple list (no ri_load)
+    n = int(f[1])
+    ns = int(n / 4) + 1
+    ts = []
+    i = 0
+    while i < n:
+      append(ts, ["Thing " + str(i % ns), "is-a", "kind " + str(i), i % 7 == 0])
+      i = i + 1
+    print "n=" + str(len(ts))
+  elif op == "canonly":
+    # bench split: build the list and canon every subject (no dict)
+    n = int(f[1])
+    ns = int(n / 4) + 1
+    ts = []
+    i = 0
+    while i < n:
+      append(ts, ["Thing " + str(i % ns), "is-a", "kind " + str(i), i % 7 == 0])
+      i = i + 1
+    z = 0
+    for t in ts:
+      z = z + len(agent.relindex.ri_canon(t[0]))
+    print "z=" + str(z)
+  elif op == "dictonly":
+    # bench split: build the list and insert into a dict keyed by raw subject
+    n = int(f[1])
+    ns = int(n / 4) + 1
+    ts = []
+    i = 0
+    while i < n:
+      append(ts, ["Thing " + str(i % ns), "is-a", "kind " + str(i), i % 7 == 0])
+      i = i + 1
+    d = {}
+    for t in ts:
+      if not has(d, t[0]):
+        d[t[0]] = []
+      append(d[t[0]], t)
+    print "d=" + str(len(d))
   elif op == "gen":
     # n tuples spread over n/4 subjects, then m exact lookups (bench)
     n = int(f[1])
@@ -97,7 +253,7 @@ def step(f):
     hits = 0
     j = 0
     while j < m:
-      b = agent.relindex.ri_bucket(H["ri"], "thing " + str((j * 7) % ns))
+      b = agent.relindex.ri_read(H["ri"], "thing " + str((j * 7) % ns))[1]
       hits = hits + len(b)
       j = j + 1
     print r + "n=" + str(agent.relindex.ri_count(H["ri"])) + " hits=" + str(hits) + " chk=[" + agent.relindex.ri_check(H["ri"]) + "]"
