@@ -17,7 +17,7 @@
 #   epistemic     supported | unknown | contradicted | ambiguous | n/a
 #   verification  unverified | none
 #   action        answer | abstain | clarify | acknowledge | not_understood | other
-# They are read off the reply TEXT by classifier c1 (a documented,
+# They are read off the reply TEXT by classifier c2 (c1 plus the prefix "updated " as acknowledge; a documented,
 # versioned prefix/substring table), so they describe what the agent
 # said, not what it "believes". There are no probability outputs, so no
 # calibration score exists (Brier/ECE wait for real confidence outputs);
@@ -35,7 +35,7 @@ import agent.core
 import agent.patgen
 BUILD = "v0.17"
 HARNESS = "selfeval-1"
-CLASSIFIER = "c1"
+CLASSIFIER = "c2"
 SCHEMA = 2
 DIMS = ["epistemic", "verification", "action", "contains"]
 def classify(reply):
@@ -53,7 +53,7 @@ def classify(reply):
     ac = "answer"
   elif r[:16] == "i do not underst":
     ac = "not_understood"
-  elif r[:10] == "remembered" or r[:6] == "added:" or r[:3] == "ok," or r[:6] == "forgot":
+  elif r[:10] == "remembered" or r[:6] == "added:" or r[:3] == "ok," or r[:6] == "forgot" or r[:8] == "updated ":
     ac = "acknowledge"
   elif "did you mean" in r or "clarif" in r:
     ep = "ambiguous"
