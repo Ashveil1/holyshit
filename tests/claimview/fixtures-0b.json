@@ -14678,7 +14678,79 @@
      "source": "src1"
     }
    ]
+  },
+  {
+   "name": "none_readings_both_sides_query_pos",
+   "edges": [],
+   "aliases": {},
+   "query": [
+    "zzz",
+    "is-a",
+    "b",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence",
+    "readings": "both_sides_sorted_source_sentence_side"
+   },
+   "readings": [
+    {
+     "s": "zzz",
+     "p": "is-a",
+     "o": "b",
+     "source": "src1",
+     "side": "pos",
+     "sentence": "zzz is a b"
+    },
+    {
+     "s": "zzz",
+     "p": "is-a",
+     "o": "b",
+     "source": "src2",
+     "side": "neg",
+     "sentence": "zzz is not a b"
+    }
+   ],
+   "note": "B16: query polarity is not part of reading selection"
+  },
+  {
+   "name": "none_readings_both_sides_query_neg",
+   "edges": [],
+   "aliases": {},
+   "query": [
+    "zzz",
+    "is-a",
+    "b",
+    true
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence",
+    "readings": "both_sides_sorted_source_sentence_side"
+   },
+   "readings": [
+    {
+     "s": "zzz",
+     "p": "is-a",
+     "o": "b",
+     "source": "src1",
+     "side": "pos",
+     "sentence": "zzz is a b"
+    },
+    {
+     "s": "zzz",
+     "p": "is-a",
+     "o": "b",
+     "source": "src2",
+     "side": "neg",
+     "sentence": "zzz is not a b"
+    }
+   ],
+   "note": "B16: query polarity is not part of reading selection"
   }
  ],
- "revision": 3
+ "revision": 4
 }
