@@ -1265,6 +1265,139 @@ def _read_ids(side):
     else:
       out = out + ", " + se[0]
   return out
+# A19: separate source measurements on multi-source claims.
+# Registrable domain for a source id: url-N resolves through the
+# registry to its host; a dotted-quad literal IS the domain (each
+# literal address is its own identity), otherwise the registrable
+# domain is approximated as the last two host labels (no public-
+# suffix list - a documented approximation). Typed sources (read-N
+# or named) have no domain and are counted separately, never as
+# domain diversity.
+def _src_domain(state, src):
+  if len(src) > 4 and src[:4] == "url-":
+    ns = src[4:]
+    i = 0
+    digs = true
+    while i < len(ns):
+      if not (ns[i] >= "0" and ns[i] <= "9"):
+        digs = false
+      i = i + 1
+    if not digs or len(ns) == 0:
+      return ""
+    n = int(ns)
+    if n >= 1 and n <= len(state["url_srcs"]):
+      rest = state["url_srcs"][n - 1][0][7:]
+      host = rest
+      k = find(rest, "/")
+      if k >= 0:
+        host = rest[:k]
+      c = find(host, ":")
+      if c >= 0:
+        host = host[:c]
+      parts = split(host, ".")
+      if len(parts) == 4:
+        alldig = true
+        for p in parts:
+          if len(p) == 0:
+            alldig = false
+          i = 0
+          while i < len(p):
+            if not (p[i] >= "0" and p[i] <= "9"):
+              alldig = false
+            i = i + 1
+        if alldig:
+          return host
+      if len(parts) >= 2:
+        return parts[len(parts) - 2] + "." + parts[len(parts) - 1]
+      return host
+  return ""
+# A19: content-similarity clustering over a claim's support spans
+# (EXPERIMENTAL / calibration-needed). Normalization is lowercase
+# ASCII + collapsed whitespace; similarity is the 5-word-shingle
+# Jaccard with cutoff 0.8 as an integer comparison (inter*5 >=
+# union*4 - no floats, identical on every route). Spans shorter
+# than 5 words have no shingles: two are similar only when their
+# normalized texts are identical. A cluster is a DUPLICATE-TEXT
+# signal only, never proof of independent (or common) authorship.
+def _shingle_norm(s):
+  ls = lower_ascii(s)
+  out = ""
+  last_sp = true
+  i = 0
+  while i < len(ls):
+    c = ls[i]
+    if c == " " or c == "\t" or c == "\n" or c == "\r":
+      if not last_sp:
+        out = out + " "
+      last_sp = true
+    else:
+      out = out + c
+      last_sp = false
+    i = i + 1
+  return _rtrim_sp(out)
+def _shingle_list(nm):
+  ws = split(nm, " ")
+  out = []
+  i = 0
+  while i + 4 < len(ws):
+    sh = ws[i] + " " + ws[i + 1] + " " + ws[i + 2] + " " + ws[i + 3] + " " + ws[i + 4]
+    if not (sh in out):
+      append(out, sh)
+    i = i + 1
+  return out
+def _sh_sim(l1, t1, l2, t2):
+  if len(l1) == 0 or len(l2) == 0:
+    return t1 == t2
+  inter = 0
+  for s1 in l1:
+    if s1 in l2:
+      inter = inter + 1
+  union = len(l1) + len(l2) - inter
+  return inter * 5 >= union * 4
+# Greedy deterministic clustering: each span joins the first
+# cluster whose representative it is similar to, else starts one.
+def _span_clusters(spans):
+  reps = []
+  for sp in spans:
+    nm = _shingle_norm(sp)
+    sh = _shingle_list(nm)
+    found = false
+    for rep in reps:
+      if _sh_sim(rep[0], rep[1], sh, nm):
+        found = true
+    if not found:
+      append(reps, [sh, nm])
+  return len(reps)
+# The measurements as one reported field set: agreeing sources
+# (claim agreement is structural: every entry on a side supports
+# the same triple, and cross-polarity disagreement is the CONFLICT
+# label), distinct registrable domains, duplicate-text clusters.
+def _read_ev(state, side):
+  doms = []
+  nodom = 0
+  spans = []
+  for se in side:
+    append(spans, se[1])
+    d = _src_domain(state, se[0])
+    if d == "":
+      nodom = nodom + 1
+    else:
+      if not (d in doms):
+        append(doms, d)
+  out = str(len(side)) + " agreeing source"
+  if len(side) > 1:
+    out = out + "s"
+  out = out + ", " + str(len(doms)) + " registrable domain"
+  if len(doms) != 1:
+    out = out + "s"
+  if nodom > 0:
+    out = out + " (" + str(nodom) + " without)"
+  nc = _span_clusters(spans)
+  out = out + ", " + str(nc) + " text cluster"
+  if nc != 1:
+    out = out + "s"
+  out = out + " (experimental)"
+  return out
 def _readings_reply(state, about, detail):
   rs = state["readings"]
   if about != "":
@@ -1333,6 +1466,10 @@ def _readings_reply(state, about, detail):
       tier = tier + "MULTI_SOURCE negative"
     if tier != "":
       out = out + "; " + tier
+    if len(r[3]) >= 2:
+      out = out + "; positive evidence: " + _read_ev(state, r[3])
+    if len(r[4]) >= 2:
+      out = out + "; negative evidence: " + _read_ev(state, r[4])
     if r[5] == "" and r[6] == "" and tier == "" and not (len(r[3]) > 0 and len(r[4]) > 0):
       out = out + "; UNVERIFIED"
     ids = []

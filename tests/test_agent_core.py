@@ -727,6 +727,90 @@ class Oracle:
             out += ' (text truncated at 64KB)'
         return out
 
+    def _src_domain(self, src):
+        # A19: url-N -> registry host; dotted-quad literal is its
+        # own domain; else last two host labels (approximation).
+        # Typed sources have no domain.
+        if len(src) > 4 and src[:4] == 'url-':
+            ns = src[4:]
+            if not ns or not ns.isdigit():
+                return ''
+            n = int(ns)
+            if 1 <= n <= len(self.url_srcs):
+                rest = self.url_srcs[n - 1][0][7:]
+                host = rest.split('/')[0].split(':')[0]
+                parts = host.split('.')
+                if len(parts) == 4 and all(
+                        p and p.isdigit() for p in parts):
+                    return host
+                if len(parts) >= 2:
+                    return parts[-2] + '.' + parts[-1]
+                return host
+        return ''
+
+    @staticmethod
+    def _shingle_norm(s):
+        out, last_sp = [], True
+        for c in lower_ascii(s):
+            if c in ' \t\n\r':
+                if not last_sp:
+                    out.append(' ')
+                last_sp = True
+            else:
+                out.append(c)
+                last_sp = False
+        return ''.join(out).rstrip(' ')
+
+    @staticmethod
+    def _shingle_list(nm):
+        ws = nm.split(' ')
+        out = []
+        for i in range(len(ws) - 4):
+            sh = ' '.join(ws[i:i + 5])
+            if sh not in out:
+                out.append(sh)
+        return out
+
+    @staticmethod
+    def _sh_sim(l1, t1, l2, t2):
+        if not l1 or not l2:
+            return t1 == t2
+        inter = sum(1 for s1 in l1 if s1 in l2)
+        union = len(l1) + len(l2) - inter
+        return inter * 5 >= union * 4
+
+    def _span_clusters(self, spans):
+        reps = []
+        for sp in spans:
+            nm = self._shingle_norm(sp)
+            sh = self._shingle_list(nm)
+            if not any(self._sh_sim(rep[0], rep[1], sh, nm)
+                       for rep in reps):
+                reps.append([sh, nm])
+        return len(reps)
+
+    def _read_ev(self, side):
+        # A19: agreeing sources, registrable-domain diversity,
+        # duplicate-text clusters - as separate fields.
+        doms, nodom, spans = [], 0, []
+        for se in side:
+            spans.append(se[1])
+            d = self._src_domain(se[0])
+            if d == '':
+                nodom += 1
+            elif d not in doms:
+                doms.append(d)
+        out = (str(len(side)) + ' agreeing source' +
+               ('s' if len(side) > 1 else ''))
+        out += (', ' + str(len(doms)) + ' registrable domain' +
+                ('' if len(doms) == 1 else 's'))
+        if nodom:
+            out += ' (' + str(nodom) + ' without)'
+        nc = self._span_clusters(spans)
+        out += (', ' + str(nc) + ' text cluster' +
+                ('' if nc == 1 else 's') + ' (experimental)')
+        return out
+
     def _readings_reply(self, about, detail):
         rs = self.readings
         if about != '':
@@ -778,6 +862,10 @@ class Oracle:
                     'MULTI_SOURCE negative'
             if tier:
                 out += '; ' + tier
+            if len(r[3]) >= 2:
+                out += '; positive evidence: ' + self._read_ev(r[3])
+            if len(r[4]) >= 2:
+                out += '; negative evidence: ' + self._read_ev(r[4])
             if r[5] == '' and r[6] == '' and not tier and \
                     not (r[3] and r[4]):
                 out += '; UNVERIFIED'
@@ -2421,6 +2509,11 @@ A19_SCENARIOS = [
     # 6. Pure Thai regressions: no transition, extraction unchanged.
     ['read วาฬ เป็น สัตว์เลี้ยงลูกด้วยนม. ค้างคาว ไม่เป็น นก',
      'readings'],
+    # 7. Measurements: two typed sources, same claim, different
+    # span texts -> two duplicate-text clusters; same span text ->
+    # one cluster. Typed sources never count as domains.
+    ['read a1: birds have wings', 'read a2: birds has wings',
+     'read a3: birds have wings', 'readings'],
 ]
 
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
