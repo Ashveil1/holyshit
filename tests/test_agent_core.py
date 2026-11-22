@@ -76,6 +76,12 @@ def lower_ascii(s):
     return ''.join(chr(ord(c) + 32) if 'A' <= c <= 'Z' else c for c in s)
 
 
+def _ascii_byte(c):
+    # Mirror core._ascii_byte (char model here: the corpus driver
+    # runs the reference interpreter semantics).
+    return c in '\t\n\r' or ' ' <= c <= '~'
+
+
 def words(s):
     # Mirror core._words: split on single spaces, empty words dropped.
     return [w for w in s.split(' ') if w]
@@ -403,15 +409,47 @@ class Oracle:
                 return i
         return -1
 
+    def _read_directive(self, sent):
+        # A19: fixed command-form set, whole-segment exact/prefix
+        # matches only. No general imperative parser.
+        ls = lower_ascii(sent)
+        for p in ('remember ', 'no, ', 'mode ', 'clear ', 'forget ',
+                  'read ', 'note ', 'say '):
+            if len(ls) > len(p) and ls[:len(p)] == p:
+                return True
+        return ls in ('quit', 'exit', 'help', 'list', 'notes',
+                      'readings', 'readings detail', 'hypotheses',
+                      'hypotheses detail', 'click here',
+                      'subscribe now', 'download this file')
+
+    @staticmethod
+    def _script_transitions(sent):
+        # A19: ASCII/non-ASCII class changes at element boundaries,
+        # ignoring spaces. UTF-8 Thai continuation bytes are all
+        # non-ASCII, so byte and char models agree.
+        out, prev = [], 0
+        for i, ch in enumerate(sent):
+            cl = 0
+            if ch != ' ':
+                cl = 1 if _ascii_byte(ch) else 2
+            if cl:
+                if prev and cl != prev:
+                    out.append(i)
+                prev = cl
+        return out
+
     def _read_skip(self, sent):
         # A17: primary skip-reason, precedence quoted/attributed >
-        # modal/hedged > multi-clause, one count per segment.
+        # directive (A19) > modal/hedged > multi-clause, one count
+        # per segment.
         if '"' in sent or "'" in sent:
             return 'quoted'
         ls = ' ' + lower_ascii(sent) + ' '
         if (' says ' in ls or ' said ' in ls or
                 ' according to ' in ls):
             return 'quoted'
+        if self._read_directive(sent):
+            return 'directive'
         for w in (' might ', ' may ', ' could ', ' should ', ' would ',
                   ' must ', ' probably ', ' maybe ', ' perhaps '):
             if w in ls:
@@ -588,18 +626,47 @@ class Oracle:
         if cur:
             segs.append(cur)
         matched = newc = upd = ref = dup = 0
-        sk_q = sk_m = sk_c = um = 0
+        sk_q = sk_m = sk_c = sk_d = sk_tb = um = 0
         for sent in segs:
             sk = self._read_skip(sent)
             if sk == 'quoted':
                 sk_q += 1
+            elif sk == 'directive':
+                sk_d += 1
             elif sk == 'modal-hedged':
                 sk_m += 1
             else:
                 exs = []
                 if not sk:
-                    ka = lower_ascii(sent).find(' and ')
-                    if ka > 0:
+                    trs = self._script_transitions(sent)
+                    tb_skip = False
+                    if trs:
+                        # A19 Thai-Latin boundary: split only when
+                        # BOTH sides independently match complete
+                        # supported patterns; first valid split
+                        # wins; otherwise the whole segment is
+                        # skipped as thai-boundary-ambiguous.
+                        tb_ok = False
+                        for ti in trs:
+                            if not tb_ok:
+                                le = sent[:ti].rstrip(' ')
+                                ri = sent[ti:].lstrip(' ')
+                                if le and ri:
+                                    exl = self._read_extract(le)
+                                    exr = self._read_extract(ri)
+                                    if (exl is not None and
+                                            exr is not None and
+                                            self._read_obj_ok(exl) and
+                                            self._read_obj_ok(exr)):
+                                        exs.append([exl, le])
+                                        exs.append([exr, ri])
+                                        tb_ok = True
+                        if not tb_ok:
+                            tb_skip = True
+                    ka = -1 if trs else lower_ascii(sent).find(' and ')
+                    if tb_skip:
+                        sk = 'thai-boundary-ambiguous'
+                    elif ka > 0:
                         # A17: split at the FIRST exact ' and ', both
                         # sides must match, strictly atomic, no
                         # recursion, spans are the side texts.
@@ -613,13 +680,16 @@ class Oracle:
                         else:
                             sk = 'multi-clause'
                     else:
-                        ex = self._read_extract(sent)
-                        if ex is not None and self._read_obj_ok(ex):
-                            exs.append([ex, sent])
-                        else:
-                            um += 1
+                        if not trs:
+                            ex = self._read_extract(sent)
+                            if ex is not None and self._read_obj_ok(ex):
+                                exs.append([ex, sent])
+                            else:
+                                um += 1
                 if sk == 'multi-clause':
                     sk_c += 1
+                if sk == 'thai-boundary-ambiguous':
+                    sk_tb += 1
                 for ex, span in exs:
                     matched += 1
                     ri2 = self._read_find(ex[0], ex[1], ex[2])
@@ -646,9 +716,12 @@ class Oracle:
                str(matched) + ' pattern matches, ' + str(matched) +
                ' candidates extracted (' + str(newc) + ' new, ' +
                str(upd) + ' updated, ' + str(ref) + ' refused, ' +
-               str(dup) + ' repeat), ' + str(sk_q + sk_m + sk_c) +
-               ' skipped (' + str(sk_q) + ' quoted, ' + str(sk_m) +
-               ' modal-hedged, ' + str(sk_c) + ' multi-clause), ' +
+               str(dup) + ' repeat), ' +
+               str(sk_q + sk_m + sk_c + sk_d + sk_tb) +
+               ' skipped (' + str(sk_q) + ' quoted, ' + str(sk_d) +
+               ' directive, ' + str(sk_m) +
+               ' modal-hedged, ' + str(sk_c) + ' multi-clause, ' +
+               str(sk_tb) + ' thai-boundary-ambiguous), ' +
                str(um) + ' unmatched')
         if truncated:
             out += ' (text truncated at 64KB)'
@@ -2318,9 +2391,41 @@ A18_SCENARIOS = [
      'read url http://example.com:80/x'],
 ]
 
+A19_SCENARIOS = [
+    # 1. Directive skip class: agent commands and web imperatives
+    # inside a payload are skipped whole and stay inert (the state
+    # is NOT cleared, the mode does NOT change); ordinary
+    # declaratives containing the same words elsewhere extract or
+    # stay unmatched as before. Readings never answer questions.
+    ['read remember a car is a machine. mode explore. clear readings. quit. click here. subscribe now. download this file. a frog is an animal',
+     'readings', 'mode', 'is a frog an animal'],
+    # 2. Skip precedence: quoted/attribution beats directive even
+    # when the directive word leads the quoted text; directive beats
+    # modal on the same segment.
+    ['read the guide says remember a car is a machine. remember a car might fly. a bat is a bird',
+     'readings'],
+    # 3. No general imperative parser: a declarative that merely
+    # contains a command word away from the start is not a
+    # directive (unmatched, not skipped).
+    ['read i remember my first car. the download button is red. a sparrow is a bird',
+     'readings'],
+    # 4. Thai-Latin boundary: both sides validate -> two extractions
+    # with the side texts as spans; either side ambiguous -> the
+    # whole segment is skipped as thai-boundary-ambiguous.
+    ['read นก เป็น สัตว์ a hornbill is a bird',
+     'read นกมีปีกและบินได้ a hornbill is a bird',
+     'readings detail'],
+    # 5. แล้ว/ครับ are never terminators: แล้ว stays inside the
+    # extracted object when the Thai side still validates.
+    ['read วาฬ เป็น สัตว์ แล้ว a frog is an animal', 'readings'],
+    # 6. Pure Thai regressions: no transition, extraction unchanged.
+    ['read วาฬ เป็น สัตว์เลี้ยงลูกด้วยนม. ค้างคาว ไม่เป็น นก',
+     'readings'],
+]
+
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
             A15_SCENARIOS + A16_SCENARIOS + A17_SCENARIOS +
-            A18_SCENARIOS):
+            A18_SCENARIOS + A19_SCENARIOS):
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))

@@ -809,17 +809,72 @@ def _read_find(state, s, p, o):
       return i
     i = i + 1
   return -1
+# A19: high-precision DIRECTIVE_OR_COMMAND_SHAPED test. The fixed
+# set is the agent's own command surface (the remember/no,/mode/
+# clear/forget/read/note/say command prefixes and the standalone
+# commands) plus three web-marketing imperatives. Whole-segment
+# exact and prefix matches only: there is NO general imperative
+# parser, and an ordinary declarative that merely contains a verb
+# or the word 'remember' away from the start never matches. Every
+# match stays inert data - the payload is never re-parsed.
+def _read_directive(sent):
+  ls = lower_ascii(sent)
+  for p in ["remember ", "no, ", "mode ", "clear ", "forget ", "read ", "note ", "say "]:
+    if len(ls) > len(p) and ls[:len(p)] == p:
+      return true
+  for w in ["quit", "exit", "help", "list", "notes", "readings", "readings detail", "hypotheses", "hypotheses detail", "click here", "subscribe now", "download this file"]:
+    if ls == w:
+      return true
+  return false
+# A19: script classes for the Thai-Latin boundary candidate. Each
+# element is classed ASCII or non-ASCII; both the character model
+# (interp) and the byte model (compiled routes) agree on that split
+# for UTF-8 Thai, which is all this uses (a Thai char's lead and
+# continuation bytes are all non-ASCII). A transition is an index
+# where a non-space element's class differs from the previous
+# non-space element's class; the index always lands on an element
+# boundary, so slicing by it yields the same string on every route.
+def _script_transitions(sent):
+  out = []
+  prev = 0
+  i = 0
+  while i < len(sent):
+    cl = 0
+    if sent[i] != " ":
+      if _ascii_byte(sent[i]):
+        cl = 1
+      else:
+        cl = 2
+    if cl != 0:
+      if prev != 0 and cl != prev:
+        append(out, i)
+      prev = cl
+    i = i + 1
+  return out
+def _rtrim_sp(s):
+  n = len(s)
+  while n > 0 and s[n - 1] == " ":
+    n = n - 1
+  return s[:n]
+def _ltrim_sp(s):
+  i = 0
+  while i < len(s) and s[i] == " ":
+    i = i + 1
+  return s[i:]
 # A17: primary skip-reason classification, mutually exclusive, one
-# count per segment, precedence quoted/attributed > modal/hedged >
-# multi-clause. The modal class is MODAL_HEDGED_UNSUPPORTED: hedging
-# words are skipped whole, while the supported 'can' forms keep
-# extracting. Skips are counted and reported, never guessed around.
+# count per segment, precedence quoted/attributed > directive >
+# modal/hedged > multi-clause. The modal class is
+# MODAL_HEDGED_UNSUPPORTED: hedging words are skipped whole, while
+# the supported 'can' forms keep extracting. Skips are counted and
+# reported, never guessed around.
 def _read_skip(sent):
   if find(sent, "\"") >= 0 or find(sent, "'") >= 0:
     return "quoted"
   ls = " " + lower_ascii(sent) + " "
   if find(ls, " says ") >= 0 or find(ls, " said ") >= 0 or find(ls, " according to ") >= 0:
     return "quoted"
+  if _read_directive(sent):
+    return "directive"
   for w in [" might ", " may ", " could ", " should ", " would ", " must ", " probably ", " maybe ", " perhaps "]:
     if find(ls, w) >= 0:
       return "modal-hedged"
@@ -1100,18 +1155,53 @@ def _read_ingest(state, src, body, truncated):
   sk_q = 0
   sk_m = 0
   sk_c = 0
+  sk_d = 0
+  sk_tb = 0
   um = 0
   for sent in segs:
     sk = _read_skip(sent)
     if sk == "quoted":
       sk_q = sk_q + 1
+    elif sk == "directive":
+      sk_d = sk_d + 1
     elif sk == "modal-hedged":
       sk_m = sk_m + 1
     else:
       exs = []
       if sk == "":
-        ka = find(lower_ascii(sent), " and ")
-        if ka > 0:
+        trs = _script_transitions(sent)
+        tb_skip = false
+        if len(trs) > 0:
+          # A19 Thai-Latin boundary candidate: a mixed-script
+          # segment splits at a script transition ONLY when both
+          # resulting segments independently match complete
+          # supported patterns (the A17 conjunction bar: strictly
+          # atomic, first valid split wins, no recursion, spans
+          # are the side texts). Either side ambiguous = skip the
+          # WHOLE segment as thai-boundary-ambiguous: no partial
+          # extraction, never a split on an arbitrary Thai space,
+          # and ครับ/ค่ะ/แล้ว/นะ/ไหม are never treated as
+          # universal terminators.
+          tb_ok = false
+          for ti in trs:
+            if not tb_ok:
+              le = _rtrim_sp(sent[:ti])
+              ri = _ltrim_sp(sent[ti:])
+              if len(le) > 0 and len(ri) > 0:
+                exl = _read_extract(le)
+                exr = _read_extract(ri)
+                if exl != null and exr != null and _read_obj_ok(exl) and _read_obj_ok(exr):
+                  append(exs, [exl, le])
+                  append(exs, [exr, ri])
+                  tb_ok = true
+          if not tb_ok:
+            tb_skip = true
+        ka = -1
+        if len(trs) == 0:
+          ka = find(lower_ascii(sent), " and ")
+        if tb_skip:
+          sk = "thai-boundary-ambiguous"
+        elif ka > 0:
           # A17 conjunction: split at the FIRST exact ' and ' (never
           # inside quotes: the quoted skip already ran), each side
           # must match a complete registered pattern, strictly
@@ -1124,13 +1214,16 @@ def _read_ingest(state, src, body, truncated):
           else:
             sk = "multi-clause"
         else:
-          ex = _read_extract(sent)
-          if ex != null and _read_obj_ok(ex):
-            append(exs, [ex, sent])
-          else:
-            um = um + 1
+          if len(trs) == 0:
+            ex = _read_extract(sent)
+            if ex != null and _read_obj_ok(ex):
+              append(exs, [ex, sent])
+            else:
+              um = um + 1
       if sk == "multi-clause":
         sk_c = sk_c + 1
+      if sk == "thai-boundary-ambiguous":
+        sk_tb = sk_tb + 1
       for pair in exs:
         ex = pair[0]
         span = pair[1]
@@ -1160,7 +1253,7 @@ def _read_ingest(state, src, body, truncated):
             else:
               append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", ""])
             newc = newc + 1
-  out = src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c) + " skipped (" + str(sk_q) + " quoted, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause), " + str(um) + " unmatched"
+  out = src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c + sk_d + sk_tb) + " skipped (" + str(sk_q) + " quoted, " + str(sk_d) + " directive, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause, " + str(sk_tb) + " thai-boundary-ambiguous), " + str(um) + " unmatched"
   if truncated:
     out = out + " (text truncated at 64KB)"
   return out

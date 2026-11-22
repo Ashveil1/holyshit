@@ -25,8 +25,9 @@ exec(_src[:_cut], _ns)
 Oracle = _ns['Oracle']
 
 SKIP_RE = re.compile(
-    r'(\d+) skipped \((\d+) quoted, (\d+) modal-hedged, (\d+) multi-clause\)')
-CLASS_IDX = {'quoted': 2, 'modal-hedged': 3, 'multi-clause': 4}
+    r'(\d+) skipped \((\d+) quoted, (\d+) directive, (\d+) modal-hedged, '
+    r'(\d+) multi-clause, (\d+) thai-boundary-ambiguous\)')
+CLASS_IDX = {'quoted': 2, 'modal-hedged': 4, 'multi-clause': 5}
 
 
 def load_fixtures():
