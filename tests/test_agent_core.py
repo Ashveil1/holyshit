@@ -50,9 +50,12 @@ HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
         "what did you forget | what did we talk about | note <text> | notes | "
         "clear notes | mode | mode strict | mode explore | hypotheses | "
         "hypotheses detail | forget hypothesis <thing> is a <kind> | "
-        "clear hypotheses | list | say <text> | help")
+        "clear hypotheses | read <text> | readings | readings about <thing> | "
+        "readings detail | forget reading <thing> is a <kind> | "
+        "clear readings | list | say <text> | help")
 WS = ' \t\n\r'
 STOP = {'the', 'and', 'for', 'are', 'with', 'that', 'this'}
+_READ_CAP = 100
 
 
 def normalize(s):
@@ -217,6 +220,11 @@ class Oracle:
         # later_uses, omitted] + retired [subj, domain, reason].
         self.hypotheses = []
         self.hyp_retired = []
+        # A16: read candidates [subj, pred, obj, pos[], neg[], status],
+        # session-only; read_src maps source id -> raw payload body.
+        self.readings = []
+        self.read_src = {}
+        self.read_n = 0
 
     # --- A10 usage counting, mirroring core.holy ---
     def _cooc_add(self, key, value):
@@ -278,6 +286,20 @@ class Oracle:
             return
         self.rels.append([s, p, o])
         self._rel_index(s, p, o)
+        # A16: user teaching is the ultimate verifier. Teaching that
+        # matches the recorded readings CONFIRMs them; teaching against
+        # any recorded support DISPUTES. Teaching never promotes
+        # anything into or out of the readings store.
+        rp, rpol = p, 'pos'
+        if len(p) > 4 and p[:4] == 'not-':
+            rp, rpol = p[4:], 'neg'
+        ri = self._read_find(s, rp, o)
+        if ri >= 0:
+            r = self.readings[ri]
+            if rpol == 'pos':
+                r[5] = 'disputed' if r[4] else 'confirmed'
+            else:
+                r[5] = 'disputed' if r[3] else 'confirmed'
         # A15: a taught domain verdict retires a matching hypothesis.
         if p in ('is-a', 'not-is-a'):
             d = o
@@ -361,6 +383,192 @@ class Oracle:
             out += '\nrecently retired:'
             for r in self.hyp_retired:
                 out += '\n- ' + r[0] + ' is a ' + r[1] + ' (' + r[2] + ')'
+        return out
+
+    # --- A16 reader, mirroring core.holy ---
+    def _read_find(self, s, p, o):
+        for i, r in enumerate(self.readings):
+            if r[0] == s and r[1] == p and r[2] == o:
+                return i
+        return -1
+
+    def _read_skip(self, sent):
+        # Multi-clause, quoted/attributed, and modal/hedged segments
+        # are skipped whole.
+        if ',' in sent or ';' in sent:
+            return True
+        if '"' in sent or "'" in sent:
+            return True
+        ls = ' ' + lower_ascii(sent) + ' '
+        for w in (' might ', ' may ', ' could ', ' should ', ' would ',
+                  ' must ', ' probably ', ' maybe ', ' perhaps '):
+            if w in ls:
+                return True
+        return False
+
+    def _read_extract(self, sent):
+        if self._read_skip(sent):
+            return None
+        ls = lower_ascii(sent)
+        for marker, pred, pol, pid in (
+                (' ไม่เป็น ', 'is-a', 'neg', 'thai-not-is-a'),
+                (' เป็น ', 'is-a', 'pos', 'thai-is-a'),
+                (' อยู่ ', 'is-in', 'pos', 'thai-is-in'),
+                (' คือ ', 'means', 'pos', 'thai-means')):
+            k = sent.find(marker)
+            if k > 0 and k + len(marker) < len(sent):
+                return [sent[:k], pred, sent[k + len(marker):], pol, pid]
+        # objects keep their leading article, matching taught relations
+        for marker, pred, pol, pid, off, extra in (
+                (' is not a ', 'is-a', 'neg', 'not-is-a', 8, 1),
+                (' is not an ', 'is-a', 'neg', 'not-is-a', 8, 1),
+                (' is in ', 'is-in', 'pos', 'is-in', 6, 1),
+                (' is a ', 'is-a', 'pos', 'is-a', 4, 0),
+                (' is an ', 'is-a', 'pos', 'is-a', 4, 0),
+                (' is ', 'is-a', 'pos', 'is-a-bare', 4, 0),
+                (' has ', 'has', 'pos', 'has', 5, 1)):
+            k = ls.find(marker)
+            if k > 0 and k + len(marker) + extra < len(ls):
+                return [ls[:k], pred, ls[k + off:], pol, pid]
+        for marker, pred, neg in VERBT:
+            k = ls.find(marker)
+            if k > 0 and k + len(marker) < len(ls):
+                return [ls[:k], pred, ls[k + len(marker):],
+                        'neg' if neg else 'pos', pred]
+        return None
+
+    def _read_obj_ok(self, ex):
+        return ' is ' not in ex[2]
+
+    def _read_ids(self, side):
+        out = ''
+        for se in side:
+            out = se[0] if not out else out + ', ' + se[0]
+        return out
+
+    def _read_text(self, rest):
+        src = ''
+        body = rest
+        k = rest.find(': ')
+        if 0 < k <= 20:
+            nm = rest[:k]
+            ok = all(('a' <= c <= 'z') or ('0' <= c <= '9') or
+                     c in '-_' for c in nm)
+            if ok:
+                src, body = nm, rest[k + 2:]
+        if not src:
+            self.read_n += 1
+            src = 'read-' + str(self.read_n)
+        self.read_src[src] = body
+        segs, cur = [], ''
+        i = 0
+        while i < len(body):
+            ch = body[i]
+            if ch in '.!?' and (i + 1 >= len(body) or body[i + 1] == ' '):
+                if cur:
+                    segs.append(cur)
+                cur = ''
+                if i + 1 < len(body):
+                    i += 1
+            else:
+                cur += ch
+            i += 1
+        if cur:
+            segs.append(cur)
+        matched = newc = upd = ref = dup = 0
+        for sent in segs:
+            ex = self._read_extract(sent)
+            if ex is not None and self._read_obj_ok(ex):
+                matched += 1
+                ri2 = self._read_find(ex[0], ex[1], ex[2])
+                if ri2 >= 0:
+                    r = self.readings[ri2]
+                    side = r[3] if ex[3] == 'pos' else r[4]
+                    if any(se[0] == src for se in side):
+                        dup += 1
+                    else:
+                        side.append([src, sent, ex[4]])
+                        upd += 1
+                elif len(self.readings) >= _READ_CAP:
+                    ref += 1
+                else:
+                    entry = [src, sent, ex[4]]
+                    if ex[3] == 'neg':
+                        self.readings.append(
+                            [ex[0], ex[1], ex[2], [], [entry], ''])
+                    else:
+                        self.readings.append(
+                            [ex[0], ex[1], ex[2], [entry], [], ''])
+                    newc += 1
+        return (src + ': ' + str(len(segs)) + ' segments in, ' +
+                str(matched) + ' pattern matches, ' + str(matched) +
+                ' candidates extracted (' + str(newc) + ' new, ' +
+                str(upd) + ' updated, ' + str(ref) + ' refused, ' +
+                str(dup) + ' repeat), ' + str(len(segs) - matched) +
+                ' unmatched segments')
+
+    def _readings_reply(self, about, detail):
+        rs = self.readings
+        if about != '':
+            rs = [r for r in rs if r[0] == about]
+        if not rs:
+            return 'no readings' if about == '' else \
+                'no readings about ' + about
+        out = str(len(rs)) + ' read candidate'
+        if len(rs) > 1:
+            out += 's'
+        if about != '':
+            out += ' about ' + about
+        out += ' (unverified readings, not facts):'
+        labels = 'abcdefghijklmnopqrstuvwxyz'
+        for i, r in enumerate(rs):
+            out += ('\n(' + labels[i] + ') ' if i < 26
+                    else '\n(' + str(i + 1) + ') ')
+            out += r[0] + ' | ' + r[1] + ' | ' + r[2] + ' - '
+            parts = ''
+            if r[3]:
+                parts = ('positive support: ' + str(len(r[3])) +
+                         ' source' + ('s' if len(r[3]) > 1 else '') +
+                         ' (' + self._read_ids(r[3]) + ')')
+            if r[4]:
+                if parts:
+                    parts += '; '
+                parts += ('negative support: ' + str(len(r[4])) +
+                          ' source' + ('s' if len(r[4]) > 1 else '') +
+                          ' (' + self._read_ids(r[4]) + ')')
+            out += parts
+            if r[5] == 'confirmed':
+                out += '; USER_CONFIRMED'
+            if r[5] == 'disputed':
+                out += '; USER_DISPUTED'
+            if r[3] and r[4]:
+                internal = any(se[0] == se2[0]
+                               for se in r[3] for se2 in r[4])
+                out += ('; SOURCE-INTERNAL CONFLICT' if internal
+                        else '; CONFLICT')
+            tier = ''
+            if len(r[3]) >= 2:
+                tier = 'MULTI_SOURCE positive'
+            if len(r[4]) >= 2:
+                tier = (tier + ', ' if tier else '') + \
+                    'MULTI_SOURCE negative'
+            if tier:
+                out += '; ' + tier
+            if r[5] == '' and not tier and not (r[3] and r[4]):
+                out += '; UNVERIFIED'
+            ids = []
+            for se in r[3] + r[4]:
+                if se[0] not in ids:
+                    ids.append(se[0])
+            if len(ids) >= 2:
+                out += '; independence UNVERIFIED'
+            if detail:
+                for se in r[3]:
+                    out += ('\n  ' + se[0] + ' (positive): "' + se[1] +
+                            '" [pattern ' + se[2] + ']')
+                for se in r[4]:
+                    out += ('\n  ' + se[0] + ' (negative): "' + se[1] +
+                            '" [pattern ' + se[2] + ']')
         return out
 
     def _drop_rels(self, key):
@@ -894,6 +1102,31 @@ class Oracle:
                         return 'forgotten: hypothesis ' + subj + sep + domain
                     return "no such hypothesis - 'hypotheses' lists the open ones"
             return 'forget hypothesis <thing> is a <kind>'
+        # A16 reader: ingest text as data (never executed), inspect
+        # and manage read candidates. 'forget reading' precedes the
+        # generic forget route.
+        if m == 'readings':
+            return self._readings_reply('', False)
+        if m == 'readings detail':
+            return self._readings_reply('', True)
+        if m[:15] == 'readings about ' and len(m) > 15:
+            return self._readings_reply(m[15:], False)
+        if m == 'clear readings':
+            self.readings = []
+            self.read_src = {}
+            return 'readings cleared'
+        if m[:15] == 'forget reading ' and len(m) > 15:
+            fr = self._read_extract(m[15:])
+            if fr is not None:
+                ri3 = self._read_find(fr[0], fr[1], fr[2])
+                if ri3 >= 0:
+                    r = self.readings.pop(ri3)
+                    return ('forgotten: reading ' + r[0] + ' | ' + r[1] +
+                            ' | ' + r[2])
+                return "no such reading - 'readings' lists them"
+            return 'forget reading <thing> is a <kind>'
+        if m[:5] == 'read ' and len(text) > 5:
+            return self._read_text(text[5:])
         if m[:5] == 'note ' and len(text) > 5:
             self.notes.append(text[5:])
             return 'noted'
@@ -1759,7 +1992,74 @@ A15_SCENARIOS = [
      ['hypotheses detail']),
 ]
 
-for _sc in A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS + A15_SCENARIOS:
+A16_SCENARIOS = [
+    # 1. Basic extraction, listing, detail provenance.
+    ['read a car is a machine. a car has an engine. a car needs fuel',
+     'readings', 'readings detail'],
+    # 2. Modal/hedged segments skip; the plain one extracts.
+    ['read the sky might be green. a frog may be a prince. water is wet. it could rain',
+     'readings'],
+    # 3. Negation polarity preserved on the record.
+    ['read a bat is not a bird', 'readings'],
+    # 4. Two sources, opposite polarity: CONFLICT, independence noted.
+    ['read manual: a bat is a bird.',
+     'read wiki: a bat is not a bird.', 'readings'],
+    # 5. Same source repeating a claim counts once.
+    ['read dup: a car is a machine.',
+     'read dup: a car is a machine.', 'readings about a car'],
+    # 6. MULTI_SOURCE readings never enter strict or explore
+    # inference; the queries behave as if the read never happened.
+    ['read s1: a zorg is a machine.', 'read s2: a zorg is a machine.',
+     'is a zorg a machine', 'mode explore', 'is a zorg a machine',
+     'can a zorg fly', 'what is a zorg', 'hypotheses', 'mode strict',
+     'readings about a zorg'],
+    # 7. Teaching matching positive marks USER_CONFIRMED; teaching
+    # the opposite marks USER_DISPUTED. Provenance is retained.
+    ['read a car is a machine.', 'remember a car is a machine',
+     'readings about a car',
+     'read wiki: a bat is not a bird.', 'remember a bat is a bird',
+     'readings about a bat', 'readings detail'],
+    # 8. Embedded commands in a payload are data, never executed:
+    # mode stays strict, readings survive.
+    ['read mode explore. clear readings. a cat is a pet',
+     'mode', 'readings'],
+    # 9. Cap 100: new distinct candidates refused and reported, no
+    # eviction; updates to existing records still accepted.
+    (['read ' + ' '.join('a item%03d is a machine.' % i
+                        for i in range(1, 102))] +
+     ['read second: a item001 is a machine.',
+      'read second: a item999 is a machine.',
+      'readings about a item001']),
+    # 10. Same source contradicting itself: SOURCE-INTERNAL CONFLICT,
+    # both readings persist.
+    ['read dup: a car is a machine. a car is not a machine.',
+     'readings about a car'],
+    # Thai extraction on the existing teach shapes, with honest
+    # segment/match counts - never "sentences understood".
+    ['read รถยนต์ เป็น ยานพาหนะ. แมว อยู่ บ้าน. นก ไม่เป็น สัตว์เลี้ยง',
+     'readings', 'readings detail'],
+    # Isolation regression: after reads, strict/explore queries,
+    # guards, recall, did-you-mean and hypothesis generation behave
+    # exactly as in the no-read session below (same battery).
+    ['read s1: a glorp is a machine. a glorp can fly.',
+     'is a glorp a machine', 'mode explore', 'can a glorp fly',
+     'is a glorp needed by a car', 'mode strict', 'what is a glorp',
+     'do you know glorp', 'what do you know', 'hypotheses'],
+    ['is a glorp a machine', 'mode explore', 'can a glorp fly',
+     'is a glorp needed by a car', 'mode strict', 'what is a glorp',
+     'do you know glorp', 'what do you know', 'hypotheses'],
+    # Management: forget reading, clear readings, empty listings,
+    # auto vs named sources.
+    ['readings', 'readings about a car',
+     'read a car is a machine. a bat is a bird',
+     'forget reading a car is a machine',
+     'forget reading a car is a machine',
+     'forget reading nonsense',
+     'clear readings', 'readings', 'readings detail'],
+]
+
+for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
+            A15_SCENARIOS + A16_SCENARIOS):
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))

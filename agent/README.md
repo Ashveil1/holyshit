@@ -4,8 +4,39 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.10)
+## What it is today (v0.11)
 
+- An evidence-ingestion reader (A16): `read <text>` ingests text as
+  DATA - never executed, never believed - and reports typed claims
+  with full provenance: normalized subject/predicate/object, polarity,
+  matched pattern id, the verbatim sentence, and the source id. This
+  is surface-pattern recognition plus evidence aggregation, NOT
+  general comprehension: it extracts only whole-segment claims in the
+  existing teach shapes (English is-a/is-in/has/verb forms and Thai
+  เป็น/ไม่เป็น/อยู่/คือ), and skips - with an honest count -
+  multi-clause, quoted, attributed and modal/hedged segments
+  (might/may/could/...). Positive and negative support are tracked
+  separately per claim (`positive_sources[]` / `negative_sources[]`,
+  never a majority vote); labels are UNVERIFIED, MULTI_SOURCE (with
+  `independence UNVERIFIED`), CONFLICT vs SOURCE-INTERNAL CONFLICT,
+  USER_CONFIRMED and USER_DISPUTED. Corroboration is metadata only:
+  readings never enter inference, guards, recall, did-you-mean or
+  hypothesis generation (a byte-identical query battery with and
+  without reads proves the isolation), and only explicit user
+  teaching enters asserted knowledge - teaching that matches the
+  recorded readings marks USER_CONFIRMED, teaching against them marks
+  USER_DISPUTED, provenance retained either way. The store is
+  session-only, hard-capped at 100 claims; new claims at capacity
+  are refused AND reported (N new / M updated / K refused / W
+  repeat), updates always allowed, no silent eviction. One source id
+  per read (auto `read-N` or an exact `name:` prefix); a source
+  repeating a claim counts once, a source contradicting itself is a
+  SOURCE-INTERNAL CONFLICT with both readings kept. Thai input is
+  split crudely and reported as `segments in / pattern matches /
+  candidates extracted / unmatched segments` - never 'sentences
+  understood'. `readings`, `readings about <thing>`, `readings
+  detail`, `forget reading <thing> is a <kind>` and `clear readings`
+  inspect and manage the candidates.
 - An ordered pattern-rule matcher: a fixed set of command patterns is
   checked in order and the first match wins.
 - Learning from usage, smallest honest version: for every content word
@@ -196,12 +227,14 @@ self-knowledge), `what do you know about <thing>`, `how is <thing>`,
 `anything else`, `what about it`, `<phrase> means <thing>`,
 `forget <thing>`, `forget it`, `what do you know`,
 `what did you forget`, `what did we talk about`, `note <text>`, `notes`, `clear notes`,
+`read <text>`, `readings`, `readings about <thing>`, `readings detail`,
+`forget reading <thing> is a <kind>`, `clear readings`,
 `list`, `say <text>`, `help`, plus fixed pleasantries (hello/hi/hey,
 how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุณ).
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (measured at A15, hypothesis learning)
+## Hosted resource benchmark (measured at A16, evidence-ingestion reader)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -219,20 +252,35 @@ differ). A15 adds the hypothesis recorder (explore mode only) plus
 one scored dialogue category (hypothesis 5/5; every earlier
 category keeps full marks at every scale on both backends).
 
-| backend | facts | miss | recall | inference | rule-derive | startup (A14.1) | peak RSS (A14.1) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| interp | 0 | 2.1 ms (2.2) | - | <0.01 ms | 3.8 ms (3.9) | 0.12 s (0.10) | 25.7 MiB (25.3) |
-| interp | 1,000 | 4.8 ms (4.8) | 0.9 ms (1.1) | 2.1 ms (1.9) | 3.9 ms (3.9) | 2.05 s (1.99) | 28.2 MiB (28.1) |
-| interp | 10,000 | see note | see note | see note | 9.2-18.6 ms (8.5-10.0) | 19.3 s (19.4) | 58.7 MiB (58.9) |
-| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 ms | 0.04 ms | <0.01 s | 33.8 MiB (32.1) |
-| ir-x64 | 1,000 | 0.03 ms (0.01) | <0.01 ms | <0.01 ms | 0.04 ms (0.01) | 0.07 s | 33.8 MiB (32.5) |
-| ir-x64 | 10,000 | 0.3 ms (<0.01) | 0.1 ms (<0.01) | 0.1 ms (<0.01) | <0.01 ms (0.09) | 0.95 s (0.93) | 210.2 MiB (209.8) |
+| backend | facts | miss | recall | inference | rule-derive | read-ingest | startup (A15) | peak RSS (A15) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| interp | 0 | 2.1 ms (2.1) | - | <0.01 ms | 3.9 ms (3.8) | 11.0 ms | 0.12 s (0.12) | 26.4 MiB (25.7) |
+| interp | 1,000 | 5.0 ms (4.8) | 1.4 ms (0.9) | 2.0 ms (2.1) | 3.9 ms (3.9) | 11.5 ms | 2.02 s (2.05) | 28.7 MiB (28.2) |
+| interp | 10,000 | see note | see note | see note | 0-0.9 ms (9.2-18.6) | 10.2-13.6 ms | 19.5 s (19.4) | 59.3 MiB (58.7) |
+| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 ms | 0.04 ms | 0.12 ms | <0.01 s | 37.1 MiB (33.8) |
+| ir-x64 | 1,000 | 0.04 ms (0.03) | <0.01 ms | <0.01 ms | 0.04 ms | 0.12 ms | 0.06 s (0.07) | 37.1 MiB (33.8) |
+| ir-x64 | 10,000 | 0.4 ms (0.3) | 0.1 ms (0.1) | 0.1 ms (0.1) | 0.2 ms (<0.01) | 0.04 ms | 0.89 s (0.95) | 210.6 MiB (210.2) |
+
+`read-ingest` re-reads the same 5-sentence text per command: 4
+claims extracted on the first pass, one more source appended to each
+record on every later pass. It is the only A16 hot path: segmentation
+plus whole-segment pattern matching, O(sources) dedup per claim.
 
 4 GiB probe (RLIMIT_AS on the child, 10k facts, dialogue session):
-both backends complete - interp at 58.7 MiB peak, native at 210.2
+both backends complete - interp at 59.3 MiB peak, native at 210.6
 MiB peak. Memory stays far inside a 4 GiB budget.
 
 Honest readings:
+- A16 adds one hot path (read-ingest, measured above) and exact-match
+  command routes checked after the mode/hypothesis routes; readings
+  never touch the fact, rule or hypothesis paths. Every non-read
+  latency difference vs A15 is box noise: interp inference at 10k
+  read 12.7 ms at A15 and 0-3.1 ms at A16 on nearly identical code;
+  interp recall read 5.2 ms then 0 ms at A15, 0 ms at A16; native
+  peak RSS reads +9.5% at 0/1k facts with no A16 allocation there
+  (native startup variance, documented since A14). The dialogue
+  transcript gained the reading category (9 new exchanges, all
+  passing); every pre-A16 category is unchanged.
 - A15 is performance-neutral by construction: hypotheses record
   only in explore mode (the bench's strict sessions never record),
   and the four new commands are exact-match routes checked after
