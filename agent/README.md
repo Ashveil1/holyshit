@@ -6,7 +6,7 @@ dependencies beyond the language itself. One EXPERIMENTAL exception:
 the repl shell can fetch web pages over plain HTTP (`read url`, A18
 preview below); the core itself stays network-free.
 
-## What it is today (v0.16)
+## What it is today (v0.17)
 
 - An evidence-ingestion reader (A16): `read <text>` ingests text as
   DATA - never executed, never believed - and reports typed claims
@@ -667,7 +667,7 @@ Still report-only. Nothing here changes a reply, pattern, threshold or tripwire.
 - **Separation.** The release-relevant core (`tier supported`) and future probes (`tier challenge`) are separate datasets. Thin-data labels (<30 resolved per category) apply as for the English suites. The verdict stays PENDING_OWNER_LABELING until every item is resolved.
 - **Open limit:** `json_str` differs for non-ASCII text between the interpreter and compiled backends (language gap). Thai suite hashes must be proven identical across routes before freezing; the tests use ASCII placeholders only.
 
-### v0.16 notes
+### v0.16 notes (kept; see v0.17 notes below)
 
 A22 Knowledge Integrity is complete: change-detection manifest (A22.0),
 predicate/type registry (A22.1), tripwires and quarantine (A22.2), reviewer
@@ -676,6 +676,10 @@ budgets (now mandatory), suspension and canaries (A22.3), leakage guard
 ever auto-promoted and the reader and core are unchanged since v0.15. The
 `owner`, `verified` and reviewer-id markers, family names and hashes (62-bit
 polynomial, no SHA-256/HMAC until C20) are unauthenticated conventions.
+
+### v0.17 notes
+
+A23 Self-Evaluation is complete except the Thai labels (A23.0-A23.3 above). It is report-only and open loop: no tuning, auto-disable or reply change, and a regression yields only a signal (REVIEW_REQUIRED / REVIEW_THIN_DATA) for an owner release decision. The reader and core are unchanged since v0.15; the banner, selfeval build id and test pins moved to v0.17. The Thai core suite is PENDING owner labeling: only the format, template and checker exist, no Thai item or label does. No calibration, Brier or ECE claim is made because the agent emits no probabilities. Baselines are owner-attested, not authenticated; hashes are 62-bit polynomial change detection until C20. Language gaps still standing: no SHA-256/HMAC, no clock, no remove builtin (`.tmp` files remain), native `return` inside `try` misses a json_load failure, and `json_str` differs for non-ASCII text across backends.
 
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 

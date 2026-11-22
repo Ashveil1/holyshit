@@ -33,7 +33,7 @@
 # are marked ineligible for baselines.
 import agent.core
 import agent.patgen
-BUILD = "v0.16"
+BUILD = "v0.17"
 HARNESS = "selfeval-1"
 CLASSIFIER = "c1"
 SCHEMA = 2
