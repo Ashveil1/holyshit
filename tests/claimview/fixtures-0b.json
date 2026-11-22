@@ -626,7 +626,7 @@
     "layer": "COMPLETE",
     "status": "SUPPORTED",
     "basis": "derived_only",
-    "level": 2
+    "level": 1
    },
    "note": ""
   },
@@ -10371,7 +10371,7 @@
     "layer": "COMPLETE",
     "status": "SUPPORTED",
     "basis": "derived_only",
-    "level": 20,
+    "level": 19,
     "provenance": "derived"
    },
    "note": "is-in is W-bounded only"
@@ -14270,7 +14270,415 @@
     "level": 1
    },
    "note": ""
+  },
+  {
+   "name": "is_in_direct_level0",
+   "edges": [
+    [
+     "a robin",
+     "is-in",
+     "a nest",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "a robin",
+    "is-in",
+    "a nest",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "SUPPORTED",
+    "basis": "support_only",
+    "level": 0,
+    "provenance": "stored"
+   },
+   "note": ""
+  },
+  {
+   "name": "is_in_negative_stored_not_opposition",
+   "edges": [
+    [
+     "a robin",
+     "not-is-in",
+     "a tree",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "a robin",
+    "is-in",
+    "a tree",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence"
+   },
+   "note": "negative is-in edge neither opposes nor extends"
+  },
+  {
+   "name": "neg_is_a_does_not_extend_traversal",
+   "edges": [
+    [
+     "s",
+     "not-is-a",
+     "m",
+     false
+    ],
+    [
+     "m",
+     "is-a",
+     "t",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "s",
+    "is-a",
+    "t",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence"
+   },
+   "note": ""
+  },
+  {
+   "name": "neg_is_a_stored_neg_asked",
+   "edges": [
+    [
+     "s",
+     "is-a",
+     "t",
+     true
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "s",
+    "is-a",
+    "t",
+    true
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "SUPPORTED",
+    "basis": "support_only",
+    "level": 1,
+    "provenance": "stored"
+   },
+   "note": ""
+  },
+  {
+   "name": "pos_is_a_stored_neg_asked_opposes",
+   "edges": [
+    [
+     "s",
+     "is-a",
+     "t",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "s",
+    "is-a",
+    "t",
+    true
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "CONTRADICTED",
+    "basis": "opposition_only",
+    "level": 1
+   },
+   "note": ""
+  },
+  {
+   "name": "depth9_frontier_incomplete",
+   "edges": [
+    [
+     "n0",
+     "is-a",
+     "n1",
+     false
+    ],
+    [
+     "n1",
+     "is-a",
+     "n2",
+     false
+    ],
+    [
+     "n2",
+     "is-a",
+     "n3",
+     false
+    ],
+    [
+     "n3",
+     "is-a",
+     "n4",
+     false
+    ],
+    [
+     "n4",
+     "is-a",
+     "n5",
+     false
+    ],
+    [
+     "n5",
+     "is-a",
+     "n6",
+     false
+    ],
+    [
+     "n6",
+     "is-a",
+     "n7",
+     false
+    ],
+    [
+     "n7",
+     "is-a",
+     "n8",
+     false
+    ],
+    [
+     "n8",
+     "is-a",
+     "n9",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "n0",
+    "has",
+    "x",
+    false
+   ],
+   "expect": {
+    "layer": "INCOMPLETE",
+    "reason": "depth_limit"
+   },
+   "note": "n8 -> n9 edge is inspected, n9 is frontier"
+  },
+  {
+   "name": "depth8_no_frontier_unknown",
+   "edges": [
+    [
+     "n0",
+     "is-a",
+     "n1",
+     false
+    ],
+    [
+     "n1",
+     "is-a",
+     "n2",
+     false
+    ],
+    [
+     "n2",
+     "is-a",
+     "n3",
+     false
+    ],
+    [
+     "n3",
+     "is-a",
+     "n4",
+     false
+    ],
+    [
+     "n4",
+     "is-a",
+     "n5",
+     false
+    ],
+    [
+     "n5",
+     "is-a",
+     "n6",
+     false
+    ],
+    [
+     "n6",
+     "is-a",
+     "n7",
+     false
+    ],
+    [
+     "n7",
+     "is-a",
+     "n8",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "n0",
+    "has",
+    "x",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence"
+   },
+   "note": "n8 has no is-a edge, closure exhausted"
+  },
+  {
+   "name": "key_and_alias_same_target",
+   "edges": [
+    [
+     "a robin",
+     "is-a",
+     "a bird",
+     false
+    ]
+   ],
+   "aliases": {
+    "a robin": [
+     "a robin"
+    ]
+   },
+   "query": [
+    "a robin",
+    "is-a",
+    "a bird",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "SUPPORTED",
+    "basis": "support_only",
+    "level": 1,
+    "provenance": "stored"
+   },
+   "note": ""
+  },
+  {
+   "name": "key_and_alias_different_targets",
+   "edges": [
+    [
+     "a robin",
+     "is-a",
+     "a bird",
+     false
+    ],
+    [
+     "a wren",
+     "is-a",
+     "a bird",
+     false
+    ]
+   ],
+   "aliases": {
+    "a robin": [
+     "a wren"
+    ]
+   },
+   "query": [
+    "a robin",
+    "is-a",
+    "a bird",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "AMBIGUOUS",
+    "basis": "ambiguous_subject"
+   },
+   "note": "exact key must not win silently"
+  },
+  {
+   "name": "none_subject_exact_reading_may_show",
+   "edges": [],
+   "aliases": {},
+   "query": [
+    "zzz",
+    "is-a",
+    "b",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence",
+    "readings": "exact_match_only"
+   },
+   "note": "only the exact s,p,o reading is eligible",
+   "readings": [
+    {
+     "s": "zzz",
+     "p": "is-a",
+     "o": "b",
+     "source": "src1"
+    },
+    {
+     "s": "zzz",
+     "p": "is-a",
+     "o": "c",
+     "source": "src2"
+    }
+   ]
+  },
+  {
+   "name": "ambiguous_subject_no_readings",
+   "edges": [
+    [
+     "a robin",
+     "is-a",
+     "a bird",
+     false
+    ],
+    [
+     "a wren",
+     "is-a",
+     "a bird",
+     false
+    ]
+   ],
+   "aliases": {
+    "a tweety": [
+     "a robin",
+     "a wren"
+    ]
+   },
+   "query": [
+    "a tweety",
+    "is-a",
+    "a bird",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "AMBIGUOUS",
+    "basis": "ambiguous_subject",
+    "readings": "none"
+   },
+   "note": "readings never shown or used for ambiguity",
+   "readings": [
+    {
+     "s": "a tweety",
+     "p": "is-a",
+     "o": "a bird",
+     "source": "src1"
+    }
+   ]
   }
  ],
- "revision": 2
+ "revision": 3
 }
