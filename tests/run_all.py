@@ -57,6 +57,7 @@ SUITES = [
     ("test_agent_reviewers.py", "A22.3 reviewer budgets, suspension and isolated canaries"),
     ("test_agent_leakage.py", "A22.4 leakage guard: cutoffs, pre-shadow exclusion, held-out, circular learning"),
     ("test_agent_selfeval.py", "A23.0 self-eval harness: deterministic report, ledger, isolation, contamination"),
+    ("test_agent_selfeval_baseline.py", "A23.2 baselines: frozen/rolling, comparability, regression reporting, ops snapshot"),
     ("test_agent_bench.py", "agent hosted resource benchmark quick gate and held-out dialogue check"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),

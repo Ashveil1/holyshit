@@ -645,6 +645,18 @@ Schema 2 (harness selfeval-1). A suite must now declare `tier` (`supported` or `
 - Contamination also catches a reordered copy of a derivation example (same words, any order). That is a cheap hint. Semantic paraphrases are still NOT detected, and `lineage` is an unauthenticated owner claim.
 - The report holds ids, counts and matrices only, never input text.
 
+### A23.2: baselines, comparison, operational snapshot
+
+Still report-only. Nothing here changes a reply, pattern, threshold or tripwire.
+
+- `selfeval freeze NOTE... owner` writes the immutable frozen release baseline from the current report (all suites frozen, no problems, same build). A second freeze is refused; replacing it means the owner moves the file away by hand (there is no remove builtin).
+- `selfeval accept NOTE... owner` appends to a hash-chained rolling baseline. It is refused until a frozen baseline exists and the ledger holds at least two distinct reports. Each entry records how it compared with the frozen baseline. It never edits the frozen file or earlier entries. Nothing is ever accepted automatically.
+- `selfeval compare` always shows the frozen comparison first, then the latest rolling entry, then an overall verdict. The rolling baseline cannot hide a frozen regression.
+- Verdicts: NOT_DIRECTLY_COMPARABLE when schema, harness, classifier, suite version/hash, categories or contamination state differ (a changed score is not read as a regression); REVIEW_REQUIRED for a drop on a dimension with a denominator of 30 or more; REVIEW_THIN_DATA for a drop on thinner data; IMPROVED_NOT_ACCEPTED; UNCHANGED. REVIEW_* is a signal for an owner release decision, not an action.
+- `selfeval baseline` shows what is stored. A baseline file or report that no longer matches its own hash is reported as CHANGED and not compared.
+- `selfeval ops` prints an aggregate, read-only snapshot of A22 tripwire data with its own id. It is not part of the report or its hash. It shows window false positives over window matches and window exposure share, and labels lifetime counters as totals, not rates. The tripwire does not record per-source concentration, so only per-pattern concentration is shown.
+- **Limits.** Baselines are owner-ATTESTED, not authenticated: the `owner` word is a convention and hashes are poly62 change detection (no SHA-256/HMAC until C20). Baseline files are deliberately NOT in the A22 manifest: that manifest gates runtime-affecting files, and these files affect no reply. Their own embedded hashes detect edits instead.
+
 ### v0.16 notes
 
 A22 Knowledge Integrity is complete: change-detection manifest (A22.0),

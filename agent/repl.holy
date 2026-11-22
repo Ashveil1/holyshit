@@ -60,6 +60,8 @@ def a22_status(st, cid):
   return out
 sepath = "agent-selfeval-report.json"
 seledger = "agent-selfeval-ledger.json"
+sefrozen = "agent-selfeval-baseline-frozen.json"
+serolling = "agent-selfeval-baseline-rolling.json"
 def contam_texts():
   out = []
   if exists(ppath):
@@ -95,13 +97,56 @@ def selfeval_cmd(line):
       return agent.selfeval.render(json_load(sepath))
     except:
       return "selfeval: report unreadable"
+  if (sub == "freeze" or sub == "accept") and len(parts) >= 4 and parts[len(parts) - 1] == "owner":
+    note = join(" ", parts[2:len(parts) - 1])
+    if not exists(sepath):
+      return "selfeval " + sub + " refused: no report yet (selfeval run SUITE.json ...)"
+    rep = null
+    ok = false
+    try:
+      rep = json_load(sepath)
+      ok = true
+    except:
+      ok = false
+    if not ok:
+      return "selfeval " + sub + " refused: report unreadable"
+    if sub == "freeze":
+      err = agent.selfeval.freeze_check(rep)
+      if err == "":
+        err = agent.selfeval.save_frozen(sefrozen, rep, note)
+      if err != "":
+        return "selfeval freeze refused: " + err
+      return "frozen release baseline written (" + agent.selfeval.ATTEST + "). It is immutable."
+    err = agent.selfeval.accept_rolling(serolling, agent.selfeval.load_rolling(serolling), agent.selfeval.load_ledger(seledger), agent.selfeval.load_frozen(sefrozen), rep, note)
+    if err != "":
+      return "selfeval " + err
+    return "rolling baseline entry appended (" + agent.selfeval.ATTEST + "). The frozen baseline is untouched."
+  if sub == "freeze" or sub == "accept":
+    return "selfeval " + sub + " refused: usage `selfeval " + sub + " NOTE... owner`; only the owner sets baselines, never automatic"
+  if sub == "baseline" and len(parts) == 2:
+    return agent.selfeval.baseline_status(agent.selfeval.load_frozen(sefrozen), agent.selfeval.load_rolling(serolling))
+  if sub == "compare" and len(parts) == 2:
+    if not exists(sepath):
+      return "selfeval: no report yet (selfeval run SUITE.json ...)"
+    cur = null
+    ok = false
+    try:
+      cur = json_load(sepath)
+      ok = agent.selfeval.report_ok(cur)
+    except:
+      ok = false
+    if not ok:
+      return "selfeval compare refused: current report unreadable or altered (rerun selfeval run)"
+    return agent.selfeval.render_compare(agent.selfeval.load_frozen(sefrozen), agent.selfeval.load_rolling(serolling), cur)
+  if sub == "ops" and len(parts) == 2:
+    return agent.selfeval.ops_snapshot(agent.tripwire.load(tpath))
   if sub == "ledger" and len(parts) == 2:
     led = agent.selfeval.load_ledger(seledger)
     out = "selfeval ledger (append-only run counter; the report itself carries no counter): " + str(len(led["runs"])) + " run(s)"
     for x in led["runs"]:
       out = out + "\n  run " + str(x["n"]) + " report " + x["report_hash"] + " suites " + join(",", x["suites"])
     return out
-  return "selfeval: run SUITE.json... | report | ledger"
+  return "selfeval: run SUITE.json... | report | ledger | baseline | compare | ops | freeze NOTE owner | accept NOTE owner"
 def learned_texts():
   out = []
   if exists(lpath):

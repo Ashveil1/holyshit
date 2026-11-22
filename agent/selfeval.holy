@@ -311,3 +311,284 @@ def append_ledger(path, led, rep):
     return "ledger tmp failed validation (final file untouched)"
   json_save(path, led)
   return ""
+# ---------------------------------------------------------------------
+# A23.2 baselines, comparison, operational snapshot. Still report-only:
+# nothing here changes a reply, a pattern or a threshold; every action
+# that writes a baseline is an explicit owner command. "owner" is an
+# unauthenticated convention and the hashes are poly62 change detection
+# (no SHA-256/HMAC until C20): baselines are owner-ATTESTED, not
+# authenticated.
+ATTEST = "owner-attested (unauthenticated convention; hashes are change detection only until C20)"
+def _without(d, k):
+  out = {}
+  for x in keys(d):
+    if x != k:
+      out[x] = d[x]
+  return out
+def report_ok(rep):
+  ok = false
+  try:
+    ok = rep["report_hash"] == agent.patgen._hash(json_str(_without(rep, "report_hash")))
+  except:
+    ok = false
+  return ok
+def binding_of(rep):
+  ss = []
+  for s in rep["suites"]:
+    append(ss, {"id": s["id"], "version": s["version"], "hash": s["hash"]})
+  return {"build": rep["build"], "harness": rep["harness"], "classifier": rep["classifier"], "schema": rep["schema"], "suites": ss}
+def _frozen_all(rep):
+  ok = len(rep["suites"]) > 0 and len(rep["problems"]) == 0
+  for s in rep["suites"] + rep["challenge"]:
+    if not s["frozen"]:
+      ok = false
+  return ok
+def new_entry(kind, rep, note):
+  e = {"version": 1, "kind": kind, "attested": ATTEST, "note": note, "binding": binding_of(rep), "report": rep}
+  return e
+def entry_hash(e):
+  return agent.patgen._hash(json_str(_without(e, "entry_hash")))
+def freeze_check(rep):
+  if not report_ok(rep):
+    return "report hash does not match its content (rerun selfeval run)"
+  if not _frozen_all(rep):
+    return "every suite must be frozen, valid and at least one supported suite is needed"
+  if rep["build"] != BUILD:
+    return "report was made by another build"
+  return ""
+def baseline_valid(e):
+  ok = false
+  try:
+    ok = e["version"] == 1 and e["entry_hash"] == entry_hash(e) and report_ok(e["report"])
+  except:
+    ok = false
+  return ok
+def load_frozen(path):
+  out = {"state": "absent"}
+  if exists(path):
+    out["state"] = "corrupt"
+    try:
+      d = json_load(path)
+      if baseline_valid(d) and d["kind"] == "frozen":
+        out = {"state": "ok", "entry": d}
+    except:
+      out["state"] = "corrupt"
+  return out
+def save_frozen(path, rep, note):
+  if exists(path):
+    return "a frozen baseline already exists and is immutable (a new baseline needs the owner to move the old file away by hand)"
+  e = new_entry("frozen", rep, note)
+  e["entry_hash"] = entry_hash(e)
+  tmp = path + ".tmp"
+  json_save(tmp, e)
+  if not baseline_valid(json_load(tmp)):
+    return "freeze failed validation (final file untouched)"
+  json_save(path, e)
+  return ""
+def _rvalid(r):
+  ok = true
+  try:
+    if r["version"] != 1:
+      ok = false
+    prev = "0"
+    i = 0
+    for e in r["entries"]:
+      i = i + 1
+      if e["n"] != i or e["prev"] != prev or e["entry_hash"] != entry_hash(e) or not report_ok(e["report"]):
+        ok = false
+      prev = e["entry_hash"]
+  except:
+    ok = false
+  return ok
+def load_rolling(path):
+  out = {"version": 1, "entries": []}
+  if exists(path):
+    try:
+      d = json_load(path)
+      if _rvalid(d):
+        out = d
+      else:
+        out["corrupt"] = true
+    except:
+      out["corrupt"] = true
+  return out
+def _distinct_reports(led):
+  seen = []
+  for r in led["runs"]:
+    if not (r["report_hash"] in seen):
+      append(seen, r["report_hash"])
+  return len(seen)
+# Append-only. Refused until a frozen baseline exists and the ledger
+# shows at least two distinct release reports. Records how the report
+# compared with the frozen baseline; it never edits earlier entries or
+# the frozen file.
+def accept_rolling(path, roll, led, fr, rep, note):
+  if has(roll, "corrupt"):
+    return "accept refused: rolling baseline unreadable (fix or remove it first)"
+  if fr["state"] != "ok":
+    return "accept refused: no valid frozen release baseline (selfeval freeze first)"
+  if not report_ok(rep) or not _frozen_all(rep):
+    return "accept refused: report invalid or has unfrozen suites"
+  if _distinct_reports(led) < 2:
+    return "accept refused: the rolling baseline needs at least two distinct release reports in the ledger"
+  cmp = compare(fr["entry"]["report"], rep)
+  prev = "0"
+  if len(roll["entries"]) > 0:
+    prev = roll["entries"][len(roll["entries"]) - 1]["entry_hash"]
+  e = new_entry("rolling", rep, note)
+  e["n"] = len(roll["entries"]) + 1
+  e["prev"] = prev
+  e["vs_frozen"] = cmp["verdict"]
+  e["entry_hash"] = entry_hash(e)
+  append(roll["entries"], e)
+  tmp = path + ".tmp"
+  json_save(tmp, roll)
+  if not _rvalid(json_load(tmp)):
+    return "accept failed validation (final file untouched)"
+  json_save(path, roll)
+  return ""
+def _sidx(rep):
+  out = {}
+  for s in rep["suites"]:
+    out[s["id"]] = s
+  return out
+def _nonempty(xs):
+  return len(xs) > 0
+def compare(base, cur):
+  lines = []
+  verdict = "UNCHANGED"
+  rank = {"UNCHANGED": 0, "IMPROVED_NOT_ACCEPTED": 1, "NOT_DIRECTLY_COMPARABLE": 2, "REVIEW_THIN_DATA": 3, "REVIEW_REQUIRED": 4}
+  rep_why = []
+  for f in ["schema", "harness", "classifier"]:
+    if base[f] != cur[f]:
+      append(rep_why, f + " differs (" + str(base[f]) + " vs " + str(cur[f]) + ")")
+  bi = _sidx(base)
+  ci = _sidx(cur)
+  for sid in keys(bi):
+    if not (sid in ci):
+      append(lines, "  " + sid + ": NOT_DIRECTLY_COMPARABLE (suite missing from the current run; not treated as a pass)")
+      if rank["NOT_DIRECTLY_COMPARABLE"] > rank[verdict]:
+        verdict = "NOT_DIRECTLY_COMPARABLE"
+  for sid in keys(ci):
+    c = ci[sid]
+    if not (sid in bi):
+      append(lines, "  " + sid + ": NOT_DIRECTLY_COMPARABLE (no baseline for this suite)")
+      if rank["NOT_DIRECTLY_COMPARABLE"] > rank[verdict]:
+        verdict = "NOT_DIRECTLY_COMPARABLE"
+    else:
+      b = bi[sid]
+      why = []
+      for w in rep_why:
+        append(why, w)
+      if b["version"] != c["version"]:
+        append(why, "suite version differs")
+      if b["hash"] != c["hash"]:
+        append(why, "suite hash differs")
+      if json_str(b["retired"]) != json_str(c["retired"]) or json_str(b["retired_reasons"]) != json_str(c["retired_reasons"]):
+        append(why, "contamination state differs")
+      if json_str(keys(b["categories"])) != json_str(keys(c["categories"])):
+        append(why, "categories differ")
+      if len(why) > 0:
+        append(lines, "  " + sid + ": NOT_DIRECTLY_COMPARABLE (" + join("; ", why) + "); score changes are not read as regressions")
+        if rank["NOT_DIRECTLY_COMPARABLE"] > rank[verdict]:
+          verdict = "NOT_DIRECTLY_COMPARABLE"
+      else:
+        sv = "UNCHANGED"
+        det = []
+        for cat in keys(c["categories"]):
+          for d in keys(c["categories"][cat]["dims"]):
+            x = c["categories"][cat]["dims"][d]
+            y = b["categories"][cat]["dims"][d]
+            if x["num"] < y["num"]:
+              t = "REVIEW_REQUIRED"
+              if x["den"] < 30:
+                t = "REVIEW_THIN_DATA"
+              append(det, "    " + cat + " / " + d + ": " + str(y["num"]) + "/" + str(y["den"]) + " -> " + str(x["num"]) + "/" + str(x["den"]) + " " + x["label"] + " " + t)
+              if rank[t] > rank[sv]:
+                sv = t
+            elif x["num"] > y["num"]:
+              append(det, "    " + cat + " / " + d + ": " + str(y["num"]) + "/" + str(y["den"]) + " -> " + str(x["num"]) + "/" + str(x["den"]) + " " + x["label"] + " improved (not auto-accepted)")
+              if rank["IMPROVED_NOT_ACCEPTED"] > rank[sv]:
+                sv = "IMPROVED_NOT_ACCEPTED"
+        newf = []
+        for i in c["failing"]:
+          if not (i in b["failing"]):
+            append(newf, i)
+        if len(newf) > 0:
+          append(det, "    newly failing items: " + join(", ", newf))
+        append(lines, "  " + sid + ": " + sv + " (same suite hash, metrics and contamination state)")
+        for l in det:
+          append(lines, l)
+        if rank[sv] > rank[verdict]:
+          verdict = sv
+  return {"verdict": verdict, "lines": lines}
+def render_compare(fr, roll, cur):
+  out = ["selfeval compare (report-only: nothing changes at runtime; owner decides; baselines are " + ATTEST + ")"]
+  out.append("-- vs FROZEN release baseline (authoritative; the rolling baseline cannot override it) --")
+  worst = "UNCHANGED"
+  rank = {"UNCHANGED": 0, "IMPROVED_NOT_ACCEPTED": 1, "NOT_DIRECTLY_COMPARABLE": 2, "REVIEW_THIN_DATA": 3, "REVIEW_REQUIRED": 4}
+  if fr["state"] == "ok":
+    c = compare(fr["entry"]["report"], cur)
+    out.append("  baseline " + fr["entry"]["entry_hash"] + " built by " + fr["entry"]["binding"]["build"] + ", current build " + cur["build"])
+    for l in c["lines"]:
+      out.append(l)
+    out.append("  frozen verdict: " + c["verdict"])
+    worst = c["verdict"]
+  elif fr["state"] == "corrupt":
+    out.append("  frozen baseline CHANGED OR UNREADABLE (change detected): not compared")
+    worst = "NOT_DIRECTLY_COMPARABLE"
+  else:
+    out.append("  no frozen baseline yet (selfeval freeze NOTE owner)")
+  if has(roll, "corrupt"):
+    out.append("-- rolling baseline CHANGED OR UNREADABLE (change detected): not compared --")
+  elif len(roll["entries"]) > 0:
+    e = roll["entries"][len(roll["entries"]) - 1]
+    c = compare(e["report"], cur)
+    out.append("-- vs latest owner-accepted ROLLING entry " + str(e["n"]) + " of " + str(len(roll["entries"])) + " (accepted when it stood at " + e["vs_frozen"] + " vs frozen) --")
+    for l in c["lines"]:
+      out.append(l)
+    out.append("  rolling verdict: " + c["verdict"])
+  out.append("overall: " + worst + " (the frozen result is never hidden by the rolling one; REVIEW_* means an owner release decision, nothing is disabled or tuned)")
+  return join("\n", out)
+def baseline_status(fr, roll):
+  out = ["selfeval baselines (" + ATTEST + ")"]
+  if fr["state"] == "ok":
+    b = fr["entry"]["binding"]
+    ids = []
+    for s in b["suites"]:
+      ids.append(s["id"] + " v" + str(s["version"]) + " " + s["hash"])
+    out.append("  frozen: " + fr["entry"]["entry_hash"] + " build " + b["build"] + " harness " + b["harness"] + " classifier " + b["classifier"] + " schema " + str(b["schema"]) + " suites " + join(", ", ids))
+  elif fr["state"] == "corrupt":
+    out.append("  frozen: CHANGED OR UNREADABLE (change detected)")
+  else:
+    out.append("  frozen: none")
+  if has(roll, "corrupt"):
+    out.append("  rolling: CHANGED OR UNREADABLE (change detected)")
+  else:
+    out.append("  rolling: " + str(len(roll["entries"])) + " owner-accepted entr(ies), append-only, hash-chained")
+  return join("\n", out)
+# Operational snapshot (A22 tripwire data), aggregate and read-only. It is
+# NOT part of any evaluation report or report_hash; it carries its own id.
+# Lifetime totals are shown as totals, never as rates; the rate is the
+# window rate only (confirmed false positives / distinct matches in window).
+def ops_snapshot(tw):
+  if tw["unreadable"]:
+    return "operational snapshot: tripwire file unreadable (nothing aggregated)"
+  rows = []
+  tot = 0
+  for pid in keys(tw["patterns"]):
+    tot = tot + len(tw["patterns"][pid]["window"])
+  for pid in keys(tw["patterns"]):
+    pr = tw["patterns"][pid]
+    fps = 0
+    for w in pr["window"]:
+      if w[1] == 1:
+        fps = fps + 1
+    rows.append(pid + " " + pr["state"] + " window FPs " + str(fps) + "/" + str(len(pr["window"])) + " matches; lifetime (a total, not a rate): matches " + str(pr["matches_lifetime"]) + ", FPs " + str(pr["fp_lifetime"]) + ", polarity errors " + str(pr["polarity_lifetime"]) + "; share of window exposure " + str(len(pr["window"])) + "/" + str(tot))
+  body = join("\n", rows)
+  out = ["operational snapshot " + agent.patgen._hash(body) + " (aggregate, read-only, separate from the evaluation report; ids and counts only; per-source concentration is not recorded by the tripwire)"]
+  if len(rows) == 0:
+    out.append("  no tracked patterns")
+  for r in rows:
+    out.append("  " + r)
+  return join("\n", out)
