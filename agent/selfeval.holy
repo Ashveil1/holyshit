@@ -1,0 +1,249 @@
+# agent/selfeval.holy - A23.0 EXPERIMENTAL self-evaluation harness
+# (repl-only). REPORT-ONLY and strictly open loop: it runs frozen,
+# content-hashed suites against the CURRENT build in disposable
+# in-memory state and writes a report. Nothing it produces changes a
+# reply, a fact, a pattern, a guard, a threshold, a tripwire or any
+# stored file other than its own report and ledger. Nothing reads the
+# report back to decide anything; only the owner does.
+#
+# Determinism: the REPORT depends only on build id, harness, classifier
+# version, schema and the suite contents (no clock, no run counter, no
+# randomness). The monotonic run counter lives in a separate append-only
+# LEDGER that stores the report hash, so two runs of the same inputs give
+# byte-identical reports and a longer ledger. Hashes are the 62-bit
+# polynomial hash: change detection only, never authenticated approval.
+#
+# Status dimensions are kept apart (never blended):
+#   epistemic     supported | unknown | contradicted | ambiguous | n/a
+#   verification  unverified | none
+#   action        answer | abstain | clarify | acknowledge | not_understood | other
+# They are read off the reply TEXT by classifier c1 (a documented,
+# versioned prefix/substring table), so they describe what the agent
+# said, not what it "believes". There are no probability outputs, so no
+# calibration score exists (Brier/ECE wait for real confidence outputs);
+# only counts and per-category confusion matrices are reported. A
+# denominator under 30 is TOO_FEW_TO_JUDGE (30 preliminary, 50 useful
+# diagnostic, 100 stronger but diversity-dependent). Never a blended score.
+# Scenarios: items sharing a scenario id run in order on ONE fresh state;
+# every scenario starts from a new empty state, which is discarded.
+# Items that would reach the network, files or the owner commands are
+# refused. An item whose input text equals a derivation example (exact
+# text only; paraphrase lineage is NOT detected) is retired from scoring
+# and listed. Suite changes need a new suite version; frozen=false suites
+# are marked ineligible for baselines.
+import agent.core
+import agent.patgen
+BUILD = "v0.16"
+HARNESS = "selfeval-0"
+CLASSIFIER = "c1"
+SCHEMA = 1
+DIMS = ["epistemic", "verification", "action", "contains"]
+def classify(reply):
+  r = agent.core.lower_ascii(reply)
+  ep = "n/a"
+  ac = "other"
+  if r[:4] == "yes:":
+    ep = "supported"
+    ac = "answer"
+  elif r[:15] == "not that i know" or r[:13] == "i do not know":
+    ep = "unknown"
+    ac = "abstain"
+  elif "contradict" in r or r[:6] == "i know" and " and not " in r:
+    ep = "contradicted"
+    ac = "answer"
+  elif r[:16] == "i do not underst":
+    ac = "not_understood"
+  elif r[:10] == "remembered" or r[:6] == "added:" or r[:3] == "ok," or r[:6] == "forgot":
+    ac = "acknowledge"
+  elif "did you mean" in r or "clarif" in r:
+    ep = "ambiguous"
+    ac = "clarify"
+  ve = "none"
+  if "unverified" in r:
+    ve = "unverified"
+  return {"epistemic": ep, "verification": ve, "action": ac}
+def _sort(xs):
+  out = []
+  for x in xs:
+    i = 0
+    while i < len(out) and out[i] < x:
+      i = i + 1
+    out = out[:i] + [x] + out[i:]
+  return out
+def label_of(den):
+  if den < 30:
+    return "TOO_FEW_TO_JUDGE"
+  if den < 50:
+    return "PRELIMINARY"
+  if den < 100:
+    return "USEFUL_DIAGNOSTIC"
+  return "STRONGER_DIVERSITY_DEPENDENT"
+def suite_check(s):
+  try:
+    if json_str(s["id"])[:1] != "\"" or len(s["id"]) == 0:
+      return "suite id missing"
+    if s["version"] < 1:
+      return "suite version must be >= 1"
+    if s["kind"] != "dialogue":
+      return "only kind dialogue exists in A23.0"
+    seen = []
+    for it in s["items"]:
+      if json_str(it["id"])[:1] != "\"" or json_str(it["category"])[:1] != "\"" or json_str(it["input"])[:1] != "\"":
+        return "item needs string id, category, input"
+      if it["id"] in seen:
+        return "duplicate item id " + it["id"]
+      append(seen, it["id"])
+  except:
+    return "malformed suite"
+  return ""
+def _norm(t):
+  return agent.patgen._collapse(t)
+def run_suite(s, contam):
+  scen = {}
+  order = []
+  for it in s["items"]:
+    sc = it["id"]
+    if has(it, "scenario"):
+      sc = it["scenario"]
+    if not (sc in scen):
+      scen[sc] = []
+      append(order, sc)
+    append(scen[sc], it)
+  cats = {}
+  failing = []
+  retired = []
+  refused = []
+  scored = 0
+  for sc in order:
+    state = agent.core.new_state()
+    for it in scen[sc]:
+      low = agent.core.lower_ascii(agent.core.normalize(it["input"]))
+      blocked = low[:5] == "read " or low[:9] == "patterns " or low[:9] == "selfeval " or low[:4] == "quit"
+      if blocked:
+        append(refused, it["id"])
+      else:
+        reply = agent.core.respond(state, it["input"])
+        isc = has(it, "expect") and not (has(it, "status") and it["status"] == "contaminated") and not (_norm(it["input"]) in contam)
+        if has(it, "expect") and not isc:
+          append(retired, it["id"])
+        if isc:
+          scored = scored + 1
+          obs = classify(reply)
+          ex = it["expect"]
+          cat = it["category"]
+          if not (cat in cats):
+            cats[cat] = {"items": 0, "dims": {}}
+          cats[cat]["items"] = cats[cat]["items"] + 1
+          bad = false
+          for d in DIMS:
+            if has(ex, d):
+              o = ""
+              if d == "contains":
+                o = "absent"
+                if agent.core.lower_ascii(ex[d]) in agent.core.lower_ascii(reply):
+                  o = "present"
+                e = "present"
+              else:
+                o = obs[d]
+                e = ex[d]
+              dm = cats[cat]["dims"]
+              if not (d in dm):
+                dm[d] = {"num": 0, "den": 0, "matrix": {}}
+              dm[d]["den"] = dm[d]["den"] + 1
+              if o == e:
+                dm[d]["num"] = dm[d]["num"] + 1
+              else:
+                bad = true
+              if not (e in dm[d]["matrix"]):
+                dm[d]["matrix"][e] = {}
+              if not (o in dm[d]["matrix"][e]):
+                dm[d]["matrix"][e][o] = 0
+              dm[d]["matrix"][e][o] = dm[d]["matrix"][e][o] + 1
+          if bad:
+            append(failing, it["id"])
+  outc = {}
+  for cat in _sort(keys(cats)):
+    c = cats[cat]
+    od = {}
+    for d in DIMS:
+      if d in c["dims"]:
+        x = c["dims"][d]
+        mx = {}
+        for e in _sort(keys(x["matrix"])):
+          row = {}
+          for o in _sort(keys(x["matrix"][e])):
+            row[o] = x["matrix"][e][o]
+          mx[e] = row
+        od[d] = {"num": x["num"], "den": x["den"], "label": label_of(x["den"]), "matrix": mx}
+    outc[cat] = {"items": c["items"], "dims": od}
+  return {"id": s["id"], "version": s["version"], "hash": agent.patgen._hash(json_str(s)), "frozen": has(s, "frozen") and s["frozen"] == true, "items": len(s["items"]), "scored": scored, "retired": retired, "refused": refused, "categories": outc, "failing": failing}
+def build_report(suites, contam):
+  rows = []
+  problems = []
+  for s in suites:
+    p = suite_check(s)
+    if p != "":
+      append(problems, p)
+    else:
+      append(rows, run_suite(s, contam))
+  rep = {"schema": SCHEMA, "harness": HARNESS, "classifier": CLASSIFIER, "build": BUILD, "blended_score": "none by design", "suites": rows, "problems": problems}
+  rep["report_hash"] = agent.patgen._hash(json_str(rep))
+  return rep
+def render(rep):
+  out = ["selfeval report " + rep["report_hash"] + " (build " + rep["build"] + ", harness " + rep["harness"] + ", classifier " + rep["classifier"] + "; report-only, no blended score, hashes are change detection only)"]
+  for p in rep["problems"]:
+    out.append("  suite refused: " + p)
+  for s in rep["suites"]:
+    fz = "frozen"
+    if not s["frozen"]:
+      fz = "UNFROZEN (not baseline-eligible)"
+    out.append("suite " + s["id"] + " v" + str(s["version"]) + " " + s["hash"] + " " + fz + ": " + str(s["scored"]) + " scored of " + str(s["items"]) + " items, " + str(len(s["retired"])) + " retired (contaminated), " + str(len(s["refused"])) + " refused")
+    for cat in keys(s["categories"]):
+      c = s["categories"][cat]
+      for d in keys(c["dims"]):
+        x = c["dims"][d]
+        out.append("  " + cat + " / " + d + ": " + str(x["num"]) + "/" + str(x["den"]) + " " + x["label"] + " matrix " + json_str(x["matrix"]))
+    if len(s["failing"]) > 0:
+      out.append("  failing items: " + join(", ", s["failing"]))
+    if len(s["retired"]) > 0:
+      out.append("  retired items: " + join(", ", s["retired"]))
+  return join("\n", out)
+def _lvalid(l):
+  ok = true
+  try:
+    if l["version"] != 1:
+      ok = false
+    i = 0
+    for r in l["runs"]:
+      i = i + 1
+      if r["n"] != i:
+        ok = false
+  except:
+    ok = false
+  return ok
+def load_ledger(path):
+  out = {"version": 1, "runs": []}
+  if exists(path):
+    try:
+      d = json_load(path)
+      if _lvalid(d):
+        out = d
+      else:
+        out["corrupt"] = true
+    except:
+      out["corrupt"] = true
+  return out
+# Append-only: the next n is len+1; an existing entry is never edited.
+def append_ledger(path, led, rep):
+  if has(led, "corrupt"):
+    return "ledger unreadable: not written (fix or remove it first)"
+  hs = []
+  for s in rep["suites"]:
+    append(hs, s["hash"])
+  append(led["runs"], {"n": len(led["runs"]) + 1, "report_hash": rep["report_hash"], "suites": hs})
+  tmp = path + ".tmp"
+  json_save(tmp, led)
+  if not _lvalid(json_load(tmp)):
+    return "ledger tmp failed validation (final file untouched)"
+  json_save(path, led)
+  return ""

@@ -1,0 +1,99 @@
+{
+ "id": "smoke-en",
+ "version": 1,
+ "kind": "dialogue",
+ "frozen": true,
+ "note": "harness smoke suite: English, author-labeled, NOT a release-relevant suite and not a Thai suite",
+ "items": [
+  {
+   "id": "a1",
+   "category": "setup",
+   "input": "remember a sparrow is a bird",
+   "scenario": "s1"
+  },
+  {
+   "id": "a2",
+   "category": "recall",
+   "input": "is a sparrow a bird",
+   "scenario": "s1",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "sparrow"
+   }
+  },
+  {
+   "id": "a3",
+   "category": "unknown",
+   "input": "is a rock a bird",
+   "scenario": "s1",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "a4",
+   "category": "unknown",
+   "input": "who is zed",
+   "scenario": "s1",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "a5",
+   "category": "contradiction",
+   "input": "remember a sparrow is not a bird",
+   "scenario": "s1"
+  },
+  {
+   "id": "a6",
+   "category": "contradiction",
+   "input": "what is a sparrow",
+   "scenario": "s1",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "b1",
+   "category": "isolation",
+   "input": "is a sparrow a bird",
+   "scenario": "s2",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "b2",
+   "category": "teach-ack",
+   "input": "remember a wren is a bird",
+   "scenario": "s2",
+   "expect": {
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "b3",
+   "category": "forget",
+   "input": "forget a wren",
+   "scenario": "s2",
+   "expect": {
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "b4",
+   "category": "nonsense",
+   "input": "blorp zibble",
+   "scenario": "s3",
+   "expect": {
+    "action": "not_understood"
+   }
+  }
+ ]
+}

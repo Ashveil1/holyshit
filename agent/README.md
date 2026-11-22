@@ -622,6 +622,20 @@ shadow cutoff changes no evidence input). Rules, all in the review packet's
 - Limits: source names are the owner-visible read labels (unauthenticated);
   "demonstrably held out" means declared before derivation, not proven.
 
+### A23.0: self-evaluation harness (report-only)
+
+`selfeval run FILE...`, `selfeval report`, `selfeval ledger` (repl only; `agent/selfeval.holy`).
+It runs frozen JSON suites against the reader and prints counts. It changes nothing.
+
+- **Open loop.** No tuning, no auto-disable, no change to knowledge, patterns or replies. Nothing reads the report back.
+- **Report vs ledger.** The report (`agent-selfeval-report.json`) is deterministic: build, suite hashes and config only, with a `report_hash`. It has no counter and no time. Running twice gives identical bytes. The ledger (`agent-selfeval-ledger.json`) is append-only, holds a run counter and each `report_hash`. A corrupt ledger is not overwritten; the report is still printed.
+- **Status dimensions** are kept apart: epistemic (supported / unknown / contradicted / ambiguous), verification, action. Classifier `c1` reads them off reply text prefixes. That is a heuristic and can drift if reply wording changes.
+- **Numbers.** Per category: matches over scored items, a confusion matrix per dimension, and a label: <30 TOO_FEW_TO_JUDGE, <50 PRELIMINARY, <100 USEFUL_DIAGNOSTIC, else STRONGER_DIVERSITY_DEPENDENT. No blended score. No confidence is output, so no calibration, Brier or ECE claims are made.
+- **Isolation.** Each scenario runs on a fresh in-memory state that is discarded. Items starting `read `, `patterns `, `selfeval ` or `quit` are refused. Tests check agent-memory.json and reader transcripts are unchanged.
+- **Contamination.** Items whose text equals a pattern-derivation example are retired and listed. Paraphrase and derived-fact lineage is NOT detected yet.
+- **Suite.** `tests/selfeval/smoke-en-v1.json` is a plumbing smoke suite. It is not release-relevant and not Thai.
+- **Not yet built.** Frozen release baseline, NOT_DIRECTLY_COMPARABLE / REVIEW_REQUIRED comparison, A22 window-rate view and manifest coverage of selfeval files (A23.2); Thai suite (A23.3, needs human Thai annotation by the owner). The A22 manifest is change detection, not authenticated approval.
+
 ### v0.16 notes
 
 A22 Knowledge Integrity is complete: change-detection manifest (A22.0),
