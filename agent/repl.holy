@@ -12,6 +12,7 @@ import agent.fetch
 import agent.patgen
 import agent.proposals
 import agent.shadow
+import agent.review
 path = "agent-memory.json"
 state = agent.store.load(path)
 # A18 EXPERIMENTAL: the fetch test harness is reachable only by
@@ -22,6 +23,8 @@ tfv = env("HS_AGENT_TEST_FETCH")
 state["test_fetch"] = tfv != null and tfv == "1"
 print "holyshit agent v0.14 - type 'help' for commands, 'quit' to leave"
 ppath = "agent-patterns.json"
+apath = "agent-attestations.json"
+dpath = "agent-delegation.json"
 def patterns_cmd(line):
   parts = split(agent.core.normalize(line), " ")
   sub = "list"
@@ -91,6 +94,35 @@ def patterns_cmd(line):
     msg = agent.proposals.disposition(st, parts[2], parts[3], parts[4], parts[5], why)
     agent.proposals.save(ppath, st)
     return msg
+  if sub == "lineage" and len(parts) == 7:
+    msg = agent.proposals.lineage(st, parts[2], parts[3], parts[4], parts[5], parts[6])
+    agent.proposals.save(ppath, st)
+    return msg
+  if sub == "delegate" and len(parts) == 3:
+    return agent.review.set_delegation(dpath, parts[2])
+  if sub == "attest" and (len(parts) == 4 or len(parts) == 5):
+    att = agent.review.load_att(apath)
+    rec = null
+    try:
+      rec = json_load(parts[3])
+    except:
+      return "attestation refused: cannot read " + parts[3]
+    msg = agent.review.attest(att, st, parts[2], rec, len(parts) == 5 and parts[4] == "owner")
+    agent.review.save_att(apath, att)
+    agent.proposals.save(ppath, st)
+    return msg
+  if sub == "approve" and len(parts) == 3:
+    msg = agent.review.approve(agent.review.load_att(apath), agent.review.load_del(dpath), st, parts[2])
+    agent.proposals.save(ppath, st)
+    return msg
+  if sub == "owner" and len(parts) == 4 and (parts[3] == "approve" or parts[3] == "reject"):
+    msg = agent.review.owner(agent.review.load_att(apath), agent.review.load_del(dpath), st, parts[2], parts[3])
+    agent.proposals.save(ppath, st)
+    return msg
+  if sub == "revoke" and len(parts) == 3:
+    msg = agent.review.revoke(st, parts[2])
+    agent.proposals.save(ppath, st)
+    return msg
   if (sub == "reject" or sub == "reopen") and len(parts) == 3:
     msg = ""
     if sub == "reject":
@@ -103,7 +135,7 @@ def patterns_cmd(line):
     msg = agent.proposals.retract(st, join(" ", parts[2:]))
     agent.proposals.save(ppath, st)
     return msg
-  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
+  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
 # A21.0 shadow hook: after every non-patterns command, newly ingested
 # read sources are shadow-tested against SHADOWED candidates. It only
 # reads the stored bodies and writes the proposals file; the reply

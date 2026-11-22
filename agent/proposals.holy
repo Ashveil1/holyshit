@@ -14,7 +14,7 @@
 import agent.patgen
 import agent.shadow
 def new_store():
-  return {"version": 1, "candidates": {}, "rejected": [], "sensitive": [], "sample_text": false, "origins": {}}
+  return {"version": 1, "candidates": {}, "rejected": [], "sensitive": [], "sample_text": false, "origins": {}, "lineage": []}
 def _valid(st):
   try:
     if st["version"] != 1:
@@ -26,7 +26,7 @@ def _valid(st):
         return false
       if c["id"] != cid or c["active"] != false:
         return false
-      if c["label"] != "CANDIDATE" and c["label"] != "STALE" and c["label"] != "SHADOWED":
+      if not (c["label"] in ["CANDIDATE", "STALE", "SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW", "APPROVED", "REVOKED"]):
         return false
       if c["active"] != false:
         return false
@@ -49,6 +49,8 @@ def load(path):
         st["sample_text"] = false
       if not has(st, "origins"):
         st["origins"] = {}
+      if not has(st, "lineage"):
+        st["lineage"] = []
       return st
   except:
     return new_store()
@@ -186,7 +188,32 @@ def _frac(p):
 # verified_independent count; dependent/unknown/unclassified sources
 # are excluded. Several sources declared with one origin id collapse to
 # that origin, so aliases cannot meet the origin bar.
+# Verified lineage edges with a same-origin relation (mirror,
+# syndication, repost, derivation) merge origins; aggregation and
+# shared-upstream edges stay visible but never merge. Only VERIFIED
+# edges count. Proposed/unknown/rejected edges change nothing; DISPUTED
+# edges touching a counted origin block approval.
+def _root(par, x):
+  while has(par, x) and par[x] != x:
+    x = par[x]
+  return x
+def _merge_map(st):
+  par = {}
+  for e in st["lineage"]:
+    if e["state"] == "verified" and e["relation"] in ["mirror", "syndication", "repost", "derivation"]:
+      for x in [e["a"], e["b"]]:
+        if not has(par, x):
+          par[x] = x
+      ra = _root(par, e["a"])
+      rb = _root(par, e["b"])
+      if ra != rb:
+        if ra < rb:
+          par[rb] = ra
+        else:
+          par[ra] = rb
+  return par
 def _origins(c, st):
+  par = _merge_map(st)
   by = {}
   total = 0
   nm = 0
@@ -195,7 +222,7 @@ def _origins(c, st):
     e = c["shadow"]["by_source"][src]
     o = ""
     if has(st["origins"], src) and st["origins"][src]["class"] == "verified_independent":
-      o = st["origins"][src]["origin"]
+      o = _root(par, st["origins"][src]["origin"])
     if o == "":
       unver = unver + e["m"]
       continue
@@ -205,6 +232,32 @@ def _origins(c, st):
     total = total + e["m"]
     nm = nm + e["n"]
   return {"by": by, "total": total, "nonmatch": nm, "unverified_matches": unver}
+def _disputed(c, st):
+  names = []
+  for src in keys(c["shadow"]["by_source"]):
+    if has(st["origins"], src):
+      append(names, st["origins"][src]["origin"])
+  n = 0
+  for e in st["lineage"]:
+    if e["state"] == "disputed" and (e["a"] in names or e["b"] in names):
+      n = n + 1
+  return n
+def lineage(st, a, b, rel, state, by):
+  if not (rel in ["mirror", "syndication", "repost", "derivation", "aggregation", "shared-upstream", "unknown"]):
+    return "relation must be mirror, syndication, repost, derivation, aggregation, shared-upstream or unknown"
+  if not (state in ["proposed", "verified", "disputed", "rejected", "unknown"]):
+    return "state must be proposed, verified, disputed, rejected or unknown"
+  if state == "verified" and not (by == "owner" or by[:11] == "documented:"):
+    return "refused: only the owner or documented reproducible provenance (documented:REF) can verify an edge; an agent may only propose"
+  out = []
+  for e in st["lineage"]:
+    if not (e["a"] == a and e["b"] == b and e["relation"] == rel):
+      append(out, e)
+  append(out, {"a": a, "b": b, "relation": rel, "state": state, "by": by})
+  st["lineage"] = out
+  for cid in keys(st["candidates"]):
+    append(st["candidates"][cid]["provenance"]["history"], "lineage graph changed (snapshot hash changes)")
+  return "lineage " + a + " -" + rel + "- " + b + " [" + state + " by " + by + "]; only verified same-origin edges change origin counts"
 def _open_events(c):
   out = []
   for x in c["shadow"]["disagreements"]:
@@ -219,8 +272,8 @@ def _blockers(c, cid, st):
   b = []
   sh = c["shadow"]
   cnt = sh["counters"]
-  if c["label"] != "SHADOWED":
-    append(b, "not SHADOWED (label " + c["label"] + ")")
+  if not (c["label"] in ["SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW", "APPROVED"]):
+    append(b, "not under review (label " + c["label"] + ")")
   if cid in st["rejected"]:
     append(b, "rejected")
   if c["approval_blocked"]:
@@ -245,6 +298,8 @@ def _blockers(c, cid, st):
     append(b, "one origin supplies " + str(top) + " of " + str(o["total"]) + " matches (max 60%)")
   if cnt["dedup_overflow"] > 0:
     append(b, str(cnt["dedup_overflow"]) + " events exceeded retention caps: history incomplete")
+  if _disputed(c, st) > 0:
+    append(b, str(_disputed(c, st)) + " disputed lineage edge(s) touch counted origins")
   op = _open_events(c)
   if len(op) > 0:
     append(b, str(len(op)) + " disagreement/overlap/competing event(s) without an accepted_as_expected disposition")
@@ -285,9 +340,7 @@ def disposition(st, cid, ev, disp, reviewer, why):
 # Freeze the review snapshot (everything approval would be bound to)
 # and print the packet. Re-running regenerates the snapshot; a changed
 # hash is recorded in history so an old approval could never carry over.
-def review(st, cid):
-  if not has(st["candidates"], cid):
-    return "unknown pattern id " + cid
+def snapshot(st, cid):
   c = st["candidates"][cid]
   agent.shadow.start(c)
   sh = c["shadow"]
@@ -302,8 +355,23 @@ def review(st, cid):
   smp = []
   for s in sh["samples"]:
     append(smp, [s["event"], s["class"], s["triple"]])
-  snap = {"descriptor": d, "tests": t, "examples": c["provenance"]["examples"], "holdout": c["provenance"]["holdout"], "counters": cnt, "by_source": sh["by_source"], "origins": ogs, "dispositions": c["dispositions"], "sample_events": smp, "hash_version": 2, "meta": {"label": c["label"], "blocked": c["approval_blocked"], "polarity": d["polarity"], "rejected": cid in st["rejected"]}}
-  h = agent.patgen._hash(json_str(snap))
+  snap = {"descriptor": d, "tests": t, "examples": c["provenance"]["examples"], "holdout": c["provenance"]["holdout"], "counters": cnt, "by_source": sh["by_source"], "origins": ogs, "lineage": st["lineage"], "dispositions": c["dispositions"], "sample_events": smp, "hash_version": 3, "meta": {"polarity": d["polarity"], "rejected": cid in st["rejected"], "blocked": c["approval_blocked"]}}
+  cov = {"tests_hash": agent.patgen._hash(json_str(t)), "origins_hash": agent.patgen._hash(json_str([ogs, st["lineage"]])), "corpus_hash": agent.patgen._hash(json_str([t, c["provenance"]["examples"], c["provenance"]["holdout"]])), "sample_events": [x[0] for x in smp], "disagreement_events": [x["event"] for x in sh["disagreements"]]}
+  return {"hash": agent.patgen._hash(json_str(snap)), "blockers": b, "coverage": cov}
+def review(st, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  sn = snapshot(st, cid)
+  h = sn["hash"]
+  b = sn["blockers"]
+  sh = c["shadow"]
+  cnt = sh["counters"]
+  d = c["descriptor"]
+  t = c["tests"]
+  if c["label"] == "APPROVED" and has(c, "approval") and c["approval"]["hash"] != h:
+    c["label"] = "REVIEW_PENDING"
+    append(c["provenance"]["history"], "approval invalidated: snapshot changed (old approval kept in history)")
   old = ""
   if has(c, "review"):
     old = c["review"]["hash"]
@@ -311,7 +379,8 @@ def review(st, cid):
   if old != h:
     append(c["provenance"]["history"], "review snapshot " + h[:8])
   out = "review " + cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", inactive]"
-  out = out + "\nsnapshot hash: " + h
+  out = out + "\nsnapshot hash: " + h + " (hash_version 3)"
+  out = out + "\ncoverage keys: tests_hash " + sn["coverage"]["tests_hash"] + " origins_hash " + sn["coverage"]["origins_hash"] + " corpus_hash " + sn["coverage"]["corpus_hash"]
   out = out + "\ntests: positive " + _frac(t["positive"]) + ", structural-neg " + _frac(t["structural_negative"]) + ", adversarial " + _frac(t["adversarial"]) + ", mutation(supplementary) " + _frac(t["mutation_supplementary"]) + ", annotated-neg " + _frac(t["annotated_negative"]) + ", holdout " + t["holdout"]
   out = out + "\nshadow lifetime: " + str(cnt["matches"]) + " matches (" + str(cnt["new"]) + " new coverage, " + str(cnt["agree"]) + " agree, " + str(cnt["disagree"]) + " disagree, " + str(cnt["skip-overlap"]) + " skip-overlap), " + str(cnt["competing"]) + " competing; " + str(cnt["sensitive_events"]) + " sensitive-source events excluded; " + str(cnt["dropped_samples"]) + " samples dropped"
   og = _origins(c, st)
