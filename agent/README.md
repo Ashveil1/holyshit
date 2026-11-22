@@ -973,6 +973,7 @@ Limits, stated plainly:
   (the test shows this limit on purpose).
 - `ri_bucket` assumes the caller ran `ri_check`; on a missing index it is not safe.
 - ri_remove and ri_drop_subject rebuild the tuple list (O(n)); see the bench.
+- Route coverage: tests/test_claim_view_0b_relindex_routes.py runs one 2066-line op script (random lifecycle, non-ASCII keys, fault injection, readers) on all 7 execution routes, byte-identical.
 - Parity so far is lifecycle only (tests/test_claim_view_0b_relindex.py, native
   and interp routes against the Oracle store model). Oracle parity on the 102
   fixtures needs the view and is not claimed. No quality claim.
