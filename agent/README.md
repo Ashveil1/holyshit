@@ -529,6 +529,40 @@ byte-identical with it absent, present or corrupt
 (`tests/test_agent_registry.py`). The file is covered by the A22.0
 manifest. Review-packet integration is not built yet.
 
+### A22.2: operational tripwires and the quarantine state machine (in progress)
+
+`agent-tripwire.json` (repl-only, `tripwire.holy`, covered by the manifest)
+only ever DISABLES learned patterns (loader code L14); it cannot approve,
+activate or promote anything, and the frozen eval (0 FP) is a separate gate.
+Thresholds are PROVISIONAL and unratified.
+
+- T1: `patterns polarity-error ID owner` (one confirmed polarity error)
+  disables at once: DISABLED_POLARITY.
+- T2: `patterns fp ID SUBJECT PREDICATE OBJECT owner` (underscores for
+  spaces) confirms an ordinary false positive. Two confirmed FPs inside the
+  rolling window of 200 DISTINCT eligible matches (keyed by a hash of the
+  triple; ambiguous multi-pattern matches are not eligible; sensitive
+  sources contribute only the hash) give QUARANTINED_PROVISIONAL. The
+  200-match window is not the 200-row log cap.
+- `patterns quarantine ID REVIEWER`: two distinct AI reviewers give a
+  TEMP_QUARANTINE. Reviewers cannot confirm an FP; `owner` quarantines
+  directly. Only the owner lifts (`patterns lift ID owner NOTE`), and a
+  lifted pattern stays off: it needs a fresh review, the policy gate and an
+  explicit approve + activate. Lifetime counters and history are never reset.
+- Every state is enforced at the next command, including the current
+  session (the loader runs after each tripwire command). A corrupt tripwire
+  file fails closed.
+- Forget/teach events (privacy_forget, correction, addition, supersession,
+  disagreement, preference_change) are classified by prefix heuristics and
+  counted, only while a learned pattern is active. Only an explicit
+  correction naming a subject of a session learned reading opens an OPEN
+  investigation, which is never an automatic confirmation.
+- `patterns review ID` now also prints a read-only A22 status block
+  (predicate signature, typecheck summary, tripwire state): display only,
+  not a gate. The `owner` and `verified` markers remain unauthenticated.
+- With no active learned pattern nothing is written and reader output is
+  unchanged.
+
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
@@ -742,6 +776,7 @@ research line and shares no code with it.
 - `patgen.holy`, `proposals.holy` — EXPERIMENTAL offline pattern
   candidates and their separate proposal store (repl-only).
 - `integrity.holy` — A22.0 change-detection manifest (repl-only).
+- `tripwire.holy` — A22.2 tripwires and quarantine states (repl-only).
 - `registry.holy` — A22.1 predicate/type registry (repl-only, audits only).
 - `shadow.holy`, `review.holy`, `learned.holy` — EXPERIMENTAL A21
   shadow observation, delegated review gate and fail-closed loader

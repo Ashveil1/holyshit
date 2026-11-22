@@ -16,6 +16,7 @@ import agent.review
 import agent.learned
 import agent.integrity
 import agent.registry
+import agent.tripwire
 path = "agent-memory.json"
 state = agent.store.load(path)
 # A18 EXPERIMENTAL: the fetch test harness is reachable only by
@@ -31,8 +32,29 @@ dpath = "agent-delegation.json"
 lpath = "agent-learned-log.json"
 mpath = "agent-manifest.json"
 rpath = "agent-registry.json"
-mfiles = [ppath, apath, dpath, lpath, rpath]
+tpath = "agent-tripwire.json"
+mfiles = [ppath, apath, dpath, lpath, rpath, tpath]
 integ = {"bad": false, "noted": false}
+def a22_status(st, cid):
+  out = "A22 read-only status (display only, not a gate):"
+  if not has(st["candidates"], cid):
+    return ""
+  pred = st["candidates"][cid]["descriptor"]["predicate"]
+  rg = agent.registry.load(rpath)
+  if has(rg["predicates"], pred):
+    sg = rg["predicates"][pred]
+    out = out + "\n  predicate " + pred + " signature (" + sg["subj"] + ", " + sg["obj"] + ") [declared by owner]"
+  else:
+    out = out + "\n  predicate " + pred + ": no signature declared (types unknown)"
+  tc = split(agent.registry.typecheck(rg, state["rels"]), "\n")
+  out = out + "\n  " + tc[0]
+  tw = agent.tripwire.load(tpath)
+  if has(tw["patterns"], cid):
+    p = tw["patterns"][cid]
+    out = out + "\n  tripwire " + p["state"] + ": FP lifetime " + str(p["fp_lifetime"]) + ", polarity errors " + str(p["polarity_lifetime"]) + ", " + str(p["matches_lifetime"]) + " distinct matches (provisional thresholds)"
+  else:
+    out = out + "\n  tripwire CLEAR: no recorded matches"
+  return out
 def patterns_cmd(line):
   parts = split(agent.core.normalize(line), " ")
   sub = "list"
@@ -78,6 +100,7 @@ def patterns_cmd(line):
       msg = agent.proposals.unshadow(st, parts[2])
     else:
       msg = agent.proposals.review(st, parts[2])
+      msg = msg + "\n" + a22_status(st, parts[2])
     agent.proposals.save(ppath, st)
     return msg
   if (sub == "sensitive" or sub == "unsensitive") and len(parts) == 3:
@@ -106,6 +129,33 @@ def patterns_cmd(line):
     msg = agent.proposals.lineage(st, parts[2], parts[3], parts[4], parts[5], parts[6])
     agent.proposals.save(ppath, st)
     return msg
+  if sub == "tripwire" and len(parts) == 2:
+    return agent.tripwire.listing(agent.tripwire.load(tpath))
+  if sub == "fp" or sub == "polarity-error" or sub == "quarantine" or sub == "lift":
+    tw = agent.tripwire.load(tpath)
+    msg = ""
+    if sub == "fp" and len(parts) == 7 and parts[6] == "owner":
+      msg = agent.tripwire.fp(tw, parts[2], agent.tripwire.key_of(join(" ", split(parts[3], "_")), parts[4], join(" ", split(parts[5], "_"))))
+    elif sub == "fp":
+      return "fp refused: usage `patterns fp ID SUBJECT PREDICATE OBJECT owner`; only the owner confirms a false positive (reviewers can only quarantine)"
+    elif sub == "polarity-error" and len(parts) == 4 and parts[3] == "owner":
+      msg = agent.tripwire.polarity(tw, parts[2])
+    elif sub == "polarity-error":
+      return "polarity-error refused: usage `patterns polarity-error ID owner`"
+    elif sub == "quarantine" and len(parts) == 4:
+      msg = agent.tripwire.quarantine(tw, parts[2], parts[3])
+    elif sub == "quarantine":
+      return "quarantine refused: usage `patterns quarantine ID owner|REVIEWER`"
+    elif len(parts) >= 5 and parts[3] == "owner":
+      msg = agent.tripwire.lift(tw, parts[2], join(" ", parts[4:]))
+    else:
+      return "lift refused: usage `patterns lift ID owner NOTE...`; only the owner lifts, and a note is required"
+    err = agent.tripwire.save(tpath, tw)
+    if not integ["bad"]:
+      agent.integrity.seal(mpath, mfiles)
+    for n in agent.learned.refresh(state, ppath, apath, dpath, mpath, mfiles, integ, tpath):
+      msg = msg + "\n" + n
+    return msg + ("\n" + err if err != "" else "")
   if sub == "predicate" and len(parts) == 5:
     rg = agent.registry.load(rpath)
     msg = agent.registry.declare(rg, parts[2], parts[3], parts[4])
@@ -142,7 +192,7 @@ def patterns_cmd(line):
     agent.proposals.save(ppath, st)
     return msg
   if sub == "activate" and len(parts) == 3:
-    msg = agent.learned.activate(st, agent.review.load_att(apath), agent.review.load_del(dpath), parts[2])
+    msg = agent.learned.activate(st, agent.review.load_att(apath), agent.review.load_del(dpath), parts[2], agent.tripwire.load(tpath))
     agent.proposals.save(ppath, st)
     return msg
   if sub == "learned" and len(parts) == 2:
@@ -163,7 +213,7 @@ def patterns_cmd(line):
     msg = agent.proposals.retract(st, join(" ", parts[2:]))
     agent.proposals.save(ppath, st)
     return msg
-  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | manifest accept | predicate P SUBJTYPE OBJTYPE | type ENTITY TYPE declared|inferred|verified | registry | typecheck | activate ID | learned | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
+  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | manifest accept | predicate P SUBJTYPE OBJTYPE | type ENTITY TYPE declared|inferred|verified | registry | typecheck | tripwire | fp ID S P O owner | polarity-error ID owner | quarantine ID owner|REVIEWER | lift ID owner NOTE | activate ID | learned | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
 # A21.0 shadow hook: after every non-patterns command, newly ingested
 # read sources are shadow-tested against SHADOWED candidates. It only
 # reads the stored bodies and writes the proposals file; the reply
@@ -214,13 +264,26 @@ while not done:
         integ["bad"] = len(agent.integrity.verify(mpath, mfiles)) > 0
       print patterns_cmd(line)
     else:
-      for note in agent.learned.refresh(state, ppath, apath, dpath, mpath, mfiles, integ):
+      for note in agent.learned.refresh(state, ppath, apath, dpath, mpath, mfiles, integ, tpath):
         print note
       print agent.core.respond(state, line)
     if not done and not (m[:9] == "patterns " or m == "patterns"):
       shadow_pass(state, seen)
       if "learned_readings" in state and len(state["learned_readings"]) > logged:
+        was = logged
         logged = agent.learned.log_new(state, agent.proposals.load(ppath), lpath, logged)
+        tw = agent.tripwire.load(tpath)
+        for e in state["learned_readings"][was:]:
+          if not e[7]:
+            agent.tripwire.observe(tw, e[4], agent.tripwire.key_of(e[0], e[1], e[2]))
+        agent.tripwire.save(tpath, tw)
+    if not done and not (m[:9] == "patterns " or m == "patterns") and "learned" in state and len(state["learned"]) > 0:
+      tw = agent.tripwire.load(tpath)
+      lr = []
+      if "learned_readings" in state:
+        lr = state["learned_readings"]
+      agent.tripwire.event(tw, line, lr)
+      agent.tripwire.save(tpath, tw)
     if not done and not integ["bad"] and (m[:9] == "patterns " or "learned" in state and len(state["learned"]) > 0):
       agent.integrity.seal(mpath, mfiles)
 if not integ["bad"]:

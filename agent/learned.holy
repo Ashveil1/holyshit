@@ -8,6 +8,8 @@
 #   L08 revoked/rejected (never loaded) L09 approval/snapshot stale
 #   L10 validation corpus or tests fail L12 delegation revoked/expired
 #   L13 approval predates the current hash algorithm
+#   L14 a tripwire state (A22.2) is not CLEAR, or the tripwire file is
+#       unreadable (fail closed); only the owner lifts it
 # (L01 file corrupt: the store loads empty, so nothing activates;
 #  L02 version: the store validator; L04 state not ACTIVE: not loaded.)
 # A failure disables the pattern (label REVIEW_PENDING, active false),
@@ -16,6 +18,7 @@ import agent.patgen
 import agent.proposals
 import agent.review
 import agent.integrity
+import agent.tripwire
 _REG = ["is-a", "has", "is-in", "means"]
 def _sorted(ids):
   out = []
@@ -25,11 +28,14 @@ def _sorted(ids):
       i = i + 1
     out = out[:i] + [x] + out[i:]
   return out
-def check(st, att, dele, cid):
+def check(st, att, dele, cid, tw):
   c = st["candidates"][cid]
   d = c["descriptor"]
   if cid in st["rejected"] or c["label"] == "REVOKED":
     return "L08 revoked or rejected"
+  tb = agent.tripwire.blocked(tw, cid)
+  if tb != "":
+    return tb
   if cid != "pc-" + agent.patgen._hash(d["canon"]) or d["canon"] != agent.patgen.canon_of(d["verb"], d["predicate"], d["polarity"]):
     return "L03 descriptor id/canon mismatch"
   if not (d["predicate"] in _REG):
@@ -68,13 +74,13 @@ def check(st, att, dele, cid):
   if len(g["codes"]) > 0:
     return "L09 approval no longer satisfied: " + join(" | ", g["codes"])
   return ""
-def activate(st, att, dele, cid):
+def activate(st, att, dele, cid, tw):
   if not has(st["candidates"], cid):
     return "unknown pattern id " + cid
   c = st["candidates"][cid]
   if c["label"] != "APPROVED":
     return "activate refused: state " + c["label"] + " (needs APPROVED)"
-  r = check(st, att, dele, cid)
+  r = check(st, att, dele, cid, tw)
   if r != "":
     return "activate refused: " + r
   c["label"] = "ACTIVE"
@@ -82,13 +88,14 @@ def activate(st, att, dele, cid):
   append(c["provenance"]["history"], "ACTIVE (opt-in experimental, positive only, revocable) on snapshot " + c["approval"]["hash"][:8])
   return "activated " + cid + " (EXPERIMENTAL, opt-in, revocable; readings are LEARNED_PATTERN, UNVERIFIED, never facts)"
 # Rebuild state["learned"] from validated ACTIVE patterns only.
-def refresh(state, ppath, apath, dpath, mpath, mfiles, integ):
+def refresh(state, ppath, apath, dpath, mpath, mfiles, integ, tpath):
   notes = []
   if not exists(ppath):
     return notes
   st = agent.proposals.load(ppath)
   att = agent.review.load_att(apath)
   dele = agent.review.load_del(dpath)
+  tw = agent.tripwire.load(tpath)
   out = []
   changed = false
   anyact = false
@@ -112,7 +119,7 @@ def refresh(state, ppath, apath, dpath, mpath, mfiles, integ):
   for cid in _sorted(keys(st["candidates"])):
     c = st["candidates"][cid]
     if c["label"] == "ACTIVE":
-      r = check(st, att, dele, cid)
+      r = check(st, att, dele, cid, tw)
       if r == "":
         append(out, [cid, c["descriptor"]["verb"], c["descriptor"]["predicate"], c["descriptor"]["polarity"]])
       else:
