@@ -28429,7 +28429,7 @@
    "note": "duplicates collapse to one line, never corroboration"
   },
   {
-   "name": "builtin_only_after_unique_resolution_via_alias",
+   "name": "alias_means_unique_resolution_taught",
    "edges": [
     [
      "a robin",
@@ -28455,9 +28455,370 @@
     "basis": "support_only",
     "level": 0
    },
-   "note": "built-in subject compares with the resolved key"
+   "note": "renamed in rev8: no built-in involved"
+  },
+  {
+   "name": "means_builtin_after_unique_resolution",
+   "edges": [
+    [
+     "is-a",
+     "means",
+     "something taught",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "is-a",
+    "means",
+    "the kind relation: x is a y says x is a kind of y",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "SUPPORTED",
+    "basis": "support_only",
+    "level": 0,
+    "provenance": "builtin"
+   },
+   "note": "B34: subject is a taught key, so built-ins are examined; matching definition is evidence. Expected result is DRAFT, needs independent review of the exact builtin text",
+   "builtin": true
+  },
+  {
+   "name": "pure_builtin_term_none",
+   "edges": [],
+   "aliases": {},
+   "query": [
+    "is-a",
+    "means",
+    "the kind relation: x is a y says x is a kind of y",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence"
+   },
+   "note": "B35 intentional",
+   "builtin": true
+  },
+  {
+   "name": "subject_key_empty_bucket_unique",
+   "edges": [],
+   "aliases": {},
+   "query": [
+    "a robin",
+    "is-a",
+    "a bird",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence"
+   },
+   "note": "B36: fact key with no tuples is UNIQUE, UNKNOWN",
+   "fact_keys": [
+    "a robin"
+   ]
+  },
+  {
+   "name": "object_only_endpoint_not_subject",
+   "edges": [
+    [
+     "a robin",
+     "is-a",
+     "a bird",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "a bird",
+    "has",
+    "wings",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence"
+   },
+   "note": "a bird is an object, not a subject key: NONE"
+  },
+  {
+   "name": "alias_target_outside_universe_ignored",
+   "edges": [
+    [
+     "a robin",
+     "is-a",
+     "a bird",
+     false
+    ]
+   ],
+   "aliases": {
+    "a ghost": [
+     "a nonexistent"
+    ]
+   },
+   "query": [
+    "a ghost",
+    "is-a",
+    "a bird",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "UNKNOWN",
+    "basis": "no_trusted_evidence"
+   },
+   "note": ""
+  },
+  {
+   "name": "boundary_matching_neg_is_a_requested_negative",
+   "edges": [
+    [
+     "n0",
+     "is-a",
+     "n1",
+     false
+    ],
+    [
+     "n1",
+     "is-a",
+     "n2",
+     false
+    ],
+    [
+     "n2",
+     "is-a",
+     "n3",
+     false
+    ],
+    [
+     "n3",
+     "is-a",
+     "n4",
+     false
+    ],
+    [
+     "n4",
+     "is-a",
+     "n5",
+     false
+    ],
+    [
+     "n5",
+     "is-a",
+     "n6",
+     false
+    ],
+    [
+     "n6",
+     "is-a",
+     "n7",
+     false
+    ],
+    [
+     "n7",
+     "is-a",
+     "n8",
+     false
+    ],
+    [
+     "n8",
+     "not-is-a",
+     "goal",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "n0",
+    "is-a",
+    "goal",
+    true
+   ],
+   "expect": {
+    "layer": "INCOMPLETE",
+    "reason": "depth_limit"
+   },
+   "note": "B31 with requested polarity negative"
+  },
+  {
+   "name": "depth7_is_a_level8_found",
+   "edges": [
+    [
+     "n0",
+     "is-a",
+     "n1",
+     false
+    ],
+    [
+     "n1",
+     "is-a",
+     "n2",
+     false
+    ],
+    [
+     "n2",
+     "is-a",
+     "n3",
+     false
+    ],
+    [
+     "n3",
+     "is-a",
+     "n4",
+     false
+    ],
+    [
+     "n4",
+     "is-a",
+     "n5",
+     false
+    ],
+    [
+     "n5",
+     "is-a",
+     "n6",
+     false
+    ],
+    [
+     "n6",
+     "is-a",
+     "n7",
+     false
+    ],
+    [
+     "n7",
+     "is-a",
+     "n8",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "n0",
+    "is-a",
+    "n8",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "SUPPORTED",
+    "basis": "derived_only",
+    "level": 8
+   },
+   "note": "B32: edge from depth-7 node is level 8"
+  },
+  {
+   "name": "has_on_depth8_node_level8",
+   "edges": [
+    [
+     "n0",
+     "is-a",
+     "n1",
+     false
+    ],
+    [
+     "n1",
+     "is-a",
+     "n2",
+     false
+    ],
+    [
+     "n2",
+     "is-a",
+     "n3",
+     false
+    ],
+    [
+     "n3",
+     "is-a",
+     "n4",
+     false
+    ],
+    [
+     "n4",
+     "is-a",
+     "n5",
+     false
+    ],
+    [
+     "n5",
+     "is-a",
+     "n6",
+     false
+    ],
+    [
+     "n6",
+     "is-a",
+     "n7",
+     false
+    ],
+    [
+     "n7",
+     "is-a",
+     "n8",
+     false
+    ],
+    [
+     "n8",
+     "has",
+     "x",
+     false
+    ]
+   ],
+   "aliases": {},
+   "query": [
+    "n0",
+    "has",
+    "x",
+    false
+   ],
+   "expect": {
+    "layer": "COMPLETE",
+    "status": "SUPPORTED",
+    "basis": "derived_only",
+    "level": 8
+   },
+   "note": ""
+  },
+  {
+   "name": "integrity_failure_aborts_valid_none",
+   "edges": [],
+   "aliases": {},
+   "query": [
+    "zzz",
+    "is-a",
+    "b",
+    false
+   ],
+   "expect": {
+    "abort": "implementation_error"
+   },
+   "note": "B37: abort, no layer, even though NONE",
+   "index_state": "stale"
+  },
+  {
+   "name": "unsupported_predicate_no_index_check",
+   "edges": [],
+   "aliases": {},
+   "query": [
+    "a",
+    "can",
+    "b",
+    false
+   ],
+   "expect": {
+    "layer": "OUT_OF_SCOPE",
+    "reason": "predicate_unsupported"
+   },
+   "note": "B37: shape validation first, no index check",
+   "index_state": "stale"
   }
  ],
- "revision": 7,
+ "revision": 8,
  "status": "DRAFT (not an authoritative acceptance suite until contract freeze)"
 }
