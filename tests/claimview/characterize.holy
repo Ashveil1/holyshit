@@ -1,0 +1,25 @@
+# A24.0b audit harness (test-only, NOT part of the agent): drives the REAL
+# core on scenario lines and records the raw engine results (_derive,
+# _chain, replies) so the claim-view mapping can be reviewed against them.
+# It only reads engine results; it changes no agent source.
+import agent.core
+def main():
+  sc = json_load("scenarios.json")
+  out = []
+  for s in sc:
+    st = agent.core.new_state()
+    for l in s["lines"]:
+      agent.core.respond(st, l)
+    res = []
+    for q in s["queries"]:
+      if q[0] == "derive":
+        append(res, {"q": q, "d": agent.core._derive(st, q[1], q[2], q[3])})
+      elif q[0] == "chain":
+        append(res, {"q": q, "d": agent.core._chain(st, q[1], q[2], q[3])})
+      elif q[0] == "inherit":
+        append(res, {"q": q, "d": agent.core._inherit(st, q[1], q[2], q[3])})
+      else:
+        append(res, {"q": q, "r": agent.core.respond(st, q[1])})
+    append(out, {"name": s["name"], "res": res, "hyp": len(st["hypotheses"]), "mode": st["mode"], "rels": len(st["rels"])})
+  json_save("out.json", out)
+main()

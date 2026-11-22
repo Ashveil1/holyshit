@@ -1,0 +1,689 @@
+[
+ {
+  "name": "direct_pos",
+  "lines": [
+   "remember a robin is a bird"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "a bird"
+   ],
+   [
+    "inherit",
+    "a robin",
+    "is-a",
+    "a bird"
+   ]
+  ]
+ },
+ {
+  "name": "direct_neg",
+  "lines": [
+   "remember a sparrow is not a bird"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a sparrow",
+    "is-a",
+    "a bird"
+   ]
+  ]
+ },
+ {
+  "name": "inherited_pos_is_a_chain",
+  "lines": [
+   "remember a robin is a bird",
+   "remember a bird is an animal"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "an animal"
+   ]
+  ]
+ },
+ {
+  "name": "inherited_has",
+  "lines": [
+   "remember a robin is a bird",
+   "remember a bird has wings"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "has",
+    "wings"
+   ]
+  ]
+ },
+ {
+  "name": "inherited_neg",
+  "lines": [
+   "remember a penguin is a bird",
+   "remember a bird cannot swim"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a penguin",
+    "can",
+    "swim"
+   ]
+  ]
+ },
+ {
+  "name": "nearest_wins_neg_masks_far_pos",
+  "lines": [
+   "remember a penguin is a bird",
+   "remember a bird can fly",
+   "remember a penguin cannot fly"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a penguin",
+    "can",
+    "fly"
+   ],
+   [
+    "inherit",
+    "a penguin",
+    "can",
+    "fly"
+   ]
+  ]
+ },
+ {
+  "name": "nearest_wins_pos_masks_far_neg",
+  "lines": [
+   "remember a bat is a mammal",
+   "remember a mammal cannot fly",
+   "remember a bat can fly"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a bat",
+    "can",
+    "fly"
+   ]
+  ]
+ },
+ {
+  "name": "both_same_level",
+  "lines": [
+   "remember a bat is a mammal",
+   "remember a bat is a flyer",
+   "remember a mammal cannot fly",
+   "remember a flyer can fly"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a bat",
+    "can",
+    "fly"
+   ]
+  ]
+ },
+ {
+  "name": "article_insensitive_subject",
+  "lines": [
+   "remember robin is a bird"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "a bird"
+   ],
+   [
+    "derive",
+    "robin",
+    "is-a",
+    "a bird"
+   ]
+  ]
+ },
+ {
+  "name": "article_insensitive_object",
+  "lines": [
+   "remember a robin is a bird"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "bird"
+   ]
+  ]
+ },
+ {
+  "name": "two_keys_merge_under_stripart",
+  "lines": [
+   "remember a robin is a bird",
+   "remember robin has wings"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "has",
+    "wings"
+   ]
+  ]
+ },
+ {
+  "name": "alias_subject_not_used_by_engine",
+  "lines": [
+   "remember a robin is a bird",
+   "a robbie means a robin"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robbie",
+    "is-a",
+    "a bird"
+   ]
+  ]
+ },
+ {
+  "name": "rule_strict_guard_unknown",
+  "lines": [
+   "remember a drone has a motor",
+   "remember a motor uses energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_strict_guard_ok",
+  "lines": [
+   "remember a drone is a machine",
+   "remember a drone has a motor",
+   "remember a motor uses energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_strict_guard_ok_via_subclass",
+  "lines": [
+   "remember a drone is a robot",
+   "remember a robot is a machine",
+   "remember a drone has a motor",
+   "remember a motor uses energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_guard_negative",
+  "lines": [
+   "remember a rock is not a machine",
+   "remember a rock has a motor",
+   "remember a motor uses energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a rock",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_guard_conflict",
+  "lines": [
+   "remember a gizmo is a machine",
+   "remember a gizmo is not a machine",
+   "remember a gizmo has a motor",
+   "remember a motor uses energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a gizmo",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_explore_assumption",
+  "lines": [
+   "mode explore",
+   "remember a drone has a motor",
+   "remember a motor uses energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ],
+  "note": "derive only; render (which records hypotheses) is not called"
+ },
+ {
+  "name": "rule_explore_assumption_render_side_effect",
+  "lines": [
+   "mode explore",
+   "remember a drone has a motor",
+   "remember a motor uses energy"
+  ],
+  "queries": [
+   [
+    "reply",
+    "does a drone use energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_explore_hides_verified_alternative",
+  "lines": [
+   "mode explore",
+   "remember a drone has a motor",
+   "remember a drone has a cell",
+   "remember a motor uses energy",
+   "remember a cell uses energy",
+   "remember a drone is a machine"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_both_taught_negative_vs_derived",
+  "lines": [
+   "remember a drone is a machine",
+   "remember a drone has a motor",
+   "remember a motor uses energy",
+   "remember a drone does not use energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_premise_negative_not_built_on",
+  "lines": [
+   "remember a drone is a machine",
+   "remember a drone has a motor",
+   "remember a motor does not use energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_nested_chain",
+  "lines": [
+   "remember a drone is a machine",
+   "remember a drone has a motor",
+   "remember a motor has a coil",
+   "remember a coil uses energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "rule_cycle",
+  "lines": [
+   "remember a drone is a machine",
+   "remember a drone has a motor",
+   "remember a motor has a drone"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "is_in_chain_positive_only",
+  "lines": [
+   "remember a robin is in a nest",
+   "remember a nest is in a tree"
+  ],
+  "queries": [
+   [
+    "chain",
+    "a robin",
+    "is-in",
+    "a tree"
+   ],
+   [
+    "chain",
+    "a robin",
+    "is-in",
+    "a cave"
+   ]
+  ]
+ },
+ {
+  "name": "is_in_no_negation",
+  "lines": [
+   "remember a robin is in a nest"
+  ],
+  "queries": [
+   [
+    "reply",
+    "is a robin in a tree"
+   ]
+  ]
+ },
+ {
+  "name": "means_direct_only",
+  "lines": [
+   "a robin means a small bird",
+   "a small bird means a bird"
+  ],
+  "queries": [
+   [
+    "reply",
+    "a robin means a bird?"
+   ],
+   [
+    "reply",
+    "what does a robin mean"
+   ]
+  ]
+ },
+ {
+  "name": "builtin_defs_are_not_taught",
+  "lines": [],
+  "queries": [
+   [
+    "reply",
+    "what does is-a mean"
+   ]
+  ]
+ },
+ {
+  "name": "facts_only_value_not_a_proposition",
+  "lines": [
+   "remember a robin is red"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "red"
+   ],
+   [
+    "reply",
+    "what is a robin"
+   ]
+  ]
+ },
+ {
+  "name": "isa_deep_chain_9",
+  "lines": [
+   "remember n0 is a n1",
+   "remember n1 is a n2",
+   "remember n2 is a n3",
+   "remember n3 is a n4",
+   "remember n4 is a n5",
+   "remember n5 is a n6",
+   "remember n6 is a n7",
+   "remember n7 is a n8",
+   "remember n8 is a n9",
+   "remember n9 is a n10"
+  ],
+  "queries": [
+   [
+    "derive",
+    "n0",
+    "is-a",
+    "n8"
+   ],
+   [
+    "derive",
+    "n0",
+    "is-a",
+    "n9"
+   ],
+   [
+    "derive",
+    "n0",
+    "is-a",
+    "n10"
+   ]
+  ]
+ },
+ {
+  "name": "hypotheses_never_feed_inference",
+  "lines": [
+   "mode explore",
+   "remember a drone has a motor",
+   "remember a motor uses energy",
+   "does a drone use energy",
+   "mode strict"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ],
+   [
+    "reply",
+    "hypotheses"
+   ]
+  ]
+ },
+ {
+  "name": "derive_has_no_rule_conclusion",
+  "lines": [
+   "remember a drone is a machine",
+   "remember a drone has a motor",
+   "remember a motor has a coil"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "has",
+    "coil"
+   ]
+  ]
+ },
+ {
+  "name": "explore_returns_assumption_proof_while_verified_alternative_exists",
+  "lines": [
+   "mode explore",
+   "remember a drone is a machine",
+   "remember a drone has a motor",
+   "remember a drone has a coil",
+   "remember a coil is a machine",
+   "remember a coil has a chip",
+   "remember a chip uses energy",
+   "remember a motor has a cell",
+   "remember a cell uses energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "strict_finds_the_verified_alternative",
+  "lines": [
+   "remember a drone is a machine",
+   "remember a drone has a motor",
+   "remember a drone has a coil",
+   "remember a coil is a machine",
+   "remember a coil has a chip",
+   "remember a chip uses energy",
+   "remember a motor has a cell",
+   "remember a cell uses energy"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a drone",
+    "uses",
+    "energy"
+   ]
+  ]
+ },
+ {
+  "name": "alias_creation_and_engine",
+  "lines": [
+   "remember a robin is a bird",
+   "a robbie means a robin"
+  ],
+  "queries": [
+   [
+    "reply",
+    "what is a robbie"
+   ],
+   [
+    "derive",
+    "a robbie",
+    "is-a",
+    "a bird"
+   ],
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "a bird"
+   ]
+  ]
+ },
+ {
+  "name": "bare_value_is_filed_as_kind",
+  "lines": [
+   "remember a robin is red"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "red"
+   ],
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "a red"
+   ]
+  ]
+ },
+ {
+  "name": "has_inherited_through_two_levels_and_neg_not_prefix",
+  "lines": [
+   "remember a robin is a bird",
+   "remember a bird is an animal",
+   "remember an animal has cells",
+   "remember a robin does not have cells"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "has",
+    "cells"
+   ]
+  ]
+ },
+ {
+  "name": "teach_correction_replaces_edges",
+  "lines": [
+   "remember a robin is a bird",
+   "no, a robin is a fish"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "a bird"
+   ],
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "a fish"
+   ]
+  ]
+ },
+ {
+  "name": "forget_removes_edges",
+  "lines": [
+   "remember a robin is a bird",
+   "forget a robin"
+  ],
+  "queries": [
+   [
+    "derive",
+    "a robin",
+    "is-a",
+    "a bird"
+   ]
+  ]
+ }
+]
