@@ -7016,7 +7016,7 @@
     "layer": "INCOMPLETE",
     "reason": "work_limit"
    },
-   "note": ""
+   "note": " | B54 precondition: 500 prior W-charged items, no earlier collision, no earlier qualifying D-stop; target is item 501, not examined or scanned"
   },
   {
    "name": "work_limit_hides_partial_support",
@@ -32069,7 +32069,7 @@
     "layer": "INCOMPLETE",
     "reason": "work_limit"
    },
-   "note": "B47 tuple: 'a zz', b001..b499, then 'zz' would be item 501 and is not examined",
+   "note": "B47 tuple: 'a zz', b001..b499, then 'zz' would be item 501 and is not examined | B54 precondition: 500 prior W-charged items, no earlier collision, no earlier qualifying D-stop; target is item 501, not examined or scanned",
    "diagnostic": true,
    "independent_review_required": true,
    "shuffle": true
@@ -34113,7 +34113,7 @@
     "layer": "INCOMPLETE",
     "reason": "work_limit"
    },
-   "note": "B47 alias: 500 records target 'a zebra'; the 'zebra' record would be 501 and is not examined",
+   "note": "B47 alias: 500 records target 'a zebra'; the 'zebra' record would be 501 and is not examined | B54 precondition: 500 prior W-charged items, no earlier collision, no earlier qualifying D-stop; target is item 501, not examined or scanned",
    "diagnostic": true,
    "independent_review_required": true,
    "alias_records": [
@@ -42126,7 +42126,7 @@
     "layer": "INCOMPLETE",
     "reason": "work_limit"
    },
-   "note": "B47 builtin: 497 taught tuples, 'has' built-in would be item 501, not examined. B49: exact order is-in, mean, is-a, has",
+   "note": "B47 builtin: 497 taught tuples, 'has' built-in would be item 501, not examined. B49: exact order is-in, mean, is-a, has | B54 precondition: 500 prior W-charged items, no earlier collision, no earlier qualifying D-stop; target is item 501, not examined or scanned",
    "diagnostic": true,
    "independent_review_required": true,
    "builtin": true,
@@ -48668,7 +48668,7 @@
     "layer": "INCOMPLETE",
     "reason": "work_limit"
    },
-   "note": "B51: qualifying item would be exam 501, not examined. B53: global W count, exactly 499 prior charged items before the qualifying item",
+   "note": "B51: qualifying item would be exam 501, not examined. B53: global W count, exactly 499 prior charged items before the qualifying item | B54 precondition: 500 prior W-charged items, no earlier collision, no earlier qualifying D-stop; target is item 501, not examined or scanned",
    "diagnostic": true,
    "independent_review_required": true
   },
@@ -54131,6 +54131,6 @@
    "assert_untouched_alias_records": 600
   }
  ],
- "revision": 13,
+ "revision": 14,
  "status": "DRAFT (not an authoritative acceptance suite until contract freeze)"
 }
