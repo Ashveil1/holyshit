@@ -1,0 +1,117 @@
+# agent/shadow.holy - A21.0 EXPERIMENTAL shadow observation (repl-only).
+#
+# Runs SHADOWED pattern candidates over text the reader has already
+# ingested and records where they WOULD fire. It reads the reader's
+# stored source bodies and writes only to the proposals file: it never
+# touches the agent state, the evidence store, a count, a report or an
+# answer, and it never overwrites the handwritten reader's skip
+# classification. A would-match shows where a pattern fires, not that
+# its meaning is correct.
+#
+# Per matched segment the event class is one of:
+#   new           the reader extracted nothing (candidate coverage)
+#   agree         the reader extracted the same triple + polarity
+#   disagree      the reader extracted something different
+#   skip-overlap  the reader skipped the segment (quoted/directive/modal)
+# Agreement is not proof. Disagreement and skip-overlap block approval.
+# Several shadowed patterns firing on one segment are recorded
+# separately, each with the competing pattern ids (no winner is chosen,
+# so file order never decides anything).
+import agent.core
+import agent.patgen
+def segments(body):
+  segs = []
+  cur = ""
+  i = 0
+  while i < len(body):
+    ch = body[i]
+    if (ch == "." or ch == "!" or ch == "?") and (i + 1 >= len(body) or body[i + 1] == " "):
+      if len(cur) > 0:
+        append(segs, cur)
+      cur = ""
+      if i + 1 < len(body):
+        i = i + 1
+    else:
+      cur = cur + ch
+    i = i + 1
+  if len(cur) > 0:
+    append(segs, cur)
+  return segs
+def _new_shadow():
+  return {"counters": {"matches": 0, "new": 0, "agree": 0, "disagree": 0, "skip-overlap": 0, "competing": 0, "sensitive_events": 0, "dropped_samples": 0, "dedup_overflow": 0}, "events": [], "sources": [], "domains": [], "samples": []}
+def start(c):
+  if not has(c, "shadow"):
+    c["shadow"] = _new_shadow()
+def _record(st, c, cid, src, dom, sent, cls, trip, pol, sens, others):
+  sh = c["shadow"]
+  cnt = sh["counters"]
+  if sens:
+    cnt["sensitive_events"] = cnt["sensitive_events"] + 1
+    return 0
+  ev = "ev-" + agent.patgen._hash(src + "|" + sent)
+  if ev in sh["events"]:
+    return 0
+  if len(sh["events"]) < 500:
+    append(sh["events"], ev)
+  else:
+    cnt["dedup_overflow"] = cnt["dedup_overflow"] + 1
+  cnt["matches"] = cnt["matches"] + 1
+  cnt[cls] = cnt[cls] + 1
+  if len(others) > 0:
+    cnt["competing"] = cnt["competing"] + 1
+  if not (src in sh["sources"]) and len(sh["sources"]) < 50:
+    append(sh["sources"], src)
+  if dom != "" and not (dom in sh["domains"]) and len(sh["domains"]) < 50:
+    append(sh["domains"], dom)
+  if len(sh["samples"]) < 20:
+    smp = {"event": ev, "src": src, "class": cls, "triple": trip, "polarity": pol, "competing": others}
+    if st["sample_text"]:
+      smp["text"] = sent
+    append(sh["samples"], smp)
+  else:
+    cnt["dropped_samples"] = cnt["dropped_samples"] + 1
+  return 1
+# Shadow one ingested source body against every SHADOWED, unrejected
+# candidate. Returns the number of recorded events.
+def process(state, st, src, body):
+  active = []
+  for cid in keys(st["candidates"]):
+    if st["candidates"][cid]["label"] == "SHADOWED" and not (cid in st["rejected"]):
+      append(active, cid)
+  if len(active) == 0:
+    return 0
+  sens = src in st["sensitive"]
+  dom = agent.core._src_domain(state, src)
+  n = 0
+  for sent in segments(body):
+    sk = agent.core._read_skip(sent)
+    ex = null
+    if sk == "":
+      ex = agent.core._read_extract(sent)
+      if ex != null and not agent.core._read_obj_ok(ex):
+        ex = null
+    hits = []
+    for cid in active:
+      d = st["candidates"][cid]["descriptor"]
+      r = agent.patgen.match_toks(split(d["verb"], " "), sent)
+      if r != null:
+        append(hits, [cid, r])
+    for h in hits:
+      cid = h[0]
+      c = st["candidates"][cid]
+      d = c["descriptor"]
+      others = []
+      for h2 in hits:
+        if h2[0] != cid:
+          append(others, h2[0])
+      cls = "new"
+      if sk != "":
+        cls = "skip-overlap"
+      elif ex != null:
+        same = agent.patgen._collapse(ex[0]) == h[1][0] and ex[1] == d["predicate"] and agent.patgen._collapse(ex[2]) == h[1][1] and ex[3] == d["polarity"]
+        if same:
+          cls = "agree"
+        else:
+          cls = "disagree"
+      n = n + _record(st, c, cid, src, dom, sent, cls, [h[1][0], d["predicate"], h[1][1]], d["polarity"], sens, others)
+  return n

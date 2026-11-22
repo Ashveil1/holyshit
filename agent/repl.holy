@@ -11,6 +11,7 @@ import agent.store
 import agent.fetch
 import agent.patgen
 import agent.proposals
+import agent.shadow
 path = "agent-memory.json"
 state = agent.store.load(path)
 # A18 EXPERIMENTAL: the fetch test harness is reachable only by
@@ -58,6 +59,24 @@ def patterns_cmd(line):
     if err != "":
       out = out + "\n" + err
     return out
+  if (sub == "shadow" or sub == "unshadow" or sub == "review") and len(parts) == 3:
+    msg = ""
+    if sub == "shadow":
+      msg = agent.proposals.shadow(st, parts[2])
+    elif sub == "unshadow":
+      msg = agent.proposals.unshadow(st, parts[2])
+    else:
+      msg = agent.proposals.review(st, parts[2])
+    agent.proposals.save(ppath, st)
+    return msg
+  if (sub == "sensitive" or sub == "unsensitive") and len(parts) == 3:
+    msg = agent.proposals.sensitive(st, parts[2], sub == "sensitive")
+    agent.proposals.save(ppath, st)
+    return msg
+  if sub == "samples" and len(parts) == 3 and (parts[2] == "on" or parts[2] == "off"):
+    msg = agent.proposals.samples(st, parts[2] == "on")
+    agent.proposals.save(ppath, st)
+    return msg
   if (sub == "reject" or sub == "reopen") and len(parts) == 3:
     msg = ""
     if sub == "reject":
@@ -70,7 +89,28 @@ def patterns_cmd(line):
     msg = agent.proposals.retract(st, join(" ", parts[2:]))
     agent.proposals.save(ppath, st)
     return msg
-  return "patterns: list | derive FILE | reject ID | reopen ID | retract TEXT"
+  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | reject ID | reopen ID | retract TEXT"
+# A21.0 shadow hook: after every non-patterns command, newly ingested
+# read sources are shadow-tested against SHADOWED candidates. It only
+# reads the stored bodies and writes the proposals file; the reply
+# already printed is never affected.
+seen = {}
+def shadow_pass(state, seen):
+  todo = []
+  for src in keys(state["read_src"]):
+    body = state["read_src"][src]
+    if not has(seen, src) or seen[src] != body:
+      append(todo, src)
+  if len(todo) == 0:
+    return 0
+  st = agent.proposals.load(ppath)
+  n = 0
+  for src in todo:
+    seen[src] = state["read_src"][src]
+    n = n + agent.shadow.process(state, st, src, state["read_src"][src])
+  if n > 0 or len(st["sensitive"]) > 0:
+    agent.proposals.save(ppath, st)
+  return n
 done = false
 while not done:
   line = ""
@@ -93,5 +133,7 @@ while not done:
       print patterns_cmd(line)
     else:
       print agent.core.respond(state, line)
+    if not done and not (m[:9] == "patterns " or m == "patterns"):
+      shadow_pass(state, seen)
 agent.store.save(state, path)
 print "bye"

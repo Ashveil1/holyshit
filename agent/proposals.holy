@@ -12,8 +12,9 @@
 # An unreadable or invalid file loads as an empty store - it never
 # crashes the chat and never feeds anything else.
 import agent.patgen
+import agent.shadow
 def new_store():
-  return {"version": 1, "candidates": {}, "rejected": []}
+  return {"version": 1, "candidates": {}, "rejected": [], "sensitive": [], "sample_text": false}
 def _valid(st):
   try:
     if st["version"] != 1:
@@ -25,7 +26,9 @@ def _valid(st):
         return false
       if c["id"] != cid or c["active"] != false:
         return false
-      if c["label"] != "CANDIDATE" and c["label"] != "STALE":
+      if c["label"] != "CANDIDATE" and c["label"] != "STALE" and c["label"] != "SHADOWED":
+        return false
+      if c["active"] != false:
         return false
     for r in st["rejected"]:
       if json_str(r)[:1] != "\"":
@@ -39,6 +42,11 @@ def load(path):
   try:
     st = json_load(path)
     if _valid(st):
+      # A21: optional keys default for files written by A20.
+      if not has(st, "sensitive"):
+        st["sensitive"] = []
+      if not has(st, "sample_text"):
+        st["sample_text"] = false
       return st
   except:
     return new_store()
@@ -126,4 +134,116 @@ def listing(st):
       line = line + "; REJECTED"
     line = line + "; history: " + join(", ", c["provenance"]["history"])
     out = out + "\n" + line
+  return out
+# --- A21.0 shadow + A21.1 review (no approval/activation route) ---
+def shadow(st, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  if cid in st["rejected"]:
+    return cid + " is rejected: reopen it first"
+  if c["label"] == "STALE":
+    return cid + " is STALE (an example was retracted): cannot shadow"
+  if c["approval_blocked"]:
+    return cid + " has approval-blocking test failures: cannot shadow"
+  if c["label"] == "SHADOWED":
+    return cid + " is already SHADOWED"
+  agent.shadow.start(c)
+  c["label"] = "SHADOWED"
+  append(c["provenance"]["history"], "shadowed")
+  return "shadowing " + cid + " (observation only; reader output is unchanged)"
+def unshadow(st, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  if c["label"] != "SHADOWED":
+    return cid + " is not SHADOWED"
+  c["label"] = "CANDIDATE"
+  append(c["provenance"]["history"], "unshadowed (lifetime counters kept)")
+  return "stopped shadowing " + cid + " (lifetime counters kept)"
+def sensitive(st, src, on):
+  out = []
+  for s in st["sensitive"]:
+    if s != src:
+      append(out, s)
+  if on:
+    append(out, src)
+  st["sensitive"] = out
+  if on:
+    return "source " + src + " marked sensitive: shadow keeps only aggregate counters for it and excludes it from approval volume"
+  return "source " + src + " no longer sensitive"
+def samples(st, on):
+  st["sample_text"] = on
+  if on:
+    return "shadow samples will retain exact sentences (bounded, never for sensitive sources)"
+  return "shadow samples keep source ids and triples only"
+def _frac(p):
+  return str(p[0]) + "/" + str(p[1])
+def _blockers(c, cid, st):
+  b = []
+  sh = c["shadow"]
+  cnt = sh["counters"]
+  if c["label"] != "SHADOWED":
+    append(b, "not SHADOWED (label " + c["label"] + ")")
+  if cid in st["rejected"]:
+    append(b, "rejected")
+  if c["approval_blocked"]:
+    append(b, "test failures block approval")
+  if c["descriptor"]["polarity"] != "pos":
+    append(b, "negative-polarity patterns cannot activate in A21")
+  if cnt["matches"] < 50:
+    append(b, "shadow volume " + str(cnt["matches"]) + "/50 matches")
+  if len(sh["sources"]) < 3:
+    append(b, "distinct sources " + str(len(sh["sources"])) + "/3")
+  if cnt["skip-overlap"] > 0:
+    append(b, str(cnt["skip-overlap"]) + " skip-class overlaps")
+  if cnt["disagree"] > 0:
+    append(b, str(cnt["disagree"]) + " reader disagreements unreviewed")
+  if cnt["competing"] > 0:
+    append(b, str(cnt["competing"]) + " competing-pattern events unreviewed")
+  return b
+# Freeze the review snapshot (everything approval would be bound to)
+# and print the packet. Re-running regenerates the snapshot; a changed
+# hash is recorded in history so an old approval could never carry over.
+def review(st, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  agent.shadow.start(c)
+  sh = c["shadow"]
+  cnt = sh["counters"]
+  d = c["descriptor"]
+  t = c["tests"]
+  b = _blockers(c, cid, st)
+  smp = []
+  for s in sh["samples"]:
+    append(smp, [s["event"], s["class"], s["triple"]])
+  snap = {"descriptor": d, "tests": t, "examples": c["provenance"]["examples"], "holdout": c["provenance"]["holdout"], "counters": cnt, "sources": sh["sources"], "sample_events": smp, "meta": {"label": c["label"], "blocked": c["approval_blocked"], "polarity": d["polarity"], "rejected": (cid in st["rejected"])}}
+  h = agent.patgen._hash(json_str(snap))
+  old = ""
+  if has(c, "review"):
+    old = c["review"]["hash"]
+  c["review"] = {"hash": h, "ready": len(b) == 0, "blockers": b}
+  if old != h:
+    append(c["provenance"]["history"], "review snapshot " + h[:8])
+  out = "review " + cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", inactive]"
+  out = out + "\nsnapshot hash: " + h
+  out = out + "\ntests: positive " + _frac(t["positive"]) + ", structural-neg " + _frac(t["structural_negative"]) + ", adversarial " + _frac(t["adversarial"]) + ", mutation(supplementary) " + _frac(t["mutation_supplementary"]) + ", annotated-neg " + _frac(t["annotated_negative"]) + ", holdout " + t["holdout"]
+  out = out + "\nshadow lifetime: " + str(cnt["matches"]) + " matches (" + str(cnt["new"]) + " new coverage, " + str(cnt["agree"]) + " agree, " + str(cnt["disagree"]) + " disagree, " + str(cnt["skip-overlap"]) + " skip-overlap), " + str(cnt["competing"]) + " competing; " + str(cnt["sensitive_events"]) + " sensitive-source events excluded; " + str(cnt["dropped_samples"]) + " samples dropped"
+  out = out + "\nsources: " + str(len(sh["sources"])) + " distinct (" + join(", ", sh["sources"]) + "), " + str(len(sh["domains"])) + " registrable domains; independence UNVERIFIED (domains reported, not gated)"
+  out = out + "\nretained samples: " + str(len(sh["samples"])) + " of " + str(cnt["matches"]) + " lifetime"
+  for s in sh["samples"]:
+    line = "  - [" + s["class"] + "] " + s["src"] + ": "
+    if has(s, "text"):
+      line = line + json_str(s["text"])
+    else:
+      line = line + "(text not retained)"
+    line = line + " => " + s["triple"][0] + " | " + s["triple"][1] + " | " + s["triple"][2]
+    if len(s["competing"]) > 0:
+      line = line + " (competing: " + join(", ", s["competing"]) + ")"
+    out = out + "\n" + line
+  if len(b) == 0:
+    out = out + "\nreadiness: READY FOR HUMAN REVIEW (A21 ships no approval or activation route)"
+  else:
+    out = out + "\nreadiness: NOT READY: " + join("; ", b)
   return out

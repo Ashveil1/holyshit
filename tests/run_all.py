@@ -48,6 +48,7 @@ SUITES = [
     ("test_agent_core.py", "pure-hs local agent core vs Python oracle across reference/IR/native routes"),
     ("test_agent_patgen.py", "A20 offline pattern-candidate generator vs Python oracle (interp + native)"),
     ("test_agent_proposals.py", "A20 proposal store, repl patterns commands, reader isolation"),
+    ("test_agent_shadow.py", "A21 shadow matching, review packets, reader isolation"),
     ("test_agent_bench.py", "agent hosted resource benchmark quick gate and held-out dialogue check"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),
