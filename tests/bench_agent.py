@@ -237,17 +237,21 @@ DIALOGUE += [
     ('read a bicycle is a vehicle. a bicycle has two wheels. the moon might be cheese',
      'read-1: 3 segments in, 2 pattern matches, 2 candidates extracted '
      '(2 new, 0 updated, 0 refused, 0 repeat), 1 skipped (0 quoted, '
-     '1 modal-hedged, 0 multi-clause), 0 unmatched',
+     '0 directive, 1 modal-hedged, 0 multi-clause, '
+     '0 thai-boundary-ambiguous), 0 unmatched',
      'reading'),
     ('read manual: a bicycle is a vehicle.',
      'manual: 1 segments in, 1 pattern matches, 1 candidates extracted '
      '(0 new, 1 updated, 0 refused, 0 repeat), 0 skipped (0 quoted, '
-     '0 modal-hedged, 0 multi-clause), 0 unmatched',
+     '0 directive, 0 modal-hedged, 0 multi-clause, '
+     '0 thai-boundary-ambiguous), 0 unmatched',
      'reading'),
     ('readings about a bicycle',
      '2 read candidates about a bicycle (unverified readings, not facts):\n'
      '(a) a bicycle | is-a | a vehicle - positive support: 2 sources '
-     '(read-1, manual); MULTI_SOURCE positive; independence UNVERIFIED\n'
+     '(read-1, manual); MULTI_SOURCE positive; positive evidence: 2 '
+     'agreeing sources, 0 registrable domains (2 without), 1 text '
+     'cluster (experimental); independence UNVERIFIED\n'
      '(b) a bicycle | has | two wheels - positive support: 1 source '
      '(read-1); UNVERIFIED',
      'reading'),
@@ -256,6 +260,8 @@ DIALOGUE += [
      '2 read candidates about a bicycle (unverified readings, not facts):\n'
      '(a) a bicycle | is-a | a vehicle - positive support: 2 sources '
      '(read-1, manual) [USER_CONFIRMED]; MULTI_SOURCE positive; '
+     'positive evidence: 2 agreeing sources, 0 registrable domains '
+     '(2 without), 1 text cluster (experimental); '
      'independence UNVERIFIED\n'
      '(b) a bicycle | has | two wheels - positive support: 1 source '
      '(read-1); UNVERIFIED',
@@ -263,14 +269,18 @@ DIALOGUE += [
     ('read forum: a bicycle is not a vehicle.',
      'forum: 1 segments in, 1 pattern matches, 1 candidates extracted '
      '(0 new, 1 updated, 0 refused, 0 repeat), 0 skipped (0 quoted, '
-     '0 modal-hedged, 0 multi-clause), 0 unmatched',
+     '0 directive, 0 modal-hedged, 0 multi-clause, '
+     '0 thai-boundary-ambiguous), 0 unmatched; evidence-review '
+     'CONFLICT on a bicycle | is-a | a vehicle - accepted knowledge '
+     'unchanged',
      'reading'),
     ('readings about a bicycle',
      '2 read candidates about a bicycle (unverified readings, not facts):\n'
      '(a) a bicycle | is-a | a vehicle - positive support: 2 sources '
      '(read-1, manual) [USER_CONFIRMED]; negative support: 1 source '
-     '(forum); CONFLICT; MULTI_SOURCE positive; '
-     'independence UNVERIFIED\n'
+     '(forum); CONFLICT; MULTI_SOURCE positive; positive evidence: 2 '
+     'agreeing sources, 0 registrable domains (2 without), 1 text '
+     'cluster (experimental); independence UNVERIFIED\n'
      '(b) a bicycle | has | two wheels - positive support: 1 source '
      '(read-1); UNVERIFIED',
      'reading'),
@@ -279,7 +289,8 @@ DIALOGUE += [
     ('read รถยนต์ เป็น ยานพาหนะ. นก ไม่เป็น สัตว์เลี้ยง',
      'read-2: 2 segments in, 2 pattern matches, 2 candidates extracted '
      '(2 new, 0 updated, 0 refused, 0 repeat), 0 skipped (0 quoted, '
-     '0 modal-hedged, 0 multi-clause), 0 unmatched',
+     '0 directive, 0 modal-hedged, 0 multi-clause, '
+     '0 thai-boundary-ambiguous), 0 unmatched',
      'reading'),
     ('readings about รถยนต์',
      '1 read candidate about รถยนต์ (unverified readings, not facts):\n'
@@ -573,6 +584,22 @@ def build_native(tmp):
             os.environ['HSPATH'] = env_old
 
 
+def build_native_full(tmp):
+    # Full native route via hs.py build. Since A18.1 the repl imports
+    # agent.fetch (tcp builtins), which the ir-x64 subset route rejects
+    # at build time; the full native route supports tcp and is what the
+    # shipped repl actually builds with.
+    image = tmp / 'repl-native'
+    env = dict(os.environ)
+    env['HSPATH'] = str(ROOT)
+    r = subprocess.run([sys.executable, str(ROOT / 'hs.py'), 'build',
+                        str(REPL), '-o', str(image)],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0 and image.exists(), (
+        'native (hs.py build) repl build failed: ' + r.stderr[-400:])
+    return [str(image)]
+
+
 def fmt_counts(c):
     return ' '.join('%s %d/%d' % (cat, c[cat][0], c[cat][1])
                     for cat in SCORED if c[cat][1])
@@ -627,7 +654,8 @@ def main():
     ap.add_argument('--scales', default='',
                     help='comma list overriding the scale set')
     ap.add_argument('--backends', default='',
-                    help='comma list from: interp, ir-x64 (default: per mode)')
+                    help='comma list from: interp, ir-x64, native '
+                    '(native = full route via hs.py build; default: per mode)')
     ap.add_argument('--out', default='',
                     help='write rows as JSON to this path instead of reporting')
     ap.add_argument('--report', default='',
@@ -635,6 +663,9 @@ def main():
     ap.add_argument('--sessions', default='',
                     help='comma subset of startup,recall,miss,infer,derive,'
                     'dialogue; for chunking long runs (rows merge field-wise)')
+    ap.add_argument('--n-cmds', type=int, default=0,
+                    help='override commands per session (0 = mode default); '
+                    'for chunking slow sessions, noted in the report')
     ap.add_argument('--no-probe', action='store_true',
                     help='skip the 4 GiB limit probe')
     args = ap.parse_args()
@@ -645,7 +676,7 @@ def main():
         return rows
     scales = ([int(x) for x in args.scales.split(',')] if args.scales
               else ([0, 1000, 10000] if full else [0, 50, 200]))
-    n_cmds = 200 if full else 30
+    n_cmds = args.n_cmds or (200 if full else 30)
     names = (args.backends.split(',') if args.backends
              else (['interp', 'ir-x64'] if full else ['interp']))
     only = (tuple(args.sessions.split(',')) if args.sessions
@@ -657,6 +688,8 @@ def main():
     for name in names:
         if name == 'interp':
             argv = [sys.executable, str(ROOT / 'interp.py'), str(REPL)]
+        elif name == 'native':
+            argv = build_native_full(workdir)
         else:
             argv = build_native(workdir)
         rows += bench_backend(name, argv, workdir, scales, n_cmds,

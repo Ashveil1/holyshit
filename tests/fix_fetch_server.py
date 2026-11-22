@@ -82,6 +82,13 @@ def handle(conn, path):
         # then close without sending the promised bytes
     elif path.startswith("/malformed"):
         conn.sendall(b"this is not an HTTP response at all")
+    elif path.startswith("/dup"):
+        # Copied page: the same sentence as /clean serves the
+        # duplicate-text clustering and two-domain evidence tests.
+        conn.sendall(page(b"<html><body><p>robots are machines.</p></body></html>"))
+    elif path.startswith("/thai-mixed"):
+        body = "<html><body><p>\u0e19\u0e01 \u0e40\u0e1b\u0e47\u0e19 \u0e2a\u0e31\u0e15\u0e27\u0e4c a hornbill is a bird.</p></body></html>".encode("utf-8")
+        conn.sendall(page(body))
     elif path.startswith("/thai"):
         thai = "<html><body><p>\u0e19\u0e01\u0e21\u0e35\u0e1b\u0e35\u0e01\u0020\u0e41\u0e25\u0e30\u0e1e\u0e27\u0e01\u0e21\u0e31\u0e19\u0e1a\u0e34\u0e19\u0e44\u0e14\u0e49</p><p>a hornbill is a bird.</p></body></html>".encode("utf-8")
         conn.sendall(page(thai))
@@ -108,34 +115,46 @@ def handle(conn, path):
 
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    # Bind both loopback addresses: as literal IPv4 hosts they are
+    # distinct registrable "domains" for the A19 evidence
+    # measurements, so /dup can arrive from two domains.
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind(("127.0.0.1", port))
     srv.listen(16)
+    srv2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv2.bind(("127.0.0.2", srv.getsockname()[1]))
+    srv2.listen(16)
     print("listening %d" % srv.getsockname()[1], flush=True)
-    while True:
-        conn, _ = srv.accept()
-        conn.settimeout(10)
-        def go(c=conn):
-            try:
-                req = b""
-                while b"\r\n\r\n" not in req and len(req) < 16384:
-                    b = c.recv(4096)
-                    if not b:
-                        break
-                    req += b
-                line = req.split(b"\r\n", 1)[0]
-                parts = line.split(b" ")
-                path = parts[1].decode("latin-1") if len(parts) > 1 else "/"
-                handle(c, path)
-            except OSError:
-                pass
-            finally:
+
+    def loop(s):
+        while True:
+            conn, _ = s.accept()
+            conn.settimeout(10)
+            def go(c=conn):
                 try:
-                    c.close()
+                    req = b""
+                    while b"\r\n\r\n" not in req and len(req) < 16384:
+                        b = c.recv(4096)
+                        if not b:
+                            break
+                        req += b
+                    line = req.split(b"\r\n", 1)[0]
+                    parts = line.split(b" ")
+                    path = parts[1].decode("latin-1") if len(parts) > 1 else "/"
+                    handle(c, path)
                 except OSError:
                     pass
-        threading.Thread(target=go, daemon=True).start()
+                finally:
+                    try:
+                        c.close()
+                    except OSError:
+                        pass
+            threading.Thread(target=go, daemon=True).start()
+
+    threading.Thread(target=loop, args=(srv2,), daemon=True).start()
+    loop(srv)
 
 
 if __name__ == "__main__":

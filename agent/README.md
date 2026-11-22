@@ -6,7 +6,7 @@ dependencies beyond the language itself. One EXPERIMENTAL exception:
 the repl shell can fetch web pages over plain HTTP (`read url`, A18
 preview below); the core itself stays network-free.
 
-## What it is today (v0.12)
+## What it is today (v0.13)
 
 - An evidence-ingestion reader (A16): `read <text>` ingests text as
   DATA - never executed, never believed - and reports typed claims
@@ -20,7 +20,22 @@ preview below); the core itself stays network-free.
   mutually exclusive class - quoted/attributed segments (quotes,
   'says'/'said'/'according to'), modal/hedged segments
   (might/may/could/...; the supported can/cannot forms still
-  extract), and multi-clause segments. A17 adds one guarded
+  extract), multi-clause segments, command-shaped segments (A19:
+  a fixed set of known command forms - the agent's own command
+  prefixes remember/no,/mode/clear/forget/read/note/say, the
+  standalone commands, and the web imperatives 'click here' /
+  'subscribe now' / 'download this file' - matched exactly or as
+  whole-segment prefixes; there is NO general imperative parser,
+  and a declarative merely containing those words away from the
+  start is not skipped), and Thai-Latin boundary segments (A19:
+  a mixed-script segment splits at a script transition ONLY when
+  BOTH resulting segments independently match complete supported
+  patterns - strictly atomic, first valid split wins, spans are
+  the side texts; otherwise the whole segment is skipped as
+  thai-boundary-ambiguous. It never splits on arbitrary Thai
+  spaces, and ครับ/ค่ะ/แล้ว/นะ/ไหม are never treated as
+  universal terminators). Skip precedence: quoted/attributed >
+  directive > modal-hedged > multi-clause. A17 adds one guarded
   conjunction: a segment is split at its FIRST exact ' and ' only
   when BOTH sides independently match a complete registered pattern
   (strictly atomic, never inside quotes, no recursion; spans are the
@@ -30,8 +45,9 @@ preview below); the core itself stays network-free.
   matching teach forms (`remember robots are machines`, `remember
   birds have wings`, `remember snakes do not have legs`), so every
   extracted triple has a supported confirmation path. The read reply
-  breaks the tail down as `S skipped (q quoted, h modal-hedged,
-  c multi-clause), U unmatched`. Extraction quality is measured on a
+  breaks the tail down as `S skipped (q quoted, d directive,
+  h modal-hedged, c multi-clause, t thai-boundary-ambiguous),
+  U unmatched`. Extraction quality is measured on a
   frozen fixture corpus (tests/reader_eval.txt, 55 English + 20 Thai
   cases with expected triples, polarity, pattern ids, spans and skip
   classes; tests/eval_reader.py): precision 1.000, recall 1.000,
@@ -56,7 +72,44 @@ preview below); the core itself stays network-free.
   repeat), updates always allowed, no silent eviction. One source id
   per read (auto `read-N` or an exact `name:` prefix); a source
   repeating a claim counts once, a source contradicting itself is a
-  SOURCE-INTERNAL CONFLICT with both readings kept. Thai input is
+  SOURCE-INTERNAL CONFLICT with both readings kept. A19 reports
+  evidence as SEPARATE measurements on every multi-source claim:
+  agreeing sources (claim agreement is structural - every entry on
+  a side supports the same triple; cross-polarity disagreement
+  stays the CONFLICT label), registrable-domain diversity (url
+  sources resolve through the registry; a literal IPv4 host is its
+  own domain; otherwise the last two host labels approximate the
+  registrable domain - no public-suffix list; typed sources have
+  no domain and never count as diversity), and duplicate-text
+  clustering over the support spans (normalized 5-word-shingle
+  Jaccard, cutoff 0.8 compared as integers; spans under 5 words
+  cluster by exact normalized text; EXPERIMENTAL /
+  calibration-needed - a duplicate-text signal only, never proof
+  of independent or common authorship). A claim whose side meets
+  ALL binding thresholds (3+ distinct source ids, 2+ registrable
+  domains, 3+ non-duplicate clusters - together the
+  no-known-common-origin check -, no polarity conflict, no user
+  alignment on that side, every entry pattern-extracted by
+  construction) is labelled REVIEW_ELIGIBLE - an evidence status,
+  explicitly NOT a fact, and never a promotion: nothing reads it
+  outside the evidence-inspection routes. (Calibration note: with
+  whole-segment spans, same-triple spans are near-identical in
+  practice, so the 3-cluster threshold currently keeps the label
+  effectively closed; that is deliberate until the A20
+  recalibration.) A later conflicting reading raises an
+  ingest-time evidence-review warning - CONFLICT across sources,
+  SCOPE_MISMATCH inside one source - that never alters or demotes
+  accepted knowledge. Trust labels stay distinct: taught facts
+  are USER_ASSERTED, query-time rule conclusions are DERIVED
+  (shown with their premises), read candidates are
+  READING_UNVERIFIED, and USER_CONFIRMED / USER_DISPUTED are the
+  user-acceptance alignments on a candidate (the
+  USER_ACCEPTED_SOURCE notion: acceptance of a source's claim
+  happens only through explicit teaching). Each candidate also
+  carries a bounded (20) approval/revocation history: confirmed
+  and disputed are recorded at teach time, and forgetting or
+  correcting the taught edge behind an alignment revokes it -
+  recorded, never silently kept. Thai input is
   split crudely and reported as `segments in / pattern matches /
   candidates extracted / skipped / unmatched` - never 'sentences
   understood'. `readings`, `readings about <thing>`, `readings
@@ -287,9 +340,10 @@ This is an explicitly labelled EXPERIMENTAL preview, not a release:
   says so.
 - **Honest html-to-text:** script/style/title blocks are dropped,
   tags removed, six common entities decoded, whitespace collapsed.
-  Command-like page text ("clear readings", "quit") is ingested as
-  inert data - extracted as ordinary UNVERIFIED candidates at worst,
-  never executed (pinned by tests). Fake confirmation text
+  Command-like page text ("clear readings", "quit", "click
+  here") matches the A19 directive skip class: skipped whole as
+  inert data, never executed and no longer extracted at all
+  (pinned by tests). Fake confirmation text
   ("USER_CONFIRMED", "TRUSTED", "VERIFIED") on a page is likewise
   just text: it never changes a candidate's UNVERIFIED label.
 - **Source identity, not corroboration:** each normalized URL is one
@@ -303,16 +357,20 @@ This is an explicitly labelled EXPERIMENTAL preview, not a release:
   policy, parse) adds zero candidates and no registry entry.
 - **Thai and UTF-8:** pages are decoded with a pure-hs UTF-8 decoder
   (`agent/utf8.holy`: ASCII, Latin-1, Thai U+0E00-0E7F; everything
-  else becomes U+FFFD). Known limitation: Thai sentences have no ASCII
-  terminator, so a Thai sentence can glue to a following English one
-  in a single extracted segment.
+  else becomes U+FFFD). A Thai sentence glued to a following
+  English one in a single segment hits the A19 boundary
+  candidate: it splits only when both sides independently match
+  complete patterns, otherwise the whole segment is skipped as
+  thai-boundary-ambiguous - the old glued-extraction limitation
+  is gone, at the price of skipping such segments unless both
+  sides validate.
 - The core (`agent/core.holy`) contains no network code at all - the
   IR-subset compiler routes reject tcp builtins at build time - so the
   corpus routes keep a deterministic validation-only `read url`
   reply; the fetch lives in `agent/fetch.holy`, imported only by the
   repl.
 
-## Hosted resource benchmark (measured at A16, evidence-ingestion reader)
+## Hosted resource benchmark (re-measured at A19, v0.13)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -325,7 +383,35 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A15; A14.1 numbers in parentheses where they
+Current numbers (A19; the A15/A16 table below is kept for history).
+The A19 reader adds skip classes, separate source measurements,
+REVIEW_ELIGIBLE and approval history; per-command core costs are
+unchanged within noise, the dialogue keeps full marks in every
+category on both backends at every scale (reading 8/8 included).
+
+Route note: since A18.1 the repl imports agent.fetch (tcp builtins),
+which the ir-x64 subset route rejects at build time, so the native
+backend is now built with the full native route (`hs.py build`,
+the route the shipped repl uses) and labeled `native`. The ir-x64
+subset rows below remain as historical A15 numbers. Chunking note:
+interp 10k read-ingest used 60 commands and rule-derive 25 (the
+harness's --sessions/--n-cmds chunking; means are per-command).
+
+| backend | facts | miss | recall | inference | rule-derive | read-ingest | startup | peak RSS |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| interp | 0 | 2.1 ms | - | <0.01 ms | 3.8 ms | 15.2 ms | 0.17 s | 28.0 MiB |
+| interp | 1,000 | 5.1 ms | 1.3 ms | 2.0 ms | 3.7 ms | 15.2 ms | 2.23 s | 30.1 MiB |
+| interp | 10,000 | 50.1 ms | 1.2 ms | 2.3 ms | 8.8 ms | 12.7 ms | 21.3 s | 60.5 MiB |
+| native | 0 | 0.02 ms | <0.01 ms | <0.01 ms | 0.05 ms | 0.15 ms | <0.01 s | 10.0 MiB |
+| native | 1,000 | 0.05 ms | 0.02 ms | 0.03 ms | 0.08 ms | 0.16 ms | 0.07 s | 11.6 MiB |
+| native | 10,000 | <0.01 ms | <0.01 ms | <0.01 ms | <0.01 ms | <0.01 ms | 10.5 s | 72.1 MiB |
+
+The native 10k per-command latencies are real but vanish next to
+the 10.5 s startup, which is store load/save on the full native
+route; the 4 GiB RLIMIT_AS probe passes on both backends at 10k
+(interp 60.3 MiB, native 64.8 MiB peak).
+
+Historical numbers (A15; A14.1 numbers in parentheses where they
 differ). A15 adds the hypothesis recorder (explore mode only) plus
 one scored dialogue category (hypothesis 5/5; every earlier
 category keeps full marks at every scale on both backends).

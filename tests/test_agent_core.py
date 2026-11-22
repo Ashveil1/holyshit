@@ -76,6 +76,12 @@ def lower_ascii(s):
     return ''.join(chr(ord(c) + 32) if 'A' <= c <= 'Z' else c for c in s)
 
 
+def _ascii_byte(c):
+    # Mirror core._ascii_byte (char model here: the corpus driver
+    # runs the reference interpreter semantics).
+    return c in '\t\n\r' or ' ' <= c <= '~'
+
+
 def words(s):
     # Mirror core._words: split on single spaces, empty words dropped.
     return [w for w in s.split(' ') if w]
@@ -302,15 +308,19 @@ class Oracle:
         if ri >= 0:
             r = self.readings[ri]
             if rpol == 'pos':
-                if r[3]:
+                if r[3] and r[5] != 'confirmed':
                     r[5] = 'confirmed'
-                if r[4]:
+                    self._read_hist(r, 'confirmed', 'positive')
+                if r[4] and r[6] != 'disputed':
                     r[6] = 'disputed'
+                    self._read_hist(r, 'disputed', 'negative')
             else:
-                if r[4]:
+                if r[4] and r[6] != 'confirmed':
                     r[6] = 'confirmed'
-                if r[3]:
+                    self._read_hist(r, 'confirmed', 'negative')
+                if r[3] and r[5] != 'disputed':
                     r[5] = 'disputed'
+                    self._read_hist(r, 'disputed', 'positive')
         # A15: a taught domain verdict retires a matching hypothesis.
         if p in ('is-a', 'not-is-a'):
             d = o
@@ -403,15 +413,47 @@ class Oracle:
                 return i
         return -1
 
+    def _read_directive(self, sent):
+        # A19: fixed command-form set, whole-segment exact/prefix
+        # matches only. No general imperative parser.
+        ls = lower_ascii(sent)
+        for p in ('remember ', 'no, ', 'mode ', 'clear ', 'forget ',
+                  'read ', 'note ', 'say '):
+            if len(ls) > len(p) and ls[:len(p)] == p:
+                return True
+        return ls in ('quit', 'exit', 'help', 'list', 'notes',
+                      'readings', 'readings detail', 'hypotheses',
+                      'hypotheses detail', 'click here',
+                      'subscribe now', 'download this file')
+
+    @staticmethod
+    def _script_transitions(sent):
+        # A19: ASCII/non-ASCII class changes at element boundaries,
+        # ignoring spaces. UTF-8 Thai continuation bytes are all
+        # non-ASCII, so byte and char models agree.
+        out, prev = [], 0
+        for i, ch in enumerate(sent):
+            cl = 0
+            if ch != ' ':
+                cl = 1 if _ascii_byte(ch) else 2
+            if cl:
+                if prev and cl != prev:
+                    out.append(i)
+                prev = cl
+        return out
+
     def _read_skip(self, sent):
         # A17: primary skip-reason, precedence quoted/attributed >
-        # modal/hedged > multi-clause, one count per segment.
+        # directive (A19) > modal/hedged > multi-clause, one count
+        # per segment.
         if '"' in sent or "'" in sent:
             return 'quoted'
         ls = ' ' + lower_ascii(sent) + ' '
         if (' says ' in ls or ' said ' in ls or
                 ' according to ' in ls):
             return 'quoted'
+        if self._read_directive(sent):
+            return 'directive'
         for w in (' might ', ' may ', ' could ', ' should ', ' would ',
                   ' must ', ' probably ', ' maybe ', ' perhaps '):
             if w in ls:
@@ -588,18 +630,48 @@ class Oracle:
         if cur:
             segs.append(cur)
         matched = newc = upd = ref = dup = 0
-        sk_q = sk_m = sk_c = um = 0
+        sk_q = sk_m = sk_c = sk_d = sk_tb = um = 0
+        warns, wkeys = [], []
         for sent in segs:
             sk = self._read_skip(sent)
             if sk == 'quoted':
                 sk_q += 1
+            elif sk == 'directive':
+                sk_d += 1
             elif sk == 'modal-hedged':
                 sk_m += 1
             else:
                 exs = []
                 if not sk:
-                    ka = lower_ascii(sent).find(' and ')
-                    if ka > 0:
+                    trs = self._script_transitions(sent)
+                    tb_skip = False
+                    if trs:
+                        # A19 Thai-Latin boundary: split only when
+                        # BOTH sides independently match complete
+                        # supported patterns; first valid split
+                        # wins; otherwise the whole segment is
+                        # skipped as thai-boundary-ambiguous.
+                        tb_ok = False
+                        for ti in trs:
+                            if not tb_ok:
+                                le = sent[:ti].rstrip(' ')
+                                ri = sent[ti:].lstrip(' ')
+                                if le and ri:
+                                    exl = self._read_extract(le)
+                                    exr = self._read_extract(ri)
+                                    if (exl is not None and
+                                            exr is not None and
+                                            self._read_obj_ok(exl) and
+                                            self._read_obj_ok(exr)):
+                                        exs.append([exl, le])
+                                        exs.append([exr, ri])
+                                        tb_ok = True
+                        if not tb_ok:
+                            tb_skip = True
+                    ka = -1 if trs else lower_ascii(sent).find(' and ')
+                    if tb_skip:
+                        sk = 'thai-boundary-ambiguous'
+                    elif ka > 0:
                         # A17: split at the FIRST exact ' and ', both
                         # sides must match, strictly atomic, no
                         # recursion, spans are the side texts.
@@ -613,15 +685,19 @@ class Oracle:
                         else:
                             sk = 'multi-clause'
                     else:
-                        ex = self._read_extract(sent)
-                        if ex is not None and self._read_obj_ok(ex):
-                            exs.append([ex, sent])
-                        else:
-                            um += 1
+                        if not trs:
+                            ex = self._read_extract(sent)
+                            if ex is not None and self._read_obj_ok(ex):
+                                exs.append([ex, sent])
+                            else:
+                                um += 1
                 if sk == 'multi-clause':
                     sk_c += 1
+                if sk == 'thai-boundary-ambiguous':
+                    sk_tb += 1
                 for ex, span in exs:
                     matched += 1
+                    rj = -1
                     ri2 = self._read_find(ex[0], ex[1], ex[2])
                     if ri2 >= 0:
                         r = self.readings[ri2]
@@ -631,28 +707,146 @@ class Oracle:
                         else:
                             side.append([src, span, ex[4]])
                             upd += 1
+                            rj = ri2
                     elif len(self.readings) >= _READ_CAP:
                         ref += 1
                     else:
                         entry = [src, span, ex[4]]
                         if ex[3] == 'neg':
                             self.readings.append(
-                                [ex[0], ex[1], ex[2], [], [entry], '', ''])
+                                [ex[0], ex[1], ex[2], [], [entry], '', '', []])
                         else:
                             self.readings.append(
-                                [ex[0], ex[1], ex[2], [entry], [], '', ''])
+                                [ex[0], ex[1], ex[2], [entry], [], '', '', []])
                         newc += 1
+                        rj = len(self.readings) - 1
+                    # A19: a later conflicting reading raises an
+                    # evidence-review warning (CONFLICT across
+                    # sources, SCOPE_MISMATCH inside one source);
+                    # accepted knowledge is never altered.
+                    if rj >= 0:
+                        r = self.readings[rj]
+                        if r[3] and r[4]:
+                            wk = r[0] + ' | ' + r[1] + ' | ' + r[2]
+                            if wk not in wkeys:
+                                wkeys.append(wk)
+                                internal = any(
+                                    se[0] == se2[0]
+                                    for se in r[3] for se2 in r[4])
+                                wt = ('SCOPE_MISMATCH' if internal
+                                      else 'CONFLICT')
+                                warns.append(wt + ' on ' + wk)
         out = (src + ': ' + str(len(segs)) + ' segments in, ' +
                str(matched) + ' pattern matches, ' + str(matched) +
                ' candidates extracted (' + str(newc) + ' new, ' +
                str(upd) + ' updated, ' + str(ref) + ' refused, ' +
-               str(dup) + ' repeat), ' + str(sk_q + sk_m + sk_c) +
-               ' skipped (' + str(sk_q) + ' quoted, ' + str(sk_m) +
-               ' modal-hedged, ' + str(sk_c) + ' multi-clause), ' +
+               str(dup) + ' repeat), ' +
+               str(sk_q + sk_m + sk_c + sk_d + sk_tb) +
+               ' skipped (' + str(sk_q) + ' quoted, ' + str(sk_d) +
+               ' directive, ' + str(sk_m) +
+               ' modal-hedged, ' + str(sk_c) + ' multi-clause, ' +
+               str(sk_tb) + ' thai-boundary-ambiguous), ' +
                str(um) + ' unmatched')
+        for w in warns:
+            out += ('; evidence-review ' + w +
+                    ' - accepted knowledge unchanged')
         if truncated:
             out += ' (text truncated at 64KB)'
         return out
+
+    def _src_domain(self, src):
+        # A19: url-N -> registry host; dotted-quad literal is its
+        # own domain; else last two host labels (approximation).
+        # Typed sources have no domain.
+        if len(src) > 4 and src[:4] == 'url-':
+            ns = src[4:]
+            if not ns or not ns.isdigit():
+                return ''
+            n = int(ns)
+            if 1 <= n <= len(self.url_srcs):
+                rest = self.url_srcs[n - 1][0][7:]
+                host = rest.split('/')[0].split(':')[0]
+                parts = host.split('.')
+                if len(parts) == 4 and all(
+                        p and p.isdigit() for p in parts):
+                    return host
+                if len(parts) >= 2:
+                    return parts[-2] + '.' + parts[-1]
+                return host
+        return ''
+
+    @staticmethod
+    def _shingle_norm(s):
+        out, last_sp = [], True
+        for c in lower_ascii(s):
+            if c in ' \t\n\r':
+                if not last_sp:
+                    out.append(' ')
+                last_sp = True
+            else:
+                out.append(c)
+                last_sp = False
+        return ''.join(out).rstrip(' ')
+
+    @staticmethod
+    def _shingle_list(nm):
+        ws = nm.split(' ')
+        out = []
+        for i in range(len(ws) - 4):
+            sh = ' '.join(ws[i:i + 5])
+            if sh not in out:
+                out.append(sh)
+        return out
+
+    @staticmethod
+    def _sh_sim(l1, t1, l2, t2):
+        if not l1 or not l2:
+            return t1 == t2
+        inter = sum(1 for s1 in l1 if s1 in l2)
+        union = len(l1) + len(l2) - inter
+        return inter * 5 >= union * 4
+
+    def _span_clusters(self, spans):
+        reps = []
+        for sp in spans:
+            nm = self._shingle_norm(sp)
+            sh = self._shingle_list(nm)
+            if not any(self._sh_sim(rep[0], rep[1], sh, nm)
+                       for rep in reps):
+                reps.append([sh, nm])
+        return len(reps)
+
+    def _read_ev_parts(self, side):
+        doms, nodom, spans = [], 0, []
+        for se in side:
+            spans.append(se[1])
+            d = self._src_domain(se[0])
+            if d == '':
+                nodom += 1
+            elif d not in doms:
+                doms.append(d)
+        return [len(doms), nodom, self._span_clusters(spans)]
+
+    def _read_ev(self, side):
+        # A19: agreeing sources, registrable-domain diversity,
+        # duplicate-text clusters - as separate fields.
+        p = self._read_ev_parts(side)
+        out = (str(len(side)) + ' agreeing source' +
+               ('s' if len(side) > 1 else ''))
+        out += (', ' + str(p[0]) + ' registrable domain' +
+                ('' if p[0] == 1 else 's'))
+        if p[1]:
+            out += ' (' + str(p[1]) + ' without)'
+        out += (', ' + str(p[2]) + ' text cluster' +
+                ('' if p[2] == 1 else 's') + ' (experimental)')
+        return out
+
+    def _read_eligible(self, side, other, align):
+        # A19: REVIEW_ELIGIBLE is an evidence status, never a fact.
+        if len(side) >= 3 and not other and align == '':
+            p = self._read_ev_parts(side)
+            return p[0] >= 2 and p[2] >= 3
+        return False
 
     def _readings_reply(self, about, detail):
         rs = self.readings
@@ -705,6 +899,14 @@ class Oracle:
                     'MULTI_SOURCE negative'
             if tier:
                 out += '; ' + tier
+            if len(r[3]) >= 2:
+                out += '; positive evidence: ' + self._read_ev(r[3])
+            if len(r[4]) >= 2:
+                out += '; negative evidence: ' + self._read_ev(r[4])
+            if self._read_eligible(r[3], r[4], r[5]):
+                out += '; REVIEW_ELIGIBLE positive evidence (not a fact)'
+            if self._read_eligible(r[4], r[3], r[6]):
+                out += '; REVIEW_ELIGIBLE negative evidence (not a fact)'
             if r[5] == '' and r[6] == '' and not tier and \
                     not (r[3] and r[4]):
                 out += '; UNVERIFIED'
@@ -721,6 +923,10 @@ class Oracle:
                 for se in r[4]:
                     out += ('\n  ' + se[0] + ' (negative): "' + se[1] +
                             '" [pattern ' + se[2] + ']')
+                if r[7]:
+                    out += ('\n  approval history: ' +
+                            ', '.join(he[0] + ' ' + he[1]
+                                      for he in r[7]))
         if detail and self.url_srcs:
             for i, e in enumerate(self.url_srcs):
                 out += ('\nurl-' + str(i + 1) + ' = ' +
@@ -732,8 +938,27 @@ class Oracle:
         q = norm.find('?')
         return norm[:q] + '?(redacted)' if q >= 0 else norm
 
+    def _read_hist(self, r, ev, pol):
+        # A19: approval/revocation history, bounded at 20.
+        r[7].append([ev, pol])
+        if len(r[7]) > 20:
+            r[7] = r[7][-20:]
+
+    def _read_realign(self, s):
+        # A19: alignments whose taught edge was dropped are
+        # revoked, recorded in the history.
+        for r in self.readings:
+            if r[0] == s and (r[5] or r[6]):
+                if r[5]:
+                    self._read_hist(r, 'revoked', 'positive')
+                if r[6]:
+                    self._read_hist(r, 'revoked', 'negative')
+                r[5] = ''
+                r[6] = ''
+
     def _drop_rels(self, key):
         self.rels = [e for e in self.rels if e[0] != key]
+        self._read_realign(key)
         if key in self.relset:
             self.relset[key] = {}
         ns = stripart(key)
@@ -2318,9 +2543,66 @@ A18_SCENARIOS = [
      'read url http://example.com:80/x'],
 ]
 
+A19_SCENARIOS = [
+    # 1. Directive skip class: agent commands and web imperatives
+    # inside a payload are skipped whole and stay inert (the state
+    # is NOT cleared, the mode does NOT change); ordinary
+    # declaratives containing the same words elsewhere extract or
+    # stay unmatched as before. Readings never answer questions.
+    ['read remember a car is a machine. mode explore. clear readings. quit. click here. subscribe now. download this file. a frog is an animal',
+     'readings', 'mode', 'is a frog an animal'],
+    # 2. Skip precedence: quoted/attribution beats directive even
+    # when the directive word leads the quoted text; directive beats
+    # modal on the same segment.
+    ['read the guide says remember a car is a machine. remember a car might fly. a bat is a bird',
+     'readings'],
+    # 3. No general imperative parser: a declarative that merely
+    # contains a command word away from the start is not a
+    # directive (unmatched, not skipped).
+    ['read i remember my first car. the download button is red. a sparrow is a bird',
+     'readings'],
+    # 4. Thai-Latin boundary: both sides validate -> two extractions
+    # with the side texts as spans; either side ambiguous -> the
+    # whole segment is skipped as thai-boundary-ambiguous.
+    ['read นก เป็น สัตว์ a hornbill is a bird',
+     'read นกมีปีกและบินได้ a hornbill is a bird',
+     'readings detail'],
+    # 5. แล้ว/ครับ are never terminators: แล้ว stays inside the
+    # extracted object when the Thai side still validates.
+    ['read วาฬ เป็น สัตว์ แล้ว a frog is an animal', 'readings'],
+    # 6. Pure Thai regressions: no transition, extraction unchanged.
+    ['read วาฬ เป็น สัตว์เลี้ยงลูกด้วยนม. ค้างคาว ไม่เป็น นก',
+     'readings'],
+    # 7. Measurements: two typed sources, same claim, different
+    # span texts -> two duplicate-text clusters; same span text ->
+    # one cluster. Typed sources never count as domains.
+    ['read a1: birds have wings', 'read a2: birds has wings',
+     'read a3: birds have wings', 'readings'],
+    # 8. A later conflicting reading raises an evidence-review
+    # warning (CONFLICT across sources; SCOPE_MISMATCH inside one
+    # source) and never alters accepted knowledge: the taught fact
+    # still answers, and a conflicting reading on a USER_CONFIRMED
+    # claim only marks it for review.
+    ['remember a penguin is a bird',
+     'read m1: a penguin is not a bird',
+     'is a penguin a bird',
+     'read m1: a penguin is a bird. a penguin is not a bird',
+     'readings about a penguin'],
+    # 9. REVIEW_ELIGIBLE is reachable only when every threshold
+    # holds: 2 of 3 typed sources share a copied text -> one
+    # cluster and no domains, so NOT eligible; the claim stays
+    # MULTI_SOURCE with independence UNVERIFIED.
+    ['read b1: a kiwi is a bird', 'read b2: a kiwi is a bird',
+     'read b3: a kiwi is a bird', 'readings about a kiwi'],
+    # 10. Approval/revocation history: teaching confirms, and a
+    # later forget revokes the alignment - recorded, never silent.
+    ['read m1: a frog is an animal', 'remember a frog is an animal',
+     'readings detail', 'forget a frog', 'readings detail'],
+]
+
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
             A15_SCENARIOS + A16_SCENARIOS + A17_SCENARIOS +
-            A18_SCENARIOS):
+            A18_SCENARIOS + A19_SCENARIOS):
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))

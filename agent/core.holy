@@ -809,17 +809,72 @@ def _read_find(state, s, p, o):
       return i
     i = i + 1
   return -1
+# A19: high-precision DIRECTIVE_OR_COMMAND_SHAPED test. The fixed
+# set is the agent's own command surface (the remember/no,/mode/
+# clear/forget/read/note/say command prefixes and the standalone
+# commands) plus three web-marketing imperatives. Whole-segment
+# exact and prefix matches only: there is NO general imperative
+# parser, and an ordinary declarative that merely contains a verb
+# or the word 'remember' away from the start never matches. Every
+# match stays inert data - the payload is never re-parsed.
+def _read_directive(sent):
+  ls = lower_ascii(sent)
+  for p in ["remember ", "no, ", "mode ", "clear ", "forget ", "read ", "note ", "say "]:
+    if len(ls) > len(p) and ls[:len(p)] == p:
+      return true
+  for w in ["quit", "exit", "help", "list", "notes", "readings", "readings detail", "hypotheses", "hypotheses detail", "click here", "subscribe now", "download this file"]:
+    if ls == w:
+      return true
+  return false
+# A19: script classes for the Thai-Latin boundary candidate. Each
+# element is classed ASCII or non-ASCII; both the character model
+# (interp) and the byte model (compiled routes) agree on that split
+# for UTF-8 Thai, which is all this uses (a Thai char's lead and
+# continuation bytes are all non-ASCII). A transition is an index
+# where a non-space element's class differs from the previous
+# non-space element's class; the index always lands on an element
+# boundary, so slicing by it yields the same string on every route.
+def _script_transitions(sent):
+  out = []
+  prev = 0
+  i = 0
+  while i < len(sent):
+    cl = 0
+    if sent[i] != " ":
+      if _ascii_byte(sent[i]):
+        cl = 1
+      else:
+        cl = 2
+    if cl != 0:
+      if prev != 0 and cl != prev:
+        append(out, i)
+      prev = cl
+    i = i + 1
+  return out
+def _rtrim_sp(s):
+  n = len(s)
+  while n > 0 and s[n - 1] == " ":
+    n = n - 1
+  return s[:n]
+def _ltrim_sp(s):
+  i = 0
+  while i < len(s) and s[i] == " ":
+    i = i + 1
+  return s[i:]
 # A17: primary skip-reason classification, mutually exclusive, one
-# count per segment, precedence quoted/attributed > modal/hedged >
-# multi-clause. The modal class is MODAL_HEDGED_UNSUPPORTED: hedging
-# words are skipped whole, while the supported 'can' forms keep
-# extracting. Skips are counted and reported, never guessed around.
+# count per segment, precedence quoted/attributed > directive >
+# modal/hedged > multi-clause. The modal class is
+# MODAL_HEDGED_UNSUPPORTED: hedging words are skipped whole, while
+# the supported 'can' forms keep extracting. Skips are counted and
+# reported, never guessed around.
 def _read_skip(sent):
   if find(sent, "\"") >= 0 or find(sent, "'") >= 0:
     return "quoted"
   ls = " " + lower_ascii(sent) + " "
   if find(ls, " says ") >= 0 or find(ls, " said ") >= 0 or find(ls, " according to ") >= 0:
     return "quoted"
+  if _read_directive(sent):
+    return "directive"
   for w in [" might ", " may ", " could ", " should ", " would ", " must ", " probably ", " maybe ", " perhaps "]:
     if find(ls, w) >= 0:
       return "modal-hedged"
@@ -1100,18 +1155,55 @@ def _read_ingest(state, src, body, truncated):
   sk_q = 0
   sk_m = 0
   sk_c = 0
+  sk_d = 0
+  sk_tb = 0
   um = 0
+  warns = []
+  wkeys = []
   for sent in segs:
     sk = _read_skip(sent)
     if sk == "quoted":
       sk_q = sk_q + 1
+    elif sk == "directive":
+      sk_d = sk_d + 1
     elif sk == "modal-hedged":
       sk_m = sk_m + 1
     else:
       exs = []
       if sk == "":
-        ka = find(lower_ascii(sent), " and ")
-        if ka > 0:
+        trs = _script_transitions(sent)
+        tb_skip = false
+        if len(trs) > 0:
+          # A19 Thai-Latin boundary candidate: a mixed-script
+          # segment splits at a script transition ONLY when both
+          # resulting segments independently match complete
+          # supported patterns (the A17 conjunction bar: strictly
+          # atomic, first valid split wins, no recursion, spans
+          # are the side texts). Either side ambiguous = skip the
+          # WHOLE segment as thai-boundary-ambiguous: no partial
+          # extraction, never a split on an arbitrary Thai space,
+          # and ครับ/ค่ะ/แล้ว/นะ/ไหม are never treated as
+          # universal terminators.
+          tb_ok = false
+          for ti in trs:
+            if not tb_ok:
+              le = _rtrim_sp(sent[:ti])
+              ri = _ltrim_sp(sent[ti:])
+              if len(le) > 0 and len(ri) > 0:
+                exl = _read_extract(le)
+                exr = _read_extract(ri)
+                if exl != null and exr != null and _read_obj_ok(exl) and _read_obj_ok(exr):
+                  append(exs, [exl, le])
+                  append(exs, [exr, ri])
+                  tb_ok = true
+          if not tb_ok:
+            tb_skip = true
+        ka = -1
+        if len(trs) == 0:
+          ka = find(lower_ascii(sent), " and ")
+        if tb_skip:
+          sk = "thai-boundary-ambiguous"
+        elif ka > 0:
           # A17 conjunction: split at the FIRST exact ' and ' (never
           # inside quotes: the quoted skip already ran), each side
           # must match a complete registered pattern, strictly
@@ -1124,17 +1216,21 @@ def _read_ingest(state, src, body, truncated):
           else:
             sk = "multi-clause"
         else:
-          ex = _read_extract(sent)
-          if ex != null and _read_obj_ok(ex):
-            append(exs, [ex, sent])
-          else:
-            um = um + 1
+          if len(trs) == 0:
+            ex = _read_extract(sent)
+            if ex != null and _read_obj_ok(ex):
+              append(exs, [ex, sent])
+            else:
+              um = um + 1
       if sk == "multi-clause":
         sk_c = sk_c + 1
+      if sk == "thai-boundary-ambiguous":
+        sk_tb = sk_tb + 1
       for pair in exs:
         ex = pair[0]
         span = pair[1]
         matched = matched + 1
+        rj = -1
         ri2 = _read_find(state, ex[0], ex[1], ex[2])
         if ri2 >= 0:
           r = state["readings"][ri2]
@@ -1150,17 +1246,41 @@ def _read_ingest(state, src, body, truncated):
           else:
             append(side, [src, span, ex[4]])
             upd = upd + 1
+            rj = ri2
         else:
           if len(state["readings"]) >= _READ_CAP:
             ref = ref + 1
           else:
             entry = [src, span, ex[4]]
             if ex[3] == "neg":
-              append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], "", ""])
+              append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], "", "", []])
             else:
-              append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", ""])
+              append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", "", []])
             newc = newc + 1
-  out = src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c) + " skipped (" + str(sk_q) + " quoted, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause), " + str(um) + " unmatched"
+            rj = len(state["readings"]) - 1
+        # A19: a later conflicting reading raises an evidence-review
+        # warning (CONFLICT across sources, SCOPE_MISMATCH inside one
+        # source). It NEVER alters or demotes accepted knowledge:
+        # taught facts are untouched, the warning only marks the
+        # claim for evidence review in the inspection routes.
+        if rj >= 0:
+          r = state["readings"][rj]
+          if len(r[3]) > 0 and len(r[4]) > 0:
+            wk = r[0] + " | " + r[1] + " | " + r[2]
+            if not (wk in wkeys):
+              append(wkeys, wk)
+              internal = false
+              for se in r[3]:
+                for se2 in r[4]:
+                  if se[0] == se2[0]:
+                    internal = true
+              wt = "CONFLICT"
+              if internal:
+                wt = "SCOPE_MISMATCH"
+              append(warns, wt + " on " + wk)
+  out = src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c + sk_d + sk_tb) + " skipped (" + str(sk_q) + " quoted, " + str(sk_d) + " directive, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause, " + str(sk_tb) + " thai-boundary-ambiguous), " + str(um) + " unmatched"
+  for w in warns:
+    out = out + "; evidence-review " + w + " - accepted knowledge unchanged"
   if truncated:
     out = out + " (text truncated at 64KB)"
   return out
@@ -1172,6 +1292,161 @@ def _read_ids(side):
     else:
       out = out + ", " + se[0]
   return out
+# A19: separate source measurements on multi-source claims.
+# Registrable domain for a source id: url-N resolves through the
+# registry to its host; a dotted-quad literal IS the domain (each
+# literal address is its own identity), otherwise the registrable
+# domain is approximated as the last two host labels (no public-
+# suffix list - a documented approximation). Typed sources (read-N
+# or named) have no domain and are counted separately, never as
+# domain diversity.
+def _src_domain(state, src):
+  if len(src) > 4 and src[:4] == "url-":
+    ns = src[4:]
+    i = 0
+    digs = true
+    while i < len(ns):
+      if not (ns[i] >= "0" and ns[i] <= "9"):
+        digs = false
+      i = i + 1
+    if not digs or len(ns) == 0:
+      return ""
+    n = int(ns)
+    if n >= 1 and n <= len(state["url_srcs"]):
+      rest = state["url_srcs"][n - 1][0][7:]
+      host = rest
+      k = find(rest, "/")
+      if k >= 0:
+        host = rest[:k]
+      c = find(host, ":")
+      if c >= 0:
+        host = host[:c]
+      parts = split(host, ".")
+      if len(parts) == 4:
+        alldig = true
+        for p in parts:
+          if len(p) == 0:
+            alldig = false
+          i = 0
+          while i < len(p):
+            if not (p[i] >= "0" and p[i] <= "9"):
+              alldig = false
+            i = i + 1
+        if alldig:
+          return host
+      if len(parts) >= 2:
+        return parts[len(parts) - 2] + "." + parts[len(parts) - 1]
+      return host
+  return ""
+# A19: content-similarity clustering over a claim's support spans
+# (EXPERIMENTAL / calibration-needed). Normalization is lowercase
+# ASCII + collapsed whitespace; similarity is the 5-word-shingle
+# Jaccard with cutoff 0.8 as an integer comparison (inter*5 >=
+# union*4 - no floats, identical on every route). Spans shorter
+# than 5 words have no shingles: two are similar only when their
+# normalized texts are identical. A cluster is a DUPLICATE-TEXT
+# signal only, never proof of independent (or common) authorship.
+def _shingle_norm(s):
+  ls = lower_ascii(s)
+  out = ""
+  last_sp = true
+  i = 0
+  while i < len(ls):
+    c = ls[i]
+    if c == " " or c == "\t" or c == "\n" or c == "\r":
+      if not last_sp:
+        out = out + " "
+      last_sp = true
+    else:
+      out = out + c
+      last_sp = false
+    i = i + 1
+  return _rtrim_sp(out)
+def _shingle_list(nm):
+  ws = split(nm, " ")
+  out = []
+  i = 0
+  while i + 4 < len(ws):
+    sh = ws[i] + " " + ws[i + 1] + " " + ws[i + 2] + " " + ws[i + 3] + " " + ws[i + 4]
+    if not (sh in out):
+      append(out, sh)
+    i = i + 1
+  return out
+def _sh_sim(l1, t1, l2, t2):
+  if len(l1) == 0 or len(l2) == 0:
+    return t1 == t2
+  inter = 0
+  for s1 in l1:
+    if s1 in l2:
+      inter = inter + 1
+  union = len(l1) + len(l2) - inter
+  return inter * 5 >= union * 4
+# Greedy deterministic clustering: each span joins the first
+# cluster whose representative it is similar to, else starts one.
+def _span_clusters(spans):
+  reps = []
+  for sp in spans:
+    nm = _shingle_norm(sp)
+    sh = _shingle_list(nm)
+    found = false
+    for rep in reps:
+      if _sh_sim(rep[0], rep[1], sh, nm):
+        found = true
+    if not found:
+      append(reps, [sh, nm])
+  return len(reps)
+# The measurement triple [registrable domains, sources without a
+# domain, duplicate-text clusters] behind the reported fields.
+def _read_ev_parts(state, side):
+  doms = []
+  nodom = 0
+  spans = []
+  for se in side:
+    append(spans, se[1])
+    d = _src_domain(state, se[0])
+    if d == "":
+      nodom = nodom + 1
+    else:
+      if not (d in doms):
+        append(doms, d)
+  return [len(doms), nodom, _span_clusters(spans)]
+# The measurements as one reported field set: agreeing sources
+# (claim agreement is structural: every entry on a side supports
+# the same triple, and cross-polarity disagreement is the CONFLICT
+# label), distinct registrable domains, duplicate-text clusters.
+def _read_ev(state, side):
+  p = _read_ev_parts(state, side)
+  out = str(len(side)) + " agreeing source"
+  if len(side) > 1:
+    out = out + "s"
+  out = out + ", " + str(p[0]) + " registrable domain"
+  if p[0] != 1:
+    out = out + "s"
+  if p[1] > 0:
+    out = out + " (" + str(p[1]) + " without)"
+  out = out + ", " + str(p[2]) + " text cluster"
+  if p[2] != 1:
+    out = out + "s"
+  out = out + " (experimental)"
+  return out
+# A19: REVIEW_ELIGIBLE is an EVIDENCE status, never a fact and
+# never a promotion. A side qualifies when ALL binding thresholds
+# hold: 3+ distinct source IDs, 2+ registrable domains, 3+
+# independent-looking (non-duplicate-text) clusters - which
+# together are the no-known-common-origin check (a single domain
+# or a single copied text is a detected common origin) - no
+# polarity conflict on the claim, no user alignment on the side
+# (a USER_CONFIRMED claim needs no review; a DISPUTED one has
+# already been ruled on), and every entry extracted by a
+# supported pattern (true by construction: only whole-segment
+# pattern matches are ever recorded). Nothing reads this label
+# outside the evidence-inspection routes.
+def _read_eligible(state, r, side, other, align):
+  if len(side) >= 3 and len(other) == 0 and align == "":
+    p = _read_ev_parts(state, side)
+    if p[0] >= 2 and p[2] >= 3:
+      return true
+  return false
 def _readings_reply(state, about, detail):
   rs = state["readings"]
   if about != "":
@@ -1240,6 +1515,14 @@ def _readings_reply(state, about, detail):
       tier = tier + "MULTI_SOURCE negative"
     if tier != "":
       out = out + "; " + tier
+    if len(r[3]) >= 2:
+      out = out + "; positive evidence: " + _read_ev(state, r[3])
+    if len(r[4]) >= 2:
+      out = out + "; negative evidence: " + _read_ev(state, r[4])
+    if _read_eligible(state, r, r[3], r[4], r[5]):
+      out = out + "; REVIEW_ELIGIBLE positive evidence (not a fact)"
+    if _read_eligible(state, r, r[4], r[3], r[6]):
+      out = out + "; REVIEW_ELIGIBLE negative evidence (not a fact)"
     if r[5] == "" and r[6] == "" and tier == "" and not (len(r[3]) > 0 and len(r[4]) > 0):
       out = out + "; UNVERIFIED"
     ids = []
@@ -1256,6 +1539,14 @@ def _readings_reply(state, about, detail):
         out = out + "\n  " + se[0] + " (positive): \"" + se[1] + "\" [pattern " + se[2] + "]"
       for se in r[4]:
         out = out + "\n  " + se[0] + " (negative): \"" + se[1] + "\" [pattern " + se[2] + "]"
+      if len(r[7]) > 0:
+        hs = ""
+        for he in r[7]:
+          if hs == "":
+            hs = he[0] + " " + he[1]
+          else:
+            hs = hs + ", " + he[0] + " " + he[1]
+        out = out + "\n  approval history: " + hs
     i = i + 1
   if detail and len(state["url_srcs"]) > 0:
     i = 0
@@ -1264,6 +1555,26 @@ def _readings_reply(state, about, detail):
       out = out + "\nurl-" + str(i + 1) + " = " + _url_disp(e[0]) + " (fetched " + str(e[1]) + " times)"
       i = i + 1
   return out
+# A19: approval/revocation history. r[7] records user alignment
+# events ([event, polarity]: confirmed/disputed at teach time,
+# revoked when the taught edge behind an alignment is forgotten
+# or corrected away). Bounded at 20 entries, oldest dropped.
+def _read_hist(r, ev, pol):
+  append(r[7], [ev, pol])
+  if len(r[7]) > 20:
+    r[7] = r[7][len(r[7]) - 20:]
+# Recompute a subject's reading alignments after its taught edges
+# were dropped: an alignment with no remaining taught edge behind
+# it is revoked (recorded in the history, never silently kept).
+def _read_realign(state, s):
+  for r in state["readings"]:
+    if r[0] == s and (r[5] != "" or r[6] != ""):
+      if r[5] != "":
+        _read_hist(r, "revoked", "positive")
+      if r[6] != "":
+        _read_hist(r, "revoked", "negative")
+      r[5] = ""
+      r[6] = ""
 def _add_rel(state, s, p, o):
   if s in state["relset"]:
     if p in state["relset"][s]:
@@ -1287,14 +1598,22 @@ def _add_rel(state, s, p, o):
     r = state["readings"][ri]
     if rpol == "pos":
       if len(r[3]) > 0:
-        r[5] = "confirmed"
+        if r[5] != "confirmed":
+          r[5] = "confirmed"
+          _read_hist(r, "confirmed", "positive")
       if len(r[4]) > 0:
-        r[6] = "disputed"
+        if r[6] != "disputed":
+          r[6] = "disputed"
+          _read_hist(r, "disputed", "negative")
     else:
       if len(r[4]) > 0:
-        r[6] = "confirmed"
+        if r[6] != "confirmed":
+          r[6] = "confirmed"
+          _read_hist(r, "confirmed", "negative")
       if len(r[3]) > 0:
-        r[5] = "disputed"
+        if r[5] != "disputed":
+          r[5] = "disputed"
+          _read_hist(r, "disputed", "positive")
   # A15: a taught domain verdict retires a matching hypothesis
   # (positive AND negative both retire; a taught conflict stays in
   # the edges, never resolved).
@@ -1318,6 +1637,7 @@ def _drop_rels(state, key):
     if e[0] != key:
       append(kept, e)
   state["rels"] = kept
+  _read_realign(state, key)
   if key in state["relset"]:
     state["relset"][key] = {}
   ns = _stripart(key)
