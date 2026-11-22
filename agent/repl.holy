@@ -8,8 +8,15 @@
 # This is a thin IO shell: every reply comes from agent.core.respond.
 import agent.core
 import agent.store
+import agent.fetch
 path = "agent-memory.json"
 state = agent.store.load(path)
+# A18 EXPERIMENTAL: the fetch test harness is reachable only by
+# starting the repl with HS_AGENT_TEST_FETCH=1 in the environment.
+# The core never probes the environment itself (IR-subset routes
+# have no env builtin), so no ordinary command can set this flag.
+tfv = env("HS_AGENT_TEST_FETCH")
+state["test_fetch"] = tfv != null and tfv == "1"
 print "holyshit agent v0.12 - type 'help' for commands, 'quit' to leave"
 done = false
 while not done:
@@ -22,6 +29,11 @@ while not done:
     m = agent.core.lower_ascii(agent.core.normalize(line))
     if m == "quit" or m == "exit":
       done = true
+    elif m[:9] == "read url " and len(line) > 9:
+      # EXPERIMENTAL: network code lives in agent.fetch (full routes
+      # only); the core's own read-url route handles validation for
+      # the corpus and never touches tcp builtins.
+      print agent.fetch.read_url(state, line[9:])
     else:
       print agent.core.respond(state, line)
 agent.store.save(state, path)

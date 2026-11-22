@@ -1,0 +1,61 @@
+# Pure-hs UTF-8 decoding for Bytes (A18): no runtime decode
+# builtin exists, so bytes from tcp_recv/http_get are decoded
+# here with deterministic byte logic and literal char tables.
+# Covered: ASCII, Latin-1 supplement, Thai U+0E00-0E7F;
+# everything else decodes as U+FFFD (replacement), including
+# invalid bytes, overlongs, surrogates and 4-byte codepoints.
+_U8_ASCII = [" ", "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", ";", "<", "=", ">", "?", "@", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "[", "\\", "]", "^", "_", "`", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "{", "|", "}", "~"]
+_U8_LATIN1 = [" ", "¡", "¢", "£", "¤", "¥", "¦", "§", "¨", "©", "ª", "«", "¬", "­", "®", "¯", "°", "±", "²", "³", "´", "µ", "¶", "·", "¸", "¹", "º", "»", "¼", "½", "¾", "¿", "À", "Á", "Â", "Ã", "Ä", "Å", "Æ", "Ç", "È", "É", "Ê", "Ë", "Ì", "Í", "Î", "Ï", "Ð", "Ñ", "Ò", "Ó", "Ô", "Õ", "Ö", "×", "Ø", "Ù", "Ú", "Û", "Ü", "Ý", "Þ", "ß", "à", "á", "â", "ã", "ä", "å", "æ", "ç", "è", "é", "ê", "ë", "ì", "í", "î", "ï", "ð", "ñ", "ò", "ó", "ô", "õ", "ö", "÷", "ø", "ù", "ú", "û", "ü", "ý", "þ", "ÿ"]
+_U8_THAI = ["฀", "ก", "ข", "ฃ", "ค", "ฅ", "ฆ", "ง", "จ", "ฉ", "ช", "ซ", "ฌ", "ญ", "ฎ", "ฏ", "ฐ", "ฑ", "ฒ", "ณ", "ด", "ต", "ถ", "ท", "ธ", "น", "บ", "ป", "ผ", "ฝ", "พ", "ฟ", "ภ", "ม", "ย", "ร", "ฤ", "ล", "ฦ", "ว", "ศ", "ษ", "ส", "ห", "ฬ", "อ", "ฮ", "ฯ", "ะ", "ั", "า", "ำ", "ิ", "ี", "ึ", "ื", "ุ", "ู", "ฺ", "฻", "฼", "฽", "฾", "฿", "เ", "แ", "โ", "ใ", "ไ", "ๅ", "ๆ", "็", "่", "้", "๊", "๋", "์", "ํ", "๎", "๏", "๐", "๑", "๒", "๓", "๔", "๕", "๖", "๗", "๘", "๙", "๚", "๛", "๜", "๝", "๞", "๟", "๠", "๡", "๢", "๣", "๤", "๥", "๦", "๧", "๨", "๩", "๪", "๫", "๬", "๭", "๮", "๯", "๰", "๱", "๲", "๳", "๴", "๵", "๶", "๷", "๸", "๹", "๺", "๻", "๼", "๽", "๾", "๿"]
+def _u8_char(cp):
+  if cp >= 32 and cp < 127:
+    return _U8_ASCII[cp - 32]
+  if cp >= 160 and cp < 256:
+    return _U8_LATIN1[cp - 160]
+  if cp >= 3584 and cp < 3712:
+    return _U8_THAI[cp - 3584]
+  return "�"
+def _u8_cont(ns, i):
+  v = ns[i]
+  return v >= 128 and v < 192
+# Decode a list of byte ints to a String. Never raises on malformed
+# input: malformed sequences consume one byte and yield U+FFFD.
+def utf8_decode_ints(ns):
+  out = []
+  i = 0
+  n = len(ns)
+  while i < n:
+    c = ns[i]
+    if c < 128:
+      if c == 10:
+        append(out, "\n")
+      elif c == 9:
+        append(out, " ")
+      elif c >= 32 and c < 127:
+        append(out, _U8_ASCII[c - 32])
+      i = i + 1
+    elif c >= 194 and c < 224 and i + 1 < n and _u8_cont(ns, i + 1):
+      append(out, _u8_char((c - 192) * 64 + ns[i + 1] - 128))
+      i = i + 2
+    elif c >= 224 and c < 240 and i + 2 < n and _u8_cont(ns, i + 1) and _u8_cont(ns, i + 2):
+      cp = (c - 224) * 4096 + (ns[i + 1] - 128) * 64 + ns[i + 2] - 128
+      if cp >= 55296 and cp < 57344:
+        append(out, "�")
+      else:
+        append(out, _u8_char(cp))
+      i = i + 3
+    elif c >= 240 and c < 245 and i + 3 < n and _u8_cont(ns, i + 1) and _u8_cont(ns, i + 2) and _u8_cont(ns, i + 3):
+      append(out, "�")
+      i = i + 4
+    else:
+      append(out, "�")
+      i = i + 1
+  return join("", out)
+# Decode Bytes b to a String.
+def utf8_decode(b):
+  ns = []
+  i = 0
+  while i < byte_len(b):
+    append(ns, byte_at(b, i))
+    i = i + 1
+  return utf8_decode_ints(ns)

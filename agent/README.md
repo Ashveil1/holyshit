@@ -1,8 +1,10 @@
 # agent — a small local agent written in pure holyshit
 
 A from-scratch local agent core for the holyshit OS direction. It runs
-entirely offline inside the hs runtime: no network, no external model,
-no dependencies beyond the language itself.
+entirely offline inside the hs runtime: no external model, no
+dependencies beyond the language itself. One EXPERIMENTAL exception:
+the repl shell can fetch web pages over plain HTTP (`read url`, A18
+preview below); the core itself stays network-free.
 
 ## What it is today (v0.12)
 
@@ -257,6 +259,59 @@ how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุ�
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
+## EXPERIMENTAL: read url (A18 preview)
+
+The repl shell accepts `read url <http-url>`: it fetches the page over
+plain HTTP and ingests the extracted text through exactly the same
+evidence pipeline as typed `read` - candidates stay UNVERIFIED
+readings, never facts, and questions are never answered from readings.
+This is an explicitly labelled EXPERIMENTAL preview, not a release:
+
+- **Hang risk (known, documented):** the hs runtime has no bounded
+  receive timeouts yet (see
+  `docs/gap-report-bounded-recv-timeouts.md`), so a silent or stalled
+  peer can block the repl forever. This is the reason A18 ships as a
+  preview; A18.2/A18.3 wait on the runtime fix.
+- **Plain HTTP only:** no TLS, no authentication, no integrity. Only
+  `http://` URLs, no credentials, no fragments, port 80 only and no
+  private/reserved literal IPv4 addresses outside the test harness
+  (`HS_AGENT_TEST_FETCH=1`, set only by the repl from the environment,
+  unlocks `127.0.0.1` and other ports for the fixture tests).
+- **Strict response checks:** HTTP 200 only (redirects are rejected,
+  not followed), `text/*` content types only, identity content- and
+  transfer-encoding only (chunked is rejected), Content-Length
+  consistency enforced, NUL bytes in the first 8 KiB reject the body,
+  16 KiB header cap, 1 MiB whole-response cap.
+- **Bounded extraction:** page text is capped at 64 KiB before
+  ingestion, the trailing partial segment is dropped, and the reply
+  says so.
+- **Honest html-to-text:** script/style/title blocks are dropped,
+  tags removed, six common entities decoded, whitespace collapsed.
+  Command-like page text ("clear readings", "quit") is ingested as
+  inert data - extracted as ordinary UNVERIFIED candidates at worst,
+  never executed (pinned by tests). Fake confirmation text
+  ("USER_CONFIRMED", "TRUSTED", "VERIFIED") on a page is likewise
+  just text: it never changes a candidate's UNVERIFIED label.
+- **Source identity, not corroboration:** each normalized URL is one
+  `url-N` source (lowercase scheme/host, default port stripped,
+  fragment removed, path/query preserved); re-reading the same URL
+  counts as a repeat fetch of the same source, never as independent
+  support. The registry caps at 100 distinct sources and lives for the
+  session only (`clear readings` resets it). `readings detail` lists
+  sources with the query string redacted (`?(redacted)`).
+- **Failed fetches are transactional:** any failure (network, status,
+  policy, parse) adds zero candidates and no registry entry.
+- **Thai and UTF-8:** pages are decoded with a pure-hs UTF-8 decoder
+  (`agent/utf8.holy`: ASCII, Latin-1, Thai U+0E00-0E7F; everything
+  else becomes U+FFFD). Known limitation: Thai sentences have no ASCII
+  terminator, so a Thai sentence can glue to a following English one
+  in a single extracted segment.
+- The core (`agent/core.holy`) contains no network code at all - the
+  IR-subset compiler routes reject tcp builtins at build time - so the
+  corpus routes keep a deterministic validation-only `read url`
+  reply; the fetch lives in `agent/fetch.holy`, imported only by the
+  repl.
+
 ## Hosted resource benchmark (measured at A16, evidence-ingestion reader)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
@@ -395,7 +450,11 @@ answer anything it was not taught, cannot generalize beyond the one
 inference it has (transitive closure over explicitly taught is-in/is-a
 edges, shown in its replies so the reasoning is inspectable, with
 open-world negatives), matching is
-literal ASCII word matching plus non-ASCII substring matching,
+literal ASCII word matching plus non-ASCII substring matching, web
+fetching is plain unauthenticated HTTP with a known unbounded-receive
+hang risk (EXPERIMENTAL preview above), and the html-to-text
+extraction is crude by design (it drops script/style/title and tags;
+it does not understand page structure),
 "associations" are shared words between taught values, and its
 clarifications are word-overlap guesses. The `what does X mean`
 self-knowledge for its own relation words is hard-coded text, not
@@ -433,6 +492,10 @@ research line and shares no code with it.
   fresh).
 - `repl.holy` — terminal chat loop; run `hs run agent/repl.holy` from
   the repo root. Memory persists to `agent-memory.json` on exit.
+- `fetch.holy` — EXPERIMENTAL bounded HTTP fetch + html-to-text
+  (repl-only; see the A18 preview section).
+- `utf8.holy` — pure-hs UTF-8 decoding (ASCII, Latin-1, Thai) used by
+  the fetch path.
 
 ## Tests
 
@@ -441,3 +504,11 @@ an independent Python oracle of the same spec and requires byte-identical
 transcripts on every execution route (reference interpreter, reference
 IR, both x64 backends, the self-hosted seed and interpreter, and the gcc
 native backend), plus hosted save/load roundtrips.
+`tests/test_agent_fetch.py` drives the EXPERIMENTAL read-url path
+against the deterministic fixture server
+(`tests/fix_fetch_server.py`, 127.0.0.1 only) through both the
+interpreter and the native repl and pins the full transcript:
+extraction, threat fixtures (hostile markup, fake confirmations,
+modal text), every failure mode, dedup, redaction, and the no-flag
+policy rejections. `tests/eval_reader.py` holds the frozen extraction
+quality corpus at precision 1.000 with zero false extractions.

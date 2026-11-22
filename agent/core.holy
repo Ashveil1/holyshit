@@ -61,7 +61,7 @@ def lower_ascii(s):
   return out
 def new_state():
   # mode is session-only (like notes): strict unless the user explores.
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": [], "readings": [], "read_src": {}, "read_n": 0}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": [], "readings": [], "read_src": {}, "read_n": 0, "url_srcs": [], "test_fetch": false}
 def _has(state, key):
   # O(1) membership; keyset mirrors order exactly (built from it on
   # load, maintained on teach/forget), including for hand-edited files.
@@ -912,6 +912,136 @@ def _read_obj_ok(ex):
   if find(ex[2], " is ") >= 0 or find(ex[2], " and ") >= 0:
     return false
   return true
+# A18 URL policy (EXPERIMENTAL preview). Validation and conservative
+# normalization are pure string work: scheme http only, no embedded
+# credentials, host charset [a-z0-9.-], no CR/LF, fragment stripped,
+# path/query preserved verbatim, default port 80 stripped, literal
+# private/reserved IPv4 rejected outside the test harness. The test
+# harness exception is the HS_AGENT_TEST_FETCH=1 environment flag,
+# which ordinary commands cannot reach.
+# Test-harness detection is a state flag: the IR-subset routes have
+# no env/argv/exists builtins, so the core cannot probe the
+# environment. agent/repl.holy sets the flag at startup from the
+# HS_AGENT_TEST_FETCH=1 environment variable; ordinary commands
+# cannot reach it, and the corpus driver never sets it.
+def _url_test_mode(state):
+  return state["test_fetch"]
+def _url_bad_host(host):
+  if len(host) == 0 or find(host, "..") >= 0:
+    return true
+  i = 0
+  while i < len(host):
+    ch = host[i]
+    if not (ch >= "a" and ch <= "z" or ch >= "0" and ch <= "9" or ch == "." or ch == "-"):
+      return true
+    i = i + 1
+  return false
+# Literal dotted-quad private/reserved check (agent-side defense in
+# depth; DNS-resolved privacy is the runtime guard's job - see
+# docs/gap-report-private-network-guard.md).
+def _url_priv4(host):
+  parts = split(host, ".")
+  if len(parts) != 4:
+    return false
+  nums = []
+  for p in parts:
+    if len(p) == 0 or len(p) > 3:
+      return false
+    i = 0
+    while i < len(p):
+      if not (p[i] >= "0" and p[i] <= "9"):
+        return false
+      i = i + 1
+    append(nums, int(p))
+  a = nums[0]
+  b = nums[1]
+  if a == 10 or a == 127 or a == 0 or a >= 224:
+    return true
+  if a == 169 and b == 254:
+    return true
+  if a == 192 and b == 168:
+    return true
+  if a == 172 and b >= 16 and b <= 31:
+    return true
+  return false
+# Returns [true, normalized] or [false, reason].
+def _url_norm(url, test_mode):
+  if find(url, "\r") >= 0 or find(url, "\n") >= 0:
+    return [false, "bad url (control characters)"]
+  if len(url) < 8 or lower_ascii(url[:7]) != "http://":
+    return [false, "only http:// urls are supported"]
+  rest = url[7:]
+  h = find(rest, "#")
+  if h >= 0:
+    rest = rest[:h]
+  p = find(rest, "/")
+  authority = rest
+  path = "/"
+  if p >= 0:
+    authority = rest[:p]
+    path = rest[p:]
+  if find(authority, "@") >= 0:
+    return [false, "embedded credentials are not allowed"]
+  host = authority
+  port = 80
+  hasport = false
+  c = find(authority, ":")
+  if c >= 0:
+    host = authority[:c]
+    ps = authority[c + 1:]
+    if len(ps) == 0 or len(ps) > 5:
+      return [false, "bad port"]
+    i = 0
+    while i < len(ps):
+      if not (ps[i] >= "0" and ps[i] <= "9"):
+        return [false, "bad port"]
+      i = i + 1
+    port = int(ps)
+    if port < 1 or port > 65535:
+      return [false, "bad port"]
+    hasport = true
+  host = lower_ascii(host)
+  if _url_bad_host(host):
+    return [false, "bad host"]
+  if not test_mode:
+    if port != 80:
+      return [false, "only port 80 is supported"]
+    if _url_priv4(host):
+      return [false, "private or reserved addresses are not allowed"]
+  norm = "http://" + host
+  if hasport and port != 80:
+    norm = norm + ":" + str(port)
+  return [true, norm + path]
+# Source-identity registry: the normalized URL is the identity, so a
+# repeated read of the same page reuses its url-N id and can never
+# count as independent corroboration. Session-only, cleared with
+# 'clear readings', capped at 100 distinct identities.
+def _url_src(state, norm):
+  i = 0
+  for e in state["url_srcs"]:
+    if e[0] == norm:
+      return "url-" + str(i + 1)
+    i = i + 1
+  if len(state["url_srcs"]) >= 100:
+    return ""
+  append(state["url_srcs"], [norm, 0])
+  return "url-" + str(len(state["url_srcs"]))
+# Query strings can carry tokens: display redacts them while the
+# registry keeps the full normalized URL for local provenance.
+def _url_disp(norm):
+  q = find(norm, "?")
+  if q >= 0:
+    return norm[:q] + "?(redacted)"
+  return norm
+def _read_url(state, raw):
+  # Validation lives here so every rejection is corpus-deterministic;
+  # the actual fetch needs tcp builtins the IR/x64 subset routes
+  # cannot compile, so valid URLs are handled by the repl shell via
+  # agent/fetch.holy (EXPERIMENTAL preview).
+  r = _url_norm(raw, _url_test_mode(state))
+  if not r[0]:
+    return "read url: " + r[1]
+  return "read url: url reading is only available in the repl shell (experimental)"
 # Ingest one read payload: split into segments, extract whole-
 # segment claims, record with provenance. The payload is DATA: it is
 # never re-parsed as commands (an embedded 'clear readings' or
@@ -938,6 +1068,13 @@ def _read_text(state, rest):
   if src == "":
     state["read_n"] = state["read_n"] + 1
     src = "read-" + str(state["read_n"])
+  return _read_ingest(state, src, body, false)
+# Shared ingestion path for typed reads and (A18) fetched pages. The
+# 64KB cap for fetched text is applied by agent/fetch.holy BEFORE
+# this point (byte ops cannot live in the core: the self-interpreter
+# route rejects byte_len at load); the truncated flag only controls
+# the reply note.
+def _read_ingest(state, src, body, truncated):
   state["read_src"][src] = body
   segs = []
   cur = ""
@@ -1023,7 +1160,10 @@ def _read_text(state, rest):
             else:
               append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", ""])
             newc = newc + 1
-  return src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c) + " skipped (" + str(sk_q) + " quoted, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause), " + str(um) + " unmatched"
+  out = src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c) + " skipped (" + str(sk_q) + " quoted, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause), " + str(um) + " unmatched"
+  if truncated:
+    out = out + " (text truncated at 64KB)"
+  return out
 def _read_ids(side):
   out = ""
   for se in side:
@@ -1117,6 +1257,12 @@ def _readings_reply(state, about, detail):
       for se in r[4]:
         out = out + "\n  " + se[0] + " (negative): \"" + se[1] + "\" [pattern " + se[2] + "]"
     i = i + 1
+  if detail and len(state["url_srcs"]) > 0:
+    i = 0
+    while i < len(state["url_srcs"]):
+      e = state["url_srcs"][i]
+      out = out + "\nurl-" + str(i + 1) + " = " + _url_disp(e[0]) + " (fetched " + str(e[1]) + " times)"
+      i = i + 1
   return out
 def _add_rel(state, s, p, o):
   if s in state["relset"]:
@@ -1853,7 +1999,7 @@ def _else_reply(state):
   if len(facts) <= 1:
     return "that is all i know about " + state["topic"]
   return "about " + state["topic"] + ": " + _join(facts[1:])
-_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | mode | mode strict | mode explore | hypotheses | hypotheses detail | forget hypothesis <thing> is a <kind> | clear hypotheses | read <text> | readings | readings about <thing> | readings detail | forget reading <thing> is a <kind> | clear readings | list | say <text> | help"
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | mode | mode strict | mode explore | hypotheses | hypotheses detail | forget hypothesis <thing> is a <kind> | clear hypotheses | read <text> | readings | readings about <thing> | readings detail | forget reading <thing> is a <kind> | clear readings | read url <url> (experimental, repl shell only) | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -1932,6 +2078,7 @@ def respond(state, line):
   if m == "clear readings":
     state["readings"] = []
     state["read_src"] = {}
+    state["url_srcs"] = []
     return "readings cleared"
   if m[:15] == "forget reading " and len(m) > 15:
     rest = m[15:]
@@ -1944,6 +2091,8 @@ def respond(state, line):
         return "forgotten: reading " + r[0] + " | " + r[1] + " | " + r[2]
       return "no such reading - 'readings' lists them"
     return "forget reading <thing> is a <kind>"
+  if m[:9] == "read url " and len(text) > 9:
+    return _read_url(state, text[9:])
   if m[:5] == "read " and len(text) > 5:
     return _read_text(state, text[5:])
   if m[:5] == "note " and len(text) > 5:
