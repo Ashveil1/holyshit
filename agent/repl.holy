@@ -15,6 +15,7 @@ import agent.shadow
 import agent.review
 import agent.learned
 import agent.integrity
+import agent.registry
 path = "agent-memory.json"
 state = agent.store.load(path)
 # A18 EXPERIMENTAL: the fetch test harness is reachable only by
@@ -29,7 +30,8 @@ apath = "agent-attestations.json"
 dpath = "agent-delegation.json"
 lpath = "agent-learned-log.json"
 mpath = "agent-manifest.json"
-mfiles = [ppath, apath, dpath, lpath]
+rpath = "agent-registry.json"
+mfiles = [ppath, apath, dpath, lpath, rpath]
 integ = {"bad": false, "noted": false}
 def patterns_cmd(line):
   parts = split(agent.core.normalize(line), " ")
@@ -104,6 +106,20 @@ def patterns_cmd(line):
     msg = agent.proposals.lineage(st, parts[2], parts[3], parts[4], parts[5], parts[6])
     agent.proposals.save(ppath, st)
     return msg
+  if sub == "predicate" and len(parts) == 5:
+    rg = agent.registry.load(rpath)
+    msg = agent.registry.declare(rg, parts[2], parts[3], parts[4])
+    err = agent.registry.save(rpath, rg)
+    return msg + ("\n" + err if err != "" else "")
+  if sub == "type" and len(parts) == 5:
+    rg = agent.registry.load(rpath)
+    msg = agent.registry.evidence(rg, parts[2], parts[3], parts[4])
+    err = agent.registry.save(rpath, rg)
+    return msg + ("\n" + err if err != "" else "")
+  if sub == "registry" and len(parts) == 2:
+    return agent.registry.listing(agent.registry.load(rpath))
+  if sub == "typecheck" and len(parts) == 2:
+    return agent.registry.typecheck(agent.registry.load(rpath), state["rels"])
   if sub == "delegate" and len(parts) == 3:
     return agent.review.set_delegation(dpath, parts[2])
   if sub == "attest" and (len(parts) == 4 or len(parts) == 5):
@@ -147,7 +163,7 @@ def patterns_cmd(line):
     msg = agent.proposals.retract(st, join(" ", parts[2:]))
     agent.proposals.save(ppath, st)
     return msg
-  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | manifest accept | activate ID | learned | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
+  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | manifest accept | predicate P SUBJTYPE OBJTYPE | type ENTITY TYPE declared|inferred|verified | registry | typecheck | activate ID | learned | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
 # A21.0 shadow hook: after every non-patterns command, newly ingested
 # read sources are shadow-tested against SHADOWED candidates. It only
 # reads the stored bodies and writes the proposals file; the reply

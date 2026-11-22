@@ -52,6 +52,7 @@ SUITES = [
     ("test_agent_review.py", "A21.2a delegated review gate, attestations, lineage"),
     ("test_agent_learned.py", "A21.2b activation, fail-closed loader, core learned matcher"),
     ("test_agent_integrity.py", "A22.0 strace/network-namespace audit of the learned-pattern lifecycle"),
+    ("test_agent_registry.py", "A22.1 predicate/type registry: verified-only TYPE_MISMATCH, reader isolation"),
     ("test_agent_bench.py", "agent hosted resource benchmark quick gate and held-out dialogue check"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),

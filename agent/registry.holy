@@ -1,0 +1,140 @@
+# agent/registry.holy - A22.1 EXPERIMENTAL predicate and argument-type
+# registry (repl-only; the core never sees it). It feeds audits and
+# review only: it never changes a reading, a fact, a count or a reply.
+#
+# A predicate signature declares what type its subject and object are
+# expected to be. Entity type evidence has four distinct classes:
+#   declared  the owner says the entity should be this type (a claim)
+#   inferred  a heuristic guess (never raises anything)
+#   verified  type evidence the owner marked verified (the marker is an
+#             unauthenticated convention, like the A21 owner marker)
+#   unknown   nothing recorded
+# Only VERIFIED, UNAMBIGUOUS evidence (exactly one distinct verified
+# type) can raise TYPE_MISMATCH. Declared or inferred disagreement is
+# listed as a suspicion, never a mismatch. Several distinct verified
+# types make the entity ambiguous and nothing is raised. Entity identity
+# linking is deferred: an alias is just another string, spans are never
+# merged and no count changes. Types are exact names (no subtype
+# lattice yet); "any" accepts every type.
+import agent.core
+CLASSES = ["declared", "inferred", "verified"]
+def new_reg():
+  return {"version": 1, "hash_algo": "poly62", "predicates": {}, "types": {}}
+def _valid(r):
+  ok = true
+  try:
+    if r["version"] != 1:
+      ok = false
+    for p in keys(r["predicates"]):
+      sg = r["predicates"][p]
+      if json_str(sg["subj"])[:1] != "\"" or json_str(sg["obj"])[:1] != "\"":
+        ok = false
+    for e in keys(r["types"]):
+      for c in CLASSES:
+        for t in r["types"][e][c]:
+          if json_str(t)[:1] != "\"":
+            ok = false
+  except:
+    ok = false
+  return ok
+def load(path):
+  out = new_reg()
+  if exists(path):
+    try:
+      d = json_load(path)
+      if _valid(d):
+        out = d
+    except:
+      out = new_reg()
+  return out
+def save(path, r):
+  if not _valid(r):
+    return "refused: registry failed validation (nothing written)"
+  tmp = path + ".tmp"
+  json_save(tmp, r)
+  if not _valid(json_load(tmp)):
+    return "refused: tmp write failed validation (final file untouched)"
+  json_save(path, r)
+  return ""
+def _ent(s):
+  x = agent.core.lower_ascii(s)
+  return agent.core._stripart(join(" ", split(x, "_")))
+def _name(s):
+  ok = len(s) > 0 and len(s) <= 40
+  for ch in s:
+    if not (ch in "abcdefghijklmnopqrstuvwxyz0123456789_-"):
+      ok = false
+  return ok
+def declare(r, pred, subj, obj):
+  p = agent.core.lower_ascii(pred)
+  a = agent.core.lower_ascii(subj)
+  b = agent.core.lower_ascii(obj)
+  if not _name(p) or not _name(a) or not _name(b):
+    return "predicate refused: names are 1-40 chars of a-z 0-9 _ -"
+  r["predicates"][p] = {"subj": a, "obj": b, "status": "declared"}
+  return "predicate " + p + " signature (" + a + ", " + b + ") declared; audits only, no reading changes"
+def evidence(r, entity, typ, cls):
+  e = _ent(entity)
+  t = agent.core.lower_ascii(typ)
+  c = agent.core.lower_ascii(cls)
+  if not (c in CLASSES):
+    return "type refused: class must be declared, inferred or verified"
+  if len(e) == 0 or len(e) > 60 or not _name(t):
+    return "type refused: bad entity or type name"
+  if not (e in r["types"]):
+    r["types"][e] = {"declared": [], "inferred": [], "verified": []}
+  if t in r["types"][e][c]:
+    return "type evidence already recorded"
+  append(r["types"][e][c], t)
+  return "recorded " + c + " type " + t + " for " + e + (" (verified is an unauthenticated owner marker; audits only)" if c == "verified" else "")
+def listing(r):
+  lines = ["registry: " + str(len(keys(r["predicates"]))) + " predicate signature(s), " + str(len(keys(r["types"]))) + " typed entities (hash_algo " + r["hash_algo"] + ", audits and review only)"]
+  for p in keys(r["predicates"]):
+    append(lines, "  " + p + ": (" + r["predicates"][p]["subj"] + ", " + r["predicates"][p]["obj"] + ") " + r["predicates"][p]["status"])
+  for e in keys(r["types"]):
+    t = r["types"][e]
+    append(lines, "  " + e + ": declared " + str(t["declared"]) + " inferred " + str(t["inferred"]) + " verified " + str(t["verified"]))
+  return join("\n", lines)
+# Classify one argument against an expected type:
+#   ok, mismatch (verified, unambiguous), ambiguous, suspect, unknown
+def _check(r, ent, want):
+  e = _ent(ent)
+  if want == "any" or not (e in r["types"]):
+    return "unknown" if want != "any" else "ok"
+  t = r["types"][e]
+  if len(t["verified"]) == 1:
+    return "ok" if t["verified"][0] == want else "mismatch"
+  if len(t["verified"]) > 1:
+    return "ambiguous"
+  for c in ["declared", "inferred"]:
+    for x in t[c]:
+      if x != want:
+        return "suspect"
+  return "unknown"
+# Audit stored relation edges. Read-only over the rels list.
+def typecheck(r, rels):
+  mism = []
+  sus = []
+  amb = 0
+  seen = 0
+  for e in rels:
+    p = e[1]
+    if has(r["predicates"], p):
+      seen = seen + 1
+      sg = r["predicates"][p]
+      for pair in [[e[0], sg["subj"], "subject"], [e[2], sg["obj"], "object"]]:
+        k = _check(r, pair[0], pair[1])
+        row = "  " + e[0] + " | " + p + " | " + e[2] + " (" + pair[2] + " " + pair[0] + " expected " + pair[1] + ")"
+        if k == "mismatch":
+          append(mism, "TYPE_MISMATCH" + row)
+        elif k == "suspect":
+          append(sus, "suspect (not verified, not flagged)" + row)
+        elif k == "ambiguous":
+          amb = amb + 1
+  head = "typecheck: " + str(seen) + " edge(s) with a declared signature, " + str(len(mism)) + " TYPE_MISMATCH (verified evidence only), " + str(len(sus)) + " unverified suspicion(s), " + str(amb) + " ambiguous argument(s) not flagged; reader output and memory untouched"
+  out = [head]
+  for m in mism:
+    append(out, m)
+  for m in sus:
+    append(out, m)
+  return join("\n", out)

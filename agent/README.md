@@ -511,6 +511,24 @@ resistance waits for SHA-256 / signatures (language lane, C20).
 - Proposal history no longer repeats consecutive identical origin/lineage
   entries.
 
+### A22.1: predicate and argument-type registry (in progress)
+
+`agent-registry.json` (repl-only, `registry.holy`) holds predicate
+signatures (`patterns predicate P SUBJTYPE OBJTYPE`) and entity type
+evidence (`patterns type ENTITY TYPE declared|inferred|verified`);
+`patterns registry` lists it and `patterns typecheck` audits the stored
+relation edges. Declared, inferred, verified and unknown stay distinct.
+Only VERIFIED evidence with exactly one verified type raises
+TYPE_MISMATCH. Declared or inferred disagreement is shown as an
+unflagged suspicion, several verified types are ambiguous and not flagged.
+The `verified` marker is an unauthenticated owner convention. Types are
+exact names ("any" accepts all); there is no subtype lattice and no entity
+identity linking (aliases are never merged, no count changes). The
+registry feeds audits only: reader output and `agent-memory.json` are
+byte-identical with it absent, present or corrupt
+(`tests/test_agent_registry.py`). The file is covered by the A22.0
+manifest. Review-packet integration is not built yet.
+
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
@@ -724,6 +742,7 @@ research line and shares no code with it.
 - `patgen.holy`, `proposals.holy` — EXPERIMENTAL offline pattern
   candidates and their separate proposal store (repl-only).
 - `integrity.holy` — A22.0 change-detection manifest (repl-only).
+- `registry.holy` — A22.1 predicate/type registry (repl-only, audits only).
 - `shadow.holy`, `review.holy`, `learned.holy` — EXPERIMENTAL A21
   shadow observation, delegated review gate and fail-closed loader
   (repl-only). The core contains only the pure learned matcher.
