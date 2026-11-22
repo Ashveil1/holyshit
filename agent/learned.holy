@@ -7,6 +7,7 @@
 #   L06 polarity not positive          L07 structure invalid
 #   L08 revoked/rejected (never loaded) L09 approval/snapshot stale
 #   L10 validation corpus or tests fail L12 delegation revoked/expired
+#   L13 approval predates the current hash algorithm
 # (L01 file corrupt: the store loads empty, so nothing activates;
 #  L02 version: the store validator; L04 state not ACTIVE: not loaded.)
 # A failure disables the pattern (label REVIEW_PENDING, active false),
@@ -14,6 +15,7 @@
 import agent.patgen
 import agent.proposals
 import agent.review
+import agent.integrity
 _REG = ["is-a", "has", "is-in", "means"]
 def _sorted(ids):
   out = []
@@ -39,11 +41,21 @@ def check(st, att, dele, cid):
     return "L07 verb structure invalid"
   if not has(c, "approval"):
     return "L09 no approval record"
+  if not has(c["approval"], "hash_algo") or not (c["approval"]["hash_algo"] in agent.integrity.ALGOS):
+    return "L13 approval predates the current hash algorithm: reapproval required"
   sn = agent.proposals.snapshot(st, cid)
   if c["approval"]["hash"] != sn["hash"]:
     return "L09 approval is bound to an older snapshot"
   if c["approval_blocked"] or not agent.patgen._tests_clean(c["tests"]):
     return "L10 validation tests failed"
+  # L10 rebuild at every preflight: every stored positive example
+  # must still fire, and the frozen adversarial negatives are re-run.
+  fire = 0
+  for x in c["provenance"]["examples"] + c["provenance"]["holdout"]:
+    if agent.patgen.match_toks(vt, x) != null:
+      fire = fire + 1
+  if fire != c["tests"]["positive"][0] or fire != len(c["provenance"]["examples"]) + len(c["provenance"]["holdout"]):
+    return "L10 positive corpus rebuild disagrees with stored tests"
   i = 0
   for x in agent.patgen._ADV:
     i = i + 1
@@ -70,7 +82,7 @@ def activate(st, att, dele, cid):
   append(c["provenance"]["history"], "ACTIVE (opt-in experimental, positive only, revocable) on snapshot " + c["approval"]["hash"][:8])
   return "activated " + cid + " (EXPERIMENTAL, opt-in, revocable; readings are LEARNED_PATTERN, UNVERIFIED, never facts)"
 # Rebuild state["learned"] from validated ACTIVE patterns only.
-def refresh(state, ppath, apath, dpath):
+def refresh(state, ppath, apath, dpath, mpath, mfiles, integ):
   notes = []
   if not exists(ppath):
     return notes
@@ -79,6 +91,24 @@ def refresh(state, ppath, apath, dpath):
   dele = agent.review.load_del(dpath)
   out = []
   changed = false
+  anyact = false
+  for cid in keys(st["candidates"]):
+    if st["candidates"][cid]["label"] == "ACTIVE":
+      anyact = true
+  # A22.0 change detection (poly62, NOT tamper-proof): only consulted
+  # when something is ACTIVE; a mismatch keeps every learned pattern
+  # unloaded until the owner accepts it.
+  if anyact:
+    bad = agent.integrity.verify(mpath, mfiles)
+    integ["bad"] = len(bad) > 0
+    if len(bad) > 0:
+      state["learned"] = []
+      if not integ["noted"]:
+        integ["noted"] = true
+        append(notes, "integrity: " + join("; ", bad) + ". Learned patterns are NOT loaded until `patterns manifest accept` (change detection only, not tamper-proof).")
+      return notes
+  else:
+    integ["bad"] = false
   for cid in _sorted(keys(st["candidates"])):
     c = st["candidates"][cid]
     if c["label"] == "ACTIVE":

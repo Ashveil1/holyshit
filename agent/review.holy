@@ -168,7 +168,7 @@ def approve(att, dele, st, cid):
   g = gate(att, dele, st, cid, false)
   if len(g["codes"]) == 0:
     c["label"] = "APPROVED"
-    c["approval"] = {"hash": g["hash"], "attestations": g["attestations"], "delegation": dele["version"], "kind": "delegated"}
+    c["approval"] = {"hash": g["hash"], "hash_algo": "poly62", "attestations": g["attestations"], "delegation": dele["version"], "kind": "delegated"}
     append(c["provenance"]["history"], "APPROVED (delegated) on snapshot " + g["hash"][:8] + " (still inactive until activated)")
     return "approved " + cid + " on snapshot " + g["hash"] + " (delegated; still INACTIVE until `patterns activate`)"
   if g["escalated"]:
@@ -201,7 +201,7 @@ def owner(att, dele, st, cid, decision):
   if len(tech) > 0:
     return "owner approval cannot override technical failures: " + join(" | ", tech)
   c["label"] = "APPROVED"
-  c["approval"] = {"hash": g["hash"], "attestations": g["attestations"], "delegation": dele["version"], "kind": "owner"}
+  c["approval"] = {"hash": g["hash"], "hash_algo": "poly62", "attestations": g["attestations"], "delegation": dele["version"], "kind": "owner"}
   append(c["provenance"]["history"], "APPROVED (owner) on snapshot " + g["hash"][:8])
   return "owner approved " + cid + " (kind owner; still INACTIVE until activated)"
 def revoke(st, cid):

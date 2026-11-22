@@ -482,6 +482,35 @@ Limits, stated plainly:
   counters; the thresholds are not ratified; one reviewer family
   label is not proof of independent training data.
 
+### A22.0: change detection for learned-pattern files (in progress)
+
+This is CHANGE DETECTION ONLY. `agent-manifest.json` records a hash of
+`agent-patterns.json`, `agent-attestations.json`, `agent-delegation.json`
+and the learned log. The hash is the 62-bit polynomial hash, so it notices
+that a file changed outside the repl; it does not prove who changed it and
+an attacker who can edit files can edit the manifest too. Real tamper
+resistance waits for SHA-256 / signatures (language lane, C20).
+
+- The repl seals the manifest after `patterns *` commands, after learned
+  logging and at exit. It checks it only when an ACTIVE learned pattern
+  exists, so reader output is unchanged for everyone else (A20 isolation).
+- On a mismatch nothing learned loads, one integrity note is printed, and
+  the owner must run `patterns manifest accept` after inspecting the files.
+  Upgrading from A20/A21 with pattern files but no manifest needs one
+  `patterns manifest accept` before learned patterns load again.
+- New loader code L13: an approval made under another hash algorithm is
+  void. The manifest and approvals record `hash_algo`, so a future SHA-256
+  migration invalidates old approvals.
+- L10 now rebuilds the positive examples (all must fire, count must match)
+  and re-runs the ADV negatives. It does not rebuild structural/mutation
+  cases: those triples are not stored in provenance.
+- `tests/test_agent_integrity.py` runs a native build and use session under
+  `unshare -rn` + `strace`: no network syscalls, writes only in the working
+  directory allowlist (including `.tmp` files, since the language has no
+  remove builtin), no symlink escapes; the auditor has negative controls.
+- Proposal history no longer repeats consecutive identical origin/lineage
+  entries.
+
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
@@ -694,6 +723,7 @@ research line and shares no code with it.
   (repl-only; see the A18 preview section).
 - `patgen.holy`, `proposals.holy` — EXPERIMENTAL offline pattern
   candidates and their separate proposal store (repl-only).
+- `integrity.holy` — A22.0 change-detection manifest (repl-only).
 - `shadow.holy`, `review.holy`, `learned.holy` — EXPERIMENTAL A21
   shadow observation, delegated review gate and fail-closed loader
   (repl-only). The core contains only the pure learned matcher.

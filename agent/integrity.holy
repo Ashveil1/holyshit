@@ -1,0 +1,58 @@
+# agent/integrity.holy - A22.0 CHANGE-DETECTION-ONLY integrity layer
+# (repl-only). Every hash here is the 62-bit polynomial hash: it
+# notices that a file changed outside the repl, it is NOT a security
+# guarantee and says nothing about who changed it. Tamper resistance
+# needs a separate trust anchor (a real SHA-256, C20, or an
+# out-of-band key). A hash-algorithm change invalidates old approvals
+# (loader code L13) and keeps them in history.
+import agent.patgen
+ALGO = "poly62"
+ALGOS = ["poly62"]
+def file_hash(path):
+  out = "unreadable"
+  try:
+    d = json_load(path)
+    out = agent.patgen._hash(json_str(d))
+  except:
+    out = "unreadable"
+  return out
+# Files covered by the manifest: the learned-pattern state only. The
+# reader's own agent-memory.json is never part of it.
+def present(files):
+  out = []
+  for f in files:
+    if exists(f):
+      out.append(f)
+  return out
+def seal(mpath, files):
+  h = {}
+  for f in present(files):
+    h[f] = file_hash(f)
+  if len(keys(h)) == 0:
+    return 0
+  json_save(mpath, {"version": 1, "algo": ALGO, "note": "change detection only", "files": h})
+  return len(keys(h))
+# Returns a list of mismatch descriptions (empty = unchanged or no
+# learned-pattern files exist).
+def verify(mpath, files):
+  pr = present(files)
+  if len(pr) == 0:
+    return []
+  if not exists(mpath):
+    return ["manifest missing while learned-pattern files exist"]
+  try:
+    m = json_load(mpath)
+    if m["algo"] != ALGO:
+      return ["manifest hash algorithm " + m["algo"] + " is not the current " + ALGO]
+    out = []
+    for f in pr:
+      if not has(m["files"], f):
+        append(out, f + " is not in the manifest")
+      elif m["files"][f] != file_hash(f):
+        append(out, f + " changed outside the repl")
+    for f in keys(m["files"]):
+      if not exists(f):
+        append(out, f + " is missing")
+    return out
+  except:
+    return ["manifest unreadable"]
