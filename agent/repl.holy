@@ -10,7 +10,7 @@ import agent.core
 import agent.store
 path = "agent-memory.json"
 state = agent.store.load(path)
-print "holyshit agent v0.9.1 - type 'help' for commands, 'quit' to leave"
+print "holyshit agent v0.10 - type 'help' for commands, 'quit' to leave"
 done = false
 while not done:
   line = ""

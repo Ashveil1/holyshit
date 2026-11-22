@@ -4,7 +4,7 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.9.1)
+## What it is today (v0.10)
 
 - An ordered pattern-rule matcher: a fixed set of command patterns is
   checked in order and the first match wins.
@@ -144,6 +144,26 @@ no dependencies beyond the language itself.
   blocks the same world again. Thai negative domain teaches
   (`remember a pilot ไม่เป็น machine`) participate in guards like
   any other.
+- Bounded hypothesis learning: explore-mode assumptions are recorded
+  as named, inspectable candidates - the missing knowledge the engine
+  leans on, exposed so the user can resolve it. A candidate is NEVER
+  a fact: nothing reads the list for inference, guards, recall,
+  contradiction detection or suggestions, and strict mode records
+  nothing (a candidate used any number of times leaves strict
+  queries unknown and compositions blocked). `hypotheses` lists open
+  candidates (labelled as unresolved candidates, not beliefs) with
+  use counts and first-seen questions; `hypotheses detail` adds the
+  creation event and the 10 most recent uses, older ones marked
+  omitted. Teaching retires deterministically - a positive verdict
+  lets strict guards pass, a negative one leaves strict blocked, a
+  taught conflict stays a conflict - and a candidate plus an asserted
+  negative is just FALSE (the candidate is not evidence, so no
+  contradiction). Hard stop at 20 candidates, no auto-eviction (age
+  or count cannot prove an unresolved assumption safe to destroy);
+  `forget hypothesis <thing> is a <kind>` and `clear hypotheses`
+  free space, and a full list says so when a recording is rejected.
+  Session-only, like notes and mode: no store-format change, no
+  auto-promotion, ever.
 - Bounded self-knowledge: `what do you know` counts taught things and
   names the 5 most recent, `what did you forget` lists the tombstones
   it keeps (last 20), `what did we talk about` replays the session log
@@ -181,7 +201,7 @@ how are you, thanks/thank you, bye/goodbye, สวัสดี, ขอบคุ�
 One trailing `?` or `.` is ignored.
 Anything else gets an honest `i do not understand`.
 
-## Hosted resource benchmark (measured at A14.1, domain guards)
+## Hosted resource benchmark (measured at A15, hypothesis learning)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -194,42 +214,42 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A14.1; A14 numbers in parentheses where they
-differ). A14.1 adds the domain guard per rule step plus one scored
-dialogue category (guard 5/5; every earlier category keeps full
-marks at every scale on both backends).
+Current numbers (A15; A14.1 numbers in parentheses where they
+differ). A15 adds the hypothesis recorder (explore mode only) plus
+one scored dialogue category (hypothesis 5/5; every earlier
+category keeps full marks at every scale on both backends).
 
-| backend | facts | miss | recall | inference | rule-derive | startup (A14) | peak RSS (A14) |
+| backend | facts | miss | recall | inference | rule-derive | startup (A14.1) | peak RSS (A14.1) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| interp | 0 | 2.2 ms (2.3) | - | <0.01 ms | 3.9 ms (3.0) | 0.10 s (0.12) | 25.3 MiB (25.1) |
-| interp | 1,000 | 4.8 ms (5.1) | 1.1 ms (1.3) | 1.9 ms (2.06) | 3.9 ms (3.2) | 1.99 s (1.94) | 28.1 MiB (27.8) |
-| interp | 10,000 | see note | <0.01 ms (0.8) | <0.01 ms (2.08) | 8.5-10.0 ms (4.1) | 19.4 s (18.7) | 58.9 MiB (58.4) |
-| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 ms | 0.04 ms (0.03) | <0.01 s | 32.1 MiB (30.1) |
-| ir-x64 | 1,000 | 0.01 ms (0.03) | <0.01 ms | <0.01 ms | 0.01 ms (<0.01) | 0.07 s | 32.5 MiB (30.1) |
-| ir-x64 | 10,000 | <0.01 ms | <0.01 ms | <0.01 ms | 0.09 ms (<0.01) | 0.93 s (1.01) | 209.8 MiB (209.7) |
+| interp | 0 | 2.1 ms (2.2) | - | <0.01 ms | 3.8 ms (3.9) | 0.12 s (0.10) | 25.7 MiB (25.3) |
+| interp | 1,000 | 4.8 ms (4.8) | 0.9 ms (1.1) | 2.1 ms (1.9) | 3.9 ms (3.9) | 2.05 s (1.99) | 28.2 MiB (28.1) |
+| interp | 10,000 | see note | see note | see note | 9.2-18.6 ms (8.5-10.0) | 19.3 s (19.4) | 58.7 MiB (58.9) |
+| ir-x64 | 0 | 0.02 ms | <0.01 ms | <0.01 ms | 0.04 ms | <0.01 s | 33.8 MiB (32.1) |
+| ir-x64 | 1,000 | 0.03 ms (0.01) | <0.01 ms | <0.01 ms | 0.04 ms (0.01) | 0.07 s | 33.8 MiB (32.5) |
+| ir-x64 | 10,000 | 0.3 ms (<0.01) | 0.1 ms (<0.01) | 0.1 ms (<0.01) | <0.01 ms (0.09) | 0.95 s (0.93) | 210.2 MiB (209.8) |
 
 4 GiB probe (RLIMIT_AS on the child, 10k facts, dialogue session):
-both backends complete - interp at 58.9 MiB peak, native at 209.8
+both backends complete - interp at 58.7 MiB peak, native at 210.2
 MiB peak. Memory stays far inside a 4 GiB budget.
 
 Honest readings:
-- Rule derivation now pays the guard: interp rule-derive at 10k read
-  10.0 ms on the first run and 8.5 ms on an isolated re-run, vs
-  A14's 4.1 ms. The added work is the per-step is-a membership walk
-  (car -> machine) on top of the same scratch-re-derived proof. The
-  derivation bench now also teaches the two machine domains, because
-  without them strict mode honestly measures the BLOCKED path, not
-  a derivation. Sub-0.1 ms on native, unchanged in practice.
-- interp inference and recall at 10k read 0 ms this run vs A14's
-  2.08/0.8 ms - the 10k samples are 5 commands each, so single-run
-  readings below ~2 ms stay noise on this box (documented since
-  A11); nothing in A14.1 touches the recall or inheritance paths.
-- interp 10k cold startup 19.4 s vs A14's 18.7 s: the guard table is
-  five rows read at query time; the delta is within the run-to-run
-  spread documented since A11 (18.7-19.0 across A13/A14). Native
-  session RSS is flat at ~210 MiB (~5% of the 4 GiB budget).
-- A14.1 leaves the store format and the load path untouched: mode
-  lives in session state only, like notes; nothing new persists.
+- A15 is performance-neutral by construction: hypotheses record
+  only in explore mode (the bench's strict sessions never record),
+  and the four new commands are exact-match routes checked after
+  the mode commands. Every 10k latency difference vs A14.1 is box
+  noise: the 10k samples are 5 commands each, and this box's
+  readings swing wildly - interp miss read 27.6 ms then 78.4 ms on
+  consecutive runs of the SAME build (documented since A11: 74 ms
+  then 0 ms). Recall read 5.2 ms then 0 ms; inference 12.7 ms then
+  10.9 ms. No A15 code touches those paths.
+- interp rule-derive at 10k read 18.6 ms then 9.2 ms, bracketing
+  A14.1's 8.5-10.0 ms: unchanged within noise. The hypothesis
+  recorder adds work only when an explore derivation actually makes
+  assumptions - the strict derive benchmark records nothing.
+- interp 10k cold startup 19.3 s vs A14.1's 19.4 s: flat, as
+  expected - hypotheses are session state, never persisted, so the
+  load path and store format are untouched again. Native session
+  RSS flat at ~210 MiB (~5% of the 4 GiB budget).
 - A13's interp load increase (+2.1 s at 10k synth facts) comes from
   three extra prefix checks per value in relation derivation
   (lower-casing 4/6/7-character prefixes for the negation shapes).

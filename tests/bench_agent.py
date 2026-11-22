@@ -197,11 +197,44 @@ DIALOGUE += [
     ('can a bike produce electricity',
      'not that i know - rule has+can applies only to machines, and i do not know whether a bike is a machine',
      'guard'),
+    # A15 hypothesis learning: explore-mode assumptions become
+    # candidates; teaching retires them; candidates are never facts.
+    ('mode explore',
+     'explore mode: compositional rules may fire on unverified domains; conclusions list their assumptions (this session only)',
+     'hypothesis'),
+    ('remember a glider has a wing', 'remembered a glider has a wing', 'teach'),
+    ('remember a wing can generate lift', 'remembered a wing can generate lift', 'teach'),
+    ('can a glider generate lift',
+     'yes, on 1 assumption: a glider can generate lift. reasoning:\n'
+     '(1) a glider has a wing + a wing can generate lift => a glider can generate lift [rule has+can]\n'
+     'assumptions:\n'
+     '(a) a glider is a machine - assumed at step 1, unverified',
+     'hypothesis'),
+    ('hypotheses',
+     '2 open hypotheses (unresolved candidates, not beliefs):\n'
+     "(a) a bike is a machine - assumed once, first for 'can a bike produce electricity'\n"
+     "(b) a glider is a machine - assumed once, first for 'can a glider generate lift'",
+     'hypothesis'),
+    ('remember a bike is a machine', 'added: a bike is a machine', 'teach'),
+    ('hypotheses',
+     '1 open hypothesis (unresolved candidates, not beliefs):\n'
+     "(a) a glider is a machine - assumed once, first for 'can a glider generate lift'\n"
+     'recently retired:\n'
+     '- a bike is a machine (taught positive)',
+     'hypothesis'),
+    ('mode strict',
+     'strict mode: compositional rules need verified domains (this session only)',
+     'hypothesis'),
+    ('can a bike produce electricity',
+     'yes: a bike can produce electricity. reasoning:\n'
+     '(1) a bike has a dynamo + a dynamo can produce electricity => a bike can produce electricity [rule has+can; domain: a bike is a machine]',
+     'hypothesis'),
 ]
 
 SCORED = ('recall', 'clarify', 'miss', 'correction', 'pleasantry', 'open',
           'infer', 'passive', 'unknown', 'negative', 'contradiction',
-          'rule', 'chain', 'inference', 'usage', 'unparsed', 'guard')
+          'rule', 'chain', 'inference', 'usage', 'unparsed', 'guard',
+          'hypothesis')
 
 
 def git_head():
