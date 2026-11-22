@@ -218,7 +218,7 @@ def review(st, cid):
   smp = []
   for s in sh["samples"]:
     append(smp, [s["event"], s["class"], s["triple"]])
-  snap = {"descriptor": d, "tests": t, "examples": c["provenance"]["examples"], "holdout": c["provenance"]["holdout"], "counters": cnt, "sources": sh["sources"], "sample_events": smp, "meta": {"label": c["label"], "blocked": c["approval_blocked"], "polarity": d["polarity"], "rejected": (cid in st["rejected"])}}
+  snap = {"descriptor": d, "tests": t, "examples": c["provenance"]["examples"], "holdout": c["provenance"]["holdout"], "counters": cnt, "sources": sh["sources"], "sample_events": smp, "meta": {"label": c["label"], "blocked": c["approval_blocked"], "polarity": d["polarity"], "rejected": cid in st["rejected"]}}
   h = agent.patgen._hash(json_str(snap))
   old = ""
   if has(c, "review"):
