@@ -6,7 +6,7 @@ dependencies beyond the language itself. One EXPERIMENTAL exception:
 the repl shell can fetch web pages over plain HTTP (`read url`, A18
 preview below); the core itself stays network-free.
 
-## What it is today (v0.13)
+## What it is today (v0.14)
 
 - An evidence-ingestion reader (A16): `read <text>` ingests text as
   DATA - never executed, never believed - and reports typed claims
@@ -368,6 +368,64 @@ This is an explicitly labelled EXPERIMENTAL preview, not a release:
   reply; the fetch lives in `agent/fetch.holy`, imported only by the
   repl.
 
+## EXPERIMENTAL: pattern candidates (A20, offline, inactive)
+
+`patterns derive FILE` proposes reader-pattern CANDIDATES from an
+annotated example set. A candidate is an inactive proposal: it never
+extracts, matches inside a read, answers a question, changes a count
+or counts as reader coverage. The core and the knowledge store do not
+reference the generator (a test asserts it) and the reader transcript
+and `agent-memory.json` are byte-identical with the proposals file
+absent, present, rejected or corrupt. Activation is a later,
+human-approved milestone (A21); nothing here promotes anything.
+
+- Input: JSON `{"examples": [[text, subject, verb, object, predicate,
+  polarity], ...], "corpus": [...optional segments...],
+  "negatives": [...optional annotated non-matches...]}`. The
+  annotation must cover the WHOLE segment as `subject verb object`.
+- Scope (A20): explicitly annotated transitive declaratives only,
+  English/ASCII only. Predicate must be in the running registry
+  (is-a, has, is-in, means); polarity is copied from the annotation.
+  No new semantic relations. Compound subjects, adjectives, verb +
+  prepositional phrase, attributed, modal, pronoun and Thai shapes
+  are deferred; directives stay inert in the reader.
+- Matching is complete-structure and fails closed: the relation verb
+  is a LITERAL that must occur exactly once; subject and object
+  slots are the annotated spans only (1-4 plain alnum tokens, no
+  function words, negation, modals, attribution words, pronouns or
+  punctuation); no wildcards.
+- Induction needs >= 3 agreeing annotated examples (same verb,
+  predicate, polarity). Conflicting annotations yield no candidate
+  and are reported. The held-out split happens before induction:
+  3 examples = training only, reported "no held-out coverage" (not a
+  failure); 4-9 hold one out; 10+ hold a fixed 20%. A held-out
+  failure stays visible and blocks approval.
+- Each candidate carries generated tests, kept in separate counts:
+  positive replay, structural negatives (negation, modal,
+  attribution, trailing clause, unrelated verb, quoted, punctuated,
+  boundary ambiguity, missing argument), supplementary single-token
+  mutations (only literal removals are labeled negative), the frozen
+  curated adversarial set, and annotated negatives. Any failure
+  blocks approval. `expected coverage gain` counts corpus segments
+  the candidate would match that the reader does not; it ranks below
+  correctness and ambiguity.
+- IDs are content-addressed (`pc-` + hash of the full canonical
+  descriptor: language, skeleton, slot constraints, predicate,
+  polarity, schema version). Provenance and history live outside the
+  identity. Re-deriving is idempotent; an id collision with a
+  different descriptor is refused.
+- Lifecycle commands: `patterns list`, `patterns reject ID` (stays
+  rejected through re-derivation until `patterns reopen ID`),
+  `patterns retract TEXT` (candidates induced from a retracted
+  example go STALE and stay approval-blocked).
+- Storage: separate versioned file `agent-patterns.json`, validated
+  on write (tmp write read back and checked, then final write read
+  back and checked). Gap: the language has no rename builtin, so this
+  is validate-then-write, not an atomic rename. An invalid file loads
+  as an empty store.
+- Counts: the 41-segment Grammar Observatory inventory is frequency
+  in the frozen eval data, not natural-language frequency.
+
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
@@ -578,6 +636,8 @@ research line and shares no code with it.
   the repo root. Memory persists to `agent-memory.json` on exit.
 - `fetch.holy` — EXPERIMENTAL bounded HTTP fetch + html-to-text
   (repl-only; see the A18 preview section).
+- `patgen.holy`, `proposals.holy` — EXPERIMENTAL offline pattern
+  candidates and their separate inactive proposal store (repl-only).
 - `utf8.holy` — pure-hs UTF-8 decoding (ASCII, Latin-1, Thai) used by
   the fetch path.
 
@@ -596,3 +656,7 @@ extraction, threat fixtures (hostile markup, fake confirmations,
 modal text), every failure mode, dedup, redaction, and the no-flag
 policy rejections. `tests/eval_reader.py` holds the frozen extraction
 quality corpus at precision 1.000 with zero false extractions.
+`tests/test_agent_patgen.py` checks the pattern generator against an
+independent Python oracle on the interpreter and native routes;
+`tests/test_agent_proposals.py` covers the proposal store, the repl
+`patterns` commands and the reader-isolation gate.

@@ -250,8 +250,8 @@ DIALOGUE += [
      '2 read candidates about a bicycle (unverified readings, not facts):\n'
      '(a) a bicycle | is-a | a vehicle - positive support: 2 sources '
      '(read-1, manual); MULTI_SOURCE positive; positive evidence: 2 '
-     'agreeing sources, 0 registrable domains (2 without), 1 text '
-     'cluster (experimental); independence UNVERIFIED\n'
+     'agreeing sources, 0 registrable domains (2 without), content '
+     'clusters NOT_ASSESSED; independence UNVERIFIED\n'
      '(b) a bicycle | has | two wheels - positive support: 1 source '
      '(read-1); UNVERIFIED',
      'reading'),
@@ -279,8 +279,8 @@ DIALOGUE += [
      '(a) a bicycle | is-a | a vehicle - positive support: 2 sources '
      '(read-1, manual) [USER_CONFIRMED]; negative support: 1 source '
      '(forum); CONFLICT; MULTI_SOURCE positive; positive evidence: 2 '
-     'agreeing sources, 0 registrable domains (2 without), 1 text '
-     'cluster (experimental); independence UNVERIFIED\n'
+     'agreeing sources, 0 registrable domains (2 without), content '
+     'clusters NOT_ASSESSED; independence UNVERIFIED\n'
      '(b) a bicycle | has | two wheels - positive support: 1 source '
      '(read-1); UNVERIFIED',
      'reading'),
