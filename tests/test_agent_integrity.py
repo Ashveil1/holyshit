@@ -21,7 +21,8 @@ ALLOWED = {'agent-memory.json', 'agent-patterns.json',
            'agent-patterns.json.tmp', 'agent-attestations.json',
            'agent-attestations.json.tmp', 'agent-delegation.json',
            'agent-learned-log.json', 'agent-manifest.json',
-           'agent-tripwire.json', 'agent-tripwire.json.tmp'}
+           'agent-tripwire.json', 'agent-tripwire.json.tmp',
+           'agent-reviewers.json', 'agent-reviewers.json.tmp'}
 TRACE = ('openat,open,creat,rename,renameat,renameat2,unlink,unlinkat,'
          'mkdir,mkdirat,symlink,symlinkat,link,linkat,truncate,socket,'
          'connect,bind')

@@ -563,6 +563,38 @@ Thresholds are PROVISIONAL and unratified.
 - With no active learned pattern nothing is written and reader output is
   unchanged.
 
+### A22.3: reviewer budgets, suspension and isolated canaries (in progress)
+
+`agent-reviewers.json` (repl-only, `reviewers.holy`, covered by the
+manifest) only ever LIMITS review; it cannot approve, activate or promote.
+
+- Identity assurance ladder (unchanged): self_asserted is recorded, never
+  counts and spends no budget; owner_attested is the current ceiling (the
+  `owner` marker is an unauthenticated convention); runner_authenticated is
+  deferred until crypto exists (C20), refused rather than faked.
+- Budgets: `patterns budget FAMILY MAXCANDS MAXWORK owner`. Once the file
+  exists, every owner_attested attestation needs a budgeted family: no
+  budget, an exhausted candidate budget or an exhausted weighted-work budget
+  (1 + sample events + 3 x disagreement events per attestation) REFUSES the
+  attestation (A10); nothing auto-extends and usage is never reset. Before
+  the first `patterns budget` command review is unbudgeted and says so
+  (opt-in for backward compatibility; the default can flip later).
+- Canaries: `patterns canary FAMILY CASES ANSWERS owner`. A canary is a
+  synthetic case file plus the family's answers; scoring reads only those
+  files and the reviewer registry. It imports no proposals, tripwire,
+  matcher or graph code (the test asserts the imports), and a pool with a
+  production reference or a non-synthetic case is refused. Ambiguous cases
+  are never scored; unanswered cases are non-critical. A clear CRITICAL miss
+  (approving a must-reject case) suspends the family: its attestations stop
+  counting (gate A11) and an ACTIVE pattern approved by it leaves use at the
+  next command (loader L15). Only `patterns reinstate FAMILY owner NOTE`
+  reinstates. The owner-authored delegation file is never edited.
+- An unreadable reviewer registry fails closed. Identical rationale across
+  approving attestations prints a flag; it is not a rejection.
+- Limits: family names, the owner marker and the answers files are
+  unauthenticated conventions; canary pools are owner-supplied, not
+  validated against ground truth beyond the synthetic/no-reference rules.
+
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
@@ -776,6 +808,7 @@ research line and shares no code with it.
 - `patgen.holy`, `proposals.holy` — EXPERIMENTAL offline pattern
   candidates and their separate proposal store (repl-only).
 - `integrity.holy` — A22.0 change-detection manifest (repl-only).
+- `reviewers.holy` — A22.3 reviewer budgets, suspension, canaries (repl-only).
 - `tripwire.holy` — A22.2 tripwires and quarantine states (repl-only).
 - `registry.holy` — A22.1 predicate/type registry (repl-only, audits only).
 - `shadow.holy`, `review.holy`, `learned.holy` — EXPERIMENTAL A21

@@ -54,6 +54,7 @@ SUITES = [
     ("test_agent_integrity.py", "A22.0 strace/network-namespace audit of the learned-pattern lifecycle"),
     ("test_agent_registry.py", "A22.1 predicate/type registry: verified-only TYPE_MISMATCH, reader isolation"),
     ("test_agent_tripwire.py", "A22.2 tripwires: T1/T2 quarantine state machine, fail-closed, event classes"),
+    ("test_agent_reviewers.py", "A22.3 reviewer budgets, suspension and isolated canaries"),
     ("test_agent_bench.py", "agent hosted resource benchmark quick gate and held-out dialogue check"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),

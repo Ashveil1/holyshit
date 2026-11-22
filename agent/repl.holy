@@ -17,6 +17,7 @@ import agent.learned
 import agent.integrity
 import agent.registry
 import agent.tripwire
+import agent.reviewers
 path = "agent-memory.json"
 state = agent.store.load(path)
 # A18 EXPERIMENTAL: the fetch test harness is reachable only by
@@ -33,7 +34,8 @@ lpath = "agent-learned-log.json"
 mpath = "agent-manifest.json"
 rpath = "agent-registry.json"
 tpath = "agent-tripwire.json"
-mfiles = [ppath, apath, dpath, lpath, rpath, tpath]
+rvpath = "agent-reviewers.json"
+mfiles = [ppath, apath, dpath, lpath, rpath, tpath, rvpath]
 integ = {"bad": false, "noted": false}
 def a22_status(st, cid):
   out = "A22 read-only status (display only, not a gate):"
@@ -129,6 +131,37 @@ def patterns_cmd(line):
     msg = agent.proposals.lineage(st, parts[2], parts[3], parts[4], parts[5], parts[6])
     agent.proposals.save(ppath, st)
     return msg
+  if sub == "reviewers" and len(parts) == 2:
+    return agent.reviewers.listing(agent.reviewers.load(rvpath))
+  if sub == "budget" or sub == "reinstate" or sub == "canary":
+    rvs = agent.reviewers.load(rvpath)
+    wasp = rvs["present"]
+    msg = ""
+    if sub == "budget" and len(parts) == 6 and parts[5] == "owner":
+      msg = agent.reviewers.set_budget(rvs, parts[2], parts[3], parts[4])
+    elif sub == "budget":
+      return "budget refused: usage `patterns budget FAMILY MAXCANDS MAXWORK owner`"
+    elif sub == "reinstate" and len(parts) >= 5 and parts[3] == "owner":
+      msg = agent.reviewers.reinstate(rvs, parts[2], join(" ", parts[4:]))
+    elif sub == "reinstate":
+      return "reinstate refused: usage `patterns reinstate FAMILY owner NOTE...`; only the owner reinstates"
+    elif len(parts) == 6 and parts[5] == "owner":
+      cs = null
+      an = null
+      try:
+        cs = json_load(parts[3])
+        an = json_load(parts[4])
+      except:
+        return "canary refused: cannot read " + parts[3] + " or " + parts[4]
+      msg = agent.reviewers.run_canary(rvs, parts[2], cs["cases"], an["answers"])
+    else:
+      return "canary refused: usage `patterns canary FAMILY CASES.json ANSWERS.json owner`"
+    err = agent.reviewers.save(rvpath, rvs)
+    if not integ["bad"]:
+      agent.integrity.seal(mpath, mfiles)
+    for n in agent.learned.refresh(state, ppath, apath, dpath, mpath, mfiles, integ, tpath, rvpath):
+      msg = msg + "\n" + n
+    return msg + ("\n" + err if err != "" else "")
   if sub == "tripwire" and len(parts) == 2:
     return agent.tripwire.listing(agent.tripwire.load(tpath))
   if sub == "fp" or sub == "polarity-error" or sub == "quarantine" or sub == "lift":
@@ -153,7 +186,7 @@ def patterns_cmd(line):
     err = agent.tripwire.save(tpath, tw)
     if not integ["bad"]:
       agent.integrity.seal(mpath, mfiles)
-    for n in agent.learned.refresh(state, ppath, apath, dpath, mpath, mfiles, integ, tpath):
+    for n in agent.learned.refresh(state, ppath, apath, dpath, mpath, mfiles, integ, tpath, rvpath):
       msg = msg + "\n" + n
     return msg + ("\n" + err if err != "" else "")
   if sub == "predicate" and len(parts) == 5:
@@ -179,20 +212,23 @@ def patterns_cmd(line):
       rec = json_load(parts[3])
     except:
       return "attestation refused: cannot read " + parts[3]
-    msg = agent.review.attest(att, st, parts[2], rec, len(parts) == 5 and parts[4] == "owner")
+    rvs = agent.reviewers.load(rvpath)
+    msg = agent.review.attest(att, st, parts[2], rec, len(parts) == 5 and parts[4] == "owner", rvs)
     agent.review.save_att(apath, att)
+    if rvs["present"]:
+      agent.reviewers.save(rvpath, rvs)
     agent.proposals.save(ppath, st)
     return msg
   if sub == "approve" and len(parts) == 3:
-    msg = agent.review.approve(agent.review.load_att(apath), agent.review.load_del(dpath), st, parts[2])
+    msg = agent.review.approve(agent.review.load_att(apath), agent.review.load_del(dpath), st, parts[2], agent.reviewers.load(rvpath))
     agent.proposals.save(ppath, st)
     return msg
   if sub == "owner" and len(parts) == 4 and (parts[3] == "approve" or parts[3] == "reject"):
-    msg = agent.review.owner(agent.review.load_att(apath), agent.review.load_del(dpath), st, parts[2], parts[3])
+    msg = agent.review.owner(agent.review.load_att(apath), agent.review.load_del(dpath), st, parts[2], parts[3], agent.reviewers.load(rvpath))
     agent.proposals.save(ppath, st)
     return msg
   if sub == "activate" and len(parts) == 3:
-    msg = agent.learned.activate(st, agent.review.load_att(apath), agent.review.load_del(dpath), parts[2], agent.tripwire.load(tpath))
+    msg = agent.learned.activate(st, agent.review.load_att(apath), agent.review.load_del(dpath), parts[2], agent.tripwire.load(tpath), agent.reviewers.load(rvpath))
     agent.proposals.save(ppath, st)
     return msg
   if sub == "learned" and len(parts) == 2:
@@ -213,7 +249,7 @@ def patterns_cmd(line):
     msg = agent.proposals.retract(st, join(" ", parts[2:]))
     agent.proposals.save(ppath, st)
     return msg
-  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | manifest accept | predicate P SUBJTYPE OBJTYPE | type ENTITY TYPE declared|inferred|verified | registry | typecheck | tripwire | fp ID S P O owner | polarity-error ID owner | quarantine ID owner|REVIEWER | lift ID owner NOTE | activate ID | learned | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
+  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | manifest accept | predicate P SUBJTYPE OBJTYPE | type ENTITY TYPE declared|inferred|verified | registry | typecheck | reviewers | budget FAMILY MAXC MAXW owner | reinstate FAMILY owner NOTE | canary FAMILY CASES ANSWERS owner | tripwire | fp ID S P O owner | polarity-error ID owner | quarantine ID owner|REVIEWER | lift ID owner NOTE | activate ID | learned | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
 # A21.0 shadow hook: after every non-patterns command, newly ingested
 # read sources are shadow-tested against SHADOWED candidates. It only
 # reads the stored bodies and writes the proposals file; the reply
@@ -264,7 +300,7 @@ while not done:
         integ["bad"] = len(agent.integrity.verify(mpath, mfiles)) > 0
       print patterns_cmd(line)
     else:
-      for note in agent.learned.refresh(state, ppath, apath, dpath, mpath, mfiles, integ, tpath):
+      for note in agent.learned.refresh(state, ppath, apath, dpath, mpath, mfiles, integ, tpath, rvpath):
         print note
       print agent.core.respond(state, line)
     if not done and not (m[:9] == "patterns " or m == "patterns"):
