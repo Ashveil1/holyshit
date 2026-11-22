@@ -667,6 +667,10 @@ Still report-only. Nothing here changes a reply, pattern, threshold or tripwire.
 - **Separation.** The release-relevant core (`tier supported`) and future probes (`tier challenge`) are separate datasets. Thin-data labels (<30 resolved per category) apply as for the English suites. The verdict stays PENDING_OWNER_LABELING until every item is resolved.
 - **Open limit:** `json_str` differs for non-ASCII text between the interpreter and compiled backends (language gap). Thai suite hashes must be proven identical across routes before freezing; the tests use ASCII placeholders only.
 
+### A24.0a: claim view contract (spec only)
+
+`agent/CLAIM_VIEW_CONTRACT.md` freezes the contract for a future read-only claim/evidence view. There is NO implementation: no Holy code, no reply route, no Oracle or persistence change. A Python reference model and 24 shared fixtures (`tests/claimview/`) with contract tests (`tests/test_claim_view_contract.py`) pin the status truth table, provenance wording, fail-closed privacy rules, ordering, caps and depth. Memory keeps no original wording or time, so a view can only describe what is stored now. The model passing is not proof of any later implementation. A24.0b is not approved until re-review.
+
 ### v0.16 notes (kept; see v0.17 notes below)
 
 A22 Knowledge Integrity is complete: change-detection manifest (A22.0),
