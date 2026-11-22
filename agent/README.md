@@ -139,6 +139,14 @@ preview below); the core itself stays network-free.
   matched another shape keeps that behaviour. Limits: no Thai `มี` question
   form yet, the reader does not extract `มี`, and a second different value is
   stored as another fact, not flagged (A22.1).
+  Thai correction (A25.2): `no, <thing> อยู่|คือ|เป็น|มี <value>` replaces only
+  that thing's existing facts of the SAME shape and keeps the rest. A thing it
+  does not know, or one with no fact of that shape, replies `nothing to correct`
+  and changes nothing. Several old facts of that shape are all replaced by the
+  one new value, and the reply says how many. This is replacement, not conflict
+  detection (A22.1 is audit-only). `no, X is Y` in English still replaces
+  everything about X. Not covered: หมายความว่า, ไม่เป็น, and corrections
+  that name no thing.
   `is paris in europe` then answers by transitive closure over those
   edges and shows the chain it used (`yes: paris is in france, france
   is in europe`); a miss is open-world honest (`not that i know`,
