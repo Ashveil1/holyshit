@@ -140,13 +140,24 @@ def selfeval_cmd(line):
     return agent.selfeval.render_compare(agent.selfeval.load_frozen(sefrozen), agent.selfeval.load_rolling(serolling), cur)
   if sub == "ops" and len(parts) == 2:
     return agent.selfeval.ops_snapshot(agent.tripwire.load(tpath))
+  if sub == "thai-check" and len(parts) == 3:
+    ts = null
+    ok = false
+    try:
+      ts = json_load(parts[2])
+      ok = true
+    except:
+      ok = false
+    if not ok:
+      return "selfeval refused: cannot read Thai dataset " + parts[2]
+    return agent.selfeval.thai_check(ts)
   if sub == "ledger" and len(parts) == 2:
     led = agent.selfeval.load_ledger(seledger)
     out = "selfeval ledger (append-only run counter; the report itself carries no counter): " + str(len(led["runs"])) + " run(s)"
     for x in led["runs"]:
       out = out + "\n  run " + str(x["n"]) + " report " + x["report_hash"] + " suites " + join(",", x["suites"])
     return out
-  return "selfeval: run SUITE.json... | report | ledger | baseline | compare | ops | freeze NOTE owner | accept NOTE owner"
+  return "selfeval: run SUITE.json... | report | ledger | baseline | compare | ops | thai-check FILE | freeze NOTE owner | accept NOTE owner"
 def learned_texts():
   out = []
   if exists(lpath):

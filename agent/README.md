@@ -657,6 +657,16 @@ Still report-only. Nothing here changes a reply, pattern, threshold or tripwire.
 - `selfeval ops` prints an aggregate, read-only snapshot of A22 tripwire data with its own id. It is not part of the report or its hash. It shows window false positives over window matches and window exposure share, and labels lifetime counters as totals, not rates. The tripwire does not record per-source concentration, so only per-pattern concentration is shown.
 - **Limits.** Baselines are owner-ATTESTED, not authenticated: the `owner` word is a convention and hashes are poly62 change detection (no SHA-256/HMAC until C20). Baseline files are deliberately NOT in the A22 manifest: that manifest gates runtime-affecting files, and these files affect no reply. Their own embedded hashes detect edits instead.
 
+### A23.3: Thai dataset format (labels pending, owner-owned)
+
+`selfeval thai-check FILE` validates a Thai dataset (`kind thai-dataset`, `lang th`). It only checks structure and counts. It creates no labels, translates nothing and scores nothing. A Thai dataset is not a runnable suite yet: `selfeval run` refuses it until a later owner step freezes labeled data.
+
+- **Template:** `tests/selfeval/thai-core-v1.pending.json` has no items and no labels. Its acceptance criteria per category are placeholders for the owner to write.
+- **Authored only.** Items must have `origin: authored` (Thai written by the owner). `translated` items are rejected, and so is synthetic provenance. Real conversation examples need `opt_in` and `privacy_check`.
+- **Annotation.** Each item holds annotations (annotator, role primary or independent, label with epistemic and action from the fixed sets). `agreed` needs two distinct annotators with identical labels. Critical items, and any item an annotator labels ambiguous, always need an adjudicator who is not one of the annotators.
+- **Separation.** The release-relevant core (`tier supported`) and future probes (`tier challenge`) are separate datasets. Thin-data labels (<30 resolved per category) apply as for the English suites. The verdict stays PENDING_OWNER_LABELING until every item is resolved.
+- **Open limit:** `json_str` differs for non-ASCII text between the interpreter and compiled backends (language gap). Thai suite hashes must be proven identical across routes before freezing; the tests use ASCII placeholders only.
+
 ### v0.16 notes
 
 A22 Knowledge Integrity is complete: change-detection manifest (A22.0),

@@ -592,3 +592,136 @@ def ops_snapshot(tw):
   for r in rows:
     out.append("  " + r)
   return join("\n", out)
+# ---------------------------------------------------------------------
+# A23.3 Thai dataset format check (NO labels exist yet; the labels are the
+# owner's work). A Thai dataset is not a runnable suite: it records
+# authored items, independent human annotations, adjudication and
+# semantic acceptance criteria. thai_check only VALIDATES and COUNTS; it
+# never labels, translates or scores, and it prints ids and counts only.
+# Freezing a labeled Thai suite is a later owner step.
+EPI = ["supported", "unknown", "contradicted", "ambiguous", "n/a"]
+ACT = ["answer", "abstain", "clarify", "acknowledge", "not_understood", "other"]
+def _label_ok(lb):
+  ok = true
+  try:
+    for k in keys(lb):
+      if k == "epistemic":
+        if not (lb[k] in EPI):
+          ok = false
+      elif k == "action":
+        if not (lb[k] in ACT):
+          ok = false
+      else:
+        ok = false
+    if len(keys(lb)) == 0:
+      ok = false
+  except:
+    ok = false
+  return ok
+def _item_state(it, probs):
+  iid = it["id"]
+  ann = it["annotations"]
+  ad = it["adjudication"]
+  names = []
+  for a in ann:
+    if not (a["role"] in ["primary", "independent"]):
+      append(probs, iid + ": annotation role must be primary or independent")
+    if json_str(a["annotator"])[:1] != "\"" or len(a["annotator"]) == 0:
+      append(probs, iid + ": annotator missing")
+    if not _label_ok(a["label"]):
+      append(probs, iid + ": annotation label invalid")
+    if not (a["annotator"] in names):
+      append(names, a["annotator"])
+  need2 = it["critical"] == true
+  for a in ann:
+    if has(a["label"], "epistemic") and a["label"]["epistemic"] == "ambiguous":
+      need2 = true
+  st = ad["state"]
+  if not (st in ["none", "agreed", "adjudicated"]):
+    append(probs, iid + ": adjudication state invalid")
+    return "pending"
+  if st == "none":
+    return "pending"
+  if len(names) < 2:
+    append(probs, iid + ": " + st + " needs two distinct annotators")
+    return "pending"
+  if st == "agreed":
+    same = true
+    for a in ann:
+      if json_str(a["label"]) != json_str(ann[0]["label"]):
+        same = false
+    if not same:
+      append(probs, iid + ": marked agreed but annotations differ (needs adjudication)")
+      return "pending"
+    if need2:
+      append(probs, iid + ": critical or ambiguous items need an adjudicator even when annotators agree")
+      return "pending"
+    return "resolved"
+  if json_str(ad["by"])[:1] != "\"" or len(ad["by"]) == 0:
+    append(probs, iid + ": adjudicator missing")
+    return "pending"
+  if ad["by"] in names:
+    append(probs, iid + ": the adjudicator cannot be one of the annotators")
+    return "pending"
+  if not _label_ok(ad["final"]):
+    append(probs, iid + ": final label invalid")
+    return "pending"
+  return "resolved"
+def thai_check(s):
+  probs = []
+  cats = {}
+  pend = []
+  nres = 0
+  try:
+    if s["kind"] != "thai-dataset" or s["lang"] != "th":
+      return "thai-check refused: kind must be thai-dataset and lang th"
+    if not (s["tier"] in ["supported", "challenge"]):
+      return "thai-check refused: tier must be supported (release-relevant core) or challenge (future probes)"
+    if not (s["status"] in ["PENDING_OWNER_LABELING", "LABELS_ADJUDICATED_FROZEN"]):
+      return "thai-check refused: status invalid"
+    if not (s["provenance"]["method"] in ["owner-authored", "owner-real"]):
+      return "thai-check refused: Thai provenance must be owner-authored or owner-real (never translated or synthetic)"
+    if s["provenance"]["method"] == "owner-real" and not (has(s["provenance"], "opt_in") and s["provenance"]["opt_in"] == true and has(s["provenance"], "privacy_check") and s["provenance"]["privacy_check"] == true):
+      return "thai-check refused: owner-real data needs explicit opt_in and privacy_check"
+    crit = s["acceptance_criteria"]
+    seen = []
+    for it in s["items"]:
+      if json_str(it["id"])[:1] != "\"" or json_str(it["category"])[:1] != "\"" or json_str(it["input"])[:1] != "\"":
+        return "thai-check refused: item needs string id, category, input"
+      if it["id"] in seen:
+        return "thai-check refused: duplicate item id " + it["id"]
+      append(seen, it["id"])
+      if it["origin"] == "translated":
+        append(probs, it["id"] + ": translated items are not allowed (items must be authored in Thai)")
+      elif it["origin"] != "authored":
+        append(probs, it["id"] + ": origin must be authored")
+      if not (it["category"] in keys(crit)):
+        append(probs, it["id"] + ": category " + it["category"] + " has no semantic acceptance criteria")
+      state = _item_state(it, probs)
+      if not (it["category"] in cats):
+        cats[it["category"]] = {"items": 0, "resolved": 0}
+      cats[it["category"]]["items"] = cats[it["category"]]["items"] + 1
+      if state == "resolved":
+        cats[it["category"]]["resolved"] = cats[it["category"]]["resolved"] + 1
+        nres = nres + 1
+      else:
+        append(pend, it["id"])
+    for c in keys(crit):
+      if json_str(crit[c])[:1] != "\"" or len(crit[c]) == 0:
+        append(probs, "category " + c + ": acceptance criteria must be a non-empty string")
+  except:
+    return "thai-check refused: malformed Thai dataset"
+  out = ["thai-check " + s["id"] + " v" + str(s["version"]) + " tier " + s["tier"] + " status " + s["status"] + " (format check only: no labels are created, no scoring; counts and ids only)"]
+  for c in _sort(keys(cats)):
+    x = cats[c]
+    out.append("  " + c + ": " + str(x["resolved"]) + " resolved of " + str(x["items"]) + " items " + label_of(x["resolved"]) + " (a resolved item is human-annotated and adjudicated per the rules)")
+  for p in probs:
+    out.append("  problem: " + p)
+  total = len(s["items"])
+  verdict = "READY_TO_FREEZE (owner freezes in a later step)"
+  if total == 0:
+    verdict = "PENDING_OWNER_LABELING: no items yet"
+  elif len(pend) > 0 or len(probs) > 0:
+    verdict = "PENDING_OWNER_LABELING: " + str(len(pend)) + " unresolved item(s), " + str(len(probs)) + " problem(s)"
+  out.append("verdict: " + verdict)
+  return join("\n", out)
