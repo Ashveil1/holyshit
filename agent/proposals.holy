@@ -410,7 +410,7 @@ def review(st, cid):
       line = line + " (competing: " + join(", ", s["competing"]) + ")"
     out = out + "\n" + line
   if len(b) == 0:
-    out = out + "\nreadiness: READY FOR HUMAN REVIEW (A21 ships no approval or activation route)"
+    out = out + "\nreadiness: READY FOR REVIEW (approval needs two owner-attested attestations; activation is a separate opt-in step)"
   else:
     out = out + "\nreadiness: NOT READY: " + join("; ", b)
   return out

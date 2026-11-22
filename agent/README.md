@@ -6,7 +6,7 @@ dependencies beyond the language itself. One EXPERIMENTAL exception:
 the repl shell can fetch web pages over plain HTTP (`read url`, A18
 preview below); the core itself stays network-free.
 
-## What it is today (v0.14)
+## What it is today (v0.15)
 
 - An evidence-ingestion reader (A16): `read <text>` ingests text as
   DATA - never executed, never believed - and reports typed claims
@@ -426,6 +426,62 @@ human-approved milestone (A21); nothing here promotes anything.
 - Counts: the 41-segment Grammar Observatory inventory is frequency
   in the frozen eval data, not natural-language frequency.
 
+## EXPERIMENTAL: shadow, delegated review, learned patterns (A21)
+
+Learned patterns are an opt-in experiment, off by default, positive
+polarity only, and revocable. They never become facts. What exists:
+
+- `patterns shadow ID` runs a candidate over every source you read and
+  records where it WOULD fire, next to the handwritten reader (new,
+  agree, disagree, skip-overlap, competing). Shadow shows where a
+  pattern fires, not that its reading is right. Segments are counted by
+  content ID, so copies never count twice. Sensitive sources
+  (`patterns sensitive SRC`) keep counters only and purge anything
+  already retained. Sentence text is stored only after `patterns
+  samples on`.
+- `patterns review ID` freezes a snapshot hash (descriptor, tests,
+  provenance, counters, origins, lineage graph, dispositions). Readiness
+  needs 50 distinct matches and 50 distinct non-matching segments from
+  verified-independent origins, 3 origins with 10+ matches each, no
+  origin above 60%, and every disagreement dispositioned. These floors
+  are provisional.
+- Origins and lineage are declared, not detected: `patterns origin`,
+  `patterns lineage` (an agent may only propose an edge; verifying one
+  needs `owner` or `documented:REF`). Domains are reported, never used
+  as proof of independence.
+- Approval: two owner-attested reviewer attestations from distinct
+  lineage families, runs and deployments, neither in the proposer's
+  family, each covering the frozen packet exactly, under an
+  owner-relayed, versioned delegation. A fixed gate returns stable
+  codes (A01-A09). Reviewers cannot change their own scope; owner
+  approval cannot override a technical failure.
+- `patterns activate ID` re-checks everything. The REPL loader
+  re-checks every ACTIVE pattern before each command (L03, L05-L10,
+  L12) and disables a failing one, keeping its approval in history.
+  `patterns revoke ID` takes effect immediately.
+- The core holds a pure matcher. It runs only on a segment the
+  handwritten reader neither skipped nor extracted, records every match
+  separately, flags ambiguity, and keeps results in a session-only
+  learned section (`patterns learned`), outside `readings`, the
+  SOURCE_DIVERSITY count and `agent-memory.json`. A lifetime log
+  (`agent-learned-log.json`) keeps counters and at most 200 entries.
+
+Limits, stated plainly:
+
+- Identity of a reviewer is NOT authenticated. The `owner` marker on
+  `patterns attest` is a convention: nothing in this runtime can prove
+  who typed it. There are no signatures, so runner-authenticated
+  attestations are not offered.
+- All hashes are a 62-bit polynomial hash: fine for detecting change,
+  not tamper-proof. Approval needs a real SHA-256 before any general
+  release; the language has none yet.
+- No clock: timestamps in attestations are whatever the reviewer wrote.
+- Sensitive-source markers hold raw source IDs (needed to enforce the
+  exclusion); keyed HMAC is blocked on the same missing primitive.
+- Learned readings are not persisted across sessions except as log
+  counters; the thresholds are not ratified; one reviewer family
+  label is not proof of independent training data.
+
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
@@ -637,7 +693,10 @@ research line and shares no code with it.
 - `fetch.holy` — EXPERIMENTAL bounded HTTP fetch + html-to-text
   (repl-only; see the A18 preview section).
 - `patgen.holy`, `proposals.holy` — EXPERIMENTAL offline pattern
-  candidates and their separate inactive proposal store (repl-only).
+  candidates and their separate proposal store (repl-only).
+- `shadow.holy`, `review.holy`, `learned.holy` — EXPERIMENTAL A21
+  shadow observation, delegated review gate and fail-closed loader
+  (repl-only). The core contains only the pure learned matcher.
 - `utf8.holy` — pure-hs UTF-8 decoding (ASCII, Latin-1, Thai) used by
   the fetch path.
 
@@ -656,6 +715,7 @@ extraction, threat fixtures (hostile markup, fake confirmations,
 modal text), every failure mode, dedup, redaction, and the no-flag
 policy rejections. `tests/eval_reader.py` holds the frozen extraction
 quality corpus at precision 1.000 with zero false extractions.
+`tests/test_agent_shadow.py`, `test_agent_review.py` and `test_agent_learned.py` cover shadow/readiness, the approval gate and the loader on interp and native, and the core's non-empty learned-list parity is part of `test_agent_core.py`.
 `tests/test_agent_patgen.py` checks the pattern generator against an
 independent Python oracle on the interpreter and native routes;
 `tests/test_agent_proposals.py` covers the proposal store, the repl

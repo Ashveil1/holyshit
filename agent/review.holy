@@ -169,8 +169,8 @@ def approve(att, dele, st, cid):
   if len(g["codes"]) == 0:
     c["label"] = "APPROVED"
     c["approval"] = {"hash": g["hash"], "attestations": g["attestations"], "delegation": dele["version"], "kind": "delegated"}
-    append(c["provenance"]["history"], "APPROVED (delegated) on snapshot " + g["hash"][:8] + " (inactive: A21.2a has no activation)")
-    return "approved " + cid + " on snapshot " + g["hash"] + " (delegated; still INACTIVE, no activation route)"
+    append(c["provenance"]["history"], "APPROVED (delegated) on snapshot " + g["hash"][:8] + " (still inactive until activated)")
+    return "approved " + cid + " on snapshot " + g["hash"] + " (delegated; still INACTIVE until `patterns activate`)"
   if g["escalated"]:
     c["label"] = "PENDING_OWNER_REVIEW"
     append(c["provenance"]["history"], "PENDING_OWNER_REVIEW")
@@ -203,7 +203,7 @@ def owner(att, dele, st, cid, decision):
   c["label"] = "APPROVED"
   c["approval"] = {"hash": g["hash"], "attestations": g["attestations"], "delegation": dele["version"], "kind": "owner"}
   append(c["provenance"]["history"], "APPROVED (owner) on snapshot " + g["hash"][:8])
-  return "owner approved " + cid + " (kind owner; still INACTIVE)"
+  return "owner approved " + cid + " (kind owner; still INACTIVE until activated)"
 def revoke(st, cid):
   if not has(st["candidates"], cid):
     return "unknown pattern id " + cid

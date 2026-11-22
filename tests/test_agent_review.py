@@ -74,7 +74,7 @@ def suite(label, argv, env):
         base = td / 'base'
         out0 = build(base, argv, env)
         assert 'coverage keys: tests_hash' in out0
-        assert 'READY FOR HUMAN REVIEW' in out0
+        assert 'READY FOR REVIEW' in out0
         res = {}
 
         def scenario(name, prep, cmds):

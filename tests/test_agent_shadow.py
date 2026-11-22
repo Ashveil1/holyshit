@@ -81,7 +81,7 @@ def suite(label, argv, env):
         assert h[0] != h[1] and h[1] != h[2] and h[2] != h[3]
         assert h[5] != h[4] and h[6] == h[4] and h[7] != h[6], h
         assert 'verified-origin distinct matches 0/50' in o
-        assert 'READY FOR HUMAN REVIEW (A21 ships no approval' in o
+        assert 'READY FOR REVIEW (approval needs two owner-attested' in o
         assert 'independent origins with >=10 matches: 0/3' in o
         assert 'note: shadow matches show where a pattern fires' in o
         st = json.loads((a / 'agent-patterns.json').read_text())
