@@ -1253,9 +1253,9 @@ def _read_ingest(state, src, body, truncated):
           else:
             entry = [src, span, ex[4]]
             if ex[3] == "neg":
-              append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], "", ""])
+              append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], "", "", []])
             else:
-              append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", ""])
+              append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", "", []])
             newc = newc + 1
             rj = len(state["readings"]) - 1
         # A19: a later conflicting reading raises an evidence-review
@@ -1539,6 +1539,14 @@ def _readings_reply(state, about, detail):
         out = out + "\n  " + se[0] + " (positive): \"" + se[1] + "\" [pattern " + se[2] + "]"
       for se in r[4]:
         out = out + "\n  " + se[0] + " (negative): \"" + se[1] + "\" [pattern " + se[2] + "]"
+      if len(r[7]) > 0:
+        hs = ""
+        for he in r[7]:
+          if hs == "":
+            hs = he[0] + " " + he[1]
+          else:
+            hs = hs + ", " + he[0] + " " + he[1]
+        out = out + "\n  approval history: " + hs
     i = i + 1
   if detail and len(state["url_srcs"]) > 0:
     i = 0
@@ -1547,6 +1555,26 @@ def _readings_reply(state, about, detail):
       out = out + "\nurl-" + str(i + 1) + " = " + _url_disp(e[0]) + " (fetched " + str(e[1]) + " times)"
       i = i + 1
   return out
+# A19: approval/revocation history. r[7] records user alignment
+# events ([event, polarity]: confirmed/disputed at teach time,
+# revoked when the taught edge behind an alignment is forgotten
+# or corrected away). Bounded at 20 entries, oldest dropped.
+def _read_hist(r, ev, pol):
+  append(r[7], [ev, pol])
+  if len(r[7]) > 20:
+    r[7] = r[7][len(r[7]) - 20:]
+# Recompute a subject's reading alignments after its taught edges
+# were dropped: an alignment with no remaining taught edge behind
+# it is revoked (recorded in the history, never silently kept).
+def _read_realign(state, s):
+  for r in state["readings"]:
+    if r[0] == s and (r[5] != "" or r[6] != ""):
+      if r[5] != "":
+        _read_hist(r, "revoked", "positive")
+      if r[6] != "":
+        _read_hist(r, "revoked", "negative")
+      r[5] = ""
+      r[6] = ""
 def _add_rel(state, s, p, o):
   if s in state["relset"]:
     if p in state["relset"][s]:
@@ -1570,14 +1598,22 @@ def _add_rel(state, s, p, o):
     r = state["readings"][ri]
     if rpol == "pos":
       if len(r[3]) > 0:
-        r[5] = "confirmed"
+        if r[5] != "confirmed":
+          r[5] = "confirmed"
+          _read_hist(r, "confirmed", "positive")
       if len(r[4]) > 0:
-        r[6] = "disputed"
+        if r[6] != "disputed":
+          r[6] = "disputed"
+          _read_hist(r, "disputed", "negative")
     else:
       if len(r[4]) > 0:
-        r[6] = "confirmed"
+        if r[6] != "confirmed":
+          r[6] = "confirmed"
+          _read_hist(r, "confirmed", "negative")
       if len(r[3]) > 0:
-        r[5] = "disputed"
+        if r[5] != "disputed":
+          r[5] = "disputed"
+          _read_hist(r, "disputed", "positive")
   # A15: a taught domain verdict retires a matching hypothesis
   # (positive AND negative both retire; a taught conflict stays in
   # the edges, never resolved).
@@ -1601,6 +1637,7 @@ def _drop_rels(state, key):
     if e[0] != key:
       append(kept, e)
   state["rels"] = kept
+  _read_realign(state, key)
   if key in state["relset"]:
     state["relset"][key] = {}
   ns = _stripart(key)

@@ -308,15 +308,19 @@ class Oracle:
         if ri >= 0:
             r = self.readings[ri]
             if rpol == 'pos':
-                if r[3]:
+                if r[3] and r[5] != 'confirmed':
                     r[5] = 'confirmed'
-                if r[4]:
+                    self._read_hist(r, 'confirmed', 'positive')
+                if r[4] and r[6] != 'disputed':
                     r[6] = 'disputed'
+                    self._read_hist(r, 'disputed', 'negative')
             else:
-                if r[4]:
+                if r[4] and r[6] != 'confirmed':
                     r[6] = 'confirmed'
-                if r[3]:
+                    self._read_hist(r, 'confirmed', 'negative')
+                if r[3] and r[5] != 'disputed':
                     r[5] = 'disputed'
+                    self._read_hist(r, 'disputed', 'positive')
         # A15: a taught domain verdict retires a matching hypothesis.
         if p in ('is-a', 'not-is-a'):
             d = o
@@ -710,10 +714,10 @@ class Oracle:
                         entry = [src, span, ex[4]]
                         if ex[3] == 'neg':
                             self.readings.append(
-                                [ex[0], ex[1], ex[2], [], [entry], '', ''])
+                                [ex[0], ex[1], ex[2], [], [entry], '', '', []])
                         else:
                             self.readings.append(
-                                [ex[0], ex[1], ex[2], [entry], [], '', ''])
+                                [ex[0], ex[1], ex[2], [entry], [], '', '', []])
                         newc += 1
                         rj = len(self.readings) - 1
                     # A19: a later conflicting reading raises an
@@ -919,6 +923,10 @@ class Oracle:
                 for se in r[4]:
                     out += ('\n  ' + se[0] + ' (negative): "' + se[1] +
                             '" [pattern ' + se[2] + ']')
+                if r[7]:
+                    out += ('\n  approval history: ' +
+                            ', '.join(he[0] + ' ' + he[1]
+                                      for he in r[7]))
         if detail and self.url_srcs:
             for i, e in enumerate(self.url_srcs):
                 out += ('\nurl-' + str(i + 1) + ' = ' +
@@ -930,8 +938,27 @@ class Oracle:
         q = norm.find('?')
         return norm[:q] + '?(redacted)' if q >= 0 else norm
 
+    def _read_hist(self, r, ev, pol):
+        # A19: approval/revocation history, bounded at 20.
+        r[7].append([ev, pol])
+        if len(r[7]) > 20:
+            r[7] = r[7][-20:]
+
+    def _read_realign(self, s):
+        # A19: alignments whose taught edge was dropped are
+        # revoked, recorded in the history.
+        for r in self.readings:
+            if r[0] == s and (r[5] or r[6]):
+                if r[5]:
+                    self._read_hist(r, 'revoked', 'positive')
+                if r[6]:
+                    self._read_hist(r, 'revoked', 'negative')
+                r[5] = ''
+                r[6] = ''
+
     def _drop_rels(self, key):
         self.rels = [e for e in self.rels if e[0] != key]
+        self._read_realign(key)
         if key in self.relset:
             self.relset[key] = {}
         ns = stripart(key)
@@ -2567,6 +2594,10 @@ A19_SCENARIOS = [
     # MULTI_SOURCE with independence UNVERIFIED.
     ['read b1: a kiwi is a bird', 'read b2: a kiwi is a bird',
      'read b3: a kiwi is a bird', 'readings about a kiwi'],
+    # 10. Approval/revocation history: teaching confirms, and a
+    # later forget revokes the alignment - recorded, never silent.
+    ['read m1: a frog is an animal', 'remember a frog is an animal',
+     'readings detail', 'forget a frog', 'readings detail'],
 ]
 
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
