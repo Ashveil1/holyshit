@@ -87,15 +87,13 @@ preview below); the core itself stays network-free.
   calibration-needed - a duplicate-text signal only, never proof
   of independent or common authorship). A claim whose side meets
   ALL binding thresholds (3+ distinct source ids, 2+ registrable
-  domains, 3+ non-duplicate clusters - together the
-  no-known-common-origin check -, no polarity conflict, no user
+  domains - together the no-known-common-origin check
+  (A20: content clusters are reported NOT_ASSESSED, similarity is
+  not proof of copying) -, no polarity conflict, no user
   alignment on that side, every entry pattern-extracted by
-  construction) is labelled REVIEW_ELIGIBLE - an evidence status,
+  construction) is labelled SOURCE_DIVERSITY_THRESHOLD_MET (renamed at A20 from REVIEW_ELIGIBLE; 3+ sources and 2+ domains, content clusters NOT_ASSESSED) - an evidence status,
   explicitly NOT a fact, and never a promotion: nothing reads it
-  outside the evidence-inspection routes. (Calibration note: with
-  whole-segment spans, same-triple spans are near-identical in
-  practice, so the 3-cluster threshold currently keeps the label
-  effectively closed; that is deliberate until the A20
+  outside the evidence-inspection routes. (Historical note: the A19 3-cluster threshold was unreachable and was dropped at A20; the A20
   recalibration.) A later conflicting reading raises an
   ingest-time evidence-review warning - CONFLICT across sources,
   SCOPE_MISMATCH inside one source - that never alters or demotes
@@ -385,7 +383,7 @@ conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 
 Current numbers (A19; the A15/A16 table below is kept for history).
 The A19 reader adds skip classes, separate source measurements,
-REVIEW_ELIGIBLE and approval history; per-command core costs are
+SOURCE_DIVERSITY_THRESHOLD_MET (renamed at A20 from REVIEW_ELIGIBLE; 3+ sources and 2+ domains, content clusters NOT_ASSESSED) and approval history; per-command core costs are
 unchanged within noise, the dialogue keeps full marks in every
 category on both backends at every scale (reading 8/8 included).
 

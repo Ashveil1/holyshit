@@ -261,7 +261,7 @@ DIALOGUE += [
      '(a) a bicycle | is-a | a vehicle - positive support: 2 sources '
      '(read-1, manual) [USER_CONFIRMED]; MULTI_SOURCE positive; '
      'positive evidence: 2 agreeing sources, 0 registrable domains '
-     '(2 without), 1 text cluster (experimental); '
+     '(2 without), content clusters NOT_ASSESSED; '
      'independence UNVERIFIED\n'
      '(b) a bicycle | has | two wheels - positive support: 1 source '
      '(read-1); UNVERIFIED',
