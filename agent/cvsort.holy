@@ -7,6 +7,7 @@
 #   "tuple"  relation tuple [s, p, o, neg]: [p, "0"/"1" (positive first),
 #            canon(o), o, s]
 #   "alias"  alias record [alias, target]: [canon(target), alias, target]
+#   "row"    a readings row [source, sentence, side]: all three fields
 #   "str"    a plain string: [item]
 # Ties keep input order (stable). O(n log n), unlike an insertion sort.
 import agent.relindex
@@ -18,6 +19,8 @@ def _cv_key(kind, it):
     return [it[1], pol, agent.relindex.ri_canon(it[2]), it[2], it[0]]
   if kind == "alias":
     return [agent.relindex.ri_canon(it[1]), it[0], it[1]]
+  if kind == "row":
+    return [it[0], it[1], it[2]]
   return [it]
 # Byte-wise string order that is the same on every route. The plain string
 # "<" is NOT used for whole strings: on ir-x64, ast-x64 and seed-native it

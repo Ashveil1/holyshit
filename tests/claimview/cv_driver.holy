@@ -1,0 +1,105 @@
+# Test driver for agent/claimview.holy (claimview-0b slice 2a). One op per
+# stdin line (tab separated) or embedded OPS list; prints the view result in
+# a fixed line format that tests/test_claim_view_0b_holy_parity.py also
+# produces from the Python Oracle. Fault injection lives here, not in the
+# modules.
+import agent.relindex
+import agent.cvsort
+import agent.claimview
+H = {"ri": agent.relindex.ri_new(), "keys": {}, "builtins": [], "readings": null, "excl": null}
+def tup(f, i):
+  return [f[i], f[i + 1], f[i + 2], f[i + 3] == "1"]
+def bs(b):
+  if b:
+    return "1"
+  return "0"
+def emit(r):
+  line = "R\t" + r["layer"]
+  for k in ["status", "basis", "reason", "level", "lines", "w", "trunc_s", "trunc_o", "rtrunc"]:
+    if has(r, k) and (k != "w" or r["w"] != 0 or r["layer"] == "COMPLETE" or r["layer"] == "ABORT" or r["reason"] == "identity_collision"):
+      line = line + "\t" + k + "=" + str(r[k])
+  if has(r, "provs"):
+    line = line + "\tprovs=" + join(",", r["provs"])
+  if has(r, "rstage"):
+    line = line + "\trstage=" + bs(r["rstage"])
+  print line
+  for k in ["support", "opp"]:
+    if has(r, k):
+      for it in r[k]:
+        l2 = "S\t" + k + "\t" + it["prov"] + "\t" + str(it["level"])
+        for e in it["path"]:
+          l2 = l2 + "\t" + e[0] + "\t" + e[1] + "\t" + e[2] + "\t" + bs(e[3])
+        print l2
+  if has(r, "cands"):
+    print "C\t" + join("\t", r["cands"])
+  if has(r, "rows"):
+    for w in r["rows"]:
+      print "D\t" + w[0] + "\t" + w[1] + "\t" + w[2]
+  print "END"
+def step(f):
+  op = f[0]
+  if op == "new":
+    H["ri"] = agent.relindex.ri_new()
+    H["keys"] = {}
+    H["builtins"] = []
+    H["readings"] = null
+    H["excl"] = null
+  elif op == "loadall":
+    nn = int(f[1])
+    ts = []
+    i = 2
+    while i < 2 + nn * 4:
+      append(ts, tup(f, i))
+      i = i + 4
+    al = []
+    while i + 1 < len(f):
+      append(al, [f[i], f[i + 1]])
+      i = i + 2
+    r = agent.relindex.ri_load_all(H["ri"], ts, al)
+    if r != "":
+      print "LOADERR " + r
+  elif op == "facts":
+    i = 1
+    while i < len(f):
+      H["keys"][agent.relindex.ri_canon(f[i])] = true
+      i = i + 1
+  elif op == "builtins":
+    i = 1
+    while i + 1 < len(f):
+      append(H["builtins"], [f[i], f[i + 1]])
+      i = i + 2
+  elif op == "readings":
+    H["readings"] = []
+  elif op == "reading":
+    # reading s p o source sentence side,side
+    append(H["readings"], {"s": f[1], "p": f[2], "o": f[3], "source": f[4], "sentence": f[5], "sides": split(f[6], ",")})
+  elif op == "excl":
+    # excl <version> <source>... ; "excl none" = no exclusion input
+    if f[1] == "none":
+      H["excl"] = null
+    else:
+      srcs = []
+      i = 2
+      while i < len(f):
+        append(srcs, f[i])
+        i = i + 1
+      H["excl"] = {"version": int(f[1]), "sources": srcs}
+  elif op == "break":
+    if f[1] == "missing":
+      H["ri"]["x"] = null
+    elif f[1] == "stale":
+      H["ri"]["g"] = H["ri"]["g"] + 1
+  elif op == "view":
+    emit(agent.claimview.cv_view(H["ri"], H["keys"], H["builtins"], H["readings"], H["excl"], [f[1], f[2], f[3], f[4] == "1"]))
+  elif op == "case":
+    print "### " + f[1]
+# --- loop ---
+done = false
+while not done:
+  line = ""
+  try:
+    line = input()
+  except:
+    done = true
+  if not done:
+    step(split(line, "\t"))

@@ -1,0 +1,340 @@
+# agent/claimview.holy - claimview-0b slice 2a: the thin read-only Holy view.
+#
+# STATUS: standalone, NOT wired into core, no parser, no REPL route, no
+# production use. A port of the contract (agent/CLAIM_VIEW_CONTRACT_0B.md
+# rev14) whose only gate is differential parity with the independent Python
+# Oracle (tests/claimview/oracle_claim_view_0b.py) on the 102 draft
+# fixtures plus generated cases, on all 7 routes. Parity with an Oracle that
+# shares the author's reading of the contract is not proof of correctness.
+#
+# Read-only: relations and alias records are read ONLY through
+# agent.relindex.ri_read / ri_read_alias / ri_check (checked copies, never
+# a live bucket, never a repair or lazy init, B17). The view creates no
+# state: its only mutable values are the per-call W counter and identity
+# map in a local dict. Inputs: the index state, a key set {canonical fact
+# key: true}, built-in definitions [[term, definition], ...], readings
+# (list of dicts or null), exclusions (dict or null) and the structured
+# query [subject, predicate, object, neg]. Result: a dict (see _res_*).
+import agent.relindex
+import agent.cvsort
+_CV_D = 8
+_CV_W = 500
+_CV_REFS = ["it", "this", "that", "he", "she", "they", "them", "those", "these", "one", "him", "her"]
+def _cv_canon(s):
+  return agent.relindex.ri_canon(s)
+def _cv_strip(c):
+  if c[:3] == "an ":
+    return c[3:]
+  if c[:2] == "a ":
+    return c[2:]
+  return c
+def _cv_nz(n):
+  if n < 0:
+    return 0
+  return n
+def _cv_oos(reason, w):
+  return {"layer": "OUT_OF_SCOPE", "reason": reason, "w": w}
+# --- per-call context: ctx = {"w": n, "seen": {stripped: canon}, "stop": null or [layer, reason]}
+def _cv_identity(ctx, original):
+  c = _cv_canon(original)
+  sp = _cv_strip(c)
+  if has(ctx["seen"], sp):
+    if ctx["seen"][sp] != c:
+      ctx["stop"] = ["OUT_OF_SCOPE", "identity_collision"]
+  else:
+    ctx["seen"][sp] = c
+# charge one examination of an item with the given endpoint identities.
+# Sets ctx["stop"] (and returns true) when the work limit or a collision
+# ends the view.
+def _cv_charge(ctx, a, b):
+  if ctx["w"] >= _CV_W:
+    ctx["stop"] = ["INCOMPLETE", "work_limit"]
+    return true
+  ctx["w"] = ctx["w"] + 1
+  _cv_identity(ctx, a)
+  if ctx["stop"] == null:
+    _cv_identity(ctx, b)
+  return ctx["stop"] != null
+def _cv_stopped(ctx):
+  r = {"layer": ctx["stop"][0], "reason": ctx["stop"][1], "w": ctx["w"]}
+  return r
+def _cv_has_subject(ri, keyset, c):
+  rr = agent.relindex.ri_read(ri, c)
+  if len(rr[1]) > 0:
+    return true
+  return has(keyset, c)
+# resolution: returns [kind, value] kind NONE | UNIQUE | AMBIGUOUS | STOP
+def _cv_resolve(ri, keyset, ctx, subject):
+  c = _cv_canon(subject)
+  targets = {}
+  if _cv_has_subject(ri, keyset, c):
+    targets[c] = true
+  recs = agent.cvsort.cv_sort(agent.relindex.ri_read_alias(ri, c)[1], "alias")
+  for r in recs:
+    if _cv_charge(ctx, r[0], r[1]):
+      return ["STOP", null]
+    tc = _cv_canon(r[1])
+    if _cv_has_subject(ri, keyset, tc):
+      targets[tc] = true
+  ks = []
+  for k in targets:
+    append(ks, k)
+  if len(ks) == 1:
+    return ["UNIQUE", ks[0]]
+  if len(ks) > 1:
+    return ["AMBIGUOUS", agent.cvsort.cv_sort(ks, "str")]
+  return ["NONE", null]
+def _cv_prov(p, level, builtin):
+  if builtin:
+    return "builtin"
+  if p == "means":
+    return "stored"
+  if p == "is-a":
+    if level == 1:
+      return "stored"
+    return "derived"
+  if level == 0:
+    return "stored"
+  return "derived"
+def _cv_enc(item):
+  out = item["prov"] + "|"
+  for t in item["path"]:
+    out = out + str(len(t[0])) + ":" + t[0] + str(len(t[1])) + ":" + t[1] + str(len(t[2])) + ":" + t[2] + str(t[3]) + ";"
+  return out
+def _cv_dedupe(items):
+  seen = {}
+  out = []
+  for it in items:
+    k = _cv_enc(it)
+    if not has(seen, k):
+      seen[k] = true
+      append(out, it)
+  return out
+def _cv_cap(items, n):
+  out = []
+  for it in items:
+    if len(out) < n:
+      append(out, it)
+  return out
+def _cv_finish(ctx, support, oppose, level):
+  sup = _cv_dedupe(support)
+  opp = _cv_dedupe(oppose)
+  st = "CONTRADICTED"
+  basis = "opposition_only"
+  if len(sup) > 0 and len(opp) > 0:
+    basis = "both_sides"
+  elif len(sup) > 0:
+    st = "SUPPORTED"
+    basis = "derived_only"
+    for i in sup:
+      if i["prov"] != "derived":
+        basis = "support_only"
+  provs = {}
+  for i in sup:
+    provs[i["prov"]] = true
+  for i in opp:
+    provs[i["prov"]] = true
+  pl = []
+  for k in provs:
+    append(pl, k)
+  return {"layer": "COMPLETE", "status": st, "basis": basis, "level": level, "provs": agent.cvsort.cv_sort(pl, "str"), "lines": len(sup) + len(opp), "support": _cv_cap(sup, 5), "opp": _cv_cap(opp, 5), "trunc_s": _cv_nz(len(sup) - 5), "trunc_o": _cv_nz(len(opp) - 5), "w": ctx["w"]}
+def _cv_unknown(ctx):
+  return {"layer": "COMPLETE", "status": "UNKNOWN", "basis": "no_trusted_evidence", "w": ctx["w"]}
+def _cv_path_plus(path, t):
+  out = []
+  for e in path:
+    append(out, e)
+  append(out, [t[0], t[1], t[2], t[3]])
+  return out
+def _cv_add_ev(support, oppose, parent, node, t, level, p, neg, builtin):
+  item = {"prov": _cv_prov(p, level, builtin), "level": level, "path": _cv_path_plus(parent[node], t)}
+  if t[3] == neg:
+    append(support, item)
+  else:
+    append(oppose, item)
+def _cv_keys(d):
+  out = []
+  for k in d:
+    append(out, k)
+  return out
+# checked-read bucket, sorted by the contract's total order (B24). The
+# integrity check ran once at the start of the view; a read error here
+# would mean the state changed mid-view, which a read-only view cannot cause.
+def ri_read_wrap(ri, node):
+  rr = agent.relindex.ri_read(ri, node)
+  return agent.cvsort.cv_sort(rr[1], "tuple")
+def _cv_search(ri, ctx, key, p, co, neg):
+  support = []
+  oppose = []
+  visited = {}
+  visited[key] = true
+  parent = {}
+  parent[key] = []
+  frontier = [key]
+  if p == "is-a":
+    d = 0
+    while d <= _CV_D:
+      nxt = {}
+      boundary = d == _CV_D
+      for node in agent.cvsort.cv_sort(frontier, "str"):
+        for t in ri_read_wrap(ri, node):
+          if _cv_charge(ctx, t[0], t[2]):
+            return _cv_stopped(ctx)
+          if t[1] == "is-a":
+            tc = _cv_canon(t[2])
+            if boundary:
+              if (not t[3] and not has(visited, tc)) or (t[3] and tc == co):
+                return {"layer": "INCOMPLETE", "reason": "depth_limit", "w": ctx["w"]}
+            else:
+              if tc == co:
+                _cv_add_ev(support, oppose, parent, node, t, d + 1, p, neg, false)
+              if not t[3] and not has(visited, tc) and not has(nxt, tc):
+                nxt[tc] = true
+                parent[tc] = _cv_path_plus(parent[node], t)
+      if len(support) > 0 or len(oppose) > 0:
+        return _cv_finish(ctx, support, oppose, d + 1)
+      if boundary:
+        return _cv_unknown(ctx)
+      frontier = _cv_keys(nxt)
+      for k in frontier:
+        visited[k] = true
+      if len(frontier) == 0:
+        return _cv_unknown(ctx)
+      d = d + 1
+    return _cv_unknown(ctx)
+  if p == "has":
+    d = 0
+    while d <= _CV_D:
+      nxt = {}
+      deeper = false
+      for node in agent.cvsort.cv_sort(frontier, "str"):
+        for t in ri_read_wrap(ri, node):
+          if _cv_charge(ctx, t[0], t[2]):
+            return _cv_stopped(ctx)
+          if t[1] == "has" and _cv_canon(t[2]) == co:
+            _cv_add_ev(support, oppose, parent, node, t, d, p, neg, false)
+          elif t[1] == "is-a" and not t[3]:
+            tc = _cv_canon(t[2])
+            if not has(visited, tc):
+              if d == _CV_D:
+                deeper = true
+              elif not has(nxt, tc):
+                nxt[tc] = true
+                parent[tc] = _cv_path_plus(parent[node], t)
+      if len(support) > 0 or len(oppose) > 0:
+        return _cv_finish(ctx, support, oppose, d)
+      if d == _CV_D:
+        if deeper:
+          return {"layer": "INCOMPLETE", "reason": "depth_limit", "w": ctx["w"]}
+        return _cv_unknown(ctx)
+      frontier = _cv_keys(nxt)
+      for k in frontier:
+        visited[k] = true
+      if len(frontier) == 0:
+        return _cv_unknown(ctx)
+      d = d + 1
+    return _cv_unknown(ctx)
+  if p == "is-in":
+    level = 0
+    while len(frontier) > 0:
+      nxt = {}
+      for node in agent.cvsort.cv_sort(frontier, "str"):
+        for t in ri_read_wrap(ri, node):
+          if _cv_charge(ctx, t[0], t[2]):
+            return _cv_stopped(ctx)
+          if t[1] == "is-in" and not t[3]:
+            tc = _cv_canon(t[2])
+            if tc == co:
+              _cv_add_ev(support, oppose, parent, node, t, level, p, neg, false)
+            elif not has(visited, tc) and not has(nxt, tc):
+              nxt[tc] = true
+              parent[tc] = _cv_path_plus(parent[node], t)
+      if len(support) > 0:
+        return _cv_finish(ctx, support, oppose, level)
+      frontier = _cv_keys(nxt)
+      for k in frontier:
+        visited[k] = true
+      level = level + 1
+    return _cv_unknown(ctx)
+  return _cv_means(ri, ctx, key, co, neg, support, oppose, parent)
+def _cv_means(ri, ctx, key, co, neg, support, oppose, parent):
+  for t in ri_read_wrap(ri, key):
+    if _cv_charge(ctx, t[0], t[2]):
+      return _cv_stopped(ctx)
+    if t[1] == "means" and not t[3] and _cv_canon(t[2]) == co:
+      _cv_add_ev(support, oppose, parent, key, t, 0, "means", neg, false)
+  bt = []
+  for b in ctx["builtins"]:
+    append(bt, [b[0], "means", b[1], false])
+  for t in agent.cvsort.cv_sort(bt, "tuple"):
+    if _cv_charge(ctx, t[0], t[2]):
+      return _cv_stopped(ctx)
+    if _cv_canon(t[0]) == key and _cv_canon(t[2]) == co:
+      _cv_add_ev(support, oppose, parent, key, t, 0, "means", neg, true)
+  if len(support) > 0:
+    return _cv_finish(ctx, support, oppose, 0)
+  return _cv_unknown(ctx)
+def _cv_readings(readings, excl, cs, p, co):
+  if excl == null:
+    return []
+  if excl["version"] != 1 or excl["sources"] == null:
+    return []
+  srcs = {}
+  for x in excl["sources"]:
+    if x == "":
+      return []
+    srcs[x] = true
+  rows = []
+  for r in readings:
+    if _cv_canon(r["s"]) == cs and r["p"] == p and _cv_canon(r["o"]) == co:
+      if r["source"] != "" and not has(srcs, r["source"]):
+        for side in r["sides"]:
+          append(rows, [r["source"], r["sentence"], side])
+  return agent.cvsort.cv_sort(rows, "row")
+def _cv_member(x, xs):
+  for y in xs:
+    if y == x:
+      return true
+  return false
+def cv_view(ri, keyset, builtins, readings, excl, q):
+  s = q[0]
+  p = q[1]
+  o = q[2]
+  neg = q[3]
+  cs = _cv_canon(s)
+  co = _cv_canon(o)
+  if cs == "" or co == "" or _cv_member(cs, _CV_REFS) or _cv_member(co, _CV_REFS):
+    return _cv_oos("shape_unsupported", 0)
+  if not _cv_member(p, ["is-a", "has", "is-in", "means"]):
+    return _cv_oos("predicate_unsupported", 0)
+  if neg and p != "is-a" and p != "has":
+    return _cv_oos("negation_unsupported", 0)
+  e = agent.relindex.ri_check(ri)
+  if e != "":
+    return {"layer": "ABORT", "reason": e, "w": 0}
+  ctx = {"w": 0, "seen": {}, "stop": null, "builtins": builtins}
+  _cv_identity(ctx, s)
+  if ctx["stop"] == null:
+    _cv_identity(ctx, o)
+  if ctx["stop"] != null:
+    return _cv_stopped(ctx)
+  rs = _cv_resolve(ri, keyset, ctx, s)
+  res = null
+  if rs[0] == "STOP":
+    return _cv_stopped(ctx)
+  if rs[0] == "AMBIGUOUS":
+    return {"layer": "COMPLETE", "status": "AMBIGUOUS", "basis": "ambiguous_subject", "cands": _cv_cap(rs[1], 5), "w": ctx["w"]}
+  if rs[0] == "NONE":
+    res = _cv_unknown(ctx)
+  else:
+    res = _cv_search(ri, ctx, rs[1], p, co, neg)
+  if res["layer"] != "COMPLETE":
+    return res
+  res["rstage"] = false
+  if readings != null:
+    res["rstage"] = true
+    rows = _cv_readings(readings, excl, cs, p, co)
+    if len(rows) > 0:
+      res["rows"] = _cv_cap(rows, 5)
+      res["rtrunc"] = _cv_nz(len(rows) - 5)
+  return res
