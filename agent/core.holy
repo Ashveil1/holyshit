@@ -967,6 +967,122 @@ def _read_obj_ok(ex):
   if find(ex[2], " is ") >= 0 or find(ex[2], " and ") >= 0:
     return false
   return true
+# A21.2b EXPERIMENTAL learned patterns (pure matcher). The REPL loads
+# validated, approved, activated descriptors into state["learned"]
+# ([id, verb, predicate, polarity] entries; the core never reads
+# files and never validates approval). A learned pattern is consulted
+# ONLY for a segment the handwritten reader neither skipped nor
+# extracted, so handwritten behavior and skip classes always win.
+# Every match is recorded separately in state["learned_readings"]
+# (session-only, never in readings, facts, the store or the
+# SOURCE_DIVERSITY count) and stays UNVERIFIED. Several patterns on one
+# segment are all recorded and flagged ambiguous; none is chosen.
+_LSTOP = ["not", "no", "never", "nor", "and", "or", "but", "might", "may", "could", "would", "should", "must", "can", "cannot", "will", "shall", "says", "said", "say", "claims", "claim", "according", "that", "because", "if", "unless", "although", "while", "when", "where", "which", "who", "whom", "whose", "then", "however", "also", "maybe", "perhaps", "probably", "possibly", "allegedly", "reportedly", "it", "he", "she", "they", "this", "these", "those", "we", "i", "you", "remember", "read", "forget"]
+_LALNUM = "abcdefghijklmnopqrstuvwxyz0123456789"
+_LEARNED_CAP = 200
+def _l_collapse(s):
+  ls = lower_ascii(s)
+  out = ""
+  last_sp = true
+  i = 0
+  while i < len(ls):
+    c = ls[i]
+    if c == " " or c == "\t" or c == "\n" or c == "\r":
+      if not last_sp:
+        out = out + " "
+      last_sp = true
+    else:
+      out = out + c
+      last_sp = false
+    i = i + 1
+  if len(out) > 0 and out[len(out) - 1] == " ":
+    out = out[:len(out) - 1]
+  return out
+def _l_alnum(t):
+  if len(t) == 0:
+    return false
+  i = 0
+  while i < len(t):
+    if find(_LALNUM, t[i]) < 0:
+      return false
+    i = i + 1
+  return true
+def _l_slot_ok(toks, a, b):
+  if b - a < 1 or b - a > 4:
+    return false
+  i = a
+  while i < b:
+    if not _l_alnum(toks[i]) or _in(toks[i], _LSTOP):
+      return false
+    i = i + 1
+  return true
+def _l_span(toks, a, b):
+  out = ""
+  i = a
+  while i < b:
+    if out == "":
+      out = toks[i]
+    else:
+      out = out + " " + toks[i]
+    i = i + 1
+  return out
+# Returns [subject, object] or null. Same structure rules as the
+# approved descriptor's tests: ASCII only, verb literal exactly once,
+# both slots 1-4 plain alnum non-stopword tokens, every token alnum.
+def _learned_match(vt, text):
+  if _nonascii(text):
+    return null
+  t = _words(_l_collapse(text))
+  n = len(t)
+  m = len(vt)
+  if m < 1:
+    return null
+  found = -1
+  count = 0
+  i = 0
+  while i + m <= n:
+    ok = true
+    j = 0
+    while j < m:
+      if t[i + j] != vt[j]:
+        ok = false
+      j = j + 1
+    if ok:
+      count = count + 1
+      found = i
+    i = i + 1
+  if count != 1:
+    return null
+  if not _l_slot_ok(t, 0, found) or not _l_slot_ok(t, found + m, n):
+    return null
+  for x in vt:
+    if not _l_alnum(x):
+      return null
+  return [_l_span(t, 0, found), _l_span(t, found + m, n)]
+# Returns [matched_readings, ambiguous_segments] for one source.
+def _learned_scan(state, src, sent):
+  hits = []
+  for d in state["learned"]:
+    r = _learned_match(_words(d[1]), sent)
+    if r != null:
+      append(hits, [r[0], d[2], r[1], d[3], d[0]])
+  if len(hits) == 0:
+    return [0, 0]
+  if not ("learned_readings" in state):
+    state["learned_readings"] = []
+  added = 0
+  for h in hits:
+    dup = false
+    for e in state["learned_readings"]:
+      if e[0] == h[0] and e[1] == h[1] and e[2] == h[2] and e[3] == h[3] and e[4] == h[4] and e[5] == src:
+        dup = true
+    if not dup and len(state["learned_readings"]) < _LEARNED_CAP:
+      append(state["learned_readings"], [h[0], h[1], h[2], h[3], h[4], src, sent, len(hits) > 1])
+      added = added + 1
+  amb = 0
+  if len(hits) > 1:
+    amb = 1
+  return [added, amb]
 # A18 URL policy (EXPERIMENTAL preview). Validation and conservative
 # normalization are pure string work: scheme http only, no embedded
 # credentials, host charset [a-z0-9.-], no CR/LF, fragment stripped,
@@ -1158,6 +1274,8 @@ def _read_ingest(state, src, body, truncated):
   sk_d = 0
   sk_tb = 0
   um = 0
+  lr = 0
+  lamb = 0
   warns = []
   wkeys = []
   for sent in segs:
@@ -1222,6 +1340,10 @@ def _read_ingest(state, src, body, truncated):
               append(exs, [ex, sent])
             else:
               um = um + 1
+              if "learned" in state and len(state["learned"]) > 0:
+                lsr = _learned_scan(state, src, sent)
+                lr = lr + lsr[0]
+                lamb = lamb + lsr[1]
       if sk == "multi-clause":
         sk_c = sk_c + 1
       if sk == "thai-boundary-ambiguous":
@@ -1279,6 +1401,8 @@ def _read_ingest(state, src, body, truncated):
                 wt = "SCOPE_MISMATCH"
               append(warns, wt + " on " + wk)
   out = src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c + sk_d + sk_tb) + " skipped (" + str(sk_q) + " quoted, " + str(sk_d) + " directive, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause, " + str(sk_tb) + " thai-boundary-ambiguous), " + str(um) + " unmatched"
+  if lr > 0 or lamb > 0:
+    out = out + "; " + str(lr) + " learned-pattern readings recorded (LEARNED_PATTERN, UNVERIFIED, not facts; " + str(lamb) + " ambiguous segments)"
   for w in warns:
     out = out + "; evidence-review " + w + " - accepted knowledge unchanged"
   if truncated:

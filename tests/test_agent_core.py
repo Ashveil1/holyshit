@@ -222,6 +222,8 @@ class Oracle:
         self.forgotten = []  # A12 tombstones, capped at 20
         self.session = []    # A12 session log, capped at 10, never saved
         self.mode = 'strict'  # A14.1: session-only, like notes
+        self.learned = None   # A21.2b: descriptors set by the repl
+        self.learned_readings = []
         # A15: hypothesis candidates [subj, domain, count, created_ev,
         # later_uses, omitted] + retired [subj, domain, reason].
         self.hypotheses = []
@@ -631,6 +633,7 @@ class Oracle:
             segs.append(cur)
         matched = newc = upd = ref = dup = 0
         sk_q = sk_m = sk_c = sk_d = sk_tb = um = 0
+        lr = lamb = 0
         warns, wkeys = [], []
         for sent in segs:
             sk = self._read_skip(sent)
@@ -691,6 +694,10 @@ class Oracle:
                                 exs.append([ex, sent])
                             else:
                                 um += 1
+                                if self.learned:
+                                    a_, b_ = self._learned_scan(src, sent)
+                                    lr += a_
+                                    lamb += b_
                 if sk == 'multi-clause':
                     sk_c += 1
                 if sk == 'thai-boundary-ambiguous':
@@ -747,12 +754,70 @@ class Oracle:
                ' modal-hedged, ' + str(sk_c) + ' multi-clause, ' +
                str(sk_tb) + ' thai-boundary-ambiguous), ' +
                str(um) + ' unmatched')
+        if lr > 0 or lamb > 0:
+            out += ('; ' + str(lr) + ' learned-pattern readings recorded'
+                    ' (LEARNED_PATTERN, UNVERIFIED, not facts; ' +
+                    str(lamb) + ' ambiguous segments)')
         for w in warns:
             out += ('; evidence-review ' + w +
                     ' - accepted knowledge unchanged')
         if truncated:
             out += ' (text truncated at 64KB)'
         return out
+
+    # A21.2b: learned-pattern matcher (independent of agent.patgen).
+    _LSTOP = ('not no never nor and or but might may could would should '
+              'must can cannot will shall says said say claims claim '
+              'according that because if unless although while when '
+              'where which who whom whose then however also maybe '
+              'perhaps probably possibly allegedly reportedly it he she '
+              'they this these those we i you remember read '
+              'forget').split()
+
+    def _learned_match(self, vt, text):
+        if any(ord(c) > 127 for c in text):
+            return None
+        t = ' '.join(lower_ascii(text).split()).split(' ') \
+            if text.strip() else []
+        t = [x for x in t] if t != [''] else []
+        n, m = len(t), len(vt)
+        if m < 1:
+            return None
+        idx = [i for i in range(n - m + 1) if t[i:i + m] == vt]
+        if len(idx) != 1:
+            return None
+        f = idx[0]
+
+        def alnum(x):
+            return x != '' and all(c in 'abcdefghijklmnopqrstuvwxyz0123456789'
+                                   for c in x)
+
+        def slot(a, b):
+            return (1 <= b - a <= 4 and
+                    all(alnum(x) and x not in self._LSTOP for x in t[a:b]))
+        if not slot(0, f) or not slot(f + m, n):
+            return None
+        if not all(alnum(x) for x in vt):
+            return None
+        return [' '.join(t[:f]), ' '.join(t[f + m:])]
+
+    def _learned_scan(self, src, sent):
+        hits = []
+        for d in self.learned:
+            r = self._learned_match(d[1].split(' '), sent)
+            if r is not None:
+                hits.append([r[0], d[2], r[1], d[3], d[0]])
+        if not hits:
+            return 0, 0
+        added = 0
+        for h in hits:
+            dup = any(e[:5] == h and e[5] == src
+                      for e in self.learned_readings)
+            if not dup and len(self.learned_readings) < 200:
+                self.learned_readings.append(
+                    h + [src, sent, len(hits) > 1])
+                added += 1
+        return added, (1 if len(hits) > 1 else 0)
 
     def _src_domain(self, src):
         # A19: url-N -> registry host; dotted-quad literal is its
@@ -2570,6 +2635,37 @@ for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))
 
+
+LD = [['pc-aa01', 'owns', 'has', 'pos'], ['pc-bb02', 'owns', 'means', 'pos'],
+      ['pc-cc03', 'is', 'means', 'pos'],
+      ['pc-dd04', 'sits on', 'is-in', 'pos']]
+LEARNED_CASES = [
+    [LD, ['read s1: a crow owns a nest', 'read s1: a crow owns a nest',
+          'read s2: A  Crow   OWNS a nest. a hawk owns a nest',
+          'readings', 'facts']],
+    # handwritten reader wins: "is a" is the reader's own pattern, so a
+    # learned "is" never fires there; skip classes also win.
+    [LD, ['read s1: a kiwi is a bird. "a crow owns a nest". '
+          'the guide says a gull owns a nest',
+          'read s2: a robin might own a nest. remember a wren owns a nest',
+          'readings detail']],
+    # structure rules: stopword slot, 5-token slot, verb twice, bare verb,
+    # non-ASCII, multi-clause conjunction, quoted.
+    [LD, ['read s1: it owns a nest. one two three four five owns a nest',
+          'read s2: a crow owns owns a nest. owns a nest. a crow owns',
+          'read s3: a cr\u00f3w owns a nest. a crow owns a nest and '
+          'a hawk owns a nest',
+          'read s4: a gull sits on a post. the cat sits on a mat']],
+    [[], ['read s1: a crow owns a nest', 'readings']],
+    [LD[:1], ['read s1: a crow owns a nest', 'read s2: a crow owns a nest',
+              'read s3: a hawk owns a nest', 'forget a crow', 'readings']],
+]
+for _lc in LEARNED_CASES:
+    _o = Oracle()
+    _o.learned = _lc[0]
+    _lc.append([_o.respond(l) for l in _lc[1]])
+    _lc.append(_o)
+
 expected_lines = []
 for lines, replies, oracle in sessions:
     expected_lines.extend(replies)
@@ -2586,7 +2682,16 @@ for lines, replies, oracle in sessions:
     for i, note in enumerate(oracle.notes):
         expected_lines.append('note ' + str(i + 1) + ' = ' + note)
     expected_lines.append('topic ' + (oracle.topic if oracle.topic is not None else 'none'))
+for _d, _l, _r, _o in LEARNED_CASES:
+    expected_lines.extend(_r)
+    expected_lines.append('learned ' + str(len(_o.learned_readings)))
+    for _e in _o.learned_readings:
+        expected_lines.append('lr ' + ' | '.join(_e[:7]) + ' | ' +
+                              ('true' if _e[7] else 'false'))
+    expected_lines.append('readings ' + str(len(_o.readings)) +
+                          ' facts ' + str(len(_o.facts)))
 total = sum(len(replies) for _, replies, _ in sessions)
+total += sum(len(_r) for _, _, _r, _ in LEARNED_CASES)
 expected_lines.append('total ' + str(total))
 expected = '\n'.join(expected_lines) + '\n'
 
@@ -2629,6 +2734,25 @@ text += '  if state["topic"] == null:\n'
 text += '    print "topic none"\n'
 text += '  else:\n'
 text += '    print "topic " + state["topic"]\n'
+text += 'learned_cases = ' + lit([[c[0], c[1]] for c in LEARNED_CASES]) + '\n'
+text += 'for case in learned_cases:\n'
+text += '  state = agent.core.new_state()\n'
+text += '  state["learned"] = []\n'
+text += '  for d in case[0]:\n'
+text += '    append(state["learned"], d)\n'
+text += '  for line in case[1]:\n'
+text += '    print agent.core.respond(state, line)\n'
+text += '    total = total + 1\n'
+text += '  lrs = []\n'
+text += '  if "learned_readings" in state:\n'
+text += '    lrs = state["learned_readings"]\n'
+text += '  print "learned " + str(len(lrs))\n'
+text += '  for e in lrs:\n'
+text += '    fl = "false"\n'
+text += '    if e[7]:\n'
+text += '      fl = "true"\n'
+text += '    print "lr " + e[0] + " | " + e[1] + " | " + e[2] + " | " + e[3] + " | " + e[4] + " | " + e[5] + " | " + e[6] + " | " + fl\n'
+text += '  print "readings " + str(len(state["readings"])) + " facts " + str(len(state["order"]))\n'
 text += 'print "total " + str(total)\n'
 
 STORE_PROG = '''import agent.core

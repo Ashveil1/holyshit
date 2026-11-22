@@ -190,6 +190,7 @@ def owner(att, dele, st, cid, decision):
     return "owner decision refused: A00 state " + c["label"]
   if decision == "reject":
     c["label"] = "REVOKED"
+    c["active"] = false
     append(c["provenance"]["history"], "owner rejected")
     return "owner rejected " + cid
   g = gate(att, dele, st, cid, true)
@@ -210,6 +211,7 @@ def revoke(st, cid):
   if c["label"] == "REVOKED":
     return cid + " already REVOKED"
   c["label"] = "REVOKED"
+  c["active"] = false
   append(c["provenance"]["history"], "REVOKED (history and readings kept)")
   return "revoked " + cid + ": removed from any use immediately; history kept; reinstating needs a new review and an owner decision"
 def set_delegation(path, src):

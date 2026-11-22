@@ -1,0 +1,161 @@
+# agent/learned.holy - A21.2b activation and the fail-closed loader
+# (repl-only). The core only ever receives descriptors from refresh();
+# it never reads files and never checks approval. Everything is
+# re-checked every time (not only at activation), so a stale ACTIVE
+# pattern leaves use at the next command:
+#   L03 descriptor id/canon mismatch   L05 predicate not allowed
+#   L06 polarity not positive          L07 structure invalid
+#   L08 revoked/rejected (never loaded) L09 approval/snapshot stale
+#   L10 validation corpus or tests fail L12 delegation revoked/expired
+# (L01 file corrupt: the store loads empty, so nothing activates;
+#  L02 version: the store validator; L04 state not ACTIVE: not loaded.)
+# A failure disables the pattern (label REVIEW_PENDING, active false),
+# keeps the approval in history and needs explicit reapproval.
+import agent.patgen
+import agent.proposals
+import agent.review
+_REG = ["is-a", "has", "is-in", "means"]
+def _sorted(ids):
+  out = []
+  for x in ids:
+    i = 0
+    while i < len(out) and out[i] < x:
+      i = i + 1
+    out = out[:i] + [x] + out[i:]
+  return out
+def check(st, att, dele, cid):
+  c = st["candidates"][cid]
+  d = c["descriptor"]
+  if cid in st["rejected"] or c["label"] == "REVOKED":
+    return "L08 revoked or rejected"
+  if cid != "pc-" + agent.patgen._hash(d["canon"]) or d["canon"] != agent.patgen.canon_of(d["verb"], d["predicate"], d["polarity"]):
+    return "L03 descriptor id/canon mismatch"
+  if not (d["predicate"] in _REG):
+    return "L05 predicate not allowed: " + d["predicate"]
+  if d["polarity"] != "pos":
+    return "L06 only positive-polarity patterns can activate"
+  vt = split(d["verb"], " ")
+  if not agent.patgen._verb_ok(vt):
+    return "L07 verb structure invalid"
+  if not has(c, "approval"):
+    return "L09 no approval record"
+  sn = agent.proposals.snapshot(st, cid)
+  if c["approval"]["hash"] != sn["hash"]:
+    return "L09 approval is bound to an older snapshot"
+  if c["approval_blocked"] or not agent.patgen._tests_clean(c["tests"]):
+    return "L10 validation tests failed"
+  i = 0
+  for x in agent.patgen._ADV:
+    i = i + 1
+    if agent.patgen.match_toks(vt, x) != null:
+      return "L10 adversarial test " + str(i) + " fires"
+  g = agent.review.gate(att, dele, st, cid, false)
+  for x in g["codes"]:
+    if x[:3] == "A02":
+      return "L12 " + x
+  if len(g["codes"]) > 0:
+    return "L09 approval no longer satisfied: " + join(" | ", g["codes"])
+  return ""
+def activate(st, att, dele, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  if c["label"] != "APPROVED":
+    return "activate refused: state " + c["label"] + " (needs APPROVED)"
+  r = check(st, att, dele, cid)
+  if r != "":
+    return "activate refused: " + r
+  c["label"] = "ACTIVE"
+  c["active"] = true
+  append(c["provenance"]["history"], "ACTIVE (opt-in experimental, positive only, revocable) on snapshot " + c["approval"]["hash"][:8])
+  return "activated " + cid + " (EXPERIMENTAL, opt-in, revocable; readings are LEARNED_PATTERN, UNVERIFIED, never facts)"
+# Rebuild state["learned"] from validated ACTIVE patterns only.
+def refresh(state, ppath, apath, dpath):
+  notes = []
+  if not exists(ppath):
+    return notes
+  st = agent.proposals.load(ppath)
+  att = agent.review.load_att(apath)
+  dele = agent.review.load_del(dpath)
+  out = []
+  changed = false
+  for cid in _sorted(keys(st["candidates"])):
+    c = st["candidates"][cid]
+    if c["label"] == "ACTIVE":
+      r = check(st, att, dele, cid)
+      if r == "":
+        append(out, [cid, c["descriptor"]["verb"], c["descriptor"]["predicate"], c["descriptor"]["polarity"]])
+      else:
+        c["label"] = "REVIEW_PENDING"
+        c["active"] = false
+        if not has(c, "approval_history"):
+          c["approval_history"] = []
+        append(c["approval_history"], c["approval"])
+        append(c["provenance"]["history"], "DISABLED by loader: " + r + " (approval kept in history; explicit reapproval required)")
+        append(notes, "learned pattern " + cid + " disabled: " + r)
+        changed = true
+  if changed:
+    agent.proposals.save(ppath, st)
+  state["learned"] = out
+  return notes
+def _status(st, pid):
+  if not has(st["candidates"], pid):
+    return "UNKNOWN"
+  c = st["candidates"][pid]
+  if pid in st["rejected"]:
+    return "REJECTED"
+  return c["label"]
+# Persist new session learned readings in a bounded, privacy-aware log:
+# lifetime counters never shrink; sentence text only with samples on;
+# sensitive sources contribute counters only.
+def log_new(state, st, lpath, done):
+  if not ("learned_readings" in state):
+    return done
+  lr = state["learned_readings"]
+  if len(lr) <= done:
+    return done
+  lg = {"version": 1, "total": 0, "sensitive": 0, "dropped": 0, "entries": []}
+  if exists(lpath):
+    try:
+      lg = json_load(lpath)
+    except:
+      lg = {"version": 1, "total": 0, "sensitive": 0, "dropped": 0, "entries": []}
+  i = done
+  while i < len(lr):
+    e = lr[i]
+    if e[5] in st["sensitive"]:
+      lg["sensitive"] = lg["sensitive"] + 1
+    else:
+      lg["total"] = lg["total"] + 1
+      row = {"pattern": e[4], "subject": e[0], "predicate": e[1], "object": e[2], "source": e[5], "ambiguous": e[7]}
+      if st["sample_text"]:
+        row["text"] = e[6]
+      if len(lg["entries"]) < 200:
+        append(lg["entries"], row)
+      else:
+        lg["dropped"] = lg["dropped"] + 1
+    i = i + 1
+  json_save(lpath, lg)
+  return len(lr)
+def view(state, st, lpath):
+  lr = []
+  if "learned_readings" in state:
+    lr = state["learned_readings"]
+  out = str(len(lr)) + " learned-pattern readings this session (LEARNED_PATTERN, UNVERIFIED, never facts, not in readings or the diversity count):"
+  for e in lr:
+    amb = ""
+    if e[7]:
+      amb = " [AMBIGUOUS: several patterns matched]"
+    if e[5] in st["sensitive"]:
+      out = out + "\n  (sensitive source: details withheld)"
+    else:
+      out = out + "\n  " + e[0] + " | " + e[1] + " | " + e[2] + " via " + e[4] + " [" + _status(st, e[4]) + "] from " + e[5] + amb
+  if exists(lpath):
+    try:
+      lg = json_load(lpath)
+      out = out + "\nlifetime log: " + str(lg["total"]) + " readings, " + str(lg["sensitive"]) + " from sensitive sources (counters only), " + str(lg["dropped"]) + " beyond the 200 retained"
+      for r in lg["entries"]:
+        out = out + "\n  " + r["subject"] + " | " + r["predicate"] + " | " + r["object"] + " via " + r["pattern"] + " [" + _status(st, r["pattern"]) + "] from " + r["source"]
+    except:
+      out = out + "\nlifetime log unreadable"
+  return out

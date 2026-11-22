@@ -13,6 +13,7 @@ import agent.patgen
 import agent.proposals
 import agent.shadow
 import agent.review
+import agent.learned
 path = "agent-memory.json"
 state = agent.store.load(path)
 # A18 EXPERIMENTAL: the fetch test harness is reachable only by
@@ -25,6 +26,7 @@ print "holyshit agent v0.14 - type 'help' for commands, 'quit' to leave"
 ppath = "agent-patterns.json"
 apath = "agent-attestations.json"
 dpath = "agent-delegation.json"
+lpath = "agent-learned-log.json"
 def patterns_cmd(line):
   parts = split(agent.core.normalize(line), " ")
   sub = "list"
@@ -119,6 +121,12 @@ def patterns_cmd(line):
     msg = agent.review.owner(agent.review.load_att(apath), agent.review.load_del(dpath), st, parts[2], parts[3])
     agent.proposals.save(ppath, st)
     return msg
+  if sub == "activate" and len(parts) == 3:
+    msg = agent.learned.activate(st, agent.review.load_att(apath), agent.review.load_del(dpath), parts[2])
+    agent.proposals.save(ppath, st)
+    return msg
+  if sub == "learned" and len(parts) == 2:
+    return agent.learned.view(state, st, lpath)
   if sub == "revoke" and len(parts) == 3:
     msg = agent.review.revoke(st, parts[2])
     agent.proposals.save(ppath, st)
@@ -135,12 +143,13 @@ def patterns_cmd(line):
     msg = agent.proposals.retract(st, join(" ", parts[2:]))
     agent.proposals.save(ppath, st)
     return msg
-  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
+  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | activate ID | learned | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
 # A21.0 shadow hook: after every non-patterns command, newly ingested
 # read sources are shadow-tested against SHADOWED candidates. It only
 # reads the stored bodies and writes the proposals file; the reply
 # already printed is never affected.
 seen = {}
+logged = 0
 def shadow_pass(state, seen):
   todo = []
   for src in keys(state["read_src"]):
@@ -178,8 +187,12 @@ while not done:
       # core never sees them; proposals live in their own file.
       print patterns_cmd(line)
     else:
+      for note in agent.learned.refresh(state, ppath, apath, dpath):
+        print note
       print agent.core.respond(state, line)
     if not done and not (m[:9] == "patterns " or m == "patterns"):
       shadow_pass(state, seen)
+      if "learned_readings" in state and len(state["learned_readings"]) > logged:
+        logged = agent.learned.log_new(state, agent.proposals.load(ppath), lpath, logged)
 agent.store.save(state, path)
 print "bye"

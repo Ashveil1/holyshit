@@ -24,11 +24,13 @@ def _valid(st):
       d = c["descriptor"]
       if cid != "pc-" + agent.patgen._hash(d["canon"]):
         return false
-      if c["id"] != cid or c["active"] != false:
+      if c["id"] != cid:
         return false
-      if not (c["label"] in ["CANDIDATE", "STALE", "SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW", "APPROVED", "REVOKED"]):
+      if c["active"] != (c["label"] == "ACTIVE"):
         return false
-      if c["active"] != false:
+      if c["active"] and not has(c, "approval"):
+        return false
+      if not (c["label"] in ["CANDIDATE", "STALE", "SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW", "APPROVED", "ACTIVE", "REVOKED"]):
         return false
     for r in st["rejected"]:
       if json_str(r)[:1] != "\"":
@@ -125,13 +127,17 @@ def retract(st, text):
         append(c["provenance"]["history"], "stale: example retracted")
         hit = hit + 1
   return str(hit) + " candidate(s) marked STALE"
+def _act(c):
+  if c["active"]:
+    return "ACTIVE-EXPERIMENTAL"
+  return "inactive"
 def listing(st):
   ids = keys(st["candidates"])
   out = str(len(ids)) + " stored pattern candidates, " + str(len(st["rejected"])) + " rejected (INACTIVE proposals, not reader coverage):"
   for cid in ids:
     c = st["candidates"][cid]
     d = c["descriptor"]
-    line = cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", inactive]"
+    line = cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", " + _act(c) + "]"
     if c["approval_blocked"]:
       line = line + "; APPROVAL BLOCKED"
     if cid in st["rejected"]:
@@ -272,7 +278,7 @@ def _blockers(c, cid, st):
   b = []
   sh = c["shadow"]
   cnt = sh["counters"]
-  if not (c["label"] in ["SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW", "APPROVED"]):
+  if not (c["label"] in ["SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW", "APPROVED", "ACTIVE"]):
     append(b, "not under review (label " + c["label"] + ")")
   if cid in st["rejected"]:
     append(b, "rejected")
@@ -378,7 +384,7 @@ def review(st, cid):
   c["review"] = {"hash": h, "ready": len(b) == 0, "blockers": b}
   if old != h:
     append(c["provenance"]["history"], "review snapshot " + h[:8])
-  out = "review " + cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", inactive]"
+  out = "review " + cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", " + _act(c) + "]"
   out = out + "\nsnapshot hash: " + h + " (hash_version 3)"
   out = out + "\ncoverage keys: tests_hash " + sn["coverage"]["tests_hash"] + " origins_hash " + sn["coverage"]["origins_hash"] + " corpus_hash " + sn["coverage"]["corpus_hash"]
   out = out + "\ntests: positive " + _frac(t["positive"]) + ", structural-neg " + _frac(t["structural_negative"]) + ", adversarial " + _frac(t["adversarial"]) + ", mutation(supplementary) " + _frac(t["mutation_supplementary"]) + ", annotated-neg " + _frac(t["annotated_negative"]) + ", holdout " + t["holdout"]
