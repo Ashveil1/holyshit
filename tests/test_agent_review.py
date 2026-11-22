@@ -59,6 +59,21 @@ def att(d, out, fam, run_id, dep, verdict='approve', tweak=None):
     return f.name
 
 
+def budgets(d, fams=('fa', 'fb', 'fc', 'fp', 'fz'), cands=50, work=100000):
+    """A22.3 budgets are mandatory (v0.16): pre-seed generous ones."""
+    f = {}
+    for n in fams:
+        f[n] = {'state': 'ACTIVE', 'max_candidates': cands,
+                'max_work': work, 'used_work': 0, 'candidates': [],
+                'budgeted': True,
+                'canary': {'cases': 0, 'passed': 0, 'missed': 0,
+                           'critical': 0, 'ambiguous': 0, 'unanswered': 0},
+                'history': ['budget seeded by the test harness']}
+    (d / 'agent-reviewers.json').write_text(json.dumps(
+        {'version': 1, 'hash_algo': 'poly62', 'families': f,
+         'unreadable': False, 'present': False}))
+
+
 def deleg(d, version=1, **kw):
     x = {'version': version, 'revoked': False, 'expired': False,
          'predicates': ['has', 'is-a', 'is-in', 'means'],
@@ -66,6 +81,7 @@ def deleg(d, version=1, **kw):
          'proposer_family': 'fp', 'owner_ref': 'owner-msg-1'}
     x.update(kw)
     (d / 'del.json').write_text(json.dumps(x))
+    budgets(d)
 
 
 def suite(label, argv, env):

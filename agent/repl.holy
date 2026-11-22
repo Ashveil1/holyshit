@@ -26,7 +26,7 @@ state = agent.store.load(path)
 # have no env builtin), so no ordinary command can set this flag.
 tfv = env("HS_AGENT_TEST_FETCH")
 state["test_fetch"] = tfv != null and tfv == "1"
-print "holyshit agent v0.15 - type 'help' for commands, 'quit' to leave"
+print "holyshit agent v0.16 - type 'help' for commands, 'quit' to leave"
 ppath = "agent-patterns.json"
 apath = "agent-attestations.json"
 dpath = "agent-delegation.json"
@@ -57,6 +57,17 @@ def a22_status(st, cid):
   else:
     out = out + "\n  tripwire CLEAR: no recorded matches"
   return out
+def learned_texts():
+  out = []
+  if exists(lpath):
+    try:
+      lg = json_load(lpath)
+      for e in lg["entries"]:
+        if has(e, "text"):
+          append(out, agent.patgen._collapse(e["text"]))
+    except:
+      out = []
+  return out
 def patterns_cmd(line):
   parts = split(agent.core.normalize(line), " ")
   sub = "list"
@@ -85,7 +96,22 @@ def patterns_cmd(line):
       negs = src["negatives"]
     except:
       negs = []
-    res = agent.patgen.derive(src["examples"], st["rejected"], corpus, negs)
+    exs = []
+    circ = []
+    lt = learned_texts()
+    for ex in src["examples"]:
+      hit = false
+      try:
+        hit = agent.patgen._collapse(ex[0]) in lt
+      except:
+        hit = false
+      if hit:
+        append(circ, ex[0])
+      else:
+        append(exs, ex)
+    res = agent.patgen.derive(exs, st["rejected"], corpus, negs)
+    for t in circ:
+      append(res["problems"], "example refused (circular learning: its text is a learned-pattern reading source; unverifiable when samples were off)")
     notes = agent.proposals.merge(st, res)
     err = agent.proposals.save(ppath, st)
     out = agent.patgen.report(res)
@@ -162,6 +188,10 @@ def patterns_cmd(line):
     for n in agent.learned.refresh(state, ppath, apath, dpath, mpath, mfiles, integ, tpath, rvpath):
       msg = msg + "\n" + n
     return msg + ("\n" + err if err != "" else "")
+  if sub == "holdout" and len(parts) == 4 and parts[3] == "owner":
+    msg = agent.proposals.holdout(st, parts[2])
+    agent.proposals.save(ppath, st)
+    return msg
   if sub == "tripwire" and len(parts) == 2:
     return agent.tripwire.listing(agent.tripwire.load(tpath))
   if sub == "fp" or sub == "polarity-error" or sub == "quarantine" or sub == "lift":
@@ -249,7 +279,7 @@ def patterns_cmd(line):
     msg = agent.proposals.retract(st, join(" ", parts[2:]))
     agent.proposals.save(ppath, st)
     return msg
-  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | manifest accept | predicate P SUBJTYPE OBJTYPE | type ENTITY TYPE declared|inferred|verified | registry | typecheck | reviewers | budget FAMILY MAXC MAXW owner | reinstate FAMILY owner NOTE | canary FAMILY CASES ANSWERS owner | tripwire | fp ID S P O owner | polarity-error ID owner | quarantine ID owner|REVIEWER | lift ID owner NOTE | activate ID | learned | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
+  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | lineage A B REL STATE BY | delegate FILE | attest ID FILE [owner] | approve ID | owner ID approve|reject | manifest accept | predicate P SUBJTYPE OBJTYPE | type ENTITY TYPE declared|inferred|verified | registry | typecheck | reviewers | budget FAMILY MAXC MAXW owner | reinstate FAMILY owner NOTE | canary FAMILY CASES ANSWERS owner | holdout SRC owner | tripwire | fp ID S P O owner | polarity-error ID owner | quarantine ID owner|REVIEWER | lift ID owner NOTE | activate ID | learned | revoke ID | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
 # A21.0 shadow hook: after every non-patterns command, newly ingested
 # read sources are shadow-tested against SHADOWED candidates. It only
 # reads the stored bodies and writes the proposals file; the reply
@@ -266,10 +296,11 @@ def shadow_pass(state, seen):
     return 0
   st = agent.proposals.load(ppath)
   n = 0
+  seq0 = st["seq"]
   for src in todo:
     seen[src] = state["read_src"][src]
     n = n + agent.shadow.process(state, st, src, state["read_src"][src])
-  if n > 0 or len(st["sensitive"]) > 0:
+  if n > 0 or len(st["sensitive"]) > 0 or st["seq"] != seq0:
     agent.proposals.save(ppath, st)
   return n
 done = false

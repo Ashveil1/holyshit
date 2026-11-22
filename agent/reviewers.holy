@@ -11,10 +11,9 @@
 # unauthenticated convention) < runner_authenticated (DEFERRED until the
 # language lane ships crypto, C20: refused, not faked).
 #
-# Budgets are enforced per lineage family once this file exists (the
-# first `patterns budget` command creates it; before that review is
-# unbudgeted and says so). A family needs a budget: no budget means its
-# owner_attested attestations are refused. Exhaustion REFUSES; nothing
+# Budgets are MANDATORY (v0.16; A22.3 shipped them opt-in): a family
+# needs a budget, no budget means its owner_attested attestations are
+# refused with the command that sets one. Exhaustion REFUSES; nothing
 # auto-extends. Cost of one attestation = 1 + sample events + 3 x
 # disagreement events (weighted work). Candidate budget counts distinct
 # candidates the family attested.
@@ -120,14 +119,12 @@ def blocked(r, fam):
 def charge(r, fam, cid, work, assurance):
   if r["unreadable"]:
     return "A11 reviewer registry unreadable: attestation refused (fail closed)"
-  if not r["present"]:
-    return ""
   if assurance != "owner_attested":
     return ""
   if fam in r["families"] and r["families"][fam]["state"] == "SUSPENDED":
     return "A11 family " + fam + " is SUSPENDED: attestation refused"
   if not (fam in r["families"]) or not r["families"][fam]["budgeted"]:
-    return "A10 family " + fam + " has no budget: attestation refused (owner sets one with `patterns budget`)"
+    return "A10 family " + fam + " has no budget: attestation refused (budgets are mandatory; the owner sets one with `patterns budget " + fam + " MAXCANDS MAXWORK owner`)"
   x = r["families"][fam]
   new = not (cid in x["candidates"])
   if new and len(x["candidates"]) >= x["max_candidates"]:
@@ -221,7 +218,7 @@ def listing(r):
   if r["unreadable"]:
     out.append("  registry UNREADABLE: attestations are refused (fail closed)")
   if not r["present"]:
-    out.append("  no budgets configured: review is unbudgeted (set one with `patterns budget FAMILY MAXCANDS MAXWORK owner`)")
+    out.append("  no budgets configured: owner_attested attestations are refused until the owner sets one with `patterns budget FAMILY MAXCANDS MAXWORK owner`")
   for f in keys(r["families"]):
     x = r["families"][f]
     k = x["canary"]

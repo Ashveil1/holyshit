@@ -33,6 +33,7 @@ def suite(label, argv, env):
         for fam, dep in (('fa', 'dep1'), ('fb', 'dep2'), ('fz', 'dep3')):
             rv.att(base, out0, fam, RUNS[fam], dep)
         rv.deleg(base)
+        (base / 'agent-reviewers.json').unlink()
         cases = {'cases': [
             {'id': 'c1', 'expected': 'reject', 'critical': True,
              'synthetic': True, 'text': 'a made-up case'},
@@ -66,13 +67,14 @@ def suite(label, argv, env):
         D = 'patterns delegate del.json'
         # budgets
         d, o = sc('bud', [
-            D, 'patterns reviewers',
+            D, 'patterns reviewers', A('fa'),
             'patterns budget fa 1 1000 owner', 'patterns budget fb 0 1000 owner',
             'patterns budget fx 1 0 owner', 'patterns budget fa x y owner',
             'patterns budget fa 1 1000',
             A('fa'), A('fb'), A('fz'), A('fz', False),
             'patterns reviewers'])
-        assert 'review is unbudgeted' in o
+        assert 'the owner sets one with `patterns budget fa MAXCANDS MAXWORK owner`' in o
+        assert 'no budgets configured: owner_attested attestations are refused' in o
         assert 'recorded at-' in o and 'assurance owner_attested' in o
         assert 'A10 candidate budget exhausted for fb' in o
         assert 'A10 family fz has no budget' in o

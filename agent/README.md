@@ -6,7 +6,7 @@ dependencies beyond the language itself. One EXPERIMENTAL exception:
 the repl shell can fetch web pages over plain HTTP (`read url`, A18
 preview below); the core itself stays network-free.
 
-## What it is today (v0.15)
+## What it is today (v0.16)
 
 - An evidence-ingestion reader (A16): `read <text>` ingests text as
   DATA - never executed, never believed - and reports typed claims
@@ -482,7 +482,7 @@ Limits, stated plainly:
   counters; the thresholds are not ratified; one reviewer family
   label is not proof of independent training data.
 
-### A22.0: change detection for learned-pattern files (in progress)
+### A22.0: change detection for learned-pattern files
 
 This is CHANGE DETECTION ONLY. `agent-manifest.json` records a hash of
 `agent-patterns.json`, `agent-attestations.json`, `agent-delegation.json`
@@ -511,7 +511,7 @@ resistance waits for SHA-256 / signatures (language lane, C20).
 - Proposal history no longer repeats consecutive identical origin/lineage
   entries.
 
-### A22.1: predicate and argument-type registry (in progress)
+### A22.1: predicate and argument-type registry
 
 `agent-registry.json` (repl-only, `registry.holy`) holds predicate
 signatures (`patterns predicate P SUBJTYPE OBJTYPE`) and entity type
@@ -529,7 +529,7 @@ byte-identical with it absent, present or corrupt
 (`tests/test_agent_registry.py`). The file is covered by the A22.0
 manifest. Review-packet integration is not built yet.
 
-### A22.2: operational tripwires and the quarantine state machine (in progress)
+### A22.2: operational tripwires and the quarantine state machine
 
 `agent-tripwire.json` (repl-only, `tripwire.holy`, covered by the manifest)
 only ever DISABLES learned patterns (loader code L14); it cannot approve,
@@ -563,7 +563,7 @@ Thresholds are PROVISIONAL and unratified.
 - With no active learned pattern nothing is written and reader output is
   unchanged.
 
-### A22.3: reviewer budgets, suspension and isolated canaries (in progress)
+### A22.3: reviewer budgets, suspension and isolated canaries
 
 `agent-reviewers.json` (repl-only, `reviewers.holy`, covered by the
 manifest) only ever LIMITS review; it cannot approve, activate or promote.
@@ -572,13 +572,14 @@ manifest) only ever LIMITS review; it cannot approve, activate or promote.
   counts and spends no budget; owner_attested is the current ceiling (the
   `owner` marker is an unauthenticated convention); runner_authenticated is
   deferred until crypto exists (C20), refused rather than faked.
-- Budgets: `patterns budget FAMILY MAXCANDS MAXWORK owner`. Once the file
-  exists, every owner_attested attestation needs a budgeted family: no
-  budget, an exhausted candidate budget or an exhausted weighted-work budget
-  (1 + sample events + 3 x disagreement events per attestation) REFUSES the
-  attestation (A10); nothing auto-extends and usage is never reset. Before
-  the first `patterns budget` command review is unbudgeted and says so
-  (opt-in for backward compatibility; the default can flip later).
+- Budgets are MANDATORY since v0.16 (A22.3 first shipped them opt-in):
+  `patterns budget FAMILY MAXCANDS MAXWORK owner`. Every owner_attested
+  attestation needs a budgeted family: no budget (the refusal names the
+  command to run), an exhausted candidate budget or an exhausted
+  weighted-work budget (1 + sample events + 3 x disagreement events per
+  attestation) REFUSES the attestation (A10); nothing auto-extends and
+  usage is never reset. Upgrading: set a budget per family before
+  attesting.
 - Canaries: `patterns canary FAMILY CASES ANSWERS owner`. A canary is a
   synthetic case file plus the family's answers; scoring reads only those
   files and the reviewer registry. It imports no proposals, tripwire,
@@ -594,6 +595,42 @@ manifest) only ever LIMITS review; it cannot approve, activate or promote.
 - Limits: family names, the owner marker and the answers files are
   unauthenticated conventions; canary pools are owner-supplied, not
   validated against ground truth beyond the synthetic/no-reference rules.
+
+### A22.4: leakage guard
+
+A monotonic sequence number (the language has no clock) orders derivation,
+shadow start and the first sight of every source (`seq`, `src_first`,
+`holdout` in the proposals file). Per candidate, `cutoffs` records
+`derive_seq` and `shadow_seq`; they are set once and never overwritten
+(unshadow/re-shadow and re-derive keep them, and a re-derive after the
+shadow cutoff changes no evidence input). Rules, all in the review packet's
+"leakage guard" line and the snapshot hash:
+
+- A source first seen at or before the candidate's shadow cutoff is a
+  pre-shadow fact: its segments are excluded from that candidate's evidence
+  (counted as `pre_shadow`) unless `patterns holdout SRC owner` declared it
+  held out BEFORE the candidate was derived. A source already seen cannot be
+  declared held out later.
+- A segment whose text equals one of the candidate's derivation examples is
+  never validation (`derived_text`).
+- `patterns derive` refuses an example whose text appears in the
+  learned-pattern log (circular learning across milestones). This works only
+  while `patterns samples on` stored the text; with samples off, or for
+  sensitive sources, it cannot be checked.
+- Candidates from older files get `legacy` cutoffs and a review blocker: their
+  existing evidence was never leak-checked.
+- Limits: source names are the owner-visible read labels (unauthenticated);
+  "demonstrably held out" means declared before derivation, not proven.
+
+### v0.16 notes
+
+A22 Knowledge Integrity is complete: change-detection manifest (A22.0),
+predicate/type registry (A22.1), tripwires and quarantine (A22.2), reviewer
+budgets (now mandatory), suspension and canaries (A22.3), leakage guard
+(A22.4). Everything remains EXPERIMENTAL, opt-in and revocable; no fact is
+ever auto-promoted and the reader and core are unchanged since v0.15. The
+`owner`, `verified` and reviewer-id markers, family names and hashes (62-bit
+polynomial, no SHA-256/HMAC until C20) are unauthenticated conventions.
 
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 
