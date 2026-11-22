@@ -370,7 +370,7 @@ This is an explicitly labelled EXPERIMENTAL preview, not a release:
   reply; the fetch lives in `agent/fetch.holy`, imported only by the
   repl.
 
-## Hosted resource benchmark (measured at A16, evidence-ingestion reader)
+## Hosted resource benchmark (re-measured at A19, v0.13)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
 facts only). Method, per number: wall = `perf_counter` around the whole
@@ -383,7 +383,35 @@ HOSTED numbers (a Linux process running the hs runtime); future in-OS
 conflated with these. Host: Linux 6.1 x86_64, glibc 2.35, Python
 3.10.12 for the interp route.
 
-Current numbers (A15; A14.1 numbers in parentheses where they
+Current numbers (A19; the A15/A16 table below is kept for history).
+The A19 reader adds skip classes, separate source measurements,
+REVIEW_ELIGIBLE and approval history; per-command core costs are
+unchanged within noise, the dialogue keeps full marks in every
+category on both backends at every scale (reading 8/8 included).
+
+Route note: since A18.1 the repl imports agent.fetch (tcp builtins),
+which the ir-x64 subset route rejects at build time, so the native
+backend is now built with the full native route (`hs.py build`,
+the route the shipped repl uses) and labeled `native`. The ir-x64
+subset rows below remain as historical A15 numbers. Chunking note:
+interp 10k read-ingest used 60 commands and rule-derive 25 (the
+harness's --sessions/--n-cmds chunking; means are per-command).
+
+| backend | facts | miss | recall | inference | rule-derive | read-ingest | startup | peak RSS |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| interp | 0 | 2.1 ms | - | <0.01 ms | 3.8 ms | 15.2 ms | 0.17 s | 28.0 MiB |
+| interp | 1,000 | 5.1 ms | 1.3 ms | 2.0 ms | 3.7 ms | 15.2 ms | 2.23 s | 30.1 MiB |
+| interp | 10,000 | 50.1 ms | 1.2 ms | 2.3 ms | 8.8 ms | 12.7 ms | 21.3 s | 60.5 MiB |
+| native | 0 | 0.02 ms | <0.01 ms | <0.01 ms | 0.05 ms | 0.15 ms | <0.01 s | 10.0 MiB |
+| native | 1,000 | 0.05 ms | 0.02 ms | 0.03 ms | 0.08 ms | 0.16 ms | 0.07 s | 11.6 MiB |
+| native | 10,000 | <0.01 ms | <0.01 ms | <0.01 ms | <0.01 ms | <0.01 ms | 10.5 s | 72.1 MiB |
+
+The native 10k per-command latencies are real but vanish next to
+the 10.5 s startup, which is store load/save on the full native
+route; the 4 GiB RLIMIT_AS probe passes on both backends at 10k
+(interp 60.3 MiB, native 64.8 MiB peak).
+
+Historical numbers (A15; A14.1 numbers in parentheses where they
 differ). A15 adds the hypothesis recorder (explore mode only) plus
 one scored dialogue category (hypothesis 5/5; every earlier
 category keeps full marks at every scale on both backends).

@@ -584,6 +584,22 @@ def build_native(tmp):
             os.environ['HSPATH'] = env_old
 
 
+def build_native_full(tmp):
+    # Full native route via hs.py build. Since A18.1 the repl imports
+    # agent.fetch (tcp builtins), which the ir-x64 subset route rejects
+    # at build time; the full native route supports tcp and is what the
+    # shipped repl actually builds with.
+    image = tmp / 'repl-native'
+    env = dict(os.environ)
+    env['HSPATH'] = str(ROOT)
+    r = subprocess.run([sys.executable, str(ROOT / 'hs.py'), 'build',
+                        str(REPL), '-o', str(image)],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0 and image.exists(), (
+        'native (hs.py build) repl build failed: ' + r.stderr[-400:])
+    return [str(image)]
+
+
 def fmt_counts(c):
     return ' '.join('%s %d/%d' % (cat, c[cat][0], c[cat][1])
                     for cat in SCORED if c[cat][1])
@@ -638,7 +654,8 @@ def main():
     ap.add_argument('--scales', default='',
                     help='comma list overriding the scale set')
     ap.add_argument('--backends', default='',
-                    help='comma list from: interp, ir-x64 (default: per mode)')
+                    help='comma list from: interp, ir-x64, native '
+                    '(native = full route via hs.py build; default: per mode)')
     ap.add_argument('--out', default='',
                     help='write rows as JSON to this path instead of reporting')
     ap.add_argument('--report', default='',
@@ -671,6 +688,8 @@ def main():
     for name in names:
         if name == 'interp':
             argv = [sys.executable, str(ROOT / 'interp.py'), str(REPL)]
+        elif name == 'native':
+            argv = build_native_full(workdir)
         else:
             argv = build_native(workdir)
         rows += bench_backend(name, argv, workdir, scales, n_cmds,
