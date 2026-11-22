@@ -1158,6 +1158,8 @@ def _read_ingest(state, src, body, truncated):
   sk_d = 0
   sk_tb = 0
   um = 0
+  warns = []
+  wkeys = []
   for sent in segs:
     sk = _read_skip(sent)
     if sk == "quoted":
@@ -1228,6 +1230,7 @@ def _read_ingest(state, src, body, truncated):
         ex = pair[0]
         span = pair[1]
         matched = matched + 1
+        rj = -1
         ri2 = _read_find(state, ex[0], ex[1], ex[2])
         if ri2 >= 0:
           r = state["readings"][ri2]
@@ -1243,6 +1246,7 @@ def _read_ingest(state, src, body, truncated):
           else:
             append(side, [src, span, ex[4]])
             upd = upd + 1
+            rj = ri2
         else:
           if len(state["readings"]) >= _READ_CAP:
             ref = ref + 1
@@ -1253,7 +1257,30 @@ def _read_ingest(state, src, body, truncated):
             else:
               append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", ""])
             newc = newc + 1
+            rj = len(state["readings"]) - 1
+        # A19: a later conflicting reading raises an evidence-review
+        # warning (CONFLICT across sources, SCOPE_MISMATCH inside one
+        # source). It NEVER alters or demotes accepted knowledge:
+        # taught facts are untouched, the warning only marks the
+        # claim for evidence review in the inspection routes.
+        if rj >= 0:
+          r = state["readings"][rj]
+          if len(r[3]) > 0 and len(r[4]) > 0:
+            wk = r[0] + " | " + r[1] + " | " + r[2]
+            if not (wk in wkeys):
+              append(wkeys, wk)
+              internal = false
+              for se in r[3]:
+                for se2 in r[4]:
+                  if se[0] == se2[0]:
+                    internal = true
+              wt = "CONFLICT"
+              if internal:
+                wt = "SCOPE_MISMATCH"
+              append(warns, wt + " on " + wk)
   out = src + ": " + str(len(segs)) + " segments in, " + str(matched) + " pattern matches, " + str(matched) + " candidates extracted (" + str(newc) + " new, " + str(upd) + " updated, " + str(ref) + " refused, " + str(dup) + " repeat), " + str(sk_q + sk_m + sk_c + sk_d + sk_tb) + " skipped (" + str(sk_q) + " quoted, " + str(sk_d) + " directive, " + str(sk_m) + " modal-hedged, " + str(sk_c) + " multi-clause, " + str(sk_tb) + " thai-boundary-ambiguous), " + str(um) + " unmatched"
+  for w in warns:
+    out = out + "; evidence-review " + w + " - accepted knowledge unchanged"
   if truncated:
     out = out + " (text truncated at 64KB)"
   return out
@@ -1368,11 +1395,9 @@ def _span_clusters(spans):
     if not found:
       append(reps, [sh, nm])
   return len(reps)
-# The measurements as one reported field set: agreeing sources
-# (claim agreement is structural: every entry on a side supports
-# the same triple, and cross-polarity disagreement is the CONFLICT
-# label), distinct registrable domains, duplicate-text clusters.
-def _read_ev(state, side):
+# The measurement triple [registrable domains, sources without a
+# domain, duplicate-text clusters] behind the reported fields.
+def _read_ev_parts(state, side):
   doms = []
   nodom = 0
   spans = []
@@ -1384,20 +1409,44 @@ def _read_ev(state, side):
     else:
       if not (d in doms):
         append(doms, d)
+  return [len(doms), nodom, _span_clusters(spans)]
+# The measurements as one reported field set: agreeing sources
+# (claim agreement is structural: every entry on a side supports
+# the same triple, and cross-polarity disagreement is the CONFLICT
+# label), distinct registrable domains, duplicate-text clusters.
+def _read_ev(state, side):
+  p = _read_ev_parts(state, side)
   out = str(len(side)) + " agreeing source"
   if len(side) > 1:
     out = out + "s"
-  out = out + ", " + str(len(doms)) + " registrable domain"
-  if len(doms) != 1:
+  out = out + ", " + str(p[0]) + " registrable domain"
+  if p[0] != 1:
     out = out + "s"
-  if nodom > 0:
-    out = out + " (" + str(nodom) + " without)"
-  nc = _span_clusters(spans)
-  out = out + ", " + str(nc) + " text cluster"
-  if nc != 1:
+  if p[1] > 0:
+    out = out + " (" + str(p[1]) + " without)"
+  out = out + ", " + str(p[2]) + " text cluster"
+  if p[2] != 1:
     out = out + "s"
   out = out + " (experimental)"
   return out
+# A19: REVIEW_ELIGIBLE is an EVIDENCE status, never a fact and
+# never a promotion. A side qualifies when ALL binding thresholds
+# hold: 3+ distinct source IDs, 2+ registrable domains, 3+
+# independent-looking (non-duplicate-text) clusters - which
+# together are the no-known-common-origin check (a single domain
+# or a single copied text is a detected common origin) - no
+# polarity conflict on the claim, no user alignment on the side
+# (a USER_CONFIRMED claim needs no review; a DISPUTED one has
+# already been ruled on), and every entry extracted by a
+# supported pattern (true by construction: only whole-segment
+# pattern matches are ever recorded). Nothing reads this label
+# outside the evidence-inspection routes.
+def _read_eligible(state, r, side, other, align):
+  if len(side) >= 3 and len(other) == 0 and align == "":
+    p = _read_ev_parts(state, side)
+    if p[0] >= 2 and p[2] >= 3:
+      return true
+  return false
 def _readings_reply(state, about, detail):
   rs = state["readings"]
   if about != "":
@@ -1470,6 +1519,10 @@ def _readings_reply(state, about, detail):
       out = out + "; positive evidence: " + _read_ev(state, r[3])
     if len(r[4]) >= 2:
       out = out + "; negative evidence: " + _read_ev(state, r[4])
+    if _read_eligible(state, r, r[3], r[4], r[5]):
+      out = out + "; REVIEW_ELIGIBLE positive evidence (not a fact)"
+    if _read_eligible(state, r, r[4], r[3], r[6]):
+      out = out + "; REVIEW_ELIGIBLE negative evidence (not a fact)"
     if r[5] == "" and r[6] == "" and tier == "" and not (len(r[3]) > 0 and len(r[4]) > 0):
       out = out + "; UNVERIFIED"
     ids = []

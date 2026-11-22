@@ -627,6 +627,7 @@ class Oracle:
             segs.append(cur)
         matched = newc = upd = ref = dup = 0
         sk_q = sk_m = sk_c = sk_d = sk_tb = um = 0
+        warns, wkeys = [], []
         for sent in segs:
             sk = self._read_skip(sent)
             if sk == 'quoted':
@@ -692,6 +693,7 @@ class Oracle:
                     sk_tb += 1
                 for ex, span in exs:
                     matched += 1
+                    rj = -1
                     ri2 = self._read_find(ex[0], ex[1], ex[2])
                     if ri2 >= 0:
                         r = self.readings[ri2]
@@ -701,6 +703,7 @@ class Oracle:
                         else:
                             side.append([src, span, ex[4]])
                             upd += 1
+                            rj = ri2
                     elif len(self.readings) >= _READ_CAP:
                         ref += 1
                     else:
@@ -712,6 +715,23 @@ class Oracle:
                             self.readings.append(
                                 [ex[0], ex[1], ex[2], [entry], [], '', ''])
                         newc += 1
+                        rj = len(self.readings) - 1
+                    # A19: a later conflicting reading raises an
+                    # evidence-review warning (CONFLICT across
+                    # sources, SCOPE_MISMATCH inside one source);
+                    # accepted knowledge is never altered.
+                    if rj >= 0:
+                        r = self.readings[rj]
+                        if r[3] and r[4]:
+                            wk = r[0] + ' | ' + r[1] + ' | ' + r[2]
+                            if wk not in wkeys:
+                                wkeys.append(wk)
+                                internal = any(
+                                    se[0] == se2[0]
+                                    for se in r[3] for se2 in r[4])
+                                wt = ('SCOPE_MISMATCH' if internal
+                                      else 'CONFLICT')
+                                warns.append(wt + ' on ' + wk)
         out = (src + ': ' + str(len(segs)) + ' segments in, ' +
                str(matched) + ' pattern matches, ' + str(matched) +
                ' candidates extracted (' + str(newc) + ' new, ' +
@@ -723,6 +743,9 @@ class Oracle:
                ' modal-hedged, ' + str(sk_c) + ' multi-clause, ' +
                str(sk_tb) + ' thai-boundary-ambiguous), ' +
                str(um) + ' unmatched')
+        for w in warns:
+            out += ('; evidence-review ' + w +
+                    ' - accepted knowledge unchanged')
         if truncated:
             out += ' (text truncated at 64KB)'
         return out
@@ -789,9 +812,7 @@ class Oracle:
                 reps.append([sh, nm])
         return len(reps)
 
-    def _read_ev(self, side):
-        # A19: agreeing sources, registrable-domain diversity,
-        # duplicate-text clusters - as separate fields.
+    def _read_ev_parts(self, side):
         doms, nodom, spans = [], 0, []
         for se in side:
             spans.append(se[1])
@@ -800,16 +821,28 @@ class Oracle:
                 nodom += 1
             elif d not in doms:
                 doms.append(d)
+        return [len(doms), nodom, self._span_clusters(spans)]
+
+    def _read_ev(self, side):
+        # A19: agreeing sources, registrable-domain diversity,
+        # duplicate-text clusters - as separate fields.
+        p = self._read_ev_parts(side)
         out = (str(len(side)) + ' agreeing source' +
                ('s' if len(side) > 1 else ''))
-        out += (', ' + str(len(doms)) + ' registrable domain' +
-                ('' if len(doms) == 1 else 's'))
-        if nodom:
-            out += ' (' + str(nodom) + ' without)'
-        nc = self._span_clusters(spans)
-        out += (', ' + str(nc) + ' text cluster' +
-                ('' if nc == 1 else 's') + ' (experimental)')
+        out += (', ' + str(p[0]) + ' registrable domain' +
+                ('' if p[0] == 1 else 's'))
+        if p[1]:
+            out += ' (' + str(p[1]) + ' without)'
+        out += (', ' + str(p[2]) + ' text cluster' +
+                ('' if p[2] == 1 else 's') + ' (experimental)')
         return out
+
+    def _read_eligible(self, side, other, align):
+        # A19: REVIEW_ELIGIBLE is an evidence status, never a fact.
+        if len(side) >= 3 and not other and align == '':
+            p = self._read_ev_parts(side)
+            return p[0] >= 2 and p[2] >= 3
+        return False
 
     def _readings_reply(self, about, detail):
         rs = self.readings
@@ -866,6 +899,10 @@ class Oracle:
                 out += '; positive evidence: ' + self._read_ev(r[3])
             if len(r[4]) >= 2:
                 out += '; negative evidence: ' + self._read_ev(r[4])
+            if self._read_eligible(r[3], r[4], r[5]):
+                out += '; REVIEW_ELIGIBLE positive evidence (not a fact)'
+            if self._read_eligible(r[4], r[3], r[6]):
+                out += '; REVIEW_ELIGIBLE negative evidence (not a fact)'
             if r[5] == '' and r[6] == '' and not tier and \
                     not (r[3] and r[4]):
                 out += '; UNVERIFIED'
@@ -2514,6 +2551,22 @@ A19_SCENARIOS = [
     # one cluster. Typed sources never count as domains.
     ['read a1: birds have wings', 'read a2: birds has wings',
      'read a3: birds have wings', 'readings'],
+    # 8. A later conflicting reading raises an evidence-review
+    # warning (CONFLICT across sources; SCOPE_MISMATCH inside one
+    # source) and never alters accepted knowledge: the taught fact
+    # still answers, and a conflicting reading on a USER_CONFIRMED
+    # claim only marks it for review.
+    ['remember a penguin is a bird',
+     'read m1: a penguin is not a bird',
+     'is a penguin a bird',
+     'read m1: a penguin is a bird. a penguin is not a bird',
+     'readings about a penguin'],
+    # 9. REVIEW_ELIGIBLE is reachable only when every threshold
+    # holds: 2 of 3 typed sources share a copied text -> one
+    # cluster and no domains, so NOT eligible; the claim stays
+    # MULTI_SOURCE with independence UNVERIFIED.
+    ['read b1: a kiwi is a bird', 'read b2: a kiwi is a bird',
+     'read b3: a kiwi is a bird', 'readings about a kiwi'],
 ]
 
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
