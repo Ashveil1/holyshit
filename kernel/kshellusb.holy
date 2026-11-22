@@ -1,0 +1,71 @@
+# USB-keyboard shell variant (B22b): the same shell-first boot as kshell,
+# but keys arrive over xHCI (QEMU qemu-xhci root ports 5 and 6) instead of
+# PS/2. readline never calls readkey in this mode, so a working session
+# proves input took the USB path. Default image stays the PS/2 shell.
+import kframebuffer
+import kmb
+import kpmm
+import ksyscall
+import kvfs
+import kramdisk
+import kuser
+import kfbcon
+import kusbin
+key_strs = null
+def key_base():
+  # boxed helper: an unsafe-block local escapes as a raw word under the
+  # AST reference backend, so the address must leave the block as as_int
+  unsafe:
+    return as_int(alloc(128))
+def key_str(code):
+  # one-char Strs for every byte, built once from raw memory (the runtime
+  # has no chr and few byte escapes), the same trick as ksyscall.bs_char
+  global key_strs
+  if key_strs == null:
+    key_strs = []
+    base = key_base()
+    i = 0
+    while i < 128:
+      unsafe:
+        store8(as_ptr(base + i), i)
+      append(key_strs, read_mem(base + i, 1))
+      i = i + 1
+  return key_strs[code]
+def usb_readkey():
+  # Spell kusbin's readkey_event codes the way readkey spells keys:
+  # printable ASCII and Enter/Backspace as one-char Strs, no key as null.
+  # Navigation codes (128..135) have no line-editing meaning here.
+  code = kusbin.readkey_event()
+  if code <= 0 or code > 126:
+    return null
+  return key_str(code)
+if not kmb.usable():
+  raise "multiboot2 boot info missing"
+if kpmm.init() == 0:
+  raise "pmm init failed"
+frame = kframebuffer.descriptor()
+kframebuffer.map(frame)
+kfbcon.init(frame)
+kfbcon.put_str("holyshit os - shell (usb keyboard)\n")
+if not kvfs.vfs_init():
+  raise "vfs init failed"
+if kramdisk.load() <= 0:
+  raise "ramdisk module missing"
+if not kusbin.start(5, 6, true):
+  raise "USB input unavailable"
+ksyscall.set_console(kfbcon.put_str)
+ksyscall.set_keyboard(usb_readkey)
+while true:
+  data = kvfs.read("/bin/uush")
+  if data == null:
+    raise "/bin/uush missing from ramdisk"
+  if kuser.load_image(kuser.payload_addr(data), len(data)) != 1:
+    raise "shell image rejected"
+  if not ksyscall.start():
+    raise "syscall handler failed"
+  if not kuser.enable_exec():
+    raise "exec enable failed"
+  print "shell start"
+  kuser.run()
+  print "shell exit", ksyscall.user_exit_code()
+  kfbcon.put_str("[sh exited - restarting]\n")

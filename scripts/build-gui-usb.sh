@@ -5,12 +5,12 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  printf '%s\n' 'usage: scripts/build-gui-usb.sh OUTPUT.img [shell|scratchpad|desktop|desktop-disk|desktop-usb]' >&2
+  printf '%s\n' 'usage: scripts/build-gui-usb.sh OUTPUT.img [shell|shell-usb|scratchpad|desktop|desktop-disk|desktop-usb]' >&2
   exit 2
 fi
 APP=${2:-shell}
 KERNEL=kgui
-case "$APP" in shell) SOURCE=uush; KERNEL=kshell ;; scratchpad) SOURCE=uunote ;; desktop) SOURCE=uudesk ;; desktop-disk) SOURCE=uudesk; KERNEL=kguidisk ;; desktop-usb) SOURCE=uudesk; KERNEL=kguiusb ;; *) printf '%s\n' 'unknown GUI app' >&2; exit 2 ;; esac
+case "$APP" in shell) SOURCE=uush; KERNEL=kshell ;; shell-usb) SOURCE=uush; KERNEL=kshellusb ;; scratchpad) SOURCE=uunote ;; desktop) SOURCE=uudesk ;; desktop-disk) SOURCE=uudesk; KERNEL=kguidisk ;; desktop-usb) SOURCE=uudesk; KERNEL=kguiusb ;; *) printf '%s\n' 'unknown GUI app' >&2; exit 2 ;; esac
 OUTPUT=$1
 case "$OUTPUT" in /*) ;; *) OUTPUT="$(pwd)/$OUTPUT" ;; esac
 if [ -e "$OUTPUT" ]; then
@@ -24,7 +24,7 @@ mkdir -p "$WORK/tree/boot/grub" "$WORK/stage/bin"
 export HSROOT="$ROOT"
 export HSPATH="$ROOT:$ROOT/kernel:$ROOT/selfhost:$ROOT/selfhost/be${HSPATH:+:$HSPATH}"
 "$ROOT/bootstrap/hs-hosted-x86_64" "$ROOT/selfhost/be/compile.holy" "$WORK/compiler"
-if [ "$APP" = shell ]; then
+if [ "$APP" = shell ] || [ "$APP" = shell-usb ]; then
   cp -R "$ROOT/kernel/ramdisk/." "$WORK/stage/"
   "$WORK/compiler" "$ROOT/kernel/uush.holy" "$WORK/stage/bin/uush"
   "$WORK/compiler" "$ROOT/kernel/uuhi.holy" "$WORK/stage/bin/hi"

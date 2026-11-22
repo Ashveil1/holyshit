@@ -19,7 +19,11 @@ Supported here:
   and is one-shot: the new program replaces the shell until it exits);
 - `exit` respawns the shell getty-style, so a fresh prompt follows normal exit;
 - PS/2 keyboard input with echo and backspace on the framebuffer console
-  (48 columns x 16 retained lines, scrolling), 640x480 and up.
+  (48 columns x 16 retained lines, scrolling), 640x480 and up;
+- the `shell-usb` variant (`scripts/build-gui-iso.sh out.iso shell-usb`)
+  takes keyboard input from a USB keyboard over xHCI instead of PS/2 (the
+  kernel never reads PS/2 in this mode); the default image stays the PS/2
+  shell.
 
 This does not provide a USB keyboard at the shell (the desktop's xHCI path
 is a separate target), a scripting language, pipes or redirection, disk

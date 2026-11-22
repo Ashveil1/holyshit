@@ -19,9 +19,9 @@ Supported here:
 - GPT written by `scripts/mkgpt.py` (deterministic, no loop devices or
   root), FAT32 written by mtools at the partition offset;
 - the same app modes as the ISO builder
-  (`shell|scratchpad|desktop|desktop-disk|desktop-usb`); with no app
-  argument the image boots the shell (see [shell.md](shell.md)), so pass an
-  explicit desktop mode for the GUI.
+  (`shell|shell-usb|scratchpad|desktop|desktop-disk|desktop-usb`); with no
+  app argument the image boots the shell (see [shell.md](shell.md)), so
+  pass an explicit desktop mode for the GUI.
 
 This does not provide a legacy BIOS boot path, Secure Boot signing, an
 installer, persistence, or any claim about specific machines. The image is
