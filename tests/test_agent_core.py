@@ -48,7 +48,7 @@ HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
         "can <thing> <verb> | is <thing> needed by <thing> | "
         "remember <thing> is not a <kind> | what do you know | "
         "what did you forget | what did we talk about | note <text> | notes | "
-        "clear notes | list | "
+        "clear notes | mode | mode strict | mode explore | list | "
         "say <text> | help")
 WS = ' \t\n\r'
 STOP = {'the', 'and', 'for', 'are', 'with', 'that', 'this'}
@@ -124,11 +124,11 @@ VERBP = [(' needed by ', 'needs'), (' used by ', 'uses'),
 # _RULES in agent/core.holy. can-stays-can: every rule with a 'can'
 # premise concludes 'can'. 'has' is never a conclusion (non-transitive
 # by design); 'needs'/'causes' appear in no rule.
-RULES = [('has', 'uses', 'uses', 'has+uses'),
-         ('has', 'can', 'can', 'has+can'),
-         ('uses', 'can', 'can', 'uses+can'),
-         ('has', 'produces', 'produces', 'has+produces'),
-         ('uses', 'produces', 'produces', 'uses+produces')]
+RULES = [('has', 'uses', 'uses', 'has+uses', 'machine'),
+         ('has', 'can', 'can', 'has+can', 'machine'),
+         ('uses', 'can', 'can', 'uses+can', 'machine'),
+         ('has', 'produces', 'produces', 'has+produces', 'machine'),
+         ('uses', 'produces', 'produces', 'uses+produces', 'machine')]
 RULECAP = 6
 
 
@@ -211,6 +211,7 @@ class Oracle:
         self.relby = {}      # predicate -> stripped subject -> [[s, o], ...]
         self.forgotten = []  # A12 tombstones, capped at 20
         self.session = []    # A12 session log, capped at 10, never saved
+        self.mode = 'strict'  # A14.1: session-only, like notes
 
     # --- A10 usage counting, mirroring core.holy ---
     def _cooc_add(self, key, value):
@@ -415,11 +416,23 @@ class Oracle:
     def _inherit_reply(self, x, pred, y):
         return self._verdict_reply(self._inherit(x, pred, y), pred, False)
 
-    # A14 rule engine, mirroring _enum/_rule_prove/_derive/_proof_*
-    # in agent/core.holy. Proofs are ('edge', path, edge, rel) or
-    # ('rule', name, premise1 proof, premise2 proof, [subject, object],
-    # rel).
-    def _enum(self, start, rel, depth, memo):
+    # A14 rule engine, mirroring _guard/_enum/_rule_prove/_derive/
+    # _proof_* in agent/core.holy. Proofs are ('edge', path, edge, rel)
+    # or ('rule', name, premise1, premise2, [subject, object], rel,
+    # [guard kind, guard verdict, domain]). A14.1: rules declare a
+    # domain; the guard checks each step's own subject through the
+    # is-a engine - ok (chain proven), assume (explore mode only), or
+    # blocked (strict unknown / negative / conflicting evidence).
+    def _guard(self, subj, rule, gfail):
+        gr = self._inherit(subj, 'is-a', rule[4])
+        if gr[0] == 'true':
+            return ('ok', gr)
+        if gr[0] == '' and self.mode == 'explore':
+            return ('assume', gr)
+        gfail.append([rule[3], subj, rule[4], gr[0]])
+        return ('', gr)
+
+    def _enum(self, start, rel, depth, memo, gfail):
         mkey = stripart(start) + '|' + rel
         if mkey in memo:
             return memo[mkey]
@@ -453,84 +466,136 @@ class Oracle:
             if r[0] == 'true':
                 out.append([c, ('edge', r[1], r[2], rel)])
         if depth < RULECAP:
-            for ra, rb, rc, name in RULES:
+            for rule in RULES:
+                ra, rb, rc, name = rule[0], rule[1], rule[2], rule[3]
                 if rc == rel:
-                    for yobj, yproof in self._enum(start, ra, depth + 1, memo):
-                        for zobj, zproof in self._enum(yobj, rb, depth + 1, memo):
-                            o = stripart(zobj)
-                            if o not in seen:
-                                seen.add(o)
-                                out.append([zobj, ('rule', name, yproof, zproof,
-                                                   [start, zobj], rel)])
+                    ys = self._enum(start, ra, depth + 1, memo, gfail)
+                    if ys:
+                        g = self._guard(start, rule, gfail)
+                        if g[0]:
+                            for yobj, yproof in ys:
+                                for zobj, zproof in self._enum(yobj, rb, depth + 1, memo, gfail):
+                                    o = stripart(zobj)
+                                    if o not in seen:
+                                        seen.add(o)
+                                        out.append([zobj, ('rule', name, yproof, zproof,
+                                                           [start, zobj], rel, (g[0], g[1], rule[4]))])
         memo[mkey] = out
         return out
 
-    def _rule_prove(self, start, pred, goal, depth, memo, pseen):
+    def _rule_prove(self, start, pred, goal, depth, memo, pseen, gfail):
         if depth >= RULECAP:
             return None
-        if not any(rc == pred for _, _, rc, _ in RULES):
+        if not any(rule[2] == pred for rule in RULES):
             return None
         pkey = stripart(start) + '|' + pred + '|' + stripart(goal)
         if pkey in pseen:
             return None
         pseen.add(pkey)
-        for ra, rb, rc, name in RULES:
+        for rule in RULES:
+            ra, rb, rc, name = rule[0], rule[1], rule[2], rule[3]
             if rc == pred:
-                for yobj, yproof in self._enum(start, ra, depth + 1, memo):
-                    r2 = self._inherit(yobj, rb, goal)
-                    if r2[0] == 'true':
-                        return ('rule', name, yproof,
-                                ('edge', r2[1], r2[2], rb), [start, goal], pred)
-                    if r2[0] == '':
-                        p2 = self._rule_prove(yobj, rb, goal, depth + 1,
-                                              memo, pseen)
-                        if p2 is not None:
-                            return ('rule', name, yproof, p2,
-                                    [start, goal], pred)
+                ys = self._enum(start, ra, depth + 1, memo, gfail)
+                if ys:
+                    g = self._guard(start, rule, gfail)
+                    if g[0]:
+                        for yobj, yproof in ys:
+                            r2 = self._inherit(yobj, rb, goal)
+                            if r2[0] == 'true':
+                                return ('rule', name, yproof,
+                                        ('edge', r2[1], r2[2], rb), [start, goal],
+                                        pred, (g[0], g[1], rule[4]))
+                            if r2[0] == '':
+                                p2 = self._rule_prove(yobj, rb, goal, depth + 1,
+                                                      memo, pseen, gfail)
+                                if p2 is not None:
+                                    return ('rule', name, yproof, p2,
+                                            [start, goal], pred, (g[0], g[1], rule[4]))
         return None
 
     def _derive(self, x, pred, y):
         r = self._inherit(x, pred, y)
         v = r[0]
         if v in ('true', 'both'):
-            return [v, r, None]
-        p = self._rule_prove(x, pred, y, 0, {}, set())
+            return [v, r, None, None]
+        gfail = []
+        p = self._rule_prove(x, pred, y, 0, {}, set(), gfail)
         if p is None:
-            return [v, r, None]
+            return [v, r, None, gfail]
         if v == 'false':
-            return ['rule-both', r, p]
-        return ['rule', None, p]
+            return ['rule-both', r, p, None]
+        return ['rule', None, p, None]
 
     def _proof_text(self, proof):
         if proof[0] == 'edge':
             return self._pathfmt(proof[1]) + self._edgefmt(proof[2], proof[3], False)
         return self._edgefmt(proof[4], proof[5], False)
 
-    def _proof_steps(self, proof, steps, done):
+    def _proof_steps(self, proof, steps, done, assum):
         t = self._proof_text(proof)
         if proof[0] == 'edge':
             return t
-        t1 = self._proof_steps(proof[2], steps, done)
-        t2 = self._proof_steps(proof[3], steps, done)
+        t1 = self._proof_steps(proof[2], steps, done, assum)
+        t2 = self._proof_steps(proof[3], steps, done, assum)
         if t not in done:
             done.add(t)
-            steps.append('(' + str(len(steps) + 1) + ') ' + t1 + ' + ' +
-                         t2 + ' => ' + t + ' [rule ' + proof[1] + ']')
+            line = t1 + ' + ' + t2 + ' => ' + t + ' [rule ' + proof[1]
+            if proof[6][0] == 'ok':
+                line += ('; domain: ' + self._pathfmt(proof[6][1][1]) +
+                         self._edgefmt(proof[6][1][2], 'is-a', False))
+            line += ']'
+            steps.append('(' + str(len(steps) + 1) + ') ' + line)
+            if proof[6][0] == 'assume':
+                assum.append([proof[4][0], proof[6][2], len(steps)])
         return t
 
     def _derive_render(self, x, pred, y, d):
         if d[0] in ('rule', 'rule-both'):
             steps = []
-            self._proof_steps(d[2], steps, set())
+            assum = []
+            self._proof_steps(d[2], steps, set(), assum)
             if d[0] == 'rule':
-                out = 'yes: ' + x + ' ' + posphrase(pred) + ' ' + y + '. reasoning:'
+                if assum:
+                    out = ('yes, on ' + str(len(assum)) + ' assumption' +
+                           ('s' if len(assum) > 1 else '') + ': ')
+                else:
+                    out = 'yes: '
+                out += x + ' ' + posphrase(pred) + ' ' + y + '. reasoning:'
             else:
                 r = d[1]
                 out = ('i was taught ' + self._pathfmt(r[1]) +
                        self._edgefmt(r[2], pred, True) +
                        ', but the rules derive ' + x + ' ' + posphrase(pred) +
                        ' ' + y + ' - i cannot say which is true. reasoning:')
-            return out + ''.join('\n' + s for s in steps)
+            out += ''.join('\n' + s for s in steps)
+            if assum:
+                merged = []
+                mseen = {}
+                for a in assum:
+                    mk = a[0] + '|' + a[1]
+                    if mk in mseen:
+                        merged[mseen[mk]][2] += ', ' + str(a[2])
+                    else:
+                        mseen[mk] = len(merged)
+                        merged.append([a[0], a[1], str(a[2])])
+                labels = 'abcdefghijklmnopqrstuvwxyz'
+                out += '\nassumptions:'
+                for i, m in enumerate(merged):
+                    out += ('\n(' + labels[i] + ') ' + m[0] + ' is a ' + m[1] +
+                            ' - assumed at step ' + m[2] + ', unverified')
+            return out
+        if d[0] == '' and d[3]:
+            f = d[3][0]
+            if f[3] == '':
+                return ('not that i know - rule ' + f[0] + ' applies only to ' +
+                        f[2] + 's, and i do not know whether ' + f[1] +
+                        ' is a ' + f[2])
+            if f[3] == 'false':
+                return ('not that i know - rule ' + f[0] + ' applies only to ' +
+                        f[2] + 's, and ' + f[1] + ' is not a ' + f[2])
+            return ('not that i know - rule ' + f[0] + ' applies only to ' +
+                    f[2] + 's, and i was taught both that ' + f[1] +
+                    ' is and is not a ' + f[2])
         return self._verdict_reply(d[1], pred, False)
 
     def _derive_reply(self, x, pred, y):
@@ -571,13 +636,20 @@ class Oracle:
             return 'i do not understand'
         x = ws[0]
         i = 1
+        blocked = None
+        bx = by = ''
         while i < len(ws):
             y = rest[len(x) + 1:]
             d = self._derive(x, 'can', y)
             if d[0] != '':
                 return self._derive_render(x, 'can', y, d)
+            if blocked is None and d[3]:
+                blocked = d
+                bx, by = x, y
             x = x + ' ' + ws[i]
             i += 1
+        if blocked is not None:
+            return self._derive_render(bx, 'can', by, blocked)
         return 'not that i know'
 
     def _passive_reply(self, rest3):
@@ -696,6 +768,21 @@ class Oracle:
         if m == 'clear notes':
             self.notes = []
             return 'notes cleared'
+        if m == 'mode':
+            if self.mode == 'explore':
+                return ('explore mode: compositional rules may fire on '
+                        'unverified domains; conclusions list their assumptions '
+                        'and assumptions never become facts')
+            return ("strict mode (the default): compositional rules need "
+                    "verified domains; 'mode explore' allows conditional conclusions")
+        if m == 'mode explore':
+            self.mode = 'explore'
+            return ('explore mode: compositional rules may fire on unverified '
+                    'domains; conclusions list their assumptions (this session only)')
+        if m == 'mode strict':
+            self.mode = 'strict'
+            return ('strict mode: compositional rules need verified domains '
+                    '(this session only)')
         if m[:5] == 'note ' and len(text) > 5:
             self.notes.append(text[5:])
             return 'noted'
@@ -1311,28 +1398,82 @@ A13_SCENARIOS = [
 # cycle termination. Deterministic fresh sessions, same reason as A13.
 A14_SCENARIOS = [
     # R1 has+uses and its passive form; unknown subject stays unknown.
-    ['remember a car has an engine', 'remember an engine uses energy',
+    # (A14.1: car/engine are taught as machines so the guards pass.)
+    ['remember a car is a machine', 'remember a car has an engine',
+     'remember an engine uses energy',
      'does a car use energy', 'is energy used by a car',
      'does a truck use energy'],
     # R3 then R2: two composed rule steps; capability evidence never
     # answers a doing question (can-stays-can axiom).
-    ['remember a car has an engine', 'remember an engine uses energy',
+    ['remember a car is a machine', 'remember an engine is a machine',
+     'remember a car has an engine', 'remember an engine uses energy',
      'remember energy can produce motion', 'can a car produce motion',
      'does a car produce motion'],
     # Nested rule derivation (R5 feeding R4); has stays non-transitive.
-    ['remember a car has an engine', 'remember an engine uses steam',
+    ['remember a car is a machine', 'remember an engine is a machine',
+     'remember a car has an engine', 'remember an engine uses steam',
      'remember steam produces motion', 'does a car produce motion',
      'is motion produced by a car', 'does a car have steam'],
     # Rule-derived positive vs taught negative: a contradiction that is
     # shown with its reasoning, never silently resolved.
-    ['remember a car does not use gasoline', 'remember a car has an engine',
+    ['remember a car is a machine', 'remember a car does not use gasoline',
+     'remember a car has an engine',
      'remember an engine uses gasoline', 'does a car use gasoline'],
     # A has-cycle terminates; a taught negative still beats inherited
     # positive evidence with no rule involvement.
-    ['remember a motor has a rotor', 'remember a rotor has a motor',
+    ['remember a motor is a machine',
+     'remember a motor has a rotor', 'remember a rotor has a motor',
      'remember a rotor can spin', 'can a motor spin', 'can a motor fly',
      'remember a bird can fly', 'remember a penguin is a bird',
      'remember a penguin cannot fly', 'can a penguin fly'],
+]
+
+# Coherent A14.1 scenarios: domain guards in strict and explore modes,
+# the three distinct blocked explanations, subclass membership through
+# the is-a chain, assumption propagation across long chains, Thai
+# negative domain teaches. Deterministic fresh sessions, as A13/A14.
+A141_SCENARIOS = [
+    # Strict mode blocks an unverified domain with its own explanation;
+    # a premise-less question stays a plain unknown (no guard noise).
+    ['remember a car has an engine', 'remember an engine uses energy',
+     'does a car use energy', 'can a car fly'],
+    # Negative domain evidence blocks in BOTH modes, same explanation.
+    ['remember a pilot has a license', 'remember a license can expire',
+     'remember a pilot is not a machine', 'can a pilot expire',
+     'mode explore', 'can a pilot expire', 'mode strict'],
+    # Conflicting domain evidence blocks and is reported, never
+    # resolved arbitrarily - in both modes.
+    ['remember a robot is a machine', 'remember a robot is not a machine',
+     'remember a robot has a motor', 'remember a motor can spin',
+     'can a robot spin', 'mode explore', 'can a robot spin', 'mode strict'],
+    # Subclass membership satisfies the domain through the chain, and
+    # the chain shows as the step's domain condition.
+    ['remember a car is a vehicle', 'remember a vehicle is a machine',
+     'remember a car has an engine', 'remember an engine uses energy',
+     'does a car use energy'],
+    # Explore mode: a multi-step derivation carries consolidated
+    # assumptions, each linked to its step; strict blocks the same
+    # world. Assumptions never become facts.
+    ['mode explore', 'remember a car has an engine',
+     'remember an engine uses energy', 'remember energy can produce motion',
+     'can a car produce motion', 'mode strict', 'can a car produce motion'],
+    # A14.2 verification: a 5-step chain; the verified middle (m3)
+    # drops out of the assumption list and shows its domain condition
+    # instead; strict blocks the whole chain.
+    ['mode explore', 'remember a m1 has a m2', 'remember a m2 has a m3',
+     'remember a m3 has a m4', 'remember a m4 has a m5',
+     'remember a m5 uses a m6', 'remember a m6 can move',
+     'remember a m3 is a machine', 'can a m1 move',
+     'mode strict', 'can a m1 move'],
+    # Conditional conclusions stay conditional downstream: the carrier
+    # builds on a conditional edge and every assumption propagates to
+    # the final answer.
+    ['mode explore', 'remember a car has an engine',
+     'remember an engine uses energy', 'remember energy can produce motion',
+     'remember a carrier has a car', 'can a carrier produce motion'],
+    # A Thai negative domain teach participates in guards.
+    ['remember a pilot has a license', 'remember a license can expire',
+     'remember a pilot ไม่เป็น machine', 'can a pilot expire'],
 ]
 
 
@@ -1465,7 +1606,7 @@ sessions = [make_session() for _ in range(25)]
 # A13 scenarios are semantic, not probabilistic: run each in its own
 # fresh session so every inheritance/negative/contradiction path is
 # covered on every run.
-for _sc in A13_SCENARIOS + A14_SCENARIOS:
+for _sc in A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS:
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))

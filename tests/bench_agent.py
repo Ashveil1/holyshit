@@ -145,16 +145,21 @@ DIALOGUE += [
     # colliding with a taught negative (shown, never resolved).
     ('remember a car has an engine', 'remembered a car has an engine', 'teach'),
     ('remember an engine uses energy', 'remembered an engine uses energy', 'teach'),
+    # A14.1: the rule subjects need verified machine domains (guards).
+    ('remember a car is a machine',
+     'added: a car is a machine', 'teach'),
     ('does a car use energy',
      'yes: a car uses energy. reasoning:\n'
-     '(1) a car has an engine + an engine uses energy => a car uses energy [rule has+uses]',
+     '(1) a car has an engine + an engine uses energy => a car uses energy [rule has+uses; domain: a car is a machine]',
      'rule'),
     ('remember energy can produce motion',
      'remembered energy can produce motion', 'teach'),
+    ('remember an engine is a machine',
+     'added: an engine is a machine', 'teach'),
     ('can a car produce motion',
      'yes: a car can produce motion. reasoning:\n'
-     '(1) an engine uses energy + energy can produce motion => an engine can produce motion [rule uses+can]\n'
-     '(2) a car has an engine + an engine can produce motion => a car can produce motion [rule has+can]',
+     '(1) an engine uses energy + energy can produce motion => an engine can produce motion [rule uses+can; domain: an engine is a machine]\n'
+     '(2) a car has an engine + an engine can produce motion => a car can produce motion [rule has+can; domain: a car is a machine]',
      'rule'),
     # 'can produce' evidence never answers a 'produces' question.
     ('does a car produce motion', 'not that i know', 'unknown'),
@@ -164,13 +169,39 @@ DIALOGUE += [
     ('does a car use gasoline',
      'i was taught a car does not use gasoline, but the rules derive a car uses gasoline'
      ' - i cannot say which is true. reasoning:\n'
-     '(1) a car has an engine + an engine uses gasoline => a car uses gasoline [rule has+uses]',
+     '(1) a car has an engine + an engine uses gasoline => a car uses gasoline [rule has+uses; domain: a car is a machine]',
      'contradiction'),
+    # A14.1: strict mode blocks an unverified domain and explains why;
+    # explore mode fires conditionally and lists assumptions, which
+    # never become facts (strict blocks the same world again after).
+    ('remember a pilot has a license', 'remembered a pilot has a license', 'teach'),
+    ('remember a license can expire', 'remembered a license can expire', 'teach'),
+    ('can a pilot expire',
+     'not that i know - rule has+can applies only to machines, and i do not know whether a pilot is a machine',
+     'guard'),
+    ('mode explore',
+     'explore mode: compositional rules may fire on unverified domains; conclusions list their assumptions (this session only)',
+     'guard'),
+    ('remember a bike has a dynamo', 'remembered a bike has a dynamo', 'teach'),
+    ('remember a dynamo can produce electricity',
+     'remembered a dynamo can produce electricity', 'teach'),
+    ('can a bike produce electricity',
+     'yes, on 1 assumption: a bike can produce electricity. reasoning:\n'
+     '(1) a bike has a dynamo + a dynamo can produce electricity => a bike can produce electricity [rule has+can]\n'
+     'assumptions:\n'
+     '(a) a bike is a machine - assumed at step 1, unverified',
+     'guard'),
+    ('mode strict',
+     'strict mode: compositional rules need verified domains (this session only)',
+     'guard'),
+    ('can a bike produce electricity',
+     'not that i know - rule has+can applies only to machines, and i do not know whether a bike is a machine',
+     'guard'),
 ]
 
 SCORED = ('recall', 'clarify', 'miss', 'correction', 'pleasantry', 'open',
           'infer', 'passive', 'unknown', 'negative', 'contradiction',
-          'rule', 'chain', 'inference', 'usage', 'unparsed')
+          'rule', 'chain', 'inference', 'usage', 'unparsed', 'guard')
 
 
 def git_head():
@@ -219,7 +250,9 @@ def derive_script(n):
     # A14 rule-derivation latency: a two-step composed proof (uses+can
     # feeding has+can), re-derived from scratch on every query - no
     # cross-query caching exists. The three teaches seed the world.
-    setup = ['remember a car has an engine',
+    setup = ['remember a car is a machine',
+             'remember an engine is a machine',
+             'remember a car has an engine',
              'remember an engine uses energy',
              'remember energy can produce motion']
     return setup + ['can a car produce motion'] * max(1, n - len(setup))
