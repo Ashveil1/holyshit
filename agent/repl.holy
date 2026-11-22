@@ -17,7 +17,7 @@ state = agent.store.load(path)
 # have no env builtin), so no ordinary command can set this flag.
 tfv = env("HS_AGENT_TEST_FETCH")
 state["test_fetch"] = tfv != null and tfv == "1"
-print "holyshit agent v0.12 - type 'help' for commands, 'quit' to leave"
+print "holyshit agent v0.13 - type 'help' for commands, 'quit' to leave"
 done = false
 while not done:
   line = ""
