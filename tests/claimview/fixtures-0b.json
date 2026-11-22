@@ -42356,6 +42356,12 @@
      "is-a",
      "q",
      false
+    ],
+    [
+     "n8",
+     "has",
+     "c001",
+     false
     ]
    ],
    "aliases": {},
@@ -42369,7 +42375,7 @@
     "layer": "INCOMPLETE",
     "reason": "depth_limit"
    },
-   "note": "B48.3 is-a: 'q' would collide with 'a q' but sorts after 'b9' and is never examined",
+   "note": "B48.3/B53: clean non-qualifying has tuple, then clean qualifying 'b9' stops; later 'q' (collides with 'a q') stays unexamined",
    "diagnostic": true,
    "independent_review_required": true
   },
@@ -42454,7 +42460,7 @@
     "layer": "OUT_OF_SCOPE",
     "reason": "identity_collision"
    },
-   "note": "B43 has: frontier does not stop the depth-8 scan, so the later collision is seen",
+   "note": "B43 has: frontier does not stop the depth-8 scan, so the later collision is seen (B53)",
    "diagnostic": true,
    "independent_review_required": true
   },
@@ -45637,7 +45643,7 @@
     "layer": "INCOMPLETE",
     "reason": "depth_limit"
    },
-   "note": "B51: 8 chain tuples + 491 junk + qualifying = exam 500",
+   "note": "B51: 8 chain tuples + 491 junk + qualifying = exam 500. B53: global W count, exactly 499 prior charged items before the qualifying item",
    "diagnostic": true,
    "independent_review_required": true
   },
@@ -48662,7 +48668,7 @@
     "layer": "INCOMPLETE",
     "reason": "work_limit"
    },
-   "note": "B51: qualifying item would be exam 501, not examined",
+   "note": "B51: qualifying item would be exam 501, not examined. B53: global W count, exactly 499 prior charged items before the qualifying item",
    "diagnostic": true,
    "independent_review_required": true
   },
@@ -51681,7 +51687,7 @@
     "layer": "OUT_OF_SCOPE",
     "reason": "identity_collision"
    },
-   "note": "B51: 9 junk-adjusted: 8 chain + 1 n3 has + 490 junk... qualifying 'q' at exam 500 collides with 'a q'; exact count to be re-derived by independent review",
+   "note": "B51: 9 junk-adjusted: 8 chain + 1 n3 has + 490 junk... qualifying 'q' at exam 500 collides with 'a q'; exact count to be re-derived by independent review. B53: global W count, exactly 499 prior charged items before the qualifying item",
    "diagnostic": true,
    "independent_review_required": true
   },
@@ -51697,7 +51703,7 @@
    ],
    "aliases": {},
    "query": [
-    "a robin",
+    "a robbie",
     "is-a",
     "a bird",
     false
@@ -51709,7 +51715,7 @@
     "level": 1,
     "provenance": "stored"
    },
-   "note": "B50: 600 nonmatching alias records exist and are never inspected or charged",
+   "note": "B50/B52: 600 nonmatching alias records plus one matching record; nonmatching never inspected, charged or collision-checked; insertion order shuffled",
    "diagnostic": true,
    "independent_review_required": true,
    "alias_records": [
@@ -54112,14 +54118,19 @@
     [
      "zz599",
      "a robin"
+    ],
+    [
+     "a robbie",
+     "a robin"
     ]
    ],
    "fact_keys": [
     "a robin"
    ],
-   "shuffle": true
+   "shuffle": true,
+   "assert_untouched_alias_records": 600
   }
  ],
- "revision": 12,
+ "revision": 13,
  "status": "DRAFT (not an authoritative acceptance suite until contract freeze)"
 }
