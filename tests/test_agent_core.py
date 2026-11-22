@@ -1017,7 +1017,8 @@ class Oracle:
             self._add_rel(key, 'has', v[5:])
             got = True
         for p, pred in (('อยู่ ', 'is-in'), ('คือ ', 'means'),
-                        ('หมายความว่า ', 'means'), ('เป็น ', 'is-a')):
+                        ('หมายความว่า ', 'means'), ('เป็น ', 'is-a'),
+                        ('มี ', 'has')):
             if v.startswith(p) and len(v) > len(p):
                 self._add_rel(key, pred, v[len(p):])
                 got = True
@@ -1656,6 +1657,9 @@ class Oracle:
             vt = self._verb_teach_parse(mrest)
             if vt is not None:
                 return self._teach_verb(mrest[:vt[0]], vt[1], mrest[vt[3]:], vt[2])
+            k = mrest.find(' มี ')
+            if k > 0 and k + len(' มี ') < len(mrest):
+                return unteach_is(self._teach_also(mrest[:k], rest[k + 1:]), 'มี')
             return 'i do not understand'
         if m[:10] == 'what does ' and len(m) > 15 and m[-5:] == ' mean':
             return self._mean_reply(m[10:-5], ' means ')
@@ -2311,6 +2315,13 @@ A9_SCENARIOS = [
     ['remember แมว อยู่ สวน', 'แมว อยู่ไหน',
      'remember ลิง คือ สัตว์', 'ลิง หมายความว่าอะไร',
      'ลิง คือ ตัวอะไร'],
+    ['remember วัด มี พระ', 'what do you know about วัด',
+     'remember วัด มี เจดีย์', 'remember วัด อยู่ เมือง',
+     'remember ก อยู่ ข มี ค', 'what do you know about ก', 'remember แมว มี',
+     'remember มี พระ', 'remember a temple is a building',
+     'remember a building มี ผนัง', 'does a temple have ผนัง',
+     'what do you know about a building', 'forget วัด',
+     'what do you know about วัด', 'what do you know'],
 ]
 
 
