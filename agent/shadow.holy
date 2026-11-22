@@ -38,29 +38,64 @@ def segments(body):
     append(segs, cur)
   return segs
 def _new_shadow():
-  return {"counters": {"matches": 0, "new": 0, "agree": 0, "disagree": 0, "skip-overlap": 0, "competing": 0, "sensitive_events": 0, "dropped_samples": 0, "dedup_overflow": 0}, "events": [], "sources": [], "domains": [], "samples": []}
+  return {"counters": {"matches": 0, "new": 0, "agree": 0, "disagree": 0, "skip-overlap": 0, "competing": 0, "sensitive_events": 0, "dropped_samples": 0, "dedup_overflow": 0, "nonmatches": 0, "purged_events": 0}, "events": [], "nmev": [], "by_source": {}, "disagreements": [], "domains": [], "samples": []}
 def start(c):
   if not has(c, "shadow"):
     c["shadow"] = _new_shadow()
+  if not has(c, "dispositions"):
+    c["dispositions"] = {}
+def _src_entry(sh, src):
+  if not has(sh["by_source"], src):
+    if len(keys(sh["by_source"])) >= 200:
+      return null
+    sh["by_source"][src] = {"m": 0, "n": 0, "ev": [], "nm": []}
+  return sh["by_source"][src]
+# Segment ids are content-derived, so a copy of the same sentence in
+# another source never counts twice (evidence is not multiplied).
+def seg_id(sent):
+  return "sg-" + agent.patgen._hash(agent.patgen._collapse(sent))
+def _nonmatch(st, c, src, sent, sens):
+  if sens:
+    return 0
+  sh = c["shadow"]
+  sid = seg_id(sent)
+  if sid in sh["nmev"]:
+    return 0
+  if len(sh["nmev"]) >= 500:
+    return 0
+  e = _src_entry(sh, src)
+  if e == null:
+    return 0
+  append(sh["nmev"], sid)
+  append(e["nm"], sid)
+  e["n"] = e["n"] + 1
+  sh["counters"]["nonmatches"] = sh["counters"]["nonmatches"] + 1
+  return 0
 def _record(st, c, cid, src, dom, sent, cls, trip, pol, sens, others):
   sh = c["shadow"]
   cnt = sh["counters"]
   if sens:
     cnt["sensitive_events"] = cnt["sensitive_events"] + 1
     return 0
-  ev = "ev-" + agent.patgen._hash(src + "|" + sent)
+  ev = seg_id(sent)
   if ev in sh["events"]:
     return 0
-  if len(sh["events"]) < 500:
-    append(sh["events"], ev)
-  else:
+  e = _src_entry(sh, src)
+  if len(sh["events"]) >= 500 or e == null:
     cnt["dedup_overflow"] = cnt["dedup_overflow"] + 1
+    return 0
+  append(sh["events"], ev)
+  append(e["ev"], ev)
+  e["m"] = e["m"] + 1
   cnt["matches"] = cnt["matches"] + 1
   cnt[cls] = cnt[cls] + 1
   if len(others) > 0:
     cnt["competing"] = cnt["competing"] + 1
-  if not (src in sh["sources"]) and len(sh["sources"]) < 50:
-    append(sh["sources"], src)
+  if cls == "disagree" or len(others) > 0 or cls == "skip-overlap":
+    if len(sh["disagreements"]) < 100:
+      append(sh["disagreements"], {"event": ev, "src": src, "class": cls, "triple": trip, "competing": others})
+    else:
+      cnt["dedup_overflow"] = cnt["dedup_overflow"] + 1
   if dom != "" and not (dom in sh["domains"]) and len(sh["domains"]) < 50:
     append(sh["domains"], dom)
   if len(sh["samples"]) < 20:
@@ -71,6 +106,68 @@ def _record(st, c, cid, src, dom, sent, cls, trip, pol, sens, others):
   else:
     cnt["dropped_samples"] = cnt["dropped_samples"] + 1
   return 1
+# Late sensitive mark: remove every retained trace of the source from
+# every candidate (samples, event ids, disagreement records, origin
+# entry, dispositions), keep only aggregate counters without the
+# source identity, drop the review snapshot so any approval on the old
+# snapshot is invalid. Runs in the same call as the marking.
+def purge_source(st, src):
+  n = 0
+  if has(st["origins"], src):
+    o = {}
+    for k in keys(st["origins"]):
+      if k != src:
+        o[k] = st["origins"][k]
+    st["origins"] = o
+  for cid in keys(st["candidates"]):
+    c = st["candidates"][cid]
+    start(c)
+    sh = c["shadow"]
+    gone = []
+    if has(sh["by_source"], src):
+      e = sh["by_source"][src]
+      gone = e["ev"] + e["nm"]
+      cnt = sh["counters"]
+      cnt["purged_events"] = cnt["purged_events"] + e["m"]
+      cnt["sensitive_events"] = cnt["sensitive_events"] + e["m"]
+      cnt["matches"] = cnt["matches"] - e["m"]
+      cnt["nonmatches"] = cnt["nonmatches"] - e["n"]
+      bs = {}
+      for k in keys(sh["by_source"]):
+        if k != src:
+          bs[k] = sh["by_source"][k]
+      sh["by_source"] = bs
+      n = n + e["m"]
+    ev = []
+    for x in sh["events"]:
+      if not (x in gone):
+        append(ev, x)
+    sh["events"] = ev
+    nm = []
+    for x in sh["nmev"]:
+      if not (x in gone):
+        append(nm, x)
+    sh["nmev"] = nm
+    sm = []
+    for x in sh["samples"]:
+      if x["src"] != src:
+        append(sm, x)
+    sh["samples"] = sm
+    dg = []
+    for x in sh["disagreements"]:
+      if x["src"] != src:
+        append(dg, x)
+    sh["disagreements"] = dg
+    ds = {}
+    for k in keys(c["dispositions"]):
+      if not (k in gone):
+        ds[k] = c["dispositions"][k]
+    c["dispositions"] = ds
+    if len(gone) > 0:
+      if has(c, "review"):
+        c["review"] = {"hash": "", "ready": false, "blockers": ["review snapshot invalidated by a sensitive-source purge"]}
+      append(c["provenance"]["history"], "sensitive purge: retained content for one source discarded; snapshot invalidated")
+  return n
 # Shadow one ingested source body against every SHADOWED, unrejected
 # candidate. Returns the number of recorded events.
 def process(state, st, src, body):
@@ -96,6 +193,14 @@ def process(state, st, src, body):
       r = agent.patgen.match_toks(split(d["verb"], " "), sent)
       if r != null:
         append(hits, [cid, r])
+    if sk == "":
+      for cid in active:
+        hit = false
+        for h in hits:
+          if h[0] == cid:
+            hit = true
+        if not hit:
+          _nonmatch(st, st["candidates"][cid], src, sent, sens)
     for h in hits:
       cid = h[0]
       c = st["candidates"][cid]

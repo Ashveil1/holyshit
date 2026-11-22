@@ -77,6 +77,20 @@ def patterns_cmd(line):
     msg = agent.proposals.samples(st, parts[2] == "on")
     agent.proposals.save(ppath, st)
     return msg
+  if sub == "origin" and (len(parts) == 5 or len(parts) == 6):
+    rel = "none"
+    if len(parts) == 6:
+      rel = parts[5]
+    msg = agent.proposals.origin(st, parts[2], parts[3], parts[4], rel)
+    agent.proposals.save(ppath, st)
+    return msg
+  if sub == "disposition" and len(parts) >= 6:
+    why = ""
+    if len(parts) > 6:
+      why = join(" ", parts[6:])
+    msg = agent.proposals.disposition(st, parts[2], parts[3], parts[4], parts[5], why)
+    agent.proposals.save(ppath, st)
+    return msg
   if (sub == "reject" or sub == "reopen") and len(parts) == 3:
     msg = ""
     if sub == "reject":
@@ -89,7 +103,7 @@ def patterns_cmd(line):
     msg = agent.proposals.retract(st, join(" ", parts[2:]))
     agent.proposals.save(ppath, st)
     return msg
-  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | reject ID | reopen ID | retract TEXT"
+  return "patterns: list | derive FILE | shadow ID | unshadow ID | review ID | sensitive SRC | unsensitive SRC | samples on|off | origin SRC ORIGIN CLASS [RELATION] | disposition ID EVENT DISP REVIEWER [WHY] | reject ID | reopen ID | retract TEXT"
 # A21.0 shadow hook: after every non-patterns command, newly ingested
 # read sources are shadow-tested against SHADOWED candidates. It only
 # reads the stored bodies and writes the proposals file; the reply
