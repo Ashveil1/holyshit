@@ -19,7 +19,7 @@ FIX = json.loads((HERE / 'claimview' / 'fixtures-0b.json').read_text())
 # is inspected. Under rev14 section 3/5 it is never returned or examined, so no
 # colliding identity is inspected and the Oracle answers COMPLETE. Fixture fix
 # needed (make the colliding tuple or alias target actually examined).
-KNOWN_FIXTURE_DEFECTS = {'identity_collision', 'alias_target_collision'}
+KNOWN_FIXTURE_DEFECTS = set()
 fails = 0
 SHUF = 6
 

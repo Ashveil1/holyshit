@@ -820,6 +820,12 @@
      "has",
      "wings",
      false
+    ],
+    [
+     "a robin",
+     "is-a",
+     "robin",
+     false
     ]
    ],
    "aliases": {},
@@ -833,7 +839,7 @@
     "layer": "OUT_OF_SCOPE",
     "reason": "identity_collision"
    },
-   "note": "reached set contains robin and a robin"
+   "note": "rev14 fix: the colliding identity must be examined. Query reads the 'a robin' bucket, whose is-a tuple to 'robin' is returned and examined, so 'robin' and 'a robin' meet in the collision scan"
   },
   {
    "name": "alias_unique",
@@ -14113,7 +14119,8 @@
    ],
    "aliases": {
     "a robbie": [
-     "a robin"
+     "a robin",
+     "robin"
     ]
    },
    "query": [
@@ -14126,7 +14133,7 @@
     "layer": "OUT_OF_SCOPE",
     "reason": "identity_collision"
    },
-   "note": "alias target a robin collides with robin edge endpoint in inspected set"
+   "note": "rev14 fix: both alias records match the query alias key and are examined (B44); targets 'a robin' and 'robin' share a stripped form, so the second examined record collides"
   },
   {
    "name": "opposite_endpoint_collision_even_if_negative",
