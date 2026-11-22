@@ -706,7 +706,7 @@ def _about_reply(state, asked):
       kwords = _value_words(state, k)
       shared = false
       for w in words:
-        if len(w) >= 3 and not _stop(w):
+        if (len(w) >= 3 or _nonascii(w)) and not _stop(w):
           for kw in kwords:
             if _wmatch(w, kw):
               shared = true
@@ -2420,6 +2420,59 @@ def _mean_reply(state, x, sep):
   if len(defs) > 0:
     return x + sep + _join(defs)
   return _recall(state, x)
+# A25.3: Thai pronoun / demonstrative as the whole subject of a supported
+# Thai question gets a clarifying question, never a guessed answer. Exact
+# fixed list; a taught key or alias of the same spelling resolves
+# normally and is left alone. The reply is a question only: no state
+# change, no topic change, no log entry, no pending state.
+_THAI_PRON = ["มัน", "เขา", "เธอ", "อันนี้", "อันนั้น", "ตัวนี้", "ตัวนั้น", "ตัว นี้", "ตัว นั้น", "คนนี้", "คนนั้น", "คน นี้", "คน นั้น", "ที่นี่", "ที่นั่น", "ที่ นี่", "ที่ นั่น", "นี่", "นั่น", "โน่น"]
+def _pron_subject(m, qmark):
+  for suf in [" อยู่ไหน", " คืออะไร", " หมายความว่าอะไร"]:
+    k = find(m, suf)
+    if k > 0 and k + len(suf) == len(m):
+      return m[:k]
+  p = "เกี่ยวกับ "
+  if find(m, p) == 0 and len(m) > len(p):
+    return m[len(p):]
+  q = m
+  isq = false
+  for suf in [" หรือไม่", "หรือไม่", " ไหม", "ไหม"]:
+    if len(q) > len(suf):
+      if q[len(q) - len(suf):] == suf:
+        q = q[:len(q) - len(suf)]
+        isq = true
+  if not isq and qmark:
+    isq = true
+  if isq:
+    k = find(q, " เป็น ")
+    if k < 0:
+      k = find(q, "เป็น")
+      d = len("เป็น")
+    else:
+      d = len(" เป็น ")
+    if k > 0 and k + d < len(q):
+      return q[:k]
+    k = find(q, " คือ ")
+    if k < 0:
+      k = find(q, "คือ")
+      d = len("คือ")
+    else:
+      d = len(" คือ ")
+    if k > 0 and k + d < len(q):
+      return q[:k]
+  return null
+def _pron_clarify(state, m, qmark):
+  subj = _pron_subject(m, qmark)
+  if subj == null:
+    return null
+  if not _in(subj, _THAI_PRON):
+    return null
+  if _resolve(state, subj) != null:
+    return null
+  t = state["topic"]
+  if t != null and _has(state, t):
+    return "did you mean " + t + "? clarify by saying the name"
+  return "clarify: which thing do you mean by " + subj + "? say its name"
 def _open_reply(state, thing):
   resolved = _resolve(state, thing)
   if resolved != null:
@@ -2567,6 +2620,9 @@ def respond(state, line):
     return _open_reply(state, m[10:])
   if m[:25] == "tell me everything about ":
     return _open_reply(state, m[25:])
+  pc = _pron_clarify(state, m, qmark)
+  if pc != null:
+    return pc
   p = "เกี่ยวกับ "
   if find(m, p) == 0:
     return _open_reply(state, m[len(p):])
