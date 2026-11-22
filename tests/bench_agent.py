@@ -236,11 +236,13 @@ DIALOGUE += [
     # provenance and never believed; only user teaching verifies.
     ('read a bicycle is a vehicle. a bicycle has two wheels. the moon might be cheese',
      'read-1: 3 segments in, 2 pattern matches, 2 candidates extracted '
-     '(2 new, 0 updated, 0 refused, 0 repeat), 1 unmatched segments',
+     '(2 new, 0 updated, 0 refused, 0 repeat), 1 skipped (0 quoted, '
+     '1 modal-hedged, 0 multi-clause), 0 unmatched',
      'reading'),
     ('read manual: a bicycle is a vehicle.',
      'manual: 1 segments in, 1 pattern matches, 1 candidates extracted '
-     '(0 new, 1 updated, 0 refused, 0 repeat), 0 unmatched segments',
+     '(0 new, 1 updated, 0 refused, 0 repeat), 0 skipped (0 quoted, '
+     '0 modal-hedged, 0 multi-clause), 0 unmatched',
      'reading'),
     ('readings about a bicycle',
      '2 read candidates about a bicycle (unverified readings, not facts):\n'
@@ -260,7 +262,8 @@ DIALOGUE += [
      'reading'),
     ('read forum: a bicycle is not a vehicle.',
      'forum: 1 segments in, 1 pattern matches, 1 candidates extracted '
-     '(0 new, 1 updated, 0 refused, 0 repeat), 0 unmatched segments',
+     '(0 new, 1 updated, 0 refused, 0 repeat), 0 skipped (0 quoted, '
+     '0 modal-hedged, 0 multi-clause), 0 unmatched',
      'reading'),
     ('readings about a bicycle',
      '2 read candidates about a bicycle (unverified readings, not facts):\n'
@@ -275,7 +278,8 @@ DIALOGUE += [
     # 'sentences understood'.
     ('read รถยนต์ เป็น ยานพาหนะ. นก ไม่เป็น สัตว์เลี้ยง',
      'read-2: 2 segments in, 2 pattern matches, 2 candidates extracted '
-     '(2 new, 0 updated, 0 refused, 0 repeat), 0 unmatched segments',
+     '(2 new, 0 updated, 0 refused, 0 repeat), 0 skipped (0 quoted, '
+     '0 modal-hedged, 0 multi-clause), 0 unmatched',
      'reading'),
     ('readings about รถยนต์',
      '1 read candidate about รถยนต์ (unverified readings, not facts):\n'

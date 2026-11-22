@@ -1,0 +1,83 @@
+# A17 reader evaluation fixtures. Frozen BEFORE implementation (GPT
+# adjustment 6). One sentence per line, pipe-separated:
+#   lang | sentence | extract | subj | pred | obj | pol | pattern
+#     (conjunction: two extract clauses joined by &&)
+#   lang | sentence | skip | quoted | modal-hedged | multi-clause
+#   lang | sentence | unmatched
+# Expectations name the EXACT canonical triple, polarity, pattern id
+# and provenance span (the sentence itself, terminator stripped).
+en | A whale is a mammal. | extract | a whale | is-a | a mammal | pos | is-a
+en | A bat is not a bird. | extract | a bat | is-a | a bird | neg | not-is-a
+en | A spider is not an insect. | extract | a spider | is-a | an insect | neg | not-is-a
+en | A tomato is a fruit. | extract | a tomato | is-a | a fruit | pos | is-a
+en | The piano is an instrument. | extract | the piano | is-a | an instrument | pos | is-a
+en | Robots are machines. | extract | robots | is-a | machines | pos | are
+en | Dolphins are mammals. | extract | dolphins | is-a | mammals | pos | are
+en | Penguins are birds. | extract | penguins | is-a | birds | pos | are
+en | Paris is in France. | extract | paris | is-in | france | pos | is-in
+en | Bangkok is in Thailand. | extract | bangkok | is-in | thailand | pos | is-in
+en | The Nile is in Africa. | extract | the nile | is-in | africa | pos | is-in
+en | Mount Everest is in Nepal. | extract | mount everest | is-in | nepal | pos | is-in
+en | Osaka is in Japan. | extract | osaka | is-in | japan | pos | is-in
+en | A car has an engine. | extract | a car | has | an engine | pos | has
+en | A bicycle has two wheels. | extract | a bicycle | has | two wheels | pos | has
+en | A piano has keys. | extract | a piano | has | keys | pos | has
+en | The human body has 206 bones. | extract | the human body | has | 206 bones | pos | has
+en | Birds have wings. | extract | birds | has | wings | pos | have
+en | Spiders have eight legs. | extract | spiders | has | eight legs | pos | have
+en | Snakes do not have legs. | extract | snakes | has | legs | neg | not-have
+en | Ostriches do not have teeth. | extract | ostriches | has | teeth | neg | not-have
+en | Water can freeze. | extract | water | can | freeze | pos | can
+en | Volcanoes can erupt. | extract | volcanoes | can | erupt | pos | can
+en | Batteries can store energy. | extract | batteries | can | store energy | pos | can
+en | Rust can weaken iron. | extract | rust | can | weaken iron | pos | can
+en | Birds can fly. | extract | birds | can | fly | pos | can
+en | The sun produces light. | extract | the sun | produces | light | pos | produces
+en | Bees produce honey. | extract | bees | produces | honey | pos | produces
+en | Exercise causes fatigue. | extract | exercise | causes | fatigue | pos | causes
+en | A plant needs water. | extract | a plant | needs | water | pos | needs
+en | Fish need oxygen. | extract | fish | needs | oxygen | pos | needs
+en | A fridge uses electricity. | extract | a fridge | uses | electricity | pos | uses
+en | The capital of France is Paris. | extract | the capital of france | is-a | paris | pos | is-a-bare
+en | A car is a machine and a motorcycle is a machine. | extract | a car | is-a | a machine | pos | is-a && extract | a motorcycle | is-a | a machine | pos | is-a
+en | A car has an engine and a bicycle has two wheels. | extract | a car | has | an engine | pos | has && extract | a bicycle | has | two wheels | pos | has
+en | Robots are machines and birds have wings. | extract | robots | is-a | machines | pos | are && extract | birds | has | wings | pos | have
+en | A dog is a mammal, and it barks loudly. | skip | multi-clause
+en | The whale is huge; it is a mammal. | skip | multi-clause
+en | Pluto might be a planet again. | skip | modal-hedged
+en | The earth could be warmer next year. | skip | modal-hedged
+en | Sharks may live in freshwater. | skip | modal-hedged
+en | The guide says "a kiwi is a bird". | skip | quoted
+en | "A cobra is venomous," the book explains. | skip | quoted
+en | The guide says a kiwi is a bird. | skip | quoted
+en | According to the manual a kiwi is a bird. | skip | quoted
+en | A car is red and fast. | skip | multi-clause
+en | Cats and dogs are animals. | skip | multi-clause
+en | A car is a machine and a bike is a vehicle and a boat is a ship. | skip | multi-clause
+en | The quick brown fox jumps over the lazy dog. | unmatched
+en | Humans first walked on the moon in 1969. | unmatched
+en | Water boils at 100 degrees Celsius. | unmatched
+en | She sold seashells by the seashore. | unmatched
+en | A 1972 treaty protects whales. | unmatched
+en | There are seven continents on earth. | unmatched
+en | You are what you eat. | unmatched
+th | วาฬ เป็น สัตว์เลี้ยงลูกด้วยนม | extract | วาฬ | is-a | สัตว์เลี้ยงลูกด้วยนม | pos | thai-is-a
+th | ค้างคาว ไม่เป็น นก | extract | ค้างคาว | is-a | นก | neg | thai-not-is-a
+th | ปลาโลมา เป็น สัตว์เลี้ยงลูกด้วยนม | extract | ปลาโลมา | is-a | สัตว์เลี้ยงลูกด้วยนม | pos | thai-is-a
+th | หุ่นยนต์ เป็น เครื่องจักร | extract | หุ่นยนต์ | is-a | เครื่องจักร | pos | thai-is-a
+th | นกเพนกวิน เป็น นก | extract | นกเพนกวิน | is-a | นก | pos | thai-is-a
+th | แตงโม เป็น ผลไม้ | extract | แตงโม | is-a | ผลไม้ | pos | thai-is-a
+th | กรุงเทพ อยู่ ประเทศไทย | extract | กรุงเทพ | is-in | ประเทศไทย | pos | thai-is-in
+th | เชียงใหม่ อยู่ ภาคเหนือ | extract | เชียงใหม่ | is-in | ภาคเหนือ | pos | thai-is-in
+th | ปารีส อยู่ ฝรั่งเศส | extract | ปารีส | is-in | ฝรั่งเศส | pos | thai-is-in
+th | ภูเขาเอเวอเรสต์ อยู่ เนปาล | extract | ภูเขาเอเวอเรสต์ | is-in | เนปาล | pos | thai-is-in
+th | คอมพิวเตอร์ คือ เครื่องคิดเลข | extract | คอมพิวเตอร์ | means | เครื่องคิดเลข | pos | thai-means
+th | วาฬ คือ สัตว์เลี้ยงลูกด้วยนม | extract | วาฬ | means | สัตว์เลี้ยงลูกด้วยนม | pos | thai-means
+th | แมลง คือ สัตว์ไม่มีกระดูกสันหลัง | extract | แมลง | means | สัตว์ไม่มีกระดูกสันหลัง | pos | thai-means
+th | ประเทศไทยมีประชากรประมาณเจ็ดสิบล้านคน | unmatched
+th | แม่น้ำเจ้าพระยาไหลผ่านกรุงเทพมหานคร | unmatched
+th | ข้าวเป็นอาหารหลักของคนไทย | unmatched
+th | สุโขทัยเคยเป็นราชธานีแห่งแรกของสยาม | unmatched
+th | ต้นกล้วยไม่ใช่ต้นไม้จริง | unmatched
+th | นกกระจอกเทศมีถิ่นกำเนิดในแอฟริกา | unmatched
+th | คนไทยนิยมเดินทางท่องเที่ยวในฤดูหนาว | unmatched

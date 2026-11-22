@@ -4,7 +4,7 @@ A from-scratch local agent core for the holyshit OS direction. It runs
 entirely offline inside the hs runtime: no network, no external model,
 no dependencies beyond the language itself.
 
-## What it is today (v0.11.1)
+## What it is today (v0.12)
 
 - An evidence-ingestion reader (A16): `read <text>` ingests text as
   DATA - never executed, never believed - and reports typed claims
@@ -12,10 +12,29 @@ no dependencies beyond the language itself.
   matched pattern id, the verbatim sentence, and the source id. This
   is surface-pattern recognition plus evidence aggregation, NOT
   general comprehension: it extracts only whole-segment claims in the
-  existing teach shapes (English is-a/is-in/has/verb forms and Thai
-  เป็น/ไม่เป็น/อยู่/คือ), and skips - with an honest count -
-  multi-clause, quoted, attributed and modal/hedged segments
-  (might/may/could/...). Positive and negative support are tracked
+  existing teach shapes (English is-a/is-in/has/verb forms, the
+  plural forms are/are not/have/do not have/does not have, and Thai
+  เป็น/ไม่เป็น/อยู่/คือ), and skips - with an honest count per
+  mutually exclusive class - quoted/attributed segments (quotes,
+  'says'/'said'/'according to'), modal/hedged segments
+  (might/may/could/...; the supported can/cannot forms still
+  extract), and multi-clause segments. A17 adds one guarded
+  conjunction: a segment is split at its FIRST exact ' and ' only
+  when BOTH sides independently match a complete registered pattern
+  (strictly atomic, never inside quotes, no recursion; spans are the
+  side texts), otherwise the whole segment is skipped as
+  multi-clause. Pronoun and existential subjects (i/you/he/she/it/
+  we/they/there) are unmatched, never guessed. Plural readings have
+  matching teach forms (`remember robots are machines`, `remember
+  birds have wings`, `remember snakes do not have legs`), so every
+  extracted triple has a supported confirmation path. The read reply
+  breaks the tail down as `S skipped (q quoted, h modal-hedged,
+  c multi-clause), U unmatched`. Extraction quality is measured on a
+  frozen fixture corpus (tests/reader_eval.txt, 55 English + 20 Thai
+  cases with expected triples, polarity, pattern ids, spans and skip
+  classes; tests/eval_reader.py): precision 1.000, recall 1.000,
+  zero false extractions on that corpus - a gate for the fixed
+  corpus, not a guarantee for arbitrary web text. Positive and negative support are tracked
   separately per claim (`positive_sources[]` / `negative_sources[]`,
   never a majority vote); labels are UNVERIFIED, MULTI_SOURCE (with
   `independence UNVERIFIED`), CONFLICT vs SOURCE-INTERNAL CONFLICT,
@@ -37,7 +56,7 @@ no dependencies beyond the language itself.
   repeating a claim counts once, a source contradicting itself is a
   SOURCE-INTERNAL CONFLICT with both readings kept. Thai input is
   split crudely and reported as `segments in / pattern matches /
-  candidates extracted / unmatched segments` - never 'sentences
+  candidates extracted / skipped / unmatched` - never 'sentences
   understood'. `readings`, `readings about <thing>`, `readings
   detail`, `forget reading <thing> is a <kind>` and `clear readings`
   inspect and manage the candidates.
