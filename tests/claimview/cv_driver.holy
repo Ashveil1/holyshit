@@ -36,6 +36,21 @@ def emit(r):
     for w in r["rows"]:
       print "D\t" + w[0] + "\t" + w[1] + "\t" + w[2]
   print "END"
+def dump(r):
+  print "M\t" + str(r["g"]) + "\t" + str(r["ig"]) + "\t" + str(r["xn"]) + "\t" + str(r["wc"]) + "\t" + str(r["an"])
+  for t in r["t"]:
+    print "T\t" + t[0] + "\t" + t[1] + "\t" + t[2] + "\t" + str(t[3])
+  if r["x"] != null:
+    for k in r["x"]:
+      for t in r["x"][k]:
+        print "X\t" + k + "\t" + t[0] + "\t" + t[1] + "\t" + t[2] + "\t" + str(t[3])
+  for a in r["at"]:
+    print "A\t" + a[0] + "\t" + a[1]
+  if r["ax"] != null:
+    for k in r["ax"]:
+      for a in r["ax"][k]:
+        print "AX\t" + k + "\t" + a[0] + "\t" + a[1]
+  print "END"
 def step(f):
   op = f[0]
   if op == "new":
@@ -91,6 +106,8 @@ def step(f):
       H["ri"]["g"] = H["ri"]["g"] + 1
   elif op == "view":
     emit(agent.claimview.cv_view(H["ri"], H["keys"], H["builtins"], H["readings"], H["excl"], [f[1], f[2], f[3], f[4] == "1"]))
+  elif op == "dump":
+    dump(H["ri"])
   elif op == "case":
     print "### " + f[1]
 # --- loop ---

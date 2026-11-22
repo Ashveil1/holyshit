@@ -967,3 +967,13 @@ Limits, stated plainly:
 - remove/drop/replace/forget rebuild the tuple list: O(n) each.
 - Language findings (not fixed, language lane): (1) string `<` on ir-x64, ast-x64 and seed-native compares signed bytes (non-ASCII before ASCII; a string after its own prefix), interp compares code points; cvsort avoids whole-string `<`. (2) native dict insertion degrades super-linearly with distinct key count: 1k keys/100k inserts 0.21 s, 25k keys 5.8 s, 100k keys/100k inserts 62.7 s, so index load is 1.3 s at 50k tuples. byte_at/byte_len are not in the IR subset.
 - Tests: test_claim_view_0b_relindex.py (lifecycle vs the Oracle store model plus an alias model, 8 random sequences x 60 ops, fail closed, corruption matrix, plan/commit, copy reads, write-boundary gate), test_claim_view_0b_relindex_routes.py (one 4454-line script on all 7 routes), test_claim_view_0b_cvsort.py. No Oracle parity on the 102 fixtures (that needs the view). No production, quality or 4 GB hardware claim; RSS was 40 MB at 50k tuples on the dev box only.
+
+## claimview-0b slice 2a: standalone Holy view (branch agent-claimview-0b)
+
+`agent/claimview.holy` (`cv_view(ri, keyset, builtins, readings, excl, q)`) is a read-only Holy port of the draft Oracle `view()` over `relindex.holy` through its checked-read copy API, with `cvsort.holy` for byte-wise ordering (new "row" kind). It is NOT wired into `core.holy`, has no parser, REPL route or production use, and the W5 core field is not built.
+
+- Parity: `test_claim_view_0b_holy_parity.py` compares the FULL result (layer, status, basis, level, provenances, every evidence path, W charged, candidates, readings rows, readings-stage flag) against the Oracle on all 102 fixtures, their shuffled variants and 260+ generated cases (depth 8/9 and negation chain boundaries, aliases, builtins, Thai names, fail-closed index states, poisoned readings/exclusion inputs): 465 cases identical native, and interp output equals native.
+- Routes: `test_claim_view_0b_holy_routes.py` runs a 56-case subset as one embedded script on all 7 routes, byte-identical (the reference interp takes about 100 s for the full set, so the route run is a subset).
+- Read-only: `test_claim_view_0b_holy_readonly.py` dumps the whole index state before and after views of every case, identical; no lazy init on an unloaded index.
+- Bench (dev box, not 4 GB hardware): 1k tuples 0.14 ms/view, 10k 0.26 ms, 50k 1.21 ms (load at 50k 4.2 s, the native dict super-linear finding), peak RSS 46 MB at 50k.
+- Not claimed: ClaimView correctness (parity with an Oracle written from the same contract is not proof), production behavior, resource fit on 4 GB hardware, wiring.
