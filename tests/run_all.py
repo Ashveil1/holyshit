@@ -63,6 +63,7 @@ SUITES = [
     ("test_agent_thai_pron.py", "A25.3 Thai pronoun clarification through the real native repl"),
     ("test_claim_view_contract.py", "A24.0a claim-view contract: reference model + shared fixtures (spec only)"),
     ("test_claim_view_0b_oracle_selfcheck.py", "A24.0b DRAFT Oracle self-conformance (not a production test)"),
+    ("test_claim_view_0b_relindex.py", "A24.0b slice 1: exact-keyed relation index lifecycle vs Oracle model (standalone, not wired)"),
     ("test_agent_bench.py", "agent hosted resource benchmark quick gate and held-out dialogue check"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),

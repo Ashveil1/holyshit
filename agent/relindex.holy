@@ -1,0 +1,195 @@
+# agent/relindex.holy - claimview-0b slice 1: exact-keyed relation index
+# with a single controlled mutation path (contract B9, B15, B17, B18).
+#
+# STATUS: standalone and NOT wired into agent/core.holy. No view, no
+# parser, no REPL route, no production use. Parity with the Oracle is
+# tested in tests/test_claim_view_0b_relindex.py; nothing here is a
+# correctness claim about the claim view.
+#
+# State (one dict, made only by ri_new):
+#   "t"  authoritative tuples [[subj, pred, obj, neg], ...], originals,
+#        duplicates kept individually, built-in definitions never stored
+#   "x"  exact index: canonical subject string -> [tuple, ...] (originals
+#        preserved, "robin" and "a robin" are different keys, no stripping)
+#   "xn" tuple count held by the index (maintained, never scanned)
+#   "g"  generation marker of the authoritative state
+#   "ig" generation the index was built for
+#   "wc" number of committed mutations (write instrumentation)
+#
+# WRITE BOUNDARY (source-level, not language-level): the language has
+# no private fields. The only code that may write "t", "x", "xn", "g",
+# "ig" or "wc" is this module's ri_* mutation functions. A gate test
+# greps agent/*.holy and fails if any other file names those keys.
+# Readers use ri_check / ri_bucket / ri_count only and never write.
+#
+# Every mutation first runs ri_check (fail closed: a bad index is never
+# repaired here, only ri_rebuild/ri_load replaces it), then prepares new
+# values without touching state, then commits tuples, index, count and
+# both markers in one straight run of assignments with no failing step.
+_RI_UP = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_RI_LO = "abcdefghijklmnopqrstuvwxyz"
+def ri_canon(s):
+  # frozen canonical form: ASCII lowercase, whitespace runs -> one space,
+  # no leading or trailing space. Non-ASCII bytes pass through unchanged.
+  out = ""
+  ws = false
+  i = 0
+  while i < len(s):
+    c = s[i]
+    if c == " " or c == "\t" or c == "\n" or c == "\r":
+      ws = true
+    else:
+      if ws and out != "":
+        out = out + " "
+      ws = false
+      j = find(_RI_UP, c)
+      if j >= 0:
+        out = out + _RI_LO[j]
+      else:
+        out = out + c
+    i = i + 1
+  return out
+def ri_new():
+  return {"t": [], "x": {}, "xn": 0, "g": 0, "ig": 0, "wc": 0}
+def _ri_valid(t):
+  if len(t) != 4:
+    return false
+  if t[3] != true and t[3] != false:
+    return false
+  return true
+def _ri_same(a, b):
+  return a[0] == b[0] and a[1] == b[1] and a[2] == b[2] and a[3] == b[3]
+# "" when sound, else "missing", "generation" or "count". No epistemic
+# result, no repair, no write.
+def ri_check(ri):
+  if ri["x"] == null:
+    return "missing"
+  if ri["ig"] != ri["g"]:
+    return "generation"
+  if ri["xn"] != len(ri["t"]):
+    return "count"
+  return ""
+def ri_count(ri):
+  return len(ri["t"])
+# Read-only bucket for an exact canonical subject key. Caller must have
+# run ri_check; the returned list must not be written by the caller.
+def ri_bucket(ri, key):
+  # precondition: ri_check(ri) == "" (callers check first; no repair here)
+  if has(ri["x"], key):
+    return ri["x"][key]
+  return []
+def _ri_commit(ri, tuples, index, n):
+  g = ri["g"] + 1
+  ri["t"] = tuples
+  ri["x"] = index
+  ri["xn"] = n
+  ri["wc"] = ri["wc"] + 1
+  ri["g"] = g
+  ri["ig"] = g
+# load: replace everything. Allowed on a broken index (it is the way to
+# replace one). Returns "" or "invalid" (state untouched).
+def ri_load(ri, tuples):
+  for t in tuples:
+    if not _ri_valid(t):
+      return "invalid"
+  nt = []
+  nx = {}
+  for t in tuples:
+    c = [t[0], t[1], t[2], t[3]]
+    append(nt, c)
+    k = ri_canon(c[0])
+    if not has(nx, k):
+      nx[k] = []
+    append(nx[k], c)
+  _ri_commit(ri, nt, nx, len(nt))
+  return ""
+# rebuild: new index from the authoritative tuples. Allowed on a broken
+# index; refuses only if the authoritative count itself cannot be built.
+def ri_rebuild(ri):
+  return ri_load(ri, ri["t"])
+def ri_add(ri, s, p, o, neg):
+  e = ri_check(ri)
+  if e != "":
+    return e
+  c = [s, p, o, neg]
+  if not _ri_valid(c):
+    return "invalid"
+  k = ri_canon(s)
+  nb = []
+  if has(ri["x"], k):
+    for u in ri["x"][k]:
+      append(nb, u)
+  append(nb, c)
+  ri["x"][k] = nb
+  append(ri["t"], c)
+  ri["xn"] = ri["xn"] + 1
+  ri["wc"] = ri["wc"] + 1
+  g = ri["g"] + 1
+  ri["g"] = g
+  ri["ig"] = g
+  return ""
+# remove the first stored occurrence of an exact tuple. Returns "" when
+# removed, "absent" when not found (state untouched), or a check code.
+def ri_remove(ri, s, p, o, neg):
+  e = ri_check(ri)
+  if e != "":
+    return e
+  c = [s, p, o, neg]
+  if not _ri_valid(c):
+    return "invalid"
+  k = ri_canon(s)
+  if not has(ri["x"], k):
+    return "absent"
+  nb = []
+  hit = false
+  for u in ri["x"][k]:
+    if not hit and _ri_same(u, c):
+      hit = true
+    else:
+      append(nb, u)
+  if not hit:
+    return "absent"
+  nt = []
+  gone = false
+  for u in ri["t"]:
+    if not gone and _ri_same(u, c):
+      gone = true
+    else:
+      append(nt, u)
+  ri["x"][k] = nb
+  ri["t"] = nt
+  ri["xn"] = ri["xn"] - 1
+  ri["wc"] = ri["wc"] + 1
+  g = ri["g"] + 1
+  ri["g"] = g
+  ri["ig"] = g
+  return ""
+# drop every tuple whose ORIGINAL subject string equals s (what core's
+# forget/correct do per key). Returns the count dropped as a string
+# "n=<k>" so a check code cannot be confused with a number.
+def ri_drop_subject(ri, s):
+  e = ri_check(ri)
+  if e != "":
+    return e
+  k = ri_canon(s)
+  if not has(ri["x"], k):
+    return "n=0"
+  nb = []
+  for u in ri["x"][k]:
+    if u[0] != s:
+      append(nb, u)
+  n = len(ri["x"][k]) - len(nb)
+  if n == 0:
+    return "n=0"
+  nt = []
+  for u in ri["t"]:
+    if u[0] != s:
+      append(nt, u)
+  ri["x"][k] = nb
+  ri["t"] = nt
+  ri["xn"] = ri["xn"] - n
+  ri["wc"] = ri["wc"] + 1
+  g = ri["g"] + 1
+  ri["g"] = g
+  ri["ig"] = g
+  return "n=" + str(n)

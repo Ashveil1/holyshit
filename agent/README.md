@@ -949,3 +949,30 @@ quality corpus at precision 1.000 with zero false extractions.
 independent Python oracle on the interpreter and native routes;
 `tests/test_agent_proposals.py` covers the proposal store, the repl
 `patterns` commands and the reader-isolation gate.
+
+## claimview-0b slice 1: exact-keyed relation index (branch agent-claimview-0b)
+
+`agent/relindex.holy` is a standalone module, NOT wired into `agent/core.holy`,
+with no claim view, parser, REPL route or production use. It implements only
+the contract's index lifecycle (B9, B15, B17, B18): original tuples kept with
+duplicates counted individually, an index keyed by the exact canonical subject
+("robin" and "a robin" are different keys, nothing article-stripped), a
+generation marker and a maintained count. All changes go through
+ri_load / ri_add / ri_remove / ri_drop_subject / ri_rebuild, which refuse to run
+on a broken index (fail closed, no repair) and commit tuples, index, count and
+both markers together. `ri_check` is the cheap runtime check (missing index,
+generation mismatch, count mismatch) and returns an error code, never an
+epistemic result.
+
+Limits, stated plainly:
+- The write boundary is a SOURCE-LEVEL gate, not language-level prevention.
+  Holy has no private fields; a test greps `agent/*.holy` and checks which
+  module functions write the state, but any code with the dict can still write it.
+- `ri_check` cannot see a wrong tuple that keeps the count and the marker. Index
+  content is covered by the single mutation path and the full-comparison tests
+  (the test shows this limit on purpose).
+- `ri_bucket` assumes the caller ran `ri_check`; on a missing index it is not safe.
+- ri_remove and ri_drop_subject rebuild the tuple list (O(n)); see the bench.
+- Parity so far is lifecycle only (tests/test_claim_view_0b_relindex.py, native
+  and interp routes against the Oracle store model). Oracle parity on the 102
+  fixtures needs the view and is not claimed. No quality claim.

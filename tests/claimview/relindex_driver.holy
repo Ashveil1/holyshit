@@ -1,0 +1,111 @@
+# Test driver for agent/relindex.holy (claimview-0b slice 1). Reads one
+# tab-separated command per line from stdin, prints one result line (or a
+# dump block). Fault injection ("break") lives HERE, never in the module:
+# it writes the state dict directly on purpose to prove fail-closed.
+import agent.relindex
+ri = agent.relindex.ri_new()
+def tup(f, i):
+  return [f[i], f[i + 1], f[i + 2], f[i + 3] == "1"]
+def dump(r):
+  print "M\t" + str(r["g"]) + "\t" + str(r["ig"]) + "\t" + str(r["xn"]) + "\t" + str(r["wc"])
+  for t in r["t"]:
+    print "T\t" + t[0] + "\t" + t[1] + "\t" + t[2] + "\t" + str(t[3])
+  if r["x"] != null:
+    for k in r["x"]:
+      for t in r["x"][k]:
+        print "X\t" + k + "\t" + t[0] + "\t" + t[1] + "\t" + t[2] + "\t" + str(t[3])
+  print "END"
+def res(s):
+  if s == "":
+    print "ok"
+  else:
+    print s
+done = false
+while not done:
+  line = ""
+  try:
+    line = input()
+  except:
+    done = true
+  if not done:
+    f = split(line, "\t")
+    op = f[0]
+    if op == "new":
+      ri = agent.relindex.ri_new()
+      print "ok"
+    elif op == "load":
+      ts = []
+      i = 1
+      while i + 3 < len(f):
+        append(ts, tup(f, i))
+        i = i + 4
+      res(agent.relindex.ri_load(ri, ts))
+    elif op == "loadbad":
+      res(agent.relindex.ri_load(ri, [[f[1], f[2], f[3]]]))
+    elif op == "add":
+      res(agent.relindex.ri_add(ri, f[1], f[2], f[3], f[4] == "1"))
+    elif op == "remove":
+      res(agent.relindex.ri_remove(ri, f[1], f[2], f[3], f[4] == "1"))
+    elif op == "drop":
+      print agent.relindex.ri_drop_subject(ri, f[1])
+    elif op == "rebuild":
+      res(agent.relindex.ri_rebuild(ri))
+    elif op == "check":
+      res(agent.relindex.ri_check(ri))
+    elif op == "count":
+      print str(agent.relindex.ri_count(ri))
+    elif op == "canon":
+      print "[" + agent.relindex.ri_canon(f[1]) + "]"
+    elif op == "bucket":
+      b = agent.relindex.ri_bucket(ri, f[1])
+      print "B\t" + str(len(b))
+      for t in b:
+        print "T\t" + t[0] + "\t" + t[1] + "\t" + t[2] + "\t" + str(t[3])
+    elif op == "reads":
+      # exercise every reader; the test then compares dumps for writes
+      # a reader checks first and only then reads (view contract B15/B17)
+      if agent.relindex.ri_check(ri) == "":
+        agent.relindex.ri_count(ri)
+        agent.relindex.ri_bucket(ri, f[1])
+        agent.relindex.ri_bucket(ri, "no such key")
+      print "ok"
+    elif op == "break":
+      k = f[1]
+      if k == "missing":
+        ri["x"] = null
+      elif k == "stale":
+        ri["g"] = ri["g"] + 1
+      elif k == "count":
+        ri["xn"] = ri["xn"] + 1
+      elif k == "droptuple":
+        nt = []
+        i = 1
+        while i < len(ri["t"]):
+          append(nt, ri["t"][i])
+          i = i + 1
+        ri["t"] = nt
+      elif k == "swap":
+        # same count, same marker: wrong tuple in the index, undetected by ri_check
+        key = f[2]
+        ri["x"][key][0] = ["WRONG", "is-a", "WRONG", false]
+      print "ok"
+    elif op == "dump":
+      dump(ri)
+    elif op == "gen":
+      # n tuples spread over n/4 subjects, then m exact lookups (bench)
+      n = int(f[1])
+      m = int(f[2])
+      ns = int(n / 4) + 1
+      ts = []
+      i = 0
+      while i < n:
+        append(ts, ["Thing " + str(i % ns), "is-a", "kind " + str(i), i % 7 == 0])
+        i = i + 1
+      r = agent.relindex.ri_load(ri, ts)
+      hits = 0
+      j = 0
+      while j < m:
+        b = agent.relindex.ri_bucket(ri, "thing " + str((j * 7) % ns))
+        hits = hits + len(b)
+        j = j + 1
+      print r + "n=" + str(agent.relindex.ri_count(ri)) + " hits=" + str(hits) + " chk=[" + agent.relindex.ri_check(ri) + "]"
