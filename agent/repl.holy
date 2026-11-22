@@ -9,6 +9,8 @@
 import agent.core
 import agent.store
 import agent.fetch
+import agent.patgen
+import agent.proposals
 path = "agent-memory.json"
 state = agent.store.load(path)
 # A18 EXPERIMENTAL: the fetch test harness is reachable only by
@@ -17,7 +19,58 @@ state = agent.store.load(path)
 # have no env builtin), so no ordinary command can set this flag.
 tfv = env("HS_AGENT_TEST_FETCH")
 state["test_fetch"] = tfv != null and tfv == "1"
-print "holyshit agent v0.13 - type 'help' for commands, 'quit' to leave"
+print "holyshit agent v0.14 - type 'help' for commands, 'quit' to leave"
+ppath = "agent-patterns.json"
+def patterns_cmd(line):
+  parts = split(agent.core.normalize(line), " ")
+  sub = "list"
+  if len(parts) > 1:
+    sub = agent.core.lower_ascii(parts[1])
+  st = agent.proposals.load(ppath)
+  if sub == "list":
+    return agent.proposals.listing(st)
+  if sub == "derive" and len(parts) == 3:
+    src = null
+    ok = false
+    try:
+      src = json_load(parts[2])
+      ok = true
+    except:
+      ok = false
+    if not ok:
+      return "patterns derive: cannot read annotated set " + parts[2]
+    corpus = []
+    negs = []
+    try:
+      corpus = src["corpus"]
+    except:
+      corpus = []
+    try:
+      negs = src["negatives"]
+    except:
+      negs = []
+    res = agent.patgen.derive(src["examples"], st["rejected"], corpus, negs)
+    notes = agent.proposals.merge(st, res)
+    err = agent.proposals.save(ppath, st)
+    out = agent.patgen.report(res)
+    for n in notes:
+      out = out + "\nnote: " + n
+    if err != "":
+      out = out + "\n" + err
+    return out
+  if (sub == "reject" or sub == "reopen") and len(parts) == 3:
+    msg = ""
+    if sub == "reject":
+      msg = agent.proposals.reject(st, parts[2])
+    else:
+      msg = agent.proposals.reopen(st, parts[2])
+    agent.proposals.save(ppath, st)
+    return msg
+  if sub == "retract" and len(parts) > 2:
+    msg = agent.proposals.retract(st, join(" ", parts[2:]))
+    agent.proposals.save(ppath, st)
+    return msg
+  return "patterns: list | derive FILE | reject ID | reopen ID | retract TEXT"
 done = false
 while not done:
   line = ""
@@ -34,6 +87,10 @@ while not done:
       # only); the core's own read-url route handles validation for
       # the corpus and never touches tcp builtins.
       print agent.fetch.read_url(state, line[9:])
+    elif m[:9] == "patterns " or m == "patterns":
+      # A20 EXPERIMENTAL: offline pattern candidates. Repl-only, the
+      # core never sees them; proposals live in their own file.
+      print patterns_cmd(line)
     else:
       print agent.core.respond(state, line)
 agent.store.save(state, path)

@@ -1,0 +1,372 @@
+# agent/patgen.holy - A20 EXPERIMENTAL offline pattern-candidate generator.
+#
+# Learns the STRUCTURE of explicitly annotated transitive declaratives
+# ("<subject> <literal relation verb> <object>") and proposes inactive
+# pattern candidates. It never touches the reader: agent.core does not
+# import this module, a candidate never extracts, matches inside a
+# read, answers, or counts as coverage. Candidates are proposals with
+# provenance and generated tests; activation is a separate, later,
+# human-approved step (A21).
+#
+# Binding bounds (GPT A20 verdict):
+#  - English only, ASCII only, complete-structure matching over the
+#    WHOLE segment (subject slot, literal verb, object slot - nothing
+#    skipped, nothing trailing);
+#  - slots are restricted to the annotated spans: 1-4 plain alnum
+#    tokens, no function words, negation, modals, attribution words or
+#    pronouns inside a slot; the relation verb stays LITERAL; no
+#    wildcards;
+#  - the predicate must be in the running agent's predicate registry
+#    and polarity is preserved exactly from the annotation;
+#  - >= 3 agreeing annotated examples (same verb literal, predicate,
+#    polarity); conflicting annotations yield no candidate;
+#  - held-out split happens BEFORE induction: 3 examples = training
+#    only ("no held-out coverage", not a failure); 4-9 = one held out;
+#    10+ = a fixed 20% (floor), taken from the end of the examples
+#    sorted by normalized text; a held-out failure stays visible and
+#    blocks approval;
+#  - IDs are content-addressed over the full canonical descriptor;
+#    provenance and history are kept outside the identity.
+# Repl-only module: uses byte_at/byte_len for the ID hash, so it stays
+# out of the IR-subset core.
+import agent.core
+_REG = ["is-a", "has", "is-in", "means"]
+_STOP = ["not", "no", "never", "nor", "and", "or", "but", "might", "may", "could", "would", "should", "must", "can", "cannot", "will", "shall", "says", "said", "say", "claims", "claim", "according", "that", "because", "if", "unless", "although", "while", "when", "where", "which", "who", "whom", "whose", "then", "however", "also", "maybe", "perhaps", "probably", "possibly", "allegedly", "reportedly", "it", "he", "she", "they", "this", "these", "those", "we", "i", "you", "remember", "read", "forget"]
+_ALNUM = "abcdefghijklmnopqrstuvwxyz0123456789"
+# Frozen curated semantic negatives: segments no candidate may match.
+_ADV = ["the moon might be cheese", "the guide says a kiwi is a bird", "remember a car is a bird", "a dog is a mammal and a cat is a mammal", "birds do not have wings", "it is a bird", "this reading is user_confirmed", "robots are machines and birds have wings", "according to the manual a kiwi is a bird", "a bat could be a bird"]
+def _collapse(s):
+  ls = agent.core.lower_ascii(s)
+  out = ""
+  last_sp = true
+  i = 0
+  while i < len(ls):
+    c = ls[i]
+    if c == " " or c == "\t" or c == "\n" or c == "\r":
+      if not last_sp:
+        out = out + " "
+      last_sp = true
+    else:
+      out = out + c
+      last_sp = false
+    i = i + 1
+  if len(out) > 0 and out[len(out) - 1] == " ":
+    out = out[:len(out) - 1]
+  return out
+def _toks(s):
+  if s == "":
+    return []
+  return split(s, " ")
+def _ascii(s):
+  i = 0
+  while i < byte_len(s):
+    if byte_at(s, i) > 127:
+      return false
+    i = i + 1
+  return true
+def _alnum_tok(t):
+  if len(t) == 0:
+    return false
+  i = 0
+  while i < len(t):
+    if find(_ALNUM, t[i]) < 0:
+      return false
+    i = i + 1
+  return true
+def _slot_ok(toks):
+  if len(toks) < 1 or len(toks) > 4:
+    return false
+  for t in toks:
+    if not _alnum_tok(t):
+      return false
+    if t in _STOP:
+      return false
+  return true
+def _verb_ok(toks):
+  if len(toks) < 1 or len(toks) > 3:
+    return false
+  for t in toks:
+    if not _alnum_tok(t):
+      return false
+  return true
+def _sub(toks, a, b):
+  out = []
+  i = a
+  while i < b:
+    append(out, toks[i])
+    i = i + 1
+  return out
+# Complete-structure match of one segment against a verb literal.
+# Fails closed: the verb must occur exactly once (a second occurrence
+# is an argument-boundary ambiguity), both slots must validate, and
+# every token of the segment must be plain alnum (no punctuation,
+# quotes or trailing material). Returns [subject, object] or null.
+def match_toks(vt, text):
+  if not _ascii(text):
+    return null
+  t = _toks(_collapse(text))
+  n = len(t)
+  m = len(vt)
+  found = -1
+  count = 0
+  i = 0
+  while i + m <= n:
+    ok = true
+    j = 0
+    while j < m:
+      if t[i + j] != vt[j]:
+        ok = false
+      j = j + 1
+    if ok:
+      count = count + 1
+      found = i
+    i = i + 1
+  if count != 1:
+    return null
+  s = _sub(t, 0, found)
+  o = _sub(t, found + m, n)
+  if not _slot_ok(s) or not _slot_ok(o):
+    return null
+  for x in vt:
+    if not _alnum_tok(x):
+      return null
+  return [join(" ", s), join(" ", o)]
+def _hash(s):
+  h1 = 7
+  h2 = 11
+  i = 0
+  while i < byte_len(s):
+    b = byte_at(s, i)
+    h1 = (h1 * 131 + b) % 2147483647
+    h2 = (h2 * 257 + b) % 2147483629
+    i = i + 1
+  return _hex8(h1) + _hex8(h2)
+def _hex8(v):
+  d = "0123456789abcdef"
+  out = ""
+  k = 0
+  while k < 8:
+    out = d[v % 16] + out
+    v = (v - v % 16) / 16
+    v = int(v)
+    k = k + 1
+  return out
+def canon_of(verb, pred, pol):
+  return "lang=en|skel=<S> " + verb + " <O>|slots=1-4,alnum,nostop|pred=" + pred + "|pol=" + pol + "|schema=1"
+# Why an annotated example is refused, or "" when it is usable.
+# example = [text, subject, verb, object, predicate, polarity]
+def _validate(ex):
+  if len(ex) != 6:
+    return "bad shape"
+  for f in ex:
+    if json_str(f)[:1] != "\"":
+      return "bad field"
+  if not _ascii(ex[0]) or not _ascii(ex[1]) or not _ascii(ex[2]) or not _ascii(ex[3]):
+    return "non-ascii (English only in A20)"
+  if not (ex[4] in _REG):
+    return "predicate not in registry"
+  if ex[5] != "pos" and ex[5] != "neg":
+    return "bad polarity"
+  s = _collapse(ex[1])
+  v = _collapse(ex[2])
+  o = _collapse(ex[3])
+  if _collapse(ex[0]) != s + " " + v + " " + o:
+    return "annotation does not cover the whole segment"
+  if not _slot_ok(_toks(s)):
+    return "subject span not an allowed slot"
+  if not _slot_ok(_toks(o)):
+    return "object span not an allowed slot"
+  if not _verb_ok(_toks(v)):
+    return "verb literal not allowed"
+  return ""
+def _sort_ex(lst):
+  out = []
+  for x in lst:
+    pos = len(out)
+    i = 0
+    while i < len(out):
+      if x[0] < out[i][0] and pos == len(out):
+        pos = i
+      i = i + 1
+    ins = []
+    i = 0
+    while i < len(out):
+      if i == pos:
+        append(ins, x)
+      append(ins, out[i])
+      i = i + 1
+    if pos == len(out):
+      append(ins, x)
+    out = ins
+  return out
+def _holdout_count(n):
+  if n < 4:
+    return 0
+  if n < 10:
+    return 1
+  h = 0
+  r = n
+  while r >= 5:
+    r = r - 5
+    h = h + 1
+  return h
+# Generated negatives, kept separate from annotated ones. Structural
+# negatives are built from the first training example; a mutation is
+# only ever labeled negative when it provably removes the literal.
+def _structural(c, ex):
+  s = ex[1]
+  v = ex[2]
+  o = ex[3]
+  neg = "never"
+  return [s + " " + neg + " " + v + " " + o, s + " might " + v + " " + o, "according to the manual " + s + " " + v + " " + o, s + " " + v + " " + o + " and it barks loudly", s + " likes " + o, "\"" + s + " " + v + " " + o + "\"", s + " " + v + " " + o + ";", s + " " + v + " " + o + " " + v + " " + o, v + " " + o, s + " " + v]
+def _mutations(ex):
+  vt = _toks(ex[2])
+  out = []
+  i = 0
+  while i < len(vt):
+    rest = []
+    j = 0
+    while j < len(vt):
+      if j != i:
+        append(rest, vt[j])
+      j = j + 1
+    append(out, ex[1] + " " + join(" ", rest) + " " + ex[3])
+    i = i + 1
+  return out
+def _run_tests(vt, pred, pol, train, hold, annneg):
+  pos_ok = 0
+  allpos = []
+  for e in train:
+    append(allpos, e)
+  for e in hold:
+    append(allpos, e)
+  for e in allpos:
+    r = match_toks(vt, e[0])
+    if r != null and r[0] == e[1] and r[1] == e[3]:
+      pos_ok = pos_ok + 1
+  hold_ok = 0
+  for e in hold:
+    r = match_toks(vt, e[0])
+    if r != null and r[0] == e[1] and r[1] == e[3]:
+      hold_ok = hold_ok + 1
+  st = _structural(null, train[0])
+  st_ok = 0
+  for x in st:
+    if match_toks(vt, x) == null:
+      st_ok = st_ok + 1
+  mu = _mutations(train[0])
+  mu_ok = 0
+  for x in mu:
+    if match_toks(vt, x) == null:
+      mu_ok = mu_ok + 1
+  ad_ok = 0
+  for x in _ADV:
+    if match_toks(vt, x) == null:
+      ad_ok = ad_ok + 1
+  an_ok = 0
+  for x in annneg:
+    if match_toks(vt, x) == null:
+      an_ok = an_ok + 1
+  hs = "none"
+  if len(hold) > 0:
+    if hold_ok == len(hold):
+      hs = "PASS"
+    else:
+      hs = "FAIL"
+  return {"positive": [pos_ok, len(allpos)], "structural_negative": [st_ok, len(st)], "mutation_supplementary": [mu_ok, len(mu)], "adversarial": [ad_ok, len(_ADV)], "annotated_negative": [an_ok, len(annneg)], "holdout": hs}
+def _tests_clean(t):
+  if t["positive"][0] != t["positive"][1]:
+    return false
+  for k in ["structural_negative", "mutation_supplementary", "adversarial", "annotated_negative"]:
+    if t[k][0] != t[k][1]:
+      return false
+  return true
+# derive(examples, rejected_ids, corpus, annotated_negatives) ->
+# {"candidates": [...], "problems": [...], "skipped_rejected": [...]}
+def derive(examples, rejected, corpus, annneg):
+  problems = []
+  valid = []
+  seen = []
+  for ex in examples:
+    r = _validate(ex)
+    if r != "":
+      shown = "<non-ascii text>"
+      if _ascii(ex[0]):
+        shown = json_str(ex[0])
+      append(problems, "example refused (" + r + "): " + shown)
+    else:
+      nt = _collapse(ex[0])
+      if nt in seen:
+        append(problems, "duplicate example ignored: " + nt)
+      else:
+        append(seen, nt)
+        append(valid, [nt, _collapse(ex[1]), _collapse(ex[2]), _collapse(ex[3]), ex[4], ex[5]])
+  verbs = []
+  for v in valid:
+    if not (v[2] in verbs):
+      append(verbs, v[2])
+  cands = []
+  skipped = []
+  for vb in verbs:
+    grp = []
+    for v in valid:
+      if v[2] == vb:
+        append(grp, v)
+    grp = _sort_ex(grp)
+    conflict = false
+    for v in grp:
+      if v[4] != grp[0][4] or v[5] != grp[0][5]:
+        conflict = true
+    if conflict:
+      append(problems, "conflicting annotations for verb '" + vb + "': no candidate")
+    elif len(grp) < 3:
+      append(problems, "verb '" + vb + "' has " + str(len(grp)) + " annotated example(s): 3 agreeing examples required")
+    else:
+      hn = _holdout_count(len(grp))
+      train = _sub(grp, 0, len(grp) - hn)
+      hold = _sub(grp, len(grp) - hn, len(grp))
+      pred = grp[0][4]
+      pol = grp[0][5]
+      vt = _toks(vb)
+      canon = canon_of(vb, pred, pol)
+      cid = "pc-" + _hash(canon)
+      if cid in rejected:
+        append(skipped, cid)
+      else:
+        t = _run_tests(vt, pred, pol, train, hold, annneg)
+        gain = 0
+        for seg in corpus:
+          if match_toks(vt, seg) != null and agent.core._read_extract(seg) == null:
+            gain = gain + 1
+        blocked = t["holdout"] == "FAIL" or not _tests_clean(t)
+        trn = []
+        for e in train:
+          append(trn, e[0])
+        hld = []
+        for e in hold:
+          append(hld, e[0])
+        append(cands, {"id": cid, "label": "CANDIDATE", "active": false, "descriptor": {"lang": "en", "skeleton": "<S> " + vb + " <O>", "verb": vb, "predicate": pred, "polarity": pol, "slots": "1-4,alnum,nostop", "schema": 1, "canon": canon}, "provenance": {"examples": trn, "holdout": hld, "history": []}, "tests": t, "approval_blocked": blocked, "expected_coverage_gain": gain})
+  return {"candidates": cands, "problems": problems, "skipped_rejected": skipped}
+def report(res):
+  out = str(len(res["candidates"])) + " pattern candidates (INACTIVE proposals, not reader coverage):"
+  for c in res["candidates"]:
+    d = c["descriptor"]
+    t = c["tests"]
+    line = c["id"] + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [CANDIDATE, inactive]"
+    line = line + "; positive " + str(t["positive"][0]) + "/" + str(t["positive"][1])
+    line = line + ", structural-neg " + str(t["structural_negative"][0]) + "/" + str(t["structural_negative"][1])
+    line = line + ", adversarial " + str(t["adversarial"][0]) + "/" + str(t["adversarial"][1])
+    line = line + ", mutation(supplementary) " + str(t["mutation_supplementary"][0]) + "/" + str(t["mutation_supplementary"][1])
+    if t["holdout"] == "none":
+      line = line + ", no held-out coverage"
+    else:
+      line = line + ", holdout " + t["holdout"]
+    if c["approval_blocked"]:
+      line = line + "; APPROVAL BLOCKED"
+    line = line + "; expected coverage gain " + str(c["expected_coverage_gain"])
+    out = out + "\n" + line
+  for p in res["problems"]:
+    out = out + "\nproblem: " + p
+  for s in res["skipped_rejected"]:
+    out = out + "\nskipped " + s + " (rejected; stays rejected absent explicit reopening)"
+  return out

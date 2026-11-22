@@ -1,0 +1,129 @@
+# agent/proposals.holy - A20 EXPERIMENTAL inactive-proposal store.
+#
+# A SEPARATE versioned file (agent-patterns.json), never the knowledge
+# store: nothing here is ever loaded into the agent state, the word
+# index, the relation graph or the inference path. Repl-only (uses
+# file builtins). Format v1:
+#   {"version": 1, "candidates": {id: candidate}, "rejected": [id...]}
+# Writes are validated: the payload is written to <path>.tmp and read
+# back and checked, then written to <path> and read back and checked.
+# (The language has no rename builtin, so this is validate-then-write,
+# not an atomic rename; a failed final check restores from the tmp.)
+# An unreadable or invalid file loads as an empty store - it never
+# crashes the chat and never feeds anything else.
+import agent.patgen
+def new_store():
+  return {"version": 1, "candidates": {}, "rejected": []}
+def _valid(st):
+  try:
+    if st["version"] != 1:
+      return false
+    for cid in keys(st["candidates"]):
+      c = st["candidates"][cid]
+      d = c["descriptor"]
+      if cid != "pc-" + agent.patgen._hash(d["canon"]):
+        return false
+      if c["id"] != cid or c["active"] != false:
+        return false
+      if c["label"] != "CANDIDATE" and c["label"] != "STALE":
+        return false
+    for r in st["rejected"]:
+      if json_str(r)[:1] != "\"":
+        return false
+    return true
+  except:
+    return false
+def load(path):
+  if not exists(path):
+    return new_store()
+  try:
+    st = json_load(path)
+    if _valid(st):
+      return st
+  except:
+    return new_store()
+  return new_store()
+def save(path, st):
+  if not _valid(st):
+    return "refused: proposals failed validation (nothing written)"
+  tmp = path + ".tmp"
+  json_save(tmp, st)
+  if not _valid(json_load(tmp)):
+    return "refused: tmp write failed validation (final file untouched)"
+  json_save(path, st)
+  if not _valid(json_load(path)):
+    json_save(path, json_load(tmp))
+    return "final write failed validation: restored from tmp"
+  return ""
+# Merge a derive() result. Identity is the content-addressed id: an
+# existing id with a different canonical descriptor is a collision
+# (refused); re-deriving an existing id keeps it and appends history.
+def merge(st, res):
+  notes = []
+  for c in res["candidates"]:
+    cid = c["id"]
+    if has(st["candidates"], cid):
+      old = st["candidates"][cid]
+      if old["descriptor"]["canon"] != c["descriptor"]["canon"]:
+        append(notes, "id collision on " + cid + ": refused")
+      else:
+        append(old["provenance"]["history"], "re-derived")
+        old["tests"] = c["tests"]
+        old["approval_blocked"] = c["approval_blocked"]
+        old["expected_coverage_gain"] = c["expected_coverage_gain"]
+        if old["label"] == "STALE":
+          append(notes, cid + " stays STALE (an example was retracted)")
+    else:
+      append(c["provenance"]["history"], "derived")
+      st["candidates"][cid] = c
+  for sid in res["skipped_rejected"]:
+    append(notes, "skipped " + sid + " (rejected)")
+  return notes
+def reject(st, cid):
+  if not has(st["candidates"], cid) and not (cid in st["rejected"]):
+    return "unknown pattern id " + cid
+  if cid in st["rejected"]:
+    return cid + " already rejected"
+  append(st["rejected"], cid)
+  if has(st["candidates"], cid):
+    append(st["candidates"][cid]["provenance"]["history"], "rejected")
+  return "rejected " + cid + " (stays rejected until explicitly reopened)"
+def reopen(st, cid):
+  if not (cid in st["rejected"]):
+    return cid + " is not rejected"
+  out = []
+  for r in st["rejected"]:
+    if r != cid:
+      append(out, r)
+  st["rejected"] = out
+  if has(st["candidates"], cid):
+    append(st["candidates"][cid]["provenance"]["history"], "reopened")
+  return "reopened " + cid
+# An example the user retracts invalidates every candidate induced
+# from it: the candidate goes STALE and approval stays blocked.
+def retract(st, text):
+  nt = agent.patgen._collapse(text)
+  hit = 0
+  for cid in keys(st["candidates"]):
+    c = st["candidates"][cid]
+    if nt in c["provenance"]["examples"] or nt in c["provenance"]["holdout"]:
+      if c["label"] != "STALE":
+        c["label"] = "STALE"
+        c["approval_blocked"] = true
+        append(c["provenance"]["history"], "stale: example retracted")
+        hit = hit + 1
+  return str(hit) + " candidate(s) marked STALE"
+def listing(st):
+  ids = keys(st["candidates"])
+  out = str(len(ids)) + " stored pattern candidates, " + str(len(st["rejected"])) + " rejected (INACTIVE proposals, not reader coverage):"
+  for cid in ids:
+    c = st["candidates"][cid]
+    d = c["descriptor"]
+    line = cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", inactive]"
+    if c["approval_blocked"]:
+      line = line + "; APPROVAL BLOCKED"
+    if cid in st["rejected"]:
+      line = line + "; REJECTED"
+    line = line + "; history: " + join(", ", c["provenance"]["history"])
+    out = out + "\n" + line
+  return out
