@@ -34,9 +34,9 @@
 import agent.core
 import agent.patgen
 BUILD = "v0.16"
-HARNESS = "selfeval-0"
+HARNESS = "selfeval-1"
 CLASSIFIER = "c1"
-SCHEMA = 1
+SCHEMA = 2
 DIMS = ["epistemic", "verification", "action", "contains"]
 def classify(reply):
   r = agent.core.lower_ascii(reply)
@@ -85,7 +85,19 @@ def suite_check(s):
     if s["version"] < 1:
       return "suite version must be >= 1"
     if s["kind"] != "dialogue":
-      return "only kind dialogue exists in A23.0"
+      return "only kind dialogue exists"
+    if not (s["tier"] in ["supported", "challenge"]):
+      return "tier must be supported or challenge"
+    if json_str(s["lang"])[:1] != "\"" or len(s["lang"]) == 0:
+      return "suite lang missing"
+    pv = s["provenance"]
+    if not (pv["method"] in ["synthetic", "owner-authored", "owner-real"]):
+      return "provenance method must be synthetic, owner-authored or owner-real"
+    if json_str(pv["author"])[:1] != "\"" or len(pv["author"]) == 0:
+      return "provenance author missing"
+    if pv["method"] == "owner-real":
+      if not (has(pv, "opt_in") and pv["opt_in"] == true and has(pv, "privacy_check") and pv["privacy_check"] == true):
+        return "owner-real data needs explicit opt_in and privacy_check"
     seen = []
     for it in s["items"]:
       if json_str(it["id"])[:1] != "\"" or json_str(it["category"])[:1] != "\"" or json_str(it["input"])[:1] != "\"":
@@ -93,12 +105,46 @@ def suite_check(s):
       if it["id"] in seen:
         return "duplicate item id " + it["id"]
       append(seen, it["id"])
+      if has(it, "lineage"):
+        lg = it["lineage"]
+        if json_str(lg)[:1] != "{":
+          return "lineage must be an object in item " + it["id"]
+        if has(lg, "derived_from") and json_str(lg["derived_from"])[:1] != "[":
+          return "lineage.derived_from must be a list in item " + it["id"]
   except:
     return "malformed suite"
   return ""
 def _norm(t):
   return agent.patgen._collapse(t)
+# Order/case/punctuation-insensitive key: catches reordered copies of a
+# derivation example. This is a cheap hint, NOT semantic paraphrase detection.
+def _wkey(t):
+  ws = []
+  for w in split(agent.core.lower_ascii(_norm(t)), " "):
+    if len(w) > 0:
+      append(ws, w)
+  return join(" ", _sort(ws))
+def _retire_reason(it, contam, wkeys):
+  if has(it, "status") and it["status"] == "contaminated":
+    return "marked contaminated"
+  if has(it, "lineage"):
+    lg = it["lineage"]
+    if has(lg, "seen_in_dev") and lg["seen_in_dev"] == true:
+      return "seen in development"
+    if has(lg, "unclear") and lg["unclear"] == true:
+      return "lineage unclear (excluded conservatively)"
+    if has(lg, "derived_from") and len(lg["derived_from"]) > 0:
+      return "derived from development material"
+  if _norm(it["input"]) in contam:
+    return "exact text equals a derivation example"
+  if _wkey(it["input"]) in wkeys:
+    return "word-set equals a derivation example (reordered copy)"
+  return ""
 def run_suite(s, contam):
+  wkeys = []
+  for c in contam:
+    append(wkeys, _wkey(c))
+  reasons = {}
   scen = {}
   order = []
   for it in s["items"]:
@@ -123,9 +169,11 @@ def run_suite(s, contam):
         append(refused, it["id"])
       else:
         reply = agent.core.respond(state, it["input"])
-        isc = has(it, "expect") and not (has(it, "status") and it["status"] == "contaminated") and not (_norm(it["input"]) in contam)
+        why = _retire_reason(it, contam, wkeys)
+        isc = has(it, "expect") and why == ""
         if has(it, "expect") and not isc:
           append(retired, it["id"])
+          reasons[it["id"]] = why
         if isc:
           scored = scored + 1
           obs = classify(reply)
@@ -176,28 +224,41 @@ def run_suite(s, contam):
           mx[e] = row
         od[d] = {"num": x["num"], "den": x["den"], "label": label_of(x["den"]), "matrix": mx}
     outc[cat] = {"items": c["items"], "dims": od}
-  return {"id": s["id"], "version": s["version"], "hash": agent.patgen._hash(json_str(s)), "frozen": has(s, "frozen") and s["frozen"] == true, "items": len(s["items"]), "scored": scored, "retired": retired, "refused": refused, "categories": outc, "failing": failing}
+  return {"id": s["id"], "version": s["version"], "hash": agent.patgen._hash(json_str(s)), "tier": s["tier"], "lang": s["lang"], "provenance": s["provenance"], "frozen": has(s, "frozen") and s["frozen"] == true, "items": len(s["items"]), "scored": scored, "retired": retired, "retired_reasons": reasons, "refused": refused, "categories": outc, "failing": failing}
 def build_report(suites, contam):
   rows = []
+  chal = []
   problems = []
   for s in suites:
     p = suite_check(s)
     if p != "":
       append(problems, p)
     else:
-      append(rows, run_suite(s, contam))
-  rep = {"schema": SCHEMA, "harness": HARNESS, "classifier": CLASSIFIER, "build": BUILD, "blended_score": "none by design", "suites": rows, "problems": problems}
+      r = run_suite(s, contam)
+      if r["tier"] == "challenge":
+        append(chal, r)
+      else:
+        append(rows, r)
+  rep = {"schema": SCHEMA, "harness": HARNESS, "classifier": CLASSIFIER, "build": BUILD, "blended_score": "none by design", "suites": rows, "challenge": chal, "problems": problems}
   rep["report_hash"] = agent.patgen._hash(json_str(rep))
   return rep
 def render(rep):
   out = ["selfeval report " + rep["report_hash"] + " (build " + rep["build"] + ", harness " + rep["harness"] + ", classifier " + rep["classifier"] + "; report-only, no blended score, hashes are change detection only)"]
   for p in rep["problems"]:
     out.append("  suite refused: " + p)
+  out.append("-- supported-capability suites (challenge probes are listed separately and never mixed in) --")
   for s in rep["suites"]:
+    _render_suite(out, s)
+  out.append("-- challenge probes (future capability; NOT release-relevant, not in the supported section) --")
+  for s in rep["challenge"]:
+    _render_suite(out, s)
+  return join("\n", out)
+def _render_suite(out, s):
+  if true:
     fz = "frozen"
     if not s["frozen"]:
       fz = "UNFROZEN (not baseline-eligible)"
-    out.append("suite " + s["id"] + " v" + str(s["version"]) + " " + s["hash"] + " " + fz + ": " + str(s["scored"]) + " scored of " + str(s["items"]) + " items, " + str(len(s["retired"])) + " retired (contaminated), " + str(len(s["refused"])) + " refused")
+    out.append("suite " + s["id"] + " v" + str(s["version"]) + " " + s["tier"] + " lang " + s["lang"] + " by " + s["provenance"]["method"] + " " + s["hash"] + " " + fz + ": " + str(s["scored"]) + " scored of " + str(s["items"]) + " items, " + str(len(s["retired"])) + " retired (contaminated), " + str(len(s["refused"])) + " refused")
     for cat in keys(s["categories"]):
       c = s["categories"][cat]
       for d in keys(c["dims"]):
@@ -207,7 +268,8 @@ def render(rep):
       out.append("  failing items: " + join(", ", s["failing"]))
     if len(s["retired"]) > 0:
       out.append("  retired items: " + join(", ", s["retired"]))
-  return join("\n", out)
+      for rid in s["retired"]:
+        out.append("    " + rid + ": " + s["retired_reasons"][rid])
 def _lvalid(l):
   ok = true
   try:
@@ -239,6 +301,8 @@ def append_ledger(path, led, rep):
     return "ledger unreadable: not written (fix or remove it first)"
   hs = []
   for s in rep["suites"]:
+    append(hs, s["hash"])
+  for s in rep["challenge"]:
     append(hs, s["hash"])
   append(led["runs"], {"n": len(led["runs"]) + 1, "report_hash": rep["report_hash"], "suites": hs})
   tmp = path + ".tmp"

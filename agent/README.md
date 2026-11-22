@@ -636,6 +636,15 @@ It runs frozen JSON suites against the reader and prints counts. It changes noth
 - **Suite.** `tests/selfeval/smoke-en-v1.json` is a plumbing smoke suite. It is not release-relevant and not Thai.
 - **Not yet built.** Frozen release baseline, NOT_DIRECTLY_COMPARABLE / REVIEW_REQUIRED comparison, A22 window-rate view and manifest coverage of selfeval files (A23.2); Thai suite (A23.3, needs human Thai annotation by the owner). The A22 manifest is change detection, not authenticated approval.
 
+### A23.1: suite format hardening and lineage
+
+Schema 2 (harness selfeval-1). A suite must now declare `tier` (`supported` or `challenge`), `lang`, and `provenance` (`method`: synthetic, owner-authored or owner-real; `author`). `owner-real` data is refused unless `opt_in` and `privacy_check` are both true. Suites missing these are refused, so `smoke-en-v1.json` stays immutable and `smoke-en-v2.json` replaces it.
+
+- Challenge probes are reported in their own section and never mixed into the supported section.
+- Items may carry `lineage` (`seen_in_dev`, `unclear`, `derived_from`). Any of these retires the item from scoring, with the reason printed; unclear lineage is excluded conservatively.
+- Contamination also catches a reordered copy of a derivation example (same words, any order). That is a cheap hint. Semantic paraphrases are still NOT detected, and `lineage` is an unauthenticated owner claim.
+- The report holds ids, counts and matrices only, never input text.
+
 ### v0.16 notes
 
 A22 Knowledge Integrity is complete: change-detection manifest (A22.0),

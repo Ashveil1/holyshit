@@ -15,13 +15,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'tests'))
 from test_agent_shadow import run, setup, own, OWN_HAS
 
-SUITE = str(ROOT / 'tests' / 'selfeval' / 'smoke-en-v1.json')
+SUITE = str(ROOT / 'tests' / 'selfeval' / 'smoke-en-v2.json')
 PROD = ['remember a robin is a bird', 'is a robin a bird',
         'is a sparrow a bird', 'readings', 'quit']
 
 
 def suite_file(d, name, items, **kw):
     s = {'id': name, 'version': 1, 'kind': 'dialogue', 'frozen': True,
+         'tier': 'supported', 'lang': 'en',
+         'provenance': {'method': 'synthetic', 'author': 'test'},
          'items': items}
     s.update(kw)
     p = Path(d) / (name + '.json')
@@ -130,6 +132,56 @@ def suite(label, argv, env):
         assert '2 scored of 3 items, 1 retired' in first  # k3 only
         assert '1 scored of 3 items, 2 retired' in second
         assert 'retired items: k1, k3' in second
+        # A23.1: suite hardening, tiers, lineage, provenance
+        def one(name, items=None, **kw):
+            its = items or [{'id': 'q', 'category': 'x',
+                             'input': 'who is zed',
+                             'expect': {'action': 'abstain'}}]
+            return run(argv, ['selfeval run ' + suite_file(td, name, its,
+                                                           **kw), 'quit'],
+                       a, env)
+        o = run(argv, ['selfeval run ' + str(ROOT / 'tests' / 'selfeval' /
+                                             'smoke-en-v1.json'), 'quit'],
+                a, env)
+        assert 'suite refused: malformed suite' in o  # v1 lacks tier
+        assert 'tier must be' in one('t1', tier='future')
+        assert 'suite lang missing' in one('t2', lang='')
+        assert 'provenance method must be' in one(
+            't3', provenance={'method': 'scraped', 'author': 'x'})
+        assert 'provenance author missing' in one(
+            't4', provenance={'method': 'synthetic', 'author': ''})
+        assert 'owner-real data needs explicit opt_in' in one(
+            't5', provenance={'method': 'owner-real', 'author': 'o'})
+        o = one('t6', provenance={'method': 'owner-real', 'author': 'o',
+                                  'opt_in': True, 'privacy_check': True})
+        assert '1 scored of 1 items' in o and 'by owner-real' in o
+        # challenge probes never share the supported section (T-SE14)
+        o = one('t7', tier='challenge')
+        sup, chal = o.split('-- challenge probes')
+        assert 'suite t7' not in sup and 'suite t7 v1 challenge' in chal
+        rj = json.loads((a / 'agent-selfeval-report.json').read_text())
+        assert rj['suites'] == [] and rj['challenge'][0]['id'] == 't7'
+        # lineage retires with a stated reason; unclear is excluded
+        its = [{'id': 'l%d' % i, 'category': 'x', 'input': 'who is zed',
+                'expect': {'action': 'abstain'}, 'lineage': lg}
+               for i, lg in enumerate([
+                   {'seen_in_dev': True}, {'unclear': True},
+                   {'derived_from': ['own.json']}, {'derived_from': []}])]
+        o = one('t8', its)
+        assert '1 scored of 4 items, 3 retired' in o
+        assert 'l0: seen in development' in o
+        assert 'l1: lineage unclear (excluded conservatively)' in o
+        assert 'l2: derived from development material' in o
+        # reordered copy of a derivation example is caught (hint only)
+        f = suite_file(k, 'reord', [
+            {'id': 'o1', 'category': 'x', 'input': 'a nest a hawk owns',
+             'expect': {'action': 'answer'}}])
+        o = run(argv, ['patterns derive own.json', 'selfeval run ' + f,
+                       'quit'], k, env)
+        assert 'o1: word-set equals a derivation example' in o, o
+        # aggregate privacy (T-SE17): report holds no input text
+        raw = (a / 'agent-selfeval-report.json').read_text()
+        assert 'who is zed' not in raw
         # SE11: production isolation
         p1 = td / 'p1'
         p2 = td / 'p2'
@@ -139,7 +191,7 @@ def suite(label, argv, env):
         iso = run(argv, PROD[:2] + ['selfeval run ' + SUITE] + PROD[2:],
                   p2, env)
         keep = [l for l in iso.split('\n') if not l.startswith(
-            ('selfeval report', 'suite smoke', '  ', 'bye'))]
+            ('selfeval report', 'suite smoke', '  ', 'bye', '-- '))]
         keep_base = [l for l in base.split('\n') if not l.startswith(
             ('  ', 'bye'))]
         assert keep == keep_base, (keep, keep_base)
