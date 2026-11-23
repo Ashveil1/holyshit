@@ -68,6 +68,7 @@ SUITES = [
     ("test_claim_view_0b_holy_parity.py", "A24.0b slice 2a: Holy view full-result parity vs Oracle (standalone, not wired)"),
     ("test_claim_view_0b_holy_readonly.py", "A24.0b slice 2a: Holy view read-only, no lazy init (standalone)"),
     ("test_claim_view_0b_holy_routes.py", "A24.0b slice 2a: Holy view on all 7 execution routes (standalone)"),
+    ("test_claim_view_0b_epoch.py", "A24.0b slice 2 step 1: cvgen invalidation epoch soundness through real core respond()"),
     ("test_claim_view_0b_cvsort.py", "A24.0b slice 1c: byte-wise stable merge sort vs Python bytes order (standalone)"),
     ("test_agent_bench.py", "agent hosted resource benchmark quick gate and held-out dialogue check"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),

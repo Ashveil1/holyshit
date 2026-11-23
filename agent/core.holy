@@ -59,9 +59,17 @@ def lower_ascii(s):
       out = out + c
     i = i + 1
   return out
+# A24.0b slice 2 (wiring): cvgen is an INVALIDATION EPOCH for the claim-view
+# read-set (rels, aliases, the order key universe). It advances before every
+# real mutation of that read-set, never rolls back, and may stay advanced after
+# a failure; true no-ops and pre-invalidation failures leave it unchanged.
+# cvinst is the state-instance identity, assigned by a repl-only module (0 =
+# unassigned). Both are session-only and never saved.
+def _cv_inval(state):
+  state["cvgen"] = state["cvgen"] + 1
 def new_state():
   # mode is session-only (like notes): strict unless the user explores.
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": [], "readings": [], "read_src": {}, "read_n": 0, "url_srcs": [], "test_fetch": false}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": [], "readings": [], "read_src": {}, "read_n": 0, "url_srcs": [], "test_fetch": false, "cvinst": 0, "cvgen": 0}
 def _has(state, key):
   # O(1) membership; keyset mirrors order exactly (built from it on
   # load, maintained on teach/forget), including for hand-edited files.
@@ -233,6 +241,7 @@ def _teach(state, key, value):
     suffix = " (filed as a kind-of)"
   if _has(state, key):
     return "updated " + key + " is " + value + suffix
+  _cv_inval(state)
   append(state["order"], key)
   _index_key(state, key)
   return "remembered " + key + " is " + value + suffix
@@ -287,6 +296,7 @@ def _teach_also(state, key, value):
     suffix = " (filed as a kind-of)"
   if not _has(state, key):
     state["facts"][key] = [value]
+    _cv_inval(state)
     append(state["order"], key)
     _index_key(state, key)
     _cooc_add(state, key, value)
@@ -351,6 +361,7 @@ def _teach_verb(state, key, pred, obj, neg):
   newkey = not _has(state, key)
   if newkey:
     state["facts"][key] = []
+    _cv_inval(state)
     append(state["order"], key)
     _index_key(state, key)
   ph = _posphrase(pred)
@@ -617,6 +628,7 @@ def _forget(state, key):
   for a in state["aliases"]:
     if state["aliases"][a] != key:
       aliases[a] = state["aliases"][a]
+  _cv_inval(state)
   state["facts"] = facts
   state["order"] = order
   state["aliases"] = aliases
@@ -1692,6 +1704,7 @@ def _add_rel(state, s, p, o):
     if p in state["relset"][s]:
       if o in state["relset"][s][p]:
         return
+  _cv_inval(state)
   append(state["rels"], [s, p, o])
   _rel_index(state, s, p, o)
   # A16: user teaching is the ultimate verifier. Alignment is
@@ -1748,6 +1761,8 @@ def _drop_rels(state, key):
   for e in state["rels"]:
     if e[0] != key:
       append(kept, e)
+  if len(kept) != len(state["rels"]):
+    _cv_inval(state)
   state["rels"] = kept
   _read_realign(state, key)
   if key in state["relset"]:
@@ -2822,6 +2837,8 @@ def respond(state, line):
       return _means_check(state, phrase, target, means_p)
     _add_rel(state, phrase, "means", target)
     if _has(state, target):
+      if phrase not in state["aliases"] or state["aliases"][phrase] != target:
+        _cv_inval(state)
       state["aliases"][phrase] = target
     return "ok, " + phrase + means_p + target
   return "i do not understand"
