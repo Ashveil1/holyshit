@@ -1714,6 +1714,9 @@ class Oracle:
                 if resolved is not None:
                     key = resolved
                 return self._teach(key, rest[k + 4:])
+            cr = self._correct_thai(rest, mrest)
+            if cr is not None:
+                return cr
             return 'i do not understand'
         q = m
         isq = False
@@ -1826,6 +1829,42 @@ class Oracle:
             return 'updated ' + key + ' is ' + value + suffix
         self.order.append(key)
         return 'remembered ' + key + ' is ' + value + suffix
+
+    def _correct_thai(self, rest, mrest):
+        for word in ('อยู่', 'คือ', 'เป็น', 'มี'):
+            mk = ' ' + word + ' '
+            k = mrest.find(mk)
+            if k > 0 and k + len(mk) < len(mrest):
+                key = mrest[:k]
+                resolved = self._resolve(key)
+                if resolved is None:
+                    return 'nothing to correct: i do not know ' + key
+                newval = rest[k + 1:]
+                prefix = word + ' '
+                kept, replaced, placed = [], 0, False
+                for v in self.facts[resolved]:
+                    if v.startswith(prefix):
+                        replaced += 1
+                        self._cooc_remove(resolved, v)
+                        if not placed:
+                            kept.append(newval)
+                            placed = True
+                    else:
+                        kept.append(v)
+                if replaced == 0:
+                    return 'nothing to correct: ' + resolved + ' has no ' + word + ' fact'
+                self.facts[resolved] = kept
+                self._drop_rels(resolved)
+                for v in kept:
+                    self._learn_rel(resolved, v)
+                self._cooc_add(resolved, newval)
+                self.topic = resolved
+                self._slog('taught', resolved)
+                if replaced > 1:
+                    return ('updated ' + resolved + ' ' + newval + ' (replaced ' +
+                            str(replaced) + ' earlier ' + word + ' facts)')
+                return 'updated ' + resolved + ' ' + newval
+        return None
 
     def _teach_also(self, key, value):
         self.topic = key
@@ -2322,6 +2361,14 @@ A9_SCENARIOS = [
      'remember a building มี ผนัง', 'does a temple have ผนัง',
      'what do you know about a building', 'forget วัด',
      'what do you know about วัด', 'what do you know'],
+    ['remember นกฮูก อยู่ ป่า', 'remember นกฮูก คือ นก', 'remember นกฮูก มี ปีก',
+     'no, นกฮูก อยู่ สวน', 'what do you know about นกฮูก', 'นกฮูก อยู่ไหน',
+     'no, ผี อยู่ วัด', 'no, นกฮูก เป็น สัตว์', 'no, นกฮูก คือ นกกลางคืน',
+     'no, นกฮูก มี ตา', 'what do you know about นกฮูก',
+     'ฮูก means นกฮูก', 'no, ฮูก อยู่ ถ้ำ', 'นกฮูก อยู่ไหน',
+     'remember ค อยู่ ก', 'remember ค is also อยู่ ข', 'no, ค อยู่ ง',
+     'what do you know about ค', 'no, นกฮูก is a bird',
+     'what do you know about นกฮูก', 'no, อยู่ ที่นี่', 'no, ก อยู่'],
 ]
 
 

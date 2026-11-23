@@ -236,6 +236,49 @@ def _teach(state, key, value):
   append(state["order"], key)
   _index_key(state, key)
   return "remembered " + key + " is " + value + suffix
+# A25.2: shape-scoped Thai correction "no, <thing> <marker> <value>".
+# Replaces only the thing's existing facts of the SAME Thai shape
+# (อยู่/คือ/เป็น/มี) with the new one; other facts stay. A thing with no
+# fact of that shape, or an unknown thing, is left byte-identical and
+# gets an honest "nothing to correct" reply. No guessing, no fuzzy match,
+# no conflict detection (A22.1 is audit-only). English "no, X is Y" is
+# a different route and is unchanged.
+def _correct_thai(state, rest, mrest):
+  for word in ["อยู่", "คือ", "เป็น", "มี"]:
+    mk = " " + word + " "
+    k = find(mrest, mk)
+    if k > 0 and k + len(mk) < len(mrest):
+      key = mrest[:k]
+      resolved = _resolve(state, key)
+      if resolved == null:
+        return "nothing to correct: i do not know " + key
+      newval = rest[k + 1:]
+      prefix = word + " "
+      kept = []
+      replaced = 0
+      placed = false
+      for v in state["facts"][resolved]:
+        if find(v, prefix) == 0:
+          replaced = replaced + 1
+          _cooc_remove(state, resolved, v)
+          if not placed:
+            append(kept, newval)
+            placed = true
+        else:
+          append(kept, v)
+      if replaced == 0:
+        return "nothing to correct: " + resolved + " has no " + word + " fact"
+      state["facts"][resolved] = kept
+      _drop_rels(state, resolved)
+      for v in kept:
+        _learn_rel(state, resolved, v)
+      _cooc_add(state, resolved, newval)
+      state["topic"] = resolved
+      _slog(state, "taught", resolved)
+      if replaced > 1:
+        return "updated " + resolved + " " + newval + " (replaced " + str(replaced) + " earlier " + word + " facts)"
+      return "updated " + resolved + " " + newval
+  return null
 def _teach_also(state, key, value):
   state["topic"] = key
   bare = _learn_rel(state, key, value)
@@ -2663,6 +2706,9 @@ def respond(state, line):
       if resolved != null:
         key = resolved
       return _teach(state, key, rest[k + 4:])
+    cr = _correct_thai(state, rest, mrest)
+    if cr != null:
+      return cr
     return "i do not understand"
   # A12: Thai yes/no questions. The markers หรือไม่ / ไหม (spaced or
   # not, Thai has no spaces) force question mode: เป็น asks an is-a
