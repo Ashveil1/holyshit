@@ -134,6 +134,11 @@ preview below); the core itself stays network-free.
   records (cat is-a animal, article kept), `remember cat has whiskers`
   records (cat has whiskers), and Thai `remember แมว อยู่ สวน` /
   `remember ลิง คือ สัตว์` record the same is-in / means edges.
+  Thai `remember วัด มี พระ` (A25.1) records the same has edge as
+  `remember temple has monk`. It is tried last, so a line that already
+  matched another shape keeps that behaviour. Limits: no Thai `มี` question
+  form yet, the reader does not extract `มี`, and a second different value is
+  stored as another fact, not flagged (A22.1).
   `is paris in europe` then answers by transitive closure over those
   edges and shows the chain it used (`yes: paris is in france, france
   is in europe`); a miss is open-world honest (`not that i know`,

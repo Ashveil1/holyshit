@@ -1766,6 +1766,10 @@ def _learn_rel(state, key, value):
   if find(value, p4) == 0 and len(value) > len(p4):
     _add_rel(state, key, "is-a", value[len(p4):])
     got = true
+  p7 = "มี "
+  if find(value, p7) == 0 and len(value) > len(p7):
+    _add_rel(state, key, "has", value[len(p7):])
+    got = true
   p5 = "not a "
   if lower_ascii(value[:6]) == p5 and len(value) > 6:
     _add_rel(state, key, "not-is-a", lower_ascii(value)[4:])
@@ -2590,6 +2594,12 @@ def respond(state, line):
     vt = _verb_teach_parse(mrest)
     if vt != null:
       return _teach_verb(state, mrest[:vt[0]], vt[1], mrest[vt[3]:], vt[2])
+    # A25.1: Thai has-teach "<thing> มี <part>", the existing has path.
+    # Last on purpose: every earlier shape keeps its behaviour, only a
+    # line that was "i do not understand" can reach it.
+    k = find(mrest, " มี ")
+    if k > 0 and k + len(" มี ") < len(mrest):
+      return _unteach_is(_teach_also(state, mrest[:k], rest[k + 1:]), "มี")
     return "i do not understand"
   # 'what does X mean' answers from the means relation (taught +
   # built-in self-knowledge), falling back to taught facts, then miss.
