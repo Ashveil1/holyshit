@@ -6,7 +6,7 @@ dependencies beyond the language itself. One EXPERIMENTAL exception:
 the repl shell can fetch web pages over plain HTTP (`read url`, A18
 preview below); the core itself stays network-free.
 
-## What it is today (v0.16)
+## What it is today (v0.17)
 
 - An evidence-ingestion reader (A16): `read <text>` ingests text as
   DATA - never executed, never believed - and reports typed claims
@@ -622,7 +622,52 @@ shadow cutoff changes no evidence input). Rules, all in the review packet's
 - Limits: source names are the owner-visible read labels (unauthenticated);
   "demonstrably held out" means declared before derivation, not proven.
 
-### v0.16 notes
+### A23.0: self-evaluation harness (report-only)
+
+`selfeval run FILE...`, `selfeval report`, `selfeval ledger` (repl only; `agent/selfeval.holy`).
+It runs frozen JSON suites against the reader and prints counts. It changes nothing.
+
+- **Open loop.** No tuning, no auto-disable, no change to knowledge, patterns or replies. Nothing reads the report back.
+- **Report vs ledger.** The report (`agent-selfeval-report.json`) is deterministic: build, suite hashes and config only, with a `report_hash`. It has no counter and no time. Running twice gives identical bytes. The ledger (`agent-selfeval-ledger.json`) is append-only, holds a run counter and each `report_hash`. A corrupt ledger is not overwritten; the report is still printed.
+- **Status dimensions** are kept apart: epistemic (supported / unknown / contradicted / ambiguous), verification, action. Classifier `c1` reads them off reply text prefixes. That is a heuristic and can drift if reply wording changes.
+- **Numbers.** Per category: matches over scored items, a confusion matrix per dimension, and a label: <30 TOO_FEW_TO_JUDGE, <50 PRELIMINARY, <100 USEFUL_DIAGNOSTIC, else STRONGER_DIVERSITY_DEPENDENT. No blended score. No confidence is output, so no calibration, Brier or ECE claims are made.
+- **Isolation.** Each scenario runs on a fresh in-memory state that is discarded. Items starting `read `, `patterns `, `selfeval ` or `quit` are refused. Tests check agent-memory.json and reader transcripts are unchanged.
+- **Contamination.** Items whose text equals a pattern-derivation example are retired and listed. Paraphrase and derived-fact lineage is NOT detected yet.
+- **Suite.** `tests/selfeval/smoke-en-v1.json` is a plumbing smoke suite. It is not release-relevant and not Thai.
+- **Not yet built.** Frozen release baseline, NOT_DIRECTLY_COMPARABLE / REVIEW_REQUIRED comparison, A22 window-rate view and manifest coverage of selfeval files (A23.2); Thai suite (A23.3, needs human Thai annotation by the owner). The A22 manifest is change detection, not authenticated approval.
+
+### A23.1: suite format hardening and lineage
+
+Schema 2 (harness selfeval-1). A suite must now declare `tier` (`supported` or `challenge`), `lang`, and `provenance` (`method`: synthetic, owner-authored or owner-real; `author`). `owner-real` data is refused unless `opt_in` and `privacy_check` are both true. Suites missing these are refused, so `smoke-en-v1.json` stays immutable and `smoke-en-v2.json` replaces it.
+
+- Challenge probes are reported in their own section and never mixed into the supported section.
+- Items may carry `lineage` (`seen_in_dev`, `unclear`, `derived_from`). Any of these retires the item from scoring, with the reason printed; unclear lineage is excluded conservatively.
+- Contamination also catches a reordered copy of a derivation example (same words, any order). That is a cheap hint. Semantic paraphrases are still NOT detected, and `lineage` is an unauthenticated owner claim.
+- The report holds ids, counts and matrices only, never input text.
+
+### A23.2: baselines, comparison, operational snapshot
+
+Still report-only. Nothing here changes a reply, pattern, threshold or tripwire.
+
+- `selfeval freeze NOTE... owner` writes the immutable frozen release baseline from the current report (all suites frozen, no problems, same build). A second freeze is refused; replacing it means the owner moves the file away by hand (there is no remove builtin).
+- `selfeval accept NOTE... owner` appends to a hash-chained rolling baseline. It is refused until a frozen baseline exists and the ledger holds at least two distinct reports. Each entry records how it compared with the frozen baseline. It never edits the frozen file or earlier entries. Nothing is ever accepted automatically.
+- `selfeval compare` always shows the frozen comparison first, then the latest rolling entry, then an overall verdict. The rolling baseline cannot hide a frozen regression.
+- Verdicts: NOT_DIRECTLY_COMPARABLE when schema, harness, classifier, suite version/hash, categories or contamination state differ (a changed score is not read as a regression); REVIEW_REQUIRED for a drop on a dimension with a denominator of 30 or more; REVIEW_THIN_DATA for a drop on thinner data; IMPROVED_NOT_ACCEPTED; UNCHANGED. REVIEW_* is a signal for an owner release decision, not an action.
+- `selfeval baseline` shows what is stored. A baseline file or report that no longer matches its own hash is reported as CHANGED and not compared.
+- `selfeval ops` prints an aggregate, read-only snapshot of A22 tripwire data with its own id. It is not part of the report or its hash. It shows window false positives over window matches and window exposure share, and labels lifetime counters as totals, not rates. The tripwire does not record per-source concentration, so only per-pattern concentration is shown.
+- **Limits.** Baselines are owner-ATTESTED, not authenticated: the `owner` word is a convention and hashes are poly62 change detection (no SHA-256/HMAC until C20). Baseline files are deliberately NOT in the A22 manifest: that manifest gates runtime-affecting files, and these files affect no reply. Their own embedded hashes detect edits instead.
+
+### A23.3: Thai dataset format (labels pending, owner-owned)
+
+`selfeval thai-check FILE` validates a Thai dataset (`kind thai-dataset`, `lang th`). It only checks structure and counts. It creates no labels, translates nothing and scores nothing. A Thai dataset is not a runnable suite yet: `selfeval run` refuses it until a later owner step freezes labeled data.
+
+- **Template:** `tests/selfeval/thai-core-v1.pending.json` has no items and no labels. Its acceptance criteria per category are placeholders for the owner to write.
+- **Authored only.** Items must have `origin: authored` (Thai written by the owner). `translated` items are rejected, and so is synthetic provenance. Real conversation examples need `opt_in` and `privacy_check`.
+- **Annotation.** Each item holds annotations (annotator, role primary or independent, label with epistemic and action from the fixed sets). `agreed` needs two distinct annotators with identical labels. Critical items, and any item an annotator labels ambiguous, always need an adjudicator who is not one of the annotators.
+- **Separation.** The release-relevant core (`tier supported`) and future probes (`tier challenge`) are separate datasets. Thin-data labels (<30 resolved per category) apply as for the English suites. The verdict stays PENDING_OWNER_LABELING until every item is resolved.
+- **Open limit:** `json_str` differs for non-ASCII text between the interpreter and compiled backends (language gap). Thai suite hashes must be proven identical across routes before freezing; the tests use ASCII placeholders only.
+
+### v0.16 notes (kept; see v0.17 notes below)
 
 A22 Knowledge Integrity is complete: change-detection manifest (A22.0),
 predicate/type registry (A22.1), tripwires and quarantine (A22.2), reviewer
@@ -631,6 +676,10 @@ budgets (now mandatory), suspension and canaries (A22.3), leakage guard
 ever auto-promoted and the reader and core are unchanged since v0.15. The
 `owner`, `verified` and reviewer-id markers, family names and hashes (62-bit
 polynomial, no SHA-256/HMAC until C20) are unauthenticated conventions.
+
+### v0.17 notes
+
+A23 Self-Evaluation is complete except the Thai labels (A23.0-A23.3 above). It is report-only and open loop: no tuning, auto-disable or reply change, and a regression yields only a signal (REVIEW_REQUIRED / REVIEW_THIN_DATA) for an owner release decision. The reader and core are unchanged since v0.15; the banner, selfeval build id and test pins moved to v0.17. The Thai core suite is PENDING owner labeling: only the format, template and checker exist, no Thai item or label does. No calibration, Brier or ECE claim is made because the agent emits no probabilities. Baselines are owner-attested, not authenticated; hashes are 62-bit polynomial change detection until C20. Language gaps still standing: no SHA-256/HMAC, no clock, no remove builtin (`.tmp` files remain), native `return` inside `try` misses a json_load failure, and `json_str` differs for non-ASCII text across backends.
 
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 

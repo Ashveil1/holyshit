@@ -18,6 +18,7 @@ import agent.integrity
 import agent.registry
 import agent.tripwire
 import agent.reviewers
+import agent.selfeval
 path = "agent-memory.json"
 state = agent.store.load(path)
 # A18 EXPERIMENTAL: the fetch test harness is reachable only by
@@ -26,7 +27,7 @@ state = agent.store.load(path)
 # have no env builtin), so no ordinary command can set this flag.
 tfv = env("HS_AGENT_TEST_FETCH")
 state["test_fetch"] = tfv != null and tfv == "1"
-print "holyshit agent v0.16 - type 'help' for commands, 'quit' to leave"
+print "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave"
 ppath = "agent-patterns.json"
 apath = "agent-attestations.json"
 dpath = "agent-delegation.json"
@@ -57,6 +58,106 @@ def a22_status(st, cid):
   else:
     out = out + "\n  tripwire CLEAR: no recorded matches"
   return out
+sepath = "agent-selfeval-report.json"
+seledger = "agent-selfeval-ledger.json"
+sefrozen = "agent-selfeval-baseline-frozen.json"
+serolling = "agent-selfeval-baseline-rolling.json"
+def contam_texts():
+  out = []
+  if exists(ppath):
+    st = agent.proposals.load(ppath)
+    for cid in keys(st["candidates"]):
+      pv = st["candidates"][cid]["provenance"]
+      for x in pv["examples"] + pv["holdout"]:
+        append(out, agent.patgen._collapse(x))
+  return out
+def selfeval_cmd(line):
+  parts = split(agent.core.normalize(line), " ")
+  sub = "report"
+  if len(parts) > 1:
+    sub = agent.core.lower_ascii(parts[1])
+  if sub == "run" and len(parts) >= 3:
+    suites = []
+    for f in parts[2:]:
+      try:
+        append(suites, json_load(f))
+      except:
+        return "selfeval refused: cannot read suite file " + f
+    rep = agent.selfeval.build_report(suites, contam_texts())
+    json_save(sepath, rep)
+    err = agent.selfeval.append_ledger(seledger, agent.selfeval.load_ledger(seledger), rep)
+    out = agent.selfeval.render(rep)
+    if err != "":
+      out = out + "\n" + err
+    return out
+  if sub == "report" and len(parts) == 2:
+    if not exists(sepath):
+      return "selfeval: no report yet (selfeval run SUITE.json ...)"
+    try:
+      return agent.selfeval.render(json_load(sepath))
+    except:
+      return "selfeval: report unreadable"
+  if (sub == "freeze" or sub == "accept") and len(parts) >= 4 and parts[len(parts) - 1] == "owner":
+    note = join(" ", parts[2:len(parts) - 1])
+    if not exists(sepath):
+      return "selfeval " + sub + " refused: no report yet (selfeval run SUITE.json ...)"
+    rep = null
+    ok = false
+    try:
+      rep = json_load(sepath)
+      ok = true
+    except:
+      ok = false
+    if not ok:
+      return "selfeval " + sub + " refused: report unreadable"
+    if sub == "freeze":
+      err = agent.selfeval.freeze_check(rep)
+      if err == "":
+        err = agent.selfeval.save_frozen(sefrozen, rep, note)
+      if err != "":
+        return "selfeval freeze refused: " + err
+      return "frozen release baseline written (" + agent.selfeval.ATTEST + "). It is immutable."
+    err = agent.selfeval.accept_rolling(serolling, agent.selfeval.load_rolling(serolling), agent.selfeval.load_ledger(seledger), agent.selfeval.load_frozen(sefrozen), rep, note)
+    if err != "":
+      return "selfeval " + err
+    return "rolling baseline entry appended (" + agent.selfeval.ATTEST + "). The frozen baseline is untouched."
+  if sub == "freeze" or sub == "accept":
+    return "selfeval " + sub + " refused: usage `selfeval " + sub + " NOTE... owner`; only the owner sets baselines, never automatic"
+  if sub == "baseline" and len(parts) == 2:
+    return agent.selfeval.baseline_status(agent.selfeval.load_frozen(sefrozen), agent.selfeval.load_rolling(serolling))
+  if sub == "compare" and len(parts) == 2:
+    if not exists(sepath):
+      return "selfeval: no report yet (selfeval run SUITE.json ...)"
+    cur = null
+    ok = false
+    try:
+      cur = json_load(sepath)
+      ok = agent.selfeval.report_ok(cur)
+    except:
+      ok = false
+    if not ok:
+      return "selfeval compare refused: current report unreadable or altered (rerun selfeval run)"
+    return agent.selfeval.render_compare(agent.selfeval.load_frozen(sefrozen), agent.selfeval.load_rolling(serolling), cur)
+  if sub == "ops" and len(parts) == 2:
+    return agent.selfeval.ops_snapshot(agent.tripwire.load(tpath))
+  if sub == "thai-check" and len(parts) == 3:
+    ts = null
+    ok = false
+    try:
+      ts = json_load(parts[2])
+      ok = true
+    except:
+      ok = false
+    if not ok:
+      return "selfeval refused: cannot read Thai dataset " + parts[2]
+    return agent.selfeval.thai_check(ts)
+  if sub == "ledger" and len(parts) == 2:
+    led = agent.selfeval.load_ledger(seledger)
+    out = "selfeval ledger (append-only run counter; the report itself carries no counter): " + str(len(led["runs"])) + " run(s)"
+    for x in led["runs"]:
+      out = out + "\n  run " + str(x["n"]) + " report " + x["report_hash"] + " suites " + join(",", x["suites"])
+    return out
+  return "selfeval: run SUITE.json... | report | ledger | baseline | compare | ops | thai-check FILE | freeze NOTE owner | accept NOTE owner"
 def learned_texts():
   out = []
   if exists(lpath):
@@ -324,6 +425,8 @@ while not done:
       integ["bad"] = false
       integ["noted"] = false
       print "manifest accepted: " + str(n) + " file(s) sealed (change detection only, not tamper-proof)"
+    elif m[:9] == "selfeval " or m == "selfeval":
+      print selfeval_cmd(line)
     elif m[:9] == "patterns " or m == "patterns":
       # A20 EXPERIMENTAL: offline pattern candidates. Repl-only, the
       # core never sees them; proposals live in their own file.

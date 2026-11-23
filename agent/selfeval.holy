@@ -1,0 +1,727 @@
+# agent/selfeval.holy - A23.0 EXPERIMENTAL self-evaluation harness
+# (repl-only). REPORT-ONLY and strictly open loop: it runs frozen,
+# content-hashed suites against the CURRENT build in disposable
+# in-memory state and writes a report. Nothing it produces changes a
+# reply, a fact, a pattern, a guard, a threshold, a tripwire or any
+# stored file other than its own report and ledger. Nothing reads the
+# report back to decide anything; only the owner does.
+#
+# Determinism: the REPORT depends only on build id, harness, classifier
+# version, schema and the suite contents (no clock, no run counter, no
+# randomness). The monotonic run counter lives in a separate append-only
+# LEDGER that stores the report hash, so two runs of the same inputs give
+# byte-identical reports and a longer ledger. Hashes are the 62-bit
+# polynomial hash: change detection only, never authenticated approval.
+#
+# Status dimensions are kept apart (never blended):
+#   epistemic     supported | unknown | contradicted | ambiguous | n/a
+#   verification  unverified | none
+#   action        answer | abstain | clarify | acknowledge | not_understood | other
+# They are read off the reply TEXT by classifier c1 (a documented,
+# versioned prefix/substring table), so they describe what the agent
+# said, not what it "believes". There are no probability outputs, so no
+# calibration score exists (Brier/ECE wait for real confidence outputs);
+# only counts and per-category confusion matrices are reported. A
+# denominator under 30 is TOO_FEW_TO_JUDGE (30 preliminary, 50 useful
+# diagnostic, 100 stronger but diversity-dependent). Never a blended score.
+# Scenarios: items sharing a scenario id run in order on ONE fresh state;
+# every scenario starts from a new empty state, which is discarded.
+# Items that would reach the network, files or the owner commands are
+# refused. An item whose input text equals a derivation example (exact
+# text only; paraphrase lineage is NOT detected) is retired from scoring
+# and listed. Suite changes need a new suite version; frozen=false suites
+# are marked ineligible for baselines.
+import agent.core
+import agent.patgen
+BUILD = "v0.17"
+HARNESS = "selfeval-1"
+CLASSIFIER = "c1"
+SCHEMA = 2
+DIMS = ["epistemic", "verification", "action", "contains"]
+def classify(reply):
+  r = agent.core.lower_ascii(reply)
+  ep = "n/a"
+  ac = "other"
+  if r[:4] == "yes:":
+    ep = "supported"
+    ac = "answer"
+  elif r[:15] == "not that i know" or r[:13] == "i do not know":
+    ep = "unknown"
+    ac = "abstain"
+  elif "contradict" in r or r[:6] == "i know" and " and not " in r:
+    ep = "contradicted"
+    ac = "answer"
+  elif r[:16] == "i do not underst":
+    ac = "not_understood"
+  elif r[:10] == "remembered" or r[:6] == "added:" or r[:3] == "ok," or r[:6] == "forgot":
+    ac = "acknowledge"
+  elif "did you mean" in r or "clarif" in r:
+    ep = "ambiguous"
+    ac = "clarify"
+  ve = "none"
+  if "unverified" in r:
+    ve = "unverified"
+  return {"epistemic": ep, "verification": ve, "action": ac}
+def _sort(xs):
+  out = []
+  for x in xs:
+    i = 0
+    while i < len(out) and out[i] < x:
+      i = i + 1
+    out = out[:i] + [x] + out[i:]
+  return out
+def label_of(den):
+  if den < 30:
+    return "TOO_FEW_TO_JUDGE"
+  if den < 50:
+    return "PRELIMINARY"
+  if den < 100:
+    return "USEFUL_DIAGNOSTIC"
+  return "STRONGER_DIVERSITY_DEPENDENT"
+def suite_check(s):
+  try:
+    if json_str(s["id"])[:1] != "\"" or len(s["id"]) == 0:
+      return "suite id missing"
+    if s["version"] < 1:
+      return "suite version must be >= 1"
+    if s["kind"] != "dialogue":
+      return "only kind dialogue exists"
+    if not (s["tier"] in ["supported", "challenge"]):
+      return "tier must be supported or challenge"
+    if json_str(s["lang"])[:1] != "\"" or len(s["lang"]) == 0:
+      return "suite lang missing"
+    pv = s["provenance"]
+    if not (pv["method"] in ["synthetic", "owner-authored", "owner-real"]):
+      return "provenance method must be synthetic, owner-authored or owner-real"
+    if json_str(pv["author"])[:1] != "\"" or len(pv["author"]) == 0:
+      return "provenance author missing"
+    if pv["method"] == "owner-real":
+      if not (has(pv, "opt_in") and pv["opt_in"] == true and has(pv, "privacy_check") and pv["privacy_check"] == true):
+        return "owner-real data needs explicit opt_in and privacy_check"
+    seen = []
+    for it in s["items"]:
+      if json_str(it["id"])[:1] != "\"" or json_str(it["category"])[:1] != "\"" or json_str(it["input"])[:1] != "\"":
+        return "item needs string id, category, input"
+      if it["id"] in seen:
+        return "duplicate item id " + it["id"]
+      append(seen, it["id"])
+      if has(it, "lineage"):
+        lg = it["lineage"]
+        if json_str(lg)[:1] != "{":
+          return "lineage must be an object in item " + it["id"]
+        if has(lg, "derived_from") and json_str(lg["derived_from"])[:1] != "[":
+          return "lineage.derived_from must be a list in item " + it["id"]
+  except:
+    return "malformed suite"
+  return ""
+def _norm(t):
+  return agent.patgen._collapse(t)
+# Order/case/punctuation-insensitive key: catches reordered copies of a
+# derivation example. This is a cheap hint, NOT semantic paraphrase detection.
+def _wkey(t):
+  ws = []
+  for w in split(agent.core.lower_ascii(_norm(t)), " "):
+    if len(w) > 0:
+      append(ws, w)
+  return join(" ", _sort(ws))
+def _retire_reason(it, contam, wkeys):
+  if has(it, "status") and it["status"] == "contaminated":
+    return "marked contaminated"
+  if has(it, "lineage"):
+    lg = it["lineage"]
+    if has(lg, "seen_in_dev") and lg["seen_in_dev"] == true:
+      return "seen in development"
+    if has(lg, "unclear") and lg["unclear"] == true:
+      return "lineage unclear (excluded conservatively)"
+    if has(lg, "derived_from") and len(lg["derived_from"]) > 0:
+      return "derived from development material"
+  if _norm(it["input"]) in contam:
+    return "exact text equals a derivation example"
+  if _wkey(it["input"]) in wkeys:
+    return "word-set equals a derivation example (reordered copy)"
+  return ""
+def run_suite(s, contam):
+  wkeys = []
+  for c in contam:
+    append(wkeys, _wkey(c))
+  reasons = {}
+  scen = {}
+  order = []
+  for it in s["items"]:
+    sc = it["id"]
+    if has(it, "scenario"):
+      sc = it["scenario"]
+    if not (sc in scen):
+      scen[sc] = []
+      append(order, sc)
+    append(scen[sc], it)
+  cats = {}
+  failing = []
+  retired = []
+  refused = []
+  scored = 0
+  for sc in order:
+    state = agent.core.new_state()
+    for it in scen[sc]:
+      low = agent.core.lower_ascii(agent.core.normalize(it["input"]))
+      blocked = low[:5] == "read " or low[:9] == "patterns " or low[:9] == "selfeval " or low[:4] == "quit"
+      if blocked:
+        append(refused, it["id"])
+      else:
+        reply = agent.core.respond(state, it["input"])
+        why = _retire_reason(it, contam, wkeys)
+        isc = has(it, "expect") and why == ""
+        if has(it, "expect") and not isc:
+          append(retired, it["id"])
+          reasons[it["id"]] = why
+        if isc:
+          scored = scored + 1
+          obs = classify(reply)
+          ex = it["expect"]
+          cat = it["category"]
+          if not (cat in cats):
+            cats[cat] = {"items": 0, "dims": {}}
+          cats[cat]["items"] = cats[cat]["items"] + 1
+          bad = false
+          for d in DIMS:
+            if has(ex, d):
+              o = ""
+              if d == "contains":
+                o = "absent"
+                if agent.core.lower_ascii(ex[d]) in agent.core.lower_ascii(reply):
+                  o = "present"
+                e = "present"
+              else:
+                o = obs[d]
+                e = ex[d]
+              dm = cats[cat]["dims"]
+              if not (d in dm):
+                dm[d] = {"num": 0, "den": 0, "matrix": {}}
+              dm[d]["den"] = dm[d]["den"] + 1
+              if o == e:
+                dm[d]["num"] = dm[d]["num"] + 1
+              else:
+                bad = true
+              if not (e in dm[d]["matrix"]):
+                dm[d]["matrix"][e] = {}
+              if not (o in dm[d]["matrix"][e]):
+                dm[d]["matrix"][e][o] = 0
+              dm[d]["matrix"][e][o] = dm[d]["matrix"][e][o] + 1
+          if bad:
+            append(failing, it["id"])
+  outc = {}
+  for cat in _sort(keys(cats)):
+    c = cats[cat]
+    od = {}
+    for d in DIMS:
+      if d in c["dims"]:
+        x = c["dims"][d]
+        mx = {}
+        for e in _sort(keys(x["matrix"])):
+          row = {}
+          for o in _sort(keys(x["matrix"][e])):
+            row[o] = x["matrix"][e][o]
+          mx[e] = row
+        od[d] = {"num": x["num"], "den": x["den"], "label": label_of(x["den"]), "matrix": mx}
+    outc[cat] = {"items": c["items"], "dims": od}
+  return {"id": s["id"], "version": s["version"], "hash": agent.patgen._hash(json_str(s)), "tier": s["tier"], "lang": s["lang"], "provenance": s["provenance"], "frozen": has(s, "frozen") and s["frozen"] == true, "items": len(s["items"]), "scored": scored, "retired": retired, "retired_reasons": reasons, "refused": refused, "categories": outc, "failing": failing}
+def build_report(suites, contam):
+  rows = []
+  chal = []
+  problems = []
+  for s in suites:
+    p = suite_check(s)
+    if p != "":
+      append(problems, p)
+    else:
+      r = run_suite(s, contam)
+      if r["tier"] == "challenge":
+        append(chal, r)
+      else:
+        append(rows, r)
+  rep = {"schema": SCHEMA, "harness": HARNESS, "classifier": CLASSIFIER, "build": BUILD, "blended_score": "none by design", "suites": rows, "challenge": chal, "problems": problems}
+  rep["report_hash"] = agent.patgen._hash(json_str(rep))
+  return rep
+def render(rep):
+  out = ["selfeval report " + rep["report_hash"] + " (build " + rep["build"] + ", harness " + rep["harness"] + ", classifier " + rep["classifier"] + "; report-only, no blended score, hashes are change detection only)"]
+  for p in rep["problems"]:
+    out.append("  suite refused: " + p)
+  out.append("-- supported-capability suites (challenge probes are listed separately and never mixed in) --")
+  for s in rep["suites"]:
+    _render_suite(out, s)
+  out.append("-- challenge probes (future capability; NOT release-relevant, not in the supported section) --")
+  for s in rep["challenge"]:
+    _render_suite(out, s)
+  return join("\n", out)
+def _render_suite(out, s):
+  if true:
+    fz = "frozen"
+    if not s["frozen"]:
+      fz = "UNFROZEN (not baseline-eligible)"
+    out.append("suite " + s["id"] + " v" + str(s["version"]) + " " + s["tier"] + " lang " + s["lang"] + " by " + s["provenance"]["method"] + " " + s["hash"] + " " + fz + ": " + str(s["scored"]) + " scored of " + str(s["items"]) + " items, " + str(len(s["retired"])) + " retired (contaminated), " + str(len(s["refused"])) + " refused")
+    for cat in keys(s["categories"]):
+      c = s["categories"][cat]
+      for d in keys(c["dims"]):
+        x = c["dims"][d]
+        out.append("  " + cat + " / " + d + ": " + str(x["num"]) + "/" + str(x["den"]) + " " + x["label"] + " matrix " + json_str(x["matrix"]))
+    if len(s["failing"]) > 0:
+      out.append("  failing items: " + join(", ", s["failing"]))
+    if len(s["retired"]) > 0:
+      out.append("  retired items: " + join(", ", s["retired"]))
+      for rid in s["retired"]:
+        out.append("    " + rid + ": " + s["retired_reasons"][rid])
+def _lvalid(l):
+  ok = true
+  try:
+    if l["version"] != 1:
+      ok = false
+    i = 0
+    for r in l["runs"]:
+      i = i + 1
+      if r["n"] != i:
+        ok = false
+  except:
+    ok = false
+  return ok
+def load_ledger(path):
+  out = {"version": 1, "runs": []}
+  if exists(path):
+    try:
+      d = json_load(path)
+      if _lvalid(d):
+        out = d
+      else:
+        out["corrupt"] = true
+    except:
+      out["corrupt"] = true
+  return out
+# Append-only: the next n is len+1; an existing entry is never edited.
+def append_ledger(path, led, rep):
+  if has(led, "corrupt"):
+    return "ledger unreadable: not written (fix or remove it first)"
+  hs = []
+  for s in rep["suites"]:
+    append(hs, s["hash"])
+  for s in rep["challenge"]:
+    append(hs, s["hash"])
+  append(led["runs"], {"n": len(led["runs"]) + 1, "report_hash": rep["report_hash"], "suites": hs})
+  tmp = path + ".tmp"
+  json_save(tmp, led)
+  if not _lvalid(json_load(tmp)):
+    return "ledger tmp failed validation (final file untouched)"
+  json_save(path, led)
+  return ""
+# ---------------------------------------------------------------------
+# A23.2 baselines, comparison, operational snapshot. Still report-only:
+# nothing here changes a reply, a pattern or a threshold; every action
+# that writes a baseline is an explicit owner command. "owner" is an
+# unauthenticated convention and the hashes are poly62 change detection
+# (no SHA-256/HMAC until C20): baselines are owner-ATTESTED, not
+# authenticated.
+ATTEST = "owner-attested (unauthenticated convention; hashes are change detection only until C20)"
+def _without(d, k):
+  out = {}
+  for x in keys(d):
+    if x != k:
+      out[x] = d[x]
+  return out
+def report_ok(rep):
+  ok = false
+  try:
+    ok = rep["report_hash"] == agent.patgen._hash(json_str(_without(rep, "report_hash")))
+  except:
+    ok = false
+  return ok
+def binding_of(rep):
+  ss = []
+  for s in rep["suites"]:
+    append(ss, {"id": s["id"], "version": s["version"], "hash": s["hash"]})
+  return {"build": rep["build"], "harness": rep["harness"], "classifier": rep["classifier"], "schema": rep["schema"], "suites": ss}
+def _frozen_all(rep):
+  ok = len(rep["suites"]) > 0 and len(rep["problems"]) == 0
+  for s in rep["suites"] + rep["challenge"]:
+    if not s["frozen"]:
+      ok = false
+  return ok
+def new_entry(kind, rep, note):
+  e = {"version": 1, "kind": kind, "attested": ATTEST, "note": note, "binding": binding_of(rep), "report": rep}
+  return e
+def entry_hash(e):
+  return agent.patgen._hash(json_str(_without(e, "entry_hash")))
+def freeze_check(rep):
+  if not report_ok(rep):
+    return "report hash does not match its content (rerun selfeval run)"
+  if not _frozen_all(rep):
+    return "every suite must be frozen, valid and at least one supported suite is needed"
+  if rep["build"] != BUILD:
+    return "report was made by another build"
+  return ""
+def baseline_valid(e):
+  ok = false
+  try:
+    ok = e["version"] == 1 and e["entry_hash"] == entry_hash(e) and report_ok(e["report"])
+  except:
+    ok = false
+  return ok
+def load_frozen(path):
+  out = {"state": "absent"}
+  if exists(path):
+    out["state"] = "corrupt"
+    try:
+      d = json_load(path)
+      if baseline_valid(d) and d["kind"] == "frozen":
+        out = {"state": "ok", "entry": d}
+    except:
+      out["state"] = "corrupt"
+  return out
+def save_frozen(path, rep, note):
+  if exists(path):
+    return "a frozen baseline already exists and is immutable (a new baseline needs the owner to move the old file away by hand)"
+  e = new_entry("frozen", rep, note)
+  e["entry_hash"] = entry_hash(e)
+  tmp = path + ".tmp"
+  json_save(tmp, e)
+  if not baseline_valid(json_load(tmp)):
+    return "freeze failed validation (final file untouched)"
+  json_save(path, e)
+  return ""
+def _rvalid(r):
+  ok = true
+  try:
+    if r["version"] != 1:
+      ok = false
+    prev = "0"
+    i = 0
+    for e in r["entries"]:
+      i = i + 1
+      if e["n"] != i or e["prev"] != prev or e["entry_hash"] != entry_hash(e) or not report_ok(e["report"]):
+        ok = false
+      prev = e["entry_hash"]
+  except:
+    ok = false
+  return ok
+def load_rolling(path):
+  out = {"version": 1, "entries": []}
+  if exists(path):
+    try:
+      d = json_load(path)
+      if _rvalid(d):
+        out = d
+      else:
+        out["corrupt"] = true
+    except:
+      out["corrupt"] = true
+  return out
+def _distinct_reports(led):
+  seen = []
+  for r in led["runs"]:
+    if not (r["report_hash"] in seen):
+      append(seen, r["report_hash"])
+  return len(seen)
+# Append-only. Refused until a frozen baseline exists and the ledger
+# shows at least two distinct release reports. Records how the report
+# compared with the frozen baseline; it never edits earlier entries or
+# the frozen file.
+def accept_rolling(path, roll, led, fr, rep, note):
+  if has(roll, "corrupt"):
+    return "accept refused: rolling baseline unreadable (fix or remove it first)"
+  if fr["state"] != "ok":
+    return "accept refused: no valid frozen release baseline (selfeval freeze first)"
+  if not report_ok(rep) or not _frozen_all(rep):
+    return "accept refused: report invalid or has unfrozen suites"
+  if _distinct_reports(led) < 2:
+    return "accept refused: the rolling baseline needs at least two distinct release reports in the ledger"
+  cmp = compare(fr["entry"]["report"], rep)
+  prev = "0"
+  if len(roll["entries"]) > 0:
+    prev = roll["entries"][len(roll["entries"]) - 1]["entry_hash"]
+  e = new_entry("rolling", rep, note)
+  e["n"] = len(roll["entries"]) + 1
+  e["prev"] = prev
+  e["vs_frozen"] = cmp["verdict"]
+  e["entry_hash"] = entry_hash(e)
+  append(roll["entries"], e)
+  tmp = path + ".tmp"
+  json_save(tmp, roll)
+  if not _rvalid(json_load(tmp)):
+    return "accept failed validation (final file untouched)"
+  json_save(path, roll)
+  return ""
+def _sidx(rep):
+  out = {}
+  for s in rep["suites"]:
+    out[s["id"]] = s
+  return out
+def _nonempty(xs):
+  return len(xs) > 0
+def compare(base, cur):
+  lines = []
+  verdict = "UNCHANGED"
+  rank = {"UNCHANGED": 0, "IMPROVED_NOT_ACCEPTED": 1, "NOT_DIRECTLY_COMPARABLE": 2, "REVIEW_THIN_DATA": 3, "REVIEW_REQUIRED": 4}
+  rep_why = []
+  for f in ["schema", "harness", "classifier"]:
+    if base[f] != cur[f]:
+      append(rep_why, f + " differs (" + str(base[f]) + " vs " + str(cur[f]) + ")")
+  bi = _sidx(base)
+  ci = _sidx(cur)
+  for sid in keys(bi):
+    if not (sid in ci):
+      append(lines, "  " + sid + ": NOT_DIRECTLY_COMPARABLE (suite missing from the current run; not treated as a pass)")
+      if rank["NOT_DIRECTLY_COMPARABLE"] > rank[verdict]:
+        verdict = "NOT_DIRECTLY_COMPARABLE"
+  for sid in keys(ci):
+    c = ci[sid]
+    if not (sid in bi):
+      append(lines, "  " + sid + ": NOT_DIRECTLY_COMPARABLE (no baseline for this suite)")
+      if rank["NOT_DIRECTLY_COMPARABLE"] > rank[verdict]:
+        verdict = "NOT_DIRECTLY_COMPARABLE"
+    else:
+      b = bi[sid]
+      why = []
+      for w in rep_why:
+        append(why, w)
+      if b["version"] != c["version"]:
+        append(why, "suite version differs")
+      if b["hash"] != c["hash"]:
+        append(why, "suite hash differs")
+      if json_str(b["retired"]) != json_str(c["retired"]) or json_str(b["retired_reasons"]) != json_str(c["retired_reasons"]):
+        append(why, "contamination state differs")
+      if json_str(keys(b["categories"])) != json_str(keys(c["categories"])):
+        append(why, "categories differ")
+      if len(why) > 0:
+        append(lines, "  " + sid + ": NOT_DIRECTLY_COMPARABLE (" + join("; ", why) + "); score changes are not read as regressions")
+        if rank["NOT_DIRECTLY_COMPARABLE"] > rank[verdict]:
+          verdict = "NOT_DIRECTLY_COMPARABLE"
+      else:
+        sv = "UNCHANGED"
+        det = []
+        for cat in keys(c["categories"]):
+          for d in keys(c["categories"][cat]["dims"]):
+            x = c["categories"][cat]["dims"][d]
+            y = b["categories"][cat]["dims"][d]
+            if x["num"] < y["num"]:
+              t = "REVIEW_REQUIRED"
+              if x["den"] < 30:
+                t = "REVIEW_THIN_DATA"
+              append(det, "    " + cat + " / " + d + ": " + str(y["num"]) + "/" + str(y["den"]) + " -> " + str(x["num"]) + "/" + str(x["den"]) + " " + x["label"] + " " + t)
+              if rank[t] > rank[sv]:
+                sv = t
+            elif x["num"] > y["num"]:
+              append(det, "    " + cat + " / " + d + ": " + str(y["num"]) + "/" + str(y["den"]) + " -> " + str(x["num"]) + "/" + str(x["den"]) + " " + x["label"] + " improved (not auto-accepted)")
+              if rank["IMPROVED_NOT_ACCEPTED"] > rank[sv]:
+                sv = "IMPROVED_NOT_ACCEPTED"
+        newf = []
+        for i in c["failing"]:
+          if not (i in b["failing"]):
+            append(newf, i)
+        if len(newf) > 0:
+          append(det, "    newly failing items: " + join(", ", newf))
+        append(lines, "  " + sid + ": " + sv + " (same suite hash, metrics and contamination state)")
+        for l in det:
+          append(lines, l)
+        if rank[sv] > rank[verdict]:
+          verdict = sv
+  return {"verdict": verdict, "lines": lines}
+def render_compare(fr, roll, cur):
+  out = ["selfeval compare (report-only: nothing changes at runtime; owner decides; baselines are " + ATTEST + ")"]
+  out.append("-- vs FROZEN release baseline (authoritative; the rolling baseline cannot override it) --")
+  worst = "UNCHANGED"
+  rank = {"UNCHANGED": 0, "IMPROVED_NOT_ACCEPTED": 1, "NOT_DIRECTLY_COMPARABLE": 2, "REVIEW_THIN_DATA": 3, "REVIEW_REQUIRED": 4}
+  if fr["state"] == "ok":
+    c = compare(fr["entry"]["report"], cur)
+    out.append("  baseline " + fr["entry"]["entry_hash"] + " built by " + fr["entry"]["binding"]["build"] + ", current build " + cur["build"])
+    for l in c["lines"]:
+      out.append(l)
+    out.append("  frozen verdict: " + c["verdict"])
+    worst = c["verdict"]
+  elif fr["state"] == "corrupt":
+    out.append("  frozen baseline CHANGED OR UNREADABLE (change detected): not compared")
+    worst = "NOT_DIRECTLY_COMPARABLE"
+  else:
+    out.append("  no frozen baseline yet (selfeval freeze NOTE owner)")
+  if has(roll, "corrupt"):
+    out.append("-- rolling baseline CHANGED OR UNREADABLE (change detected): not compared --")
+  elif len(roll["entries"]) > 0:
+    e = roll["entries"][len(roll["entries"]) - 1]
+    c = compare(e["report"], cur)
+    out.append("-- vs latest owner-accepted ROLLING entry " + str(e["n"]) + " of " + str(len(roll["entries"])) + " (accepted when it stood at " + e["vs_frozen"] + " vs frozen) --")
+    for l in c["lines"]:
+      out.append(l)
+    out.append("  rolling verdict: " + c["verdict"])
+  out.append("overall: " + worst + " (the frozen result is never hidden by the rolling one; REVIEW_* means an owner release decision, nothing is disabled or tuned)")
+  return join("\n", out)
+def baseline_status(fr, roll):
+  out = ["selfeval baselines (" + ATTEST + ")"]
+  if fr["state"] == "ok":
+    b = fr["entry"]["binding"]
+    ids = []
+    for s in b["suites"]:
+      ids.append(s["id"] + " v" + str(s["version"]) + " " + s["hash"])
+    out.append("  frozen: " + fr["entry"]["entry_hash"] + " build " + b["build"] + " harness " + b["harness"] + " classifier " + b["classifier"] + " schema " + str(b["schema"]) + " suites " + join(", ", ids))
+  elif fr["state"] == "corrupt":
+    out.append("  frozen: CHANGED OR UNREADABLE (change detected)")
+  else:
+    out.append("  frozen: none")
+  if has(roll, "corrupt"):
+    out.append("  rolling: CHANGED OR UNREADABLE (change detected)")
+  else:
+    out.append("  rolling: " + str(len(roll["entries"])) + " owner-accepted entr(ies), append-only, hash-chained")
+  return join("\n", out)
+# Operational snapshot (A22 tripwire data), aggregate and read-only. It is
+# NOT part of any evaluation report or report_hash; it carries its own id.
+# Lifetime totals are shown as totals, never as rates; the rate is the
+# window rate only (confirmed false positives / distinct matches in window).
+def ops_snapshot(tw):
+  if tw["unreadable"]:
+    return "operational snapshot: tripwire file unreadable (nothing aggregated)"
+  rows = []
+  tot = 0
+  for pid in keys(tw["patterns"]):
+    tot = tot + len(tw["patterns"][pid]["window"])
+  for pid in keys(tw["patterns"]):
+    pr = tw["patterns"][pid]
+    fps = 0
+    for w in pr["window"]:
+      if w[1] == 1:
+        fps = fps + 1
+    rows.append(pid + " " + pr["state"] + " window FPs " + str(fps) + "/" + str(len(pr["window"])) + " matches; lifetime (a total, not a rate): matches " + str(pr["matches_lifetime"]) + ", FPs " + str(pr["fp_lifetime"]) + ", polarity errors " + str(pr["polarity_lifetime"]) + "; share of window exposure " + str(len(pr["window"])) + "/" + str(tot))
+  body = join("\n", rows)
+  out = ["operational snapshot " + agent.patgen._hash(body) + " (aggregate, read-only, separate from the evaluation report; ids and counts only; per-source concentration is not recorded by the tripwire)"]
+  if len(rows) == 0:
+    out.append("  no tracked patterns")
+  for r in rows:
+    out.append("  " + r)
+  return join("\n", out)
+# ---------------------------------------------------------------------
+# A23.3 Thai dataset format check (NO labels exist yet; the labels are the
+# owner's work). A Thai dataset is not a runnable suite: it records
+# authored items, independent human annotations, adjudication and
+# semantic acceptance criteria. thai_check only VALIDATES and COUNTS; it
+# never labels, translates or scores, and it prints ids and counts only.
+# Freezing a labeled Thai suite is a later owner step.
+EPI = ["supported", "unknown", "contradicted", "ambiguous", "n/a"]
+ACT = ["answer", "abstain", "clarify", "acknowledge", "not_understood", "other"]
+def _label_ok(lb):
+  ok = true
+  try:
+    for k in keys(lb):
+      if k == "epistemic":
+        if not (lb[k] in EPI):
+          ok = false
+      elif k == "action":
+        if not (lb[k] in ACT):
+          ok = false
+      else:
+        ok = false
+    if len(keys(lb)) == 0:
+      ok = false
+  except:
+    ok = false
+  return ok
+def _item_state(it, probs):
+  iid = it["id"]
+  ann = it["annotations"]
+  ad = it["adjudication"]
+  names = []
+  for a in ann:
+    if not (a["role"] in ["primary", "independent"]):
+      append(probs, iid + ": annotation role must be primary or independent")
+    if json_str(a["annotator"])[:1] != "\"" or len(a["annotator"]) == 0:
+      append(probs, iid + ": annotator missing")
+    if not _label_ok(a["label"]):
+      append(probs, iid + ": annotation label invalid")
+    if not (a["annotator"] in names):
+      append(names, a["annotator"])
+  need2 = it["critical"] == true
+  for a in ann:
+    if has(a["label"], "epistemic") and a["label"]["epistemic"] == "ambiguous":
+      need2 = true
+  st = ad["state"]
+  if not (st in ["none", "agreed", "adjudicated"]):
+    append(probs, iid + ": adjudication state invalid")
+    return "pending"
+  if st == "none":
+    return "pending"
+  if len(names) < 2:
+    append(probs, iid + ": " + st + " needs two distinct annotators")
+    return "pending"
+  if st == "agreed":
+    same = true
+    for a in ann:
+      if json_str(a["label"]) != json_str(ann[0]["label"]):
+        same = false
+    if not same:
+      append(probs, iid + ": marked agreed but annotations differ (needs adjudication)")
+      return "pending"
+    if need2:
+      append(probs, iid + ": critical or ambiguous items need an adjudicator even when annotators agree")
+      return "pending"
+    return "resolved"
+  if json_str(ad["by"])[:1] != "\"" or len(ad["by"]) == 0:
+    append(probs, iid + ": adjudicator missing")
+    return "pending"
+  if ad["by"] in names:
+    append(probs, iid + ": the adjudicator cannot be one of the annotators")
+    return "pending"
+  if not _label_ok(ad["final"]):
+    append(probs, iid + ": final label invalid")
+    return "pending"
+  return "resolved"
+def thai_check(s):
+  probs = []
+  cats = {}
+  pend = []
+  nres = 0
+  try:
+    if s["kind"] != "thai-dataset" or s["lang"] != "th":
+      return "thai-check refused: kind must be thai-dataset and lang th"
+    if not (s["tier"] in ["supported", "challenge"]):
+      return "thai-check refused: tier must be supported (release-relevant core) or challenge (future probes)"
+    if not (s["status"] in ["PENDING_OWNER_LABELING", "LABELS_ADJUDICATED_FROZEN"]):
+      return "thai-check refused: status invalid"
+    if not (s["provenance"]["method"] in ["owner-authored", "owner-real"]):
+      return "thai-check refused: Thai provenance must be owner-authored or owner-real (never translated or synthetic)"
+    if s["provenance"]["method"] == "owner-real" and not (has(s["provenance"], "opt_in") and s["provenance"]["opt_in"] == true and has(s["provenance"], "privacy_check") and s["provenance"]["privacy_check"] == true):
+      return "thai-check refused: owner-real data needs explicit opt_in and privacy_check"
+    crit = s["acceptance_criteria"]
+    seen = []
+    for it in s["items"]:
+      if json_str(it["id"])[:1] != "\"" or json_str(it["category"])[:1] != "\"" or json_str(it["input"])[:1] != "\"":
+        return "thai-check refused: item needs string id, category, input"
+      if it["id"] in seen:
+        return "thai-check refused: duplicate item id " + it["id"]
+      append(seen, it["id"])
+      if it["origin"] == "translated":
+        append(probs, it["id"] + ": translated items are not allowed (items must be authored in Thai)")
+      elif it["origin"] != "authored":
+        append(probs, it["id"] + ": origin must be authored")
+      if not (it["category"] in keys(crit)):
+        append(probs, it["id"] + ": category " + it["category"] + " has no semantic acceptance criteria")
+      state = _item_state(it, probs)
+      if not (it["category"] in cats):
+        cats[it["category"]] = {"items": 0, "resolved": 0}
+      cats[it["category"]]["items"] = cats[it["category"]]["items"] + 1
+      if state == "resolved":
+        cats[it["category"]]["resolved"] = cats[it["category"]]["resolved"] + 1
+        nres = nres + 1
+      else:
+        append(pend, it["id"])
+    for c in keys(crit):
+      if json_str(crit[c])[:1] != "\"" or len(crit[c]) == 0:
+        append(probs, "category " + c + ": acceptance criteria must be a non-empty string")
+  except:
+    return "thai-check refused: malformed Thai dataset"
+  out = ["thai-check " + s["id"] + " v" + str(s["version"]) + " tier " + s["tier"] + " status " + s["status"] + " (format check only: no labels are created, no scoring; counts and ids only)"]
+  for c in _sort(keys(cats)):
+    x = cats[c]
+    out.append("  " + c + ": " + str(x["resolved"]) + " resolved of " + str(x["items"]) + " items " + label_of(x["resolved"]) + " (a resolved item is human-annotated and adjudicated per the rules)")
+  for p in probs:
+    out.append("  problem: " + p)
+  total = len(s["items"])
+  verdict = "READY_TO_FREEZE (owner freezes in a later step)"
+  if total == 0:
+    verdict = "PENDING_OWNER_LABELING: no items yet"
+  elif len(pend) > 0 or len(probs) > 0:
+    verdict = "PENDING_OWNER_LABELING: " + str(len(pend)) + " unresolved item(s), " + str(len(probs)) + " problem(s)"
+  out.append("verdict: " + verdict)
+  return join("\n", out)

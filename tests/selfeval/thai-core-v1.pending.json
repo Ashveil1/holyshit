@@ -1,0 +1,54 @@
+{
+ "id": "thai-core",
+ "version": 1,
+ "kind": "thai-dataset",
+ "lang": "th",
+ "tier": "supported",
+ "status": "PENDING_OWNER_LABELING",
+ "note": "TEMPLATE, no items and no labels. Items are authored in Thai by the owner (never translated from English). Each item needs an origin of authored, at least two independent human annotations, and adjudication; critical or ambiguous items always need an adjudicator who is not an annotator. Future-capability probes go in a separate dataset with tier challenge.",
+ "provenance": {
+  "method": "owner-authored",
+  "author": "owner"
+ },
+ "acceptance_criteria": {
+  "recall": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
+  "unknown": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
+  "contradiction": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
+  "ambiguity": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
+  "teach": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
+  "forget": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
+  "correction": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category"
+ },
+ "items": [],
+ "item_example_shape": {
+  "id": "th-0001",
+  "category": "recall",
+  "input": "<Thai text authored by the owner>",
+  "origin": "authored",
+  "critical": false,
+  "scenario": "optional scenario id",
+  "annotations": [
+   {
+    "annotator": "annotator-1",
+    "role": "primary",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    }
+   },
+   {
+    "annotator": "annotator-2",
+    "role": "independent",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    }
+   }
+  ],
+  "adjudication": {
+   "state": "agreed",
+   "by": "",
+   "final": {}
+  }
+ }
+}
