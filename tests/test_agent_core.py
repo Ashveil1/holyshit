@@ -1593,6 +1593,9 @@ class Oracle:
             return self._open_reply(m[10:])
         if m[:25] == 'tell me everything about ':
             return self._open_reply(m[25:])
+        pc = self._pron_clarify(m, qmark)
+        if pc is not None:
+            return pc
         p = 'เกี่ยวกับ '
         if m.find(p) == 0:
             return self._open_reply(m[len(p):])
@@ -1830,6 +1833,56 @@ class Oracle:
         self.order.append(key)
         return 'remembered ' + key + ' is ' + value + suffix
 
+    THAI_PRON = ('มัน', 'เขา', 'เธอ', 'อันนี้', 'อันนั้น', 'ตัวนี้', 'ตัวนั้น', 'ตัว นี้',
+                 'ตัว นั้น', 'คนนี้', 'คนนั้น', 'คน นี้', 'คน นั้น', 'ที่นี่', 'ที่นั่น',
+                 'ที่ นี่', 'ที่ นั่น', 'นี่', 'นั่น', 'โน่น')
+
+    def _pron_subject(self, m, qmark):
+        for suf in (' อยู่ไหน', ' คืออะไร', ' หมายความว่าอะไร'):
+            k = m.find(suf)
+            if k > 0 and k + len(suf) == len(m):
+                return m[:k]
+        p = 'เกี่ยวกับ '
+        if m.find(p) == 0 and len(m) > len(p):
+            return m[len(p):]
+        q = m
+        isq = False
+        for suf in (' หรือไม่', 'หรือไม่', ' ไหม', 'ไหม'):
+            if len(q) > len(suf) and q[len(q) - len(suf):] == suf:
+                q = q[:len(q) - len(suf)]
+                isq = True
+        if not isq and qmark:
+            isq = True
+        if isq:
+            k = q.find(' เป็น ')
+            if k < 0:
+                k = q.find('เป็น')
+                d = len('เป็น')
+            else:
+                d = len(' เป็น ')
+            if k > 0 and k + d < len(q):
+                return q[:k]
+            k = q.find(' คือ ')
+            if k < 0:
+                k = q.find('คือ')
+                d = len('คือ')
+            else:
+                d = len(' คือ ')
+            if k > 0 and k + d < len(q):
+                return q[:k]
+        return None
+
+    def _pron_clarify(self, m, qmark):
+        subj = self._pron_subject(m, qmark)
+        if subj is None or subj not in self.THAI_PRON:
+            return None
+        if self._resolve(subj) is not None:
+            return None
+        t = self.topic
+        if t is not None and t in self.facts:
+            return 'did you mean ' + t + '? clarify by saying the name'
+        return 'clarify: which thing do you mean by ' + subj + '? say its name'
+
     def _correct_thai(self, rest, mrest):
         for word in ('อยู่', 'คือ', 'เป็น', 'มี'):
             mk = ' ' + word + ' '
@@ -1987,7 +2040,7 @@ class Oracle:
             if k == key:
                 continue
             kwords = self._value_words(k)
-            if any(len(w) >= 3 and w not in STOP and
+            if any((len(w) >= 3 or nonascii(w)) and w not in STOP and
                    any(wmatch(w, kw) for kw in kwords) for w in words):
                 reply += '; also ' + k + ' is ' + join_values(self.facts[k])
         return reply
@@ -2369,6 +2422,11 @@ A9_SCENARIOS = [
      'remember ค อยู่ ก', 'remember ค is also อยู่ ข', 'no, ค อยู่ ง',
      'what do you know about ค', 'no, นกฮูก is a bird',
      'what do you know about นกฮูก', 'no, อยู่ ที่นี่', 'no, ก อยู่'],
+    ['มัน อยู่ไหน', 'remember ค้างคาว อยู่ ถ้ำ', 'มัน อยู่ไหน', 'อันนั้น คืออะไร',
+     'เกี่ยวกับ เขา', 'มัน คือ สัตว์ หรือไม่', 'มันเป็นสัตว์ไหม', 'ตัว นั้น อยู่ไหน',
+     'remember มัน อยู่ ที่นี่', 'มัน อยู่ไหน', 'remember มันฝรั่ง อยู่ ดิน',
+     'มันฝรั่ง อยู่ไหน', 'ช้าง อยู่ไหน', 'ที่ นั่น มี อะไร บ้าง', 'forget มัน',
+     'มัน อยู่ไหน', 'what do you know'],
 ]
 
 

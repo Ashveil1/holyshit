@@ -147,6 +147,15 @@ preview below); the core itself stays network-free.
   detection (A22.1 is audit-only). `no, X is Y` in English still replaces
   everything about X. Not covered: หมายความว่า, ไม่เป็น, and corrections
   that name no thing.
+  Thai pronouns (A25.3): a fixed list of 20 exact pronoun spellings (มัน, เขา,
+  อันนั้น, ตัวนั้น ...) in a question gets a clarification, never a guess: `did
+  you mean <topic>? clarify by saying the name` when a topic exists, else `clarify:
+  which thing do you mean by <word>?`. It offers the topic as a question only; no
+  state, topic or log change, no topic resolution. A taught key or alias with the
+  same spelling resolves normally. English pronouns are unchanged. Not covered:
+  ใคร, ที่ไหน, and มี-questions (they stay `i do not understand`).
+  Also fixed: the about-reply length guard now counts non-ASCII tokens as long
+  (matches native; only the interp route changed).
   `is paris in europe` then answers by transitive closure over those
   edges and shows the chain it used (`yes: paris is in france, france
   is in europe`); a miss is open-world honest (`not that i know`,
