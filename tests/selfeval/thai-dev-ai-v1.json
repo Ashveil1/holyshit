@@ -1,0 +1,1124 @@
+{
+ "id": "thai-dev-ai",
+ "version": 1,
+ "kind": "dialogue",
+ "tier": "challenge",
+ "lang": "th",
+ "frozen": false,
+ "note": "AI-authored (Claude) Thai DEV/REGRESSION set. NOT independent, NOT the owner's thai-core suite, never used to claim quality. Expectations are the authoring model's guesses about a good reply, unreviewed by a Thai-speaking human.",
+ "provenance": {
+  "method": "synthetic",
+  "author": "ai_dev"
+ },
+ "items": [
+  {
+   "id": "d-001",
+   "category": "setup",
+   "input": "remember ช้าง อยู่ ป่า",
+   "scenario": "s01"
+  },
+  {
+   "id": "d-002",
+   "category": "setup",
+   "input": "remember เต่า อยู่ สระน้ำ",
+   "scenario": "s01"
+  },
+  {
+   "id": "d-003",
+   "category": "recall",
+   "input": "ช้าง อยู่ไหน",
+   "scenario": "s01",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "ป่า"
+   }
+  },
+  {
+   "id": "d-004",
+   "category": "recall",
+   "input": "เต่า อยู่ไหน",
+   "scenario": "s01",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "สระน้ำ"
+   }
+  },
+  {
+   "id": "d-005",
+   "category": "setup",
+   "input": "remember ปลา คือ สัตว์น้ำ",
+   "scenario": "s02"
+  },
+  {
+   "id": "d-006",
+   "category": "recall",
+   "input": "ปลา คืออะไร",
+   "scenario": "s02",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "สัตว์น้ำ"
+   }
+  },
+  {
+   "id": "d-007",
+   "category": "recall",
+   "input": "ปลา คือ สัตว์น้ำ หรือไม่",
+   "scenario": "s02",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-008",
+   "category": "setup",
+   "input": "remember เป็ด มี ปีก",
+   "scenario": "s03"
+  },
+  {
+   "id": "d-009",
+   "category": "setup",
+   "input": "remember เป็ด อยู่ นา",
+   "scenario": "s03"
+  },
+  {
+   "id": "d-010",
+   "category": "recall",
+   "input": "เกี่ยวกับ เป็ด",
+   "scenario": "s03",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "ปีก"
+   }
+  },
+  {
+   "id": "d-011",
+   "category": "setup",
+   "input": "remember ควาย คือ สัตว์เลี้ยง",
+   "scenario": "s04"
+  },
+  {
+   "id": "d-012",
+   "category": "setup",
+   "input": "remember ควาย อยู่ ทุ่งนา",
+   "scenario": "s04"
+  },
+  {
+   "id": "d-013",
+   "category": "recall",
+   "input": "ควาย อยู่ไหน",
+   "scenario": "s04",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "ทุ่งนา"
+   }
+  },
+  {
+   "id": "d-014",
+   "category": "recall",
+   "input": "ควาย คืออะไร",
+   "scenario": "s04",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "สัตว์เลี้ยง"
+   }
+  },
+  {
+   "id": "d-015",
+   "category": "setup",
+   "input": "remember สมชาย อยู่ ตลาด",
+   "scenario": "s05"
+  },
+  {
+   "id": "d-016",
+   "category": "setup",
+   "input": "remember สมชาย คือ พ่อค้า",
+   "scenario": "s05"
+  },
+  {
+   "id": "d-017",
+   "category": "recall",
+   "input": "สมชาย อยู่ไหน",
+   "scenario": "s05",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "ตลาด"
+   }
+  },
+  {
+   "id": "d-018",
+   "category": "recall",
+   "input": "เกี่ยวกับ สมชาย",
+   "scenario": "s05",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "พ่อค้า"
+   }
+  },
+  {
+   "id": "d-019",
+   "category": "setup",
+   "input": "remember กวาง อยู่ ภูเขา",
+   "scenario": "s06"
+  },
+  {
+   "id": "x-001",
+   "category": "recall",
+   "input": "กวาง อาศัย อยู่ ที่ไหน คะ",
+   "scenario": "s06",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-002",
+   "category": "recall",
+   "input": "บอก หน่อย ว่า กวาง อยู่ แถว ไหน",
+   "scenario": "s06",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "d-020",
+   "category": "setup",
+   "input": "remember ไก่ คือ สัตว์ปีก",
+   "scenario": "s07"
+  },
+  {
+   "id": "x-003",
+   "category": "recall",
+   "input": "ไก่ นี่ เป็น สัตว์ ประเภท ไหน นะ",
+   "scenario": "s07",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-004",
+   "category": "recall",
+   "input": "ไก่ ใช่ สัตว์ปีก รึ เปล่า",
+   "scenario": "s07",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "d-021",
+   "category": "setup",
+   "input": "remember หมู อยู่ เล้า",
+   "scenario": "s08"
+  },
+  {
+   "id": "d-022",
+   "category": "unknown",
+   "input": "ม้า อยู่ไหน",
+   "scenario": "s08",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-023",
+   "category": "unknown",
+   "input": "กระต่าย คืออะไร",
+   "scenario": "s08",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-024",
+   "category": "unknown",
+   "input": "เกี่ยวกับ จระเข้",
+   "scenario": "s09",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-025",
+   "category": "unknown",
+   "input": "ยีราฟ อยู่ไหน",
+   "scenario": "s09",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-026",
+   "category": "setup",
+   "input": "remember มะม่วง คือ ผลไม้",
+   "scenario": "s10"
+  },
+  {
+   "id": "d-027",
+   "category": "unknown",
+   "input": "ทุเรียน คือ ผลไม้ หรือไม่",
+   "scenario": "s10",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-028",
+   "category": "unknown",
+   "input": "มะม่วง อยู่ไหน",
+   "scenario": "s10",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-029",
+   "category": "setup",
+   "input": "remember ปีติ อยู่ โรงเรียน",
+   "scenario": "s11"
+  },
+  {
+   "id": "d-030",
+   "category": "unknown",
+   "input": "วิชัย อยู่ไหน",
+   "scenario": "s11",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-031",
+   "category": "unknown",
+   "input": "เกี่ยวกับ วิชัย",
+   "scenario": "s11",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-032",
+   "category": "unknown",
+   "input": "ภูเขา คืออะไร",
+   "scenario": "s12",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-033",
+   "category": "unknown",
+   "input": "เกี่ยวกับ ทะเล",
+   "scenario": "s12",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-034",
+   "category": "setup",
+   "input": "remember ต้มยำ คือ อาหาร",
+   "scenario": "s13"
+  },
+  {
+   "id": "x-005",
+   "category": "unknown",
+   "input": "ต้มยำ ทำ ยังไง",
+   "scenario": "s13",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "x-006",
+   "category": "unknown",
+   "input": "ประเทศ ไทย มี กี่ จังหวัด",
+   "scenario": "s13",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "x-007",
+   "category": "unknown",
+   "input": "พรุ่งนี้ ฝน จะ ตก ไหม",
+   "scenario": "s13",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "x-008",
+   "category": "unknown",
+   "input": "ต้มยำ อร่อย ไหม",
+   "scenario": "s13",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-035",
+   "category": "setup",
+   "input": "remember หมา อยู่ บ้าน",
+   "scenario": "s14"
+  },
+  {
+   "id": "d-036",
+   "category": "contradiction",
+   "input": "remember หมา อยู่ ตลาด",
+   "scenario": "s14",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-037",
+   "category": "contradiction",
+   "input": "หมา อยู่ไหน",
+   "scenario": "s14",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-038",
+   "category": "setup",
+   "input": "remember กุ้ง อยู่ ทะเล",
+   "scenario": "s15"
+  },
+  {
+   "id": "d-039",
+   "category": "contradiction",
+   "input": "remember กุ้ง อยู่ ภูเขา",
+   "scenario": "s15",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-040",
+   "category": "contradiction",
+   "input": "เกี่ยวกับ กุ้ง",
+   "scenario": "s15",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-041",
+   "category": "setup",
+   "input": "remember สุดา อยู่ โรงพยาบาล",
+   "scenario": "s16"
+  },
+  {
+   "id": "d-042",
+   "category": "contradiction",
+   "input": "remember สุดา อยู่ วัด",
+   "scenario": "s16",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-043",
+   "category": "setup",
+   "input": "remember มานี อยู่ โรงเรียน",
+   "scenario": "s17"
+  },
+  {
+   "id": "d-044",
+   "category": "contradiction",
+   "input": "remember มานี อยู่ บ้าน",
+   "scenario": "s17",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-045",
+   "category": "contradiction",
+   "input": "มานี อยู่ไหน",
+   "scenario": "s17",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-046",
+   "category": "setup",
+   "input": "remember วัว คือ สัตว์เลี้ยง",
+   "scenario": "s18"
+  },
+  {
+   "id": "d-047",
+   "category": "contradiction",
+   "input": "remember วัว คือ สัตว์ป่า",
+   "scenario": "s18",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-048",
+   "category": "contradiction",
+   "input": "วัว คืออะไร",
+   "scenario": "s18",
+   "expect": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   }
+  },
+  {
+   "id": "d-049",
+   "category": "setup",
+   "input": "remember จิ้งจก อยู่ ผนัง",
+   "scenario": "s19"
+  },
+  {
+   "id": "x-009",
+   "category": "contradiction",
+   "input": "จิ้งจก ไม่ ได้ อยู่ ผนัง นะ",
+   "scenario": "s19",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-010",
+   "category": "contradiction",
+   "input": "จริงๆ แล้ว จิ้งจก อยู่ บน เพดาน ไม่ใช่ เหรอ",
+   "scenario": "s19",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-011",
+   "category": "contradiction",
+   "input": "ฉัน ว่า จิ้งจก อยู่ ใน ห้องน้ำ",
+   "scenario": "s19",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-012",
+   "category": "contradiction",
+   "input": "ตอนนี้ จิ้งจก ย้าย ไป อยู่ เพดาน แล้ว",
+   "scenario": "s19",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "d-050",
+   "category": "setup",
+   "input": "remember ค้างคาว อยู่ ถ้ำ",
+   "scenario": "s20"
+  },
+  {
+   "id": "d-051",
+   "category": "ambiguity",
+   "input": "มัน อยู่ไหน",
+   "scenario": "s20",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "d-052",
+   "category": "ambiguity",
+   "input": "อันนั้น คืออะไร",
+   "scenario": "s20",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "d-053",
+   "category": "setup",
+   "input": "remember วิชัย อยู่ ตลาด",
+   "scenario": "s21"
+  },
+  {
+   "id": "d-054",
+   "category": "setup",
+   "input": "remember สุดา อยู่ วัด",
+   "scenario": "s21"
+  },
+  {
+   "id": "d-055",
+   "category": "ambiguity",
+   "input": "เขา อยู่ไหน",
+   "scenario": "s21",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "d-056",
+   "category": "setup",
+   "input": "remember ทุเรียน คือ ผลไม้",
+   "scenario": "s22"
+  },
+  {
+   "id": "d-057",
+   "category": "ambiguity",
+   "input": "มัน คืออะไร",
+   "scenario": "s22",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "d-058",
+   "category": "ambiguity",
+   "input": "เกี่ยวกับ เขา",
+   "scenario": "s23",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "d-059",
+   "category": "ambiguity",
+   "input": "มัน คือ สัตว์ หรือไม่",
+   "scenario": "s23",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "d-060",
+   "category": "setup",
+   "input": "remember ปลา อยู่ ตู้",
+   "scenario": "s24"
+  },
+  {
+   "id": "d-061",
+   "category": "setup",
+   "input": "remember กบ อยู่ สระน้ำ",
+   "scenario": "s24"
+  },
+  {
+   "id": "d-062",
+   "category": "ambiguity",
+   "input": "ตัว นั้น อยู่ไหน",
+   "scenario": "s24",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "d-063",
+   "category": "setup",
+   "input": "remember เต่า คือ สัตว์เลื้อยคลาน",
+   "scenario": "s25"
+  },
+  {
+   "id": "d-064",
+   "category": "ambiguity",
+   "input": "อันนี้ คืออะไร",
+   "scenario": "s25",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "d-065",
+   "category": "setup",
+   "input": "remember มานี อยู่ บ้าน",
+   "scenario": "s26"
+  },
+  {
+   "id": "d-066",
+   "category": "setup",
+   "input": "remember ชูใจ อยู่ ตลาด",
+   "scenario": "s26"
+  },
+  {
+   "id": "x-013",
+   "category": "ambiguity",
+   "input": "เธอ อยู่ ที่ไหน",
+   "scenario": "s26",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "x-014",
+   "category": "ambiguity",
+   "input": "คน นั้น คือ ใคร",
+   "scenario": "s26",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "x-015",
+   "category": "ambiguity",
+   "input": "ที่ นั่น มี อะไร บ้าง",
+   "scenario": "s26",
+   "expect": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   }
+  },
+  {
+   "id": "d-067",
+   "category": "teach",
+   "input": "remember นกแก้ว อยู่ กรง",
+   "scenario": "s27",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-068",
+   "category": "teach",
+   "input": "remember นกแก้ว คือ สัตว์เลี้ยง",
+   "scenario": "s27",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-069",
+   "category": "teach",
+   "input": "remember วัด คือ สถานที่",
+   "scenario": "s28",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-070",
+   "category": "teach",
+   "input": "remember วัด มี พระ",
+   "scenario": "s28",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-071",
+   "category": "teach",
+   "input": "remember กล้วย มี เปลือก",
+   "scenario": "s29",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-072",
+   "category": "teach",
+   "input": "remember ตลาด คือ สถานที่",
+   "scenario": "s29",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-073",
+   "category": "teach",
+   "input": "remember ส้มตำ คือ อาหาร",
+   "scenario": "s29",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-074",
+   "category": "teach",
+   "input": "remember ปีติ อยู่ โรงเรียน",
+   "scenario": "s29",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "x-016",
+   "category": "teach",
+   "input": "ช่วย จำ ไว้ ด้วย นะ ว่า ไก่ อยู่ เล้า",
+   "scenario": "s30",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-017",
+   "category": "teach",
+   "input": "ปู ชอบ อยู่ ใน ทะเล นะ",
+   "scenario": "s30",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-018",
+   "category": "teach",
+   "input": "ฉัน ชื่อ สุดา",
+   "scenario": "s30",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "d-075",
+   "category": "setup",
+   "input": "remember เสือ อยู่ ป่า",
+   "scenario": "s31"
+  },
+  {
+   "id": "d-076",
+   "category": "forget",
+   "input": "forget เสือ",
+   "scenario": "s31",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-077",
+   "category": "forget",
+   "input": "เสือ อยู่ไหน",
+   "scenario": "s31",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-078",
+   "category": "setup",
+   "input": "remember ข้าวผัด คือ อาหาร",
+   "scenario": "s32"
+  },
+  {
+   "id": "d-079",
+   "category": "forget",
+   "input": "forget ข้าวผัด",
+   "scenario": "s32",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-080",
+   "category": "forget",
+   "input": "ข้าวผัด คืออะไร",
+   "scenario": "s32",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-081",
+   "category": "setup",
+   "input": "remember ชูใจ อยู่ วัด",
+   "scenario": "s33"
+  },
+  {
+   "id": "d-082",
+   "category": "setup",
+   "input": "remember วิชัย อยู่ ตลาด",
+   "scenario": "s33"
+  },
+  {
+   "id": "d-083",
+   "category": "forget",
+   "input": "forget ชูใจ",
+   "scenario": "s33",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-084",
+   "category": "forget",
+   "input": "ชูใจ อยู่ไหน",
+   "scenario": "s33",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-085",
+   "category": "forget",
+   "input": "วิชัย อยู่ไหน",
+   "scenario": "s33",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "ตลาด"
+   }
+  },
+  {
+   "id": "d-086",
+   "category": "setup",
+   "input": "remember ห่าน มี ขน",
+   "scenario": "s34"
+  },
+  {
+   "id": "d-087",
+   "category": "forget",
+   "input": "forget ห่าน",
+   "scenario": "s34",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-088",
+   "category": "forget",
+   "input": "เกี่ยวกับ ห่าน",
+   "scenario": "s34",
+   "expect": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   }
+  },
+  {
+   "id": "d-089",
+   "category": "setup",
+   "input": "remember ปู อยู่ ทะเล",
+   "scenario": "s35"
+  },
+  {
+   "id": "x-019",
+   "category": "forget",
+   "input": "ลืม ปู ไป เลย",
+   "scenario": "s35",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-020",
+   "category": "forget",
+   "input": "ช่วย ลบ เรื่อง ปู ออก ที",
+   "scenario": "s35",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-021",
+   "category": "forget",
+   "input": "ไม่ ต้อง จำ เรื่อง ปู แล้ว นะ",
+   "scenario": "s35",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "d-090",
+   "category": "setup",
+   "input": "remember นกฮูก อยู่ ป่า",
+   "scenario": "s36"
+  },
+  {
+   "id": "d-091",
+   "category": "correction",
+   "input": "no, นกฮูก อยู่ สวน",
+   "scenario": "s36",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-092",
+   "category": "correction",
+   "input": "นกฮูก อยู่ไหน",
+   "scenario": "s36",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "สวน"
+   }
+  },
+  {
+   "id": "d-093",
+   "category": "setup",
+   "input": "remember ปลาทอง อยู่ ตู้",
+   "scenario": "s37"
+  },
+  {
+   "id": "d-094",
+   "category": "correction",
+   "input": "no, ปลาทอง อยู่ สระน้ำ",
+   "scenario": "s37",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-095",
+   "category": "correction",
+   "input": "ปลาทอง อยู่ไหน",
+   "scenario": "s37",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "สระน้ำ"
+   }
+  },
+  {
+   "id": "d-096",
+   "category": "setup",
+   "input": "remember ฝรั่ง คือ ผัก",
+   "scenario": "s38"
+  },
+  {
+   "id": "d-097",
+   "category": "correction",
+   "input": "no, ฝรั่ง คือ ผลไม้",
+   "scenario": "s38",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-098",
+   "category": "correction",
+   "input": "ฝรั่ง คืออะไร",
+   "scenario": "s38",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "ผลไม้"
+   }
+  },
+  {
+   "id": "d-099",
+   "category": "setup",
+   "input": "remember สุดา อยู่ วัด",
+   "scenario": "s39"
+  },
+  {
+   "id": "d-100",
+   "category": "correction",
+   "input": "no, สุดา อยู่ ตลาด",
+   "scenario": "s39",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "acknowledge"
+   }
+  },
+  {
+   "id": "d-101",
+   "category": "correction",
+   "input": "สุดา อยู่ไหน",
+   "scenario": "s39",
+   "expect": {
+    "epistemic": "supported",
+    "action": "answer",
+    "contains": "ตลาด"
+   }
+  },
+  {
+   "id": "d-102",
+   "category": "setup",
+   "input": "remember หนู อยู่ ห้องครัว",
+   "scenario": "s40"
+  },
+  {
+   "id": "x-022",
+   "category": "correction",
+   "input": "ไม่ใช่ หนู อยู่ ห้องนอน",
+   "scenario": "s40",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-023",
+   "category": "correction",
+   "input": "ผิด แล้ว หนู อยู่ โรงนา ต่างหาก",
+   "scenario": "s40",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  },
+  {
+   "id": "x-024",
+   "category": "correction",
+   "input": "แก้ เป็น หนู อยู่ ห้องน้ำ",
+   "scenario": "s40",
+   "expect": {
+    "epistemic": "n/a",
+    "action": "not_understood"
+   }
+  }
+ ]
+}

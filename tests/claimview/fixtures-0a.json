@@ -1,0 +1,1216 @@
+{
+ "contract": "claimview-0a",
+ "note": "Shared edge-case fixtures for the reference model and, later, the Oracle. Expectations name only contract-level fields.",
+ "cases": [
+  {
+   "name": "supported_direct",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ],
+     "a sparrow": [
+      "a bird"
+     ],
+     "a bird": [
+      "an animal"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ],
+     [
+      "a bird",
+      "is",
+      "an animal"
+     ],
+     [
+      "a bird",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "a bird",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "UNIQUE",
+    "epistemic": "SUPPORTED",
+    "basis": "support_only",
+    "support": [
+     "a robin is a bird"
+    ],
+    "opposition": []
+   }
+  },
+  {
+   "name": "supported_case_and_space",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ],
+     "a sparrow": [
+      "a bird"
+     ],
+     "a bird": [
+      "an animal"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ],
+     [
+      "a bird",
+      "is",
+      "an animal"
+     ],
+     [
+      "a bird",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "  A  ROBIN ",
+      "p": "is",
+      "o": "a bird",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "SUPPORTED",
+    "basis": "support_only"
+   }
+  },
+  {
+   "name": "derived_only",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ],
+     "a sparrow": [
+      "a bird"
+     ],
+     "a bird": [
+      "an animal"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ],
+     [
+      "a bird",
+      "is",
+      "an animal"
+     ],
+     [
+      "a bird",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "an animal",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "SUPPORTED",
+    "basis": "derived_only",
+    "support": [
+     "a robin is an animal"
+    ]
+   }
+  },
+  {
+   "name": "derived_inherits_has",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ],
+     "a sparrow": [
+      "a bird"
+     ],
+     "a bird": [
+      "an animal"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ],
+     [
+      "a bird",
+      "is",
+      "an animal"
+     ],
+     [
+      "a bird",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "has",
+      "o": "wings",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "SUPPORTED",
+    "basis": "derived_only"
+   }
+  },
+  {
+   "name": "unknown_subject",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ],
+     "a sparrow": [
+      "a bird"
+     ],
+     "a bird": [
+      "an animal"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ],
+     [
+      "a bird",
+      "is",
+      "an animal"
+     ],
+     [
+      "a bird",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a hawk",
+      "p": "is",
+      "o": "a bird",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "NONE",
+    "epistemic": "UNKNOWN",
+    "basis": "no_trusted_evidence"
+   }
+  },
+  {
+   "name": "unknown_known_subject",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ],
+     "a sparrow": [
+      "a bird"
+     ],
+     "a bird": [
+      "an animal"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ],
+     [
+      "a bird",
+      "is",
+      "an animal"
+     ],
+     [
+      "a bird",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "a fish",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "UNIQUE",
+    "epistemic": "UNKNOWN",
+    "basis": "no_trusted_evidence"
+   }
+  },
+  {
+   "name": "opposition_only",
+   "state": {
+    "facts": {
+     "a sparrow": [
+      "not a bird"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a sparrow",
+      "not-is",
+      "a bird"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a sparrow",
+      "p": "is",
+      "o": "a bird",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "CONTRADICTED",
+    "basis": "opposition_only",
+    "support": [],
+    "opposition": [
+     "a sparrow is not a bird"
+    ]
+   }
+  },
+  {
+   "name": "both_sides",
+   "state": {
+    "facts": {
+     "a robin": [
+      "x"
+     ],
+     "a bird": [
+      "y"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ],
+     [
+      "a robin",
+      "not-has",
+      "wings"
+     ],
+     [
+      "a robin",
+      "is",
+      "a flyer"
+     ],
+     [
+      "a flyer",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "has",
+      "o": "wings",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "CONTRADICTED",
+    "basis": "both_sides"
+   }
+  },
+  {
+   "name": "different_object_not_contradiction",
+   "state": {
+    "facts": {
+     "a robin": [
+      "x"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "in",
+      "a nest"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "in",
+      "o": "a tree",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "UNKNOWN",
+    "basis": "no_trusted_evidence",
+    "opposition": []
+   }
+  },
+  {
+   "name": "ambiguous_subject_alias_collides_with_key",
+   "state": {
+    "facts": {
+     "jaguar": [
+      "a cat"
+     ],
+     "car": [
+      "a vehicle"
+     ]
+    },
+    "aliases": {
+     "jaguar": "car"
+    },
+    "rels": [
+     [
+      "jaguar",
+      "is",
+      "a cat"
+     ],
+     [
+      "car",
+      "is",
+      "a vehicle"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "jaguar",
+      "p": "is",
+      "o": "a cat",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "AMBIGUOUS",
+    "epistemic": "AMBIGUOUS",
+    "basis": "ambiguous_subject",
+    "candidates": [
+     "car",
+     "jaguar"
+    ],
+    "support": []
+   }
+  },
+  {
+   "name": "alias_unique",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ]
+    },
+    "aliases": {
+     "robin": "a robin"
+    },
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "robin",
+      "p": "is",
+      "o": "a bird",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "UNIQUE",
+    "epistemic": "SUPPORTED"
+   }
+  },
+  {
+   "name": "dangling_alias_ignored",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ]
+    },
+    "aliases": {
+     "wren": "a wren"
+    },
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "wren",
+      "p": "is",
+      "o": "a bird",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "NONE",
+    "epistemic": "UNKNOWN"
+   }
+  },
+  {
+   "name": "ambiguous_proposition",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ],
+     "a sparrow": [
+      "a bird"
+     ],
+     "a bird": [
+      "an animal"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ],
+     [
+      "a bird",
+      "is",
+      "an animal"
+     ],
+     [
+      "a bird",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "a bird",
+      "neg": false
+     },
+     {
+      "s": "a robin",
+      "p": "in",
+      "o": "a bird",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "AMBIGUOUS",
+    "basis": "ambiguous_proposition",
+    "candidates": [
+     "a robin is a bird",
+     "a robin is in a bird"
+    ],
+    "support": []
+   }
+  },
+  {
+   "name": "pronoun_refused",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ],
+     "a sparrow": [
+      "a bird"
+     ],
+     "a bird": [
+      "an animal"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ],
+     [
+      "a bird",
+      "is",
+      "an animal"
+     ],
+     [
+      "a bird",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "it",
+      "p": "is",
+      "o": "a bird",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "status": "REFUSED"
+   }
+  },
+  {
+   "name": "nfc_nfd_not_folded",
+   "state": {
+    "facts": {
+     "caf\u00e9": [
+      "a place"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "caf\u00e9",
+      "is",
+      "a place"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "cafe\u0301",
+      "p": "is",
+      "o": "a place",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "NONE",
+    "epistemic": "UNKNOWN"
+   }
+  },
+  {
+   "name": "thai_subject_exact",
+   "state": {
+    "facts": {
+     "\u0e19\u0e01": [
+      "\u0e2a\u0e31\u0e15\u0e27\u0e4c"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "\u0e19\u0e01",
+      "is",
+      "\u0e2a\u0e31\u0e15\u0e27\u0e4c"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "\u0e19\u0e01",
+      "p": "is",
+      "o": "\u0e2a\u0e31\u0e15\u0e27\u0e4c",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "UNIQUE",
+    "epistemic": "SUPPORTED"
+   }
+  },
+  {
+   "name": "non_ascii_case_not_folded",
+   "state": {
+    "facts": {
+     "\u00c9cole": [
+      "a place"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "\u00c9cole",
+      "is",
+      "a place"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "\u00e9cole",
+      "p": "is",
+      "o": "a place",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "NONE",
+    "epistemic": "UNKNOWN"
+   }
+  },
+  {
+   "name": "cycle_cut",
+   "state": {
+    "facts": {
+     "a": [
+      "x"
+     ],
+     "b": [
+      "x"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a",
+      "is",
+      "b"
+     ],
+     [
+      "b",
+      "is",
+      "a"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a",
+      "p": "has",
+      "o": "wings",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "UNKNOWN",
+    "basis": "no_trusted_evidence",
+    "support": []
+   }
+  },
+  {
+   "name": "guard_stop_is_not_evidence",
+   "state": {
+    "facts": {
+     "a rock": [
+      "x"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a rock",
+      "is",
+      "a thing"
+     ],
+     [
+      "a thing",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": [
+     [
+      "has",
+      "a thing"
+     ]
+    ]
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a rock",
+      "p": "has",
+      "o": "wings",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "UNKNOWN",
+    "basis": "no_trusted_evidence",
+    "support": [],
+    "blocked_count": 1
+   }
+  },
+  {
+   "name": "depth_truncation",
+   "state": {
+    "facts": {
+     "a": [
+      "x"
+     ],
+     "b": [
+      "x"
+     ],
+     "c": [
+      "x"
+     ],
+     "d": [
+      "x"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a",
+      "is",
+      "b"
+     ],
+     [
+      "b",
+      "is",
+      "c"
+     ],
+     [
+      "c",
+      "is",
+      "d"
+     ],
+     [
+      "d",
+      "has",
+      "wings"
+     ]
+    ],
+    "readings": [],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a",
+      "p": "has",
+      "o": "wings",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "UNKNOWN",
+    "basis": "no_trusted_evidence",
+    "derivation_nodes_truncated": true
+   }
+  },
+  {
+   "name": "readings_do_not_change_status",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ]
+    ],
+    "readings": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "a fish",
+      "pos": [
+       [
+        "src-1",
+        "a robin is a fish"
+       ]
+      ],
+      "neg": [],
+      "marker": ""
+     }
+    ],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "a fish",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "epistemic": "UNKNOWN",
+    "basis": "no_trusted_evidence",
+    "readings": [
+     [
+      "src-1",
+      "pos"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "excluded_reading_silent",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ]
+    ],
+    "readings": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "a fish",
+      "pos": [
+       [
+        "src-secret",
+        "s"
+       ]
+      ],
+      "neg": [],
+      "marker": ""
+     }
+    ],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "a fish",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": [
+     "src-secret"
+    ]
+   },
+   "expect": {
+    "epistemic": "UNKNOWN",
+    "readings": null
+   }
+  },
+  {
+   "name": "malformed_exclusions_suppress_readings",
+   "state": {
+    "facts": {
+     "a robin": [
+      "a bird"
+     ]
+    },
+    "aliases": {},
+    "rels": [
+     [
+      "a robin",
+      "is",
+      "a bird"
+     ]
+    ],
+    "readings": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "a fish",
+      "pos": [
+       [
+        "src-1",
+        "s"
+       ]
+      ],
+      "neg": [],
+      "marker": ""
+     }
+    ],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a robin",
+      "p": "is",
+      "o": "a fish",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "sources": [
+     "x"
+    ]
+   },
+   "expect": {
+    "epistemic": "UNKNOWN",
+    "readings": null
+   }
+  },
+  {
+   "name": "reading_only_subject_stays_unresolved",
+   "state": {
+    "facts": {},
+    "aliases": {},
+    "rels": [],
+    "readings": [
+     {
+      "s": "a hawk",
+      "p": "is",
+      "o": "a bird",
+      "pos": [
+       [
+        "src-1",
+        "a hawk is a bird"
+       ]
+      ],
+      "neg": [],
+      "marker": "USER_DISPUTED"
+     }
+    ],
+    "guards": []
+   },
+   "query": {
+    "propositions": [
+     {
+      "s": "a hawk",
+      "p": "is",
+      "o": "a bird",
+      "neg": false
+     }
+    ]
+   },
+   "ex": {
+    "version": 1,
+    "sources": []
+   },
+   "expect": {
+    "resolution": "NONE",
+    "epistemic": "UNKNOWN",
+    "readings": [
+     [
+      "src-1",
+      "pos"
+     ]
+    ]
+   }
+  }
+ ]
+}
