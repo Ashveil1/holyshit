@@ -82,6 +82,14 @@ def main():
         if not shutil.which(tool):
             print('skip: %s unavailable' % tool)
             return
+    # CI kernels may deny user namespaces (EPERM writing /proc/self/uid_map).
+    # That is an unavailable tool, not a failure: explicit loud SKIP, never a
+    # silent pass. The audit still runs in full wherever unshare -rn works.
+    probe = subprocess.run(['unshare', '-rn', 'true'], capture_output=True, text=True)
+    if probe.returncode != 0:
+        print('SKIP (A22.0 strace/netns audit NOT RUN): unshare -rn is denied here: %s'
+              % (probe.stderr.strip()[-200:] or 'exit %d' % probe.returncode))
+        return
     env = dict(os.environ)
     env['HSPATH'] = str(ROOT)
     # negative controls: the auditor must flag bad calls
