@@ -1,0 +1,222 @@
+# agent/shadow.holy - A21.0 EXPERIMENTAL shadow observation (repl-only).
+#
+# Runs SHADOWED pattern candidates over text the reader has already
+# ingested and records where they WOULD fire. It reads the reader's
+# stored source bodies and writes only to the proposals file: it never
+# touches the agent state, the evidence store, a count, a report or an
+# answer, and it never overwrites the handwritten reader's skip
+# classification. A would-match shows where a pattern fires, not that
+# its meaning is correct.
+#
+# Per matched segment the event class is one of:
+#   new           the reader extracted nothing (candidate coverage)
+#   agree         the reader extracted the same triple + polarity
+#   disagree      the reader extracted something different
+#   skip-overlap  the reader skipped the segment (quoted/directive/modal)
+# Agreement is not proof. Disagreement and skip-overlap block approval.
+# Several shadowed patterns firing on one segment are recorded
+# separately, each with the competing pattern ids (no winner is chosen,
+# so file order never decides anything).
+import agent.core
+import agent.patgen
+def segments(body):
+  segs = []
+  cur = ""
+  i = 0
+  while i < len(body):
+    ch = body[i]
+    if (ch == "." or ch == "!" or ch == "?") and (i + 1 >= len(body) or body[i + 1] == " "):
+      if len(cur) > 0:
+        append(segs, cur)
+      cur = ""
+      if i + 1 < len(body):
+        i = i + 1
+    else:
+      cur = cur + ch
+    i = i + 1
+  if len(cur) > 0:
+    append(segs, cur)
+  return segs
+def _new_shadow():
+  return {"counters": {"matches": 0, "new": 0, "agree": 0, "disagree": 0, "skip-overlap": 0, "competing": 0, "sensitive_events": 0, "dropped_samples": 0, "dedup_overflow": 0, "nonmatches": 0, "purged_events": 0}, "events": [], "nmev": [], "by_source": {}, "disagreements": [], "domains": [], "samples": []}
+def start(c):
+  if not has(c, "shadow"):
+    c["shadow"] = _new_shadow()
+  if not has(c, "dispositions"):
+    c["dispositions"] = {}
+def _src_entry(sh, src):
+  if not has(sh["by_source"], src):
+    if len(keys(sh["by_source"])) >= 200:
+      return null
+    sh["by_source"][src] = {"m": 0, "n": 0, "ev": [], "nm": []}
+  return sh["by_source"][src]
+# Segment ids are content-derived, so a copy of the same sentence in
+# another source never counts twice (evidence is not multiplied).
+def seg_id(sent):
+  return "sg-" + agent.patgen._hash(agent.patgen._collapse(sent))
+def _nonmatch(st, c, src, sent, sens):
+  if sens:
+    return 0
+  sh = c["shadow"]
+  sid = seg_id(sent)
+  if sid in sh["nmev"]:
+    return 0
+  if len(sh["nmev"]) >= 500:
+    return 0
+  e = _src_entry(sh, src)
+  if e == null:
+    return 0
+  append(sh["nmev"], sid)
+  append(e["nm"], sid)
+  e["n"] = e["n"] + 1
+  sh["counters"]["nonmatches"] = sh["counters"]["nonmatches"] + 1
+  return 0
+def _record(st, c, cid, src, dom, sent, cls, trip, pol, sens, others):
+  sh = c["shadow"]
+  cnt = sh["counters"]
+  if sens:
+    cnt["sensitive_events"] = cnt["sensitive_events"] + 1
+    return 0
+  ev = seg_id(sent)
+  if ev in sh["events"]:
+    return 0
+  e = _src_entry(sh, src)
+  if len(sh["events"]) >= 500 or e == null:
+    cnt["dedup_overflow"] = cnt["dedup_overflow"] + 1
+    return 0
+  append(sh["events"], ev)
+  append(e["ev"], ev)
+  e["m"] = e["m"] + 1
+  cnt["matches"] = cnt["matches"] + 1
+  cnt[cls] = cnt[cls] + 1
+  if len(others) > 0:
+    cnt["competing"] = cnt["competing"] + 1
+  if cls == "disagree" or len(others) > 0 or cls == "skip-overlap":
+    if len(sh["disagreements"]) < 100:
+      append(sh["disagreements"], {"event": ev, "src": src, "class": cls, "triple": trip, "competing": others})
+    else:
+      cnt["dedup_overflow"] = cnt["dedup_overflow"] + 1
+  if dom != "" and not (dom in sh["domains"]) and len(sh["domains"]) < 50:
+    append(sh["domains"], dom)
+  if len(sh["samples"]) < 20:
+    smp = {"event": ev, "src": src, "class": cls, "triple": trip, "polarity": pol, "competing": others}
+    if st["sample_text"]:
+      smp["text"] = sent
+    append(sh["samples"], smp)
+  else:
+    cnt["dropped_samples"] = cnt["dropped_samples"] + 1
+  return 1
+# Late sensitive mark: remove every retained trace of the source from
+# every candidate (samples, event ids, disagreement records, origin
+# entry, dispositions), keep only aggregate counters without the
+# source identity, drop the review snapshot so any approval on the old
+# snapshot is invalid. Runs in the same call as the marking.
+def purge_source(st, src):
+  n = 0
+  if has(st["origins"], src):
+    o = {}
+    for k in keys(st["origins"]):
+      if k != src:
+        o[k] = st["origins"][k]
+    st["origins"] = o
+  for cid in keys(st["candidates"]):
+    c = st["candidates"][cid]
+    start(c)
+    sh = c["shadow"]
+    gone = []
+    if has(sh["by_source"], src):
+      e = sh["by_source"][src]
+      gone = e["ev"] + e["nm"]
+      cnt = sh["counters"]
+      cnt["purged_events"] = cnt["purged_events"] + e["m"]
+      cnt["sensitive_events"] = cnt["sensitive_events"] + e["m"]
+      cnt["matches"] = cnt["matches"] - e["m"]
+      cnt["nonmatches"] = cnt["nonmatches"] - e["n"]
+      bs = {}
+      for k in keys(sh["by_source"]):
+        if k != src:
+          bs[k] = sh["by_source"][k]
+      sh["by_source"] = bs
+      n = n + e["m"]
+    ev = []
+    for x in sh["events"]:
+      if not (x in gone):
+        append(ev, x)
+    sh["events"] = ev
+    nm = []
+    for x in sh["nmev"]:
+      if not (x in gone):
+        append(nm, x)
+    sh["nmev"] = nm
+    sm = []
+    for x in sh["samples"]:
+      if x["src"] != src:
+        append(sm, x)
+    sh["samples"] = sm
+    dg = []
+    for x in sh["disagreements"]:
+      if x["src"] != src:
+        append(dg, x)
+    sh["disagreements"] = dg
+    ds = {}
+    for k in keys(c["dispositions"]):
+      if not (k in gone):
+        ds[k] = c["dispositions"][k]
+    c["dispositions"] = ds
+    if len(gone) > 0:
+      if has(c, "review"):
+        c["review"] = {"hash": "", "ready": false, "blockers": ["review snapshot invalidated by a sensitive-source purge"]}
+      append(c["provenance"]["history"], "sensitive purge: retained content for one source discarded; snapshot invalidated")
+  return n
+# Shadow one ingested source body against every SHADOWED, unrejected
+# candidate. Returns the number of recorded events.
+def process(state, st, src, body):
+  active = []
+  for cid in keys(st["candidates"]):
+    if st["candidates"][cid]["label"] == "SHADOWED" and not (cid in st["rejected"]):
+      append(active, cid)
+  if len(active) == 0:
+    return 0
+  sens = src in st["sensitive"]
+  dom = agent.core._src_domain(state, src)
+  n = 0
+  for sent in segments(body):
+    sk = agent.core._read_skip(sent)
+    ex = null
+    if sk == "":
+      ex = agent.core._read_extract(sent)
+      if ex != null and not agent.core._read_obj_ok(ex):
+        ex = null
+    hits = []
+    for cid in active:
+      d = st["candidates"][cid]["descriptor"]
+      r = agent.patgen.match_toks(split(d["verb"], " "), sent)
+      if r != null:
+        append(hits, [cid, r])
+    if sk == "":
+      for cid in active:
+        hit = false
+        for h in hits:
+          if h[0] == cid:
+            hit = true
+        if not hit:
+          _nonmatch(st, st["candidates"][cid], src, sent, sens)
+    for h in hits:
+      cid = h[0]
+      c = st["candidates"][cid]
+      d = c["descriptor"]
+      others = []
+      for h2 in hits:
+        if h2[0] != cid:
+          append(others, h2[0])
+      cls = "new"
+      if sk != "":
+        cls = "skip-overlap"
+      elif ex != null:
+        same = agent.patgen._collapse(ex[0]) == h[1][0] and ex[1] == d["predicate"] and agent.patgen._collapse(ex[2]) == h[1][1] and ex[3] == d["polarity"]
+        if same:
+          cls = "agree"
+        else:
+          cls = "disagree"
+      n = n + _record(st, c, cid, src, dom, sent, cls, [h[1][0], d["predicate"], h[1][1]], d["polarity"], sens, others)
+  return n

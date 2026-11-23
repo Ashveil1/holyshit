@@ -12,8 +12,9 @@
 # An unreadable or invalid file loads as an empty store - it never
 # crashes the chat and never feeds anything else.
 import agent.patgen
+import agent.shadow
 def new_store():
-  return {"version": 1, "candidates": {}, "rejected": []}
+  return {"version": 1, "candidates": {}, "rejected": [], "sensitive": [], "sample_text": false, "origins": {}, "lineage": []}
 def _valid(st):
   try:
     if st["version"] != 1:
@@ -23,9 +24,13 @@ def _valid(st):
       d = c["descriptor"]
       if cid != "pc-" + agent.patgen._hash(d["canon"]):
         return false
-      if c["id"] != cid or c["active"] != false:
+      if c["id"] != cid:
         return false
-      if c["label"] != "CANDIDATE" and c["label"] != "STALE":
+      if c["active"] != (c["label"] == "ACTIVE"):
+        return false
+      if c["active"] and not has(c, "approval"):
+        return false
+      if not (c["label"] in ["CANDIDATE", "STALE", "SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW", "APPROVED", "ACTIVE", "REVOKED"]):
         return false
     for r in st["rejected"]:
       if json_str(r)[:1] != "\"":
@@ -39,6 +44,15 @@ def load(path):
   try:
     st = json_load(path)
     if _valid(st):
+      # A21: optional keys default for files written by A20.
+      if not has(st, "sensitive"):
+        st["sensitive"] = []
+      if not has(st, "sample_text"):
+        st["sample_text"] = false
+      if not has(st, "origins"):
+        st["origins"] = {}
+      if not has(st, "lineage"):
+        st["lineage"] = []
       return st
   except:
     return new_store()
@@ -113,17 +127,290 @@ def retract(st, text):
         append(c["provenance"]["history"], "stale: example retracted")
         hit = hit + 1
   return str(hit) + " candidate(s) marked STALE"
+def _act(c):
+  if c["active"]:
+    return "ACTIVE-EXPERIMENTAL"
+  return "inactive"
 def listing(st):
   ids = keys(st["candidates"])
   out = str(len(ids)) + " stored pattern candidates, " + str(len(st["rejected"])) + " rejected (INACTIVE proposals, not reader coverage):"
   for cid in ids:
     c = st["candidates"][cid]
     d = c["descriptor"]
-    line = cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", inactive]"
+    line = cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", " + _act(c) + "]"
     if c["approval_blocked"]:
       line = line + "; APPROVAL BLOCKED"
     if cid in st["rejected"]:
       line = line + "; REJECTED"
     line = line + "; history: " + join(", ", c["provenance"]["history"])
     out = out + "\n" + line
+  return out
+# --- A21.0 shadow + A21.1 review (no approval/activation route) ---
+def shadow(st, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  if cid in st["rejected"]:
+    return cid + " is rejected: reopen it first"
+  if c["label"] == "STALE":
+    return cid + " is STALE (an example was retracted): cannot shadow"
+  if c["approval_blocked"]:
+    return cid + " has approval-blocking test failures: cannot shadow"
+  if c["label"] == "SHADOWED":
+    return cid + " is already SHADOWED"
+  agent.shadow.start(c)
+  c["label"] = "SHADOWED"
+  append(c["provenance"]["history"], "shadowed")
+  return "shadowing " + cid + " (observation only; reader output is unchanged)"
+def unshadow(st, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  if c["label"] != "SHADOWED":
+    return cid + " is not SHADOWED"
+  c["label"] = "CANDIDATE"
+  append(c["provenance"]["history"], "unshadowed (lifetime counters kept)")
+  return "stopped shadowing " + cid + " (lifetime counters kept)"
+def sensitive(st, src, on):
+  out = []
+  for s in st["sensitive"]:
+    if s != src:
+      append(out, s)
+  if on:
+    append(out, src)
+  st["sensitive"] = out
+  if on:
+    n = agent.shadow.purge_source(st, src)
+    return "source " + src + " marked sensitive: " + str(n) + " retained match(es) purged, shadow keeps only aggregate counters for it and excludes it from approval volume; any review snapshot on old evidence is invalidated"
+  return "source " + src + " no longer sensitive"
+def samples(st, on):
+  st["sample_text"] = on
+  if on:
+    return "shadow samples will retain exact sentences (bounded, never for sensitive sources)"
+  return "shadow samples keep source ids and triples only"
+def _frac(p):
+  return str(p[0]) + "/" + str(p[1])
+# Verified-origin analysis. Only sources whose origin is classified
+# verified_independent count; dependent/unknown/unclassified sources
+# are excluded. Several sources declared with one origin id collapse to
+# that origin, so aliases cannot meet the origin bar.
+# Verified lineage edges with a same-origin relation (mirror,
+# syndication, repost, derivation) merge origins; aggregation and
+# shared-upstream edges stay visible but never merge. Only VERIFIED
+# edges count. Proposed/unknown/rejected edges change nothing; DISPUTED
+# edges touching a counted origin block approval.
+def _root(par, x):
+  while has(par, x) and par[x] != x:
+    x = par[x]
+  return x
+def _merge_map(st):
+  par = {}
+  for e in st["lineage"]:
+    if e["state"] == "verified" and e["relation"] in ["mirror", "syndication", "repost", "derivation"]:
+      for x in [e["a"], e["b"]]:
+        if not has(par, x):
+          par[x] = x
+      ra = _root(par, e["a"])
+      rb = _root(par, e["b"])
+      if ra != rb:
+        if ra < rb:
+          par[rb] = ra
+        else:
+          par[ra] = rb
+  return par
+def _origins(c, st):
+  par = _merge_map(st)
+  by = {}
+  total = 0
+  nm = 0
+  unver = 0
+  for src in keys(c["shadow"]["by_source"]):
+    e = c["shadow"]["by_source"][src]
+    o = ""
+    if has(st["origins"], src) and st["origins"][src]["class"] == "verified_independent":
+      o = _root(par, st["origins"][src]["origin"])
+    if o == "":
+      unver = unver + e["m"]
+      continue
+    if not has(by, o):
+      by[o] = 0
+    by[o] = by[o] + e["m"]
+    total = total + e["m"]
+    nm = nm + e["n"]
+  return {"by": by, "total": total, "nonmatch": nm, "unverified_matches": unver}
+def _disputed(c, st):
+  names = []
+  for src in keys(c["shadow"]["by_source"]):
+    if has(st["origins"], src):
+      append(names, st["origins"][src]["origin"])
+  n = 0
+  for e in st["lineage"]:
+    if e["state"] == "disputed" and (e["a"] in names or e["b"] in names):
+      n = n + 1
+  return n
+def lineage(st, a, b, rel, state, by):
+  if not (rel in ["mirror", "syndication", "repost", "derivation", "aggregation", "shared-upstream", "unknown"]):
+    return "relation must be mirror, syndication, repost, derivation, aggregation, shared-upstream or unknown"
+  if not (state in ["proposed", "verified", "disputed", "rejected", "unknown"]):
+    return "state must be proposed, verified, disputed, rejected or unknown"
+  if state == "verified" and not (by == "owner" or by[:11] == "documented:"):
+    return "refused: only the owner or documented reproducible provenance (documented:REF) can verify an edge; an agent may only propose"
+  out = []
+  for e in st["lineage"]:
+    if not (e["a"] == a and e["b"] == b and e["relation"] == rel):
+      append(out, e)
+  append(out, {"a": a, "b": b, "relation": rel, "state": state, "by": by})
+  st["lineage"] = out
+  for cid in keys(st["candidates"]):
+    append(st["candidates"][cid]["provenance"]["history"], "lineage graph changed (snapshot hash changes)")
+  return "lineage " + a + " -" + rel + "- " + b + " [" + state + " by " + by + "]; only verified same-origin edges change origin counts"
+def _open_events(c):
+  out = []
+  for x in c["shadow"]["disagreements"]:
+    ok = false
+    if has(c["dispositions"], x["event"]):
+      d = c["dispositions"][x["event"]]
+      ok = d["disposition"] == "accepted_as_expected"
+    if not ok:
+      append(out, x)
+  return out
+def _blockers(c, cid, st):
+  b = []
+  sh = c["shadow"]
+  cnt = sh["counters"]
+  if not (c["label"] in ["SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW", "APPROVED", "ACTIVE"]):
+    append(b, "not under review (label " + c["label"] + ")")
+  if cid in st["rejected"]:
+    append(b, "rejected")
+  if c["approval_blocked"]:
+    append(b, "test failures block approval")
+  if c["descriptor"]["polarity"] != "pos":
+    append(b, "negative-polarity patterns cannot activate in A21")
+  o = _origins(c, st)
+  if o["total"] < 50:
+    append(b, "verified-origin distinct matches " + str(o["total"]) + "/50 (" + str(o["unverified_matches"]) + " from unverified/dependent sources not counted)")
+  if o["nonmatch"] < 50:
+    append(b, "verified-origin distinct non-matching segments " + str(o["nonmatch"]) + "/50")
+  ok10 = 0
+  top = 0
+  for k in keys(o["by"]):
+    if o["by"][k] >= 10:
+      ok10 = ok10 + 1
+    if o["by"][k] > top:
+      top = o["by"][k]
+  if ok10 < 3:
+    append(b, "independent origins with >=10 matches: " + str(ok10) + "/3")
+  if o["total"] > 0 and top * 100 > o["total"] * 60:
+    append(b, "one origin supplies " + str(top) + " of " + str(o["total"]) + " matches (max 60%)")
+  if cnt["dedup_overflow"] > 0:
+    append(b, str(cnt["dedup_overflow"]) + " events exceeded retention caps: history incomplete")
+  if _disputed(c, st) > 0:
+    append(b, str(_disputed(c, st)) + " disputed lineage edge(s) touch counted origins")
+  op = _open_events(c)
+  if len(op) > 0:
+    append(b, str(len(op)) + " disagreement/overlap/competing event(s) without an accepted_as_expected disposition")
+  return b
+def origin(st, src, oid, cls, rel):
+  if not (cls == "verified_independent" or cls == "dependent" or cls == "unknown"):
+    return "origin class must be verified_independent, dependent or unknown"
+  if src in st["sensitive"]:
+    return "source is sensitive: no origin metadata is kept for it"
+  st["origins"][src] = {"origin": oid, "class": cls, "relation": rel}
+  for cid in keys(st["candidates"]):
+    append(st["candidates"][cid]["provenance"]["history"], "origin classification changed (snapshot hash changes)")
+  return "source " + src + " -> origin " + oid + " [" + cls + ", " + rel + "]; verified_independent origins are counted, dependent/unknown are not"
+def disposition(st, cid, ev, disp, reviewer, why):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  agent.shadow.start(c)
+  if not (disp == "accepted_as_expected" or disp == "pattern_error" or disp == "handwritten_reader_issue" or disp == "insufficient_evidence"):
+    return "disposition must be accepted_as_expected, pattern_error, handwritten_reader_issue or insufficient_evidence"
+  found = false
+  for x in c["shadow"]["disagreements"]:
+    if x["event"] == ev:
+      found = true
+  if not found:
+    return "no open disagreement/overlap/competing event " + ev + " for " + cid
+  if has(c["dispositions"], ev):
+    append(c["dispositions"][ev]["history"], c["dispositions"][ev]["disposition"] + " by " + c["dispositions"][ev]["reviewer"])
+    h = c["dispositions"][ev]["history"]
+  else:
+    h = []
+  c["dispositions"][ev] = {"disposition": disp, "reviewer": reviewer, "explanation": why, "seq": len(keys(c["dispositions"])) + len(h), "history": h}
+  append(c["provenance"]["history"], "disposition recorded (snapshot hash changes)")
+  msg = "recorded " + disp + " for " + ev + " by " + reviewer + " (no clock in this runtime: seq only)"
+  if disp == "accepted_as_expected":
+    return msg + "; this resolves only that event and does not approve the pattern"
+  return msg + "; still blocks: re-derive the pattern or fix the cause"
+# Freeze the review snapshot (everything approval would be bound to)
+# and print the packet. Re-running regenerates the snapshot; a changed
+# hash is recorded in history so an old approval could never carry over.
+def snapshot(st, cid):
+  c = st["candidates"][cid]
+  agent.shadow.start(c)
+  sh = c["shadow"]
+  cnt = sh["counters"]
+  d = c["descriptor"]
+  t = c["tests"]
+  b = _blockers(c, cid, st)
+  ogs = {}
+  for src in keys(sh["by_source"]):
+    if has(st["origins"], src):
+      ogs[src] = st["origins"][src]
+  smp = []
+  for s in sh["samples"]:
+    append(smp, [s["event"], s["class"], s["triple"]])
+  snap = {"descriptor": d, "tests": t, "examples": c["provenance"]["examples"], "holdout": c["provenance"]["holdout"], "counters": cnt, "by_source": sh["by_source"], "origins": ogs, "lineage": st["lineage"], "dispositions": c["dispositions"], "sample_events": smp, "hash_version": 3, "meta": {"polarity": d["polarity"], "rejected": cid in st["rejected"], "blocked": c["approval_blocked"]}}
+  cov = {"tests_hash": agent.patgen._hash(json_str(t)), "origins_hash": agent.patgen._hash(json_str([ogs, st["lineage"]])), "corpus_hash": agent.patgen._hash(json_str([t, c["provenance"]["examples"], c["provenance"]["holdout"]])), "sample_events": [x[0] for x in smp], "disagreement_events": [x["event"] for x in sh["disagreements"]]}
+  return {"hash": agent.patgen._hash(json_str(snap)), "blockers": b, "coverage": cov}
+def review(st, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  sn = snapshot(st, cid)
+  h = sn["hash"]
+  b = sn["blockers"]
+  sh = c["shadow"]
+  cnt = sh["counters"]
+  d = c["descriptor"]
+  t = c["tests"]
+  if c["label"] == "APPROVED" and has(c, "approval") and c["approval"]["hash"] != h:
+    c["label"] = "REVIEW_PENDING"
+    append(c["provenance"]["history"], "approval invalidated: snapshot changed (old approval kept in history)")
+  old = ""
+  if has(c, "review"):
+    old = c["review"]["hash"]
+  c["review"] = {"hash": h, "ready": len(b) == 0, "blockers": b}
+  if old != h:
+    append(c["provenance"]["history"], "review snapshot " + h[:8])
+  out = "review " + cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", " + _act(c) + "]"
+  out = out + "\nsnapshot hash: " + h + " (hash_version 3)"
+  out = out + "\ncoverage keys: tests_hash " + sn["coverage"]["tests_hash"] + " origins_hash " + sn["coverage"]["origins_hash"] + " corpus_hash " + sn["coverage"]["corpus_hash"]
+  out = out + "\ntests: positive " + _frac(t["positive"]) + ", structural-neg " + _frac(t["structural_negative"]) + ", adversarial " + _frac(t["adversarial"]) + ", mutation(supplementary) " + _frac(t["mutation_supplementary"]) + ", annotated-neg " + _frac(t["annotated_negative"]) + ", holdout " + t["holdout"]
+  out = out + "\nshadow lifetime: " + str(cnt["matches"]) + " matches (" + str(cnt["new"]) + " new coverage, " + str(cnt["agree"]) + " agree, " + str(cnt["disagree"]) + " disagree, " + str(cnt["skip-overlap"]) + " skip-overlap), " + str(cnt["competing"]) + " competing; " + str(cnt["sensitive_events"]) + " sensitive-source events excluded; " + str(cnt["dropped_samples"]) + " samples dropped"
+  og = _origins(c, st)
+  srcs = keys(sh["by_source"])
+  out = out + "\nsources: " + str(len(srcs)) + " seen (" + join(", ", srcs) + "), " + str(len(sh["domains"])) + " registrable domains (reported, never evidence of independence)"
+  out = out + "\nverified origins: " + str(len(keys(og["by"]))) + ", " + str(og["total"]) + " counted matches, " + str(og["nonmatch"]) + " counted non-matches; " + str(og["unverified_matches"]) + " matches from unverified/dependent sources excluded"
+  for k in keys(og["by"]):
+    out = out + "\n  origin " + k + ": " + str(og["by"][k]) + " matches"
+  out = out + "\nnote: shadow matches show where a pattern fires, never that a reading is correct; readings stay UNVERIFIED"
+  for x in _open_events(c):
+    out = out + "\n  open " + x["class"] + " event " + x["event"] + ": " + x["triple"][0] + " | " + x["triple"][1] + " | " + x["triple"][2]
+  out = out + "\nretained samples: " + str(len(sh["samples"])) + " of " + str(cnt["matches"]) + " lifetime"
+  for s in sh["samples"]:
+    line = "  - [" + s["class"] + "] " + s["src"] + ": "
+    if has(s, "text"):
+      line = line + json_str(s["text"])
+    else:
+      line = line + "(text not retained)"
+    line = line + " => " + s["triple"][0] + " | " + s["triple"][1] + " | " + s["triple"][2]
+    if len(s["competing"]) > 0:
+      line = line + " (competing: " + join(", ", s["competing"]) + ")"
+    out = out + "\n" + line
+  if len(b) == 0:
+    out = out + "\nreadiness: READY FOR REVIEW (approval needs two owner-attested attestations; activation is a separate opt-in step)"
+  else:
+    out = out + "\nreadiness: NOT READY: " + join("; ", b)
   return out

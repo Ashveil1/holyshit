@@ -1,0 +1,231 @@
+# agent/review.holy - A21.2a delegated review: attestations, delegation
+# scope, deterministic approval gate (repl-only, NO activation).
+#
+# The runtime cannot authenticate who produced an attestation. Identity
+# assurance is therefore decided by HOW the record was loaded, never by
+# what the file claims:
+#   self_asserted   loaded with no marker: recorded, never independent
+#   owner_attested  loaded with the `owner` marker (owner relays it)
+# (runner_authenticated needs signature verification this language does
+# not have yet; it is refused rather than faked.)
+# Approval is a pure function of the frozen snapshot, the delegation
+# scope and the stored attestations. It only ever sets APPROVED; a
+# candidate stays inactive (the store validator forbids active=true).
+import agent.patgen
+import agent.proposals
+def new_att():
+  return {"version": 1, "records": []}
+def load_att(path):
+  if not exists(path):
+    return new_att()
+  try:
+    a = json_load(path)
+    if a["version"] == 1:
+      return a
+  except:
+    return new_att()
+  return new_att()
+def save_att(path, a):
+  json_save(path + ".tmp", a)
+  json_save(path, a)
+def load_del(path):
+  if not exists(path):
+    return null
+  try:
+    d = json_load(path)
+    if d["version"] > 0:
+      return d
+  except:
+    return null
+  return null
+def _s(x):
+  return json_str(x)[:1] == "\""
+# E-codes for rejected attestation files (stable).
+def check_att(r):
+  try:
+    idn = r["identity"]
+    for k in ["provider", "model_version", "lineage_family", "deployment_id", "run_id", "config_version", "tool_setup", "timestamp", "delegation_version"]:
+      if not has(idn, k) or not _s(idn[k]) or len(idn[k]) == 0:
+        return "E01 identity field missing or empty: " + k
+    b = r["binding"]
+    for k in ["candidate", "snapshot_hash"]:
+      if not has(b, k) or not _s(b[k]):
+        return "E02 binding field missing: " + k
+    cv = r["coverage"]
+    for k in ["tests_hash", "origins_hash", "corpus_hash"]:
+      if not has(cv, k) or not _s(cv[k]):
+        return "E03 coverage field missing: " + k
+    for k in ["sample_events", "disagreement_events"]:
+      if not has(cv, k):
+        return "E03 coverage field missing: " + k
+    if not has(cv, "truncated") or cv["truncated"] != false:
+      return "E04 coverage truncated or truncation flag missing"
+    if not (r["verdict"] in ["approve", "reject", "abstain", "escalate"]):
+      return "E05 verdict must be approve, reject, abstain or escalate"
+    if not has(r, "rationale") or not _s(r["rationale"]):
+      return "E06 rationale missing"
+  except:
+    return "E00 malformed attestation"
+  return ""
+def attest(att, st, cid, r, owner):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  e = check_att(r)
+  if e != "":
+    return "attestation refused: " + e
+  if r["binding"]["candidate"] != cid:
+    return "attestation refused: E07 binds a different candidate"
+  rec = {"identity": r["identity"], "binding": r["binding"], "coverage": r["coverage"], "verdict": r["verdict"], "rationale": r["rationale"]}
+  rec["assurance"] = "self_asserted"
+  if owner:
+    rec["assurance"] = "owner_attested"
+  rec["seq"] = len(att["records"])
+  rec["id"] = "at-" + agent.patgen._hash(json_str(rec))
+  for x in att["records"]:
+    if x["id"] == rec["id"]:
+      return "attestation already recorded: " + rec["id"]
+  append(att["records"], rec)
+  append(st["candidates"][cid]["provenance"]["history"], "attestation " + rec["id"] + " (" + rec["verdict"] + ", " + rec["assurance"] + ")")
+  sfx = ""
+  if rec["assurance"] == "self_asserted":
+    sfx = " (cannot count toward independence)"
+  return "recorded " + rec["id"] + " verdict " + rec["verdict"] + " assurance " + rec["assurance"] + sfx
+def _same_set(a, b):
+  if len(a) != len(b):
+    return false
+  for x in a:
+    if not (x in b):
+      return false
+  return true
+# The deterministic gate. Returns {"codes": [...], "state": label}.
+# Fixed code order; every attestation bound to the CURRENT hash counts
+# (a reviewer cannot be cherry-picked past a reject/escalate).
+def gate(att, dele, st, cid, owner_decision):
+  codes = []
+  c = st["candidates"][cid]
+  sn = agent.proposals.snapshot(st, cid)
+  if len(sn["blockers"]) > 0:
+    append(codes, "A01 review packet not ready: " + join("; ", sn["blockers"]))
+  if dele == null:
+    append(codes, "A02 no delegation scope")
+  else:
+    if dele["revoked"] or dele["expired"]:
+      append(codes, "A02 delegation revoked or expired")
+    if not (c["descriptor"]["predicate"] in dele["predicates"]):
+      append(codes, "A03 predicate outside delegation scope")
+    if c["descriptor"]["polarity"] != "pos":
+      append(codes, "A03 polarity outside delegation scope")
+  good = []
+  conflict = 0
+  esc = 0
+  for r in att["records"]:
+    if r["binding"]["candidate"] != cid or r["binding"]["snapshot_hash"] != sn["hash"]:
+      noop = 1
+    else:
+      v = r["verdict"]
+      if v == "reject" or v == "abstain":
+        conflict = conflict + 1
+      elif v == "escalate":
+        esc = esc + 1
+      else:
+        cv = r["coverage"]
+        okc = cv["tests_hash"] == sn["coverage"]["tests_hash"] and cv["origins_hash"] == sn["coverage"]["origins_hash"] and cv["corpus_hash"] == sn["coverage"]["corpus_hash"] and _same_set(cv["sample_events"], sn["coverage"]["sample_events"]) and _same_set(cv["disagreement_events"], sn["coverage"]["disagreement_events"])
+        if not okc:
+          append(codes, "A04 " + r["id"] + " coverage does not match the frozen packet")
+        elif r["assurance"] != "owner_attested":
+          append(codes, "A05 " + r["id"] + " identity is self-asserted: not independent")
+        elif dele != null and not (r["identity"]["lineage_family"] in dele["accepted_families"]):
+          append(codes, "A05 " + r["id"] + " lineage family not accepted by the delegation")
+        elif dele != null and r["identity"]["lineage_family"] == dele["proposer_family"]:
+          append(codes, "A06 " + r["id"] + " shares the proposer's lineage family")
+        elif dele != null and r["identity"]["delegation_version"] != str(dele["version"]):
+          append(codes, "A02 " + r["id"] + " cites a different delegation version")
+        else:
+          append(good, r)
+  fams = []
+  runs = []
+  deps = []
+  for r in good:
+    if not (r["identity"]["lineage_family"] in fams):
+      append(fams, r["identity"]["lineage_family"])
+    if not (r["identity"]["run_id"] in runs):
+      append(runs, r["identity"]["run_id"])
+    if not (r["identity"]["deployment_id"] in deps):
+      append(deps, r["identity"]["deployment_id"])
+  if len(fams) < 2 or len(runs) < 2 or len(deps) < 2:
+    append(codes, "A07 need 2 qualifying approvals from distinct lineage families, runs and deployments (have " + str(len(fams)) + "/" + str(len(runs)) + "/" + str(len(deps)) + ")")
+  if conflict > 0:
+    append(codes, "A08 " + str(conflict) + " reject/abstain attestation(s) on this snapshot")
+  if esc > 0:
+    append(codes, "A09 " + str(esc) + " escalation(s): owner decision required")
+  return {"codes": codes, "hash": sn["hash"], "attestations": [r["id"] for r in good], "escalated": esc > 0 or conflict > 0}
+def approve(att, dele, st, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  if not (c["label"] in ["SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW"]):
+    return "approve refused: A00 state " + c["label"]
+  g = gate(att, dele, st, cid, false)
+  if len(g["codes"]) == 0:
+    c["label"] = "APPROVED"
+    c["approval"] = {"hash": g["hash"], "attestations": g["attestations"], "delegation": dele["version"], "kind": "delegated"}
+    append(c["provenance"]["history"], "APPROVED (delegated) on snapshot " + g["hash"][:8] + " (still inactive until activated)")
+    return "approved " + cid + " on snapshot " + g["hash"] + " (delegated; still INACTIVE until `patterns activate`)"
+  if g["escalated"]:
+    c["label"] = "PENDING_OWNER_REVIEW"
+    append(c["provenance"]["history"], "PENDING_OWNER_REVIEW")
+  elif c["label"] == "SHADOWED":
+    c["label"] = "REVIEW_PENDING"
+    append(c["provenance"]["history"], "REVIEW_PENDING")
+  return "approve refused (" + c["label"] + "): " + join(" | ", g["codes"])
+# Owner decision on a PENDING_OWNER_REVIEW candidate. Owner approval is
+# its own kind and still cannot override a technical failure: it is
+# honored only when the gate fails solely on A08/A09 (reviewer
+# conflict / escalation) and every other check passes.
+def owner(att, dele, st, cid, decision):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  if c["label"] != "PENDING_OWNER_REVIEW":
+    return "owner decision refused: A00 state " + c["label"]
+  if decision == "reject":
+    c["label"] = "REVOKED"
+    c["active"] = false
+    append(c["provenance"]["history"], "owner rejected")
+    return "owner rejected " + cid
+  g = gate(att, dele, st, cid, true)
+  tech = []
+  for x in g["codes"]:
+    if not (x[:3] == "A08" or x[:3] == "A09"):
+      append(tech, x)
+  if len(tech) > 0:
+    return "owner approval cannot override technical failures: " + join(" | ", tech)
+  c["label"] = "APPROVED"
+  c["approval"] = {"hash": g["hash"], "attestations": g["attestations"], "delegation": dele["version"], "kind": "owner"}
+  append(c["provenance"]["history"], "APPROVED (owner) on snapshot " + g["hash"][:8])
+  return "owner approved " + cid + " (kind owner; still INACTIVE until activated)"
+def revoke(st, cid):
+  if not has(st["candidates"], cid):
+    return "unknown pattern id " + cid
+  c = st["candidates"][cid]
+  if c["label"] == "REVOKED":
+    return cid + " already REVOKED"
+  c["label"] = "REVOKED"
+  c["active"] = false
+  append(c["provenance"]["history"], "REVOKED (history and readings kept)")
+  return "revoked " + cid + ": removed from any use immediately; history kept; reinstating needs a new review and an owner decision"
+def set_delegation(path, src):
+  try:
+    d = json_load(src)
+    for k in ["version", "revoked", "expired", "predicates", "accepted_families", "proposer_family", "owner_ref"]:
+      if not has(d, k):
+        return "delegation refused: missing " + k
+    if d["version"] < 1:
+      return "delegation refused: version must be >= 1"
+  except:
+    return "delegation refused: cannot read " + src
+  old = load_del(path)
+  if old != null and d["version"] <= old["version"]:
+    return "delegation refused: version must increase (current " + str(old["version"]) + ")"
+  json_save(path, d)
+  return "delegation v" + str(d["version"]) + " stored (owner-relayed scope; reviewers cannot change it); every snapshot approval must cite this version"
