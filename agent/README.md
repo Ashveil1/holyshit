@@ -6,7 +6,7 @@ dependencies beyond the language itself. One EXPERIMENTAL exception:
 the repl shell can fetch web pages over plain HTTP (`read url`, A18
 preview below); the core itself stays network-free.
 
-## What it is today (v0.15)
+## What it is today (v0.16)
 
 - An evidence-ingestion reader (A16): `read <text>` ingests text as
   DATA - never executed, never believed - and reports typed claims
@@ -482,6 +482,156 @@ Limits, stated plainly:
   counters; the thresholds are not ratified; one reviewer family
   label is not proof of independent training data.
 
+### A22.0: change detection for learned-pattern files
+
+This is CHANGE DETECTION ONLY. `agent-manifest.json` records a hash of
+`agent-patterns.json`, `agent-attestations.json`, `agent-delegation.json`
+and the learned log. The hash is the 62-bit polynomial hash, so it notices
+that a file changed outside the repl; it does not prove who changed it and
+an attacker who can edit files can edit the manifest too. Real tamper
+resistance waits for SHA-256 / signatures (language lane, C20).
+
+- The repl seals the manifest after `patterns *` commands, after learned
+  logging and at exit. It checks it only when an ACTIVE learned pattern
+  exists, so reader output is unchanged for everyone else (A20 isolation).
+- On a mismatch nothing learned loads, one integrity note is printed, and
+  the owner must run `patterns manifest accept` after inspecting the files.
+  Upgrading from A20/A21 with pattern files but no manifest needs one
+  `patterns manifest accept` before learned patterns load again.
+- New loader code L13: an approval made under another hash algorithm is
+  void. The manifest and approvals record `hash_algo`, so a future SHA-256
+  migration invalidates old approvals.
+- L10 now rebuilds the positive examples (all must fire, count must match)
+  and re-runs the ADV negatives. It does not rebuild structural/mutation
+  cases: those triples are not stored in provenance.
+- `tests/test_agent_integrity.py` runs a native build and use session under
+  `unshare -rn` + `strace`: no network syscalls, writes only in the working
+  directory allowlist (including `.tmp` files, since the language has no
+  remove builtin), no symlink escapes; the auditor has negative controls.
+- Proposal history no longer repeats consecutive identical origin/lineage
+  entries.
+
+### A22.1: predicate and argument-type registry
+
+`agent-registry.json` (repl-only, `registry.holy`) holds predicate
+signatures (`patterns predicate P SUBJTYPE OBJTYPE`) and entity type
+evidence (`patterns type ENTITY TYPE declared|inferred|verified`);
+`patterns registry` lists it and `patterns typecheck` audits the stored
+relation edges. Declared, inferred, verified and unknown stay distinct.
+Only VERIFIED evidence with exactly one verified type raises
+TYPE_MISMATCH. Declared or inferred disagreement is shown as an
+unflagged suspicion, several verified types are ambiguous and not flagged.
+The `verified` marker is an unauthenticated owner convention. Types are
+exact names ("any" accepts all); there is no subtype lattice and no entity
+identity linking (aliases are never merged, no count changes). The
+registry feeds audits only: reader output and `agent-memory.json` are
+byte-identical with it absent, present or corrupt
+(`tests/test_agent_registry.py`). The file is covered by the A22.0
+manifest. Review-packet integration is not built yet.
+
+### A22.2: operational tripwires and the quarantine state machine
+
+`agent-tripwire.json` (repl-only, `tripwire.holy`, covered by the manifest)
+only ever DISABLES learned patterns (loader code L14); it cannot approve,
+activate or promote anything, and the frozen eval (0 FP) is a separate gate.
+Thresholds are PROVISIONAL and unratified.
+
+- T1: `patterns polarity-error ID owner` (one confirmed polarity error)
+  disables at once: DISABLED_POLARITY.
+- T2: `patterns fp ID SUBJECT PREDICATE OBJECT owner` (underscores for
+  spaces) confirms an ordinary false positive. Two confirmed FPs inside the
+  rolling window of 200 DISTINCT eligible matches (keyed by a hash of the
+  triple; ambiguous multi-pattern matches are not eligible; sensitive
+  sources contribute only the hash) give QUARANTINED_PROVISIONAL. The
+  200-match window is not the 200-row log cap.
+- `patterns quarantine ID REVIEWER`: two distinct AI reviewers give a
+  TEMP_QUARANTINE. Reviewers cannot confirm an FP; `owner` quarantines
+  directly. Only the owner lifts (`patterns lift ID owner NOTE`), and a
+  lifted pattern stays off: it needs a fresh review, the policy gate and an
+  explicit approve + activate. Lifetime counters and history are never reset.
+- Every state is enforced at the next command, including the current
+  session (the loader runs after each tripwire command). A corrupt tripwire
+  file fails closed.
+- Forget/teach events (privacy_forget, correction, addition, supersession,
+  disagreement, preference_change) are classified by prefix heuristics and
+  counted, only while a learned pattern is active. Only an explicit
+  correction naming a subject of a session learned reading opens an OPEN
+  investigation, which is never an automatic confirmation.
+- `patterns review ID` now also prints a read-only A22 status block
+  (predicate signature, typecheck summary, tripwire state): display only,
+  not a gate. The `owner` and `verified` markers remain unauthenticated.
+- With no active learned pattern nothing is written and reader output is
+  unchanged.
+
+### A22.3: reviewer budgets, suspension and isolated canaries
+
+`agent-reviewers.json` (repl-only, `reviewers.holy`, covered by the
+manifest) only ever LIMITS review; it cannot approve, activate or promote.
+
+- Identity assurance ladder (unchanged): self_asserted is recorded, never
+  counts and spends no budget; owner_attested is the current ceiling (the
+  `owner` marker is an unauthenticated convention); runner_authenticated is
+  deferred until crypto exists (C20), refused rather than faked.
+- Budgets are MANDATORY since v0.16 (A22.3 first shipped them opt-in):
+  `patterns budget FAMILY MAXCANDS MAXWORK owner`. Every owner_attested
+  attestation needs a budgeted family: no budget (the refusal names the
+  command to run), an exhausted candidate budget or an exhausted
+  weighted-work budget (1 + sample events + 3 x disagreement events per
+  attestation) REFUSES the attestation (A10); nothing auto-extends and
+  usage is never reset. Upgrading: set a budget per family before
+  attesting.
+- Canaries: `patterns canary FAMILY CASES ANSWERS owner`. A canary is a
+  synthetic case file plus the family's answers; scoring reads only those
+  files and the reviewer registry. It imports no proposals, tripwire,
+  matcher or graph code (the test asserts the imports), and a pool with a
+  production reference or a non-synthetic case is refused. Ambiguous cases
+  are never scored; unanswered cases are non-critical. A clear CRITICAL miss
+  (approving a must-reject case) suspends the family: its attestations stop
+  counting (gate A11) and an ACTIVE pattern approved by it leaves use at the
+  next command (loader L15). Only `patterns reinstate FAMILY owner NOTE`
+  reinstates. The owner-authored delegation file is never edited.
+- An unreadable reviewer registry fails closed. Identical rationale across
+  approving attestations prints a flag; it is not a rejection.
+- Limits: family names, the owner marker and the answers files are
+  unauthenticated conventions; canary pools are owner-supplied, not
+  validated against ground truth beyond the synthetic/no-reference rules.
+
+### A22.4: leakage guard
+
+A monotonic sequence number (the language has no clock) orders derivation,
+shadow start and the first sight of every source (`seq`, `src_first`,
+`holdout` in the proposals file). Per candidate, `cutoffs` records
+`derive_seq` and `shadow_seq`; they are set once and never overwritten
+(unshadow/re-shadow and re-derive keep them, and a re-derive after the
+shadow cutoff changes no evidence input). Rules, all in the review packet's
+"leakage guard" line and the snapshot hash:
+
+- A source first seen at or before the candidate's shadow cutoff is a
+  pre-shadow fact: its segments are excluded from that candidate's evidence
+  (counted as `pre_shadow`) unless `patterns holdout SRC owner` declared it
+  held out BEFORE the candidate was derived. A source already seen cannot be
+  declared held out later.
+- A segment whose text equals one of the candidate's derivation examples is
+  never validation (`derived_text`).
+- `patterns derive` refuses an example whose text appears in the
+  learned-pattern log (circular learning across milestones). This works only
+  while `patterns samples on` stored the text; with samples off, or for
+  sensitive sources, it cannot be checked.
+- Candidates from older files get `legacy` cutoffs and a review blocker: their
+  existing evidence was never leak-checked.
+- Limits: source names are the owner-visible read labels (unauthenticated);
+  "demonstrably held out" means declared before derivation, not proven.
+
+### v0.16 notes
+
+A22 Knowledge Integrity is complete: change-detection manifest (A22.0),
+predicate/type registry (A22.1), tripwires and quarantine (A22.2), reviewer
+budgets (now mandatory), suspension and canaries (A22.3), leakage guard
+(A22.4). Everything remains EXPERIMENTAL, opt-in and revocable; no fact is
+ever auto-promoted and the reader and core are unchanged since v0.15. The
+`owner`, `verified` and reviewer-id markers, family names and hashes (62-bit
+polynomial, no SHA-256/HMAC until C20) are unauthenticated conventions.
+
 ## Hosted resource benchmark (re-measured at A19, v0.13)
 
 Measured with `tests/bench_agent.py` (repeatable: `--full`; synthesized
@@ -694,6 +844,10 @@ research line and shares no code with it.
   (repl-only; see the A18 preview section).
 - `patgen.holy`, `proposals.holy` — EXPERIMENTAL offline pattern
   candidates and their separate proposal store (repl-only).
+- `integrity.holy` — A22.0 change-detection manifest (repl-only).
+- `reviewers.holy` — A22.3 reviewer budgets, suspension, canaries (repl-only).
+- `tripwire.holy` — A22.2 tripwires and quarantine states (repl-only).
+- `registry.holy` — A22.1 predicate/type registry (repl-only, audits only).
 - `shadow.holy`, `review.holy`, `learned.holy` — EXPERIMENTAL A21
   shadow observation, delegated review gate and fail-closed loader
   (repl-only). The core contains only the pure learned matcher.

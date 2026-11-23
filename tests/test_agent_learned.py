@@ -22,7 +22,7 @@ def make(base, argv, env, out0):
     f = [rv.att(base, out0, 'fa', 'run1', 'dep1'),
          rv.att(base, out0, 'fb', 'run2', 'dep2')]
     rv.deleg(base)
-    o = run(argv, ['patterns delegate del.json'] +
+    o = run(argv, ['patterns manifest accept', 'patterns delegate del.json'] +
             ['patterns attest %s %s owner' % (OWN_HAS, x) for x in f] +
             ['patterns approve ' + OWN_HAS, 'quit'], base, env)
     assert 'approved ' + OWN_HAS in o, o[-600:]
@@ -85,8 +85,9 @@ def suite(label, argv, env):
         # loader failures disable at the next command
         def bad_hash(d):
             edit(d, lambda c: c['approval'].update(hash='0' * 16))
+        acc = 'patterns manifest accept'
         d, o = sc('stale', lambda d: (run(argv, [act, 'quit'], d, env),
-                                      bad_hash(d)), [READ])
+                                      bad_hash(d)), [acc, READ])
         assert 'disabled: L09' in o and 'learned-pattern readings' not in o.split('disabled')[-1]
         st = json.loads((d / 'agent-patterns.json').read_text())
         c = st['candidates'][OWN_HAS]
@@ -98,7 +99,7 @@ def suite(label, argv, env):
         def bad_verb(d):
             edit(d, lambda c: c['descriptor'].update(verb='owns owns'))
         d, o = sc('canon', lambda d: (run(argv, [act, 'quit'], d, env),
-                                      bad_verb(d)), [READ])
+                                      bad_verb(d)), [acc, READ])
         assert 'disabled: L03' in o
 
         def revoke_del(d):
@@ -107,8 +108,21 @@ def suite(label, argv, env):
             (d / 'del2.json').write_text(json.dumps(x))
         d, o = sc('deleg', lambda d: (run(argv, [act, 'quit'], d, env),
                                       revoke_del(d)),
-                  ['patterns delegate del2.json', READ])
+                  [acc, 'patterns delegate del2.json', READ])
         assert 'disabled: L12' in o
+        # manifest: an outside edit stops learned loading until accepted
+        d, o = sc('manifest', lambda d: (run(argv, [act, 'quit'], d, env),
+                                         bad_hash(d)), [READ, acc, READ])
+        assert 'integrity: ' in o and 'changed outside the repl' in o
+        first = o.split('manifest accepted')[0]
+        assert 'learned-pattern readings recorded' not in first
+        assert 'disabled: L09' in o.split('manifest accepted')[1]
+        # hash-algorithm mismatch: approval predates the algorithm
+        def old_algo(d):
+            edit(d, lambda c: c['approval'].update(hash_algo='md5'))
+        d, o = sc('algo', lambda d: (run(argv, [act, 'quit'], d, env),
+                                     old_algo(d)), [acc, READ])
+        assert 'disabled: L13' in o
         # changed provenance after activation: stale at next command
         d, o = sc('graph', lambda d: run(argv, [act, 'quit'], d, env), [
             'patterns lineage o4 o0 repost disputed owner', READ])

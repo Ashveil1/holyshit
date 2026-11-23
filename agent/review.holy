@@ -13,6 +13,7 @@
 # candidate stays inactive (the store validator forbids active=true).
 import agent.patgen
 import agent.proposals
+import agent.reviewers
 def new_att():
   return {"version": 1, "records": []}
 def load_att(path):
@@ -67,7 +68,7 @@ def check_att(r):
   except:
     return "E00 malformed attestation"
   return ""
-def attest(att, st, cid, r, owner):
+def attest(att, st, cid, r, owner, rv):
   if not has(st["candidates"], cid):
     return "unknown pattern id " + cid
   e = check_att(r)
@@ -84,6 +85,9 @@ def attest(att, st, cid, r, owner):
   for x in att["records"]:
     if x["id"] == rec["id"]:
       return "attestation already recorded: " + rec["id"]
+  bl = agent.reviewers.charge(rv, rec["identity"]["lineage_family"], cid, agent.reviewers.work_of(rec), rec["assurance"])
+  if bl != "":
+    return "attestation refused: " + bl
   append(att["records"], rec)
   append(st["candidates"][cid]["provenance"]["history"], "attestation " + rec["id"] + " (" + rec["verdict"] + ", " + rec["assurance"] + ")")
   sfx = ""
@@ -100,7 +104,7 @@ def _same_set(a, b):
 # The deterministic gate. Returns {"codes": [...], "state": label}.
 # Fixed code order; every attestation bound to the CURRENT hash counts
 # (a reviewer cannot be cherry-picked past a reject/escalate).
-def gate(att, dele, st, cid, owner_decision):
+def gate(att, dele, st, cid, owner_decision, rv):
   codes = []
   c = st["candidates"][cid]
   sn = agent.proposals.snapshot(st, cid)
@@ -130,7 +134,10 @@ def gate(att, dele, st, cid, owner_decision):
       else:
         cv = r["coverage"]
         okc = cv["tests_hash"] == sn["coverage"]["tests_hash"] and cv["origins_hash"] == sn["coverage"]["origins_hash"] and cv["corpus_hash"] == sn["coverage"]["corpus_hash"] and _same_set(cv["sample_events"], sn["coverage"]["sample_events"]) and _same_set(cv["disagreement_events"], sn["coverage"]["disagreement_events"])
-        if not okc:
+        rb = agent.reviewers.blocked(rv, r["identity"]["lineage_family"])
+        if rb != "":
+          append(codes, rb + " (" + r["id"] + " does not count)")
+        elif not okc:
           append(codes, "A04 " + r["id"] + " coverage does not match the frozen packet")
         elif r["assurance"] != "owner_attested":
           append(codes, "A05 " + r["id"] + " identity is self-asserted: not independent")
@@ -158,19 +165,31 @@ def gate(att, dele, st, cid, owner_decision):
     append(codes, "A08 " + str(conflict) + " reject/abstain attestation(s) on this snapshot")
   if esc > 0:
     append(codes, "A09 " + str(esc) + " escalation(s): owner decision required")
-  return {"codes": codes, "hash": sn["hash"], "attestations": [r["id"] for r in good], "escalated": esc > 0 or conflict > 0}
-def approve(att, dele, st, cid):
+  flags = []
+  rats = []
+  for r in good:
+    if r["rationale"] in rats:
+      append(flags, "flag: identical rationale in more than one approving attestation (a flag for the owner, not a rejection)")
+    append(rats, r["rationale"])
+  return {"flags": flags, "codes": codes, "hash": sn["hash"], "attestations": [r["id"] for r in good], "escalated": esc > 0 or conflict > 0}
+def _fl(flags):
+  out = ""
+  for x in flags:
+    out = out + "\n" + x
+    break
+  return out
+def approve(att, dele, st, cid, rv):
   if not has(st["candidates"], cid):
     return "unknown pattern id " + cid
   c = st["candidates"][cid]
   if not (c["label"] in ["SHADOWED", "REVIEW_PENDING", "PENDING_OWNER_REVIEW"]):
     return "approve refused: A00 state " + c["label"]
-  g = gate(att, dele, st, cid, false)
+  g = gate(att, dele, st, cid, false, rv)
   if len(g["codes"]) == 0:
     c["label"] = "APPROVED"
-    c["approval"] = {"hash": g["hash"], "attestations": g["attestations"], "delegation": dele["version"], "kind": "delegated"}
+    c["approval"] = {"hash": g["hash"], "hash_algo": "poly62", "attestations": g["attestations"], "delegation": dele["version"], "kind": "delegated"}
     append(c["provenance"]["history"], "APPROVED (delegated) on snapshot " + g["hash"][:8] + " (still inactive until activated)")
-    return "approved " + cid + " on snapshot " + g["hash"] + " (delegated; still INACTIVE until `patterns activate`)"
+    return "approved " + cid + " on snapshot " + g["hash"] + " (delegated; still INACTIVE until `patterns activate`)" + _fl(g["flags"])
   if g["escalated"]:
     c["label"] = "PENDING_OWNER_REVIEW"
     append(c["provenance"]["history"], "PENDING_OWNER_REVIEW")
@@ -182,7 +201,7 @@ def approve(att, dele, st, cid):
 # its own kind and still cannot override a technical failure: it is
 # honored only when the gate fails solely on A08/A09 (reviewer
 # conflict / escalation) and every other check passes.
-def owner(att, dele, st, cid, decision):
+def owner(att, dele, st, cid, decision, rv):
   if not has(st["candidates"], cid):
     return "unknown pattern id " + cid
   c = st["candidates"][cid]
@@ -193,7 +212,7 @@ def owner(att, dele, st, cid, decision):
     c["active"] = false
     append(c["provenance"]["history"], "owner rejected")
     return "owner rejected " + cid
-  g = gate(att, dele, st, cid, true)
+  g = gate(att, dele, st, cid, true, rv)
   tech = []
   for x in g["codes"]:
     if not (x[:3] == "A08" or x[:3] == "A09"):
@@ -201,7 +220,7 @@ def owner(att, dele, st, cid, decision):
   if len(tech) > 0:
     return "owner approval cannot override technical failures: " + join(" | ", tech)
   c["label"] = "APPROVED"
-  c["approval"] = {"hash": g["hash"], "attestations": g["attestations"], "delegation": dele["version"], "kind": "owner"}
+  c["approval"] = {"hash": g["hash"], "hash_algo": "poly62", "attestations": g["attestations"], "delegation": dele["version"], "kind": "owner"}
   append(c["provenance"]["history"], "APPROVED (owner) on snapshot " + g["hash"][:8])
   return "owner approved " + cid + " (kind owner; still INACTIVE until activated)"
 def revoke(st, cid):

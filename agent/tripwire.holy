@@ -1,0 +1,214 @@
+# agent/tripwire.holy - A22.2 EXPERIMENTAL operational tripwires and the
+# quarantine state machine for learned patterns (repl-only). Thresholds
+# are PROVISIONAL, not ratified. Everything here only ever DISABLES a
+# learned pattern (loader code L14); nothing here can activate, approve,
+# promote a fact or edit the reader. The frozen acceptance eval (0 FP)
+# is a separate gate and is untouched by these counters.
+#
+# States per pattern:
+#   CLEAR                    no tripwire fired
+#   TEMP_QUARANTINE          two distinct AI reviewers asked for a
+#                            protective hold (they cannot confirm FPs)
+#   OWNER_QUARANTINE         the owner quarantined it
+#   QUARANTINED_PROVISIONAL  T2: 2 confirmed ordinary FPs inside the
+#                            rolling window of 200 DISTINCT eligible matches
+#   DISABLED_POLARITY        T1: one confirmed polarity error
+# Only the owner confirms a false positive and only the owner lifts a
+# state (`owner` marker = unauthenticated convention). Lifting returns
+# the pattern to CLEAR in this file but the loader already moved it to
+# REVIEW_PENDING: reactivation needs a fresh review, the policy gate and
+# an explicit approve/activate. Lifetime counters and history are never
+# reset. A distinct eligible match is keyed by a hash of its triple
+# (sensitive sources contribute the hash only, no text); ambiguous
+# (multi-pattern) matches are not eligible. Window capacity: 200.
+import agent.core
+import agent.patgen
+WINDOW = 200
+FP_LIMIT = 2
+STATES = ["CLEAR", "TEMP_QUARANTINE", "OWNER_QUARANTINE", "QUARANTINED_PROVISIONAL", "DISABLED_POLARITY"]
+CLASSES = ["privacy_forget", "correction", "addition", "supersession", "disagreement", "preference_change", "other"]
+def new_tw():
+  ev = {}
+  for c in CLASSES:
+    ev[c] = 0
+  return {"version": 1, "hash_algo": "poly62", "patterns": {}, "events": ev, "investigations": [], "unreadable": false}
+def _valid(t):
+  ok = true
+  try:
+    if t["version"] != 1:
+      ok = false
+    for pid in keys(t["patterns"]):
+      p = t["patterns"][pid]
+      if not (p["state"] in STATES):
+        ok = false
+      if p["fp_lifetime"] < 0 or p["polarity_lifetime"] < 0 or p["matches_lifetime"] < 0:
+        ok = false
+      for w in p["window"]:
+        if len(w) != 2:
+          ok = false
+      for r in p["reports"]:
+        if json_str(r)[:1] != "\"":
+          ok = false
+    for c in CLASSES:
+      if t["events"][c] < 0:
+        ok = false
+    for i in t["investigations"]:
+      if i["state"] != "OPEN" and i["state"] != "CLOSED":
+        ok = false
+  except:
+    ok = false
+  return ok
+def load(path):
+  out = new_tw()
+  if exists(path):
+    out["unreadable"] = true
+    try:
+      d = json_load(path)
+      if _valid(d):
+        d["unreadable"] = false
+        out = d
+    except:
+      out["unreadable"] = true
+  return out
+def save(path, t):
+  if t["unreadable"]:
+    return "refused: tripwire file is unreadable; fix or remove it first (nothing written)"
+  t["unreadable"] = false
+  if not _valid(t):
+    return "refused: tripwire state failed validation (nothing written)"
+  tmp = path + ".tmp"
+  json_save(tmp, t)
+  if not _valid(json_load(tmp)):
+    return "refused: tmp write failed validation (final file untouched)"
+  json_save(path, t)
+  return ""
+def _p(t, pid):
+  if not (pid in t["patterns"]):
+    t["patterns"][pid] = {"state": "CLEAR", "fp_lifetime": 0, "polarity_lifetime": 0, "matches_lifetime": 0, "window": [], "reports": [], "history": []}
+  return t["patterns"][pid]
+def key_of(s, p, o):
+  return agent.patgen._hash(s + "|" + p + "|" + o)
+def _move(pr, to, why):
+  append(pr["history"], pr["state"] + " -> " + to + ": " + why)
+  pr["state"] = to
+# Reason the loader must keep this pattern off, or "" (L14).
+def blocked(t, pid):
+  if t["unreadable"]:
+    return "L14 tripwire state unreadable (fail closed)"
+  if pid in t["patterns"] and t["patterns"][pid]["state"] != "CLEAR":
+    return "L14 tripwire " + t["patterns"][pid]["state"]
+  return ""
+def _fps_in_window(pr):
+  n = 0
+  for w in pr["window"]:
+    if w[1] == 1:
+      n = n + 1
+  return n
+# Record one eligible learned match. Returns True when it was new.
+def observe(t, pid, key):
+  pr = _p(t, pid)
+  for w in pr["window"]:
+    if w[0] == key:
+      return false
+  append(pr["window"], [key, 0])
+  pr["matches_lifetime"] = pr["matches_lifetime"] + 1
+  if len(pr["window"]) > WINDOW:
+    pr["window"] = pr["window"][1:]
+  return true
+def fp(t, pid, key):
+  if not (pid in t["patterns"]):
+    return "fp refused: no recorded matches for " + pid
+  pr = t["patterns"][pid]
+  for w in pr["window"]:
+    if w[0] == key:
+      if w[1] != 0:
+        return "fp already confirmed (or adjudicated) for that match"
+      w[1] = 1
+      pr["fp_lifetime"] = pr["fp_lifetime"] + 1
+      n = _fps_in_window(pr)
+      msg = "false positive CONFIRMED by the owner (" + str(n) + " of " + str(FP_LIMIT) + " in the rolling window of " + str(WINDOW) + " distinct matches; thresholds provisional)"
+      if n >= FP_LIMIT and pr["state"] == "CLEAR":
+        _move(pr, "QUARANTINED_PROVISIONAL", "T2 " + str(n) + " confirmed FPs in window")
+        msg = msg + "; T2 QUARANTINED_PROVISIONAL, pattern leaves use at once"
+      return msg
+  return "fp refused: that match is not in the rolling window of " + pid
+def polarity(t, pid):
+  pr = _p(t, pid)
+  pr["polarity_lifetime"] = pr["polarity_lifetime"] + 1
+  if pr["state"] != "DISABLED_POLARITY":
+    _move(pr, "DISABLED_POLARITY", "T1 confirmed polarity error")
+  return "polarity error CONFIRMED by the owner: " + pid + " DISABLED_POLARITY, leaves use at once, lifetime counters kept"
+def quarantine(t, pid, who):
+  pr = _p(t, pid)
+  if who == "owner":
+    if pr["state"] == "CLEAR":
+      _move(pr, "OWNER_QUARANTINE", "owner request")
+    return "quarantined by the owner: " + pid + " leaves use at once"
+  if pr["state"] != "CLEAR":
+    return "already " + pr["state"] + "; reviewer report recorded only"
+  if who in pr["reports"]:
+    return "reviewer " + who + " already reported; a second distinct reviewer is needed"
+  append(pr["reports"], who)
+  if len(pr["reports"]) >= 2:
+    _move(pr, "TEMP_QUARANTINE", "two distinct reviewers: " + join(",", pr["reports"]))
+    return "TEMP_QUARANTINE: two distinct reviewers asked for a protective hold; they cannot confirm a false positive, the owner decides (lift or confirm)"
+  return "reviewer " + who + " report recorded (1 of 2 needed for a temporary quarantine)"
+def lift(t, pid, note):
+  if not (pid in t["patterns"]) or t["patterns"][pid]["state"] == "CLEAR":
+    return "lift refused: " + pid + " is not under a tripwire state"
+  pr = t["patterns"][pid]
+  was = pr["state"]
+  _move(pr, "CLEAR", "owner lift: " + note)
+  pr["reports"] = []
+  for w in pr["window"]:
+    if w[1] == 1:
+      w[1] = 2
+  return "owner lifted " + was + " on " + pid + ". It stays off: it needs a fresh review, the policy gate and an explicit approve + activate. Lifetime counters and history are kept"
+# Heuristic event classes for the user's own commands (D15). Only an
+# explicit correction can open an investigation, and an investigation
+# is never an automatic confirmation.
+def classify(line):
+  m = agent.core.lower_ascii(agent.core.normalize(line))
+  if m[:7] == "forget " or m[:10] == "forget all":
+    return "privacy_forget"
+  if m[:3] == "no," or m[:3] == "no ":
+    return "correction"
+  if m[:9] == "remember ":
+    return "addition"
+  if m[:4] == "now " or m[:7] == "update " or m[:10] == "supersede ":
+    return "supersession"
+  if m[:12] == "i disagree" or m[:13] == "that is wrong" or m[:14] == "that's wrong":
+    return "disagreement"
+  if m[:8] == "i prefer" or m[:6] == "i like" or m[:9] == "i dislike":
+    return "preference_change"
+  return "other"
+# Record the event; for a correction whose text names the subject of a
+# session learned reading, open an investigation (OPEN, unconfirmed).
+def event(t, line, lr):
+  c = classify(line)
+  t["events"][c] = t["events"][c] + 1
+  if c == "correction":
+    m = agent.core.lower_ascii(agent.core.normalize(line))
+    for e in lr:
+      if len(e[0]) > 0 and e[0] in m:
+        append(t["investigations"], {"pattern": e[4], "key": key_of(e[0], e[1], e[2]), "state": "OPEN"})
+  return c
+def listing(t):
+  out = ["tripwires (thresholds PROVISIONAL, lifetime counters never reset; the frozen eval is separate):"]
+  if t["unreadable"]:
+    append(out, "  tripwire file UNREADABLE: every learned pattern stays off (fail closed)")
+  for pid in keys(t["patterns"]):
+    pr = t["patterns"][pid]
+    append(out, "  " + pid + " " + pr["state"] + ": " + str(pr["matches_lifetime"]) + " distinct matches, window " + str(len(pr["window"])) + "/" + str(WINDOW) + ", FP lifetime " + str(pr["fp_lifetime"]) + " (window " + str(_fps_in_window(pr)) + "), polarity errors " + str(pr["polarity_lifetime"]) + ", reviewer reports " + str(len(pr["reports"])))
+    for h in pr["history"]:
+      append(out, "    " + h)
+  n = 0
+  for i in t["investigations"]:
+    if i["state"] == "OPEN":
+      n = n + 1
+  append(out, "  open correction investigations: " + str(n) + " (the owner confirms or ignores; never automatic)")
+  ev = []
+  for c in CLASSES:
+    append(ev, c + " " + str(t["events"][c]))
+  append(out, "  events (heuristic): " + join(", ", ev))
+  return join("\n", out)

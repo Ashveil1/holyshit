@@ -14,7 +14,7 @@
 import agent.patgen
 import agent.shadow
 def new_store():
-  return {"version": 1, "candidates": {}, "rejected": [], "sensitive": [], "sample_text": false, "origins": {}, "lineage": []}
+  return {"version": 1, "candidates": {}, "rejected": [], "sensitive": [], "sample_text": false, "origins": {}, "lineage": [], "seq": 0, "src_first": {}, "holdout": {}}
 def _valid(st):
   try:
     if st["version"] != 1:
@@ -53,6 +53,12 @@ def load(path):
         st["origins"] = {}
       if not has(st, "lineage"):
         st["lineage"] = []
+      if not has(st, "seq"):
+        st["seq"] = 0
+      if not has(st, "src_first"):
+        st["src_first"] = {}
+      if not has(st, "holdout"):
+        st["holdout"] = {}
       return st
   except:
     return new_store()
@@ -72,6 +78,16 @@ def save(path, st):
 # Merge a derive() result. Identity is the content-addressed id: an
 # existing id with a different canonical descriptor is a collision
 # (refused); re-deriving an existing id keeps it and appends history.
+# A22.4: a monotonic sequence number (no clock exists) orders derivation,
+# shadow start and first sight of every source. Cutoffs are set once
+# and never overwritten.
+def holdout(st, src):
+  if has(st["holdout"], src):
+    return "held-out declaration for " + src + " already recorded at seq " + str(st["holdout"][src]) + " (immutable)"
+  if has(st["src_first"], src):
+    return "holdout refused: " + src + " was already seen by the shadow at seq " + str(st["src_first"][src]) + "; a held-out source must be declared before it is read"
+  st["holdout"][src] = agent.shadow.tick(st)
+  return "held-out source " + src + " declared at seq " + str(st["holdout"][src]) + ": usable as pre-shadow validation only for candidates derived after this and never derived from it"
 def merge(st, res):
   notes = []
   for c in res["candidates"]:
@@ -81,7 +97,11 @@ def merge(st, res):
       if old["descriptor"]["canon"] != c["descriptor"]["canon"]:
         append(notes, "id collision on " + cid + ": refused")
       else:
-        append(old["provenance"]["history"], "re-derived")
+        agent.shadow.ensure_cutoffs(old)
+        if old["cutoffs"]["shadow_seq"] >= 0:
+          append(old["provenance"]["history"], "re-derived after the shadow cutoff: evidence inputs unchanged (post-shadow facts never derive a candidate)")
+        else:
+          append(old["provenance"]["history"], "re-derived")
         old["tests"] = c["tests"]
         old["approval_blocked"] = c["approval_blocked"]
         old["expected_coverage_gain"] = c["expected_coverage_gain"]
@@ -89,6 +109,8 @@ def merge(st, res):
           append(notes, cid + " stays STALE (an example was retracted)")
     else:
       append(c["provenance"]["history"], "derived")
+      c["cutoffs"] = {"derive_seq": agent.shadow.tick(st), "shadow_seq": -1, "legacy": false}
+      c["leak"] = {"pre_shadow": 0, "derived_text": 0}
       st["candidates"][cid] = c
   for sid in res["skipped_rejected"]:
     append(notes, "skipped " + sid + " (rejected)")
@@ -159,6 +181,9 @@ def shadow(st, cid):
   if c["label"] == "SHADOWED":
     return cid + " is already SHADOWED"
   agent.shadow.start(c)
+  agent.shadow.ensure_cutoffs(c)
+  if c["cutoffs"]["shadow_seq"] < 0:
+    c["cutoffs"]["shadow_seq"] = agent.shadow.tick(st)
   c["label"] = "SHADOWED"
   append(c["provenance"]["history"], "shadowed")
   return "shadowing " + cid + " (observation only; reader output is unchanged)"
@@ -262,7 +287,7 @@ def lineage(st, a, b, rel, state, by):
   append(out, {"a": a, "b": b, "relation": rel, "state": state, "by": by})
   st["lineage"] = out
   for cid in keys(st["candidates"]):
-    append(st["candidates"][cid]["provenance"]["history"], "lineage graph changed (snapshot hash changes)")
+    _note(st["candidates"][cid]["provenance"]["history"], "lineage graph changed (snapshot hash changes)")
   return "lineage " + a + " -" + rel + "- " + b + " [" + state + " by " + by + "]; only verified same-origin edges change origin counts"
 def _open_events(c):
   out = []
@@ -302,6 +327,10 @@ def _blockers(c, cid, st):
     append(b, "independent origins with >=10 matches: " + str(ok10) + "/3")
   if o["total"] > 0 and top * 100 > o["total"] * 60:
     append(b, "one origin supplies " + str(top) + " of " + str(o["total"]) + " matches (max 60%)")
+  if has(c, "cutoffs") and c["cutoffs"]["legacy"]:
+    append(b, "legacy candidate: no immutable derivation/shadow cutoffs, existing evidence was not leak-checked")
+  if has(c, "cutoffs") and not c["cutoffs"]["legacy"] and c["cutoffs"]["shadow_seq"] < 0:
+    append(b, "no shadow cutoff recorded")
   if cnt["dedup_overflow"] > 0:
     append(b, str(cnt["dedup_overflow"]) + " events exceeded retention caps: history incomplete")
   if _disputed(c, st) > 0:
@@ -310,6 +339,9 @@ def _blockers(c, cid, st):
   if len(op) > 0:
     append(b, str(len(op)) + " disagreement/overlap/competing event(s) without an accepted_as_expected disposition")
   return b
+def _note(h, msg):
+  if len(h) == 0 or h[len(h) - 1] != msg:
+    append(h, msg)
 def origin(st, src, oid, cls, rel):
   if not (cls == "verified_independent" or cls == "dependent" or cls == "unknown"):
     return "origin class must be verified_independent, dependent or unknown"
@@ -317,7 +349,7 @@ def origin(st, src, oid, cls, rel):
     return "source is sensitive: no origin metadata is kept for it"
   st["origins"][src] = {"origin": oid, "class": cls, "relation": rel}
   for cid in keys(st["candidates"]):
-    append(st["candidates"][cid]["provenance"]["history"], "origin classification changed (snapshot hash changes)")
+    _note(st["candidates"][cid]["provenance"]["history"], "origin classification changed (snapshot hash changes)")
   return "source " + src + " -> origin " + oid + " [" + cls + ", " + rel + "]; verified_independent origins are counted, dependent/unknown are not"
 def disposition(st, cid, ev, disp, reviewer, why):
   if not has(st["candidates"], cid):
@@ -361,7 +393,7 @@ def snapshot(st, cid):
   smp = []
   for s in sh["samples"]:
     append(smp, [s["event"], s["class"], s["triple"]])
-  snap = {"descriptor": d, "tests": t, "examples": c["provenance"]["examples"], "holdout": c["provenance"]["holdout"], "counters": cnt, "by_source": sh["by_source"], "origins": ogs, "lineage": st["lineage"], "dispositions": c["dispositions"], "sample_events": smp, "hash_version": 3, "meta": {"polarity": d["polarity"], "rejected": cid in st["rejected"], "blocked": c["approval_blocked"]}}
+  snap = {"descriptor": d, "tests": t, "examples": c["provenance"]["examples"], "holdout": c["provenance"]["holdout"], "counters": cnt, "by_source": sh["by_source"], "origins": ogs, "lineage": st["lineage"], "dispositions": c["dispositions"], "sample_events": smp, "hash_version": 4, "hash_algo": "poly62", "cutoffs": c["cutoffs"] if has(c, "cutoffs") else null, "leak": c["leak"] if has(c, "leak") else null, "meta": {"polarity": d["polarity"], "rejected": cid in st["rejected"], "blocked": c["approval_blocked"]}}
   cov = {"tests_hash": agent.patgen._hash(json_str(t)), "origins_hash": agent.patgen._hash(json_str([ogs, st["lineage"]])), "corpus_hash": agent.patgen._hash(json_str([t, c["provenance"]["examples"], c["provenance"]["holdout"]])), "sample_events": [x[0] for x in smp], "disagreement_events": [x["event"] for x in sh["disagreements"]]}
   return {"hash": agent.patgen._hash(json_str(snap)), "blockers": b, "coverage": cov}
 def review(st, cid):
@@ -385,7 +417,7 @@ def review(st, cid):
   if old != h:
     append(c["provenance"]["history"], "review snapshot " + h[:8])
   out = "review " + cid + " " + d["skeleton"] + " => " + d["predicate"] + " " + d["polarity"] + " [" + c["label"] + ", " + _act(c) + "]"
-  out = out + "\nsnapshot hash: " + h + " (hash_version 3)"
+  out = out + "\nsnapshot hash: " + h + " (hash_version 4, poly62: change detection only)"
   out = out + "\ncoverage keys: tests_hash " + sn["coverage"]["tests_hash"] + " origins_hash " + sn["coverage"]["origins_hash"] + " corpus_hash " + sn["coverage"]["corpus_hash"]
   out = out + "\ntests: positive " + _frac(t["positive"]) + ", structural-neg " + _frac(t["structural_negative"]) + ", adversarial " + _frac(t["adversarial"]) + ", mutation(supplementary) " + _frac(t["mutation_supplementary"]) + ", annotated-neg " + _frac(t["annotated_negative"]) + ", holdout " + t["holdout"]
   out = out + "\nshadow lifetime: " + str(cnt["matches"]) + " matches (" + str(cnt["new"]) + " new coverage, " + str(cnt["agree"]) + " agree, " + str(cnt["disagree"]) + " disagree, " + str(cnt["skip-overlap"]) + " skip-overlap), " + str(cnt["competing"]) + " competing; " + str(cnt["sensitive_events"]) + " sensitive-source events excluded; " + str(cnt["dropped_samples"]) + " samples dropped"
@@ -395,6 +427,8 @@ def review(st, cid):
   out = out + "\nverified origins: " + str(len(keys(og["by"]))) + ", " + str(og["total"]) + " counted matches, " + str(og["nonmatch"]) + " counted non-matches; " + str(og["unverified_matches"]) + " matches from unverified/dependent sources excluded"
   for k in keys(og["by"]):
     out = out + "\n  origin " + k + ": " + str(og["by"][k]) + " matches"
+  if has(c, "cutoffs"):
+    out = out + "\nleakage guard (A22.4): derive_seq " + str(c["cutoffs"]["derive_seq"]) + ", shadow_seq " + str(c["cutoffs"]["shadow_seq"]) + (" [legacy]" if c["cutoffs"]["legacy"] else "") + "; excluded " + str(c["leak"]["pre_shadow"]) + " pre-shadow-source segment(s) and " + str(c["leak"]["derived_text"]) + " segment(s) equal to a derivation example"
   out = out + "\nnote: shadow matches show where a pattern fires, never that a reading is correct; readings stay UNVERIFIED"
   for x in _open_events(c):
     out = out + "\n  open " + x["class"] + " event " + x["event"] + ": " + x["triple"][0] + " | " + x["triple"][1] + " | " + x["triple"][2]

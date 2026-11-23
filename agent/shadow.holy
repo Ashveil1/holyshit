@@ -170,7 +170,31 @@ def purge_source(st, src):
   return n
 # Shadow one ingested source body against every SHADOWED, unrejected
 # candidate. Returns the number of recorded events.
+def tick(st):
+  st["seq"] = st["seq"] + 1
+  return st["seq"]
+def ensure_cutoffs(c):
+  if not has(c, "cutoffs"):
+    c["cutoffs"] = {"derive_seq": -1, "shadow_seq": -1, "legacy": true}
+  if not has(c, "leak"):
+    c["leak"] = {"pre_shadow": 0, "derived_text": 0}
+def _leak(st, c, src, sent):
+  ensure_cutoffs(c)
+  cut = c["cutoffs"]
+  if cut["legacy"]:
+    return ""
+  txt = agent.patgen._collapse(sent)
+  if txt in c["provenance"]["examples"] or txt in c["provenance"]["holdout"]:
+    return "derived_text"
+  if has(st["src_first"], src) and st["src_first"][src] <= cut["shadow_seq"]:
+    if not (has(st["holdout"], src) and st["holdout"][src] < cut["derive_seq"]):
+      return "pre_shadow"
+  return ""
 def process(state, st, src, body):
+  # A22.4: first sight of a source gets an immutable sequence number,
+  # even before any candidate is shadowed (only when candidates exist).
+  if len(keys(st["candidates"])) > 0 and not has(st["src_first"], src):
+    st["src_first"][src] = tick(st)
   active = []
   for cid in keys(st["candidates"]):
     if st["candidates"][cid]["label"] == "SHADOWED" and not (cid in st["rejected"]):
@@ -188,10 +212,16 @@ def process(state, st, src, body):
       if ex != null and not agent.core._read_obj_ok(ex):
         ex = null
     hits = []
+    leaked = []
     for cid in active:
       d = st["candidates"][cid]["descriptor"]
       r = agent.patgen.match_toks(split(d["verb"], " "), sent)
-      if r != null:
+      lk = _leak(st, st["candidates"][cid], src, sent)
+      if lk != "":
+        st["candidates"][cid]["leak"][lk] = st["candidates"][cid]["leak"][lk] + 1
+        append(leaked, cid)
+        n = n + 1
+      elif r != null:
         append(hits, [cid, r])
     if sk == "":
       for cid in active:
@@ -199,7 +229,7 @@ def process(state, st, src, body):
         for h in hits:
           if h[0] == cid:
             hit = true
-        if not hit:
+        if not hit and not (cid in leaked):
           _nonmatch(st, st["candidates"][cid], src, sent, sens)
     for h in hits:
       cid = h[0]

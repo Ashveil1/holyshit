@@ -1,0 +1,228 @@
+# agent/reviewers.holy - A22.3 EXPERIMENTAL reviewer budgets, family
+# suspension and isolated canaries (repl-only). It only ever LIMITS
+# review: it can refuse an attestation, stop a suspended family's
+# attestations from counting, and score synthetic canaries. It never
+# approves, activates, promotes a fact, or edits the owner-authored
+# delegation file (suspension lives here, not in the delegation).
+#
+# Identity assurance ladder (unchanged from A21.2a, recorded here per
+# attestation): self_asserted (recorded, never counts, never spends
+# budget) < owner_attested (current ceiling; the owner marker is an
+# unauthenticated convention) < runner_authenticated (DEFERRED until the
+# language lane ships crypto, C20: refused, not faked).
+#
+# Budgets are MANDATORY (v0.16; A22.3 shipped them opt-in): a family
+# needs a budget, no budget means its owner_attested attestations are
+# refused with the command that sets one. Exhaustion REFUSES; nothing
+# auto-extends. Cost of one attestation = 1 + sample events + 3 x
+# disagreement events (weighted work). Candidate budget counts distinct
+# candidates the family attested.
+#
+# Canaries are strictly isolated: a canary is a synthetic case file plus
+# a family's answers file. Scoring reads only those two files and this
+# registry. It never loads proposals, candidates, the matcher, the graph,
+# the tripwire counters or any production count, and it has no path to
+# approval or activation. A pool with any production reference is
+# refused. Ambiguous cases are never scored. A clear CRITICAL miss
+# (approving a case that must be rejected) suspends the family; only the
+# owner reinstates it. Counters and history are never reset.
+import agent.core
+import agent.patgen
+def new_rv():
+  return {"version": 1, "hash_algo": "poly62", "families": {}, "unreadable": false, "present": false}
+def _valid(r):
+  ok = true
+  try:
+    if r["version"] != 1:
+      ok = false
+    for f in keys(r["families"]):
+      x = r["families"][f]
+      if not (x["state"] in ["ACTIVE", "SUSPENDED"]):
+        ok = false
+      if x["max_candidates"] < 0 or x["max_work"] < 0 or x["used_work"] < 0:
+        ok = false
+      for c in x["candidates"]:
+        if json_str(c)[:1] != "\"":
+          ok = false
+      if x["canary"]["critical"] < 0 or x["canary"]["passed"] < 0:
+        ok = false
+  except:
+    ok = false
+  return ok
+def load(path):
+  out = new_rv()
+  if exists(path):
+    out["unreadable"] = true
+    try:
+      d = json_load(path)
+      if _valid(d):
+        d["unreadable"] = false
+        d["present"] = true
+        out = d
+    except:
+      out["unreadable"] = true
+  return out
+def save(path, r):
+  if r["unreadable"]:
+    return "refused: reviewer file is unreadable; fix or remove it first (nothing written)"
+  r["present"] = false
+  r["unreadable"] = false
+  if not _valid(r):
+    return "refused: reviewer state failed validation (nothing written)"
+  tmp = path + ".tmp"
+  json_save(tmp, r)
+  if not _valid(json_load(tmp)):
+    return "refused: tmp write failed validation (final file untouched)"
+  json_save(path, r)
+  return ""
+def _fam(r, f):
+  if not (f in r["families"]):
+    r["families"][f] = {"state": "ACTIVE", "max_candidates": 0, "max_work": 0, "used_work": 0, "candidates": [], "budgeted": false, "canary": {"cases": 0, "passed": 0, "missed": 0, "critical": 0, "ambiguous": 0, "unanswered": 0}, "history": []}
+  return r["families"][f]
+def _name(s):
+  ok = len(s) > 0 and len(s) <= 40
+  for ch in s:
+    if not (ch in "abcdefghijklmnopqrstuvwxyz0123456789_-"):
+      ok = false
+  return ok
+def _digits(s):
+  ok = len(s) > 0 and len(s) <= 6
+  for ch in s:
+    if not (ch in "0123456789"):
+      ok = false
+  return ok
+def set_budget(r, fam, maxc, maxw):
+  f = agent.core.lower_ascii(fam)
+  if not _name(f):
+    return "budget refused: family names are 1-40 chars of a-z 0-9 _ -"
+  if not _digits(maxc) or not _digits(maxw):
+    return "budget refused: limits must be whole numbers 0-999999"
+  c = int(maxc)
+  w = int(maxw)
+  x = _fam(r, f)
+  x["max_candidates"] = c
+  x["max_work"] = w
+  x["budgeted"] = true
+  append(x["history"], "budget set: " + str(c) + " candidates, " + str(w) + " work (usage kept: " + str(len(x["candidates"])) + " candidates, " + str(x["used_work"]) + " work)")
+  return "budget for " + f + ": " + str(c) + " candidates, " + str(w) + " weighted work; usage so far " + str(len(x["candidates"])) + " / " + str(x["used_work"]) + " (never reset)"
+# Cost of one attestation record.
+def work_of(rec):
+  return 1 + len(rec["coverage"]["sample_events"]) + 3 * len(rec["coverage"]["disagreement_events"])
+# Gate helper: "" or an A-code reason the family's attestations cannot count.
+def blocked(r, fam):
+  if r["unreadable"]:
+    return "A11 reviewer registry unreadable (fail closed)"
+  if r["present"] and fam in r["families"] and r["families"][fam]["state"] == "SUSPENDED":
+    return "A11 lineage family " + fam + " is SUSPENDED (owner decides reinstatement)"
+  return ""
+# Attest-time check and charge. Returns "" when allowed.
+def charge(r, fam, cid, work, assurance):
+  if r["unreadable"]:
+    return "A11 reviewer registry unreadable: attestation refused (fail closed)"
+  if assurance != "owner_attested":
+    return ""
+  if fam in r["families"] and r["families"][fam]["state"] == "SUSPENDED":
+    return "A11 family " + fam + " is SUSPENDED: attestation refused"
+  if not (fam in r["families"]) or not r["families"][fam]["budgeted"]:
+    return "A10 family " + fam + " has no budget: attestation refused (budgets are mandatory; the owner sets one with `patterns budget " + fam + " MAXCANDS MAXWORK owner`)"
+  x = r["families"][fam]
+  new = not (cid in x["candidates"])
+  if new and len(x["candidates"]) >= x["max_candidates"]:
+    return "A10 candidate budget exhausted for " + fam + " (" + str(x["max_candidates"]) + "): attestation refused, nothing auto-extends"
+  if x["used_work"] + work > x["max_work"]:
+    return "A10 weighted-work budget exhausted for " + fam + " (" + str(x["used_work"]) + "+" + str(work) + " > " + str(x["max_work"]) + "): attestation refused, nothing auto-extends"
+  if new:
+    append(x["candidates"], cid)
+  x["used_work"] = x["used_work"] + work
+  return ""
+def reinstate(r, fam, note):
+  f = agent.core.lower_ascii(fam)
+  if not (f in r["families"]) or r["families"][f]["state"] != "SUSPENDED":
+    return "reinstate refused: " + f + " is not suspended"
+  x = r["families"][f]
+  x["state"] = "ACTIVE"
+  append(x["history"], "SUSPENDED -> ACTIVE: owner reinstated: " + note)
+  return "owner reinstated " + f + " (counters and history kept; the delegation file was not touched)"
+def suspend(r, fam, note):
+  f = agent.core.lower_ascii(fam)
+  x = _fam(r, f)
+  if x["state"] != "SUSPENDED":
+    x["state"] = "SUSPENDED"
+    append(x["history"], "ACTIVE -> SUSPENDED: " + note)
+  return f
+# ---- canaries (isolated) ----
+# Pool validation: synthetic cases only, unique ids, no production
+# reference. Returns "" or a reason.
+def pool_check(cases):
+  seen = []
+  try:
+    for c in cases:
+      if not has(c, "id") or not has(c, "expected") or not has(c, "synthetic") or c["synthetic"] != true:
+        return "canary pool refused: every case needs id, expected and synthetic=true"
+      if c["id"] in seen:
+        return "canary pool refused: duplicate id " + c["id"]
+      append(seen, c["id"])
+      if not (c["expected"] in ["approve", "reject"]):
+        return "canary pool refused: expected must be approve or reject"
+      for k in keys(c):
+        if k == "candidate" or k == "snapshot_hash" or k == "pattern":
+          return "canary pool refused: production reference key " + k
+        v = json_str(c[k])
+        if "pc-" in v or "agent-" in v:
+          return "canary pool refused: case " + c["id"] + " references production data"
+  except:
+    return "canary pool refused: malformed"
+  return ""
+def run_canary(r, fam, cases, answers):
+  bad = pool_check(cases)
+  if bad != "":
+    return bad
+  f = agent.core.lower_ascii(fam)
+  x = _fam(r, f)
+  got = {}
+  try:
+    for a in answers:
+      got[a["id"]] = a["verdict"]
+  except:
+    return "canary refused: answers must be [{id, verdict}]"
+  passed = 0
+  missed = 0
+  amb = 0
+  unans = 0
+  crit = 0
+  for c in cases:
+    if has(c, "ambiguous") and c["ambiguous"] == true:
+      amb = amb + 1
+    elif not (c["id"] in got):
+      unans = unans + 1
+    elif got[c["id"]] == c["expected"]:
+      passed = passed + 1
+    else:
+      missed = missed + 1
+      if has(c, "critical") and c["critical"] == true and c["expected"] == "reject" and got[c["id"]] == "approve":
+        crit = crit + 1
+  k = x["canary"]
+  k["cases"] = k["cases"] + len(cases)
+  k["passed"] = k["passed"] + passed
+  k["missed"] = k["missed"] + missed
+  k["ambiguous"] = k["ambiguous"] + amb
+  k["unanswered"] = k["unanswered"] + unans
+  k["critical"] = k["critical"] + crit
+  msg = "canary " + f + ": " + str(passed) + " passed, " + str(missed) + " missed, " + str(crit) + " critical, " + str(unans) + " unanswered, " + str(amb) + " ambiguous (never scored). Synthetic only: no candidate, counter or approval was read or changed"
+  if crit > 0:
+    suspend(r, f, "critical canary miss (" + str(crit) + ")")
+    msg = msg + "; family SUSPENDED (owner decides reinstatement; delegation untouched)"
+  return msg
+def listing(r):
+  out = ["reviewers (assurance: self_asserted never counts; owner_attested is the ceiling; runner_authenticated deferred until C20):"]
+  if r["unreadable"]:
+    out.append("  registry UNREADABLE: attestations are refused (fail closed)")
+  if not r["present"]:
+    out.append("  no budgets configured: owner_attested attestations are refused until the owner sets one with `patterns budget FAMILY MAXCANDS MAXWORK owner`")
+  for f in keys(r["families"]):
+    x = r["families"][f]
+    k = x["canary"]
+    out.append("  " + f + " " + x["state"] + ": budget " + str(len(x["candidates"])) + "/" + str(x["max_candidates"]) + " candidates, " + str(x["used_work"]) + "/" + str(x["max_work"]) + " work; canary " + str(k["passed"]) + " passed, " + str(k["missed"]) + " missed, " + str(k["critical"]) + " critical, " + str(k["ambiguous"]) + " ambiguous")
+    for h in x["history"]:
+      out.append("    " + h)
+  return join("\n", out)
