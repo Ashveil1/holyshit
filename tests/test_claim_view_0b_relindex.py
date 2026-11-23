@@ -289,7 +289,8 @@ check('subject keys = canonical subjects with non-empty buckets (alias-only and 
 # not reference relindex or the index keys at all. The single writer of index
 # internals stays relindex.holy itself.
 READERS = {'cvsort.holy': {'ri_canon'},
-           'claimview.holy': {'ri_canon', 'ri_check', 'ri_read', 'ri_read_alias'}}  # slice 2 adds 'cvwire.holy'
+           'claimview.holy': {'ri_canon', 'ri_check', 'ri_read', 'ri_read_alias'},
+           'cvwire.holy': {'ri_audit', 'ri_canon', 'ri_check', 'ri_load_all', 'ri_new'}}
 bad = []
 for f in sorted((ROOT / 'agent').glob('*.holy')):
     txt = f.read_text(encoding='utf-8')

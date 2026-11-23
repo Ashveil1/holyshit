@@ -1,0 +1,131 @@
+# agent/cvwire.holy - claimview-0b slice 2: repl-only wiring of the Holy view
+# to a core state. NOT activated: no REPL command, no respond() integration, no
+# reply metadata, no automatic rebuild (C20 gate stays). The core stays
+# authoritative; the index here is a derived, session-only copy.
+#
+# Token: (state["cvinst"], state["cvgen"]). cvinst is assigned HERE, from a
+# process-global monotonic counter, after every new/load (core cannot invent
+# identity; 0 = unassigned and the view refuses it). cvgen is an invalidation
+# epoch advanced by core before every real read-set mutation.
+#
+# Three separate calls: cv_status (read-only), cv_rebuild (explicit operator
+# call, builds ONE candidate, atomic publish), cv_query (checks the live token
+# before and after the view). A failed or interrupted rebuild leaves the holder
+# unavailable; there is never a fallback to an old snapshot.
+#
+# The `fault` parameters are test hooks that production never sets (""). They
+# stop or perturb the call at a named stage so the fault tests can prove the
+# fail-closed behavior.
+import agent.core
+import agent.relindex
+import agent.claimview
+_CVW = {"n": 0}
+_CVW_BUILTINS = [["has", "the part relation: X has Y says Y is part of X"], ["is-a", "the kind relation: X is a Y says X is a kind of Y"], ["mean", "the definitional relation: X mean Y says the definition of X is Y"], ["is-in", "the containment relation: X is in Y says X is inside Y"]]
+def cv_assign(state):
+  _CVW["n"] = _CVW["n"] + 1
+  state["cvinst"] = _CVW["n"]
+def cv_holder():
+  return {"st": "unbuilt", "ri": null, "keys": null, "inst": 0, "gen": 0, "excluded": 0, "why": ""}
+# valid | stale | unbuilt | rebuilding | invalid | unassigned. Read-only.
+def cv_status(h, state):
+  if state["cvinst"] == 0:
+    return "unassigned"
+  if h["st"] != "valid":
+    return h["st"]
+  if h["inst"] != state["cvinst"] or h["gen"] != state["cvgen"]:
+    return "stale"
+  return "valid"
+def _cvw_tuples(state):
+  ts = []
+  ex = 0
+  for e in state["rels"]:
+    p = e[1]
+    if p == "is-a" or p == "has" or p == "is-in" or p == "means":
+      append(ts, [e[0], p, e[2], false])
+    elif p == "not-is-a":
+      append(ts, [e[0], "is-a", e[2], true])
+    else:
+      ex = ex + 1
+  return [ts, ex]
+def _cvw_fail(h, why):
+  h["st"] = "invalid"
+  h["ri"] = null
+  h["keys"] = null
+  h["why"] = why
+  return "invalid: " + why
+# Returns "ok" or "invalid: <why>" or "interrupted:<stage>".
+def cv_rebuild(h, state, fault):
+  # unavailable FIRST, before core is read
+  h["st"] = "rebuilding"
+  h["ri"] = null
+  h["keys"] = null
+  h["why"] = ""
+  if fault == "after-unavailable":
+    return "interrupted:after-unavailable"
+  if state["cvinst"] == 0:
+    return _cvw_fail(h, "unassigned")
+  inst = state["cvinst"]
+  gen = state["cvgen"]
+  if fault == "after-read-core":
+    return "interrupted:after-read-core"
+  tx = _cvw_tuples(state)
+  al = []
+  for a in state["aliases"]:
+    append(al, [a, state["aliases"][a]])
+  cand = agent.relindex.ri_new()
+  if fault == "bad-tuple":
+    append(tx[0], ["", "is-a", "x", false])
+  if fault == "bad-alias":
+    append(al, ["", "x"])
+  if agent.relindex.ri_load_all(cand, tx[0], al) != "":
+    return _cvw_fail(h, "candidate-load")
+  if fault == "after-rel-index":
+    return "interrupted:after-rel-index"
+  keys = {}
+  for k in state["order"]:
+    keys[agent.relindex.ri_canon(k)] = true
+  if fault == "after-key-universe":
+    return "interrupted:after-key-universe"
+  # validation, in temporaries
+  if agent.relindex.ri_check(cand) != "":
+    return _cvw_fail(h, "index-check")
+  if agent.relindex.ri_audit(cand) != "":
+    return _cvw_fail(h, "index-audit")
+  if fault == "count-mismatch":
+    tx[1] = tx[1] + 1
+  if len(tx[0]) + tx[1] != len(state["rels"]):
+    return _cvw_fail(h, "rel-count")
+  if len(al) != len(state["aliases"]):
+    return _cvw_fail(h, "alias-count")
+  for k in state["order"]:
+    if not (agent.relindex.ri_canon(k) in keys):
+      return _cvw_fail(h, "key-universe")
+  if fault == "after-validation":
+    return "interrupted:after-validation"
+  if fault == "mutate-before-publish":
+    agent.core.respond(state, "remember cvwzz is a cvwyy")
+  # token re-read from live core, publish only if unchanged
+  if state["cvinst"] != inst or state["cvgen"] != gen:
+    return _cvw_fail(h, "token-changed")
+  if fault == "before-publish":
+    return "interrupted:before-publish"
+  h["ri"] = cand
+  h["keys"] = keys
+  h["inst"] = inst
+  h["gen"] = gen
+  h["excluded"] = tx[1]
+  h["st"] = "valid"
+  return "ok"
+def _cvw_abort(reason):
+  return {"layer": "ABORT", "reason": reason, "w": 0}
+# q = [subject, predicate, object, neg]. No readings stage in this slice.
+def cv_query(h, state, q, fault):
+  s = cv_status(h, state)
+  if s != "valid":
+    return _cvw_abort(s)
+  r = agent.claimview.cv_view(h["ri"], h["keys"], _CVW_BUILTINS, null, null, q)
+  if fault == "mutate-mid":
+    agent.core.respond(state, "remember cvwzz is a cvwyy")
+  if cv_status(h, state) != "valid":
+    return _cvw_abort("stale")
+  return r
