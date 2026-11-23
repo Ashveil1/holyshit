@@ -69,6 +69,22 @@ def step(f):
     agent.core._cv_inval(H["state"])
   elif op == "droprels":
     agent.core._drop_rels(H["state"], f[1])
+  elif op == "bulk":
+    # bench only: n synthetic relations through the real core writer _add_rel
+    n = int(f[1])
+    i = 0
+    while i < n:
+      nm = "n" + str(i % int(n / 3 + 10))
+      pr = "is-a"
+      if i % 3 == 1:
+        pr = "has"
+      if i % 3 == 2:
+        pr = "is-in"
+      agent.core._add_rel(H["state"], nm, pr, "n" + str((i * 7 + 1) % int(n / 3 + 10)))
+      if i < int(n / 3 + 10):
+        agent.core._cv_inval(H["state"])
+        append(H["state"]["order"], nm)
+      i = i + 1
   elif op == "dump":
     print "D\t" + snap(H["state"])
   elif op == "savefile":
