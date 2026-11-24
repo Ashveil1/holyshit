@@ -40,7 +40,7 @@
 | `has` | `has(dict, key)` | ✓ | ✓ | ✓ | ✓ |
 | | true when the dict has the key |||||
 | `http_get` | `http_get(url)` | ✓ | ✓ |   |   |
-| | http GET body as Bytes (hosted only) |||||
+| | http GET body as Bytes; private-network guard; 10s idle / 30s deadline (hosted only) |||||
 | `input` | `input()` | ✓ | ✓ | ✓ |   |
 | | read one line from stdin (hosted only) |||||
 | `int` | `int(x)` | ✓ | ✓ | ✓ | ✓ |
@@ -112,11 +112,11 @@
 | `tcp_close` | `tcp_close(sock)` | ✓ | ✓ |   |   |
 | | close socket (hosted only) |||||
 | `tcp_connect` | `tcp_connect(host, port)` | ✓ | ✓ |   |   |
-| | open TCP (hosted only) |||||
+| | open TCP; private-network destinations blocked unless HS_ALLOW_PRIVATE_NET=1; 20s connect timeout (hosted only) |||||
 | `tcp_listen` | `tcp_listen(port)` | ✓ | ✓ |   |   |
 | | listen socket (hosted only) |||||
 | `tcp_recv` | `tcp_recv(sock, n)` | ✓ | ✓ |   |   |
-| | recv bytes as Bytes (hosted only) |||||
+| | recv bytes as Bytes; 10s idle timeout closes and raises (hosted only) |||||
 | `tcp_send` | `tcp_send(sock, s|bytes)` | ✓ | ✓ |   |   |
 | | send Str (UTF-8 encoded) or Bytes verbatim (hosted only) |||||
 | `ticks` | `ticks()` | ✓ | ✓ |   | ✓ |
