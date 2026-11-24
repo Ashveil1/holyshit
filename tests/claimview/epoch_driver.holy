@@ -1,0 +1,31 @@
+# Epoch driver: runs core respond() on stdin lines and prints, after each
+# command, whether an independent snapshot of the claim-view read-set (rels,
+# aliases, order) changed and how far cvgen moved.
+import agent.core
+def snap(state):
+  out = "R"
+  for e in state["rels"]:
+    out = out + "|" + e[0] + ">" + e[1] + ">" + e[2]
+  out = out + "|A"
+  for a in state["aliases"]:
+    out = out + "|" + a + ">" + state["aliases"][a]
+  out = out + "|O"
+  for k in state["order"]:
+    out = out + "|" + k
+  return out
+state = agent.core.new_state()
+done = false
+while not done:
+  line = ""
+  try:
+    line = input()
+  except:
+    done = true
+  if not done:
+    before = snap(state)
+    g = state["cvgen"]
+    r = agent.core.respond(state, line)
+    ch = "0"
+    if snap(state) != before:
+      ch = "1"
+    print "E\t" + ch + "\t" + str(state["cvgen"] - g) + "\t" + str(state["cvinst"]) + "\t" + line

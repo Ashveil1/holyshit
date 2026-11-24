@@ -242,7 +242,7 @@ check('a different object of the same predicate is not opposition',
 # code and wording may now appear ONLY in the approved 0b modules listed
 # below; anywhere else still fails. Each allowlisted file must exist, so a
 # rename or removal cannot hollow the list into a no-op.
-CV_ALLOWLIST = ('relindex.holy', 'claimview.holy', 'cvsort.holy')  # slice 2 adds 'cvwire.holy'
+CV_ALLOWLIST = ('relindex.holy', 'claimview.holy', 'cvsort.holy', 'cvwire.holy')
 adir = HERE.parent / 'agent'
 holy = {f.name: f.read_text() for f in adir.glob('*.holy')}
 for name in CV_ALLOWLIST:

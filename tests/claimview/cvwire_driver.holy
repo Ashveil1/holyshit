@@ -1,0 +1,117 @@
+# Driver for agent/cvwire.holy: real core respond() states, explicit rebuild,
+# status and query. One op per stdin line (tab separated), also usable
+# embedded (step(f)). Test hooks (fault) are passed through from the script.
+import agent.core
+import agent.cvwire
+import agent.store
+import agent.claimview
+H = {"state": agent.core.new_state(), "h": agent.cvwire.cv_holder()}
+def bs(b):
+  if b:
+    return "1"
+  return "0"
+def emit(r):
+  line = "R\t" + r["layer"]
+  for k in ["status", "basis", "reason", "level", "lines", "w", "trunc_s", "trunc_o"]:
+    if has(r, k):
+      line = line + "\t" + k + "=" + str(r[k])
+  if has(r, "provs"):
+    line = line + "\tprovs=" + join(",", r["provs"])
+  print line
+  for k in ["support", "opp"]:
+    if has(r, k):
+      for it in r[k]:
+        l2 = "S\t" + k + "\t" + it["prov"] + "\t" + str(it["level"])
+        for e in it["path"]:
+          l2 = l2 + "\t" + e[0] + "\t" + e[1] + "\t" + e[2] + "\t" + bs(e[3])
+        print l2
+  if has(r, "cands"):
+    print "C\t" + join("\t", r["cands"])
+  print "END"
+def snap(state):
+  out = "R"
+  for e in state["rels"]:
+    out = out + "|" + e[0] + ">" + e[1] + ">" + e[2]
+  out = out + "|A"
+  for a in state["aliases"]:
+    out = out + "|" + a + ">" + state["aliases"][a]
+  out = out + "|O"
+  for k in state["order"]:
+    out = out + "|" + k
+  return out
+def step(f):
+  op = f[0]
+  if op == "new":
+    H["state"] = agent.core.new_state()
+    agent.cvwire.cv_assign(H["state"])
+  elif op == "newholder":
+    H["h"] = agent.cvwire.cv_holder()
+  elif op == "say":
+    agent.core.respond(H["state"], f[1])
+  elif op == "rebuild":
+    fault = ""
+    if len(f) > 1:
+      fault = f[1]
+    d0 = snap(H["state"])
+    res = agent.cvwire.cv_rebuild(H["h"], H["state"], fault)
+    same = "same"
+    if snap(H["state"]) != d0:
+      same = "changed"
+    print "B\t" + res + "\t" + same + "\t" + agent.cvwire.cv_status(H["h"], H["state"])
+  elif op == "status":
+    print "T\t" + agent.cvwire.cv_status(H["h"], H["state"]) + "\t" + str(H["state"]["cvinst"]) + "\t" + str(H["state"]["cvgen"])
+  elif op == "query":
+    fault = ""
+    if len(f) > 5:
+      fault = f[5]
+    emit(agent.cvwire.cv_query(H["h"], H["state"], [f[1], f[2], f[3], f[4] == "1"], fault))
+  elif op == "inval":
+    agent.core._cv_inval(H["state"])
+  elif op == "droprels":
+    agent.core._drop_rels(H["state"], f[1])
+  elif op == "bulk":
+    # bench only: n synthetic relations through the real core writer _add_rel
+    n = int(f[1])
+    i = 0
+    while i < n:
+      nm = "n" + str(i % int(n / 3 + 10))
+      pr = "is-a"
+      if i % 3 == 1:
+        pr = "has"
+      if i % 3 == 2:
+        pr = "is-in"
+      agent.core._add_rel(H["state"], nm, pr, "n" + str((i * 7 + 1) % int(n / 3 + 10)))
+      if i < int(n / 3 + 10):
+        agent.core._cv_inval(H["state"])
+        append(H["state"]["order"], nm)
+      i = i + 1
+  elif op == "dump":
+    print "D\t" + snap(H["state"])
+  elif op == "savefile":
+    agent.store.save(H["state"], f[1])
+  elif op == "loadfile":
+    H["state"] = agent.store.load(f[1])
+    agent.cvwire.cv_assign(H["state"])
+  elif op == "builtins":
+    # equality of the wire builtins with core's _BUILTIN_RELS (as sets of [term, def])
+    ok = "1"
+    for b in agent.cvwire._CVW_BUILTINS:
+      found = false
+      for c in agent.core._BUILTIN_RELS:
+        if c[0] == b[0] and c[2] == b[1]:
+          found = true
+      if not found:
+        ok = "0"
+    if len(agent.cvwire._CVW_BUILTINS) != len(agent.core._BUILTIN_RELS):
+      ok = "0"
+    print "BI\t" + ok
+# --- loop ---
+done = false
+while not done:
+  line = ""
+  try:
+    line = input()
+  except:
+    done = true
+  if not done:
+    step(split(line, "\t"))
