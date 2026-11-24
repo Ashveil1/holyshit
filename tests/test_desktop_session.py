@@ -91,14 +91,30 @@ def run(d, disk=None, firmware=None, firmware_vars=None):
         click(48,170);key('backspace');key('a');field(snap('independent'),'HA',24,132)
         # Drag note2 over note1. It raises on title press and preserves text.
         move(192,311);h('mouse_button 1');time.sleep(.15);move(196,175);h('mouse_button 0')
-        def moved():return pixel(snap('overlap'),180,172)==bytes.fromhex('2a6fdb')
-        wait_for(moved,'note2 move/raise')
-        overlap=snap('overlap');field(overlap,'B',180,172)
-        assert pixel(overlap,176,450)==BG,'old note2 location remains'
+        # Mouse drag/raise has no serial marker and the compositor repaints
+        # over several frames, so a screendump can catch a half-composed frame
+        # (new window drawn, old region not yet erased). Wait until the full
+        # expected frame is present; the last real assertion fails on timeout.
+        def settled(name,check,label,seconds=20):
+            end=time.monotonic()+seconds;last=None
+            while time.monotonic()<end:
+                im=snap(name)
+                try:check(im);return im
+                except AssertionError as e:last=e
+                assert p.poll() is None, out()
+                time.sleep(.05)
+            raise AssertionError((label,last,out()[-3000:]))
+        def moved_frame(im):
+            assert pixel(im,180,172)==bytes.fromhex('2a6fdb'),'note2 move/raise'
+            field(im,'B',180,172)
+            assert pixel(im,176,450)==BG,'old note2 location remains'
+        overlap=settled('overlap',moved_frame,'note2 move/raise complete frame')
         # Note1's exposed title raises it over note2 without changing text.
         click(48,135)
-        wait_for(lambda:pixel(snap('raised'),24,132)==bytes.fromhex('2a6fdb'),'note1 raise')
-        raised=snap('raised');field(raised,'HA',24,132)
+        def raised_frame(im):
+            assert pixel(im,24,132)==bytes.fromhex('2a6fdb'),'note1 raise'
+            field(im,'HA',24,132)
+        raised=settled('raised',raised_frame,'note1 raise complete frame')
         # Close note2 through its exposed body, then close note1.
         click(550,200);key('esc');field(snap('one-note'),'HA',24,132)
         click(48,170);key('esc')
