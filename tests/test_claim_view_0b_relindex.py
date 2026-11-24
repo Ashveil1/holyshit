@@ -282,16 +282,30 @@ o = blocks(run_native(base + ['keys']))
 check('subject keys = canonical subjects with non-empty buckets (alias-only and object-only names are not keys)', o[3] == 'K\t\ta robin|robin', o[3])
 
 # 7. structural write-boundary gate (audited single-writer invariant, not enforcement)
+# Post-approval (A24.0b approved 2026-11-23; same lane-side guard miss as the
+# PR #444 kickback): the approved 0b reader modules below may import relindex
+# and call exactly the pinned public functions (checked reads / whole-index
+# build); they must never name a raw index key. Every other agent/*.holy must
+# not reference relindex or the index keys at all. The single writer of index
+# internals stays relindex.holy itself.
+READERS = {'cvsort.holy': {'ri_canon'},
+           'claimview.holy': {'ri_canon', 'ri_check', 'ri_read', 'ri_read_alias'}}  # slice 2 adds 'cvwire.holy'
 bad = []
 for f in sorted((ROOT / 'agent').glob('*.holy')):
-    if f.name in ('relindex.holy', 'cvsort.holy'):   # cvsort only calls ri_canon (read-only)
-        continue
     txt = f.read_text(encoding='utf-8')
+    if f.name == 'relindex.holy':
+        continue
+    if f.name in READERS:
+        if set(re.findall(r'agent\.relindex\.(\w+)', txt)) - READERS[f.name] or re.search(r'\[\s*"(t|x|xn|at|ax|an|g|ig|wc)"\s*\]', txt):
+            bad.append(f.name + ' (unpinned relindex call or raw index key)')
+        continue
     if re.search(r'\[\s*"(xn|ig|wc|an|ax|at)"\s*\]', txt) or 'relindex' in txt:
         bad.append(f.name)
 cs = (ROOT / 'agent' / 'cvsort.holy').read_text(encoding='utf-8')
 check('cvsort.holy uses only ri_canon from relindex and names no index key', set(re.findall(r'agent\.relindex\.(\w+)', cs)) == {'ri_canon'} and not re.search(r'\[\s*"(t|x|xn|at|ax|an|g|ig|wc)"\s*\]', cs))
-check('write-boundary gate: no other agent/*.holy names the index keys or imports relindex (audited invariant, not enforcement)', not bad, bad)
+for name in READERS:
+    check('approved 0b reader module present: ' + name, (ROOT / 'agent' / name).is_file())
+check('write-boundary gate: only relindex.holy writes index internals; approved 0b readers use pinned calls and name no raw key; no other agent/*.holy references relindex (audited invariant, not enforcement)', not bad, bad)
 mod = (ROOT / 'agent' / 'relindex.holy').read_text(encoding='utf-8')
 cur, writers = None, set()
 for ln in mod.split('\n'):
