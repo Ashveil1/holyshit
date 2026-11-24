@@ -1,0 +1,112 @@
+# agent/cvsort.holy - claimview-0b slice 1c: stable merge sort with the
+# contract's byte-wise total order (B24, B30). Standalone, pure, not wired.
+#
+# Strings compare by their UTF-8 bytes (UTF-8 byte order equals code point
+# order), never by locale (see _cv_cmp). Items are sorted by a key list of strings built
+# by kind:
+#   "tuple"  relation tuple [s, p, o, neg]: [p, "0"/"1" (positive first),
+#            canon(o), o, s]
+#   "alias"  alias record [alias, target]: [canon(target), alias, target]
+#   "row"    a readings row [source, sentence, side]: all three fields
+#   "str"    a plain string: [item]
+# Ties keep input order (stable). O(n log n), unlike an insertion sort.
+import agent.relindex
+def _cv_key(kind, it):
+  if kind == "tuple":
+    pol = "0"
+    if it[3]:
+      pol = "1"
+    return [it[1], pol, agent.relindex.ri_canon(it[2]), it[2], it[0]]
+  if kind == "alias":
+    return [agent.relindex.ri_canon(it[1]), it[0], it[1]]
+  if kind == "row":
+    return [it[0], it[1], it[2]]
+  return [it]
+# Byte-wise string order that is the same on every route. The plain string
+# "<" is NOT used for whole strings: on ir-x64, ast-x64 and seed-native it
+# compares SIGNED bytes (non-ASCII sorts before ASCII, and a longer string
+# sorts before its own prefix), while the interp compares code points. This
+# was found by the 7-route test and is a language-lane gap, reported
+# separately. byte_at/byte_len are not an option either (not in the IR
+# subset). So: find the first differing element with equality (valid on
+# both char and byte models), then order just that pair: two ASCII
+# elements by "<" (all positive, safe), ASCII before non-ASCII, and two
+# non-ASCII elements by "<" (compiled: both negative bytes, order matches
+# unsigned; interp: code points; UTF-8 byte order equals code point order).
+# ASCII means tab, newline, return and " " to "~" (the core's convention);
+# other control characters are outside the domain. -1, 0 or 1.
+def _cv_ascii(c):
+  return c == "\t" or c == "\n" or c == "\r" or c >= " " and c <= "~"
+def _cv_cmp(a, b):
+  na = len(a)
+  nb = len(b)
+  i = 0
+  while i < na and i < nb:
+    x = a[i]
+    y = b[i]
+    if x != y:
+      ax = _cv_ascii(x)
+      ay = _cv_ascii(y)
+      if ax and not ay:
+        return -1
+      if ay and not ax:
+        return 1
+      if x < y:
+        return -1
+      return 1
+    i = i + 1
+  if na == nb:
+    return 0
+  if na < nb:
+    return -1
+  return 1
+# true when key a sorts strictly before key b
+def _cv_less(a, b):
+  i = 0
+  while i < len(a) and i < len(b):
+    c = _cv_cmp(a[i], b[i])
+    if c != 0:
+      return c < 0
+    i = i + 1
+  return len(a) < len(b)
+def _cv_merge(xs, ys):
+  out = []
+  i = 0
+  j = 0
+  while i < len(xs) and j < len(ys):
+    if _cv_less(ys[j][0], xs[i][0]):
+      append(out, ys[j])
+      j = j + 1
+    else:
+      append(out, xs[i])
+      i = i + 1
+  while i < len(xs):
+    append(out, xs[i])
+    i = i + 1
+  while j < len(ys):
+    append(out, ys[j])
+    j = j + 1
+  return out
+def _cv_msort(ps):
+  n = len(ps)
+  if n < 2:
+    return ps
+  mid = int(n / 2)
+  left = []
+  right = []
+  i = 0
+  while i < n:
+    if i < mid:
+      append(left, ps[i])
+    else:
+      append(right, ps[i])
+    i = i + 1
+  return _cv_merge(_cv_msort(left), _cv_msort(right))
+def cv_sort(items, kind):
+  ps = []
+  for it in items:
+    append(ps, [_cv_key(kind, it), it])
+  out = []
+  for p in _cv_msort(ps):
+    append(out, p[1])
+  return out

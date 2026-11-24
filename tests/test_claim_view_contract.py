@@ -236,10 +236,27 @@ fn2 = st(facts={'a robin': ['x']}, rels=[['a robin', 'in', 'a nest']])
 check('a different object of the same predicate is not opposition',
       m.view(fn2, Q('a robin', 'in', 'a tree'), EX)['opposition'] == [])
 
-# 11. spec-only step: no Holy code, no reply route, nothing imports the model
-holy = ''.join(f.read_text() for f in (HERE.parent / 'agent').glob('*.holy'))
-check('no claim view in any Holy source (A24.0b not approved)',
-      'claim_view' not in holy and 'm[:13] == "evidence for "' not in holy and 'evidence for "' not in holy)
+# 11. post-approval scope guard. A24.0b was approved on 2026-11-23; the old
+# assert here was a pre-approval guard ("A24.0b not approved") and tripped on
+# the approved 0b Holy sources (publisher kickback on PR #444). Claim-view
+# code and wording may now appear ONLY in the approved 0b modules listed
+# below; anywhere else still fails. Each allowlisted file must exist, so a
+# rename or removal cannot hollow the list into a no-op.
+CV_ALLOWLIST = ('relindex.holy', 'claimview.holy', 'cvsort.holy')  # slice 2 adds 'cvwire.holy'
+adir = HERE.parent / 'agent'
+holy = {f.name: f.read_text() for f in adir.glob('*.holy')}
+for name in CV_ALLOWLIST:
+    check('approved 0b module present: ' + name, name in holy)
+stray = sorted(name for name, txt in holy.items()
+               if name not in CV_ALLOWLIST and
+               ('claim_view' in txt or 'm[:13] == "evidence for "' in txt or 'evidence for "' in txt))
+check('no claim view outside the approved 0b modules', stray == [], stray)
+# No wiring into respond()/REPL and no activation: the runtime sources must
+# not reference the claim-view modules or entry points at all (C20 gate stays).
+rt = (adir / 'core.holy').read_text() + (adir / 'repl.holy').read_text()
+wired = [w for w in ('relindex', 'claimview', 'cvsort', 'cvwire', 'cv_view',
+                     'cv_assign', 'cv_query', 'cv_holder', 'cv_status', 'cv_rebuild') if w in rt]
+check('no claim-view wiring into respond()/REPL (activation stays gated)', wired == [], wired)
 check('model has no I/O or clock imports',
       all(w not in (HERE / 'claimview' / 'ref_claim_view.py').read_text()
           for w in ('import os', 'import time', 'import random', 'open(')))

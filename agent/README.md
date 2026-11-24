@@ -949,3 +949,31 @@ quality corpus at precision 1.000 with zero false extractions.
 independent Python oracle on the interpreter and native routes;
 `tests/test_agent_proposals.py` covers the proposal store, the repl
 `patterns` commands and the reader-isolation gate.
+
+## claimview-0b slices 1 and 1c: relation index, alias index, sort (branch agent-claimview-0b)
+
+Standalone modules, NOT wired into `agent/core.holy`: `agent/relindex.holy` and `agent/cvsort.holy`. No claim view, parser, REPL route or production use. They implement only the contract's index lifecycle (B9, B15, B17, B18) and the B24 ordering. Core `state["rels"]` and `state["aliases"]` would stay authoritative when wired; this state is a derived copy.
+
+What exists:
+- Relation index keyed by the exact canonical subject ("robin" and "a robin" are different keys, nothing article-stripped); original tuples kept, duplicates individually. Alias-record index keyed by canonical alias (several records per key). One generation marker covers both.
+- One mutation path: ri_load / ri_load_all / ri_add / ri_remove / ri_drop_subject / ri_alias_add / ri_alias_remove / ri_rebuild, plus plan/commit edits ri_plan_replace / ri_plan_forget / ri_commit (one generation step, stale plans refused). Every mutation refuses on a broken index (fail closed, no repair); only load_all/rebuild replace one.
+- ri_check (cheap: missing / generation / count) returns a code, never an epistemic result. ri_read / ri_read_alias return a COPY or a code. ri_audit is an explicit O(n) full comparison for tests and load-time verification, never per view.
+- cvsort: stable merge sort with byte-wise order (tuple, alias, str keys).
+
+Limits, stated plainly:
+- The write boundary is an AUDITED single-writer invariant, not enforcement. Holy has no private fields or closures; a test greps `agent/*.holy` and checks which functions write state, but any holder of the dict can write it.
+- ri_check cannot see same-count corruption (wrong tuple, wrong bucket, altered endpoint, wrong alias record); ri_audit catches all five tested kinds. Empty buckets are inert (no dict delete exists).
+- Atomicity covers the index only. A core-plus-index transaction does not exist in Holy; the wiring design is a failed or skipped index update leaves ordinary chat unchanged and makes only the view fail closed.
+- remove/drop/replace/forget rebuild the tuple list: O(n) each.
+- Language findings (not fixed, language lane): (1) string `<` on ir-x64, ast-x64 and seed-native compares signed bytes (non-ASCII before ASCII; a string after its own prefix), interp compares code points; cvsort avoids whole-string `<`. (2) native dict insertion degrades super-linearly with distinct key count: 1k keys/100k inserts 0.21 s, 25k keys 5.8 s, 100k keys/100k inserts 62.7 s, so index load is 1.3 s at 50k tuples. byte_at/byte_len are not in the IR subset.
+- Tests: test_claim_view_0b_relindex.py (lifecycle vs the Oracle store model plus an alias model, 8 random sequences x 60 ops, fail closed, corruption matrix, plan/commit, copy reads, write-boundary gate), test_claim_view_0b_relindex_routes.py (one 4454-line script on all 7 routes), test_claim_view_0b_cvsort.py. No Oracle parity on the 102 fixtures (that needs the view). No production, quality or 4 GB hardware claim; RSS was 40 MB at 50k tuples on the dev box only.
+
+## claimview-0b slice 2a: standalone Holy view (branch agent-claimview-0b)
+
+`agent/claimview.holy` (`cv_view(ri, keyset, builtins, readings, excl, q)`) is a read-only Holy port of the draft Oracle `view()` over `relindex.holy` through its checked-read copy API, with `cvsort.holy` for byte-wise ordering (new "row" kind). It is NOT wired into `core.holy`, has no parser, REPL route or production use, and the W5 core field is not built.
+
+- Parity: `test_claim_view_0b_holy_parity.py` compares the FULL result (layer, status, basis, level, provenances, every evidence path, W charged, candidates, readings rows, readings-stage flag) against the Oracle on all 102 fixtures, their shuffled variants and 260+ generated cases (depth 8/9 and negation chain boundaries, aliases, builtins, Thai names, fail-closed index states, poisoned readings/exclusion inputs): 465 cases identical native, and interp output equals native.
+- Routes: `test_claim_view_0b_holy_routes.py` runs a 56-case subset as one embedded script on all 7 routes, byte-identical (the reference interp takes about 100 s for the full set, so the route run is a subset).
+- Read-only: `test_claim_view_0b_holy_readonly.py` dumps the whole index state before and after views of every case, identical; no lazy init on an unloaded index.
+- Bench (dev box, not 4 GB hardware): 1k tuples 0.14 ms/view, 10k 0.26 ms, 50k 1.21 ms (load at 50k 4.2 s, the native dict super-linear finding), peak RSS 46 MB at 50k.
+- Not claimed: ClaimView correctness (parity with an Oracle written from the same contract is not proof), production behavior, resource fit on 4 GB hardware, wiring.
