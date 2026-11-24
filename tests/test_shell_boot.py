@@ -38,12 +38,14 @@ SESSION = [('help', 'commands: help echo'),
 
 
 def build(d, ir_backend):
-    kernel = d/'kernel.elf'; uush = d/'uush.elf'; hi = d/'hi.elf'
+    kernel = d/'kernel.elf'; kernel_usb = d/'kernel-usb.elf'
+    uush = d/'uush.elf'; hi = d/'hi.elf'
     with contextlib.redirect_stdout(io.StringIO()):
         assert build_xkernel(str(ROOT/'kernel/kshell.holy'), str(kernel), ir_backend=ir_backend) == 0
+        assert build_xkernel(str(ROOT/'kernel/kshellusb.holy'), str(kernel_usb), ir_backend=ir_backend) == 0
         assert build_x64(str(ROOT/'kernel/uush.holy'), str(uush)) == 0
         assert build_x64(str(ROOT/'kernel/uuhi.holy'), str(hi)) == 0
-    return kernel, uush, hi
+    return kernel, kernel_usb, uush, hi
 
 
 def package_usb(d, ir_backend, kernel, uush, hi):
@@ -109,6 +111,11 @@ def package_iso(d, kernel, uush, hi):
 
 
 KEYMAP = {' ': 'spc', '/': 'slash', '\x08': 'backspace'}
+
+# qemu-xhci root-port order matches kusbin (keyboard 5, mouse 6); this is
+# the same device shape test_usb_desktop uses for its input proof.
+USB_INPUT = ['-machine', 'q35', '-device', 'qemu-xhci,id=xhci',
+             '-device', 'usb-kbd,bus=xhci.0', '-device', 'usb-mouse,bus=xhci.0']
 
 
 def session(d, args):
@@ -212,7 +219,7 @@ def main():
         backend = 'ir' if ir else 'ast'
         with tempfile.TemporaryDirectory(prefix='hs-shell-boot-') as td:
             d = Path(td)
-            kernel, uush, hi = build(d, ir)
+            kernel, kernel_usb, uush, hi = build(d, ir)
             def leg_usb():
                 image = package_usb(d, ir, kernel, uush, hi)
                 scratch = d/'OVMF_VARS.fd'; scratch.write_bytes(Path(vars_).read_bytes())
@@ -228,8 +235,26 @@ def main():
                 text, px = session(d, ['-cdrom', str(iso)])
                 assert 'shell start' in text and px > 2000
                 save_evidence(d, backend+'-bios')
+            def leg_iso_usbkbd():
+                # USB-keyboard variant: the kernel never reads PS/2, so a
+                # typed session on this device shape proves xHCI input.
+                if ir:
+                    subprocess.run([str(ROOT/'scripts/build-gui-iso.sh'), str(d/'shellusb.iso'), 'shell-usb'],
+                                   env=ENV, check=True, capture_output=True, timeout=300)
+                    x = subprocess.run(['xorriso', '-osirrox', 'on', '-indev', str(d/'shellusb.iso'),
+                                        '-extract', '/boot/kernel.elf', str(d/'kernel.iso.elf')],
+                                       check=True, capture_output=True, timeout=60)
+                    assert (d/'kernel.iso.elf').read_bytes() == kernel_usb.read_bytes(), 'packaged usb-shell kernel differs'
+                else:
+                    package_iso(d/'usbkbd', kernel_usb, uush, hi)
+                    shutil.move(str(d/'usbkbd'/'shell.iso'), str(d/'shellusb.iso'))
+                (d/'usbkbd-run').mkdir()
+                text, px = session(d/'usbkbd-run', USB_INPUT + ['-cdrom', str(d/'shellusb.iso')])
+                assert 'shell start' in text and px > 2000
+                save_evidence(d/'usbkbd-run', backend+'-usbkbd')
             check(f'{backend} usb-storage boot to shell', leg_usb)
             check(f'{backend} bios iso boot to shell', leg_iso)
+            check(f'{backend} usb-keyboard shell boot', leg_iso_usbkbd)
     print('fails', len(fails))
     return 1 if fails else 0
 

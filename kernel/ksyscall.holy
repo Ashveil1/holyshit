@@ -46,6 +46,7 @@ brk = USER_BIAS + 0x10000000
 handler = null
 exec_fn = null
 con_fn = null
+key_fn = null
 n_calls = 0
 last_nr = 0
 last_arg = 0
@@ -166,6 +167,12 @@ def bs_char():
   if bs_cached == null:
     bs_cached = read_mem(poke_bs(), 1)
   return bs_cached
+def set_keyboard(f):
+  # optional alternate key source for readline: returns the same Str
+  # spellings readkey returns (chr of the readkey_event code), null when
+  # no key is pending. kshellusb wires kusbin here; tests leave it null.
+  global key_fn
+  key_fn = f
 def set_console(f):
   # optional framebuffer console sink: receives the exact bytes of every
   # fd 1/2 write and the readline echo (chars, backspace, enter). Serial
@@ -180,7 +187,10 @@ def readline():
   out = ""
   bs = bs_char()
   while true:
-    k = readkey()
+    if key_fn != null:
+      k = key_fn()
+    else:
+      k = readkey()
     if k == null:
       continue
     if k == "\n":
