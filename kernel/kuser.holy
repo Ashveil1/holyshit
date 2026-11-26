@@ -162,11 +162,13 @@ def sys_exec(path_ptr, path_len):
   # exec(path, len) over the current image; one-shot, no return on success.
   # Uses exec_enter (not run): run would record a continuation over the
   # dying session, and the new program's exit could never resume the shell.
-  data = kvfs.read(read_mem(path_ptr, path_len))
+  path = read_mem(path_ptr, path_len)
+  data = kvfs.read(path)
   if data == null:
     return -2
   if load_image(payload_addr(data), len(data)) == 0:
     return -12
+  ksyscall.last_exec = path
   exec_enter(entry_point, build_frame(entry_point, stack_top))
   return -12
 

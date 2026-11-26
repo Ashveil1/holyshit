@@ -20,6 +20,9 @@ Supported here:
 - `edit FILE` is a line editor: typed text appends a line; `.list`,
   `.del N`, `.save` and `.quit` (discard) are the commands. It loads an
   existing file's lines, and save rewrites the whole file;
+- `run PROG` replaces the shell until PROG exits; the kernel then prints
+  `[PROG exited CODE]` and respawns the shell (same line on serial as
+  `program exit PROG CODE`);
 - `exit` respawns the shell getty-style, so a fresh prompt follows normal exit;
 - PS/2 keyboard input with echo and backspace on the framebuffer console
   (48 columns x 16 retained lines, scrolling), 640x480 and up;

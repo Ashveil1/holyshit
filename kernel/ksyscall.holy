@@ -45,6 +45,7 @@ EFAULT = 14
 brk = USER_BIAS + 0x10000000
 handler = null
 exec_fn = null
+last_exec = ""
 con_fn = null
 key_fn = null
 n_calls = 0

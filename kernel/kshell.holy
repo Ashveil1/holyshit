@@ -38,4 +38,9 @@ while true:
   print "shell start"
   kuser.run()
   print "shell exit", ksyscall.user_exit_code()
-  kfbcon.put_str("[sh exited - restarting]\n")
+  if ksyscall.last_exec != "":
+    print "program exit", ksyscall.last_exec, ksyscall.user_exit_code()
+    kfbcon.put_str("[" + ksyscall.last_exec + " exited " + str(ksyscall.user_exit_code()) + "]\n")
+    ksyscall.last_exec = ""
+  else:
+    kfbcon.put_str("[sh exited - restarting]\n")
