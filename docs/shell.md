@@ -25,6 +25,17 @@ Supported here:
   kernel never reads PS/2 in this mode); the default image stays the PS/2
   shell.
 
+- the `shell-disk` variant (`scripts/build-gui-iso.sh out.iso shell-disk`,
+  ISO only) mounts a KVOL volume from the primary IDE disk at boot and
+  restores its files before the packaged `/bin` is loaded; `sync` saves
+  them back (`/bin` is never written to the volume, so the 128 KiB cap
+  counts user files only). It reports `volume: restored files`, `blank` or
+  `no disk` on the console. QEMU disposable disks only: `sync` writes sector
+  0 of the primary IDE disk, is not an atomic commit, and there is no
+  real-hardware disk support. The default image never touches a disk;
+- `cat` and `ls` end their output with a newline so the next prompt starts
+  on its own line.
+
 This does not provide a USB keyboard at the shell (the desktop's xHCI path
 is a separate target), a scripting language, pipes or redirection, disk
 writes beyond the existing kvfs semantics, networking, or any claim about
