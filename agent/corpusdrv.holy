@@ -370,6 +370,8 @@ def run():
                       r0 = len(core["readings"])
                       reply = agent.core.respond(core, "read corpus simplewiki-corpus: " + lead)
                       r1 = len(core["readings"])
+                      if env_str("A19_REPLY_LOG", "0") == "1":
+                        print "REPLY line " + str(n) + " " + reply
                       # Candidate records from the readings delta.
                       # Reading: [subj, pred, obj, pos, neg, "", "", []]
                       # with evidence entry [src, span, ex4]. Records

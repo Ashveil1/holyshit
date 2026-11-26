@@ -214,10 +214,22 @@ def main():
         assert field(lines, 'HALT unique-key ceiling'), lines
         print('ok ceiling refusals: reservation budget, unique-key K')
 
+        # 7b. Reply log flag: per-article core counters for reports.
+        s7b = tmp / 's7b'
+        s7b.mkdir()
+        lines = run(corpus, s7b, {'A19_LIMIT': '1', 'A19_REPLY_LOG': '1'})
+        rep = field(lines, 'REPLY ')
+        assert len(rep) == 1 and 'candidates extracted' in rep[0], rep
+        s7c = tmp / 's7c'
+        s7c.mkdir()
+        lines = run(corpus, s7c, {'A19_LIMIT': '1'})
+        assert not field(lines, 'REPLY '), lines
+        print('ok reply log flag: on prints counters, default silent')
+
         # 8. Dry-run scratch lifecycle is the runner's: the driver only
         # writes inside A19_STORE_DIR. Assert nothing landed beside it.
         assert set(os.listdir(tmp)) <= {
-            'c1', 'c2', 'c3', 's1', 's2', 's3', 's4', 's7'}, os.listdir(tmp)
+            'c1', 'c2', 'c3', 's1', 's2', 's3', 's4', 's7', 's7b', 's7c'}, os.listdir(tmp)
         print('ok driver writes only inside the store dir')
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
