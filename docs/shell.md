@@ -14,9 +14,12 @@ Supported here:
 - the `shell` app mode of both packaging scripts, and it is the default when
   no app argument is given; the desktop modes (`scratchpad|desktop|
   desktop-disk|desktop-usb`) are unchanged and remain explicitly selectable;
-- commands: `help echo cat ls mkdir rm write run sync exit`, served by the
+- commands: `help echo cat ls mkdir rm write edit run sync exit`, served by the
   kernel syscall layer over the ramdisk VFS (`run` execs an ELF from the VFS
   and is one-shot: the new program replaces the shell until it exits);
+- `edit FILE` is a line editor: typed text appends a line; `.list`,
+  `.del N`, `.save` and `.quit` (discard) are the commands. It loads an
+  existing file's lines, and save rewrites the whole file;
 - `exit` respawns the shell getty-style, so a fresh prompt follows normal exit;
 - PS/2 keyboard input with echo and backspace on the framebuffer console
   (48 columns x 16 retained lines, scrolling), 640x480 and up;
