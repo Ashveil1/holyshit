@@ -46,6 +46,7 @@ SUITES = [
     ("test_std_fmt.py", "pure-hs std.fmt string formatting across reference/IR/native routes"),
     ("test_std_list.py", "pure-hs std.list everyday helpers across reference/IR/native routes"),
     ("test_agent_core.py", "pure-hs local agent core vs Python oracle across reference/IR/native routes"),
+    ("test_agent_lineage_fetch.py", "A19 corpus-lineage labels: mixed corpus+HTTP collapse, pinned transcript, interp+native"),
     ("test_agent_patgen.py", "A20 offline pattern-candidate generator vs Python oracle (interp + native)"),
     ("test_agent_proposals.py", "A20 proposal store, repl patterns commands, reader isolation"),
     ("test_agent_shadow.py", "A21 shadow matching, review packets, reader isolation"),
