@@ -34,3 +34,8 @@ assert names.count("test_std_list.py") == 1
 assert "test_std_list.py" in quick_selected
 assert os.path.isfile(os.path.join(HERE, "test_std_list.py"))
 print("1/1 run_all registers std.list helpers exactly once on quick and full paths")
+
+assert names.count("test_agent_fetch.py") == 1
+assert "test_agent_fetch.py" in quick_selected
+assert os.path.isfile(os.path.join(HERE, "test_agent_fetch.py"))
+print("1/1 run_all registers agent fetch semantics exactly once on quick and full paths")
