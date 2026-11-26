@@ -67,6 +67,69 @@ def writefile(path, text):
     return
   sc(SYS_WRITE, fd, saddr(text), len(text), 0, 0, 0)
   sc(SYS_CLOSE, fd, 0, 0, 0, 0, 0)
+def readfile(path):
+  # whole file as text, "" when missing
+  fd = sc(SYS_OPEN, saddr(path), len(path), 0, 0, 0, 0)
+  if fd < 0:
+    return ""
+  b = ubuf(256)
+  text = ""
+  while true:
+    n = sc(SYS_READ, fd, b, 256, 0, 0, 0)
+    if n <= 0:
+      break
+    text = text + read_mem(b, n)
+  sc(SYS_CLOSE, fd, 0, 0, 0, 0, 0)
+  return text
+def edit(path):
+  # line editor: typed text appends a line; commands start with a dot
+  lines = []
+  old = readfile(path)
+  if old != "":
+    for l in split(old, "\n"):
+      append(lines, l)
+    if len(lines) > 0 and lines[len(lines) - 1] == "":
+      lines = lines[:len(lines) - 1]
+  print "edit " + path + " - .help for commands"
+  while true:
+    puts("ed> ")
+    line = readline()
+    if line == null:
+      return
+    if line == ".help":
+      print ".list .del N .save .quit; other text adds a line"
+      continue
+    if line == ".list":
+      i = 0
+      while i < len(lines):
+        print str(i + 1) + ": " + lines[i]
+        i = i + 1
+      continue
+    if line == ".save":
+      out = ""
+      for l in lines:
+        out = out + l + "\n"
+      writefile(path, out)
+      print "saved " + str(len(lines)) + " lines"
+      return
+    if line == ".quit":
+      print "discarded"
+      return
+    words = split(line)
+    if len(words) == 2 and words[0] == ".del":
+      n = int(words[1])
+      if n < 1 or n > len(lines):
+        print "no such line"
+      else:
+        rest = []
+        i = 0
+        while i < len(lines):
+          if i != n - 1:
+            append(rest, lines[i])
+          i = i + 1
+        lines = rest
+      continue
+    append(lines, line)
 def main():
   print "holyshit sh - type help"
   while true:
@@ -83,7 +146,7 @@ def main():
     if cmd == "exit":
       return null
     if cmd == "help":
-      print "commands: help echo cat ls mkdir rm write run sync exit"
+      print "commands: help echo cat ls mkdir rm write edit run sync exit"
       continue
     if cmd == "echo":
       print join(" ", parts[1:])
@@ -119,6 +182,12 @@ def main():
         writefile(parts[1], join(" ", parts[2:]))
       else:
         print "usage: write <file> <text...>"
+      continue
+    if cmd == "edit":
+      if len(parts) > 1:
+        edit(parts[1])
+      else:
+        print "usage: edit <file>"
       continue
     if cmd == "sync":
       if sc(SYS_SYNC, 0, 0, 0, 0, 0, 0) < 0:

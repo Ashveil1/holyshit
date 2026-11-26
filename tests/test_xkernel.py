@@ -607,7 +607,7 @@ with tempfile.TemporaryDirectory() as d:
                       "rm /n", "exit"], 25)
         check("kush finished", "kushell-done" in out, out[-800:])
         check("kush did not fault", "EXC " not in out, out[-800:])
-        for line in ("commands: help echo cat ls mkdir rm write run sync exit",
+        for line in ("commands: help echo cat ls mkdir rm write edit run sync exit",
                      "holyshit test ramdisk", "second line here",
                      "no such file", "unknown command: bogus", "xyzzy 123"):
             check(f"kush output {line!r}", line in out, out[-800:])
