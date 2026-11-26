@@ -1,0 +1,15 @@
+{
+ "id": "thai-core-corpus",
+ "version": 1,
+ "for_manifest": "thai-core v1",
+ "note": "TEMPLATE, no items yet. The thai-core SCENARIO CORPUS: the actual Thai evaluation content (setup lines, dialogue, probes, expected labels) keyed by item id, referenced from the thai-core manifest. This is a UTF-8 data artifact: authored (Claude + GPT, native Thai, never translated or scraped), hashed (SHA-256 over canonical JSON: sort_keys, no whitespace, UTF-8) and frozen BEFORE C19. C19 gates EXECUTION only - this file may hold real Thai content while execution eligibility (C19 seven-route parity, proven on a SEPARATE serialization test corpus, never on this corpus) is still pending. AI-authored / not human-validated, never a quality claim.",
+ "items": {},
+ "item_example_shape": {
+  "tc-0001": {
+   "setup": "<Thai setup lines authored in the Phase 3 authoring round>",
+   "dialogue": [],
+   "probes": [],
+   "expected": {"epistemic": "supported", "action": "answer"}
+  }
+ }
+}

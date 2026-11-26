@@ -667,7 +667,7 @@ def _item_state(it, probs):
     append(probs, iid + ": final label invalid")
     return "pending"
   return "resolved"
-def thai_check(s):
+def _thai_check_owner(s):
   probs = []
   cats = {}
   pend = []
@@ -725,3 +725,422 @@ def thai_check(s):
     verdict = "PENDING_OWNER_LABELING: " + str(len(pend)) + " unresolved item(s), " + str(len(probs)) + " problem(s)"
   out.append("verdict: " + verdict)
   return join("\n", out)
+# ---------------------------------------------------------------------
+# Thai-core AI-authored path (spec v2.5, GPT GO 26 Nov; owner rule: the
+# set is "AI-authored / not human-validated" everywhere, NEVER a quality
+# claim - it is a breakage instrument). thai-check validates the MANIFEST
+# (ids, counts, metadata and provenance only; the Thai scenario corpus is
+# a separate UTF-8 data artifact referenced by hash, authored and frozen
+# BEFORE C19 - C19 gates execution only) plus the evidence blocks
+# (annotation log, sessions, preflight log, overlap report, exclusion
+# ledger, freeze attestation). SHA-256 fields are shape- and chain-
+# checked here; authoritative recomputation is EXTERNAL (Python evidence
+# tooling, canonical JSON: sort_keys, no whitespace, UTF-8) until C20 -
+# in-hs hashes stay poly62 change detection (A22 convention). The owner
+# path above is untouched; the owner-authored statuses stay valid for a
+# future human set.
+AI_FAMILIES = ["claude", "gpt", "gemini"]
+AI_STATUSES = ["AI_AUTHORED_DRAFT", "AI_AUTHORED_REVIEW", "AI_AUTHORED_CONTENT_FROZEN"]
+AI_DEFECTS = ["broken-scenario", "wrong-category", "duplicate", "malformed-label"]
+AI_DISCLOSURE = "confirmed under delegated owner authority - reviewer NOT independent of the annotating families"
+AI_UNRESOLVED = ["annotator-disagreement", "no-independent-adjudicator"]
+AI_OVERLAP_NOTE = "operational thresholds, not proven semantic-duplicate detection"
+AI_PRE_OUT = ["pass", "fail", "wait", "fail-pending-reassessment"]
+def _str_ok(x):
+  return json_str(x)[:1] == "\""
+def _hex_ok(h, n):
+  ok = false
+  if json_str(h)[:1] == "\"":
+    if len(h) == n:
+      ok = true
+  if ok:
+    i = 0
+    while i < len(h):
+      b = byte_at(h, i)
+      if not ((b >= 48 and b <= 57) or (b >= 97 and b <= 102)):
+        ok = false
+      i = i + 1
+  return ok
+def _ai_map(entries, idkey, req, probs, what):
+  m = {}
+  seen = []
+  for e in entries:
+    if not _str_ok(e[idkey]):
+      append(probs, what + " needs string " + idkey)
+    else:
+      if e[idkey] in seen:
+        append(probs, "duplicate " + what + " identity " + e[idkey])
+      append(seen, e[idkey])
+      for f in req:
+        if not (has(e, f) and _str_ok(e[f])):
+          append(probs, what + " " + e[idkey] + ": needs string " + f)
+      if has(e, "family"):
+        if not (e["family"] in AI_FAMILIES):
+          append(probs, what + " " + e[idkey] + ": family must be claude, gpt or gemini")
+        m[e[idkey]] = e["family"]
+  return m
+def _ai_sessions(s, annfam, probs):
+  m = {}
+  seen = []
+  for e in s["provenance"]["annotation_sessions"]:
+    if not _str_ok(e["session_id"]):
+      append(probs, "annotation session needs string session_id")
+    else:
+      if e["session_id"] in seen:
+        append(probs, "duplicate session id " + e["session_id"] + " (sessions never share an id)")
+      if not (e["annotator_id"] in keys(annfam)):
+        append(probs, "session " + e["session_id"] + ": annotator_id must reference a declared annotator")
+      if has(e, "resume_of") and e["resume_of"] != null:
+        if not (e["resume_of"] in seen):
+          append(probs, "session " + e["session_id"] + ": resume_of must chain to an earlier session")
+      for f in ["batch_id", "session_date", "displayed_model_label", "item_order_seed"]:
+        if not (has(e, f) and _str_ok(e[f])):
+          append(probs, "session " + e["session_id"] + ": needs string " + f)
+      if not (has(e, "prompt_template_hash") and _hex_ok(e["prompt_template_hash"], 64)):
+        append(probs, "session " + e["session_id"] + ": prompt_template_hash must be 64-hex SHA-256")
+      append(seen, e["session_id"])
+      m[e["session_id"]] = e
+  return m
+def _ai_annots(s, sess, probs):
+  m = {}
+  if not (has(s, "evidence") and has(s["evidence"], "annotation_log")):
+    return m
+  seen = []
+  for a in s["evidence"]["annotation_log"]:
+    if not _str_ok(a["annotation_id"]):
+      append(probs, "annotation record needs string annotation_id")
+    else:
+      if a["annotation_id"] in seen:
+        append(probs, "duplicate annotation id " + a["annotation_id"])
+      append(seen, a["annotation_id"])
+      if not _str_ok(a["item_id"]):
+        append(probs, "annotation " + a["annotation_id"] + ": item_id missing")
+      if not (a["session_id"] in keys(sess)):
+        append(probs, "annotation " + a["annotation_id"] + ": unknown session_id")
+      else:
+        se = sess[a["session_id"]]
+        if a["annotator_id"] != se["annotator_id"]:
+          append(probs, "annotation " + a["annotation_id"] + ": annotator_id does not match its session")
+        if a["batch_id"] != se["batch_id"]:
+          append(probs, "annotation " + a["annotation_id"] + ": batch_id does not match its session")
+        if a["prompt_template_hash"] != se["prompt_template_hash"]:
+          append(probs, "annotation " + a["annotation_id"] + ": prompt_template_hash does not match its session")
+      if a["criteria_version"] != s["provenance"]["criteria_version"]:
+        append(probs, "annotation " + a["annotation_id"] + ": criteria_version mismatch")
+      if not _label_ok(a["label"]):
+        append(probs, "annotation " + a["annotation_id"] + ": label invalid")
+      if not (has(a, "response_hash") and _hex_ok(a["response_hash"], 64)):
+        append(probs, "annotation " + a["annotation_id"] + ": response_hash must be 64-hex SHA-256 of the retained raw response")
+      if not _str_ok(a["timestamp"]):
+        append(probs, "annotation " + a["annotation_id"] + ": timestamp missing")
+      if has(a, "role") and not (a["role"] in ["independent", "author-self"]):
+        append(probs, "annotation " + a["annotation_id"] + ": role must be independent or author-self")
+      m[a["annotation_id"]] = a
+  return m
+def _ai_item_state(s, it, probs, authmap, annlog, annfam, variant):
+  iid = it["id"]
+  if not (has(it, "ai_authored") and it["ai_authored"] == true):
+    append(probs, iid + ": ai_authored must be the literal true")
+  if not (has(it, "not_human_validated") and it["not_human_validated"] == true):
+    append(probs, iid + ": not_human_validated must be the literal true")
+  if not (has(it, "authored_by") and _str_ok(it["authored_by"]) and (it["authored_by"] in keys(authmap))):
+    append(probs, iid + ": authored_by must reference a declared authors.author_id")
+    return "pending"
+  afam = authmap[it["authored_by"]]
+  if not (has(it, "annotation_progress") and (it["annotation_progress"] in ["pending", "partial", "complete"])):
+    append(probs, iid + ": annotation_progress must be pending, partial or complete")
+  anns = []
+  if has(it, "annotation_ids"):
+    for aid in it["annotation_ids"]:
+      if aid in keys(annlog):
+        append(anns, annlog[aid])
+      else:
+        append(probs, iid + ": unknown annotation id " + aid)
+  n = len(anns)
+  nindep = 0
+  fams = []
+  for a in anns:
+    f = annfam[a["annotator_id"]]
+    append(fams, f)
+    if f != afam:
+      nindep = nindep + 1
+    if f == afam and variant == "B":
+      if not (has(a, "role") and a["role"] == "author-self"):
+        append(probs, iid + ": author-family records on variant B need role author-self (declared NOT independent)")
+  if afam in fams and variant == "A":
+    append(probs, iid + ": author family " + afam + " must never annotate its own item (family-level exclusion; identity strings are not independence)")
+  if variant == "A":
+    if n == 2 and fams[0] == fams[1]:
+      append(probs, iid + ": the two annotations must come from distinct families")
+    if n > 2:
+      append(probs, iid + ": variant A gives exactly two annotations per item")
+  want = "pending"
+  if variant == "A":
+    if n == 1:
+      want = "partial"
+    if n >= 2:
+      want = "complete"
+  else:
+    if nindep >= 1:
+      want = "complete"
+  if has(it, "annotation_progress") and it["annotation_progress"] != want:
+    append(probs, iid + ": annotation_progress " + it["annotation_progress"] + " does not match " + str(n) + " annotation record(s); expected " + want)
+  amb = false
+  if has(it, "critical") and it["critical"] == true:
+    amb = true
+  for a in anns:
+    if has(a["label"], "epistemic") and a["label"]["epistemic"] == "ambiguous":
+      amb = true
+  expected = ""
+  reason = ""
+  if want == "complete":
+    if amb:
+      expected = "unresolved"
+      reason = "no-independent-adjudicator"
+    elif variant == "A" and n == 2:
+      if json_str(anns[0]["label"]) == json_str(anns[1]["label"]):
+        expected = "scored"
+      else:
+        expected = "unresolved"
+        reason = "annotator-disagreement"
+    elif variant == "B":
+      clash = false
+      for a in anns:
+        if annfam[a["annotator_id"]] == afam:
+          for b in anns:
+            if annfam[b["annotator_id"]] != afam:
+              if json_str(a["label"]) != json_str(b["label"]):
+                clash = true
+      if clash:
+        expected = "unresolved"
+        reason = "annotator-disagreement"
+      else:
+        expected = "scored"
+  if want == "complete":
+    if expected != "":
+      if not (has(it, "disposition") and it["disposition"] == expected):
+        append(probs, iid + ": disposition must be " + expected + " (computed from the annotation records, never negotiated)")
+      if expected == "unresolved":
+        if not (has(it, "unresolved_reason") and it["unresolved_reason"] == reason):
+          append(probs, iid + ": unresolved_reason must be " + reason)
+  else:
+    if has(it, "disposition"):
+      append(probs, iid + ": a partial or pending item cannot have a disposition (an item becomes scored only from complete)")
+  if has(it, "disposition") and not (it["disposition"] in ["scored", "unresolved"]):
+    append(probs, iid + ": disposition must be scored or unresolved")
+  if has(it, "unresolved_reason") and not (it["unresolved_reason"] in AI_UNRESOLVED):
+    append(probs, iid + ": unresolved_reason must be annotator-disagreement or no-independent-adjudicator")
+  if want == "complete" and expected == "scored":
+    return "scored"
+  if want == "complete":
+    return "unresolved"
+  return "pending"
+def _ai_preflight(s, probs):
+  if not (has(s, "evidence") and has(s["evidence"], "preflight_log")):
+    return
+  for p in s["evidence"]["preflight_log"]:
+    tag = "preflight: "
+    if has(p, "category") and _str_ok(p["category"]):
+      tag = "preflight " + p["category"] + ": "
+    if not (has(p, "usable_examples") and has(p, "structural_pass") and has(p, "instruction_pass") and has(p, "task_matches")):
+      append(probs, tag + "needs usable_examples, structural_pass, instruction_pass, task_matches")
+    else:
+      if p["usable_examples"] != 5:
+        append(probs, tag + "exactly 5 usable examples after replacement, else the category waits (no 3-4 denominator)")
+      if p["structural_pass"] > 5 or p["instruction_pass"] > 5 or p["task_matches"] > 5:
+        append(probs, tag + "pass counts cannot exceed the example count")
+      passing = p["usable_examples"] == 5 and p["structural_pass"] == 5 and p["instruction_pass"] == 5 and p["task_matches"] >= 4
+      if has(p, "outcome"):
+        if p["outcome"] == "pass" and not passing:
+          append(probs, tag + "outcome pass requires 5 usable, 5/5 structural, 5/5 instruction, >=4/5 task match")
+        if passing and p["outcome"] != "pass":
+          append(probs, tag + "numbers pass but outcome is " + json_str(p["outcome"]) + " (a passing run is recorded as pass)")
+        if not (p["outcome"] in AI_PRE_OUT):
+          append(probs, tag + "outcome must be pass, fail, wait or fail-pending-reassessment")
+      else:
+        append(probs, tag + "outcome missing")
+    if has(p, "reviewers"):
+      if json_str(p["reviewers"]) != json_str(["claude", "gpt"]):
+        append(probs, tag + "the two preflight reviewers are the claude and gpt families (named, recorded in order)")
+    else:
+      append(probs, tag + "reviewers missing (the two preflight reviewers are named: claude and gpt)")
+  return
+def _ai_overlap(s, probs):
+  if not (has(s, "evidence") and has(s["evidence"], "overlap_report")):
+    return
+  r = s["evidence"]["overlap_report"]
+  for f in ["dev_set_hash", "overlap_checker_hash", "tokenizer_hash", "dictionary_hash"]:
+    if not (has(r, f) and _hex_ok(r[f], 64)):
+      append(probs, "overlap report: " + f + " missing or not 64-hex SHA-256 (the report pins its own inputs)")
+  for f in ["normalization_config", "sequence_algorithm", "min_meaningful_length", "thresholds"]:
+    if not has(r, f):
+      append(probs, "overlap report: " + f + " missing (pinned input)")
+  if not (has(r, "note") and r["note"] == AI_OVERLAP_NOTE):
+    append(probs, "overlap report: note must state thresholds are operational, not proven semantic-duplicate detection")
+  return
+def _ai_attestation(s, probs):
+  if not (has(s, "evidence") and has(s["evidence"], "freeze_attestation")):
+    return null
+  att = s["evidence"]["freeze_attestation"]
+  for f in ["manifest_hash", "corpus_hash", "ledger_head_hash", "variation_plan_hash", "criteria_hash", "session_log_hash", "annotation_log_hash", "raw_responses_hash", "overlap_report_hash", "prompt_templates_hash", "harness_build_hash"]:
+    if not (has(att, f) and _hex_ok(att[f], 64)):
+      append(probs, "freeze attestation: " + f + " missing or not 64-hex SHA-256")
+  if not (has(att, "anchor") and has(att["anchor"], "repo") and _str_ok(att["anchor"]["repo"]) and has(att["anchor"], "commit") and _hex_ok(att["anchor"]["commit"], 40)):
+    append(probs, "freeze attestation: anchor needs repo + 40-hex git commit (the attestation is never the unpinned authority)")
+  return att
+def _ai_ledger(s, probs, att, itemids):
+  if not (has(s, "evidence") and has(s["evidence"], "exclusion_ledger")):
+    return
+  prev = ""
+  if att != null:
+    if has(att, "manifest_hash") and _hex_ok(att["manifest_hash"], 64):
+      prev = att["manifest_hash"]
+  i = 0
+  for e in s["evidence"]["exclusion_ledger"]:
+    tag = "ledger entry " + str(i) + ": "
+    if not (_str_ok(e["item_id"]) and (e["item_id"] in itemids)):
+      append(probs, tag + "item_id must reference a manifest item")
+    if not (has(e, "defect_class") and (e["defect_class"] in AI_DEFECTS)):
+      append(probs, tag + "objective defect classes only (broken-scenario, wrong-category, duplicate, malformed-label); a contested or semantic class is refused")
+    if has(e, "defect_class") and e["defect_class"] == "wrong-category":
+      if not (_str_ok(e["evidence_ref"]) and len(e["evidence_ref"]) > 0):
+        append(probs, tag + "wrong-category needs evidence_ref showing the frozen criterion text it violates")
+    if not _str_ok(e["reviewer"]):
+      append(probs, tag + "reviewer missing")
+    if not _str_ok(e["reviewer_family"]):
+      append(probs, tag + "reviewer_family missing (independence is disclosed, not faked)")
+    if not (has(e, "disclosure") and e["disclosure"] == AI_DISCLOSURE):
+      append(probs, tag + "disclosure must be the literal delegated-authority label")
+    if not (has(e, "entry_hash") and _hex_ok(e["entry_hash"], 64)):
+      append(probs, tag + "entry_hash must be 64 lowercase hex (SHA-256, recomputed externally)")
+    if prev == "":
+      if not (has(e, "prev_entry_hash") and _hex_ok(e["prev_entry_hash"], 64)):
+        append(probs, tag + "genesis prev_entry_hash must be the pinned manifest hash (SHA-256)")
+    else:
+      if not (has(e, "prev_entry_hash") and e["prev_entry_hash"] == prev):
+        append(probs, tag + "exclusion ledger chain broken (prev_entry_hash != previous entry_hash)")
+    if has(e, "entry_hash"):
+      prev = e["entry_hash"]
+    i = i + 1
+  if att != null and len(s["evidence"]["exclusion_ledger"]) > 0:
+    if has(att, "ledger_head_hash") and _hex_ok(att["ledger_head_hash"], 64):
+      if att["ledger_head_hash"] != prev:
+        append(probs, "attestation ledger_head_hash != ledger head (chain tamper or stale attestation)")
+  return
+def _thai_check_ai(s):
+  probs = []
+  cats = {}
+  npend = 0
+  try:
+    if s["kind"] != "thai-dataset" or s["lang"] != "th":
+      return "thai-check refused: kind must be thai-dataset and lang th"
+    if not (s["tier"] in ["supported", "challenge"]):
+      return "thai-check refused: tier must be supported (capability scope only, never a validation or quality claim) or challenge (future probes)"
+    if not (s["status"] in AI_STATUSES):
+      return "thai-check refused: status invalid for the AI-authored path (AI_AUTHORED_DRAFT, AI_AUTHORED_REVIEW, AI_AUTHORED_CONTENT_FROZEN)"
+    if not (has(s["provenance"], "human_validated") and s["provenance"]["human_validated"] == false):
+      return "thai-check refused: human_validated must be the literal false on the AI-authored path (missing or true refuses the suite)"
+    variant = "A"
+    if has(s, "annotation_variant"):
+      variant = s["annotation_variant"]
+    if not (variant in ["A", "B"]):
+      return "thai-check refused: annotation_variant must be A or B"
+    if variant == "B":
+      if not (has(s["provenance"], "single_independent_annotator") and s["provenance"]["single_independent_annotator"] == true):
+        append(probs, "variant B requires the literal single_independent_annotator: true (every report says single-independent-annotator)")
+    authmap = _ai_map(s["provenance"]["authors"], "author_id", ["family", "model", "version", "session_date"], probs, "author")
+    annfam = _ai_map(s["provenance"]["annotators"], "annotator_id", ["family", "model", "version"], probs, "annotator")
+    sess = _ai_sessions(s, annfam, probs)
+    annlog = _ai_annots(s, sess, probs)
+    if not (has(s["provenance"], "criteria_version") and _str_ok(s["provenance"]["criteria_version"])):
+      append(probs, "provenance.criteria_version must be a string (the criteria freeze pin)")
+    if not (has(s["provenance"], "variation_plan_hash") and _str_ok(s["provenance"]["variation_plan_hash"])):
+      append(probs, "provenance.variation_plan_hash must be a string (the variation plan is hash-pinned)")
+    if not has(s, "corpus"):
+      append(probs, "AI manifest needs a corpus block (the scenario corpus is a separate UTF-8 artifact referenced by hash)")
+    else:
+      if not (has(s["corpus"], "file") and _str_ok(s["corpus"]["file"])):
+        append(probs, "corpus.file must be a string")
+      if has(s["corpus"], "sha256") and _str_ok(s["corpus"]["sha256"]) and len(s["corpus"]["sha256"]) > 0:
+        if not _hex_ok(s["corpus"]["sha256"], 64):
+          append(probs, "corpus.sha256 must be 64 lowercase hex (SHA-256)")
+    crit = s["acceptance_criteria"]
+    for c in keys(crit):
+      if not _str_ok(crit[c]) or len(crit[c]) == 0:
+        append(probs, "category " + c + ": acceptance criteria must be a non-empty string")
+    seen = []
+    for it in s["items"]:
+      if not _str_ok(it["id"]) or not _str_ok(it["category"]):
+        return "thai-check refused: item needs string id, category"
+      if it["id"] in seen:
+        return "thai-check refused: duplicate item id " + it["id"]
+      append(seen, it["id"])
+      if has(it, "input"):
+        append(probs, it["id"] + ": Thai content lives in the scenario corpus, never in the manifest (ids/counts only)")
+      if it["origin"] == "translated":
+        append(probs, it["id"] + ": translated items are not allowed (items must be authored in Thai)")
+      elif it["origin"] != "authored":
+        append(probs, it["id"] + ": origin must be authored")
+      if not (it["category"] in keys(crit)):
+        append(probs, it["id"] + ": category " + it["category"] + " has no semantic acceptance criteria")
+      st = _ai_item_state(s, it, probs, authmap, annlog, annfam, variant)
+      if not (it["category"] in cats):
+        cats[it["category"]] = {"items": 0, "scored": 0, "unresolved": 0, "pending": 0}
+      cats[it["category"]]["items"] = cats[it["category"]]["items"] + 1
+      if st == "scored":
+        cats[it["category"]]["scored"] = cats[it["category"]]["scored"] + 1
+      elif st == "unresolved":
+        cats[it["category"]]["unresolved"] = cats[it["category"]]["unresolved"] + 1
+      else:
+        cats[it["category"]]["pending"] = cats[it["category"]]["pending"] + 1
+        npend = npend + 1
+    _ai_preflight(s, probs)
+    _ai_overlap(s, probs)
+    att = _ai_attestation(s, probs)
+    _ai_ledger(s, probs, att, seen)
+    if s["status"] == "AI_AUTHORED_CONTENT_FROZEN":
+      if npend > 0:
+        append(probs, "content freeze refused: " + str(npend) + " item(s) not complete with a recorded disposition")
+      if not (has(s, "evidence") and has(s["evidence"], "overlap_report")):
+        append(probs, "content freeze refused: overlap report missing")
+      if att == null:
+        append(probs, "content freeze refused: freeze attestation missing")
+      if not (has(s, "evidence") and has(s["evidence"], "preflight_log")):
+        append(probs, "content freeze refused: preflight log missing")
+  except:
+    return "thai-check refused: malformed Thai dataset"
+  hdr = "thai-check " + s["id"] + " v" + str(s["version"]) + " tier " + s["tier"] + " status " + s["status"] + " variant " + variant + " (AI-authored / not human-validated: format and evidence check only - no labels created, no scoring here, NEVER a quality claim; tier declares capability scope only; SHA-256 fields are shape- and chain-checked, recomputation is external until C20)"
+  out = [hdr]
+  for c in _sort(keys(cats)):
+    x = cats[c]
+    line = "  " + c + ": " + str(x["scored"]) + " scored of " + str(x["items"]) + " items"
+    if x["unresolved"] > 0:
+      line = line + ", " + str(x["unresolved"]) + " unresolved"
+    if x["pending"] > 0:
+      line = line + ", " + str(x["pending"]) + " pending/partial"
+    append(out, line)
+  for p in probs:
+    append(out, "  problem: " + p)
+  total = len(s["items"])
+  verdict = ""
+  if s["status"] == "AI_AUTHORED_CONTENT_FROZEN" and len(probs) == 0:
+    verdict = "CONTENT_FROZEN: evidence complete (execution eligibility is a separate external record; the frozen set is never run before it)"
+  elif total == 0:
+    verdict = s["status"] + ": no items yet (Phase 1 criteria round first: Claude and GPT propose, cross-review, freeze criteria v1)"
+  elif len(probs) > 0:
+    verdict = s["status"] + ": " + str(len(probs)) + " problem(s)"
+  elif npend > 0:
+    verdict = s["status"] + ": " + str(npend) + " pending/partial item(s), 0 problems"
+  else:
+    verdict = "READY_FOR_CONTENT_FREEZE: all items complete with recorded dispositions (freeze tooling pins SHA-256 artifact hashes and the git-commit anchor externally)"
+  append(out, "verdict: " + verdict)
+  return join("\n", out)
+def thai_check(s):
+  m = ""
+  try:
+    m = s["provenance"]["method"]
+  except:
+    m = ""
+  if m == "ai-authored":
+    return _thai_check_ai(s)
+  return _thai_check_owner(s)
