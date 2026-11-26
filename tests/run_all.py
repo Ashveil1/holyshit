@@ -61,6 +61,7 @@ SUITES = [
     ("test_agent_selfeval_thai.py", "A23.3 Thai dataset format: provenance and adjudication rules"),
     ("test_agent_thai_correct.py", "A25.2 shape-scoped Thai correction through the real native repl"),
     ("test_agent_thai_pron.py", "A25.3 Thai pronoun clarification through the real native repl"),
+    ("test_agent_fetch.py", "A18.1 EXPERIMENTAL read-url semantic transcript vs fixture server (interp + native)"),
     ("test_claim_view_contract.py", "A24.0a claim-view contract: reference model + shared fixtures (spec only)"),
     ("test_claim_view_0b_oracle_selfcheck.py", "A24.0b DRAFT Oracle self-conformance (not a production test)"),
     ("test_claim_view_0b_relindex.py", "A24.0b slice 1: exact-keyed relation index lifecycle vs Oracle model (standalone, not wired)"),

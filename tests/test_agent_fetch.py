@@ -7,7 +7,11 @@ Runs the same command script through two routes:
   2. natively compiled agent/repl.holy   (hs.py build; needs
      CPATH/LIBRARY_PATH pointing at the gc toolchain, same as
      tests/test_agent_core.py)
-both with HS_AGENT_TEST_FETCH=1, and asserts byte-identical,
+both with HS_AGENT_TEST_FETCH=1 (agent-side unlock) and
+HS_ALLOW_PRIVATE_NET=1 (runtime netguard unlock: since #449 the runtime
+itself blocks loopback/private connects at connect time, and hs code
+cannot set process env, so the fixture needs the env exception), and
+asserts byte-identical,
 port-normalized transcripts against the pinned EXPECTED below. The
 transcript pins: clean 3-candidate extraction, hostile script/style
 stripping + inert command text, fake USER_CONFIRMED staying
@@ -76,7 +80,8 @@ def main():
     srv, port = start_server()
     try:
         cmds = CMDS.replace("{PORT}", str(port))
-        env = dict(os.environ, HS_AGENT_TEST_FETCH="1")
+        env = dict(os.environ, HS_AGENT_TEST_FETCH="1",
+                   HS_ALLOW_PRIVATE_NET="1")
 
         r = run([sys.executable, os.path.join(ROOT, "interp.py"),
                  os.path.join(ROOT, "agent", "repl.holy")], cmds, env, ROOT)
