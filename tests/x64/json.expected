@@ -12,7 +12,7 @@ dec-unicode ok "\u00e9\ud83d\ude00"
 dec-empty-list ok []
 dec-empty-obj ok {}
 dec-escapes ok "a\n\t\\/"
-dec-overflow err json_str failed: Out of range float values are not JSON compliant: inf at line 4
+dec-overflow err json_str failed: Out of range float values are not JSON compliant at line 4
 dec-zero ok 0.0
 err-word err json_parse failed: Expecting value at line 44
 err-trail-arr err json_parse failed: Illegal trailing comma before end of array at line 46
@@ -21,6 +21,6 @@ err-extra err json_parse failed: Extra data at line 50
 err-comma err json_parse failed: Expecting ',' delimiter at line 52
 err-unterm err json_parse failed: Unterminated string starting at at line 54
 err-key err json_parse failed: Expecting property name enclosed in double quotes at line 56
-err-inf err json_str failed: Out of range float values are not JSON compliant: inf at line 58
-err-nan err json_str failed: Out of range float values are not JSON compliant: nan at line 60
+err-inf err json_str failed: Out of range float values are not JSON compliant at line 58
+err-nan err json_str failed: Out of range float values are not JSON compliant at line 60
 err-empty err json_parse failed: Expecting value at line 62

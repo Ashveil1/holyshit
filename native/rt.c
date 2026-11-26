@@ -814,12 +814,20 @@ static void fmt_repr(double x, char *out, size_t cap) {
     int prec = 17;
     for (int p = 1; p <= 17; p++) {
         snprintf(buf, sizeof(buf), "%.*e", p - 1, a);
+        /* a comma-decimal LC_NUMERIC must not leak into JSON/display
+           output: CPython always uses '.', so normalize before parsing. */
+        for (char *q = buf; *q; q++)
+            if (*q == ',')
+                *q = '.';
         if (strtod(buf, NULL) == a) {
             prec = p;
             break;
         }
     }
     snprintf(buf, sizeof(buf), "%.*e", prec - 1, a);
+    for (char *q = buf; *q; q++)
+        if (*q == ',')
+            *q = '.';
     char *ep = strchr(buf, 'e');
     int exp10 = atoi(ep + 1);
     int nd = 0;
@@ -2141,27 +2149,83 @@ static void js_buf(char **o, size_t *n, size_t *cap, const char *s, size_t m) {
     *n += m;
 }
 
+/* One code point as \uXXXX (lowercase, exactly 4 digits), matching
+   runtime/json.holy js_hex4/js_u16. cp must be in [0, 0xFFFF]; callers
+   mask, so out-of-range code points from invalid input wrap here -- such
+   input is outside the cross-route byte-identical guarantee (below). */
+static void js_u16(char **o, size_t *n, size_t *cap, int64_t cp) {
+    static const char HEX[] = "0123456789abcdef";
+    char esc[6];
+    cp &= 0xFFFF;
+    esc[0] = '\\';
+    esc[1] = 'u';
+    for (int k = 3; k >= 0; k--)
+        esc[2 + (3 - k)] = HEX[(cp >> (4 * k)) & 0xF];
+    js_buf(o, n, cap, esc, 6);
+}
+
+/* json_str string encoding: CPython json.dumps(ensure_ascii=True)
+   semantics, byte-identical with runtime/json.holy js_quote (the shared
+   x64/seed encoder) and interp's json.dumps: short escapes for \" \\ \b
+   \f \n \r \t, \u00xx for other control chars and 0x7F, and every code
+   point >= 0x80 as \uXXXX (surrogate pair above the BMP).
+
+   Invalid UTF-8 (reachable on the byte-buffer routes via read_mem or a
+   byte-level slice that splits a sequence): decoded assuming valid with
+   the same arithmetic as js_quote, except that a sequence truncated at
+   the end of the string reads its missing continuation bytes as 0
+   instead of reading out of bounds (the Holy runtime observes zeroed
+   heap there). Exact bytes for invalid input are NOT part of the
+   cross-route guarantee; valid UTF-8 is byte-identical on all routes.
+   Lengths are always explicit; embedded NULs are escaped, never
+   truncated. */
 static void js_str(char **o, size_t *n, size_t *cap, const char *s, int64_t len, int line) {
     js_buf(o, n, cap, "\"", 1);
-    for (int64_t i = 0; i < len; i++) {
-        unsigned char c = (unsigned char)s[i];
-        switch (c) {
-        case '"': js_buf(o, n, cap, "\\\"", 2); break;
-        case '\\': js_buf(o, n, cap, "\\\\", 2); break;
-        case '\b': js_buf(o, n, cap, "\\b", 2); break;
-        case '\f': js_buf(o, n, cap, "\\f", 2); break;
-        case '\n': js_buf(o, n, cap, "\\n", 2); break;
-        case '\r': js_buf(o, n, cap, "\\r", 2); break;
-        case '\t': js_buf(o, n, cap, "\\t", 2); break;
-        default:
-            if (c < 0x20) {
-                char esc[7];
-                snprintf(esc, sizeof(esc), "\\u%04x", c);
-                js_buf(o, n, cap, esc, 6);
+    int64_t i = 0;
+    while (i < len) {
+        unsigned char b = (unsigned char)s[i];
+        switch (b) {
+        case '"': js_buf(o, n, cap, "\\\"", 2); i++; continue;
+        case '\\': js_buf(o, n, cap, "\\\\", 2); i++; continue;
+        case '\b': js_buf(o, n, cap, "\\b", 2); i++; continue;
+        case '\f': js_buf(o, n, cap, "\\f", 2); i++; continue;
+        case '\n': js_buf(o, n, cap, "\\n", 2); i++; continue;
+        case '\r': js_buf(o, n, cap, "\\r", 2); i++; continue;
+        case '\t': js_buf(o, n, cap, "\\t", 2); i++; continue;
+        default: break;
+        }
+        if (b < 0x20 || b == 0x7F) {
+            js_u16(o, n, cap, b);
+        } else if (b < 0x80) {
+            js_buf(o, n, cap, (const char *)&s[i], 1);
+        } else {
+            /* multi-byte UTF-8: decode to a code point, then escape it.
+               i ends on the last continuation byte so the loop tail
+               steps past the sequence (js_quote layout). */
+            int need = 1;
+            int64_t cp = (int64_t)(b - 192) * 64;
+            if (b >= 240) {
+                cp = (int64_t)(b - 240) * 262144;
+                need = 3;
+            } else if (b >= 224) {
+                cp = (int64_t)(b - 224) * 4096;
+                need = 2;
+            }
+            for (int k = 0; k < need; k++) {
+                i++;
+                unsigned char cb = (i < len) ? (unsigned char)s[i] : 0;
+                int64_t p = (need - 1 - k) == 2 ? 4096 : (need - 1 - k) == 1 ? 64 : 1;
+                cp += (int64_t)(cb - 128) * p;
+            }
+            if (cp < 0x10000) {
+                js_u16(o, n, cap, cp);
             } else {
-                js_buf(o, n, cap, (const char *)&s[i], 1);
+                int64_t v = cp - 0x10000;
+                js_u16(o, n, cap, 0xD800 + v / 1024);
+                js_u16(o, n, cap, 0xDC00 + v % 1024);
             }
         }
+        i++;
     }
     js_buf(o, n, cap, "\"", 1);
     (void)line;
@@ -2184,8 +2248,12 @@ static void js_val(Val v, char **o, size_t *n, size_t *cap, int line, int depth)
         return;
     case T_FLOAT: {
         if (!isfinite(v.u.f))
-            hs_err(line, "json_str failed: non-finite float");
-        snprintf(tmp, sizeof(tmp), "%.17g", v.u.f);
+            /* CPython json.dumps(allow_nan=False) wording, shared with
+               interp (C-accelerated encoder) and runtime/json.holy. */
+            hs_err(line, "json_str failed: Out of range float values are not JSON compliant");
+        /* CPython shortest round-trip repr (0.1, 3.0, 1e+300), the same
+           formatter the display path uses -- never "%.17g". */
+        fmt_repr(v.u.f, tmp, sizeof(tmp));
         js_buf(o, n, cap, tmp, strlen(tmp));
         return;
     }
