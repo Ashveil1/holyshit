@@ -10996,10 +10996,10 @@ class Gen:
         # every shared byte matched (a prefix is the smaller string).
         a.cmp_rr("rax", "rcx")
         a.jcc("b", lab_min_b)
-        a.mov_rr("rbx", "rax")
+        a.mov_rr("rbx", "rcx")         # a >= b: min is len b
         a.jmp(lab_min_go)
         a.label(lab_min_b)
-        a.mov_rr("rbx", "rcx")
+        a.mov_rr("rbx", "rax")         # a < b: min is len a
         a.label(lab_min_go)
         a.mov_ri32("rcx", 0)
         a.label(lab_loop)
@@ -11014,7 +11014,7 @@ class Gen:
         a.label(lab_diff)
         a.cmp_al_dl()  # cmp al, dl (flags again)
         a.mov_ri32("rax", 1)
-        a.jcc("g", lab_fin)           # al > dl -> 1
+        a.jcc("a", lab_fin)           # al > dl unsigned -> 1 (bytes are unsigned)
         a.mov_ri32("rax", -1)
         a.jmp(lab_fin)
         a.label(lab_eq)
