@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """A18 fixture server: canned HTTP responses for read-url threat tests.
 
-Serves 127.0.0.1 only. Every route is deterministic except /slowdrip
-and /timeout, which exist for the bounded-recv runtime gap tests and
-must NOT be pointed at the agent until that runtime fix lands (the
-EXPERIMENTAL fetch would hang - the documented A18 preview risk).
+Serves 127.0.0.1 only. The /timeout, /slowdrip, /stall-*, /drip9 and
+oversized/no-cl routes back the A18.2 bounded-transport tests in
+tests/test_agent_fetch_timeouts.py (the runtime now times out idle
+receives and the agent enforces a soft 30s deadline, so pointing the
+agent at them is safe).
 
 Usage: python3 tests/fix_fetch_server.py PORT   (0 = ephemeral, prints port)
 """
 import socket
 import sys
 import threading
+import time
 
 CLEAN = (b"<html><head><title>t</title></head><body>"
          b"<p>robots are machines. birds have wings. "
@@ -44,6 +46,9 @@ def raw200(body, ctype=b"text/html"):
             b"\r\nConnection: close\r\n\r\n" + body)
 
 
+FRAG_PAGE = page(b"<p>a trout is a fish.</p>")
+
+
 def handle(conn, path):
     if path.startswith("/clean"):
         conn.sendall(page(CLEAN))
@@ -61,6 +66,15 @@ def handle(conn, path):
                      b"http://127.0.0.1/clean\r\n\r\n")
     elif path.startswith("/notfound"):
         conn.sendall(b"HTTP/1.0 404 Not Found\r\n\r\n")
+    elif path.startswith("/oversized-nocl"):
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
+                     b"Connection: close\r\n\r\n")
+        chunk = b"<p>a car is a machine.</p>" * 4096  # ~112KB per send
+        for _ in range(12):  # > 1 MiB total, no declared length
+            try:
+                conn.sendall(chunk)
+            except OSError:
+                break
     elif path.startswith("/oversized"):
         conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
                      b"Connection: close\r\n\r\n")
@@ -82,6 +96,12 @@ def handle(conn, path):
         # then close without sending the promised bytes
     elif path.startswith("/malformed"):
         conn.sendall(b"this is not an HTTP response at all")
+    elif path.startswith("/dup-cl"):
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
+                     b"Content-Length: 10\r\nContent-Length: 9999\r\n\r\n" + CLEAN)
+    elif path.startswith("/dup-ct"):
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
+                     b"Content-Type: text/plain\r\n\r\n" + CLEAN)
     elif path.startswith("/dup"):
         # Copied page: the same sentence as /clean serves the
         # duplicate-text clustering and two-domain evidence tests.
@@ -97,13 +117,50 @@ def handle(conn, path):
                      b"Content-Length: 2000000\r\n\r\n" + CLEAN)
     elif path.startswith("/queryecho"):
         conn.sendall(page(b"<p>a bicycle is a vehicle.</p>"))
+    elif path.startswith("/gzip"):
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
+                     b"Content-Encoding: gzip\r\n\r\n" + CLEAN)
+    elif path.startswith("/split-headers"):
+        # the CRLFCRLF terminator straddles two TCP segments
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r")
+        time.sleep(0.3)
+        conn.sendall(b"\n<p>a falcon is a bird.</p>")
+    elif path.startswith("/tiny-fragments"):
+        # many small segments: recv must never assume a full read
+        for i in range(0, len(FRAG_PAGE), 24):
+            conn.sendall(FRAG_PAGE[i:i + 24])
+            time.sleep(0.01)
+    elif path.startswith("/stall-headers-only"):
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n")
+        time.sleep(45)  # then close: the client must time out first
+    elif path.startswith("/stall-partial-body"):
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
+                     b"Content-Length: 9999\r\n\r\n" + CLEAN)
+        time.sleep(45)
+    elif path.startswith("/drip9"):
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n")
+        for _ in range(8):
+            time.sleep(9)
+            try:
+                conn.sendall(b"x")
+            except OSError:
+                break
+    elif path.startswith("/cl-exact"):
+        # declared length exactly 1 MiB is accepted at header time;
+        # the short body then fails as incomplete
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
+                     b"Content-Length: 1048576\r\n\r\n" + CLEAN)
+    elif path.startswith("/cl-plus1"):
+        # declared length 1 MiB + 1 is rejected at header time, unread
+        conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
+                     b"Content-Length: 1048577\r\n\r\n")
     elif path.startswith("/timeout"):
-        pass  # accept and send nothing; client-side concern
+        time.sleep(45)  # accept and send nothing; the client must
+                        # hit its idle timeout before we close
     elif path.startswith("/slowdrip"):
         conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n"
                      b"\r\n")
-        import time
-        for _ in range(3600):
+        for _ in range(120):
             try:
                 conn.sendall(b"x")
             except OSError:

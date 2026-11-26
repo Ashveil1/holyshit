@@ -39,3 +39,9 @@ assert names.count("test_agent_fetch.py") == 1
 assert "test_agent_fetch.py" in quick_selected
 assert os.path.isfile(os.path.join(HERE, "test_agent_fetch.py"))
 print("1/1 run_all registers agent fetch semantics exactly once on quick and full paths")
+
+assert names.count("test_agent_fetch_timeouts.py") == 1
+assert "test_agent_fetch_timeouts.py" in names
+assert "test_agent_fetch_timeouts.py" not in quick_selected
+assert os.path.isfile(os.path.join(HERE, "test_agent_fetch_timeouts.py"))
+print("1/1 run_all registers agent fetch bounded transport exactly once on the full path (quick-skipped)")

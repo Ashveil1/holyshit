@@ -340,16 +340,24 @@ evidence pipeline as typed `read` - candidates stay UNVERIFIED
 readings, never facts, and questions are never answered from readings.
 This is an explicitly labelled EXPERIMENTAL preview, not a release:
 
-- **Hang risk (known, documented):** the hs runtime has no bounded
-  receive timeouts yet (see
-  `docs/gap-report-bounded-recv-timeouts.md`), so a silent or stalled
-  peer can block the repl forever. This is the reason A18 ships as a
-  preview; A18.2/A18.3 wait on the runtime fix.
+- **Bounds and residual limits (A18.2):** the runtime blocks
+  private-network connects at connect time (`HS_ALLOW_PRIVATE_NET=1`
+  is an explicit override for isolated tests, never normal operation),
+  times out connects (20s per resolved address) and idle receives
+  (10s), and the agent enforces an absolute 30s deadline from before
+  connect, checked before and after every receive. Until `tcp_recv`
+  accepts a per-call timeout the deadline is SOFT: one blocking
+  receive can overrun it by up to one 10s idle interval. Residuals:
+  DNS resolution is unbounded (system resolver) and the connect
+  timeout is per address, not total. A18.3 (TLS) still waits on the
+  runtime.
 - **Plain HTTP only:** no TLS, no authentication, no integrity. Only
   `http://` URLs, no credentials, no fragments, port 80 only and no
   private/reserved literal IPv4 addresses outside the test harness
   (`HS_AGENT_TEST_FETCH=1`, set only by the repl from the environment,
-  unlocks `127.0.0.1` and other ports for the fixture tests).
+  unlocks `127.0.0.1` and other ports for the fixture tests). Error
+  reasons are allowlisted: raw runtime text (OS errors, hostnames,
+  line numbers) never reaches the repl.
 - **Strict response checks:** HTTP 200 only (redirects are rejected,
   not followed), `text/*` content types only, identity content- and
   transfer-encoding only (chunked is rejected), Content-Length

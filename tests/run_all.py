@@ -62,6 +62,7 @@ SUITES = [
     ("test_agent_thai_correct.py", "A25.2 shape-scoped Thai correction through the real native repl"),
     ("test_agent_thai_pron.py", "A25.3 Thai pronoun clarification through the real native repl"),
     ("test_agent_fetch.py", "A18.1 EXPERIMENTAL read-url semantic transcript vs fixture server (interp + native)"),
+    ("test_agent_fetch_timeouts.py", "A18.2 read-url bounded transport: idle/deadline/caps vs fixture server (interp + native)"),
     ("test_claim_view_contract.py", "A24.0a claim-view contract: reference model + shared fixtures (spec only)"),
     ("test_claim_view_0b_oracle_selfcheck.py", "A24.0b DRAFT Oracle self-conformance (not a production test)"),
     ("test_claim_view_0b_relindex.py", "A24.0b slice 1: exact-keyed relation index lifecycle vs Oracle model (standalone, not wired)"),
@@ -244,7 +245,7 @@ SUITES = [
 ]
 
 
-QUICK_SKIP = ("test_netguard.py", "test_ahci.py", "test_nvme.py", "test_xhci.py", "test_usb_desktop.py", "test_usb_boot.py", "test_shell_boot.py", "test_uefi_desktop.py", "test_desktop_disk.py", "test_winscale.py", "test_winkey_any.py", "test_desktop_session.py", "test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
+QUICK_SKIP = ("test_netguard.py", "test_agent_fetch_timeouts.py", "test_ahci.py", "test_nvme.py", "test_xhci.py", "test_usb_desktop.py", "test_usb_boot.py", "test_shell_boot.py", "test_uefi_desktop.py", "test_desktop_disk.py", "test_winscale.py", "test_winkey_any.py", "test_desktop_session.py", "test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
 
 
 def main(argv):

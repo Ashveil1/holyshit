@@ -5,8 +5,14 @@
 # build time. Only agent/repl.holy imports this module, so fetch runs
 # on the full routes (hosted interp, native x64) and never reaches the
 # subset compilers. Security policy: docs/gap-report-*.md and the A18
-# design; receive can block on a silent peer until the runtime gains
-# bounded timeouts (gap-report-bounded-recv-timeouts.md).
+# design. Bounds since A18.2: the runtime blocks private-network
+# connects (HS_ALLOW_PRIVATE_NET=1 is an explicit override for
+# isolated tests, never normal operation), times out connects and
+# idle receives, and _fetch enforces an absolute 30s deadline checked
+# before and after every receive. Residuals: DNS resolution is
+# unbounded, the connect timeout is per resolved address, and until
+# tcp_recv accepts a per-call timeout the deadline is soft (overrun
+# by up to one 10s idle interval).
 import agent.core
 import agent.utf8
 def _url_split(norm):
@@ -69,6 +75,7 @@ def _parse_headers(head_ints):
   if code != "200":
     return ["http status " + code, -1]
   clen = -1
+  seenct = 0
   i = 1
   while i < len(lines):
     line = lines[i]
@@ -78,6 +85,9 @@ def _parse_headers(head_ints):
       val = _hdr_value(line)
       lv = agent.core.lower_ascii(val)
       if name == "content-type":
+        if seenct == 1:
+          return ["duplicate content-type", -1]
+        seenct = 1
         if len(lv) < 5 or lv[:5] != "text/":
           return ["binary or unsupported content type", -1]
       if name == "content-encoding":
@@ -87,6 +97,8 @@ def _parse_headers(head_ints):
         if lv != "identity":
           return ["unsupported transfer-encoding", -1]
       if name == "content-length":
+        if clen != -1:
+          return ["duplicate content-length", -1]
         if len(val) == 0 or len(val) > 10:
           return ["bad response", -1]
         j = 0
@@ -99,37 +111,95 @@ def _parse_headers(head_ints):
           return ["response too large (over 1 MiB)", -1]
     i = i + 1
   return ["", clen]
-# Bounded fetch of one page over the raw tcp builtins (EXPERIMENTAL:
-# receive can block on a silent peer until the runtime gains bounded
-# timeouts - docs/gap-report-bounded-recv-timeouts.md). Hard cap
-# 1 MiB counted during receive; returns [true, body-string] or
-# [false, reason]. A failure returns nothing ingestible.
+# Strip the " at line N" suffix the runtime appends to error
+# payloads; only a trailing all-digits suffix counts.
+def _strip_line(e):
+  i = find(e, " at line ")
+  while i >= 0:
+    j = i + 9
+    ok = 0
+    if j < len(e):
+      ok = 1
+      k = j
+      while k < len(e):
+        if not (e[k] >= "0" and e[k] <= "9"):
+          ok = 0
+        k = k + 1
+    if ok == 1:
+      return e[:i]
+    nxt = find(e[i + 1:], " at line ")
+    if nxt < 0:
+      return e
+    i = i + 1 + nxt
+  return e
+# Map a runtime error message to a fixed allowlisted reason. Raw
+# runtime text (OS errors, hostnames, line numbers) never reaches the
+# user: anything outside the allowlist becomes "fetch error".
+def _map_err(m):
+  if m == "connect blocked: private address":
+    return "private address blocked"
+  if m == "connect timeout":
+    return "connect timeout"
+  if m == "idle timeout":
+    return "idle timeout"
+  if m == "deadline exceeded":
+    return "deadline exceeded"
+  p = "tcp_connect failed: cannot resolve"
+  if len(m) >= len(p):
+    if m[:len(p)] == p:
+      return "cannot resolve host"
+  p = "tcp_connect failed:"
+  if len(m) >= len(p):
+    if m[:len(p)] == p:
+      return "connect failed"
+  p = "tcp_send failed:"
+  if len(m) >= len(p):
+    if m[:len(p)] == p:
+      return "send failed"
+  p = "tcp_recv failed:"
+  if len(m) >= len(p):
+    if m[:len(p)] == p:
+      return "receive failed"
+  return "fetch error"
+# Single-call transport wrappers: the error string is RETURNED from
+# inside the handler because interp rolls back local rebindings made
+# inside an `except as e` block (native keeps them - a parity bug);
+# returning a value from the handler works on both routes.
+def _try_connect(host, port):
+  try:
+    s = tcp_connect(host, port)
+    return ["", s]
+  except as e:
+    return [_strip_line(e), null]
+def _try_send(s, req):
+  try:
+    tcp_send(s, req)
+    return ""
+  except as e:
+    return _strip_line(e)
+def _try_recv(s, n):
+  try:
+    c = tcp_recv(s, n)
+    return ["", c]
+  except as e:
+    return [_strip_line(e), null]
+# Bounded fetch of one page over the raw tcp builtins. Bounds: 10s
+# idle timeout per receive (runtime) plus an absolute 30s deadline
+# measured with ticks() from before connect, never reset, checked
+# before and after every receive; until tcp_recv accepts a per-call
+# timeout the deadline is soft - a blocking receive can overrun it by
+# up to one 10s idle interval. Hard cap 1 MiB counted during receive;
+# returns [true, body-string, truncated] or [false, reason]. A
+# failure returns nothing ingestible. Every exit path closes the
+# socket; the final close may fail (double close after a runtime
+# timeout) and never masks the original error.
 def _fetch(norm):
   hp = _url_split(norm)
   host = hp[0]
   port = hp[1]
   path = hp[2]
+  dl = ticks() + 30000
   s = null
-  ok = false
-  try:
-    s = tcp_connect(host, port)
-    ok = true
-  except:
-    ok = false
-  if not ok:
-    return [false, "connect failed"]
-  ok = false
-  try:
-    tcp_send(s, "GET " + path + " HTTP/1.0\r\nHost: " + host + "\r\nUser-Agent: holyshit-agent/0.12 (experimental)\r\nAccept: text/*\r\nConnection: close\r\n\r\n")
-    ok = true
-  except:
-    ok = false
-  if not ok:
-    try:
-      tcp_close(s)
-    except:
-      ok = false
-    return [false, "send failed"]
   head_ints = []
   body_ints = []
   inbody = false
@@ -137,66 +207,85 @@ def _fetch(norm):
   total = 0
   err = ""
   done = false
-  while not done and err == "":
-    chunk = null
-    try:
-      chunk = tcp_recv(s, 16384)
-    except:
-      err = "recv failed"
-    if err == "":
-      nb = byte_len(chunk)
-      if nb == 0:
-        done = true
+  cr = _try_connect(host, port)
+  if cr[0] != "":
+    err = _map_err(cr[0])
+  else:
+    s = cr[1]
+    serr = _try_send(s, "GET " + path + " HTTP/1.0\r\nHost: " + host + "\r\nUser-Agent: holyshit-agent/0.12 (experimental)\r\nAccept: text/*\r\nConnection: close\r\n\r\n")
+    if serr != "":
+      err = _map_err(serr)
+    while not done and err == "":
+      if dl - ticks() <= 0:
+        err = "deadline exceeded"
       else:
-        total = total + nb
-        if total > 1048577:
-          err = "response too large (over 1 MiB)"
-        else:
-          ints = []
-          i = 0
-          while i < nb:
-            append(ints, byte_at(chunk, i))
-            i = i + 1
-          if not inbody:
-            k = _find_crlfcrlf(head_ints, ints)
-            if k < 0:
-              for v in ints:
-                append(head_ints, v)
-              if len(head_ints) > 16384:
-                err = "headers too large"
+        rr = _try_recv(s, 16384)
+        if rr[0] != "":
+          if rr[0] == "idle timeout":
+            if ticks() >= dl:
+              err = "deadline exceeded"
             else:
-              allb = []
-              for v in head_ints:
-                append(allb, v)
-              for v in ints:
-                append(allb, v)
-              head_ints = allb[:k]
-              if len(head_ints) > 16384:
-                err = "headers too large"
-              if err == "":
-                i = 0
-                while i < len(head_ints):
-                  if head_ints[i] > 127:
-                    err = "malformed headers"
-                  i = i + 1
-              if err == "":
-                ph = _parse_headers(head_ints)
-                if ph[0] != "":
-                  err = ph[0]
-                else:
-                  clen = ph[1]
-                  inbody = true
-                  i = k + 4
-                  while i < len(allb):
-                    if allb[i] == 0 and len(body_ints) < 8192:
-                      err = "binary content"
-                    append(body_ints, allb[i])
-                    i = i + 1
+              err = "idle timeout"
           else:
-            for v in ints:
-              if v == 0 and len(body_ints) < 8192:
-                err = "binary content"
-              append(body_ints, v)
+            err = _map_err(rr[0])
+        else:
+          if ticks() >= dl:
+            err = "deadline exceeded"
+          else:
+            chunk = rr[1]
+            nb = byte_len(chunk)
+            if nb == 0:
+              done = true
+            else:
+              total = total + nb
+              if total > 1048577:
+                err = "response too large (over 1 MiB)"
+              else:
+                ints = []
+                i = 0
+                while i < nb:
+                  append(ints, byte_at(chunk, i))
+                  i = i + 1
+                if not inbody:
+                  k = _find_crlfcrlf(head_ints, ints)
+                  if k < 0:
+                    for v in ints:
+                      append(head_ints, v)
+                    if len(head_ints) > 16384:
+                      err = "headers too large"
+                  else:
+                    allb = []
+                    for v in head_ints:
+                      append(allb, v)
+                    for v in ints:
+                      append(allb, v)
+                    head_ints = allb[:k]
+                    if len(head_ints) > 16384:
+                      err = "headers too large"
+                    if err == "":
+                      i = 0
+                      while i < len(head_ints):
+                        if head_ints[i] > 127:
+                          err = "malformed headers"
+                        i = i + 1
+                    if err == "":
+                      ph = _parse_headers(head_ints)
+                      if ph[0] != "":
+                        err = ph[0]
+                      else:
+                        clen = ph[1]
+                        inbody = true
+                        i = k + 4
+                        while i < len(allb):
+                          if allb[i] == 0 and len(body_ints) < 8192:
+                            err = "binary content"
+                          append(body_ints, allb[i])
+                          i = i + 1
+                else:
+                  for v in ints:
+                    if v == 0 and len(body_ints) < 8192:
+                      err = "binary content"
+                    append(body_ints, v)
   try:
     tcp_close(s)
   except:
