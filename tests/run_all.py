@@ -78,6 +78,7 @@ SUITES = [
     ("test_agent_bench.py", "agent hosted resource benchmark quick gate and held-out dialogue check"),
     ("test_agent_corpus_benchmark.py", "A19.1 preflight dict benchmark boundedness and stop-reason gate (tiny scale)"),
     ("test_agent_corpus_preprocess.py", "A19.1 corpus preprocessing: golden NDJSON fixture, redirect resolution, identity sidecar"),
+    ("test_agent_corpus_driver.py", "A19.1 bounded corpus driver: injection boundary, skips, resume, generation-commit durability, ceiling refusals"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),
     ("test_parselib_builtins.py", "parselib BUILTINS reserved-name sync with interp"),
