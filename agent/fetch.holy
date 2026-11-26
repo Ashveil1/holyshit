@@ -193,11 +193,19 @@ def _try_recv(s, n):
 # failure returns nothing ingestible. Every exit path closes the
 # socket; the final close may fail (double close after a runtime
 # timeout) and never masks the original error.
-def _fetch(norm):
+def _fetch(norm, test_mode):
   hp = _url_split(norm)
   host = hp[0]
   port = hp[1]
   path = hp[2]
+  # Deterministic offline testing (HS_AGENT_TEST_FETCH=1): a
+  # non-loopback host connects to the local fixture server instead.
+  # The normalized URL stays the source identity and the Host header
+  # keeps the requested host; production behavior is unchanged.
+  chost = host
+  if test_mode:
+    if len(host) < 4 or host[:4] != "127.":
+      chost = "127.0.0.1"
   dl = ticks() + 30000
   s = null
   head_ints = []
@@ -207,7 +215,7 @@ def _fetch(norm):
   total = 0
   err = ""
   done = false
-  cr = _try_connect(host, port)
+  cr = _try_connect(chost, port)
   if cr[0] != "":
     err = _map_err(cr[0])
   else:
@@ -388,7 +396,7 @@ def read_url(state, raw):
   if not r[0]:
     return "read url: " + r[1]
   norm = r[1]
-  f = _fetch(norm)
+  f = _fetch(norm, state["test_fetch"])
   if not f[0]:
     return "read url: fetch failed: " + f[1]
   truncated = f[2]

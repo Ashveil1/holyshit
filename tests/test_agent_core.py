@@ -52,7 +52,8 @@ HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
         "hypotheses detail | forget hypothesis <thing> is a <kind> | "
         "clear hypotheses | read <text> | readings | readings about <thing> | "
         "readings detail | forget reading <thing> is a <kind> | "
-        "clear readings | read url <url> (experimental, repl shell only) | list | say <text> | help")
+        "clear readings | read url <url> (experimental, repl shell only) | "
+        "read corpus <lineage>: <text> (offline corpus readings, UNVERIFIED) | list | say <text> | help")
 WS = ' \t\n\r'
 STOP = {'the', 'and', 'for', 'are', 'with', 'that', 'this'}
 _READ_CAP = 100
@@ -235,6 +236,7 @@ class Oracle:
         self.read_src = {}
         self.read_n = 0
         self.url_srcs = []
+        self.corpus_srcs = []
         self.test_fetch = False
 
     # --- A10 usage counting, mirroring core.holy ---
@@ -585,6 +587,33 @@ class Oracle:
         self.url_srcs.append([norm, 0])
         return 'url-' + str(len(self.url_srcs))
 
+    def _corpus_src(self, lin):
+        # A19: one corpus lineage = one corpus-N source, forever.
+        for i, e in enumerate(self.corpus_srcs):
+            if e == lin:
+                return 'corpus-' + str(i + 1)
+        if len(self.corpus_srcs) >= 100:
+            return ''
+        self.corpus_srcs.append(lin)
+        return 'corpus-' + str(len(self.corpus_srcs))
+
+    def _read_corpus(self, rest):
+        # Mirrors core._read_corpus: lineage id + ': ' + payload.
+        k = rest.find(': ')
+        if k <= 0 or k > 40:
+            return ("read corpus: expected 'read corpus <lineage-id>: "
+                    "<text>'")
+        lin = rest[:k]
+        ok = all(('a' <= c <= 'z') or ('0' <= c <= '9') or
+                 c in '-_' for c in lin)
+        if not ok:
+            return 'read corpus: lineage id uses a-z, 0-9, - and _ only'
+        src = self._corpus_src(lin)
+        if src == '':
+            return ('read corpus: source registry full (100 distinct '
+                    'sources); clear readings to start over')
+        return self._read_ingest(src, rest[k + 2:], False)
+
     def _read_url(self, raw):
         # Mirrors the core route: validation here, fetch in the shell.
         r = self._url_norm(raw, self._url_test_mode())
@@ -819,6 +848,36 @@ class Oracle:
                 added += 1
         return added, (1 if len(hits) > 1 else 0)
 
+    # A19 publisher-lineage map (versioned, additive-only):
+    # [corpus lineage id, registrable domain, publisher group].
+    def _lineage_map(self):
+        return [['simplewiki-corpus', 'wikipedia.org', 'wikipedia']]
+
+    def _lineage_map_version(self):
+        return '1'
+
+    def _pub_for_domain(self, d):
+        for e in self._lineage_map():
+            if e[1] == d:
+                return e[2]
+        return ''
+
+    def _pub_for_lineage(self, lin):
+        for e in self._lineage_map():
+            if e[0] == lin:
+                return e[2]
+        return ''
+
+    def _corpus_lineage(self, src):
+        # The lineage id behind a corpus-N source id, or ''.
+        if len(src) > 7 and src[:7] == 'corpus-':
+            ns = src[7:]
+            if ns and ns.isdigit():
+                n = int(ns)
+                if 1 <= n <= len(self.corpus_srcs):
+                    return self.corpus_srcs[n - 1]
+        return ''
+
     def _src_domain(self, src):
         # A19: url-N -> registry host; dotted-quad literal is its
         # own domain; else last two host labels (approximation).
@@ -844,14 +903,31 @@ class Oracle:
         # A20 (GPT binding): content clusters are NOT_ASSESSED -
         # sentence similarity does not prove copying - so the A19
         # shingle clustering is retired and no longer measured.
-        doms, nodom = [], 0
+        # Corpus sources group by lineage (through the publisher map);
+        # a url whose domain maps to the same publisher as a corpus
+        # lineage on the side is ABSORBED into that group. HTTP-only
+        # sides behave exactly as before.
+        cgroups = []
         for se in side:
+            lin = self._corpus_lineage(se[0])
+            if lin != '':
+                g = self._pub_for_lineage(lin) or 'corpus:' + lin
+                if g not in cgroups:
+                    cgroups.append(g)
+        doms, nodom, nurl = [], 0, 0
+        for se in side:
+            if self._corpus_lineage(se[0]) != '':
+                continue
             d = self._src_domain(se[0])
             if d == '':
                 nodom += 1
-            elif d not in doms:
-                doms.append(d)
-        return [len(doms), nodom]
+            else:
+                p = self._pub_for_domain(d)
+                if not (p != '' and p in cgroups):
+                    nurl += 1
+                    if d not in doms:
+                        doms.append(d)
+        return [len(doms), nodom, len(cgroups), nurl]
 
     def _read_ev(self, side):
         # A19: agreeing sources and registrable-domain diversity as
@@ -863,6 +939,10 @@ class Oracle:
                 ('' if p[0] == 1 else 's'))
         if p[1]:
             out += ' (' + str(p[1]) + ' without)'
+        if p[2]:
+            out += (', ' + str(p[2]) + ' corpus lineage' +
+                    ('' if p[2] == 1 else 's') +
+                    ' (lineage map v' + self._lineage_map_version() + ')')
         out += ', content clusters NOT_ASSESSED'
         return out
 
@@ -917,14 +997,35 @@ class Oracle:
                                for se in r[3] for se2 in r[4])
                 out += ('; SOURCE-INTERNAL CONFLICT' if internal
                         else '; CONFLICT')
+            ep3 = self._read_ev_parts(r[3])
+            ep4 = self._read_ev_parts(r[4])
+            # Effective independent support: distinct corpus lineage
+            # groups + unabsorbed url sources + typed sources. One
+            # corpus lineage never manufactures MULTI_SOURCE.
+            eff3 = ep3[1] + ep3[2] + ep3[3]
+            eff4 = ep4[1] + ep4[2] + ep4[3]
             tier = ''
-            if len(r[3]) >= 2:
+            if eff3 >= 2:
                 tier = 'MULTI_SOURCE positive'
-            if len(r[4]) >= 2:
+            if eff4 >= 2:
                 tier = (tier + ', ' if tier else '') + \
                     'MULTI_SOURCE negative'
             if tier:
                 out += '; ' + tier
+            # A19: corpus-sourced evidence is marked DISTINCTLY.
+            # SINGLE_CORPUS requires EVERY source on the side to be a
+            # corpus source of one lineage (an absorbed same-publisher
+            # fetched page does not make the side corpus-only).
+            allp = all(self._corpus_lineage(se[0]) != '' for se in r[3])
+            alln = all(self._corpus_lineage(se[0]) != '' for se in r[4])
+            if r[3] and allp and ep3[2] == 1:
+                out += ('; SINGLE_CORPUS positive (one corpus lineage, '
+                        'map v' + self._lineage_map_version() +
+                        ', not independent corroboration)')
+            if r[4] and alln and ep4[2] == 1:
+                out += ('; SINGLE_CORPUS negative (one corpus lineage, '
+                        'map v' + self._lineage_map_version() +
+                        ', not independent corroboration)')
             if len(r[3]) >= 2:
                 out += '; positive evidence: ' + self._read_ev(r[3])
             if len(r[4]) >= 2:
@@ -960,6 +1061,11 @@ class Oracle:
                 out += ('\nurl-' + str(i + 1) + ' = ' +
                         self._url_disp(e[0]) + ' (fetched ' +
                         str(e[1]) + ' times)')
+        if detail and self.corpus_srcs:
+            for i, e in enumerate(self.corpus_srcs):
+                out += ('\ncorpus-' + str(i + 1) + ' = ' + e +
+                        ' (corpus lineage, map v' +
+                        self._lineage_map_version() + ')')
         return out
 
     def _url_disp(self, norm):
@@ -1540,6 +1646,7 @@ class Oracle:
             self.readings = []
             self.read_src = {}
             self.url_srcs = []
+            self.corpus_srcs = []
             return 'readings cleared'
         if m[:15] == 'forget reading ' and len(m) > 15:
             fr = self._read_extract(m[15:])
@@ -1551,6 +1658,8 @@ class Oracle:
                             ' | ' + r[2])
                 return "no such reading - 'readings' lists them"
             return 'forget reading <thing> is a <kind>'
+        if m[:12] == 'read corpus ' and len(text) > 12:
+            return self._read_corpus(text[12:])
         if m[:9] == 'read url ' and len(text) > 9:
             return self._read_url(text[9:])
         if m[:5] == 'read ' and len(text) > 5:
@@ -2744,9 +2853,44 @@ A19_SCENARIOS = [
      'readings detail', 'forget a frog', 'readings detail'],
 ]
 
+A19LIN_SCENARIOS = [
+    # A19 lineage labels: one corpus lineage is ONE source forever.
+    # SINGLE_CORPUS marks corpus-only support distinctly; UNVERIFIED
+    # still shows, and MULTI_SOURCE is never manufactured from one
+    # corpus.
+    ['read corpus simplewiki-corpus: a krill is a crustacean',
+     'readings about a krill', 'readings detail'],
+    # Reading the same lineage again (a refreshed dump) never forks
+    # the source: the registry still holds exactly corpus-1.
+    ['read corpus simplewiki-corpus: a krill is a crustacean',
+     'read corpus simplewiki-corpus: a krill has an exoskeleton',
+     'readings detail'],
+    # Corpus + typed source: two independent groups, MULTI_SOURCE,
+    # the corpus lineage counted separately from domains.
+    ['read corpus simplewiki-corpus: a krill is a crustacean',
+     'read fieldnotes: a krill is a crustacean', 'readings about a krill'],
+    # Two corpus lineages: two groups, MULTI_SOURCE.
+    ['read corpus simplewiki-corpus: a krill is a crustacean',
+     'read corpus other-corpus: a krill is a crustacean',
+     'readings about a krill'],
+    # Corpus + two typed sources: 3 sources but no registrable
+    # domains, so never SOURCE_DIVERSITY_THRESHOLD_MET.
+    ['read corpus simplewiki-corpus: a krill is a crustacean',
+     'read n1: a krill is a crustacean',
+     'read n2: a krill is a crustacean', 'readings about a krill'],
+    # Malformed forms: clear errors, nothing registered.
+    ['read corpus simplewiki-corpus a krill is a crustacean',
+     'read corpus BAD: a krill is a crustacean', 'readings detail'],
+    # clear readings resets the corpus registry too.
+    ['read corpus simplewiki-corpus: a krill is a crustacean',
+     'clear readings',
+     'read corpus simplewiki-corpus: a krill is a crustacean',
+     'readings detail'],
+]
+
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
             A15_SCENARIOS + A16_SCENARIOS + A17_SCENARIOS +
-            A18_SCENARIOS + A19_SCENARIOS):
+            A18_SCENARIOS + A19_SCENARIOS + A19LIN_SCENARIOS):
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))
