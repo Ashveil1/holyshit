@@ -76,6 +76,7 @@ SUITES = [
     ("test_claim_view_0b_wire_routes.py", "A24.0b slice 2: wire on all 7 execution routes (not activated)"),
     ("test_claim_view_0b_cvsort.py", "A24.0b slice 1c: byte-wise stable merge sort vs Python bytes order (standalone)"),
     ("test_agent_bench.py", "agent hosted resource benchmark quick gate and held-out dialogue check"),
+    ("test_agent_corpus_benchmark.py", "A19.1 preflight dict benchmark boundedness and stop-reason gate (tiny scale)"),
     ("test_append_bytes_x64.py", "x64 append_bytes incremental append, parity and validation"),
     ("test_run_all_suites.py", "run_all SUITES registration gate for stage suites"),
     ("test_parselib_builtins.py", "parselib BUILTINS reserved-name sync with interp"),
