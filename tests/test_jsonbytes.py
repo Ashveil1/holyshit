@@ -5,10 +5,10 @@ runtime/json.holy now takes every string length with byte_len, so JSON byte
 offsets cannot move when len(Str) flips to code points later. These cases
 gate what the shared corpus cannot:
 
-- json_str escaping of non-ASCII: interp (CPython ensure_ascii) and the x64
-  parser agree on \\uXXXX + surrogate pairs. The native rt.c encoder passes
-  bytes >= 0x20 raw instead - a pre-existing divergence (native never reads
-  runtime/json.holy), excluded here and reported, not enshrined as correct.
+- json_str escaping of non-ASCII: interp (CPython ensure_ascii), the x64
+  parser and native rt.c all agree on \\uXXXX + surrogate pairs (C19 aligned
+  the rt.c encoder to the CPython ensure_ascii=True contract; before that
+  it passed bytes >= 0x20 raw).
 - error text per backend: interp/x64 use CPython's messages; native rt.c has
   its own wording (same style as test_byteops.py's error-surface split).
 """
@@ -47,8 +47,8 @@ CASES = [
       "x64-ast": "Invalid \\uXXXX escape", "native": "bad \\u escape"}),
 ]
 
-# escaping parity is gated where the implementations share CPython's contract
-ESC_BACKENDS = ["interp", "x64", "x64-ast"]
+# escaping parity is gated on every backend (all share CPython's contract)
+ESC_BACKENDS = ["interp", "native", "x64", "x64-ast"]
 ALL_BACKENDS = ["interp", "native", "x64", "x64-ast"]
 
 fails = 0

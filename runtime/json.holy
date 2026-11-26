@@ -150,10 +150,12 @@ def js_quote(s):
   return out + "\""
 
 def js_nan_inf(v):
-  # json.dumps(allow_nan=False) refuses these, with the value in the text
+  # json.dumps(allow_nan=False) refuses these. The text matches the
+  # C-accelerated encoder (what interp's json.dumps raises); the
+  # pure-Python encoder appends the value, interp does not.
   t = str(v)
   if t == "inf" or t == "-inf" or t == "nan":
-    return ["json_str failed: Out of range float values are not JSON compliant: " + t, null]
+    return ["json_str failed: Out of range float values are not JSON compliant", null]
   return [null, t]
 
 def js_chunks(v, depth, parts):
