@@ -76,3 +76,8 @@ assert names.count("test_agent_corpus_driver.py") == 1
 assert "test_agent_corpus_driver.py" in quick_selected
 assert os.path.isfile(os.path.join(HERE, "test_agent_corpus_driver.py"))
 print("1/1 run_all registers the A19.1 driver gate exactly once on quick and full paths")
+assert names.count("test_shell_edit.py") == 1
+assert "test_shell_edit.py" in names, "shell-edit suite must run on the full path"
+assert "test_shell_edit.py" in run_all.QUICK_SKIP, "shell-edit boots QEMU; pinned to the full path like test_shell_boot"
+assert os.path.isfile(os.path.join(HERE, "test_shell_edit.py"))
+print("1/1 run_all registers shell-edit exactly once on the full path, quick-skipped with the other QEMU suites")
