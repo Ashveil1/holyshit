@@ -1,0 +1,914 @@
+{
+ "manifest_id": "a19-pilot-150-v1",
+ "created": "2026-11-26",
+ "design": "A19 v9 section 3 (stratified, FNV-ordered, hard cases)",
+ "source": {
+  "dump": "simplewiki-20261101-pages-articles-multistream.xml.bz2",
+  "dump_sha256": "995f57d1d5a6c0bc3ed4b5d690de5cbdbd71109ceb67a7118976c49027db50ca",
+  "dump_bytes": 389720944,
+  "dump_date": "2026-11-01",
+  "index": "simplewiki-20261101-pages-articles-multistream-index.txt.bz2",
+  "index_sha256": "ef7b184b6a6cefe0e37a4ad1a282b64ac67d7739a4640732a476f90dd26ced1d"
+ },
+ "selection": {
+  "algorithm": "per-stratum filter, order by FNV-1a(title,utf8) ascending, take first N; stub stratum also requires 0 < lead_bytes < 400 (converter peek)",
+  "seeds": {
+   "animals-plants": [
+    "cat",
+    "dog",
+    "bird",
+    "fish",
+    "tree",
+    "flower",
+    "horse",
+    "snake",
+    "bear",
+    "lion",
+    "tiger",
+    "monkey",
+    "rabbit",
+    "frog",
+    "spider",
+    "insect",
+    "plant",
+    "grass",
+    "elephant",
+    "chicken",
+    "whale",
+    "eagle"
+   ],
+   "everyday-objects": [
+    "table",
+    "chair",
+    "car",
+    "bicycle",
+    "door",
+    "window",
+    "book",
+    "pen",
+    "cup",
+    "bottle",
+    "telephone",
+    "computer",
+    "knife",
+    "spoon",
+    "clock",
+    "shoe",
+    "shirt",
+    "hat",
+    "bag",
+    "lamp",
+    "train"
+   ],
+   "body-natural": [
+    "hand",
+    "foot",
+    "eye",
+    "ear",
+    "heart",
+    "brain",
+    "blood",
+    "bone",
+    "skin",
+    "hair",
+    "mountain",
+    "river",
+    "ocean",
+    "lake",
+    "rain",
+    "snow",
+    "wind",
+    "fire",
+    "stone",
+    "cloud"
+   ],
+   "places": [
+    "city",
+    "town",
+    "village",
+    "country",
+    "island",
+    "river",
+    "mountain",
+    "lake",
+    "park",
+    "bridge",
+    "castle",
+    "temple",
+    "church",
+    "museum",
+    "airport",
+    "station",
+    "forest",
+    "desert",
+    "beach"
+   ],
+   "everyday-concepts": [
+    "love",
+    "time",
+    "day",
+    "work",
+    "play",
+    "music",
+    "game",
+    "food",
+    "water",
+    "money",
+    "school",
+    "family",
+    "friend",
+    "house",
+    "colour",
+    "color",
+    "number",
+    "word",
+    "name",
+    "idea",
+    "question"
+   ]
+  },
+  "polysemy_titles": [
+   "Bank",
+   "Bat",
+   "Crane",
+   "Date",
+   "Rock",
+   "Spring",
+   "Bark",
+   "Bow",
+   "Fly",
+   "Jam",
+   "Light",
+   "Match",
+   "Mouse",
+   "Nail",
+   "Orange",
+   "Palm",
+   "Park",
+   "Pitch",
+   "Ring",
+   "Rose",
+   "Scale",
+   "Seal",
+   "Star",
+   "Stone",
+   "Train",
+   "Watch",
+   "Wave"
+  ],
+  "ordinary_n": 24,
+  "hard_n": 6
+ },
+ "articles": [
+  {
+   "page_id": 1033158,
+   "title": "Bornean flying frog",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 1229974,
+   "title": "Under the Umbrella Tree",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 863134,
+   "title": "Amapa tree frog",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 814684,
+   "title": "Hokkaido (dog)",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 333350,
+   "title": "Bear (gay male)",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 707083,
+   "title": "Nature Cat",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 1165361,
+   "title": "American Eagle (airline brand)",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 471581,
+   "title": "Grumpy Cat's Worst Christmas Ever",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 1114901,
+   "title": "Fantastic poison frog",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 813831,
+   "title": "Dog racing",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 1034393,
+   "title": "Asian black-webbed tree frog",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 1018115,
+   "title": "Cloaked moss frog",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 827950,
+   "title": "Harald's tree frog",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 543693,
+   "title": "Ideal Landscape with a Young Man Killing a Snake",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 3707,
+   "title": "Bird",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 801704,
+   "title": "Spider-Man (2000 video game)",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 968850,
+   "title": "Welcoming Cat",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 855352,
+   "title": "Potamophylax (insect)",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 118041,
+   "title": "Sperm whale",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 459881,
+   "title": "Naked cat",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 809473,
+   "title": "Irawaddy frog",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 291573,
+   "title": "Thermal power plant",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 92477,
+   "title": "Cat Stevens",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 255188,
+   "title": "Happiness... Is Not a Fish That You Can Catch",
+   "stratum": "animals-plants"
+  },
+  {
+   "page_id": 470569,
+   "title": "The Pillow Book",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 596609,
+   "title": "2018 FIFA World Cup qualification – UEFA Group A",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 893503,
+   "title": "1972 AFC Asian Cup",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 1003441,
+   "title": "Tromsø Cable Car",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 816812,
+   "title": "Sliding door",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 967210,
+   "title": "1972 European Super Cup",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 933731,
+   "title": "Cowboy hat",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 747686,
+   "title": "Caillou (book series)",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 559666,
+   "title": "2016 IIHF Challenge Cup of Asia",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 852713,
+   "title": "The Forbidden Door",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 821451,
+   "title": "2007 FIFA U-17 World Cup",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 111408,
+   "title": "Hat-trick",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 599134,
+   "title": "2018 FIFA World Cup qualification – UEFA Group B",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 974106,
+   "title": "2002–03 Austrian Cup",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 131479,
+   "title": "Book of Isaiah",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 460383,
+   "title": "ICC Cricket World Cup",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 1021869,
+   "title": "2023 FIFA Women's World Cup Group H",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 31314,
+   "title": "2002 FIFA World Cup",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 808718,
+   "title": "1971–72 UEFA Cup",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 344902,
+   "title": "Telephone numbers in Bahrain",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 744305,
+   "title": "2023 FIFA Women's World Cup",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 552729,
+   "title": "2018 FIFA World Cup qualification – UEFA Group C",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 927289,
+   "title": "Dinosaur Train",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 367832,
+   "title": "Bullet train",
+   "stratum": "everyday-objects"
+  },
+  {
+   "page_id": 287232,
+   "title": "Evolution of the eye",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1238083,
+   "title": "Ohio river",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1045743,
+   "title": "Fire (Bruce Springsteen song)",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1132561,
+   "title": "Ocean's 8",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 988702,
+   "title": "Reconnaissance by fire",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 228083,
+   "title": "Bill Stone",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1164514,
+   "title": "Ilmenau (river)",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 112775,
+   "title": "Murrumbidgee River",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1185382,
+   "title": "Mabato River",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 511690,
+   "title": "High River",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 332892,
+   "title": "Lake Wobegon",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1247039,
+   "title": "Swiss bar fire (2026)",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 620410,
+   "title": "Mentor-on-the-Lake, Ohio",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 350229,
+   "title": "Gone With the Wind",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1141086,
+   "title": "Battle of the Indus River (458)",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 134288,
+   "title": "Ibi River",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 657022,
+   "title": "Allegheny River",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 944840,
+   "title": "The House in the Snow-Drifts",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 770559,
+   "title": "Chinghai Lake",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 122327,
+   "title": "Beas River",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1108331,
+   "title": "Jagged Edge of a Broken Heart",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 118319,
+   "title": "Indre (river)",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 854267,
+   "title": "Ventricle (heart)",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1259180,
+   "title": "Kasinimnikwanapikak Lake",
+   "stratum": "body-natural"
+  },
+  {
+   "page_id": 1005336,
+   "title": "Shikanoshima island",
+   "stratum": "places"
+  },
+  {
+   "page_id": 1001336,
+   "title": "Kratié (town)",
+   "stratum": "places"
+  },
+  {
+   "page_id": 1284637,
+   "title": "Los Angeles City Council",
+   "stratum": "places"
+  },
+  {
+   "page_id": 553622,
+   "title": "Stadium MRT station",
+   "stratum": "places"
+  },
+  {
+   "page_id": 990945,
+   "title": "Monterey Park shooting",
+   "stratum": "places"
+  },
+  {
+   "page_id": 261069,
+   "title": "London King's Cross railway station",
+   "stratum": "places"
+  },
+  {
+   "page_id": 732651,
+   "title": "Tan Kah Kee MRT Station",
+   "stratum": "places"
+  },
+  {
+   "page_id": 763597,
+   "title": "Bridge to Nowhere",
+   "stratum": "places"
+  },
+  {
+   "page_id": 471825,
+   "title": "Tay Bridge disaster",
+   "stratum": "places"
+  },
+  {
+   "page_id": 112580,
+   "title": "National Air and Space Museum",
+   "stratum": "places"
+  },
+  {
+   "page_id": 1008942,
+   "title": "Middlesbrough transporter bridge",
+   "stratum": "places"
+  },
+  {
+   "page_id": 1233239,
+   "title": "Kure Beach, North Carolina",
+   "stratum": "places"
+  },
+  {
+   "page_id": 130121,
+   "title": "St James' Park",
+   "stratum": "places"
+  },
+  {
+   "page_id": 37369,
+   "title": "Linkin Park",
+   "stratum": "places"
+  },
+  {
+   "page_id": 697903,
+   "title": "Edgeley Park",
+   "stratum": "places"
+  },
+  {
+   "page_id": 783159,
+   "title": "Yangdong Folk Village",
+   "stratum": "places"
+  },
+  {
+   "page_id": 600071,
+   "title": "New Apostolic church",
+   "stratum": "places"
+  },
+  {
+   "page_id": 267157,
+   "title": "City of Dunedin Choir",
+   "stratum": "places"
+  },
+  {
+   "page_id": 1222190,
+   "title": "Nelson Island (South Shetland Islands)",
+   "stratum": "places"
+  },
+  {
+   "page_id": 316134,
+   "title": "Rye Beach, NH",
+   "stratum": "places"
+  },
+  {
+   "page_id": 540070,
+   "title": "Sengkang MRT/LRT station",
+   "stratum": "places"
+  },
+  {
+   "page_id": 1215242,
+   "title": "Derby Industrial Museum",
+   "stratum": "places"
+  },
+  {
+   "page_id": 172179,
+   "title": "Bandipur National Park",
+   "stratum": "places"
+  },
+  {
+   "page_id": 43424,
+   "title": "Frankfurt Airport",
+   "stratum": "places"
+  },
+  {
+   "page_id": 1150901,
+   "title": "American University of the Caribbean School of Medicine",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 752827,
+   "title": "Easy Money",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 301857,
+   "title": "Apricot (color)",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 601420,
+   "title": "Modernist music",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 1097345,
+   "title": "801 (number)",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 1241657,
+   "title": "List of number-one singles of 2025 (Finland)",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 1173497,
+   "title": "Young Love (Janet Jackson song)",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 207428,
+   "title": "Home school",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 799258,
+   "title": "Resident Evil 2 (1998 video game)",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 1273436,
+   "title": "Brampton Centennial Secondary School shooting",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 849796,
+   "title": "Parents Music Resource Center",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 422876,
+   "title": "Gstaad International School",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 301106,
+   "title": "Online game",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 168995,
+   "title": "Video game journalism",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 590310,
+   "title": "Color rendering index",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 199254,
+   "title": "Queen Elizabeth School",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 420992,
+   "title": "Pointless (game show)",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 917849,
+   "title": "Family of Joe Biden",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 444127,
+   "title": "Music industry",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 1279489,
+   "title": "I Bet You They Won't Play This Song on the Radio",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 381168,
+   "title": "Water Lilies",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 979341,
+   "title": "And I Love Her",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 1016487,
+   "title": "What Is Love",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 1197051,
+   "title": "In the Name of the Grandfather",
+   "stratum": "everyday-concepts"
+  },
+  {
+   "page_id": 955308,
+   "title": "SCP (disambiguation)",
+   "stratum": "hard-disambiguation"
+  },
+  {
+   "page_id": 1243578,
+   "title": "Peanut (disambiguation)",
+   "stratum": "hard-disambiguation"
+  },
+  {
+   "page_id": 663996,
+   "title": "Vienne (disambiguation)",
+   "stratum": "hard-disambiguation"
+  },
+  {
+   "page_id": 522805,
+   "title": "Trust (disambiguation)",
+   "stratum": "hard-disambiguation"
+  },
+  {
+   "page_id": 866455,
+   "title": "Pillager (disambiguation)",
+   "stratum": "hard-disambiguation"
+  },
+  {
+   "page_id": 797828,
+   "title": "What Goes On (disambiguation)",
+   "stratum": "hard-disambiguation"
+  },
+  {
+   "page_id": 1228490,
+   "title": "List of Brazilian diplomats",
+   "stratum": "hard-list"
+  },
+  {
+   "page_id": 1191259,
+   "title": "List of ambassadors of the United States to Argentina",
+   "stratum": "hard-list"
+  },
+  {
+   "page_id": 1137029,
+   "title": "List of people who died during protests in Venezuela in 2024",
+   "stratum": "hard-list"
+  },
+  {
+   "page_id": 319948,
+   "title": "List of airports in Azerbaijan",
+   "stratum": "hard-list"
+  },
+  {
+   "page_id": 386792,
+   "title": "List of Bangladesh Test cricketers",
+   "stratum": "hard-list"
+  },
+  {
+   "page_id": 982162,
+   "title": "List of Johnny Test episodes",
+   "stratum": "hard-list"
+  },
+  {
+   "page_id": 19242,
+   "title": "1155",
+   "stratum": "hard-year"
+  },
+  {
+   "page_id": 24588,
+   "title": "1149",
+   "stratum": "hard-year"
+  },
+  {
+   "page_id": 16336,
+   "title": "1201",
+   "stratum": "hard-year"
+  },
+  {
+   "page_id": 39843,
+   "title": "1152",
+   "stratum": "hard-year"
+  },
+  {
+   "page_id": 83408,
+   "title": "1148",
+   "stratum": "hard-year"
+  },
+  {
+   "page_id": 7827,
+   "title": "1153",
+   "stratum": "hard-year"
+  },
+  {
+   "page_id": 173894,
+   "title": "Train",
+   "stratum": "hard-polysemy"
+  },
+  {
+   "page_id": 12232,
+   "title": "Fly",
+   "stratum": "hard-polysemy"
+  },
+  {
+   "page_id": 59501,
+   "title": "Scale",
+   "stratum": "hard-polysemy"
+  },
+  {
+   "page_id": 15901,
+   "title": "Mouse",
+   "stratum": "hard-polysemy"
+  },
+  {
+   "page_id": 18563,
+   "title": "Wave",
+   "stratum": "hard-polysemy"
+  },
+  {
+   "page_id": 7161,
+   "title": "Nail",
+   "stratum": "hard-polysemy"
+  },
+  {
+   "page_id": 302737,
+   "title": "Citroën Xsara Picasso",
+   "stratum": "hard-stub"
+  },
+  {
+   "page_id": 1186994,
+   "title": "Michigan's 4th congressional district",
+   "stratum": "hard-stub"
+  },
+  {
+   "page_id": 365220,
+   "title": "Tel Aviv Cinematheque",
+   "stratum": "hard-stub"
+  },
+  {
+   "page_id": 943325,
+   "title": "Los Banos, California",
+   "stratum": "hard-stub"
+  },
+  {
+   "page_id": 675321,
+   "title": "Beriev Be-200",
+   "stratum": "hard-stub"
+  },
+  {
+   "page_id": 938744,
+   "title": "The Girl with the Red Scarf",
+   "stratum": "hard-stub"
+  }
+ ]
+}
