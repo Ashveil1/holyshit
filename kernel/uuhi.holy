@@ -1,2 +1,8 @@
-# tiny program for the shell to exec: prints one line and returns
+# tiny program for the shell to exec: prints one line and its argv, returns
 print "hi from exec"
+a = argv()
+print "argc " + str(len(a))
+i = 0
+while i < len(a):
+  print "arg " + str(i) + " " + a[i]
+  i = i + 1

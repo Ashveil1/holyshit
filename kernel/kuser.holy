@@ -129,6 +129,47 @@ def entry():
   return entry_point
 def user_stack_top():
   return stack_top
+def poke8(addr, value):
+  unsafe:
+    store8(as_ptr(addr), value)
+  return value
+def argv_bytes(argv):
+  # bound exec argv the way klinux bounds its startup vectors
+  if len(argv) > 16:
+    return -1
+  total = 0
+  for value in argv:
+    n = len(value)
+    if n > 255:
+      return -1
+    total = total + n + 1
+  if total > 2048:
+    return -1
+  return total
+def argv_stack(argv):
+  # Copy the argv strings under the user stack top and lay the Linux-style
+  # vector (argc, argv pointers, NULL, empty envp NULL) below them; the
+  # hosted _start reads argc at [rsp]. Callers validate with argv_bytes
+  # first, so the copies here cannot fail.
+  cursor = stack_top
+  addresses = []
+  for value in argv:
+    cursor = cursor - len(value) - 1
+    copy_in(cursor, payload_addr(value), len(value))
+    poke8(cursor + len(value), 0)
+    append(addresses, cursor)
+  words = [len(argv)]
+  for address in addresses:
+    append(words, address)
+  append(words, 0)
+  append(words, 0)
+  top = cursor - len(words) * 8
+  top = top - top % 16
+  i = 0
+  while i < len(words):
+    poke(top + i * 8, words[i])
+    i = i + 1
+  return top
 def build_frame(rip, rsp):
   # argv for kernel-loaded programs is empty: lay argc=0 and argv[0]=NULL
   # on the stack top (envp after it reads NULL too), and start the user
@@ -142,6 +183,17 @@ def build_frame(rip, rsp):
   poke(frame + 8, CS_USER)
   poke(frame + 16, RFLAGS_USER)
   poke(frame + 24, rsp - 16)
+  poke(frame + 32, SS_USER)
+  return frame
+def build_frame_argv(rip, argv):
+  top = argv_stack(argv)
+  if top == 0:
+    return 0
+  frame = top - 40
+  poke(frame, rip)
+  poke(frame + 8, CS_USER)
+  poke(frame + 16, RFLAGS_USER)
+  poke(frame + 24, top)
   poke(frame + 32, SS_USER)
   return frame
 def run():
@@ -158,18 +210,27 @@ def payload_addr(s):
     Ptr p = as_ptr(s)
     return as_int(p + 16)
 
-def sys_exec(path_ptr, path_len):
-  # exec(path, len) over the current image; one-shot, no return on success.
+def sys_exec(path_ptr, path_len, args_ptr, args_len):
+  # exec(path, args) over the current image; one-shot, no return on success.
   # Uses exec_enter (not run): run would record a continuation over the
   # dying session, and the new program's exit could never resume the shell.
+  # args is the rest of the shell line, split on whitespace and laid out
+  # Linux-style with argv[0] = path; the vector is validated before the
+  # image is replaced, so a refused line fails the syscall cleanly.
   path = read_mem(path_ptr, path_len)
+  argv = [path]
+  if args_len > 0:
+    for w in split(read_mem(args_ptr, args_len)):
+      append(argv, w)
+  if argv_bytes(argv) < 0:
+    return -22
   data = kvfs.read(path)
   if data == null:
     return -2
   if load_image(payload_addr(data), len(data)) == 0:
     return -12
   ksyscall.last_exec = path
-  exec_enter(entry_point, build_frame(entry_point, stack_top))
+  exec_enter(entry_point, build_frame_argv(entry_point, argv))
   return -12
 
 def enable_exec():
