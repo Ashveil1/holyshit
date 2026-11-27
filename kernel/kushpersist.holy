@@ -9,8 +9,15 @@ import kvfs
 import kramdisk
 import kvol
 import kuser
+import kkrfs
 
 fails = 0
+
+# /bin comes from the initrd on every boot; persisting it in the volume
+# image wastes the 128 KiB single-command budget and breaks sync once the
+# toolchain grows past it (the B23b shell did). Match kshelldisk: user
+# files persist, the toolchain does not.
+kkrfs.set_skip_bin(true)
 
 def expect(label, got, want):
   global fails
