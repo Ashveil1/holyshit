@@ -1,0 +1,1019 @@
+{
+ "suite": "thai-core-ai",
+ "version": 1,
+ "label": "AI-authored / not human-validated",
+ "corpus_sha256": "923dfd3d1ea48a80aacacd38ec24bb1da8c26879cddb95104a0338ff9e6606e2",
+ "harness": "scripts/thai-core-harness.py",
+ "harness_sha256": "5ef5c06573ccb721d3c406c4ec8d04ba3c65d88299487af3ae391f024f07f89a",
+ "examinee_build": "040ab41-r1a",
+ "items": [
+  {
+   "id": "recall-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 7,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 8,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 7,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 7,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 7,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  }
+ ]
+}
