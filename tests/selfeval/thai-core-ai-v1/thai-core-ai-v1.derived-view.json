@@ -1,0 +1,4948 @@
+{
+ "id": "thai-core-ai-v1",
+ "version": 1,
+ "kind": "thai-dataset",
+ "lang": "th",
+ "tier": "supported",
+ "status": "AI_AUTHORED_CONTENT_FROZEN",
+ "annotation_variant": "A",
+ "label": "AI-authored / not human-validated",
+ "derived": {
+  "non_normative": true,
+  "note": "DERIVED VIEW, non-normative. Canonical artifacts: the five frozen files under tests/selfeval/thai-core-ai-v1/ at commit d800d43. Generated deterministically by scripts/thai-derived-view.py (hash pinned in the eligibility record) per the 2026-11-27 spec 4.4 A' clarification: per-(id, turn) records, item rollup = agreement on every scored turn; critical/ambiguous = declared item flags only (v1: zero declared flags under the v1 process, recorded limitation).",
+  "source_commit": "d800d4396939d756c04b27c6e7d2f50d6cbc9edc",
+  "generated_by": "scripts/thai-derived-view.py",
+  "input_hashes": {
+   "thai-core-ai-v1.manifest.json": "5c318e3b48398ceec0dca1770dafcc82dc32dcebe729fd6eaa31d58ff748d259",
+   "thai-core-ai-v1.corpus.json": "923dfd3d1ea48a80aacacd38ec24bb1da8c26879cddb95104a0338ff9e6606e2",
+   "thai-core-ai-v1.annotations.json": "cd04b32dec5464f10c71270f49b346d2d7b495e35a0e7c46e3c5d057e62400ae",
+   "thai-core-ai-v1.exclusions.json": "f879efeaa6f89460e19bed686e5c24fef06d4c69f7d23e8902c1eecc05181888",
+   "thai-core-ai-v1.overlap-report.json": "ed2522b8276dd0f1c9f7dea5fab1609e0d0f50883a7c8b7a5ac07044d181b8bc"
+  }
+ },
+ "provenance": {
+  "method": "ai-authored",
+  "human_validated": false,
+  "authors": [
+   {
+    "author_id": "claude-author-01",
+    "family": "claude",
+    "model": "Claude Sonnet 5.5 (Anthropic), self-reported, unverified",
+    "version": "unavailable",
+    "session_date": "2026-11-26"
+   },
+   {
+    "author_id": "gpt-author-01",
+    "family": "gpt",
+    "model": "GPT-6, self-reported, unverified",
+    "version": "unavailable",
+    "session_date": "2026-11-26"
+   }
+  ],
+  "annotators": [
+   {
+    "annotator_id": "gemini-annotator-01",
+    "family": "gemini",
+    "model": "Auto (displayed label, self-reported, unverified)",
+    "version": "unavailable"
+   },
+   {
+    "annotator_id": "gpt-annotator-01",
+    "family": "gpt",
+    "model": "ChatGPT (no model name displayed; Think ON)",
+    "version": "unavailable"
+   },
+   {
+    "annotator_id": "claude-annotator-01",
+    "family": "claude",
+    "model": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+    "version": "unavailable"
+   }
+  ],
+  "annotation_sessions": [
+   {
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-recall",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "15700097219756686148"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-unknown",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5023646737146710990"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-contradiction",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "13411879724663313304"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-ambiguity",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5904767321744862989"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-teach",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "15537781498078093155"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-forget",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "6518116866262729567"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-correction",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "14890303479793399805"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-recall-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-recall",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "10943047263067963531"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-unknown-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-unknown",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "654772088964187189"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-contradiction",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5502844348331487918"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-ambiguity",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5645751392306214771"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-teach-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-teach",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "1653770162053226495"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-forget",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "13183239191643497113"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-correction",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "11554817005189324292"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-recall-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-recall",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "1540332732633220712"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-unknown-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-unknown",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5962872737970349941"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-contradiction-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-contradiction",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "18015693893198993676"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-ambiguity",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "2513780482130045842"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-teach",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "6727900805343646313"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-forget",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "11163846146856793854"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-correction",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "7353624589700266971"
+   }
+  ],
+  "criteria_version": "v1",
+  "variation_plan_hash": "01d6b719483d2e6f47f0751b3311423ba6cd275948ba6f9bc199283090a130b3"
+ },
+ "corpus": {
+  "file": "thai-core-ai-v1.corpus.json",
+  "sha256": "923dfd3d1ea48a80aacacd38ec24bb1da8c26879cddb95104a0338ff9e6606e2"
+ },
+ "acceptance_criteria": {
+  "recall": "criteria v1 FROZEN (sha256 241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18), category 'recall'; gold shape {supported, answer} per the pinned closed schema (criteria doc Part 1 + Part 2b); the frozen criteria text is authoritative",
+  "unknown": "criteria v1 FROZEN (sha256 241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18), category 'unknown'; gold shape {unknown, abstain} per the pinned closed schema (criteria doc Part 1 + Part 2b); the frozen criteria text is authoritative",
+  "contradiction": "criteria v1 FROZEN (sha256 241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18), category 'contradiction'; gold shape {contradicted, answer} per the pinned closed schema (criteria doc Part 1 + Part 2b); the frozen criteria text is authoritative",
+  "ambiguity": "criteria v1 FROZEN (sha256 241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18), category 'ambiguity'; gold shape {ambiguous, clarify} per the pinned closed schema (criteria doc Part 1 + Part 2b); the frozen criteria text is authoritative",
+  "teach": "criteria v1 FROZEN (sha256 241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18), category 'teach'; gold shape {supported, acknowledge} per the pinned closed schema (criteria doc Part 1 + Part 2b); the frozen criteria text is authoritative",
+  "forget": "criteria v1 FROZEN (sha256 241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18), category 'forget'; gold shape {unknown, acknowledge} per the pinned closed schema (criteria doc Part 1 + Part 2b); the frozen criteria text is authoritative",
+  "correction": "criteria v1 FROZEN (sha256 241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18), category 'correction'; gold shape {supported, acknowledge} per the pinned closed schema (criteria doc Part 1 + Part 2b); the frozen criteria text is authoritative"
+ },
+ "items": [
+  {
+   "id": "recall-S01",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-07-t2",
+    "ann-gpt-xg-recall-xg-01-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "recall-S02",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-08-t2",
+    "ann-gpt-xg-recall-xg-03-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "recall-S03",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-01-t2",
+    "ann-gemini-tc-recall-tc-10-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "recall-S04",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-04-t2",
+    "ann-gemini-tc-recall-tc-06-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "recall-S05",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    7
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-03-t7",
+    "ann-gemini-tc-recall-tc-02-t7"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "recall-S06",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-05-t3",
+    "ann-gemini-tc-recall-tc-01-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "recall-S07",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-05-t4",
+    "ann-gpt-xg-recall-xg-05-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "recall-S08",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-04-t4",
+    "ann-gpt-xg-recall-xg-04-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "recall-S09",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    5
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-09-t5",
+    "ann-gpt-xg-recall-xg-02-t5"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "recall-S10",
+   "category": "recall",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    8
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-02-t8",
+    "ann-gemini-tc-recall-tc-03-t8"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "unknown-S01",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-05-t2",
+    "ann-gpt-xg-unknown-xg-02-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "unknown-S02",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    1
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-05-t1",
+    "ann-gemini-tc-unknown-tc-06-t1"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "unknown-S03",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    1
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-02-t1",
+    "ann-gpt-xg-unknown-xg-05-t1"
+   ],
+   "disposition": "unresolved",
+   "unresolved_reason": "annotator-disagreement"
+  },
+  {
+   "id": "unknown-S04",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    1
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-03-t1",
+    "ann-gemini-tc-unknown-tc-07-t1"
+   ],
+   "disposition": "unresolved",
+   "unresolved_reason": "annotator-disagreement"
+  },
+  {
+   "id": "unknown-S05",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-09-t4",
+    "ann-gpt-xg-unknown-xg-04-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "unknown-S06",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-01-t3",
+    "ann-gpt-xg-unknown-xg-01-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "unknown-S07",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-04-t3",
+    "ann-gemini-tc-unknown-tc-03-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "unknown-S08",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-02-t4",
+    "ann-gemini-tc-unknown-tc-04-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "unknown-S09",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    5
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-10-t5",
+    "ann-gpt-xg-unknown-xg-03-t5"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "unknown-S10",
+   "category": "unknown",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    5
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-01-t5",
+    "ann-gemini-tc-unknown-tc-08-t5"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S01",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-03-t2",
+    "ann-gpt-xg-contradiction-xg-01-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S02",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-02-t2",
+    "ann-gpt-xg-contradiction-xg-05-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S03",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-02-t2",
+    "ann-gemini-tc-contradiction-tc-07-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S04",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-03-t2",
+    "ann-gemini-tc-contradiction-tc-04-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S05",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-04-t4",
+    "ann-gemini-tc-contradiction-tc-10-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S06",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-05-t3",
+    "ann-gemini-tc-contradiction-tc-05-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S07",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-09-t3",
+    "ann-gpt-xg-contradiction-xg-03-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S08",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-06-t3",
+    "ann-gpt-xg-contradiction-xg-04-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S09",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    5
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-08-t5",
+    "ann-gpt-xg-contradiction-xg-02-t5"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "contradiction-S10",
+   "category": "contradiction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    7
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-01-t7",
+    "ann-gemini-tc-contradiction-tc-01-t7"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "ambiguity-S01",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-03-t2",
+    "ann-gemini-tc-ambiguity-tc-08-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "ambiguity-S02",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-04-t2",
+    "ann-gemini-tc-ambiguity-tc-03-t2"
+   ],
+   "disposition": "unresolved",
+   "unresolved_reason": "annotator-disagreement"
+  },
+  {
+   "id": "ambiguity-S03",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-06-t2",
+    "ann-gpt-xg-ambiguity-xg-02-t2"
+   ],
+   "disposition": "unresolved",
+   "unresolved_reason": "annotator-disagreement"
+  },
+  {
+   "id": "ambiguity-S04",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-07-t2",
+    "ann-gpt-xg-ambiguity-xg-04-t2"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "ambiguity-S05",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-02-t3",
+    "ann-gpt-xg-ambiguity-xg-03-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "ambiguity-S06",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-05-t3",
+    "ann-gemini-tc-ambiguity-tc-10-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "ambiguity-S07",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-04-t3",
+    "ann-gpt-xg-ambiguity-xg-05-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "ambiguity-S08",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-01-t3",
+    "ann-gemini-tc-ambiguity-tc-05-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "ambiguity-S09",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-01-t3",
+    "ann-gpt-xg-ambiguity-xg-01-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "ambiguity-S10",
+   "category": "ambiguity",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    5
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-02-t5",
+    "ann-gemini-tc-ambiguity-tc-09-t5"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S01",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    1
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-10-t1",
+    "ann-gpt-xg-teach-xg-03-t1"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S02",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    1
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-01-t1",
+    "ann-gpt-xg-teach-xg-05-t1"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S03",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    1
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-03-t1",
+    "ann-gemini-tc-teach-tc-04-t1"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S04",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    1
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-02-t1",
+    "ann-gemini-tc-teach-tc-03-t1"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S05",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3,
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-05-t3",
+    "ann-gemini-tc-teach-tc-05-t4",
+    "ann-gpt-xg-teach-xg-04-t3",
+    "ann-gpt-xg-teach-xg-04-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S06",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-02-t3",
+    "ann-gpt-xg-teach-xg-01-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S07",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3,
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-05-t3",
+    "ann-claude-xc-teach-xc-05-t4",
+    "ann-gemini-tc-teach-tc-07-t3",
+    "ann-gemini-tc-teach-tc-07-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S08",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3,
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-04-t3",
+    "ann-claude-xc-teach-xc-04-t4",
+    "ann-gemini-tc-teach-tc-06-t3",
+    "ann-gemini-tc-teach-tc-06-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S09",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    6,
+    7
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-01-t6",
+    "ann-claude-xc-teach-xc-01-t7",
+    "ann-gemini-tc-teach-tc-09-t6",
+    "ann-gemini-tc-teach-tc-09-t7"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "teach-S10",
+   "category": "teach",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    5,
+    6
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-08-t5",
+    "ann-gemini-tc-teach-tc-08-t6",
+    "ann-gpt-xg-teach-xg-02-t5",
+    "ann-gpt-xg-teach-xg-02-t6"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "forget-S01",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2,
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-04-t2",
+    "ann-claude-xc-forget-xc-04-t3",
+    "ann-gemini-tc-forget-tc-04-t2",
+    "ann-gemini-tc-forget-tc-04-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "forget-S02",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2,
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-07-t2",
+    "ann-gemini-tc-forget-tc-07-t3",
+    "ann-gpt-xg-forget-xg-02-t2",
+    "ann-gpt-xg-forget-xg-02-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "forget-S03",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2,
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-06-t2",
+    "ann-gemini-tc-forget-tc-06-t3",
+    "ann-gpt-xg-forget-xg-03-t2",
+    "ann-gpt-xg-forget-xg-03-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "forget-S04",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2,
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-01-t2",
+    "ann-claude-xc-forget-xc-01-t3",
+    "ann-gemini-tc-forget-tc-05-t2",
+    "ann-gemini-tc-forget-tc-05-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "forget-S05",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    4,
+    5,
+    6
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-03-t4",
+    "ann-gemini-tc-forget-tc-03-t5",
+    "ann-gemini-tc-forget-tc-03-t6",
+    "ann-gpt-xg-forget-xg-05-t4",
+    "ann-gpt-xg-forget-xg-05-t5",
+    "ann-gpt-xg-forget-xg-05-t6"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "forget-S06",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    4,
+    5,
+    6
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-02-t4",
+    "ann-claude-xc-forget-xc-02-t5",
+    "ann-claude-xc-forget-xc-02-t6",
+    "ann-gemini-tc-forget-tc-08-t4",
+    "ann-gemini-tc-forget-tc-08-t5",
+    "ann-gemini-tc-forget-tc-08-t6"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "forget-S07",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3,
+    4,
+    5
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-05-t3",
+    "ann-claude-xc-forget-xc-05-t4",
+    "ann-claude-xc-forget-xc-05-t5",
+    "ann-gemini-tc-forget-tc-10-t3",
+    "ann-gemini-tc-forget-tc-10-t4",
+    "ann-gemini-tc-forget-tc-10-t5"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "forget-S08",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    4,
+    5,
+    6
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-01-t4",
+    "ann-gemini-tc-forget-tc-01-t5",
+    "ann-gemini-tc-forget-tc-01-t6",
+    "ann-gpt-xg-forget-xg-01-t4",
+    "ann-gpt-xg-forget-xg-01-t5",
+    "ann-gpt-xg-forget-xg-01-t6"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "forget-S09",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    6,
+    7,
+    8
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-03-t6",
+    "ann-claude-xc-forget-xc-03-t7",
+    "ann-claude-xc-forget-xc-03-t8",
+    "ann-gemini-tc-forget-tc-09-t6",
+    "ann-gemini-tc-forget-tc-09-t7",
+    "ann-gemini-tc-forget-tc-09-t8"
+   ],
+   "disposition": "unresolved",
+   "unresolved_reason": "annotator-disagreement"
+  },
+  {
+   "id": "forget-S10",
+   "category": "forget",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    5,
+    6,
+    7
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-02-t5",
+    "ann-gemini-tc-forget-tc-02-t6",
+    "ann-gemini-tc-forget-tc-02-t7",
+    "ann-gpt-xg-forget-xg-04-t5",
+    "ann-gpt-xg-forget-xg-04-t6",
+    "ann-gpt-xg-forget-xg-04-t7"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "correction-S01",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2,
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-07-t2",
+    "ann-gemini-tc-correction-tc-07-t3",
+    "ann-gpt-xg-correction-xg-05-t2",
+    "ann-gpt-xg-correction-xg-05-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "correction-S02",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2,
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-01-t2",
+    "ann-claude-xc-correction-xc-01-t3",
+    "ann-gemini-tc-correction-tc-06-t2",
+    "ann-gemini-tc-correction-tc-06-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "correction-S03",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2,
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-02-t2",
+    "ann-claude-xc-correction-xc-02-t3",
+    "ann-gemini-tc-correction-tc-02-t2",
+    "ann-gemini-tc-correction-tc-02-t3"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "correction-S04",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    2,
+    3
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-03-t2",
+    "ann-gemini-tc-correction-tc-03-t3",
+    "ann-gpt-xg-correction-xg-03-t2",
+    "ann-gpt-xg-correction-xg-03-t3"
+   ],
+   "disposition": "unresolved",
+   "unresolved_reason": "annotator-disagreement"
+  },
+  {
+   "id": "correction-S05",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    4,
+    5
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-01-t4",
+    "ann-gemini-tc-correction-tc-01-t5",
+    "ann-gpt-xg-correction-xg-02-t4",
+    "ann-gpt-xg-correction-xg-02-t5"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "correction-S06",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3,
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-05-t3",
+    "ann-claude-xc-correction-xc-05-t4",
+    "ann-gemini-tc-correction-tc-10-t3",
+    "ann-gemini-tc-correction-tc-10-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "correction-S07",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3,
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-04-t3",
+    "ann-claude-xc-correction-xc-04-t4",
+    "ann-gemini-tc-correction-tc-08-t3",
+    "ann-gemini-tc-correction-tc-08-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "correction-S08",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    3,
+    4
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-09-t3",
+    "ann-gemini-tc-correction-tc-09-t4",
+    "ann-gpt-xg-correction-xg-04-t3",
+    "ann-gpt-xg-correction-xg-04-t4"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "correction-S09",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    5,
+    6
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-04-t5",
+    "ann-gemini-tc-correction-tc-04-t6",
+    "ann-gpt-xg-correction-xg-01-t5",
+    "ann-gpt-xg-correction-xg-01-t6"
+   ],
+   "disposition": "scored"
+  },
+  {
+   "id": "correction-S10",
+   "category": "correction",
+   "origin": "authored",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "scored_turns": [
+    5,
+    6
+   ],
+   "annotation_progress": "complete",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-03-t5",
+    "ann-claude-xc-correction-xc-03-t6",
+    "ann-gemini-tc-correction-tc-05-t5",
+    "ann-gemini-tc-correction-tc-05-t6"
+   ],
+   "disposition": "unresolved",
+   "unresolved_reason": "annotator-disagreement"
+  }
+ ],
+ "evidence": {
+  "annotation_log": [
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-01-t3",
+    "item_id": "recall-S06",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-02-t7",
+    "item_id": "recall-S05",
+    "turn": 7,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-03-t8",
+    "item_id": "recall-S10",
+    "turn": 8,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-04-t4",
+    "item_id": "recall-S08",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-05-t4",
+    "item_id": "recall-S07",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-06-t2",
+    "item_id": "recall-S04",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-07-t2",
+    "item_id": "recall-S01",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-08-t2",
+    "item_id": "recall-S02",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-09-t5",
+    "item_id": "recall-S09",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-recall-tc-10-t2",
+    "item_id": "recall-S03",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-01-t3",
+    "item_id": "unknown-S06",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-02-t1",
+    "item_id": "unknown-S03",
+    "turn": 1,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-03-t3",
+    "item_id": "unknown-S07",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-04-t4",
+    "item_id": "unknown-S08",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-05-t2",
+    "item_id": "unknown-S01",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-06-t1",
+    "item_id": "unknown-S02",
+    "turn": 1,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-07-t1",
+    "item_id": "unknown-S04",
+    "turn": 1,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-08-t5",
+    "item_id": "unknown-S10",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-09-t4",
+    "item_id": "unknown-S05",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-unknown-tc-10-t5",
+    "item_id": "unknown-S09",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-01-t7",
+    "item_id": "contradiction-S10",
+    "turn": 7,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-02-t2",
+    "item_id": "contradiction-S02",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-03-t2",
+    "item_id": "contradiction-S01",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-04-t2",
+    "item_id": "contradiction-S04",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-05-t3",
+    "item_id": "contradiction-S06",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-06-t3",
+    "item_id": "contradiction-S08",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-07-t2",
+    "item_id": "contradiction-S03",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-08-t5",
+    "item_id": "contradiction-S09",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-09-t3",
+    "item_id": "contradiction-S07",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-contradiction-tc-10-t4",
+    "item_id": "contradiction-S05",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-01-t3",
+    "item_id": "ambiguity-S09",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-02-t3",
+    "item_id": "ambiguity-S05",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-03-t2",
+    "item_id": "ambiguity-S02",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-04-t3",
+    "item_id": "ambiguity-S07",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-05-t3",
+    "item_id": "ambiguity-S08",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-06-t2",
+    "item_id": "ambiguity-S03",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-07-t2",
+    "item_id": "ambiguity-S04",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-08-t2",
+    "item_id": "ambiguity-S01",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-09-t5",
+    "item_id": "ambiguity-S10",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-ambiguity-tc-10-t3",
+    "item_id": "ambiguity-S06",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-01-t1",
+    "item_id": "teach-S02",
+    "turn": 1,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-02-t3",
+    "item_id": "teach-S06",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-03-t1",
+    "item_id": "teach-S04",
+    "turn": 1,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-04-t1",
+    "item_id": "teach-S03",
+    "turn": 1,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-05-t3",
+    "item_id": "teach-S05",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-05-t4",
+    "item_id": "teach-S05",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-06-t3",
+    "item_id": "teach-S08",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-06-t4",
+    "item_id": "teach-S08",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-07-t3",
+    "item_id": "teach-S07",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-07-t4",
+    "item_id": "teach-S07",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-08-t5",
+    "item_id": "teach-S10",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-08-t6",
+    "item_id": "teach-S10",
+    "turn": 6,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-09-t6",
+    "item_id": "teach-S09",
+    "turn": 6,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-09-t7",
+    "item_id": "teach-S09",
+    "turn": 7,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-teach-tc-10-t1",
+    "item_id": "teach-S01",
+    "turn": 1,
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-01-t4",
+    "item_id": "forget-S08",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-01-t5",
+    "item_id": "forget-S08",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-01-t6",
+    "item_id": "forget-S08",
+    "turn": 6,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-02-t5",
+    "item_id": "forget-S10",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-02-t6",
+    "item_id": "forget-S10",
+    "turn": 6,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-02-t7",
+    "item_id": "forget-S10",
+    "turn": 7,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-03-t4",
+    "item_id": "forget-S05",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-03-t5",
+    "item_id": "forget-S05",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-03-t6",
+    "item_id": "forget-S05",
+    "turn": 6,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-04-t2",
+    "item_id": "forget-S01",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-04-t3",
+    "item_id": "forget-S01",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-05-t2",
+    "item_id": "forget-S04",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-05-t3",
+    "item_id": "forget-S04",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-06-t2",
+    "item_id": "forget-S03",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-06-t3",
+    "item_id": "forget-S03",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-07-t2",
+    "item_id": "forget-S02",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-07-t3",
+    "item_id": "forget-S02",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-08-t4",
+    "item_id": "forget-S06",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-08-t5",
+    "item_id": "forget-S06",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-08-t6",
+    "item_id": "forget-S06",
+    "turn": 6,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-09-t6",
+    "item_id": "forget-S09",
+    "turn": 6,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-09-t7",
+    "item_id": "forget-S09",
+    "turn": 7,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-09-t8",
+    "item_id": "forget-S09",
+    "turn": 8,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-10-t3",
+    "item_id": "forget-S07",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-10-t4",
+    "item_id": "forget-S07",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-forget-tc-10-t5",
+    "item_id": "forget-S07",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-01-t4",
+    "item_id": "correction-S05",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-01-t5",
+    "item_id": "correction-S05",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-02-t2",
+    "item_id": "correction-S03",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-02-t3",
+    "item_id": "correction-S03",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-03-t2",
+    "item_id": "correction-S04",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-03-t3",
+    "item_id": "correction-S04",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-04-t5",
+    "item_id": "correction-S09",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-04-t6",
+    "item_id": "correction-S09",
+    "turn": 6,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-05-t5",
+    "item_id": "correction-S10",
+    "turn": 5,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-05-t6",
+    "item_id": "correction-S10",
+    "turn": 6,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-06-t2",
+    "item_id": "correction-S02",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-06-t3",
+    "item_id": "correction-S02",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-07-t2",
+    "item_id": "correction-S01",
+    "turn": 2,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-07-t3",
+    "item_id": "correction-S01",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-08-t3",
+    "item_id": "correction-S07",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-08-t4",
+    "item_id": "correction-S07",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-09-t3",
+    "item_id": "correction-S08",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-09-t4",
+    "item_id": "correction-S08",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-10-t3",
+    "item_id": "correction-S06",
+    "turn": 3,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gemini-tc-correction-tc-10-t4",
+    "item_id": "correction-S06",
+    "turn": 4,
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "batch_id": "tc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-recall-xg-01-t2",
+    "item_id": "recall-S01",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-recall-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-recall-xg-02-t5",
+    "item_id": "recall-S09",
+    "turn": 5,
+    "session_id": "gpt-2026-11-27-xg-recall-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-recall-xg-03-t2",
+    "item_id": "recall-S02",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-recall-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-recall-xg-04-t4",
+    "item_id": "recall-S08",
+    "turn": 4,
+    "session_id": "gpt-2026-11-27-xg-recall-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-recall-xg-05-t4",
+    "item_id": "recall-S07",
+    "turn": 4,
+    "session_id": "gpt-2026-11-27-xg-recall-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-unknown-xg-01-t3",
+    "item_id": "unknown-S06",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-unknown-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-unknown-xg-02-t2",
+    "item_id": "unknown-S01",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-unknown-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-unknown-xg-03-t5",
+    "item_id": "unknown-S09",
+    "turn": 5,
+    "session_id": "gpt-2026-11-27-xg-unknown-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-unknown-xg-04-t4",
+    "item_id": "unknown-S05",
+    "turn": 4,
+    "session_id": "gpt-2026-11-27-xg-unknown-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-unknown-xg-05-t1",
+    "item_id": "unknown-S03",
+    "turn": 1,
+    "session_id": "gpt-2026-11-27-xg-unknown-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-contradiction-xg-01-t2",
+    "item_id": "contradiction-S01",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-contradiction-xg-02-t5",
+    "item_id": "contradiction-S09",
+    "turn": 5,
+    "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-contradiction-xg-03-t3",
+    "item_id": "contradiction-S07",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-contradiction-xg-04-t3",
+    "item_id": "contradiction-S08",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-contradiction-xg-05-t2",
+    "item_id": "contradiction-S02",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-ambiguity-xg-01-t3",
+    "item_id": "ambiguity-S09",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-ambiguity-xg-02-t2",
+    "item_id": "ambiguity-S03",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-ambiguity-xg-03-t3",
+    "item_id": "ambiguity-S05",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-ambiguity-xg-04-t2",
+    "item_id": "ambiguity-S04",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-ambiguity-xg-05-t3",
+    "item_id": "ambiguity-S07",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-teach-xg-01-t3",
+    "item_id": "teach-S06",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-teach-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-teach-xg-02-t5",
+    "item_id": "teach-S10",
+    "turn": 5,
+    "session_id": "gpt-2026-11-27-xg-teach-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-teach-xg-02-t6",
+    "item_id": "teach-S10",
+    "turn": 6,
+    "session_id": "gpt-2026-11-27-xg-teach-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-teach-xg-03-t1",
+    "item_id": "teach-S01",
+    "turn": 1,
+    "session_id": "gpt-2026-11-27-xg-teach-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-teach-xg-04-t3",
+    "item_id": "teach-S05",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-teach-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-teach-xg-04-t4",
+    "item_id": "teach-S05",
+    "turn": 4,
+    "session_id": "gpt-2026-11-27-xg-teach-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-teach-xg-05-t1",
+    "item_id": "teach-S02",
+    "turn": 1,
+    "session_id": "gpt-2026-11-27-xg-teach-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-01-t4",
+    "item_id": "forget-S08",
+    "turn": 4,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-01-t5",
+    "item_id": "forget-S08",
+    "turn": 5,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-01-t6",
+    "item_id": "forget-S08",
+    "turn": 6,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-02-t2",
+    "item_id": "forget-S02",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-02-t3",
+    "item_id": "forget-S02",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-03-t2",
+    "item_id": "forget-S03",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-03-t3",
+    "item_id": "forget-S03",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-04-t5",
+    "item_id": "forget-S10",
+    "turn": 5,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-04-t6",
+    "item_id": "forget-S10",
+    "turn": 6,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-04-t7",
+    "item_id": "forget-S10",
+    "turn": 7,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-05-t4",
+    "item_id": "forget-S05",
+    "turn": 4,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-05-t5",
+    "item_id": "forget-S05",
+    "turn": 5,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-forget-xg-05-t6",
+    "item_id": "forget-S05",
+    "turn": 6,
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-01-t5",
+    "item_id": "correction-S09",
+    "turn": 5,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-01-t6",
+    "item_id": "correction-S09",
+    "turn": 6,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-02-t4",
+    "item_id": "correction-S05",
+    "turn": 4,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-02-t5",
+    "item_id": "correction-S05",
+    "turn": 5,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-03-t2",
+    "item_id": "correction-S04",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-03-t3",
+    "item_id": "correction-S04",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-04-t3",
+    "item_id": "correction-S08",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-04-t4",
+    "item_id": "correction-S08",
+    "turn": 4,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-05-t2",
+    "item_id": "correction-S01",
+    "turn": 2,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-gpt-xg-correction-xg-05-t3",
+    "item_id": "correction-S01",
+    "turn": 3,
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "batch_id": "xg-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-recall-xc-01-t2",
+    "item_id": "recall-S03",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-recall-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-recall-xc-02-t8",
+    "item_id": "recall-S10",
+    "turn": 8,
+    "session_id": "claude-2026-11-27-xc-recall-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-recall-xc-03-t7",
+    "item_id": "recall-S05",
+    "turn": 7,
+    "session_id": "claude-2026-11-27-xc-recall-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-recall-xc-04-t2",
+    "item_id": "recall-S04",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-recall-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-recall-xc-05-t3",
+    "item_id": "recall-S06",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-recall-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-recall",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-unknown-xc-01-t5",
+    "item_id": "unknown-S10",
+    "turn": 5,
+    "session_id": "claude-2026-11-27-xc-unknown-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-unknown-xc-02-t4",
+    "item_id": "unknown-S08",
+    "turn": 4,
+    "session_id": "claude-2026-11-27-xc-unknown-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-unknown-xc-03-t1",
+    "item_id": "unknown-S04",
+    "turn": 1,
+    "session_id": "claude-2026-11-27-xc-unknown-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-unknown-xc-04-t3",
+    "item_id": "unknown-S07",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-unknown-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-unknown-xc-05-t1",
+    "item_id": "unknown-S02",
+    "turn": 1,
+    "session_id": "claude-2026-11-27-xc-unknown-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-unknown",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-contradiction-xc-01-t7",
+    "item_id": "contradiction-S10",
+    "turn": 7,
+    "session_id": "claude-2026-11-27-xc-contradiction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-contradiction-xc-02-t2",
+    "item_id": "contradiction-S03",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-contradiction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-contradiction-xc-03-t2",
+    "item_id": "contradiction-S04",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-contradiction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-contradiction-xc-04-t4",
+    "item_id": "contradiction-S05",
+    "turn": 4,
+    "session_id": "claude-2026-11-27-xc-contradiction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-contradiction-xc-05-t3",
+    "item_id": "contradiction-S06",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-contradiction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-contradiction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "contradicted",
+     "action": "answer"
+    },
+    "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-ambiguity-xc-01-t3",
+    "item_id": "ambiguity-S08",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-ambiguity-xc-02-t5",
+    "item_id": "ambiguity-S10",
+    "turn": 5,
+    "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-ambiguity-xc-03-t2",
+    "item_id": "ambiguity-S01",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-ambiguity-xc-04-t2",
+    "item_id": "ambiguity-S02",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-ambiguity-xc-05-t3",
+    "item_id": "ambiguity-S06",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-ambiguity",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-teach-xc-01-t6",
+    "item_id": "teach-S09",
+    "turn": 6,
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-teach-xc-01-t7",
+    "item_id": "teach-S09",
+    "turn": 7,
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-teach-xc-02-t1",
+    "item_id": "teach-S04",
+    "turn": 1,
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-teach-xc-03-t1",
+    "item_id": "teach-S03",
+    "turn": 1,
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-teach-xc-04-t3",
+    "item_id": "teach-S08",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-teach-xc-04-t4",
+    "item_id": "teach-S08",
+    "turn": 4,
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-teach-xc-05-t3",
+    "item_id": "teach-S07",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-teach-xc-05-t4",
+    "item_id": "teach-S07",
+    "turn": 4,
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-teach",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-01-t2",
+    "item_id": "forget-S04",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-01-t3",
+    "item_id": "forget-S04",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-02-t4",
+    "item_id": "forget-S06",
+    "turn": 4,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-02-t5",
+    "item_id": "forget-S06",
+    "turn": 5,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-02-t6",
+    "item_id": "forget-S06",
+    "turn": 6,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-03-t6",
+    "item_id": "forget-S09",
+    "turn": 6,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-03-t7",
+    "item_id": "forget-S09",
+    "turn": 7,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-03-t8",
+    "item_id": "forget-S09",
+    "turn": 8,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-04-t2",
+    "item_id": "forget-S01",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-04-t3",
+    "item_id": "forget-S01",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-05-t3",
+    "item_id": "forget-S07",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "acknowledge"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-05-t4",
+    "item_id": "forget-S07",
+    "turn": 4,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-forget-xc-05-t5",
+    "item_id": "forget-S07",
+    "turn": 5,
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-forget",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "unknown",
+     "action": "abstain"
+    },
+    "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-01-t2",
+    "item_id": "correction-S02",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-01-t3",
+    "item_id": "correction-S02",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-02-t2",
+    "item_id": "correction-S03",
+    "turn": 2,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-02-t3",
+    "item_id": "correction-S03",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-03-t5",
+    "item_id": "correction-S10",
+    "turn": 5,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-03-t6",
+    "item_id": "correction-S10",
+    "turn": 6,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "ambiguous",
+     "action": "clarify"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-04-t3",
+    "item_id": "correction-S07",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-04-t4",
+    "item_id": "correction-S07",
+    "turn": 4,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-05-t3",
+    "item_id": "correction-S06",
+    "turn": 3,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "acknowledge"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   },
+   {
+    "annotation_id": "ann-claude-xc-correction-xc-05-t4",
+    "item_id": "correction-S06",
+    "turn": 4,
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "batch_id": "xc-correction",
+    "criteria_version": "v1",
+    "label": {
+     "epistemic": "supported",
+     "action": "answer"
+    },
+    "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+    "timestamp": "2026-11-27",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4"
+   }
+  ],
+  "preflight_log": [
+   {
+    "category": "recall",
+    "usable_examples": 5,
+    "structural_pass": 5,
+    "instruction_pass": 5,
+    "task_matches": 5,
+    "outcome": "pass",
+    "reviewers": [
+     "claude",
+     "gpt"
+    ],
+    "evidence_ref": "evidence/preflight-review/{gpt,claude}-score-sheet.md (protocol preflight-v2, both reviewers PASS 5/5/5/5 on all 7 categories)"
+   },
+   {
+    "category": "unknown",
+    "usable_examples": 5,
+    "structural_pass": 5,
+    "instruction_pass": 5,
+    "task_matches": 5,
+    "outcome": "pass",
+    "reviewers": [
+     "claude",
+     "gpt"
+    ],
+    "evidence_ref": "evidence/preflight-review/{gpt,claude}-score-sheet.md (protocol preflight-v2, both reviewers PASS 5/5/5/5 on all 7 categories)"
+   },
+   {
+    "category": "contradiction",
+    "usable_examples": 5,
+    "structural_pass": 5,
+    "instruction_pass": 5,
+    "task_matches": 5,
+    "outcome": "pass",
+    "reviewers": [
+     "claude",
+     "gpt"
+    ],
+    "evidence_ref": "evidence/preflight-review/{gpt,claude}-score-sheet.md (protocol preflight-v2, both reviewers PASS 5/5/5/5 on all 7 categories)"
+   },
+   {
+    "category": "ambiguity",
+    "usable_examples": 5,
+    "structural_pass": 5,
+    "instruction_pass": 5,
+    "task_matches": 5,
+    "outcome": "pass",
+    "reviewers": [
+     "claude",
+     "gpt"
+    ],
+    "evidence_ref": "evidence/preflight-review/{gpt,claude}-score-sheet.md (protocol preflight-v2, both reviewers PASS 5/5/5/5 on all 7 categories)"
+   },
+   {
+    "category": "teach",
+    "usable_examples": 5,
+    "structural_pass": 5,
+    "instruction_pass": 5,
+    "task_matches": 5,
+    "outcome": "pass",
+    "reviewers": [
+     "claude",
+     "gpt"
+    ],
+    "evidence_ref": "evidence/preflight-review/{gpt,claude}-score-sheet.md (protocol preflight-v2, both reviewers PASS 5/5/5/5 on all 7 categories)"
+   },
+   {
+    "category": "forget",
+    "usable_examples": 5,
+    "structural_pass": 5,
+    "instruction_pass": 5,
+    "task_matches": 5,
+    "outcome": "pass",
+    "reviewers": [
+     "claude",
+     "gpt"
+    ],
+    "evidence_ref": "evidence/preflight-review/{gpt,claude}-score-sheet.md (protocol preflight-v2, both reviewers PASS 5/5/5/5 on all 7 categories)"
+   },
+   {
+    "category": "correction",
+    "usable_examples": 5,
+    "structural_pass": 5,
+    "instruction_pass": 5,
+    "task_matches": 5,
+    "outcome": "pass",
+    "reviewers": [
+     "claude",
+     "gpt"
+    ],
+    "evidence_ref": "evidence/preflight-review/{gpt,claude}-score-sheet.md (protocol preflight-v2, both reviewers PASS 5/5/5/5 on all 7 categories)"
+   }
+  ],
+  "overlap_report": {
+   "dev_set_hash": "da113647b1c1b7d86736cfb627ca701d8b2a4e8cc4162294b0c67aa0e0821c64",
+   "overlap_checker_hash": "c493f37d038b02a82aff697ea6fc0e4075eab96f96b8bd0a011b0cc8a8071da6",
+   "tokenizer_hash": "1835b0c9dcba721172a7910cd4100256fe36a0c8eae78a47952072c078444d09",
+   "dictionary_hash": "35f65d43ea83b5b981134d5edc3b9afcb64b4ba96146900fc4d312f2940c3265",
+   "normalization_config": "Unicode NFC, whitespace folding, case folding (casefold)",
+   "sequence_algorithm": "Python 3.10.12 difflib.SequenceMatcher ratio, autojunk=False",
+   "min_meaningful_length": 20,
+   "thresholds": {
+    "jaccard_flag": 0.8,
+    "jaccard_reject": 0.95,
+    "seq_flag": 0.85,
+    "min_meaningful_chars": 20,
+    "min_tokens_containment": 5
+   },
+   "note": "operational thresholds, not proven semantic-duplicate detection",
+   "report_ref": "thai-core-ai-v1.overlap-report.json (sha256 pinned in attestation); outcome: GATE CLEAN: 0 rejections, 6 flags all kept-with-reason"
+  },
+  "exclusion_ledger": [],
+  "freeze_attestation": {
+   "manifest_hash": "5c318e3b48398ceec0dca1770dafcc82dc32dcebe729fd6eaa31d58ff748d259",
+   "corpus_hash": "923dfd3d1ea48a80aacacd38ec24bb1da8c26879cddb95104a0338ff9e6606e2",
+   "ledger_head_hash": "9cfde10225d97257b3ea9426874412c64d6cd92ce91be36e3db9c442ccc15416",
+   "variation_plan_hash": "01d6b719483d2e6f47f0751b3311423ba6cd275948ba6f9bc199283090a130b3",
+   "criteria_hash": "241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18",
+   "session_log_hash": "cd04b32dec5464f10c71270f49b346d2d7b495e35a0e7c46e3c5d057e62400ae",
+   "annotation_log_hash": "cd04b32dec5464f10c71270f49b346d2d7b495e35a0e7c46e3c5d057e62400ae",
+   "raw_responses_hash": "655d960e43f50a322d3e9ce4ef44550342b510ebe38405039d39158c1bbad757",
+   "overlap_report_hash": "ed2522b8276dd0f1c9f7dea5fab1609e0d0f50883a7c8b7a5ac07044d181b8bc",
+   "prompt_templates_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "harness_build_hash": "906026955f6d81bce449486cf3cd23e2af0362579a776cbbb739c58b91571ae9",
+   "anchor": {
+    "repo": "github.com/Ashveil1/holyshit",
+    "commit": "d800d4396939d756c04b27c6e7d2f50d6cbc9edc"
+   },
+   "note": "Pins name the FROZEN artifacts (commit d800d43, full table in docs/thai/thai-core-ai-v1-freeze-attestation.md). session_log_hash/annotation_log_hash both pin thai-core-ai-v1.annotations.json, the single session+decision log of record; raw_responses_hash pins corpus-gemini/SHA256SUMS whose per-file hashes cover every raw response (cross-gpt/cross-claude SHA256SUMS pinned in the same attestation)."
+  }
+ }
+}

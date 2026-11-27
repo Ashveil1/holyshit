@@ -76,8 +76,9 @@ def sess(sid, ann, batch='b1', resume=None, pth='1' * 64):
             'prompt_template_hash': pth, 'item_order_seed': 'seed'}
 
 
-def annrec(aid, item_id, s, label, role=None):
+def annrec(aid, item_id, s, label, role=None, turn=1):
     r = {'annotation_id': aid, 'item_id': item_id, 'batch_id': s['batch_id'],
+         'turn': turn,
          'session_id': s['session_id'], 'annotator_id': s['annotator_id'],
          'criteria_version': 'cv1',
          'prompt_template_hash': s['prompt_template_hash'],
@@ -89,11 +90,16 @@ def annrec(aid, item_id, s, label, role=None):
 
 
 def ai_item(i, cat='recall', crit=False, by='claude-author-01',
-            prog='pending', ids=(), disp=None, reason=None):
-    it = {'id': i, 'category': cat, 'origin': 'authored', 'critical': crit,
+            prog='pending', ids=(), disp=None, reason=None, turns=(1,),
+            amb=False):
+    it = {'id': i, 'category': cat, 'origin': 'authored',
           'authored_by': by, 'ai_authored': True,
           'not_human_validated': True, 'annotation_progress': prog,
-          'annotation_ids': list(ids)}
+          'annotation_ids': list(ids), 'scored_turns': list(turns)}
+    if crit is not None:
+        it['critical'] = crit
+    if amb is not None:
+        it['ambiguous'] = amb
     if disp is not None:
         it['disposition'] = disp
     if reason is not None:
@@ -322,11 +328,78 @@ def suite(label, argv, env):
         s = full_suite()
         s['items'][2]['unresolved_reason'] = 'annotator-disagreement'
         bad_ai(s, 'unresolved_reason must be no-independent-adjudicator')
-        # ambiguous annotation also forces the pool
+        # ---- spec 4.4 A': label value is scored content, never a trigger
+        # agreed (ambiguous, clarify) label, no item flag -> SCORED
+        # (regression test for the dropped label trigger)
         s = full_suite()
-        s['evidence']['annotation_log'][2]['label'] = AMB
-        bad_ai(s, 'x2: unresolved_reason must be no-independent-'
-                  'adjudicator')
+        s['evidence']['annotation_log'][0]['label'] = AMB
+        s['evidence']['annotation_log'][1]['label'] = AMB
+        o = ok_ai(s, 'READY_FOR_CONTENT_FREEZE')
+        assert 'recall: 1 scored of 3 items, 2 unresolved' in o, o
+        assert 'problem:' not in o, o
+        # declared ambiguous flag, both annotators agree ->
+        # unresolved no-independent-adjudicator (even on agreement)
+        s = full_suite()
+        s['items'][0]['ambiguous'] = True
+        s['items'][0]['disposition'] = 'unresolved'
+        s['items'][0]['unresolved_reason'] = 'no-independent-adjudicator'
+        o = ok_ai(s, 'recall: 0 scored of 3 items, 3 unresolved')
+        assert 'problem:' not in o, o
+        s = full_suite()
+        s['items'][0]['ambiguous'] = True
+        bad_ai(s, 'x1: disposition must be unresolved')
+        # ---- A' per-(id, turn) rollup
+        # multi-turn item: one pair disagrees -> unresolved
+        sg = sess('s-g', 'gpt-annotator-01', 'b1')
+        sm = sess('s-m', 'gemini-annotator-01', 'b2')
+        s = ai_base()
+        s['provenance']['annotation_sessions'] = [sg, sm]
+        s['evidence']['annotation_log'] = [
+            annrec('a1', 'm1', sg, L), annrec('a2', 'm1', sm, L),
+            annrec('a3', 'm1', sg, L, turn=2),
+            annrec('a4', 'm1', sm, LB2, turn=2)]
+        s['items'] = [ai_item('m1', prog='complete',
+                              ids=['a1', 'a2', 'a3', 'a4'], turns=(1, 2),
+                              disp='unresolved',
+                              reason='annotator-disagreement')]
+        ok_ai(s, 'recall: 0 scored of 1 items, 1 unresolved')
+        # multi-turn item: one pair missing a record -> partial, never
+        # scored
+        s = ai_base()
+        s['provenance']['annotation_sessions'] = [sg, sm]
+        s['evidence']['annotation_log'] = [
+            annrec('a1', 'm1', sg, L), annrec('a2', 'm1', sm, L),
+            annrec('a3', 'm1', sg, L, turn=2)]
+        s['items'] = [ai_item('m1', prog='partial', ids=['a1', 'a2', 'a3'],
+                              turns=(1, 2))]
+        o = ok_ai(s, '1 pending/partial item(s), 0 problems')
+        s['items'][0]['annotation_progress'] = 'complete'
+        bad_ai(s, 'does not match 3 annotation record(s); expected '
+                  'partial')
+        # duplicate record on one (id, turn) pair -> problem
+        s = ai_base()
+        s['provenance']['annotation_sessions'] = [sg, sm]
+        s['evidence']['annotation_log'] = [
+            annrec('a1', 'm1', sg, L), annrec('a2', 'm1', sm, L),
+            annrec('a5', 'm1', sg, L)]
+        s['items'] = [ai_item('m1', prog='complete', ids=['a1', 'a2', 'a5'],
+                              disp='scored')]
+        bad_ai(s, 'duplicate annotation records on (item, turn) 1')
+        # legacy item without flag fields -> no declared flag
+        s = ai_base()
+        s['provenance']['annotation_sessions'] = [sg, sm]
+        s['evidence']['annotation_log'] = [
+            annrec('a1', 'm1', sg, L), annrec('a2', 'm1', sm, L)]
+        it = ai_item('m1', prog='complete', ids=['a1', 'a2'],
+                     crit=None, amb=None, disp='scored')
+        assert 'critical' not in it and 'ambiguous' not in it
+        s['items'] = [it]
+        ok_ai(s, 'recall: 1 scored of 1 items')
+        # a record on an undeclared turn is never silently ignored
+        s['evidence']['annotation_log'].append(
+            annrec('a9', 'm1', sg, L, turn=7))
+        s['items'][0]['annotation_ids'].append('a9')
+        bad_ai(s, 'turn 7 which scored_turns does not declare')
         # ledger: append-only chain + tamper detection
         s = frozen_suite()
         s['evidence']['exclusion_ledger'] = ledger_ok(2)
@@ -425,6 +498,21 @@ def suite(label, argv, env):
                               disp='unresolved',
                               reason='annotator-disagreement')]
         ok_ai(s, 'READY_FOR_CONTENT_FREEZE')
+        # ---- positive end-to-end: the A' derived view validates CLEAN
+        view = json.loads((ROOT / 'tests' / 'selfeval' /
+                           'thai-core-ai-v1' /
+                           'thai-core-ai-v1.derived-view.json').read_text())
+        o = chk(view, 'view.json')
+        assert 'CONTENT_FROZEN: evidence complete' in o, o
+        assert 'problem:' not in o, o
+        for line in ['ambiguity: 8 scored of 10 items, 2 unresolved',
+                     'contradiction: 10 scored of 10 items',
+                     'correction: 8 scored of 10 items, 2 unresolved',
+                     'forget: 9 scored of 10 items, 1 unresolved',
+                     'recall: 10 scored of 10 items',
+                     'teach: 10 scored of 10 items',
+                     'unknown: 8 scored of 10 items, 2 unresolved']:
+            assert line in o, (line, o)
         print('ok %s: Thai dataset owner path + thai-core AI-authored '
               'evidence rules' % label)
 
