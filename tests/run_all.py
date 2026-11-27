@@ -156,6 +156,8 @@ SUITES = [
     ("test_usb_boot.py", "GPT/ESP USB image booted as usb-storage under OVMF, packaging identity, no writes"),
     ("test_shell_boot.py", "shell-first default boot: typed sh> session, framebuffer console pixels, respawn, BIOS+USB media"),
     ("test_shell_disk.py", "persistent shell-disk: KVOL survives reboot, /bin excluded from saves, RAM-only refusal"),
+    ("test_shell_edit.py", "shell edit line editor: load, change, save, persistence across reboot (QEMU)"),
+    ("test_shell_run.py", "shell run reports exited program status, shell respawns (QEMU)"),
     ("test_shell_run_args.py", "run PROG args: argv reaches the program, oversized vector refused before exec"),
     ("test_pci.py", "QEMU PCI config-space enumeration pinned vs monitor topology"),
     ("test_kcomp.py", "QEMU compositor window/z-order/cursor pixels on mock framebuffer"),
@@ -252,7 +254,7 @@ SUITES = [
 ]
 
 
-QUICK_SKIP = ("test_netguard.py", "test_agent_fetch_timeouts.py", "test_ahci.py", "test_nvme.py", "test_xhci.py", "test_usb_desktop.py", "test_usb_boot.py", "test_shell_boot.py", "test_shell_disk.py", "test_shell_run_args.py", "test_uefi_desktop.py", "test_desktop_disk.py", "test_winscale.py", "test_winkey_any.py", "test_desktop_session.py", "test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
+QUICK_SKIP = ("test_netguard.py", "test_agent_fetch_timeouts.py", "test_ahci.py", "test_nvme.py", "test_xhci.py", "test_usb_desktop.py", "test_usb_boot.py", "test_shell_boot.py", "test_shell_disk.py", "test_shell_edit.py", "test_shell_run.py", "test_shell_run_args.py", "test_uefi_desktop.py", "test_desktop_disk.py", "test_winscale.py", "test_winkey_any.py", "test_desktop_session.py", "test_mbmodules.py", "test_gui_session.py", "test_xkernel.py", "test_kernel_ir.py", "test_timer_irq.py", "test_keyboard_queue.py", "test_kfont.py", "test_mouse_packet.py", "test_mouse_syscalls.py", "test_winevents.py", "test_winlifecycle.py", "test_winkeys.py", "test_winpaint.py", "test_winpresent.py", "test_wintext.py", "test_ksurface.py", "test_pci.py", "test_kcomp.py")
 
 
 def main(argv):
