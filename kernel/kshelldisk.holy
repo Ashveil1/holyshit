@@ -1,0 +1,53 @@
+# shell with a persistent volume (B23): the shell-first boot of kshell plus
+# an ATA KVOL volume mounted before the packaged /bin is reloaded, so files
+# written and `sync`ed survive reboot. Explicit target only: sync writes the
+# primary IDE disk's sector 0 and the image (QEMU disposable disk; no real
+# hardware disk support, no atomic commit, 128 KiB cap, see kvol.holy).
+import kframebuffer
+import kmb
+import kpmm
+import ksyscall
+import kvfs
+import kramdisk
+import kvol
+import kkrfs
+import kuser
+import kfbcon
+if not kmb.usable():
+  raise "multiboot2 boot info missing"
+if kpmm.init() == 0:
+  raise "pmm init failed"
+frame = kframebuffer.descriptor()
+kframebuffer.map(frame)
+kfbcon.init(frame)
+kfbcon.put_str("holyshit os - shell (disk)\n")
+if not kvfs.vfs_init():
+  raise "vfs init failed"
+kkrfs.set_skip_bin(true)
+storage = kvol.mount()
+print "SHELL VOLUME", storage
+if storage > 0:
+  kfbcon.put_str("volume: restored files\n")
+elif storage == 0:
+  kfbcon.put_str("volume: blank, sync saves files\n")
+elif storage == -2:
+  kfbcon.put_str("volume: corrupt, sync refused\n")
+else:
+  kfbcon.put_str("volume: no disk, files are RAM only\n")
+if kramdisk.load() <= 0:
+  raise "ramdisk module missing"
+ksyscall.set_console(kfbcon.put_str)
+while true:
+  data = kvfs.read("/bin/uush")
+  if data == null:
+    raise "/bin/uush missing from ramdisk"
+  if kuser.load_image(kuser.payload_addr(data), len(data)) != 1:
+    raise "shell image rejected"
+  if not ksyscall.start():
+    raise "syscall handler failed"
+  if not kuser.enable_exec():
+    raise "exec enable failed"
+  print "shell start"
+  kuser.run()
+  print "shell exit", ksyscall.user_exit_code()
+  kfbcon.put_str("[sh exited - restarting]\n")

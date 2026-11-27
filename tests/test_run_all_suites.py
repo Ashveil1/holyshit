@@ -50,3 +50,9 @@ assert names.count("test_json_str_routes.py") == 1
 assert "test_json_str_routes.py" in quick_selected
 assert os.path.isfile(os.path.join(HERE, "test_json_str_routes.py"))
 print("1/1 run_all registers json_str 7-route parity exactly once on quick and full paths")
+
+assert names.count("test_shell_disk.py") == 1
+assert "test_shell_disk.py" in names, "shell-disk suite must run on the full path"
+assert "test_shell_disk.py" in run_all.QUICK_SKIP, "shell-disk boots QEMU; pinned to the full path like test_shell_boot"
+assert os.path.isfile(os.path.join(HERE, "test_shell_disk.py"))
+print("1/1 run_all registers shell-disk exactly once on the full path, quick-skipped with the other QEMU suites")

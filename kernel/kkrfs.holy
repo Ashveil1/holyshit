@@ -10,6 +10,17 @@
 # names statically.
 
 import kvfs
+# Volume saves can leave the trusted packaged /bin tree out: it is reloaded
+# from the ramdisk every boot and must not count against the volume cap.
+skip_bin_ = false
+def set_skip_bin(on):
+  global skip_bin_
+  skip_bin_ = on
+def keep(e):
+  if not skip_bin_:
+    return true
+  path = e[1]
+  return path != "/bin" and path[:5] != "/bin/"
 
 # helper names carry the le suffix on purpose: the x64 backend
 # resolves module-level names statically, and a generic name like rd32
@@ -97,7 +108,10 @@ def serialize():
   # -> [base, nbytes]: a fresh KRFS image of the current kvfs tree.
   # Entry order is kvfs.walk() inode order, a fixpoint of parse+serialize,
   # so an unchanged tree syncs to identical bytes.
-  entries = kvfs.walk()
+  entries = []
+  for w in kvfs.walk():
+    if keep(w):
+      append(entries, w)
   total = 8
   for e in entries:
     total = total + 8 + pad4le(byte_len(e[1]) - 1) + 4 + pad4le(byte_len(e[2]))
