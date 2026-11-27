@@ -2967,9 +2967,25 @@ A19LIN_SCENARIOS = [
      'readings detail'],
 ]
 
+# R1a: Thai reply twins. Pure-Thai lines only; English-framed Thai
+# commands keep English acks by design. Covers: means-ack, Thai recall
+# glue with ' คือ ' strip and ' และ ' join, where/mean fallbacks,
+# unknown-usage fallback, did-you-mean pending question, final fallback.
+R1A_SCENARIOS = [
+    ['ม้า คือ สัตว์', 'ม้า คืออะไร', 'ม้า คือ ผี', 'ม้า คืออะไร',
+     'ม้า หมายความว่าอะไร'],
+    ['remember นกฮูก คือ นก', 'นกฮูก คืออะไร', 'นกฮูก อยู่ไหน'],
+    ['remember ม้า คือ สัตว์', 'remember ม้า เป็น สัตว์', 'ม้า คืออะไร'],
+    ['remember ม้า คือ สัตว์', 'remember ม้า คือ ผี', 'ม้า คืออะไร'],
+    ['ผี คืออะไร', 'ผี อยู่ไหน', 'ผี หมายความว่าอะไร'],
+    ['remember แมว คือ สัตว์', 'remember มด คือ สัตว์',
+     'แมวมด คืออะไร', 'yes', 'แมว คืออะไร'],
+    ['ขขขข', 'ม้า เป็น สัตว์ ไหม', 'ม้า คือ สัตว์ หรือไม่'],
+]
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
             A15_SCENARIOS + A16_SCENARIOS + A17_SCENARIOS +
-            A18_SCENARIOS + A19_SCENARIOS + A19LIN_SCENARIOS):
+            A18_SCENARIOS + A19_SCENARIOS + A19LIN_SCENARIOS +
+            R1A_SCENARIOS):
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))
