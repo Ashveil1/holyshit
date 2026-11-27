@@ -35,6 +35,11 @@ assert "test_std_list.py" in quick_selected
 assert os.path.isfile(os.path.join(HERE, "test_std_list.py"))
 print("1/1 run_all registers std.list helpers exactly once on quick and full paths")
 
+assert names.count("test_shell_run.py") == 1
+assert "test_shell_run.py" in names, "shell-run suite must run on the full path"
+assert "test_shell_run.py" in run_all.QUICK_SKIP, "shell-run boots QEMU; pinned to the full path like test_shell_boot"
+assert os.path.isfile(os.path.join(HERE, "test_shell_run.py"))
+print("1/1 run_all registers shell-run exactly once on the full path, quick-skipped with the other QEMU suites")
 assert names.count("test_shell_run_args.py") == 1
 assert "test_shell_run_args.py" in names, "shell-args suite must run on the full path"
 assert "test_shell_run_args.py" in run_all.QUICK_SKIP, "shell-args boots QEMU; pinned to the full path like test_shell_boot"
