@@ -197,10 +197,11 @@ def main():
       continue
     if cmd == "run":
       if len(parts) > 1:
-        if sc(SYS_EXEC, saddr(parts[1]), len(parts[1]), 0, 0, 0, 0) < 0:
+        args = join(" ", parts[2:])
+        if sc(SYS_EXEC, saddr(parts[1]), len(parts[1]), saddr(args), len(args), 0, 0) < 0:
           print "exec failed"
       else:
-        print "usage: run <prog>"
+        print "usage: run <prog> [args...]"
       continue
     print "unknown command: " + cmd
   return null
