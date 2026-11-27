@@ -240,6 +240,9 @@ def thai_prop_split(t):
 THAI_PRON = ["มัน", "เขา", "เธอ", "อันนี้", "อันนั้น", "ตัวนี้", "ตัวนั้น",
              "ตัว นี้", "ตัว นั้น", "คนนี้", "คนนั้น", "คน นี้", "คน นั้น",
              "ที่นี่", "ที่นั่น", "ที่ นี่", "ที่ นั่น", "นี่", "นั่น", "โน่น"]
+# Mirrors _THAI_QMARK in agent/core.holy: question markers that keep a
+# bare statement from being absorbed as a fact.
+THAI_QMARK = ["ไหม", "อะไร", "ไหน", "ใคร", "เท่าไร", "หรือ", "อย่างไร"]
 THAI_QSUF = ['เป็นญาติอะไรของผม', 'เป็นญาติอะไรของฉัน', 'เป็นอะไรกับผม',
              'เป็นอะไรกับฉัน', 'อยู่ที่ไหน', 'มีอะไรอยู่', 'มีขนสีอะไร',
              'มีสีอะไร', 'เป็นเครื่องอะไร', 'คืออะไร', 'คือใคร',
@@ -2177,7 +2180,10 @@ class Oracle:
         if self.lang == 'th':
             bs = thai_prop_split(m)
             if (bs is not None and len(bs[0]) <= 40 and
-                    ' ' not in bs[0] and ':' not in bs[0]):
+                    ' ' not in bs[0] and ':' not in bs[0] and
+                    bs[0] not in THAI_PRON and 'ไม่' not in bs[0] and
+                    'อย่า' not in bs[0] and 'ลบ' not in bs[0] and
+                    not any(qm in bs[2] for qm in THAI_QMARK)):
                 return self._thai_teach(bs[0], bs[1], bs[2])
             return 'ไม่เข้าใจ' + self._particle()
         return 'i do not understand'

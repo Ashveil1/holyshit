@@ -150,6 +150,16 @@ _THAI_RELS = [" เป็น ", " คือ ", " อยู่ที่ ", " อ�
 # threshold on len can be model-exact for mixed strings: byte ops are
 # outside the core subset).
 _THAI_KEY_CAP = "กกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกก"
+# Question markers that keep a bare statement from being absorbed as a
+# fact: "ม้ามีสีอะไร" is a question, not a teaching. Applied to the
+# object of the bare-statement split only; explicit จำไว้ว่า frames keep
+# their teach intent. Substring match, byte/char-model independent.
+_THAI_QMARK = ["ไหม", "อะไร", "ไหน", "ใคร", "เท่าไร", "หรือ", "อย่างไร"]
+def _thai_q_obj(o):
+  for qm in _THAI_QMARK:
+    if find(o, qm) >= 0:
+      return true
+  return false
 def _thai_prop_split(t):
   best = -1
   brel = ""
@@ -3392,7 +3402,7 @@ def respond(state, line):
     return "ok, " + phrase + means_p + target
   if state["lang"] == "th":
     bs = _thai_prop_split(m)
-    if bs != null and len(bs[0]) <= len(_THAI_KEY_CAP) and find(bs[0], " ") < 0 and find(bs[0], ":") < 0:
+    if bs != null and len(bs[0]) <= len(_THAI_KEY_CAP) and find(bs[0], " ") < 0 and find(bs[0], ":") < 0 and not _in(bs[0], _THAI_PRON) and find(bs[0], "ไม่") < 0 and find(bs[0], "อย่า") < 0 and find(bs[0], "ลบ") < 0 and not _thai_q_obj(bs[2]):
       return _thai_teach(state, bs[0], bs[1], bs[2])
     return "ไม่เข้าใจ" + _particle(state)
   return "i do not understand"
