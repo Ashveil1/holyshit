@@ -49,7 +49,7 @@ rep, _ = session(base + ['มัน อยู่ไหน', 'what about it'])
 check('question only: topic unchanged by the clarification', rep[3] == 'all i know about วิชัย is คือ พ่อค้า' or 'วิชัย' in rep[3], rep)
 rep, _ = session(['remember มันฝรั่ง อยู่ ดิน', 'มันฝรั่ง อยู่ไหน', 'ช้าง อยู่ไหน', 'มันฝรั่ง คืออะไร'])
 check('negative: pronoun inside a longer name, and unknown nouns, are not clarified',
-      rep[1] == 'มันฝรั่ง อยู่ ดิน' and rep[2] == 'i do not know ช้าง' and 'clarif' not in rep[3] and 'did you mean' not in rep[3], rep)
+      rep[1] == 'มันฝรั่ง อยู่ ดิน' and rep[2] == 'ไม่รู้จักครับ ช้าง' and 'clarif' not in rep[3] and 'did you mean' not in rep[3], rep)
 rep, _ = session(['remember มัน อยู่ ที่นี่', 'มัน อยู่ไหน', 'forget มัน', 'มัน อยู่ไหน'])
 check('taught referent resolves normally, then clarifies again after forget',
       rep[1] == 'มัน อยู่ ที่นี่' and rep[3] == NOTOP % 'มัน', rep)

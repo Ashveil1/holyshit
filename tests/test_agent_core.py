@@ -197,6 +197,24 @@ def cwords(s):
     return out
 
 
+def _th_val(v):
+    return v[len('คือ '):] if v.startswith('คือ ') else v
+
+
+def thai_line(s):
+    if not nonascii(s):
+        return False
+    return not any(('a' <= c <= 'z') or ('A' <= c <= 'Z') for c in s)
+
+
+def join_th(values):
+    if len(values) == 1:
+        return values[0]
+    if len(values) == 2:
+        return values[0] + ' และ ' + values[1]
+    return ', '.join(values[:-1]) + ' และ ' + values[-1]
+
+
 def join_values(values):
     n = len(values)
     if n == 1:
@@ -238,6 +256,11 @@ class Oracle:
         self.url_srcs = []
         self.corpus_srcs = []
         self.test_fetch = False
+        self.lang = 'en'
+        self.register = 'khrup'
+
+    def _particle(self):
+        return 'ครับ'
 
     # --- A10 usage counting, mirroring core.holy ---
     def _cooc_add(self, key, value):
@@ -283,8 +306,14 @@ class Oracle:
                     if c > 0 and u not in awords:
                         merged[u] = merged.get(u, 0) + c
         if not merged:
+            if self.lang == 'th':
+                return 'ไม่รู้จัก' + self._particle() + ' ' + asked
             return 'i do not know ' + asked
         ranked = sorted(merged, key=lambda u: -merged[u])
+        if self.lang == 'th':
+            return ('ไม่เคยถูกสอน' + self._particle() + ' ' + asked +
+                    ' แต่จากการใช้ ' + asked + ' น่าจะเกี่ยวกับ ' +
+                    join_th(ranked[:3]))
         return ('i was never taught ' + asked +
                 ', but from how you used it, ' + asked +
                 ' seems related to ' + join_values(ranked[:3]))
@@ -1574,6 +1603,8 @@ class Oracle:
         defs = [e[2] for e in BUILTIN_RELS if e[0] == x]
         defs += [e[2] for e in self.rels if e[0] == x and e[1] == 'means']
         if defs:
+            if self.lang == 'th':
+                return x + sep + join_th(defs)
             return x + sep + join_values(defs)
         return self._recall(x)
 
@@ -1586,6 +1617,7 @@ class Oracle:
         if text and text[-1] == '.':
             text = text[:-1]
         m = lower_ascii(text)
+        self.lang = 'th' if thai_line(text) else 'en'
         if self.pending is not None:
             handled, reply = self._pending_reply(m)
             if handled:
@@ -1871,7 +1903,11 @@ class Oracle:
             self._add_rel(phrase, 'means', target)
             if target in self.facts:
                 self.aliases[phrase] = target
+            if self.lang == 'th':
+                return 'เข้าใจแล้ว' + self._particle() + ' ' + phrase + means_p + target
             return 'ok, ' + phrase + means_p + target
+        if self.lang == 'th':
+            return 'ไม่เข้าใจ' + self._particle()
         return 'i do not understand'
 
     def _pending_reply(self, m):
@@ -1937,9 +1973,14 @@ class Oracle:
         self._cooc_add(key, value)
         self._slog('taught', key)
         suffix = ' (filed as a kind-of)' if bare else ''
+        tsuffix = ' (บันทึกเป็นชนิด)' if bare else ''
         if key in self.order:
+            if self.lang == 'th':
+                return 'แก้ไว้แล้ว' + self._particle() + ' ' + key + ' คือ ' + value + tsuffix
             return 'updated ' + key + ' is ' + value + suffix
         self.order.append(key)
+        if self.lang == 'th':
+            return 'จำไว้แล้ว' + self._particle() + ' ' + key + ' คือ ' + value + tsuffix
         return 'remembered ' + key + ' is ' + value + suffix
 
     THAI_PRON = ('มัน', 'เขา', 'เธอ', 'อันนี้', 'อันนั้น', 'ตัวนี้', 'ตัวนั้น', 'ตัว นี้',
@@ -2032,17 +2073,26 @@ class Oracle:
         self.topic = key
         bare = self._learn_rel(key, value)
         suffix = ' (filed as a kind-of)' if bare else ''
+        tsuffix = ' (บันทึกเป็นชนิด)' if bare else ''
+        th = self.lang == 'th'
         if key not in self.facts:
             self.facts[key] = [value]
             self.order.append(key)
             self._cooc_add(key, value)
             self._slog('taught', key)
+            if th:
+                return 'จำไว้แล้ว' + self._particle() + ' ' + key + ' คือ ' + value + tsuffix
             return 'remembered ' + key + ' is ' + value + suffix
         if value in self.facts[key]:
+            if th:
+                return 'รู้อยู่แล้ว' + self._particle() + ' ' + key + ' คือ ' + value + tsuffix
             return 'i already know that ' + key + ' is ' + value + suffix
         self.facts[key].append(value)
         self._cooc_add(key, value)
         self._slog('taught', key)
+        if th:
+            return ('เพิ่มไว้แล้ว' + self._particle() + ' ' + key + ' คือ ' + value +
+                    tsuffix + self._isa_contra_warn(key, value))
         return ('added: ' + key + ' is ' + value + suffix +
                 self._isa_contra_warn(key, value))
 
@@ -2055,11 +2105,22 @@ class Oracle:
             return ' ' + join_values(relv)
         return ' is ' + join_values(plain) + ' and ' + join_values(relv)
 
+    def _values_glue_th(self, values):
+        plain = [_th_val(v) for v in values if not relvalue(v)]
+        relv = [v for v in values if relvalue(v)]
+        if not relv:
+            return ' คือ ' + join_th(plain)
+        if not plain:
+            return ' ' + join_th(relv)
+        return ' คือ ' + join_th(plain) + ' และ ' + join_th(relv)
+
     def _recall(self, asked):
         key = self._resolve(asked)
         if key is not None:
             self.topic = key
             self._slog('asked', key)
+            if self.lang == 'th':
+                return 'รู้' + self._particle() + ' ' + key + self._values_glue_th(self.facts[key])
             return 'i know ' + key + self._values_glue(self.facts[key])
         cands, keys = self._candidates(asked)
         if len(cands) > 1:
@@ -2070,13 +2131,19 @@ class Oracle:
             keys = [keys[i] for i in scored]
         if 0 < len(cands) <= 3:
             self.pending = {'cands': cands, 'keys': keys}
+            if self.lang == 'th':
+                return 'หมายถึง ' + ', '.join(cands) + ' ใช่ไหม' + self._particle() + '?'
             return 'did you mean ' + ', '.join(cands) + '?'
         if len(cands) > 3:
+            if self.lang == 'th':
+                return 'ไม่รู้จัก' + self._particle() + ' ' + asked
             return 'i do not know ' + asked
         return self._usage_reply(asked)
 
     def _forget(self, key):
         if key not in self.facts:
+            if self.lang == 'th':
+                return 'ไม่รู้จัก' + self._particle() + ' ' + key
             return 'i do not know ' + key
         vals = self.facts[key]
         del self.facts[key]
@@ -2091,18 +2158,30 @@ class Oracle:
         if len(self.forgotten) > 20:
             self.forgotten = self.forgotten[-20:]
         self._slog('forgot', key)
+        if self.lang == 'th':
+            return 'ลืมแล้ว' + self._particle() + ' ' + key
         return 'forgot ' + key
 
     def _list_reply(self):
         n = len(self.order)
+        th = self.lang == 'th'
         if n == 0:
+            if th:
+                return 'ยังไม่รู้อะไรเลย' + self._particle()
             return 'i know nothing yet'
         if n > 50:
+            if th:
+                return ('รู้ ' + str(n) + ' อย่าง' + self._particle() + ': ' +
+                        ', '.join(self.order[:50]) + ' และอีก ' + str(n - 50) + ' อย่าง')
             return ('i know ' + str(n) + ' things: ' +
                     ', '.join(self.order[:50]) + ', and ' + str(n - 50) + ' more')
         joined = ', '.join(self.order)
         if n == 1:
+            if th:
+                return 'รู้ 1 อย่าง' + self._particle() + ': ' + joined
             return 'i know 1 thing: ' + joined
+        if th:
+            return 'รู้ ' + str(n) + ' อย่าง' + self._particle() + ': ' + joined
         return 'i know ' + str(n) + ' things: ' + joined
 
     def _know_reply(self):
