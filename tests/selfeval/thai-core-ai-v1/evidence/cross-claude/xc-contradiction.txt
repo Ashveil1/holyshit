@@ -1,0 +1,104 @@
+You are an annotator. Below is a short scripted conversation scenario
+for each item, in Thai, written as numbered user turns. For each marked
+turn, classify what a correct agent reply to that turn must do into the
+closed annotation schema.
+
+Rules:
+- Only facts stated in the item's own earlier turns count as known. Each
+  item is independent.
+- A turn is marked when the item lists "classify: turn N" beneath its
+  turns. Classify exactly the marked turns, no others.
+- Evaluate each marked turn against the item's knowledge state
+  immediately before that turn. Apply earlier teaching, forgetting, and
+  correction instructions in turn order. Only turns before the marked
+  turn count; later turns never count. A forgotten fact is no longer
+  known; unrelated facts remain known, and a corrected fact is
+  represented by its corrected value.
+- Output, for each marked turn, the item ID and turn number on their own
+  line (for example "ex-1 turn 2"), then a JSON code block containing
+  exactly ONE JSON object.
+- The object has exactly two required fields: "epistemic" and
+  "action". No other fields are permitted.
+- An optional third field "rationale" MAY be included; when present it
+  must be a NON-EMPTY string (Thai or English) that introduces no
+  facts beyond the scenario and names no prompt, rubric or provenance
+  text; omit the field entirely when unused. Rationale is never
+  scored.
+- "epistemic" must be one of: supported, unknown, contradicted,
+  ambiguous, n/a
+- "action" must be one of: answer, abstain, clarify, acknowledge,
+  not_understood, other
+- Use the exact English tokens above.
+- Output exactly the marked (id, turn) pairs, once each. A response
+  that omits a marked pair, repeats one, or adds a pair that was not
+  marked is invalid.
+- Output items in the order given; within an item, output marked turns
+  in ascending turn order. Add nothing else.
+
+Annotation semantics (apply these definitions exactly; they override
+intuition about the enum names):
+- recall: the marked turn asks for a value taught in an earlier turn
+  and not since forgotten. A correct agent replies with the taught
+  value: {"epistemic":
+  "supported", "action": "answer"}.
+- unknown: the marked turn asks for a value that is not available in
+  the item's current knowledge state - either it was never taught, the
+  requested referent is entirely missing with no competing referents, or
+  it was taught earlier but subsequently forgotten. A correct agent
+  declines and invents nothing: {"epistemic": "unknown", "action":
+  "abstain"}.
+- contradiction: the marked turn asserts something that contradicts a
+  taught fact, WITHOUT any correction marker. A correct agent preserves
+  the taught fact and answers with it, signaling the conflict:
+  {"epistemic": "contradicted", "action": "answer"}.
+- ambiguity: the marked turn has multiple defensible referents or
+  readings. A correct agent asks a clarifying question that names the
+  ambiguity: {"epistemic": "ambiguous", "action": "clarify"}.
+- teach: the marked turn states a new fact in a teaching shape. A
+  correct agent acknowledges, and the fact is accepted into the
+  scenario's knowledge state: {"epistemic": "supported", "action":
+  "acknowledge"}.
+- forget: the marked turn asks the agent to forget a taught fact. A
+  correct agent acknowledges; afterwards the fact is no longer known,
+  and UNRELATED taught facts remain known and recallable - forgetting
+  more or less than asked fails: {"epistemic": "unknown", "action":
+  "acknowledge"}.
+- correction: the marked turn corrects a taught fact with an explicit
+  correction marker. A correct agent acknowledges, serves the
+  corrected value afterwards, and the OLD value is no longer served:
+  {"epistemic": "supported", "action": "acknowledge"}.
+
+Items:
+
+xc-01
+1. จำไว้ว่าช่างทำเครื่องปั้นชื่อ “อิศรา” มีผ้ากันเปื้อน 2 ผืนเท่านั้นค่ะ
+2. จบเรื่องของอิศราไว้เท่านี้ค่ะ
+3. จำไว้ว่าน้ำแกงข้นชื่อ “แกงเม็ดดาว” เป็นแกงถั่วค่ะ
+4. จำไว้ว่าน้ำแกงข้นชื่อ “แกงเม็ดดาว” อยู่ในหม้อดินสีดำค่ะ
+5. จำไว้ว่าน้ำแกงข้นชื่อ “แกงเม็ดดาว” มีระดับความเผ็ด 1 จาก 5 ค่ะ
+6. จำไว้ว่าน้ำแกงข้นชื่อ “แกงเม็ดดาว” กำลังเดือดอยู่ค่ะ
+7. มันมีระดับความเผ็ด 5 จาก 5 ใช่ไหมคะ
+classify: turn 7
+
+xc-02
+1. จำไว้ว่าตอนนี้ลานส่องเงาอยู่ที่สวนก้อนเมฆ
+2. ตอนนี้ลานส่องเงาอยู่ที่ลานหินสีคราม
+classify: turn 2
+
+xc-03
+1. จำไว้ว่ากล่องจัดชุดรุ่น “เส้นแสง” มีป้ายตราประจำตัวคำว่า “แสงดิน” เพียง 1 ป้ายเท่านั้นครับ
+2. กล่องจัดชุดรุ่น “เส้นแสง” มีป้ายตราประจำตัวคำว่า “เมฆแดง” ครับ
+classify: turn 2
+
+xc-04
+1. จำไว้ว่าผู้ตรวจเอกสารชื่อ “ปิยดล” มีแฟ้มสีเทา 1 แฟ้มเท่านั้นค่ะ
+2. จบเรื่องของปิยดลไว้ก่อนค่ะ
+3. จำไว้ว่าขนมกรอบชื่อ “กรอบละไม” เป็นขนมอบค่ะ
+4. มันไม่ใช่ขนมอบค่ะ
+classify: turn 4
+
+xc-05
+1. จำไว้ว่ารถเข็นรุ่น “ลายคลื่น” มีตะกร้าผ้า 1 ใบเท่านั้น
+2. จำไว้ว่าวันนี้คนชื่อ “วรากร” อายุ 32 ปี
+3. วันนี้คนชื่อ “วรากร” อายุ 45 ปี
+classify: turn 3

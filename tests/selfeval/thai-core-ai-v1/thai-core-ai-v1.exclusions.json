@@ -1,0 +1,15 @@
+{
+ "id": "thai-core-ai-v1-exclusions",
+ "version": 1,
+ "note": "Exclusion ledger for thai-core-ai v1. Objective defects only; semantic disputes go to the unresolved pool, never here. Append-only, hash-chained.",
+ "entries": [
+  {
+   "seq": 0,
+   "kind": "genesis",
+   "date": "2026-11-27",
+   "manifest_sha256": "5c318e3b48398ceec0dca1770dafcc82dc32dcebe729fd6eaa31d58ff748d259",
+   "prev_entry_hash": "6f3def19bdc6328492fe7711dfd4c271d3c511c04ed3cccbffe4a216b10324fa",
+   "entry_hash": "9cfde10225d97257b3ea9426874412c64d6cd92ce91be36e3db9c442ccc15416"
+  }
+ ]
+}

@@ -1,0 +1,69 @@
+tc-01 turn 3
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```
+
+tc-02 turn 7
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```
+
+tc-03 turn 8
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```
+
+tc-04 turn 4
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```
+
+tc-05 turn 4
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```
+
+tc-06 turn 2
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```
+
+tc-07 turn 2
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```
+
+tc-08 turn 2
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```
+
+tc-09 turn 5
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```
+
+tc-10 turn 2
+
+```json
+{"epistemic": "supported", "action": "answer"}
+
+```

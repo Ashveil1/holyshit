@@ -1,0 +1,109 @@
+tc-01 turn 3
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify",
+  "rationale": "Two lamps named ดวงดาว exist in different rooms with different sizes, so มัน is ambiguous."
+}
+
+```
+
+tc-02 turn 3
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify",
+  "rationale": "ซุปลูกแก้ว is taught as an appetizer at one shop and a main dish at another shop."
+}
+
+```
+
+tc-03 turn 2
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify",
+  "rationale": "อาชาเมฆ is a horse standing next to a chessboard, making whether it is a real horse or a chess piece ambiguous."
+}
+
+```
+
+tc-04 turn 3
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify",
+  "rationale": "Turn 2 introduces both a cow named ทองคำ and a buffalo named สายฟ้า, so มัน has two possible referents."
+}
+
+```
+
+tc-05 turn 3
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify",
+  "rationale": "Two distinct places with locations are taught in turns 1 and 2, so มัน is ambiguous."
+}
+
+```
+
+tc-06 turn 2
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain",
+  "rationale": "The age or construction time of ศาล is not stated in earlier turns."
+}
+
+```
+
+tc-07 turn 2
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify",
+  "rationale": "Two types of tape are mentioned and no location for either is taught."
+}
+
+```
+
+tc-08 turn 2
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain",
+  "rationale": "No skin or face color is stated for อรอุมา."
+}
+
+```
+
+tc-09 turn 5
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify",
+  "rationale": "Two different sweets, กรอบตะวัน and เม็ดจันทร์, are taught in earlier turns, so มัน is ambiguous."
+}
+
+```
+
+tc-10 turn 3
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify",
+  "rationale": "Two different people named ธาริน are taught with different occupations."
+}
+
+```

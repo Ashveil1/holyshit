@@ -1,0 +1,259 @@
+tc-01 turn 4
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-01 turn 5
+
+```json
+{
+  "epistemic": "supported",
+  "action": "answer"
+}
+
+```
+
+tc-01 turn 6
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-02 turn 5
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-02 turn 6
+
+```json
+{
+  "epistemic": "supported",
+  "action": "answer"
+}
+
+```
+
+tc-02 turn 7
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-03 turn 4
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-03 turn 5
+
+```json
+{
+  "epistemic": "supported",
+  "action": "answer"
+}
+
+```
+
+tc-03 turn 6
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-04 turn 2
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-04 turn 3
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-05 turn 2
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-05 turn 3
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-06 turn 2
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-06 turn 3
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-07 turn 2
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-07 turn 3
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-08 turn 4
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-08 turn 5
+
+```json
+{
+  "epistemic": "supported",
+  "action": "answer"
+}
+
+```
+
+tc-08 turn 6
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-09 turn 6
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-09 turn 7
+
+```json
+{
+  "epistemic": "supported",
+  "action": "answer"
+}
+
+```
+
+tc-09 turn 8
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-10 turn 3
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "acknowledge"
+}
+
+```
+
+tc-10 turn 4
+
+```json
+{
+  "epistemic": "supported",
+  "action": "answer"
+}
+
+```
+
+tc-10 turn 5
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```

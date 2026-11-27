@@ -1,0 +1,18 @@
+tc-recall: marks=1 non-final=(False,) -> 1 label-set(s)
+    ['supported+answer']
+tc-unknown: marks=1 non-final=(False,) -> 1 label-set(s)
+    ['unknown+abstain']
+tc-contradiction: marks=1 non-final=(False,) -> 1 label-set(s)
+    ['contradicted+answer']
+tc-ambiguity: marks=1 non-final=(False,) -> 1 label-set(s)
+    ['ambiguous+clarify']
+tc-teach: marks=1 non-final=(False,) -> 1 label-set(s)
+    ['supported+acknowledge']
+tc-teach: marks=2 non-final=(True, False) -> 1 label-set(s)
+    ['supported+acknowledge', 'supported+answer']
+tc-forget: marks=2 non-final=(True, False) -> 1 label-set(s)
+    ['unknown+acknowledge', 'unknown+abstain']
+tc-forget: marks=3 non-final=(True, True, False) -> 1 label-set(s)
+    ['unknown+acknowledge', 'supported+answer', 'unknown+abstain']
+tc-correction: marks=2 non-final=(True, False) -> 1 label-set(s)
+    ['supported+acknowledge', 'supported+answer']

@@ -1,0 +1,527 @@
+{
+ "generated_by": "Python 3.10.12",
+ "annotator_id": "gemini-annotator-01",
+ "seed_rule": "seed = int.from_bytes(sha256(batch_id + ':' + annotator_id)[:8], 'big'); random.Random(seed).shuffle",
+ "preflight": [
+  {
+   "batch_id": "pf-recall",
+   "category": "recall",
+   "order": [
+    {
+     "opaque": "pf-01",
+     "example_id": "gemini-preflight-recall-4"
+    },
+    {
+     "opaque": "pf-02",
+     "example_id": "gemini-preflight-recall-3"
+    },
+    {
+     "opaque": "pf-03",
+     "example_id": "gemini-preflight-recall-5"
+    },
+    {
+     "opaque": "pf-04",
+     "example_id": "gemini-preflight-recall-2"
+    },
+    {
+     "opaque": "pf-05",
+     "example_id": "gemini-preflight-recall-1"
+    }
+   ]
+  },
+  {
+   "batch_id": "pf-unknown",
+   "category": "unknown",
+   "order": [
+    {
+     "opaque": "pf-01",
+     "example_id": "gemini-preflight-unknown-1"
+    },
+    {
+     "opaque": "pf-02",
+     "example_id": "gemini-preflight-unknown-5"
+    },
+    {
+     "opaque": "pf-03",
+     "example_id": "gemini-preflight-unknown-3"
+    },
+    {
+     "opaque": "pf-04",
+     "example_id": "gemini-preflight-unknown-4"
+    },
+    {
+     "opaque": "pf-05",
+     "example_id": "gemini-preflight-unknown-2"
+    }
+   ]
+  },
+  {
+   "batch_id": "pf-contradiction",
+   "category": "contradiction",
+   "order": [
+    {
+     "opaque": "pf-01",
+     "example_id": "gemini-preflight-contradiction-2"
+    },
+    {
+     "opaque": "pf-02",
+     "example_id": "gemini-preflight-contradiction-5"
+    },
+    {
+     "opaque": "pf-03",
+     "example_id": "gemini-preflight-contradiction-1"
+    },
+    {
+     "opaque": "pf-04",
+     "example_id": "gemini-preflight-contradiction-4"
+    },
+    {
+     "opaque": "pf-05",
+     "example_id": "gemini-preflight-contradiction-3"
+    }
+   ]
+  },
+  {
+   "batch_id": "pf-ambiguity",
+   "category": "ambiguity",
+   "order": [
+    {
+     "opaque": "pf-01",
+     "example_id": "gemini-preflight-ambiguity-2"
+    },
+    {
+     "opaque": "pf-02",
+     "example_id": "gemini-preflight-ambiguity-3"
+    },
+    {
+     "opaque": "pf-03",
+     "example_id": "gemini-preflight-ambiguity-1"
+    },
+    {
+     "opaque": "pf-04",
+     "example_id": "gemini-preflight-ambiguity-4"
+    },
+    {
+     "opaque": "pf-05",
+     "example_id": "gemini-preflight-ambiguity-5"
+    }
+   ]
+  },
+  {
+   "batch_id": "pf-teach",
+   "category": "teach",
+   "order": [
+    {
+     "opaque": "pf-01",
+     "example_id": "gemini-preflight-teach-3"
+    },
+    {
+     "opaque": "pf-02",
+     "example_id": "gemini-preflight-teach-1"
+    },
+    {
+     "opaque": "pf-03",
+     "example_id": "gemini-preflight-teach-2"
+    },
+    {
+     "opaque": "pf-04",
+     "example_id": "gemini-preflight-teach-4"
+    },
+    {
+     "opaque": "pf-05",
+     "example_id": "gemini-preflight-teach-5"
+    }
+   ]
+  },
+  {
+   "batch_id": "pf-forget",
+   "category": "forget",
+   "order": [
+    {
+     "opaque": "pf-01",
+     "example_id": "gemini-preflight-forget-1"
+    },
+    {
+     "opaque": "pf-02",
+     "example_id": "gemini-preflight-forget-3"
+    },
+    {
+     "opaque": "pf-03",
+     "example_id": "gemini-preflight-forget-4"
+    },
+    {
+     "opaque": "pf-04",
+     "example_id": "gemini-preflight-forget-5"
+    },
+    {
+     "opaque": "pf-05",
+     "example_id": "gemini-preflight-forget-2"
+    }
+   ]
+  },
+  {
+   "batch_id": "pf-correction",
+   "category": "correction",
+   "order": [
+    {
+     "opaque": "pf-01",
+     "example_id": "gemini-preflight-correction-1"
+    },
+    {
+     "opaque": "pf-02",
+     "example_id": "gemini-preflight-correction-2"
+    },
+    {
+     "opaque": "pf-03",
+     "example_id": "gemini-preflight-correction-4"
+    },
+    {
+     "opaque": "pf-04",
+     "example_id": "gemini-preflight-correction-3"
+    },
+    {
+     "opaque": "pf-05",
+     "example_id": "gemini-preflight-correction-5"
+    }
+   ]
+  }
+ ],
+ "corpus": [
+  {
+   "batch_id": "tc-recall",
+   "category": "recall",
+   "prompt_sha256": "fc1f9cd8a47f6916c0a3de52d321f668b9d72e9c0099ea62ca8f391c623d04cf",
+   "order": [
+    {
+     "opaque": "tc-01",
+     "item_id": "recall-S06"
+    },
+    {
+     "opaque": "tc-02",
+     "item_id": "recall-S05"
+    },
+    {
+     "opaque": "tc-03",
+     "item_id": "recall-S10"
+    },
+    {
+     "opaque": "tc-04",
+     "item_id": "recall-S08"
+    },
+    {
+     "opaque": "tc-05",
+     "item_id": "recall-S07"
+    },
+    {
+     "opaque": "tc-06",
+     "item_id": "recall-S04"
+    },
+    {
+     "opaque": "tc-07",
+     "item_id": "recall-S01"
+    },
+    {
+     "opaque": "tc-08",
+     "item_id": "recall-S02"
+    },
+    {
+     "opaque": "tc-09",
+     "item_id": "recall-S09"
+    },
+    {
+     "opaque": "tc-10",
+     "item_id": "recall-S03"
+    }
+   ]
+  },
+  {
+   "batch_id": "tc-unknown",
+   "category": "unknown",
+   "prompt_sha256": "51b0933c3e326313e7a957f8d3355c8f3b5a036cfd09b55d84b5385fdb481095",
+   "order": [
+    {
+     "opaque": "tc-01",
+     "item_id": "unknown-S06"
+    },
+    {
+     "opaque": "tc-02",
+     "item_id": "unknown-S03"
+    },
+    {
+     "opaque": "tc-03",
+     "item_id": "unknown-S07"
+    },
+    {
+     "opaque": "tc-04",
+     "item_id": "unknown-S08"
+    },
+    {
+     "opaque": "tc-05",
+     "item_id": "unknown-S01"
+    },
+    {
+     "opaque": "tc-06",
+     "item_id": "unknown-S02"
+    },
+    {
+     "opaque": "tc-07",
+     "item_id": "unknown-S04"
+    },
+    {
+     "opaque": "tc-08",
+     "item_id": "unknown-S10"
+    },
+    {
+     "opaque": "tc-09",
+     "item_id": "unknown-S05"
+    },
+    {
+     "opaque": "tc-10",
+     "item_id": "unknown-S09"
+    }
+   ]
+  },
+  {
+   "batch_id": "tc-contradiction",
+   "category": "contradiction",
+   "prompt_sha256": "0d9272d84b0666bdc5b4a72984c99810e52552b2bca2f1909dee20bce1a6ba6e",
+   "order": [
+    {
+     "opaque": "tc-01",
+     "item_id": "contradiction-S10"
+    },
+    {
+     "opaque": "tc-02",
+     "item_id": "contradiction-S02"
+    },
+    {
+     "opaque": "tc-03",
+     "item_id": "contradiction-S01"
+    },
+    {
+     "opaque": "tc-04",
+     "item_id": "contradiction-S04"
+    },
+    {
+     "opaque": "tc-05",
+     "item_id": "contradiction-S06"
+    },
+    {
+     "opaque": "tc-06",
+     "item_id": "contradiction-S08"
+    },
+    {
+     "opaque": "tc-07",
+     "item_id": "contradiction-S03"
+    },
+    {
+     "opaque": "tc-08",
+     "item_id": "contradiction-S09"
+    },
+    {
+     "opaque": "tc-09",
+     "item_id": "contradiction-S07"
+    },
+    {
+     "opaque": "tc-10",
+     "item_id": "contradiction-S05"
+    }
+   ]
+  },
+  {
+   "batch_id": "tc-ambiguity",
+   "category": "ambiguity",
+   "prompt_sha256": "3a1b206821ee02f4b276d8edd916a89d12d04314612b6667c0511448193eb92e",
+   "order": [
+    {
+     "opaque": "tc-01",
+     "item_id": "ambiguity-S09"
+    },
+    {
+     "opaque": "tc-02",
+     "item_id": "ambiguity-S05"
+    },
+    {
+     "opaque": "tc-03",
+     "item_id": "ambiguity-S02"
+    },
+    {
+     "opaque": "tc-04",
+     "item_id": "ambiguity-S07"
+    },
+    {
+     "opaque": "tc-05",
+     "item_id": "ambiguity-S08"
+    },
+    {
+     "opaque": "tc-06",
+     "item_id": "ambiguity-S03"
+    },
+    {
+     "opaque": "tc-07",
+     "item_id": "ambiguity-S04"
+    },
+    {
+     "opaque": "tc-08",
+     "item_id": "ambiguity-S01"
+    },
+    {
+     "opaque": "tc-09",
+     "item_id": "ambiguity-S10"
+    },
+    {
+     "opaque": "tc-10",
+     "item_id": "ambiguity-S06"
+    }
+   ]
+  },
+  {
+   "batch_id": "tc-teach",
+   "category": "teach",
+   "prompt_sha256": "99b2a2e553b11eecea42acd805c697c2a06c2d620a15ecd3be6767a3317e904f",
+   "order": [
+    {
+     "opaque": "tc-01",
+     "item_id": "teach-S02"
+    },
+    {
+     "opaque": "tc-02",
+     "item_id": "teach-S06"
+    },
+    {
+     "opaque": "tc-03",
+     "item_id": "teach-S04"
+    },
+    {
+     "opaque": "tc-04",
+     "item_id": "teach-S03"
+    },
+    {
+     "opaque": "tc-05",
+     "item_id": "teach-S05"
+    },
+    {
+     "opaque": "tc-06",
+     "item_id": "teach-S08"
+    },
+    {
+     "opaque": "tc-07",
+     "item_id": "teach-S07"
+    },
+    {
+     "opaque": "tc-08",
+     "item_id": "teach-S10"
+    },
+    {
+     "opaque": "tc-09",
+     "item_id": "teach-S09"
+    },
+    {
+     "opaque": "tc-10",
+     "item_id": "teach-S01"
+    }
+   ]
+  },
+  {
+   "batch_id": "tc-forget",
+   "category": "forget",
+   "prompt_sha256": "0d622d7a07f194eb98ced8d1e961db39ed70c4480167c2d6a9950fc91be83156",
+   "order": [
+    {
+     "opaque": "tc-01",
+     "item_id": "forget-S08"
+    },
+    {
+     "opaque": "tc-02",
+     "item_id": "forget-S10"
+    },
+    {
+     "opaque": "tc-03",
+     "item_id": "forget-S05"
+    },
+    {
+     "opaque": "tc-04",
+     "item_id": "forget-S01"
+    },
+    {
+     "opaque": "tc-05",
+     "item_id": "forget-S04"
+    },
+    {
+     "opaque": "tc-06",
+     "item_id": "forget-S03"
+    },
+    {
+     "opaque": "tc-07",
+     "item_id": "forget-S02"
+    },
+    {
+     "opaque": "tc-08",
+     "item_id": "forget-S06"
+    },
+    {
+     "opaque": "tc-09",
+     "item_id": "forget-S09"
+    },
+    {
+     "opaque": "tc-10",
+     "item_id": "forget-S07"
+    }
+   ]
+  },
+  {
+   "batch_id": "tc-correction",
+   "category": "correction",
+   "prompt_sha256": "0c3b3b66bcccb851667411e6b4e08370b2b21cc46b002de3ff87cba8f0b43bb2",
+   "order": [
+    {
+     "opaque": "tc-01",
+     "item_id": "correction-S05"
+    },
+    {
+     "opaque": "tc-02",
+     "item_id": "correction-S03"
+    },
+    {
+     "opaque": "tc-03",
+     "item_id": "correction-S04"
+    },
+    {
+     "opaque": "tc-04",
+     "item_id": "correction-S09"
+    },
+    {
+     "opaque": "tc-05",
+     "item_id": "correction-S10"
+    },
+    {
+     "opaque": "tc-06",
+     "item_id": "correction-S02"
+    },
+    {
+     "opaque": "tc-07",
+     "item_id": "correction-S01"
+    },
+    {
+     "opaque": "tc-08",
+     "item_id": "correction-S07"
+    },
+    {
+     "opaque": "tc-09",
+     "item_id": "correction-S08"
+    },
+    {
+     "opaque": "tc-10",
+     "item_id": "correction-S06"
+    }
+   ]
+  }
+ ],
+ "corpus_template": {
+  "protocol": "corpus-v1",
+  "template_file": "TEMPLATE-corpus-v1.1.txt",
+  "template_sha256": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+  "renderer": "thai-phase4-build-corpus.py",
+  "renderer_sha256": "800a8b7dc99794d17b03fe34ea4bf9887f15915d0f35deaa9221e6b3bc338b77"
+ }
+}

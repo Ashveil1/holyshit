@@ -1,0 +1,24 @@
+xc-01 turn 2
+```json
+{"epistemic": "supported", "action": "answer", "rationale": "Turn 1 taught that the nursery 'หอรุ้งพฤกษ์' is in the หุบผาม่านหมอก valley, so the location is recalled."}
+```
+
+xc-02 turn 8
+```json
+{"epistemic": "supported", "action": "answer", "rationale": "The most recent referent is the baked wafer snack 'กรอบพราย', and turn 5 taught its flavor as salty-sweet. The earlier turns about ศิวกร are unrelated and do not compete."}
+```
+
+xc-03 turn 7
+```json
+{"epistemic": "supported", "action": "answer", "rationale": "Turn 3 taught that the baked wafer snack 'กรอบละออง' is a grain snack, and 'มัน' refers to it after the return in turn 6."}
+```
+
+xc-04 turn 2
+```json
+{"epistemic": "supported", "action": "answer", "rationale": "Turn 1 taught that the spiral-pattern glass jar holds 3 star-patterned marbles only, so the contents are recalled."}
+```
+
+xc-05 turn 3
+```json
+{"epistemic": "supported", "action": "answer", "rationale": "Turn 2 taught that ภัทรเมฆ is 164 cm tall. The copper-lid box fact in turn 1 is unrelated."}
+```

@@ -1,0 +1,211 @@
+{
+ "generated_by": "Python 3.10.12",
+ "annotator_id": "claude-annotator-01",
+ "annotates": "GPT-authored items (family B)",
+ "seed_rule": "seed = int.from_bytes(sha256(batch_id + ':' + annotator_id)[:8], 'big'); random.Random(seed).shuffle",
+ "corpus_template": {
+  "protocol": "corpus-v1",
+  "template_file": "TEMPLATE-corpus-v1.1.txt",
+  "template_sha256": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+  "renderer": "thai-phase4-build-cross.py",
+  "renderer_sha256": "2bf370ce4d53903735931fa2dca32029e60dae3c12e3cdb1325599d4a407d2f4"
+ },
+ "batches": [
+  {
+   "batch_id": "xc-recall",
+   "category": "recall",
+   "prompt_sha256": "97fe1a62f8b5a1dba854a2522e179e9e03b4cdb1a47a5aafc21a0ac0d5e7625f",
+   "pair_count": 5,
+   "order": [
+    {
+     "opaque": "xc-01",
+     "item_id": "recall-S03"
+    },
+    {
+     "opaque": "xc-02",
+     "item_id": "recall-S10"
+    },
+    {
+     "opaque": "xc-03",
+     "item_id": "recall-S05"
+    },
+    {
+     "opaque": "xc-04",
+     "item_id": "recall-S04"
+    },
+    {
+     "opaque": "xc-05",
+     "item_id": "recall-S06"
+    }
+   ]
+  },
+  {
+   "batch_id": "xc-unknown",
+   "category": "unknown",
+   "prompt_sha256": "7e515e3abf91e07428eac74f7e184c9f9868dfd6b4be322dd4549f576a313f68",
+   "pair_count": 5,
+   "order": [
+    {
+     "opaque": "xc-01",
+     "item_id": "unknown-S10"
+    },
+    {
+     "opaque": "xc-02",
+     "item_id": "unknown-S08"
+    },
+    {
+     "opaque": "xc-03",
+     "item_id": "unknown-S04"
+    },
+    {
+     "opaque": "xc-04",
+     "item_id": "unknown-S07"
+    },
+    {
+     "opaque": "xc-05",
+     "item_id": "unknown-S02"
+    }
+   ]
+  },
+  {
+   "batch_id": "xc-contradiction",
+   "category": "contradiction",
+   "prompt_sha256": "f098aad66c2cda7e12c7ba983db1bdd75894ad4c1c45371a45c75b3a3ed4cdb7",
+   "pair_count": 5,
+   "order": [
+    {
+     "opaque": "xc-01",
+     "item_id": "contradiction-S10"
+    },
+    {
+     "opaque": "xc-02",
+     "item_id": "contradiction-S03"
+    },
+    {
+     "opaque": "xc-03",
+     "item_id": "contradiction-S04"
+    },
+    {
+     "opaque": "xc-04",
+     "item_id": "contradiction-S05"
+    },
+    {
+     "opaque": "xc-05",
+     "item_id": "contradiction-S06"
+    }
+   ]
+  },
+  {
+   "batch_id": "xc-ambiguity",
+   "category": "ambiguity",
+   "prompt_sha256": "128c5a16a1af68d05734b8a4a77d214f62458e3ffb4adac1294b4a555b7eb4dd",
+   "pair_count": 5,
+   "order": [
+    {
+     "opaque": "xc-01",
+     "item_id": "ambiguity-S08"
+    },
+    {
+     "opaque": "xc-02",
+     "item_id": "ambiguity-S10"
+    },
+    {
+     "opaque": "xc-03",
+     "item_id": "ambiguity-S01"
+    },
+    {
+     "opaque": "xc-04",
+     "item_id": "ambiguity-S02"
+    },
+    {
+     "opaque": "xc-05",
+     "item_id": "ambiguity-S06"
+    }
+   ]
+  },
+  {
+   "batch_id": "xc-teach",
+   "category": "teach",
+   "prompt_sha256": "9a27de5482fe3c6a26550ece40ad13cdb929e1a527c23a043b48df921157080f",
+   "pair_count": 8,
+   "order": [
+    {
+     "opaque": "xc-01",
+     "item_id": "teach-S09"
+    },
+    {
+     "opaque": "xc-02",
+     "item_id": "teach-S04"
+    },
+    {
+     "opaque": "xc-03",
+     "item_id": "teach-S03"
+    },
+    {
+     "opaque": "xc-04",
+     "item_id": "teach-S08"
+    },
+    {
+     "opaque": "xc-05",
+     "item_id": "teach-S07"
+    }
+   ]
+  },
+  {
+   "batch_id": "xc-forget",
+   "category": "forget",
+   "prompt_sha256": "8c0765bef65e8fb8ba498190e2861c4da84177dbfd0d8f2e459faf4d9cd8045e",
+   "pair_count": 13,
+   "order": [
+    {
+     "opaque": "xc-01",
+     "item_id": "forget-S04"
+    },
+    {
+     "opaque": "xc-02",
+     "item_id": "forget-S06"
+    },
+    {
+     "opaque": "xc-03",
+     "item_id": "forget-S09"
+    },
+    {
+     "opaque": "xc-04",
+     "item_id": "forget-S01"
+    },
+    {
+     "opaque": "xc-05",
+     "item_id": "forget-S07"
+    }
+   ]
+  },
+  {
+   "batch_id": "xc-correction",
+   "category": "correction",
+   "prompt_sha256": "4d6503f6fc8856daacd1e2b26d44c9f51e1a5cf85fe454aebade93777bd6690b",
+   "pair_count": 10,
+   "order": [
+    {
+     "opaque": "xc-01",
+     "item_id": "correction-S02"
+    },
+    {
+     "opaque": "xc-02",
+     "item_id": "correction-S03"
+    },
+    {
+     "opaque": "xc-03",
+     "item_id": "correction-S10"
+    },
+    {
+     "opaque": "xc-04",
+     "item_id": "correction-S07"
+    },
+    {
+     "opaque": "xc-05",
+     "item_id": "correction-S06"
+    }
+   ]
+  }
+ ]
+}
