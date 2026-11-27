@@ -1,0 +1,29 @@
+xg-01 turn 3
+
+```
+{"epistemic":"ambiguous","action":"clarify"}
+```
+
+xg-02 turn 2
+
+```
+{"epistemic":"ambiguous","action":"clarify"}
+```
+
+xg-03 turn 3
+
+```
+{"epistemic":"ambiguous","action":"clarify"}
+```
+
+xg-04 turn 2
+
+```
+{"epistemic":"ambiguous","action":"clarify"}
+```
+
+xg-05 turn 3
+
+```
+{"epistemic":"ambiguous","action":"clarify"}
+```

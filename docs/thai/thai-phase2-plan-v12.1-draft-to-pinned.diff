@@ -1,0 +1,36 @@
+--- /downloads/thai-core-phase2-variation-plan-v12.1-DRAFT.md	2026-11-26 17:40:48.801916912 +0000
++++ docs/thai/thai-core-phase2-variation-plan-v12.1-PINNED.md	2026-11-26 22:11:20.633887497 +0000
+@@ -1,32 +1,4 @@
+-# thai-core v1 (AI path) - Phase 2: VARIATION PLAN v12.1 (DRAFT for re-review, NOT PINNED)
+-
+-Status: DRAFT v12.1. Text-only cleanups of v12 after GPT's GO
+-(audit wording, per-occurrence count scope, history dedupe); no
+-rule, table, count or assignment changed. v12 folded GPT's v11
+-re-review. v12 folds GPT's v11 re-review (2 text-only scope
+-blockers: the Phase 6 audit scope is now stated explicitly - all 28
+-pronoun slots count-validated, the 15 pronoun+decoy slots
+-additionally discourse-audited - and G-AX4's singular conditions are
+-scoped to single-antecedent items). v11 folded GPT's v10 re-review. v11 folds GPT's v10 re-review (2 text-only
+-blockers: the antecedent-count rules now cover the zero-antecedent
+-exemptions and the same-name two-candidate item, with the expectation
+-table applied identically in G-AX4, sections 5 and 6, and the
+-checker). v10 folded GPT's v9 re-review (the count of 15 was verified
+-- GPT's 14 omitted forget S09 - and pinned in the checker). v10 folds GPT's v9 re-review (1 arithmetic
+-blocker: the pronoun+decoy count of 15 was verified against the
+-tables - GPT's list of 14 omitted forget S09, which carries both
+-flags; the slot set is now enumerated in section 5 and pinned in the
+-checker so the count and the checker agree by construction - plus 2
+-non-blockings). v9 folded GPT's v8 re-review. v7 folded Claude's v6.1
+-review (2 blockers, both
+-text/note fixes, no count or assignment changes; plus its
+-non-blockings). The review fold-in history (v1 through v6.1) moved
+-OUT of this pinned-to-be file into the companion NON-NORMATIVE
+-document thai-phase2-variation-plan-review-history.md; sections 1-10
+-and Annex A are the only governing text. Only a version passing BOTH
+-families' re-review is hash-pinned into the freeze attestation
+-(spec v2.5 section 6.1, improvement C). Nothing here authorizes
+-generation.
++# thai-core v1 (AI path) - Phase 2: VARIATION PLAN v12.1 (PINNED)
+ 
+ Labels (binding): **AI เขียน / not human-validated**. No quality claim
+ about the resulting set, no capability claim about any agent. This is a

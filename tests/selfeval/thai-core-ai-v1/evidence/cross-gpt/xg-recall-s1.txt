@@ -1,0 +1,29 @@
+xg-01 turn 2
+
+```
+{"epistemic":"supported","action":"answer"}
+```
+
+xg-02 turn 5
+
+```
+{"epistemic":"supported","action":"answer"}
+```
+
+xg-03 turn 2
+
+```
+{"epistemic":"supported","action":"answer"}
+```
+
+xg-04 turn 4
+
+```
+{"epistemic":"supported","action":"answer"}
+```
+
+xg-05 turn 4
+
+```
+{"epistemic":"supported","action":"answer"}
+```

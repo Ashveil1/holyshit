@@ -1,0 +1,1755 @@
+{
+ "id": "thai-core-ai",
+ "version": 1,
+ "kind": "scenario-corpus",
+ "lang": "th",
+ "label": "AI เขียน / not human-validated",
+ "items": [
+  {
+   "id": "recall-S01",
+   "category": "recall",
+   "slot": "S01",
+   "length": "short",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าคุณวันเพ็ญเป็นป้าของผมครับ",
+    "คุณวันเพ็ญเป็นอะไรกับผมครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S02",
+   "category": "recall",
+   "slot": "S02",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่านกแก้วชื่อปิ่นโตมีสีเขียว",
+    "นกแก้วชื่อปิ่นโตมีสีอะไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S03",
+   "category": "recall",
+   "slot": "S03",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าโรงเพาะกล้าชื่อ “หอรุ้งพฤกษ์” อยู่ในหุบผาม่านหมอก",
+    "หอรุ้งพฤกษ์อยู่ที่ไหน"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S04",
+   "category": "recall",
+   "slot": "S04",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าโหลแก้วลายเกลียวมีลูกแก้วลายดาว 3 ลูกเท่านั้น",
+    "โหลแก้วลายเกลียวมีอะไรอยู่"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S05",
+   "category": "recall",
+   "slot": "S05",
+   "length": "medium",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าภัณฑารักษ์ชื่อ “วรเมธ” มีสมุดจัดแสดง 1 เล่มเท่านั้นค่ะ",
+    "จบเรื่องของวรเมธไว้ก่อนนะคะ",
+    "จำไว้ว่าขนมแผ่นอบชื่อ “กรอบละออง” เป็นขนมธัญพืชค่ะ",
+    "ขอเว้นช่วงสักครู่นะคะ",
+    "ขอพักสักครู่นะคะ",
+    "กลับมาที่ขนมแผ่นอบชื่อ “กรอบละออง” อีกครั้งนะคะ",
+    "มันเป็นขนมประเภทไหนคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 7,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S06",
+   "category": "recall",
+   "slot": "S06",
+   "length": "medium",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่ากล่องเก็บแผ่นพิมพ์ลายเกลียวมีฝาทองแดง 1 ชิ้นเท่านั้นครับ",
+    "จำไว้ว่าคนชื่อ “ภัทรเมฆ” มีส่วนสูง 164 เซนติเมตรครับ",
+    "คนชื่อ “ภัทรเมฆ” สูงเท่าไรครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S07",
+   "category": "recall",
+   "slot": "S07",
+   "length": "medium",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่ากระต่ายชื่อปุยฝ้ายอยู่ในกรงหลังบ้านครับ",
+    "จำไว้ว่าปุยฝ้ายเป็นกระต่ายพันธุ์ฮอลแลนด์ลอปครับ",
+    "จำไว้ว่าปุยฝ้ายกระโดดสูงได้ครับ",
+    "มันอยู่ที่ไหนครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S08",
+   "category": "recall",
+   "slot": "S08",
+   "length": "medium",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าร้านขนมดาวกระจายมีเตาอบหนึ่งเครื่องค่ะ",
+    "จำไว้ว่าร้านซักรีดสุขใจมีเครื่องซักผ้าสามเครื่องค่ะ",
+    "จำไว้ว่าร้านขนมดาวกระจายอยู่ใกล้ตลาดค่ะ",
+    "ร้านขนมดาวกระจายมีอะไรคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S09",
+   "category": "recall",
+   "slot": "S09",
+   "length": "long",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าม้าเหล็กอยู่ในโรงรถค่ะ",
+    "จำไว้ว่าม้าเหล็กเป็นจักรยานแม่บ้านค่ะ",
+    "จำไว้ว่าม้าเหล็กมีตะกร้าหนึ่งใบค่ะ",
+    "จำไว้ว่าม้าเหล็กปั่นขึ้นเนินได้ค่ะ",
+    "มันเป็นอะไรคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S10",
+   "category": "recall",
+   "slot": "S10",
+   "length": "long",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าช่างทำเครื่องปั้นชื่อ “ศิวกร” มีผ้ากันเปื้อน 2 ผืนเท่านั้น",
+    "จบเรื่องของศิวกรไว้เพียงเท่านี้",
+    "จำไว้ว่าขนมแผ่นอบชื่อ “กรอบพราย” เป็นขนมธัญพืช",
+    "จำไว้ว่าขนมแผ่นอบชื่อ “กรอบพราย” อยู่ในโหลแก้วฝาสีขาว",
+    "จำไว้ว่าขนมแผ่นอบชื่อ “กรอบพราย” มีรสเค็มอมหวาน",
+    "จำไว้ว่าขนมแผ่นอบชื่อ “กรอบพราย” แตกกรอบได้เมื่อหัก",
+    "กลับมาที่ขนมแผ่นอบชื่อ “กรอบพราย” อีกครั้ง",
+    "มันมีรสชาติแบบไหน"
+   ],
+   "scored_turns": [
+    {
+     "turn": 8,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S01",
+   "category": "unknown",
+   "slot": "S01",
+   "length": "short",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าลุงเสริมอยู่ที่ตลาดครับ",
+    "ลุงเสริมเป็นอะไรกับผมครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S02",
+   "category": "unknown",
+   "slot": "S02",
+   "length": "short",
+   "register": "kha",
+   "turns": [
+    "กิ้งก่าชื่อ “เกล็ดเมฆ” มีสีอะไรคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S03",
+   "category": "unknown",
+   "slot": "S03",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "มันตั้งอยู่ที่ไหน"
+   ],
+   "scored_turns": null,
+   "author_target": [
+    {
+     "turn": 1,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S04",
+   "category": "unknown",
+   "slot": "S04",
+   "length": "short",
+   "register": "khrup",
+   "turns": [
+    "มันมีอะไรอยู่ข้างในครับ"
+   ],
+   "scored_turns": null,
+   "author_target": [
+    {
+     "turn": 1,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S05",
+   "category": "unknown",
+   "slot": "S05",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าคุณสุนีย์เป็นเพื่อนร่วมงานของฉัน เรื่องคุณสุนีย์มีแค่นี้",
+    "ต่อไปเป็นเรื่องอาหาร จำไว้ว่าซุปเมฆาเป็นอาหารเช้า",
+    "จำไว้ว่ามันอยู่ในครัวหลังบ้าน",
+    "ซุปเมฆามีรสอะไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S06",
+   "category": "unknown",
+   "slot": "S06",
+   "length": "medium",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าคุณสมพรอยู่ที่ห้องสมุดค่ะ",
+    "จำไว้ว่าคุณสมพรเป็นน้องสาวของฉันค่ะ",
+    "คุณวรรณาเป็นคนชาติอะไรคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S07",
+   "category": "unknown",
+   "slot": "S07",
+   "length": "medium",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่ากวางชื่อ “กิ่งเงิน” อาศัยอยู่ในป่าไผ่ครับ",
+    "จำไว้ว่าตัวนิ่มชื่อ “เกล็ดหิน” คุ้ยหาแมลงใต้ดินครับ",
+    "กวางชื่อ “กิ่งเงิน” ทำอะไรเป็นประจำครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S08",
+   "category": "unknown",
+   "slot": "S08",
+   "length": "medium",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าศาลาพักชื่อ “ศาลากลีบคราม” มีม้านั่งไม้ 2 ตัวเท่านั้นค่ะ",
+    "จำไว้ว่าลานปั้นดินชื่อ “ลานเม็ดแก้ว” มีโต๊ะปั้นดิน 2 ตัวเท่านั้นค่ะ",
+    "จำไว้ว่าลานปั้นดินชื่อ “ลานเม็ดแก้ว” เป็นพื้นที่ทำงานกลางแจ้งค่ะ",
+    "ลานปั้นดินชื่อ “ลานเม็ดแก้ว” อยู่ที่ไหนคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S09",
+   "category": "unknown",
+   "slot": "S09",
+   "length": "long",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าภาพฝันเป็นกล้องฟิล์ม",
+    "จำไว้ว่ามันอยู่ในตู้กระจก",
+    "จำไว้ว่าภาพฝันถ่ายภาพในที่มืดได้",
+    "จำไว้ว่าพี่ภูมิมีสายคล้องคอหนึ่งเส้น",
+    "ภาพฝันมีอะไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S10",
+   "category": "unknown",
+   "slot": "S10",
+   "length": "long",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าตู้เก็บอุปกรณ์รุ่น “ลายเมฆ” อยู่ในห้องเตรียมงาน",
+    "จำไว้ว่าตู้เก็บอุปกรณ์รุ่น “ลายเมฆ” เป็นตู้ไม้",
+    "จำไว้ว่าตู้เก็บอุปกรณ์รุ่น “ลายเมฆ” มีบานพับ 2 ชิ้นเท่านั้น",
+    "จำไว้ว่าตู้เก็บอุปกรณ์รุ่น “ลายเมฆ” หมุนเปิดได้",
+    "ขนมอบชื่อ “กรอบราตรี” มีระดับความเผ็ดเท่าไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S01",
+   "category": "contradiction",
+   "slot": "S01",
+   "length": "short",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าคุณทองสุกเป็นพี่ชายของผมครับ",
+    "คุณทองสุกเป็นลุงของผมครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S02",
+   "category": "contradiction",
+   "slot": "S02",
+   "length": "short",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าม้าชื่อลมหนาวมีสีดำค่ะ",
+    "ม้าชื่อลมหนาวมีสีขาวค่ะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S03",
+   "category": "contradiction",
+   "slot": "S03",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าตอนนี้ลานส่องเงาอยู่ที่สวนก้อนเมฆ",
+    "ตอนนี้ลานส่องเงาอยู่ที่ลานหินสีคราม"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S04",
+   "category": "contradiction",
+   "slot": "S04",
+   "length": "short",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่ากล่องจัดชุดรุ่น “เส้นแสง” มีป้ายตราประจำตัวคำว่า “แสงดิน” เพียง 1 ป้ายเท่านั้นครับ",
+    "กล่องจัดชุดรุ่น “เส้นแสง” มีป้ายตราประจำตัวคำว่า “เมฆแดง” ครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S05",
+   "category": "contradiction",
+   "slot": "S05",
+   "length": "medium",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าผู้ตรวจเอกสารชื่อ “ปิยดล” มีแฟ้มสีเทา 1 แฟ้มเท่านั้นค่ะ",
+    "จบเรื่องของปิยดลไว้ก่อนค่ะ",
+    "จำไว้ว่าขนมกรอบชื่อ “กรอบละไม” เป็นขนมอบค่ะ",
+    "มันไม่ใช่ขนมอบค่ะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S06",
+   "category": "contradiction",
+   "slot": "S06",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่ารถเข็นรุ่น “ลายคลื่น” มีตะกร้าผ้า 1 ใบเท่านั้น",
+    "จำไว้ว่าวันนี้คนชื่อ “วรากร” อายุ 32 ปี",
+    "วันนี้คนชื่อ “วรากร” อายุ 45 ปี"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S07",
+   "category": "contradiction",
+   "slot": "S07",
+   "length": "medium",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าเป็ดชื่อน้ำใสอยู่ที่บ่อหลังบ้านครับ",
+    "จำไว้ว่าน้ำใสดำน้ำได้ครับ",
+    "มันไม่ได้อยู่ที่บ่อหลังบ้านหรือครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S08",
+   "category": "contradiction",
+   "slot": "S08",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าร้านเย็บผ้าดอกแก้วมีจักรเย็บสามเครื่อง",
+    "จำไว้ว่าร้านซ่อมนาฬิกาลุงเกรียงมีเครื่องขัดหนึ่งเครื่อง",
+    "ร้านซ่อมนาฬิกาลุงเกรียงไม่มีเครื่องขัดใช่ไหม"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S09",
+   "category": "contradiction",
+   "slot": "S09",
+   "length": "long",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าพลับพลาเป็นของที่ระลึก",
+    "จำไว้ว่าพลับพลาอยู่ในลิ้นชักโต๊ะทำงาน",
+    "จำไว้ว่าพลับพลามีสายสะพายหนึ่งเส้น",
+    "จำไว้ว่าพลับพลาเปิดปิดได้",
+    "มันไม่ใช่ของที่ระลึก"
+   ],
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S10",
+   "category": "contradiction",
+   "slot": "S10",
+   "length": "long",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าช่างทำเครื่องปั้นชื่อ “อิศรา” มีผ้ากันเปื้อน 2 ผืนเท่านั้นค่ะ",
+    "จบเรื่องของอิศราไว้เท่านี้ค่ะ",
+    "จำไว้ว่าน้ำแกงข้นชื่อ “แกงเม็ดดาว” เป็นแกงถั่วค่ะ",
+    "จำไว้ว่าน้ำแกงข้นชื่อ “แกงเม็ดดาว” อยู่ในหม้อดินสีดำค่ะ",
+    "จำไว้ว่าน้ำแกงข้นชื่อ “แกงเม็ดดาว” มีระดับความเผ็ด 1 จาก 5 ค่ะ",
+    "จำไว้ว่าน้ำแกงข้นชื่อ “แกงเม็ดดาว” กำลังเดือดอยู่ค่ะ",
+    "มันมีระดับความเผ็ด 5 จาก 5 ใช่ไหมคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 7,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S01",
+   "category": "ambiguity",
+   "slot": "S01",
+   "length": "short",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่านักวาดชื่อ “อรอุมา” กำลังเปิดสมุดร่างไว้บนโต๊ะค่ะ",
+    "หน้าของนักวาดชื่อ “อรอุมา” มีสีอะไรคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ],
+   "note": "agreed label differs from author target on turns [2]",
+   "author_target": [
+    {
+     "turn": 2,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S02",
+   "category": "ambiguity",
+   "slot": "S02",
+   "length": "short",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าม้าชื่อ “อาชาเมฆ” ยืนอยู่ข้างกระดานหมากรุกครับ",
+    "ม้าตัวนี้เป็นอะไรครับ"
+   ],
+   "scored_turns": null,
+   "author_target": [
+    {
+     "turn": 2,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S03",
+   "category": "ambiguity",
+   "slot": "S03",
+   "length": "short",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าในเมืองนี้มีทั้งศาลเจ้าและศาลจังหวัดค่ะ",
+    "ศาลสร้างมากี่ปีแล้วคะ"
+   ],
+   "scored_turns": null,
+   "author_target": [
+    {
+     "turn": 2,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S04",
+   "category": "ambiguity",
+   "slot": "S04",
+   "length": "short",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าฉันมีเทปสองอย่าง คือเทปกาวกับเทปคาสเซ็ตค่ะ",
+    "เทปอยู่ที่ไหนคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S05",
+   "category": "ambiguity",
+   "slot": "S05",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าซุปลูกแก้วของร้านครัวพิมพ์เป็นอาหารเรียกน้ำย่อย",
+    "จำไว้ว่าซุปลูกแก้วของร้านเตาถ่านลุงสินเป็นอาหารจานหลัก",
+    "ซุปลูกแก้วเป็นอาหารประเภทไหน"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S06",
+   "category": "ambiguity",
+   "slot": "S06",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าคนชื่อ “ธาริน” ซึ่งดูแลห้องจัดแสดงทำงานเป็นช่างอนุรักษ์ภาพ",
+    "จำไว้ว่าคนชื่อ “ธาริน” ซึ่งดูแลสวนทดลองทำงานเป็นผู้เพาะเมล็ด",
+    "คนชื่อ “ธาริน” ทำอาชีพอะไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S07",
+   "category": "ambiguity",
+   "slot": "S07",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าคุณปราณีเป็นเพื่อนบ้านของฉัน เรื่องคุณปราณีมีแค่นี้",
+    "ต่อไปเป็นเรื่องสัตว์ จำไว้ว่าวัวชื่อทองคำกับควายชื่อสายฟ้าอยู่ในคอกเดียวกัน",
+    "มันกระโดดข้ามรั้วได้ไหม"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S08",
+   "category": "ambiguity",
+   "slot": "S08",
+   "length": "medium",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าหออ่านเงียบชื่อ “หอเกล็ดหมอก” อยู่ในอาคารชั้นบนครับ",
+    "จำไว้ว่าลานซ้อมหุ่นชื่อ “ลานคลื่นแก้ว” อยู่ที่ด้านหลังของเรือนกระจกครับ",
+    "มันอยู่ที่ไหนครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S09",
+   "category": "ambiguity",
+   "slot": "S09",
+   "length": "long",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่ามีโคมไฟชื่อดวงดาวสองโคม โคมหนึ่งอยู่ในห้องนั่งเล่น อีกโคมอยู่ในห้องนอนครับ",
+    "จำไว้ว่าดวงดาวในห้องนั่งเล่นมีขนาดใหญ่ ส่วนดวงดาวในห้องนอนมีขนาดเล็กครับ",
+    "มันใหญ่แค่ไหนครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S10",
+   "category": "ambiguity",
+   "slot": "S10",
+   "length": "long",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าขนมอบชื่อ “กรอบตะวัน” เป็นขนมอบกรอบ",
+    "จำไว้ว่าขนมอบชื่อ “กรอบตะวัน” แตกเป็นชิ้นได้ง่าย",
+    "จำไว้ว่าขนมต้มชื่อ “เม็ดจันทร์” เป็นขนมแป้งนึ่ง",
+    "จำไว้ว่าขนมต้มชื่อ “เม็ดจันทร์” ละลายได้เมื่ออุ่น",
+    "มันเป็นขนมประเภทไหน"
+   ],
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S01",
+   "category": "teach",
+   "slot": "S01",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าคุณศิริพรเป็นหลานสาวของฉัน"
+   ],
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S02",
+   "category": "teach",
+   "slot": "S02",
+   "length": "short",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าแมวชื่อมะลิมีลูกสามตัวค่ะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S03",
+   "category": "teach",
+   "slot": "S03",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าลานกิจกรรมชื่อ “ลานเพชรฝน” มีม้านั่งหิน 2 ตัวเท่านั้น"
+   ],
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S04",
+   "category": "teach",
+   "slot": "S04",
+   "length": "short",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่ากล่องพับรุ่น “เส้นรุ้ง” เป็นภาชนะเก็บเส้นด้ายแบบพกพาค่ะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S05",
+   "category": "teach",
+   "slot": "S05",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าพี่ชัชเป็นเพื่อนบ้านของฉัน เรื่องพี่ชัชมีแค่นี้",
+    "เปลี่ยนเรื่องนะ จำไว้ว่าขนมกลีบเมฆอยู่ในตู้เย็น",
+    "จำไว้ว่าขนมกลีบเมฆเป็นของว่าง",
+    "มันเป็นอะไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S06",
+   "category": "teach",
+   "slot": "S06",
+   "length": "medium",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าคุณอรุณเป็นน้องชายของผมครับ",
+    "จำไว้ว่าคุณอรุณอยู่ที่ตลาดครับ",
+    "จำไว้ว่าช่างซ่อมจักรยานประจำหมู่บ้านคือคุณอนันต์ครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S07",
+   "category": "teach",
+   "slot": "S07",
+   "length": "medium",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าตัวนิ่มชื่อ “เกล็ดอรุณ” เป็นสัตว์เลี้ยงลูกด้วยนมค่ะ",
+    "จำไว้ว่าตัวนิ่มชื่อ “เกล็ดอรุณ” อยู่ในคอกไม้ด้านตะวันออกค่ะ",
+    "จำไว้ว่าตัวนิ่มชื่อ “เกล็ดอรุณ” ม้วนตัวเป็นก้อนได้ค่ะ",
+    "มันทำอะไรได้คะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S08",
+   "category": "teach",
+   "slot": "S08",
+   "length": "medium",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่ารถเข็นรุ่น “ลายใบไม้” มีล้อไม้ 4 ล้อเท่านั้นครับ",
+    "จำไว้ว่าลานเพาะกล้าชื่อ “ลานใบเมฆ” อยู่ที่ด้านข้างของเรือนเก็บดินครับ",
+    "จำไว้ว่าลานเพาะกล้าชื่อ “ลานใบเมฆ” เป็นพื้นที่สำหรับเพาะต้นกล้าครับ",
+    "ลานเพาะกล้าชื่อ “ลานใบเมฆ” เป็นสถานที่ประเภทไหนครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S09",
+   "category": "teach",
+   "slot": "S09",
+   "length": "long",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่านักทำแผนที่ชื่อ “ปาริชาติ” มีแผ่นใส 2 แผ่นเท่านั้น",
+    "จบเรื่องของปาริชาติไว้ก่อน",
+    "จำไว้ว่าซองเอกสารลาย “รอยคลื่น” อยู่ในตู้เก็บเอกสารชั้นบน",
+    "จำไว้ว่าซองเอกสารลาย “รอยคลื่น” มีแถบผ้ารัด 2 เส้นเท่านั้น",
+    "จำไว้ว่าซองเอกสารลาย “รอยคลื่น” เป็นซองเก็บแผ่นแบบพิมพ์",
+    "จำไว้ว่าซองเอกสารลาย “รอยคลื่น” คือซองต้นฉบับหมายเลข “เมฆครามหนึ่ง”",
+    "มันคือซองต้นฉบับหมายเลขอะไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 7,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S10",
+   "category": "teach",
+   "slot": "S10",
+   "length": "long",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าขนมสายธารเป็นขนมไทยครับ",
+    "จำไว้ว่าขนมสายธารมีไส้ถั่วอย่างเดียวครับ",
+    "จำไว้ว่าขนมสายธารแช่แข็งได้ครับ",
+    "จำไว้ว่าขนมสายธารอุ่นกินได้ครับ",
+    "จำไว้ว่าขนมสายธารอยู่ในตู้เย็นหลังร้านครับ",
+    "มันอยู่ที่ไหนครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S01",
+   "category": "forget",
+   "slot": "S01",
+   "length": "short",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าคนชื่อ “ปุณณภพ” เป็นลูกพี่ลูกน้องของเจ้าของร้านค่ะ",
+    "ลบข้อมูลที่ว่าคนชื่อ “ปุณณภพ” เป็นลูกพี่ลูกน้องของเจ้าของร้านออกด้วยค่ะ",
+    "คนชื่อ “ปุณณภพ” เป็นญาติอะไรของเจ้าของร้านคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S02",
+   "category": "forget",
+   "slot": "S02",
+   "length": "short",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าแมวชื่อมะม่วงมีสีส้มค่ะ",
+    "อย่าจำเรื่องที่แมวชื่อมะม่วงมีสีส้มนะคะ",
+    "แมวชื่อมะม่วงมีสีอะไรคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S03",
+   "category": "forget",
+   "slot": "S03",
+   "length": "short",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าร้านกาแฟลมเย็นอยู่ที่หัวมุมถนนครับ",
+    "ไม่ต้องจำเรื่องที่ร้านกาแฟลมเย็นอยู่ที่หัวมุมถนนแล้วครับ",
+    "ร้านกาแฟลมเย็นอยู่ที่ไหนครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S04",
+   "category": "forget",
+   "slot": "S04",
+   "length": "short",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่ากระเป๋าเครื่องมือรุ่น “เม็ดดาว” มีตลับหมึก 1 ตลับเท่านั้นครับ",
+    "ช่วยลบข้อมูลที่ว่ากระเป๋าเครื่องมือรุ่น “เม็ดดาว” มีตลับหมึก 1 ตลับออกหน่อยครับ",
+    "กระเป๋าเครื่องมือรุ่น “เม็ดดาว” มีอะไรอยู่ครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S05",
+   "category": "forget",
+   "slot": "S05",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าพี่ธนูเป็นเพื่อนสมัยเรียนของฉัน เรื่องพี่ธนูมีแค่นี้",
+    "ส่วนเรื่องอาหารนะ จำไว้ว่าข้าวยำพรานป่าเป็นอาหารพื้นบ้าน",
+    "จำไว้ว่าข้าวยำพรานป่าอยู่ในตู้กับข้าว",
+    "ลบเรื่องที่ข้าวยำพรานป่าเป็นอาหารพื้นบ้านออก",
+    "ข้าวยำพรานป่าอยู่ที่ไหน",
+    "มันเป็นอาหารประเภทไหน"
+   ],
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S06",
+   "category": "forget",
+   "slot": "S06",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าคนชื่อ “นาริน” อายุ 28 ปี",
+    "จำไว้ว่าคนชื่อ “นาริน” อยู่ที่หอพักสายหมอก",
+    "จำไว้ว่าคนชื่อ “นาริน” มีกล่องใส่แผนที่ 1 ใบเท่านั้น",
+    "อย่าจำข้อมูลที่ว่าคนชื่อ “นาริน” อายุ 28 ปี",
+    "คนชื่อ “นาริน” อยู่ที่ไหน",
+    "คนชื่อ “นาริน” อายุเท่าไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S07",
+   "category": "forget",
+   "slot": "S07",
+   "length": "medium",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าตุ่นชื่อ “เกล็ดอำพัน” เป็นสัตว์เลี้ยงลูกด้วยนมค่ะ",
+    "จำไว้ว่าตุ่นชื่อ “เกล็ดอำพัน” อยู่ในโพรงไม้ค่ะ",
+    "ไม่ต้องจำข้อมูลที่ว่าตุ่นชื่อ “เกล็ดอำพัน” อยู่ในโพรงไม้แล้วนะคะ",
+    "ตุ่นชื่อ “เกล็ดอำพัน” เป็นสัตว์ประเภทไหนคะ",
+    "แล้วมันอยู่ที่ไหนคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S08",
+   "category": "forget",
+   "slot": "S08",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าร้านซ่อมจักรยานลุงพันธ์มีเครื่องเติมลมหนึ่งเครื่อง",
+    "จำไว้ว่าร้านซ่อมจักรยานลุงพันธ์อยู่ที่ปากซอย",
+    "จำไว้ว่าร้านตัดผมบัวผันมีกระจกสามบาน",
+    "ช่วยลบเรื่องที่ร้านซ่อมจักรยานลุงพันธ์มีเครื่องเติมลมออกหน่อย",
+    "ร้านซ่อมจักรยานลุงพันธ์อยู่ที่ไหน",
+    "ร้านซ่อมจักรยานลุงพันธ์มีอะไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S09",
+   "category": "forget",
+   "slot": "S09",
+   "length": "long",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่านักทำแผนที่ชื่อ “วารินทร์” มีแผ่นใส 2 แผ่นเท่านั้น",
+    "จบเรื่องของวารินทร์ไว้ก่อน",
+    "จำไว้ว่ากระบอกเก็บแบบพิมพ์รุ่น “ลายหิน” เป็นภาชนะเก็บแบบพิมพ์",
+    "จำไว้ว่ากระบอกเก็บแบบพิมพ์รุ่น “ลายหิน” อยู่ในชั้นเก็บเอกสารล่าง",
+    "จำไว้ว่ากระบอกเก็บแบบพิมพ์รุ่น “ลายหิน” หมุนเปิดได้",
+    "ลบข้อมูลที่ว่ากระบอกเก็บแบบพิมพ์รุ่น “ลายหิน” เป็นภาชนะเก็บแบบพิมพ์ออก",
+    "กระบอกเก็บแบบพิมพ์รุ่น “ลายหิน” เปิดได้อย่างไร",
+    "มันเป็นภาชนะประเภทไหน"
+   ],
+   "scored_turns": null,
+   "author_target": [
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 7,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 8,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S10",
+   "category": "forget",
+   "slot": "S10",
+   "length": "long",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าคุณสมานเป็นพี่เขยของผมครับ เรื่องคุณสมานมีแค่นี้ครับ",
+    "ขอเปลี่ยนเรื่องเป็นอาหารนะครับ จำไว้ว่าแกงฟักข้าวสายลมเป็นอาหารมื้อเย็นครับ",
+    "จำไว้ว่าแกงฟักข้าวสายลมมีรสเผ็ดครับ",
+    "จำไว้ว่าแกงฟักข้าวสายลมอยู่ในตู้เย็นครับ",
+    "ลบเรื่องที่แกงฟักข้าวสายลมมีรสเผ็ดออกครับ",
+    "แกงฟักข้าวสายลมอยู่ที่ไหนครับ",
+    "มันมีรสอะไรครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 7,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S01",
+   "category": "correction",
+   "slot": "S01",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าคุณกัญญาเป็นพี่สาวของฉัน",
+    "ขอแก้ไขข้อมูลเดิม: คุณกัญญาเป็นน้องสาวของฉัน",
+    "คุณกัญญาเป็นอะไรกับฉัน"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S02",
+   "category": "correction",
+   "slot": "S02",
+   "length": "short",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่ากระต่ายชื่อ “ปุยเมฆ” มีขนสีขาวครับ",
+    "แก้ไข: กระต่ายชื่อ “ปุยเมฆ” มีขนสีดำครับ",
+    "กระต่ายชื่อ “ปุยเมฆ” มีขนสีอะไรครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S03",
+   "category": "correction",
+   "slot": "S03",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าลานตรวจแบบชื่อ “ลานหินแก้ว” มีขนาด 24 ตารางเมตร",
+    "ขอปรับแก้ข้อมูลขนาดเดิม โดยเปลี่ยนขนาดของลานตรวจแบบชื่อ “ลานหินแก้ว” จาก 24 เป็น 60 ตารางเมตร",
+    "ลานตรวจแบบชื่อ “ลานหินแก้ว” มีขนาดเท่าไร"
+   ],
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S04",
+   "category": "correction",
+   "slot": "S04",
+   "length": "short",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าปุ๊กปิ๊กเป็นเครื่องชั่งอาหาร",
+    "ปุ๊กปิ๊กไม่ใช่เครื่องชั่งอาหาร แต่เป็นเครื่องจับเวลา",
+    "ปุ๊กปิ๊กเป็นเครื่องอะไร"
+   ],
+   "scored_turns": null,
+   "author_target": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S05",
+   "category": "correction",
+   "slot": "S05",
+   "length": "medium",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าคุณนิตยาเป็นเพื่อนร่วมชั้นของผมครับ เรื่องคุณนิตยามีแค่นี้ครับ",
+    "ขอไปเรื่องอาหารต่อนะครับ จำไว้ว่าข้าวห่อใบบัวสายหยุดอยู่ที่ตู้อบครับ",
+    "จำไว้ว่าข้าวห่อใบบัวสายหยุดเป็นของว่างครับ",
+    "ขอแก้ไขข้อมูลเดิม: ข้าวห่อใบบัวสายหยุดอยู่ที่ตู้เย็นครับ",
+    "มันอยู่ที่ไหนครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S06",
+   "category": "correction",
+   "slot": "S06",
+   "length": "medium",
+   "register": "khrup",
+   "turns": [
+    "จำไว้ว่าคนชื่อ “กฤติน” มีเหรียญตราประจำตัวสีเงิน 1 เหรียญเท่านั้นครับ",
+    "จำไว้ว่ารถเข็นรุ่น “ลายกังหัน” มีล้อไม้ 4 ล้อเท่านั้นครับ",
+    "คนชื่อ “กฤติน” ไม่มีเหรียญตราประจำตัวสีเงิน แต่มีเหรียญตราประจำตัวสีทอง 1 เหรียญเท่านั้นครับ",
+    "คนชื่อ “กฤติน” มีเหรียญตราประจำตัวสีอะไรครับ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S07",
+   "category": "correction",
+   "slot": "S07",
+   "length": "medium",
+   "register": "plain",
+   "turns": [
+    "จำไว้ว่าตัวนิ่มชื่อ “เกล็ดขาว” เป็นสัตว์เลี้ยงลูกด้วยนม",
+    "จำไว้ว่าตัวนิ่มชื่อ “เกล็ดขาว” อยู่ในโพรงหิน",
+    "ตัวนิ่มชื่อ “เกล็ดขาว” ไม่ได้อยู่ในโพรงหิน แต่อยู่ในโพรงไม้",
+    "แล้วมันอยู่ที่ไหน"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S08",
+   "category": "correction",
+   "slot": "S08",
+   "length": "medium",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าจำนวนห้องพักของโรงแรมกลีบบัวมีสิบห้องค่ะ",
+    "จำไว้ว่าจำนวนห้องพักของโรงแรมริมนามียี่สิบห้องค่ะ",
+    "ข้อมูลเดิมไม่ถูกต้อง ขอเปลี่ยนจำนวนห้องพักของโรงแรมกลีบบัวจากสิบห้องเป็นสิบสองห้องค่ะ",
+    "โรงแรมกลีบบัวมีห้องพักกี่ห้องคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S09",
+   "category": "correction",
+   "slot": "S09",
+   "length": "long",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าพี่เอกเป็นลูกพี่ลูกน้องของฉันค่ะ เรื่องพี่เอกมีแค่นี้ค่ะ",
+    "ขอเปลี่ยนเป็นเรื่องของใช้นะคะ จำไว้ว่าพายุหมุนเป็นรถเข็นขายของค่ะ",
+    "จำไว้ว่าพายุหมุนอยู่ในโรงเก็บของค่ะ",
+    "จำไว้ว่าพายุหมุนมีล้อสี่ล้อค่ะ",
+    "แก้ไข: พายุหมุนมีล้อสามล้อค่ะ",
+    "มันมีล้อกี่ล้อคะ"
+   ],
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S10",
+   "category": "correction",
+   "slot": "S10",
+   "length": "long",
+   "register": "kha",
+   "turns": [
+    "จำไว้ว่าขนมแผ่นชื่อ “รอยชาด” เป็นขนมอบกรอบค่ะ",
+    "จำไว้ว่าขนมแผ่นชื่อ “รอยชาด” มีรสหวานอ่อนค่ะ",
+    "จำไว้ว่าขนมแผ่นชื่อ “รอยชาด” อยู่ในกล่องไม้ค่ะ",
+    "จำไว้ว่าขนมแผ่นชื่อ “รอยชาด” มีไส้ถั่ว 1 ชนิดเท่านั้นค่ะ",
+    "ขอแก้ไขข้อมูลเดิม: ขนมแผ่นชื่อ “รอยชาด” เป็นขนมแป้งนึ่งค่ะ",
+    "มันเป็นขนมชนิดไหนคะ"
+   ],
+   "scored_turns": null,
+   "author_target": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,44 @@
+xg-01 turn 2
+
+```
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+```
+
+xg-02 turn 5
+
+```
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+```
+
+xg-03 turn 3
+
+```
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+```
+
+xg-04 turn 3
+
+```
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+```
+
+xg-05 turn 2
+
+```
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+```

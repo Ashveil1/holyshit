@@ -1,0 +1,95 @@
+{
+ "report": "thai-core-ai-v1 overlap gate (screening, not independence; thresholds OPERATIONAL, not proven semantic-duplicate detection)",
+ "label": "AI เขียน / not human-validated",
+ "date": "2026-11-27",
+ "pins": {
+  "corpus_sha256": "923dfd3d1ea48a80aacacd38ec24bb1da8c26879cddb95104a0338ff9e6606e2",
+  "dev_set_sha256": "da113647b1c1b7d86736cfb627ca701d8b2a4e8cc4162294b0c67aa0e0821c64",
+  "checker": "scripts/thai-overlap-check.py",
+  "checker_sha256": "c493f37d038b02a82aff697ea6fc0e4075eab96f96b8bd0a011b0cc8a8071da6",
+  "tokenizer": "pythainlp 5.4.0 word_tokenize engine=newmm",
+  "tokenizer_dict": "words_th.txt",
+  "normalization": "Unicode NFC, whitespace folding, case folding (casefold)",
+  "sequence_algorithm": "Python 3.10.12 difflib.SequenceMatcher ratio, autojunk=False",
+  "thresholds": {
+   "jaccard_flag": 0.8,
+   "jaccard_reject": 0.95,
+   "seq_flag": 0.85,
+   "min_meaningful_chars": 20,
+   "min_tokens_containment": 5
+  },
+  "units": "whole scenario AND every individual line, both sets",
+  "comparisons": 53452,
+  "namespace_disjoint": true
+ },
+ "rejected": [],
+ "flagged": [
+  {
+   "corpus": "recall-S10:whole",
+   "dev": "d-051:input",
+   "why": "containment (<5 tokens)",
+   "jaccard": 0.0625,
+   "seq": 0.0593,
+   "corpus_text": "จำไว้ว่าช่างทำเครื่องปั้นชื่อ “ศิวกร” มีผ้ากันเปื้อน 2 ผืนเท่านั้น\nจบเรื่องของศิวกรไว้เพียงเท่านี้\nจำไว้ว่าขนมแผ่นอบชื่อ",
+   "dev_text": "มัน อยู่ไหน",
+   "decision": "kept-with-reason",
+   "reason": "Short generic pronoun probe contained inside a longer unrelated scenario (jaccard 0.062, seq 0.059, far below flag thresholds); different target, not a duplicate."
+  },
+  {
+   "corpus": "ambiguity-S09:whole",
+   "dev": "d-051:input",
+   "why": "containment (<5 tokens)",
+   "jaccard": 0.1364,
+   "seq": 0.0978,
+   "corpus_text": "จำไว้ว่ามีโคมไฟชื่อดวงดาวสองโคม โคมหนึ่งอยู่ในห้องนั่งเล่น อีกโคมอยู่ในห้องนอนครับ\nจำไว้ว่าดวงดาวในห้องนั่งเล่นมีขนาดใหญ",
+   "dev_text": "มัน อยู่ไหน",
+   "decision": "kept-with-reason",
+   "reason": "Short generic pronoun probe contained inside a longer unrelated scenario (jaccard 0.136, seq 0.098, far below flag thresholds); different target, not a duplicate."
+  },
+  {
+   "corpus": "teach-S09:whole",
+   "dev": "d-057:input",
+   "why": "containment (<5 tokens)",
+   "jaccard": 0.0698,
+   "seq": 0.0493,
+   "corpus_text": "จำไว้ว่านักทำแผนที่ชื่อ “ปาริชาติ” มีแผ่นใส 2 แผ่นเท่านั้น\nจบเรื่องของปาริชาติไว้ก่อน\nจำไว้ว่าซองเอกสารลาย “รอยคลื่น” อย",
+   "dev_text": "มัน คืออะไร",
+   "decision": "kept-with-reason",
+   "reason": "Short generic pronoun probe contained inside a longer unrelated scenario (jaccard 0.070, seq 0.049, far below flag thresholds); different target, not a duplicate."
+  },
+  {
+   "corpus": "teach-S09:line-7",
+   "dev": "d-057:input",
+   "why": "containment (<5 tokens)",
+   "jaccard": 0.5,
+   "seq": 0.5263,
+   "corpus_text": "มันคือซองต้นฉบับหมายเลขอะไร",
+   "dev_text": "มัน คืออะไร",
+   "decision": "kept-with-reason",
+   "reason": "Short generic pronoun probe contained inside a longer unrelated scenario (jaccard 0.500, seq 0.526, far below flag thresholds); different target, not a duplicate."
+  },
+  {
+   "corpus": "forget-S05:whole",
+   "dev": "d-051:input",
+   "why": "containment (<5 tokens)",
+   "jaccard": 0.0968,
+   "seq": 0.0856,
+   "corpus_text": "จำไว้ว่าพี่ธนูเป็นเพื่อนสมัยเรียนของฉัน เรื่องพี่ธนูมีแค่นี้\nส่วนเรื่องอาหารนะ จำไว้ว่าข้าวยำพรานป่าเป็นอาหารพื้นบ้าน\nจำ",
+   "dev_text": "มัน อยู่ไหน",
+   "decision": "kept-with-reason",
+   "reason": "Short generic pronoun probe contained inside a longer unrelated scenario (jaccard 0.097, seq 0.086, far below flag thresholds); different target, not a duplicate."
+  },
+  {
+   "corpus": "forget-S09:whole",
+   "dev": "d-051:input",
+   "why": "containment (<5 tokens)",
+   "jaccard": 0.0714,
+   "seq": 0.0434,
+   "corpus_text": "จำไว้ว่านักทำแผนที่ชื่อ “วารินทร์” มีแผ่นใส 2 แผ่นเท่านั้น\nจบเรื่องของวารินทร์ไว้ก่อน\nจำไว้ว่ากระบอกเก็บแบบพิมพ์รุ่น “ลา",
+   "dev_text": "มัน อยู่ไหน",
+   "decision": "kept-with-reason",
+   "reason": "Short generic pronoun probe contained inside a longer unrelated scenario (jaccard 0.071, seq 0.043, far below flag thresholds); different target, not a duplicate."
+  }
+ ],
+ "outcome": "GATE CLEAN: 0 rejections, 6 flags all kept-with-reason"
+}
