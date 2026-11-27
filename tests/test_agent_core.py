@@ -47,7 +47,7 @@ HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
         "remember <thing> cannot <verb> | does <thing> <verb> <thing> | "
         "can <thing> <verb> | is <thing> needed by <thing> | "
         "remember <thing> is not a <kind> | what do you know | "
-        "what did you forget | what did we talk about | note <text> | notes | "
+        "what did you forget | what did we talk about | where did you learn <thing> | note <text> | notes | "
         "clear notes | mode | mode strict | mode explore | hypotheses | "
         "hypotheses detail | forget hypothesis <thing> is a <kind> | "
         "clear hypotheses | read <text> | readings | readings about <thing> | "
@@ -258,6 +258,98 @@ class Oracle:
         self.test_fetch = False
         self.lang = 'en'
         self.register = 'khrup'
+        self.claims = {}
+        self.claim_order = []
+
+    CLAIM_CAP = 500
+
+    def _src_kind(self, src):
+        if src.startswith('url-'):
+            return 'url'
+        if src.startswith('corpus-'):
+            return 'corpus'
+        return 'text'
+
+    def _src_locator(self, src):
+        k = self._src_kind(src)
+        if k == 'url':
+            n = int(src[4:])
+            if 1 <= n <= len(self.url_srcs):
+                return self.url_srcs[n - 1][0]
+        if k == 'corpus':
+            n = int(src[7:])
+            if 1 <= n <= len(self.corpus_srcs):
+                return self.corpus_srcs[n - 1]
+        return src
+
+    def _claim_find(self, key, value, src, span_text):
+        for cid in self.claim_order:
+            c = self.claims[cid]
+            if (c['key'] == key and c['value'] == value and
+                    c['source_id'] == src and c['span_text'] == span_text):
+                return cid
+        return None
+
+    def _claim_add(self, key, value, src, span_text):
+        if self._claim_find(key, value, src, span_text) is not None:
+            return False
+        if len(self.claim_order) >= self.CLAIM_CAP:
+            return False
+        cid = 'cl-' + str(len(self.claim_order) + 1)
+        self.claims[cid] = {
+            'id': cid, 'key': key, 'value': value, 'polarity': 'pos',
+            'source_id': src, 'kind': self._src_kind(src),
+            'locator': self._src_locator(src), 'revision': '',
+            'span_text': span_text, 'excerpt': span_text[:200],
+            'status': 'claim', 'review_id': '', 'generation_id': 0,
+            'superseded_by': ''}
+        self.claim_order.append(cid)
+        return True
+
+    def _claims_for(self, asked):
+        a = stripart(asked)
+        return [self.claims[cid] for cid in self.claim_order
+                if self.claims[cid]['status'] != 'rolled-back' and
+                (self.claims[cid]['key'] == asked or
+                 stripart(self.claims[cid]['key']) == a)]
+
+    def _claim_reply(self, asked, cl):
+        vals = []
+        for c in cl:
+            if c['value'] not in vals:
+                vals.append(c['value'])
+        if self.lang == 'th':
+            if len(vals) == 1:
+                return (cl[0]['locator'] + ' บอกว่า: ' + cl[0]['key'] + ' ' +
+                        vals[0] + ' (ยังไม่ยืนยัน)')
+            out = 'แหล่งข้อมูลขัดกันเรื่อง ' + asked + ':'
+            for c in cl[:3]:
+                out += ' ' + c['locator'] + ' บอกว่า ' + c['value'] + ';'
+            return out[:-1] + ' (ยังไม่ยืนยัน)'
+        if len(vals) == 1:
+            return (cl[0]['locator'] + ' says: ' + cl[0]['key'] + ' ' +
+                    vals[0] + ' (unverified claim)')
+        out = 'sources disagree on ' + asked + ':'
+        for c in cl[:3]:
+            out += ' ' + c['locator'] + ' says ' + c['value'] + ';'
+        return out[:-1] + ' (unverified claims)'
+
+    def _provenance_reply(self, asked):
+        out = ''
+        key = self._resolve(asked)
+        if key is not None:
+            out = ('คุณสอนฉัน: ' if self.lang == 'th' else
+                   'you taught me: ') + key
+        for c in self._claims_for(asked):
+            line = c['id'] + ': ' + c['locator']
+            if c['revision'] != '':
+                line += ' rev ' + c['revision']
+            line += ' ["' + c['excerpt'] + '"]'
+            out = line if out == '' else out + '; ' + line
+        if out == '':
+            return ('ไม่เคยเรียนรู้' + self._particle() + ' ' + asked
+                    if self.lang == 'th' else 'i never learned ' + asked)
+        return out
 
     def _particle(self):
         return 'ครับ'
@@ -783,6 +875,8 @@ class Oracle:
                         else:
                             self.readings.append(
                                 [ex[0], ex[1], ex[2], [entry], [], '', '', []])
+                            self._claim_add(ex[0], ex[1] + ' ' + ex[2],
+                                            src, span)
                         newc += 1
                         rj = len(self.readings) - 1
                     # A19: a later conflicting reading raises an
@@ -1756,6 +1850,8 @@ class Oracle:
             return self._session_reply()
         if m[:23] == 'what do you know about ':
             return self._about_reply(m[23:])
+        if m[:20] == 'where did you learn ':
+            return self._provenance_reply(m[20:])
         if m[:9] == 'remember ':
             rest = text[9:]
             mrest = m[9:]
@@ -2138,6 +2234,9 @@ class Oracle:
             if self.lang == 'th':
                 return 'ไม่รู้จัก' + self._particle() + ' ' + asked
             return 'i do not know ' + asked
+        cl = self._claims_for(asked)
+        if cl:
+            return self._claim_reply(asked, cl)
         return self._usage_reply(asked)
 
     def _forget(self, key):
