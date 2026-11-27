@@ -1,0 +1,34 @@
+pf-01
+
+```json
+{"epistemic": "contradicted", "action": "answer"}
+
+```
+
+pf-02
+
+```json
+{"epistemic": "contradicted", "action": "answer"}
+
+```
+
+pf-03
+
+```json
+{"epistemic": "contradicted", "action": "answer"}
+
+```
+
+pf-04
+
+```json
+{"epistemic": "contradicted", "action": "answer"}
+
+```
+
+pf-05
+
+```json
+{"epistemic": "contradicted", "action": "answer"}
+
+```

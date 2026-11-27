@@ -1,0 +1,112 @@
+You are an annotator. Below is a short scripted conversation scenario
+for each item, in Thai, written as numbered user turns. For each marked
+turn, classify what a correct agent reply to that turn must do into the
+closed annotation schema.
+
+Rules:
+- Only facts stated in the item's own earlier turns count as known. Each
+  item is independent.
+- A turn is marked when the item lists "classify: turn N" beneath its
+  turns. Classify exactly the marked turns, no others.
+- Evaluate each marked turn against the item's knowledge state
+  immediately before that turn. Apply earlier teaching, forgetting, and
+  correction instructions in turn order. Only turns before the marked
+  turn count; later turns never count. A forgotten fact is no longer
+  known; unrelated facts remain known, and a corrected fact is
+  represented by its corrected value.
+- Output, for each marked turn, the item ID and turn number on their own
+  line (for example "ex-1 turn 2"), then a JSON code block containing
+  exactly ONE JSON object.
+- The object has exactly two required fields: "epistemic" and
+  "action". No other fields are permitted.
+- An optional third field "rationale" MAY be included; when present it
+  must be a NON-EMPTY string (Thai or English) that introduces no
+  facts beyond the scenario and names no prompt, rubric or provenance
+  text; omit the field entirely when unused. Rationale is never
+  scored.
+- "epistemic" must be one of: supported, unknown, contradicted,
+  ambiguous, n/a
+- "action" must be one of: answer, abstain, clarify, acknowledge,
+  not_understood, other
+- Use the exact English tokens above.
+- Output exactly the marked (id, turn) pairs, once each. A response
+  that omits a marked pair, repeats one, or adds a pair that was not
+  marked is invalid.
+- Output items in the order given; within an item, output marked turns
+  in ascending turn order. Add nothing else.
+
+Annotation semantics (apply these definitions exactly; they override
+intuition about the enum names):
+- recall: the marked turn asks for a value taught in an earlier turn
+  and not since forgotten. A correct agent replies with the taught
+  value: {"epistemic":
+  "supported", "action": "answer"}.
+- unknown: the marked turn asks for a value that is not available in
+  the item's current knowledge state - either it was never taught, the
+  requested referent is entirely missing with no competing referents, or
+  it was taught earlier but subsequently forgotten. A correct agent
+  declines and invents nothing: {"epistemic": "unknown", "action":
+  "abstain"}.
+- contradiction: the marked turn asserts something that contradicts a
+  taught fact, WITHOUT any correction marker. A correct agent preserves
+  the taught fact and answers with it, signaling the conflict:
+  {"epistemic": "contradicted", "action": "answer"}.
+- ambiguity: the marked turn has multiple defensible referents or
+  readings. A correct agent asks a clarifying question that names the
+  ambiguity: {"epistemic": "ambiguous", "action": "clarify"}.
+- teach: the marked turn states a new fact in a teaching shape. A
+  correct agent acknowledges, and the fact is accepted into the
+  scenario's knowledge state: {"epistemic": "supported", "action":
+  "acknowledge"}.
+- forget: the marked turn asks the agent to forget a taught fact. A
+  correct agent acknowledges; afterwards the fact is no longer known,
+  and UNRELATED taught facts remain known and recallable - forgetting
+  more or less than asked fails: {"epistemic": "unknown", "action":
+  "acknowledge"}.
+- correction: the marked turn corrects a taught fact with an explicit
+  correction marker. A correct agent acknowledges, serves the
+  corrected value afterwards, and the OLD value is no longer served:
+  {"epistemic": "supported", "action": "acknowledge"}.
+
+Items:
+
+xg-01
+1. จำไว้ว่าพี่เอกเป็นลูกพี่ลูกน้องของฉันค่ะ เรื่องพี่เอกมีแค่นี้ค่ะ
+2. ขอเปลี่ยนเป็นเรื่องของใช้นะคะ จำไว้ว่าพายุหมุนเป็นรถเข็นขายของค่ะ
+3. จำไว้ว่าพายุหมุนอยู่ในโรงเก็บของค่ะ
+4. จำไว้ว่าพายุหมุนมีล้อสี่ล้อค่ะ
+5. แก้ไข: พายุหมุนมีล้อสามล้อค่ะ
+6. มันมีล้อกี่ล้อคะ
+classify: turn 5
+classify: turn 6
+
+xg-02
+1. จำไว้ว่าคุณนิตยาเป็นเพื่อนร่วมชั้นของผมครับ เรื่องคุณนิตยามีแค่นี้ครับ
+2. ขอไปเรื่องอาหารต่อนะครับ จำไว้ว่าข้าวห่อใบบัวสายหยุดอยู่ที่ตู้อบครับ
+3. จำไว้ว่าข้าวห่อใบบัวสายหยุดเป็นของว่างครับ
+4. ขอแก้ไขข้อมูลเดิม: ข้าวห่อใบบัวสายหยุดอยู่ที่ตู้เย็นครับ
+5. มันอยู่ที่ไหนครับ
+classify: turn 4
+classify: turn 5
+
+xg-03
+1. จำไว้ว่าปุ๊กปิ๊กเป็นเครื่องชั่งอาหาร
+2. ปุ๊กปิ๊กไม่ใช่เครื่องชั่งอาหาร แต่เป็นเครื่องจับเวลา
+3. ปุ๊กปิ๊กเป็นเครื่องอะไร
+classify: turn 2
+classify: turn 3
+
+xg-04
+1. จำไว้ว่าจำนวนห้องพักของโรงแรมกลีบบัวมีสิบห้องค่ะ
+2. จำไว้ว่าจำนวนห้องพักของโรงแรมริมนามียี่สิบห้องค่ะ
+3. ข้อมูลเดิมไม่ถูกต้อง ขอเปลี่ยนจำนวนห้องพักของโรงแรมกลีบบัวจากสิบห้องเป็นสิบสองห้องค่ะ
+4. โรงแรมกลีบบัวมีห้องพักกี่ห้องคะ
+classify: turn 3
+classify: turn 4
+
+xg-05
+1. จำไว้ว่าคุณกัญญาเป็นพี่สาวของฉัน
+2. ขอแก้ไขข้อมูลเดิม: คุณกัญญาเป็นน้องสาวของฉัน
+3. คุณกัญญาเป็นอะไรกับฉัน
+classify: turn 2
+classify: turn 3

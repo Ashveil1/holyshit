@@ -1,0 +1,99 @@
+tc-01 turn 3
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-02 turn 1
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify"
+}
+
+```
+
+tc-03 turn 3
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-04 turn 4
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-05 turn 2
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-06 turn 1
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-07 turn 1
+
+```json
+{
+  "epistemic": "ambiguous",
+  "action": "clarify"
+}
+
+```
+
+tc-08 turn 5
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-09 turn 4
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```
+
+tc-10 turn 5
+
+```json
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+
+```

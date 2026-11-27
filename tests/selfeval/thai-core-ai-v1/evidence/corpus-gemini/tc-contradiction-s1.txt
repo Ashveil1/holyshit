@@ -1,0 +1,99 @@
+tc-01 turn 7
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```
+
+tc-02 turn 2
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```
+
+tc-03 turn 2
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```
+
+tc-04 turn 2
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```
+
+tc-05 turn 3
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```
+
+tc-06 turn 3
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```
+
+tc-07 turn 2
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```
+
+tc-08 turn 5
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```
+
+tc-09 turn 3
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```
+
+tc-10 turn 4
+
+```json
+{
+  "epistemic": "contradicted",
+  "action": "answer"
+}
+
+```

@@ -1,0 +1,77 @@
+xg-01 turn 4
+
+```
+{"epistemic":"unknown","action":"acknowledge"}
+```
+
+xg-01 turn 5
+
+```
+{"epistemic":"supported","action":"answer"}
+```
+
+xg-01 turn 6
+
+```
+{"epistemic":"unknown","action":"abstain"}
+```
+
+xg-02 turn 2
+
+```
+{"epistemic":"unknown","action":"acknowledge"}
+```
+
+xg-02 turn 3
+
+```
+{"epistemic":"unknown","action":"abstain"}
+```
+
+xg-03 turn 2
+
+```
+{"epistemic":"unknown","action":"acknowledge"}
+```
+
+xg-03 turn 3
+
+```
+{"epistemic":"unknown","action":"abstain"}
+```
+
+xg-04 turn 5
+
+```
+{"epistemic":"unknown","action":"acknowledge"}
+```
+
+xg-04 turn 6
+
+```
+{"epistemic":"supported","action":"answer"}
+```
+
+xg-04 turn 7
+
+```
+{"epistemic":"unknown","action":"abstain"}
+```
+
+xg-05 turn 4
+
+```
+{"epistemic":"unknown","action":"acknowledge"}
+```
+
+xg-05 turn 5
+
+```
+{"epistemic":"supported","action":"answer"}
+```
+
+xg-05 turn 6
+
+```
+{"epistemic":"unknown","action":"abstain"}
+```
