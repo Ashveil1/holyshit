@@ -84,5 +84,18 @@ recording against #463 head 970c20e.
 
 ## Run record
 
-Run 1 (2026-11-27): TO BE FILLED with the verbatim harness output and
-the replies file hash immediately after execution.
+Run 1 (2026-11-27 13:23 UTC): EXECUTED. Harness 5ef5c06573...,
+native repl binary 82167169d241... (code identical to master 44d2f808),
+63/63 scored items captured, each in a fresh temp cwd (no cross-scenario
+state). Verbatim harness output:
+    captured 63 items this slice (63/63 total) -> tests/selfeval/thai-core-ai-v1.replies-v001.json
+Replies file: tests/selfeval/thai-core-ai-v1.replies-v001.json
+    sha256 e5a0148366d6ed608b9178f771319a6a24d97c5a9704bad3c98d24e38e71523b
+MEASURED RESULT (raw, unscored): every corpus turn in every scenario
+received the reply "i do not understand" - the v0.17 repl grammar
+accepts none of the frozen corpus's natural Thai scenario phrasings.
+This is the instrument's baseline measurement, not a quality claim and
+not a bug in the frozen set. Formal scoring against the gold labels
+requires the external scorer (versioned, hash-pinned before use); the
+raw replies already show the outcome unambiguously. AI-authored /
+not human-validated.
