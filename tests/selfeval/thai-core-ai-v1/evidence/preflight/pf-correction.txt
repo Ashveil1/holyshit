@@ -1,0 +1,75 @@
+You are an annotator. Below is a short scripted conversation scenario
+for each item, in Thai. For each item, classify the FINAL probe turn
+into the closed annotation schema.
+
+Rules:
+- Only facts stated in the item's own setup turns count as known. Each
+  item is independent.
+- Output, for each item, the item ID on its own line, then a JSON code
+  block containing exactly ONE JSON object.
+- The object has exactly two required fields: "epistemic" and
+  "action". No other fields are permitted.
+- An optional third field "rationale" MAY be included; when present it
+  must be a NON-EMPTY string (Thai or English) that introduces no
+  facts beyond the scenario and names no prompt, rubric or provenance
+  text; omit the field entirely when unused. Rationale is never
+  scored.
+- "epistemic" must be one of: supported, unknown, contradicted,
+  ambiguous, n/a
+- "action" must be one of: answer, abstain, clarify, acknowledge,
+  not_understood, other
+- Use the exact English tokens above.
+- Output items in the order given and add nothing else.
+
+Annotation semantics (apply these definitions exactly; they override
+intuition about the enum names):
+- recall: the probe asks for a value taught in the setup. A correct
+  agent replies with the taught value: {"epistemic": "supported",
+  "action": "answer"}.
+- unknown: the probe asks for a value that was never taught - either
+  the subject and relation are identifiable with an untaught value, or
+  the requested referent is entirely missing with no competing
+  referents. A correct agent declines and invents nothing:
+  {"epistemic": "unknown", "action": "abstain"}.
+- contradiction: the probe asserts something that contradicts a taught
+  fact, WITHOUT any correction marker. A correct agent preserves the
+  taught fact and answers with it, signaling the conflict:
+  {"epistemic": "contradicted", "action": "answer"}.
+- ambiguity: the probe has multiple defensible referents or readings.
+  A correct agent asks a clarifying question that names the ambiguity:
+  {"epistemic": "ambiguous", "action": "clarify"}.
+- teach: the input states a new fact in a teaching shape. A correct
+  agent acknowledges, and the fact is accepted into the scenario's
+  knowledge state: {"epistemic": "supported", "action":
+  "acknowledge"}.
+- forget: the input asks the agent to forget a taught fact. A correct
+  agent acknowledges; afterwards the fact is no longer known, and
+  UNRELATED taught facts remain known and recallable - forgetting
+  more or less than asked fails: {"epistemic": "unknown", "action":
+  "acknowledge"}.
+- correction: the input corrects a taught fact with an explicit
+  correction marker. A correct agent acknowledges, serves the
+  corrected value afterwards, and the OLD value is no longer served:
+  {"epistemic": "supported", "action": "acknowledge"}.
+
+Items:
+
+pf-01
+setup: จำไว้ว่าแมวอยู่ในสวน
+probe: ขอแก้ไขข้อมูลเดิม: แมวไม่ได้อยู่ในสวน แต่อยู่ในบ้าน
+
+pf-02
+setup: จำไว้ว่าในวัดมีพระสงฆ์
+probe: ขอแก้ไขข้อมูลเดิม: ที่วัดไม่มีพระสงฆ์ แต่มีแม่ชี
+
+pf-03
+setup: จำไว้ว่าวันนี้แม่อยู่บ้าน
+probe: ขอแก้ไขข้อมูลเดิม: วันนี้แม่ไม่ได้อยู่ที่บ้าน แต่อยู่ที่ตลาด
+
+pf-04
+setup: จำไว้ว่านกตัวนี้กินข้าว
+probe: ขอแก้ไขข้อมูลเดิม: นกตัวนี้ไม่ได้กินข้าว แต่กินหนอน
+
+pf-05
+setup: จำไว้ว่าปู่มีสวน
+probe: ขอแก้ไขข้อมูลเดิม: ปู่ไม่ได้มีสวน แต่มีทุ่งนา

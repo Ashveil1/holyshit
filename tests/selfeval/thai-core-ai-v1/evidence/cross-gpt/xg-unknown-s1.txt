@@ -1,0 +1,44 @@
+xg-01 turn 3
+
+```
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+```
+
+xg-02 turn 2
+
+```
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+```
+
+xg-03 turn 5
+
+```
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+```
+
+xg-04 turn 4
+
+```
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+```
+
+xg-05 turn 1
+
+```
+{
+  "epistemic": "unknown",
+  "action": "abstain"
+}
+```

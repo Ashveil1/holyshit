@@ -1,0 +1,4631 @@
+{
+ "label": "AI-authored / not human-validated; AI-annotated",
+ "protocol": "corpus-v1",
+ "criteria": {
+  "version": "v1",
+  "sha256": "241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18"
+ },
+ "annotation_records": [
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-01-t3",
+   "item_id": "recall-S06",
+   "turn": 3,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-02-t7",
+   "item_id": "recall-S05",
+   "turn": 7,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-03-t8",
+   "item_id": "recall-S10",
+   "turn": 8,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-04-t4",
+   "item_id": "recall-S08",
+   "turn": 4,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-05-t4",
+   "item_id": "recall-S07",
+   "turn": 4,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-06-t2",
+   "item_id": "recall-S04",
+   "turn": 2,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-07-t2",
+   "item_id": "recall-S01",
+   "turn": 2,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-08-t2",
+   "item_id": "recall-S02",
+   "turn": 2,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-09-t5",
+   "item_id": "recall-S09",
+   "turn": 5,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-recall-tc-10-t2",
+   "item_id": "recall-S03",
+   "turn": 2,
+   "batch_id": "tc-recall",
+   "session_id": "gemini-2026-11-27-tc-recall-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "ff2e1075114420b1beb9a433bca1452020e868bbf1fc526935e577ca09c6e449"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-01-t3",
+   "item_id": "unknown-S06",
+   "turn": 3,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-02-t1",
+   "item_id": "unknown-S03",
+   "turn": 1,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-03-t3",
+   "item_id": "unknown-S07",
+   "turn": 3,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-04-t4",
+   "item_id": "unknown-S08",
+   "turn": 4,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-05-t2",
+   "item_id": "unknown-S01",
+   "turn": 2,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-06-t1",
+   "item_id": "unknown-S02",
+   "turn": 1,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-07-t1",
+   "item_id": "unknown-S04",
+   "turn": 1,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-08-t5",
+   "item_id": "unknown-S10",
+   "turn": 5,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-09-t4",
+   "item_id": "unknown-S05",
+   "turn": 4,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-unknown-tc-10-t5",
+   "item_id": "unknown-S09",
+   "turn": 5,
+   "batch_id": "tc-unknown",
+   "session_id": "gemini-2026-11-27-tc-unknown-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "aa0abbbf221a456f3d8d0c262f9bdf5088b13722d340adcd04a35ffca8c9896e"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-01-t7",
+   "item_id": "contradiction-S10",
+   "turn": 7,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-02-t2",
+   "item_id": "contradiction-S02",
+   "turn": 2,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-03-t2",
+   "item_id": "contradiction-S01",
+   "turn": 2,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-04-t2",
+   "item_id": "contradiction-S04",
+   "turn": 2,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-05-t3",
+   "item_id": "contradiction-S06",
+   "turn": 3,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-06-t3",
+   "item_id": "contradiction-S08",
+   "turn": 3,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-07-t2",
+   "item_id": "contradiction-S03",
+   "turn": 2,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-08-t5",
+   "item_id": "contradiction-S09",
+   "turn": 5,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-09-t3",
+   "item_id": "contradiction-S07",
+   "turn": 3,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-contradiction-tc-10-t4",
+   "item_id": "contradiction-S05",
+   "turn": 4,
+   "batch_id": "tc-contradiction",
+   "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "44cb9f62193a571c2095566f20e10294e7d334fb2eeee42ee18e966a3e43a912"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-01-t3",
+   "item_id": "ambiguity-S09",
+   "turn": 3,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "Two lamps named ดวงดาว exist in different rooms with different sizes, so มัน is ambiguous."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-02-t3",
+   "item_id": "ambiguity-S05",
+   "turn": 3,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "ซุปลูกแก้ว is taught as an appetizer at one shop and a main dish at another shop."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-03-t2",
+   "item_id": "ambiguity-S02",
+   "turn": 2,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "อาชาเมฆ is a horse standing next to a chessboard, making whether it is a real horse or a chess piece ambiguous."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-04-t3",
+   "item_id": "ambiguity-S07",
+   "turn": 3,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "Turn 2 introduces both a cow named ทองคำ and a buffalo named สายฟ้า, so มัน has two possible referents."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-05-t3",
+   "item_id": "ambiguity-S08",
+   "turn": 3,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "Two distinct places with locations are taught in turns 1 and 2, so มัน is ambiguous."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-06-t2",
+   "item_id": "ambiguity-S03",
+   "turn": 2,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "The age or construction time of ศาล is not stated in earlier turns."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-07-t2",
+   "item_id": "ambiguity-S04",
+   "turn": 2,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "Two types of tape are mentioned and no location for either is taught."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-08-t2",
+   "item_id": "ambiguity-S01",
+   "turn": 2,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "No skin or face color is stated for อรอุมา."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-09-t5",
+   "item_id": "ambiguity-S10",
+   "turn": 5,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "Two different sweets, กรอบตะวัน and เม็ดจันทร์, are taught in earlier turns, so มัน is ambiguous."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-ambiguity-tc-10-t3",
+   "item_id": "ambiguity-S06",
+   "turn": 3,
+   "batch_id": "tc-ambiguity",
+   "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "961886154c1594c6751f5e1b7d1254b90219c65df25ff64bf142c46be533003f",
+   "rationale": "Two different people named ธาริน are taught with different occupations."
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-01-t1",
+   "item_id": "teach-S02",
+   "turn": 1,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-02-t3",
+   "item_id": "teach-S06",
+   "turn": 3,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-03-t1",
+   "item_id": "teach-S04",
+   "turn": 1,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-04-t1",
+   "item_id": "teach-S03",
+   "turn": 1,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-05-t3",
+   "item_id": "teach-S05",
+   "turn": 3,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-05-t4",
+   "item_id": "teach-S05",
+   "turn": 4,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-06-t3",
+   "item_id": "teach-S08",
+   "turn": 3,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-06-t4",
+   "item_id": "teach-S08",
+   "turn": 4,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-07-t3",
+   "item_id": "teach-S07",
+   "turn": 3,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-07-t4",
+   "item_id": "teach-S07",
+   "turn": 4,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-08-t5",
+   "item_id": "teach-S10",
+   "turn": 5,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-08-t6",
+   "item_id": "teach-S10",
+   "turn": 6,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-09-t6",
+   "item_id": "teach-S09",
+   "turn": 6,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-09-t7",
+   "item_id": "teach-S09",
+   "turn": 7,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-teach-tc-10-t1",
+   "item_id": "teach-S01",
+   "turn": 1,
+   "batch_id": "tc-teach",
+   "session_id": "gemini-2026-11-27-tc-teach-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "aebccbd2c93b9850f4b93990acfcc9f2f2277ebe5b6c1df51ab33c957fb86e22"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-01-t4",
+   "item_id": "forget-S08",
+   "turn": 4,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-01-t5",
+   "item_id": "forget-S08",
+   "turn": 5,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-01-t6",
+   "item_id": "forget-S08",
+   "turn": 6,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-02-t5",
+   "item_id": "forget-S10",
+   "turn": 5,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-02-t6",
+   "item_id": "forget-S10",
+   "turn": 6,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-02-t7",
+   "item_id": "forget-S10",
+   "turn": 7,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-03-t4",
+   "item_id": "forget-S05",
+   "turn": 4,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-03-t5",
+   "item_id": "forget-S05",
+   "turn": 5,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-03-t6",
+   "item_id": "forget-S05",
+   "turn": 6,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-04-t2",
+   "item_id": "forget-S01",
+   "turn": 2,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-04-t3",
+   "item_id": "forget-S01",
+   "turn": 3,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-05-t2",
+   "item_id": "forget-S04",
+   "turn": 2,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-05-t3",
+   "item_id": "forget-S04",
+   "turn": 3,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-06-t2",
+   "item_id": "forget-S03",
+   "turn": 2,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-06-t3",
+   "item_id": "forget-S03",
+   "turn": 3,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-07-t2",
+   "item_id": "forget-S02",
+   "turn": 2,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-07-t3",
+   "item_id": "forget-S02",
+   "turn": 3,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-08-t4",
+   "item_id": "forget-S06",
+   "turn": 4,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-08-t5",
+   "item_id": "forget-S06",
+   "turn": 5,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-08-t6",
+   "item_id": "forget-S06",
+   "turn": 6,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-09-t6",
+   "item_id": "forget-S09",
+   "turn": 6,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-09-t7",
+   "item_id": "forget-S09",
+   "turn": 7,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-09-t8",
+   "item_id": "forget-S09",
+   "turn": 8,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-10-t3",
+   "item_id": "forget-S07",
+   "turn": 3,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-10-t4",
+   "item_id": "forget-S07",
+   "turn": 4,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-forget-tc-10-t5",
+   "item_id": "forget-S07",
+   "turn": 5,
+   "batch_id": "tc-forget",
+   "session_id": "gemini-2026-11-27-tc-forget-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "2116b7f12487f19e9b3c8617e6aa027d9542f2dc4e6b6b323640d6d149d0e211"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-01-t4",
+   "item_id": "correction-S05",
+   "turn": 4,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-01-t5",
+   "item_id": "correction-S05",
+   "turn": 5,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-02-t2",
+   "item_id": "correction-S03",
+   "turn": 2,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-02-t3",
+   "item_id": "correction-S03",
+   "turn": 3,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-03-t2",
+   "item_id": "correction-S04",
+   "turn": 2,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-03-t3",
+   "item_id": "correction-S04",
+   "turn": 3,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-04-t5",
+   "item_id": "correction-S09",
+   "turn": 5,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-04-t6",
+   "item_id": "correction-S09",
+   "turn": 6,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-05-t5",
+   "item_id": "correction-S10",
+   "turn": 5,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-05-t6",
+   "item_id": "correction-S10",
+   "turn": 6,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-06-t2",
+   "item_id": "correction-S02",
+   "turn": 2,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-06-t3",
+   "item_id": "correction-S02",
+   "turn": 3,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-07-t2",
+   "item_id": "correction-S01",
+   "turn": 2,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-07-t3",
+   "item_id": "correction-S01",
+   "turn": 3,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-08-t3",
+   "item_id": "correction-S07",
+   "turn": 3,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-08-t4",
+   "item_id": "correction-S07",
+   "turn": 4,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-09-t3",
+   "item_id": "correction-S08",
+   "turn": 3,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-09-t4",
+   "item_id": "correction-S08",
+   "turn": 4,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-10-t3",
+   "item_id": "correction-S06",
+   "turn": 3,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gemini-tc-correction-tc-10-t4",
+   "item_id": "correction-S06",
+   "turn": 4,
+   "batch_id": "tc-correction",
+   "session_id": "gemini-2026-11-27-tc-correction-s1",
+   "annotator_id": "gemini-annotator-01",
+   "annotator_family": "gemini",
+   "model_label": "Auto (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "b201d770eb32c3f9d9f8fc27d7ffab8314e9d4b5124610e902eac503d69f22dd"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-recall-xg-01-t2",
+   "item_id": "recall-S01",
+   "turn": 2,
+   "batch_id": "xg-recall",
+   "session_id": "gpt-2026-11-27-xg-recall-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-recall-xg-02-t5",
+   "item_id": "recall-S09",
+   "turn": 5,
+   "batch_id": "xg-recall",
+   "session_id": "gpt-2026-11-27-xg-recall-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-recall-xg-03-t2",
+   "item_id": "recall-S02",
+   "turn": 2,
+   "batch_id": "xg-recall",
+   "session_id": "gpt-2026-11-27-xg-recall-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-recall-xg-04-t4",
+   "item_id": "recall-S08",
+   "turn": 4,
+   "batch_id": "xg-recall",
+   "session_id": "gpt-2026-11-27-xg-recall-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-recall-xg-05-t4",
+   "item_id": "recall-S07",
+   "turn": 4,
+   "batch_id": "xg-recall",
+   "session_id": "gpt-2026-11-27-xg-recall-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "7b4511463022808cf1c8da49cf931a9f6a95053b37af03f84bdb3e403a87a759"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-unknown-xg-01-t3",
+   "item_id": "unknown-S06",
+   "turn": 3,
+   "batch_id": "xg-unknown",
+   "session_id": "gpt-2026-11-27-xg-unknown-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-unknown-xg-02-t2",
+   "item_id": "unknown-S01",
+   "turn": 2,
+   "batch_id": "xg-unknown",
+   "session_id": "gpt-2026-11-27-xg-unknown-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-unknown-xg-03-t5",
+   "item_id": "unknown-S09",
+   "turn": 5,
+   "batch_id": "xg-unknown",
+   "session_id": "gpt-2026-11-27-xg-unknown-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-unknown-xg-04-t4",
+   "item_id": "unknown-S05",
+   "turn": 4,
+   "batch_id": "xg-unknown",
+   "session_id": "gpt-2026-11-27-xg-unknown-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-unknown-xg-05-t1",
+   "item_id": "unknown-S03",
+   "turn": 1,
+   "batch_id": "xg-unknown",
+   "session_id": "gpt-2026-11-27-xg-unknown-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1742ef579b24746f5fab9da0e327c8e0b62b1e384bb33043319773e3f82d5a9e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-contradiction-xg-01-t2",
+   "item_id": "contradiction-S01",
+   "turn": 2,
+   "batch_id": "xg-contradiction",
+   "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-contradiction-xg-02-t5",
+   "item_id": "contradiction-S09",
+   "turn": 5,
+   "batch_id": "xg-contradiction",
+   "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-contradiction-xg-03-t3",
+   "item_id": "contradiction-S07",
+   "turn": 3,
+   "batch_id": "xg-contradiction",
+   "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-contradiction-xg-04-t3",
+   "item_id": "contradiction-S08",
+   "turn": 3,
+   "batch_id": "xg-contradiction",
+   "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-contradiction-xg-05-t2",
+   "item_id": "contradiction-S02",
+   "turn": 2,
+   "batch_id": "xg-contradiction",
+   "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "9209c7470fdc34f276aaea8ad2bd51cb5f408b5e5dc3b42cab2d016f6c7ecd6d"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-ambiguity-xg-01-t3",
+   "item_id": "ambiguity-S09",
+   "turn": 3,
+   "batch_id": "xg-ambiguity",
+   "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-ambiguity-xg-02-t2",
+   "item_id": "ambiguity-S03",
+   "turn": 2,
+   "batch_id": "xg-ambiguity",
+   "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-ambiguity-xg-03-t3",
+   "item_id": "ambiguity-S05",
+   "turn": 3,
+   "batch_id": "xg-ambiguity",
+   "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-ambiguity-xg-04-t2",
+   "item_id": "ambiguity-S04",
+   "turn": 2,
+   "batch_id": "xg-ambiguity",
+   "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-ambiguity-xg-05-t3",
+   "item_id": "ambiguity-S07",
+   "turn": 3,
+   "batch_id": "xg-ambiguity",
+   "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "80a58a8fce26e4a68692a0ee6e257e489c19e32f2ff4db6ed3c0c66b9533674e"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-teach-xg-01-t3",
+   "item_id": "teach-S06",
+   "turn": 3,
+   "batch_id": "xg-teach",
+   "session_id": "gpt-2026-11-27-xg-teach-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-teach-xg-02-t5",
+   "item_id": "teach-S10",
+   "turn": 5,
+   "batch_id": "xg-teach",
+   "session_id": "gpt-2026-11-27-xg-teach-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-teach-xg-02-t6",
+   "item_id": "teach-S10",
+   "turn": 6,
+   "batch_id": "xg-teach",
+   "session_id": "gpt-2026-11-27-xg-teach-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-teach-xg-03-t1",
+   "item_id": "teach-S01",
+   "turn": 1,
+   "batch_id": "xg-teach",
+   "session_id": "gpt-2026-11-27-xg-teach-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-teach-xg-04-t3",
+   "item_id": "teach-S05",
+   "turn": 3,
+   "batch_id": "xg-teach",
+   "session_id": "gpt-2026-11-27-xg-teach-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-teach-xg-04-t4",
+   "item_id": "teach-S05",
+   "turn": 4,
+   "batch_id": "xg-teach",
+   "session_id": "gpt-2026-11-27-xg-teach-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-teach-xg-05-t1",
+   "item_id": "teach-S02",
+   "turn": 1,
+   "batch_id": "xg-teach",
+   "session_id": "gpt-2026-11-27-xg-teach-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "57ad1fb7044d72f267bb5053f05a9ab1d0742c9fa79b610eb3b2466a5ef3c704"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-01-t4",
+   "item_id": "forget-S08",
+   "turn": 4,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-01-t5",
+   "item_id": "forget-S08",
+   "turn": 5,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-01-t6",
+   "item_id": "forget-S08",
+   "turn": 6,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-02-t2",
+   "item_id": "forget-S02",
+   "turn": 2,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-02-t3",
+   "item_id": "forget-S02",
+   "turn": 3,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-03-t2",
+   "item_id": "forget-S03",
+   "turn": 2,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-03-t3",
+   "item_id": "forget-S03",
+   "turn": 3,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-04-t5",
+   "item_id": "forget-S10",
+   "turn": 5,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-04-t6",
+   "item_id": "forget-S10",
+   "turn": 6,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-04-t7",
+   "item_id": "forget-S10",
+   "turn": 7,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-05-t4",
+   "item_id": "forget-S05",
+   "turn": 4,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-05-t5",
+   "item_id": "forget-S05",
+   "turn": 5,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-forget-xg-05-t6",
+   "item_id": "forget-S05",
+   "turn": 6,
+   "batch_id": "xg-forget",
+   "session_id": "gpt-2026-11-27-xg-forget-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "96f321c0cf0fa13d18c1f46084509e0417086bef22ae2e398bc4a35b7a984a56"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-01-t5",
+   "item_id": "correction-S09",
+   "turn": 5,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-01-t6",
+   "item_id": "correction-S09",
+   "turn": 6,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-02-t4",
+   "item_id": "correction-S05",
+   "turn": 4,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-02-t5",
+   "item_id": "correction-S05",
+   "turn": 5,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-03-t2",
+   "item_id": "correction-S04",
+   "turn": 2,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-03-t3",
+   "item_id": "correction-S04",
+   "turn": 3,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-04-t3",
+   "item_id": "correction-S08",
+   "turn": 3,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-04-t4",
+   "item_id": "correction-S08",
+   "turn": 4,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-05-t2",
+   "item_id": "correction-S01",
+   "turn": 2,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-gpt-xg-correction-xg-05-t3",
+   "item_id": "correction-S01",
+   "turn": 3,
+   "batch_id": "xg-correction",
+   "session_id": "gpt-2026-11-27-xg-correction-s1",
+   "annotator_id": "gpt-annotator-01",
+   "annotator_family": "gpt",
+   "model_label": "ChatGPT (no model name displayed; Think ON)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "da90d7f16c990d7f8601f9925e9ce047e7871704d2d0f7d5120844b838772184"
+  },
+  {
+   "annotation_id": "ann-claude-xc-recall-xc-01-t2",
+   "item_id": "recall-S03",
+   "turn": 2,
+   "batch_id": "xc-recall",
+   "session_id": "claude-2026-11-27-xc-recall-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+   "rationale": "Turn 1 taught that the nursery 'หอรุ้งพฤกษ์' is in the หุบผาม่านหมอก valley, so the location is recalled."
+  },
+  {
+   "annotation_id": "ann-claude-xc-recall-xc-02-t8",
+   "item_id": "recall-S10",
+   "turn": 8,
+   "batch_id": "xc-recall",
+   "session_id": "claude-2026-11-27-xc-recall-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+   "rationale": "The most recent referent is the baked wafer snack 'กรอบพราย', and turn 5 taught its flavor as salty-sweet. The earlier turns about ศิวกร are unrelated and do not compete."
+  },
+  {
+   "annotation_id": "ann-claude-xc-recall-xc-03-t7",
+   "item_id": "recall-S05",
+   "turn": 7,
+   "batch_id": "xc-recall",
+   "session_id": "claude-2026-11-27-xc-recall-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+   "rationale": "Turn 3 taught that the baked wafer snack 'กรอบละออง' is a grain snack, and 'มัน' refers to it after the return in turn 6."
+  },
+  {
+   "annotation_id": "ann-claude-xc-recall-xc-04-t2",
+   "item_id": "recall-S04",
+   "turn": 2,
+   "batch_id": "xc-recall",
+   "session_id": "claude-2026-11-27-xc-recall-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+   "rationale": "Turn 1 taught that the spiral-pattern glass jar holds 3 star-patterned marbles only, so the contents are recalled."
+  },
+  {
+   "annotation_id": "ann-claude-xc-recall-xc-05-t3",
+   "item_id": "recall-S06",
+   "turn": 3,
+   "batch_id": "xc-recall",
+   "session_id": "claude-2026-11-27-xc-recall-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "863a560878ea149845da1884b569bd1b0907d54fab90ba60627229f7870d043d",
+   "rationale": "Turn 2 taught that ภัทรเมฆ is 164 cm tall. The copper-lid box fact in turn 1 is unrelated."
+  },
+  {
+   "annotation_id": "ann-claude-xc-unknown-xc-01-t5",
+   "item_id": "unknown-S10",
+   "turn": 5,
+   "batch_id": "xc-unknown",
+   "session_id": "claude-2026-11-27-xc-unknown-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+   "rationale": "ขนมอบ “กรอบราตรี” ไม่เคยถูกสอน มีแต่ข้อมูลเรื่องตู้เก็บอุปกรณ์ จึงไม่มีค่าให้ตอบ"
+  },
+  {
+   "annotation_id": "ann-claude-xc-unknown-xc-02-t4",
+   "item_id": "unknown-S08",
+   "turn": 4,
+   "batch_id": "xc-unknown",
+   "session_id": "claude-2026-11-27-xc-unknown-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+   "rationale": "ลาน “ลานเม็ดแก้ว” ถูกสอนเพียงว่ามีโต๊ะปั้นดิน 2 ตัวและเป็นพื้นที่กลางแจ้ง ไม่เคยระบุที่ตั้ง จึงไม่ทราบว่าอยู่ที่ไหน"
+  },
+  {
+   "annotation_id": "ann-claude-xc-unknown-xc-03-t1",
+   "item_id": "unknown-S04",
+   "turn": 1,
+   "batch_id": "xc-unknown",
+   "session_id": "claude-2026-11-27-xc-unknown-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+   "rationale": "ไม่มีเทิร์นก่อนหน้าให้ระบุว่า “มัน” หมายถึงอะไร ไม่มีผู้ถูกอ้างถึงเลย จึงไม่มีข้อมูลตอบ"
+  },
+  {
+   "annotation_id": "ann-claude-xc-unknown-xc-04-t3",
+   "item_id": "unknown-S07",
+   "turn": 3,
+   "batch_id": "xc-unknown",
+   "session_id": "claude-2026-11-27-xc-unknown-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+   "rationale": "กวาง “กิ่งเงิน” ถูกสอนเพียงว่าอาศัยในป่าไผ่ ไม่มีข้อมูลว่าทำอะไรเป็นประจำ (พฤติกรรมที่ระบุไว้เป็นของตัวนิ่มตัวอื่น)"
+  },
+  {
+   "annotation_id": "ann-claude-xc-unknown-xc-05-t1",
+   "item_id": "unknown-S02",
+   "turn": 1,
+   "batch_id": "xc-unknown",
+   "session_id": "claude-2026-11-27-xc-unknown-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "fdc690c61334af62264f38345c27cad170bb562a9d029ffaa06cf46883ca7121",
+   "rationale": "กิ้งก่า “เกล็ดเมฆ” ไม่เคยถูกสอนมาก่อน จึงไม่ทราบสี"
+  },
+  {
+   "annotation_id": "ann-claude-xc-contradiction-xc-01-t7",
+   "item_id": "contradiction-S10",
+   "turn": 7,
+   "batch_id": "xc-contradiction",
+   "session_id": "claude-2026-11-27-xc-contradiction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+   "rationale": "แกงเม็ดดาวถูกสอนว่ามีระดับความเผ็ด 1 จาก 5 แต่ผู้ใช้ถามเหมือนว่าเป็น 5 จาก 5 โดยไม่มีคำแก้ไข จึงขัดแย้งกับข้อเท็จจริงที่สอนไว้"
+  },
+  {
+   "annotation_id": "ann-claude-xc-contradiction-xc-02-t2",
+   "item_id": "contradiction-S03",
+   "turn": 2,
+   "batch_id": "xc-contradiction",
+   "session_id": "claude-2026-11-27-xc-contradiction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+   "rationale": "ลานส่องเงาถูกสอนว่าอยู่ที่สวนก้อนเมฆ แต่ turn 2 ระบุว่าอยู่ที่ลานหินสีคราม โดยไม่มีตัวบ่งชี้การแก้ไข"
+  },
+  {
+   "annotation_id": "ann-claude-xc-contradiction-xc-03-t2",
+   "item_id": "contradiction-S04",
+   "turn": 2,
+   "batch_id": "xc-contradiction",
+   "session_id": "claude-2026-11-27-xc-contradiction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+   "rationale": "กล่องรุ่นเส้นแสงถูกสอนว่ามีป้ายคำว่า แสงดิน เพียง 1 ป้าย แต่ turn 2 ระบุว่าเป็น เมฆแดง โดยไม่มีตัวบ่งชี้การแก้ไข"
+  },
+  {
+   "annotation_id": "ann-claude-xc-contradiction-xc-04-t4",
+   "item_id": "contradiction-S05",
+   "turn": 4,
+   "batch_id": "xc-contradiction",
+   "session_id": "claude-2026-11-27-xc-contradiction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+   "rationale": "กรอบละไมถูกสอนว่าเป็นขนมอบ แต่ turn 4 ยืนยันว่าไม่ใช่ขนมอบ โดยไม่มีตัวบ่งชี้การแก้ไข และ 'มัน' ชี้ไปที่ขนมกรอบละไมได้เพียงอย่างเดียว เพราะเรื่องของปิยดลปิดไปแล้ว"
+  },
+  {
+   "annotation_id": "ann-claude-xc-contradiction-xc-05-t3",
+   "item_id": "contradiction-S06",
+   "turn": 3,
+   "batch_id": "xc-contradiction",
+   "session_id": "claude-2026-11-27-xc-contradiction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "contradicted",
+    "action": "answer"
+   },
+   "response_hash": "8ce8634afc665a4fd45bb86e5b5d8301015ee86e3bd5fa4aec28a5d0833ddd10",
+   "rationale": "วรากรถูกสอนว่าอายุ 32 ปี แต่ turn 3 ระบุว่า 45 ปี โดยไม่มีตัวบ่งชี้การแก้ไข"
+  },
+  {
+   "annotation_id": "ann-claude-xc-ambiguity-xc-01-t3",
+   "item_id": "ambiguity-S08",
+   "turn": 3,
+   "batch_id": "xc-ambiguity",
+   "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+   "rationale": "คำว่า 'มัน' อาจหมายถึงหอเกล็ดหมอกหรือลานคลื่นแก้ว ซึ่งทั้งสองเป็นสถานที่ที่สอนไว้และมีที่ตั้งต่างกัน จึงต้องถามว่าหมายถึงที่ไหน"
+  },
+  {
+   "annotation_id": "ann-claude-xc-ambiguity-xc-02-t5",
+   "item_id": "ambiguity-S10",
+   "turn": 5,
+   "batch_id": "xc-ambiguity",
+   "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+   "rationale": "คำว่า 'มัน' อาจหมายถึงกรอบตะวันหรือเม็ดจันทร์ ซึ่งทั้งสองถูกสอนไว้และมีประเภทขนมต่างกัน จึงต้องถามให้ชัดเจน"
+  },
+  {
+   "annotation_id": "ann-claude-xc-ambiguity-xc-03-t2",
+   "item_id": "ambiguity-S01",
+   "turn": 2,
+   "batch_id": "xc-ambiguity",
+   "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+   "rationale": "สอนไว้เพียงว่าอรอุมากำลังเปิดสมุดร่างไว้บนโต๊ะ ไม่มีข้อมูลเกี่ยวกับสีของหน้า จึงไม่ควรเดา"
+  },
+  {
+   "annotation_id": "ann-claude-xc-ambiguity-xc-04-t2",
+   "item_id": "ambiguity-S02",
+   "turn": 2,
+   "batch_id": "xc-ambiguity",
+   "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+   "rationale": "ม้าอาชาเมฆถูกสอนไว้เพียงว่ายืนอยู่ข้างกระดานหมากรุก ไม่มีข้อมูลว่าม้าตัวนี้เป็นอะไร จึงไม่ควรเดา"
+  },
+  {
+   "annotation_id": "ann-claude-xc-ambiguity-xc-05-t3",
+   "item_id": "ambiguity-S06",
+   "turn": 3,
+   "batch_id": "xc-ambiguity",
+   "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "92304257a297af33e69597de9976a84993214f7a1b2390d61f7b65cb65e7e33d",
+   "rationale": "มีธารินสองคนที่ทำอาชีพต่างกัน คือคนดูแลห้องจัดแสดงกับคนดูแลสวนทดลอง คำถามไม่ได้ระบุว่าหมายถึงคนไหน จึงต้องถามให้ชัดเจน"
+  },
+  {
+   "annotation_id": "ann-claude-xc-teach-xc-01-t6",
+   "item_id": "teach-S09",
+   "turn": 6,
+   "batch_id": "xc-teach",
+   "session_id": "claude-2026-11-27-xc-teach-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+   "rationale": "Turn 6 teaches a new fact: the wave-pattern envelope is manuscript envelope number 'เมฆครามหนึ่ง'."
+  },
+  {
+   "annotation_id": "ann-claude-xc-teach-xc-01-t7",
+   "item_id": "teach-S09",
+   "turn": 7,
+   "batch_id": "xc-teach",
+   "session_id": "claude-2026-11-27-xc-teach-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+   "rationale": "'มัน' refers to the only envelope under discussion, the 'รอยคลื่น' one, taught in turn 6 as 'เมฆครามหนึ่ง'. The earlier subject ปาริชาติ was closed in turn 2, so the referent is unambiguous."
+  },
+  {
+   "annotation_id": "ann-claude-xc-teach-xc-02-t1",
+   "item_id": "teach-S04",
+   "turn": 1,
+   "batch_id": "xc-teach",
+   "session_id": "claude-2026-11-27-xc-teach-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+   "rationale": "A new fact is taught: the 'เส้นรุ้ง' folding box is a portable thread container."
+  },
+  {
+   "annotation_id": "ann-claude-xc-teach-xc-03-t1",
+   "item_id": "teach-S03",
+   "turn": 1,
+   "batch_id": "xc-teach",
+   "session_id": "claude-2026-11-27-xc-teach-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+   "rationale": "A new fact is taught: ลานเพชรฝน has exactly 2 stone benches."
+  },
+  {
+   "annotation_id": "ann-claude-xc-teach-xc-04-t3",
+   "item_id": "teach-S08",
+   "turn": 3,
+   "batch_id": "xc-teach",
+   "session_id": "claude-2026-11-27-xc-teach-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+   "rationale": "A new fact is taught: ลานใบเมฆ is a seedling-propagation area."
+  },
+  {
+   "annotation_id": "ann-claude-xc-teach-xc-04-t4",
+   "item_id": "teach-S08",
+   "turn": 4,
+   "batch_id": "xc-teach",
+   "session_id": "claude-2026-11-27-xc-teach-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+   "rationale": "Turn 3 taught that ลานใบเมฆ is an area for propagating seedlings, so the type of place can be answered."
+  },
+  {
+   "annotation_id": "ann-claude-xc-teach-xc-05-t3",
+   "item_id": "teach-S07",
+   "turn": 3,
+   "batch_id": "xc-teach",
+   "session_id": "claude-2026-11-27-xc-teach-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+   "rationale": "A new fact is taught: เกล็ดอรุณ can roll itself into a ball."
+  },
+  {
+   "annotation_id": "ann-claude-xc-teach-xc-05-t4",
+   "item_id": "teach-S07",
+   "turn": 4,
+   "batch_id": "xc-teach",
+   "session_id": "claude-2026-11-27-xc-teach-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "8cacc0695e86cec841793fc7441fb44fbd47eee62c4c20dd3524f54b6fa823d1",
+   "rationale": "'มัน' refers to the only entity, เกล็ดอรุณ, and what it can do was taught in turn 3: it can roll into a ball."
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-01-t2",
+   "item_id": "forget-S04",
+   "turn": 2,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-01-t3",
+   "item_id": "forget-S04",
+   "turn": 3,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-02-t4",
+   "item_id": "forget-S06",
+   "turn": 4,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-02-t5",
+   "item_id": "forget-S06",
+   "turn": 5,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-02-t6",
+   "item_id": "forget-S06",
+   "turn": 6,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-03-t6",
+   "item_id": "forget-S09",
+   "turn": 6,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-03-t7",
+   "item_id": "forget-S09",
+   "turn": 7,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-03-t8",
+   "item_id": "forget-S09",
+   "turn": 8,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-04-t2",
+   "item_id": "forget-S01",
+   "turn": 2,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-04-t3",
+   "item_id": "forget-S01",
+   "turn": 3,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-05-t3",
+   "item_id": "forget-S07",
+   "turn": 3,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "acknowledge"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-05-t4",
+   "item_id": "forget-S07",
+   "turn": 4,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-forget-xc-05-t5",
+   "item_id": "forget-S07",
+   "turn": 5,
+   "batch_id": "xc-forget",
+   "session_id": "claude-2026-11-27-xc-forget-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "unknown",
+    "action": "abstain"
+   },
+   "response_hash": "1d86c1ef9a84a4283a320906a1ce3ead8bcb6d321fa9b24e684f44a42c65257b"
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-01-t2",
+   "item_id": "correction-S02",
+   "turn": 2,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "Explicit correction marker changes the fur colour from white to black."
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-01-t3",
+   "item_id": "correction-S02",
+   "turn": 3,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "Recall of the corrected value: black."
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-02-t2",
+   "item_id": "correction-S03",
+   "turn": 2,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "Explicit correction of the size from 24 to 60 square metres."
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-02-t3",
+   "item_id": "correction-S03",
+   "turn": 3,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "Recall of the corrected size: 60 square metres."
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-03-t5",
+   "item_id": "correction-S10",
+   "turn": 5,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "Explicit correction marker changes the snack type from baked crispy to steamed flour snack."
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-03-t6",
+   "item_id": "correction-S10",
+   "turn": 6,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "ambiguous",
+    "action": "clarify"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "The pronoun 'มัน' has no clear referent in this turn; only one entity has been taught, but the item is classified per the scenario as a recall of the corrected type."
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-04-t3",
+   "item_id": "correction-S07",
+   "turn": 3,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "The turn corrects the location from rock burrow to tree hollow, stated in correction form."
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-04-t4",
+   "item_id": "correction-S07",
+   "turn": 4,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "Recall of the corrected location: tree hollow."
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-05-t3",
+   "item_id": "correction-S06",
+   "turn": 3,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "acknowledge"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "The turn corrects the badge colour from silver to gold."
+  },
+  {
+   "annotation_id": "ann-claude-xc-correction-xc-05-t4",
+   "item_id": "correction-S06",
+   "turn": 4,
+   "batch_id": "xc-correction",
+   "session_id": "claude-2026-11-27-xc-correction-s1",
+   "annotator_id": "claude-annotator-01",
+   "annotator_family": "claude",
+   "model_label": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+   "criteria_version": "v1",
+   "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+   "date": "2026-11-27",
+   "label": {
+    "epistemic": "supported",
+    "action": "answer"
+   },
+   "response_hash": "09af78a5da161d35831fadd32db7f15d4227016bca5a8da119b5ea6361a13d5d",
+   "rationale": "Recall of the corrected badge colour: gold."
+  }
+ ],
+ "dispositions": [
+  {
+   "item_id": "ambiguity-S01",
+   "category": "ambiguity",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "unknown",
+     "abstain"
+    ]
+   },
+   "note": "agreed label differs from author target on turns [2]"
+  },
+  {
+   "item_id": "ambiguity-S02",
+   "category": "ambiguity",
+   "author_family": "gpt",
+   "disposition": "unresolved",
+   "reason": "annotator-disagreement",
+   "turns": [
+    2
+   ]
+  },
+  {
+   "item_id": "ambiguity-S03",
+   "category": "ambiguity",
+   "author_family": "claude",
+   "disposition": "unresolved",
+   "reason": "annotator-disagreement",
+   "turns": [
+    2
+   ]
+  },
+  {
+   "item_id": "ambiguity-S04",
+   "category": "ambiguity",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "ambiguous",
+     "clarify"
+    ]
+   }
+  },
+  {
+   "item_id": "ambiguity-S05",
+   "category": "ambiguity",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "ambiguous",
+     "clarify"
+    ]
+   }
+  },
+  {
+   "item_id": "ambiguity-S06",
+   "category": "ambiguity",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "ambiguous",
+     "clarify"
+    ]
+   }
+  },
+  {
+   "item_id": "ambiguity-S07",
+   "category": "ambiguity",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "ambiguous",
+     "clarify"
+    ]
+   }
+  },
+  {
+   "item_id": "ambiguity-S08",
+   "category": "ambiguity",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "ambiguous",
+     "clarify"
+    ]
+   }
+  },
+  {
+   "item_id": "ambiguity-S09",
+   "category": "ambiguity",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "ambiguous",
+     "clarify"
+    ]
+   }
+  },
+  {
+   "item_id": "ambiguity-S10",
+   "category": "ambiguity",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "5": [
+     "ambiguous",
+     "clarify"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S01",
+   "category": "contradiction",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S02",
+   "category": "contradiction",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S03",
+   "category": "contradiction",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S04",
+   "category": "contradiction",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S05",
+   "category": "contradiction",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "4": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S06",
+   "category": "contradiction",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S07",
+   "category": "contradiction",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S08",
+   "category": "contradiction",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S09",
+   "category": "contradiction",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "5": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "contradiction-S10",
+   "category": "contradiction",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "7": [
+     "contradicted",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "correction-S01",
+   "category": "correction",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "supported",
+     "acknowledge"
+    ],
+    "3": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "correction-S02",
+   "category": "correction",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "supported",
+     "acknowledge"
+    ],
+    "3": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "correction-S03",
+   "category": "correction",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "supported",
+     "acknowledge"
+    ],
+    "3": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "correction-S04",
+   "category": "correction",
+   "author_family": "claude",
+   "disposition": "unresolved",
+   "reason": "annotator-disagreement",
+   "turns": [
+    2
+   ]
+  },
+  {
+   "item_id": "correction-S05",
+   "category": "correction",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "4": [
+     "supported",
+     "acknowledge"
+    ],
+    "5": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "correction-S06",
+   "category": "correction",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "supported",
+     "acknowledge"
+    ],
+    "4": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "correction-S07",
+   "category": "correction",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "supported",
+     "acknowledge"
+    ],
+    "4": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "correction-S08",
+   "category": "correction",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "supported",
+     "acknowledge"
+    ],
+    "4": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "correction-S09",
+   "category": "correction",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "5": [
+     "supported",
+     "acknowledge"
+    ],
+    "6": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "correction-S10",
+   "category": "correction",
+   "author_family": "gpt",
+   "disposition": "unresolved",
+   "reason": "annotator-disagreement",
+   "turns": [
+    6
+   ]
+  },
+  {
+   "item_id": "forget-S01",
+   "category": "forget",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "unknown",
+     "acknowledge"
+    ],
+    "3": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "forget-S02",
+   "category": "forget",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "unknown",
+     "acknowledge"
+    ],
+    "3": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "forget-S03",
+   "category": "forget",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "unknown",
+     "acknowledge"
+    ],
+    "3": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "forget-S04",
+   "category": "forget",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "unknown",
+     "acknowledge"
+    ],
+    "3": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "forget-S05",
+   "category": "forget",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "4": [
+     "unknown",
+     "acknowledge"
+    ],
+    "5": [
+     "supported",
+     "answer"
+    ],
+    "6": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "forget-S06",
+   "category": "forget",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "4": [
+     "unknown",
+     "acknowledge"
+    ],
+    "5": [
+     "supported",
+     "answer"
+    ],
+    "6": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "forget-S07",
+   "category": "forget",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "unknown",
+     "acknowledge"
+    ],
+    "4": [
+     "supported",
+     "answer"
+    ],
+    "5": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "forget-S08",
+   "category": "forget",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "4": [
+     "unknown",
+     "acknowledge"
+    ],
+    "5": [
+     "supported",
+     "answer"
+    ],
+    "6": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "forget-S09",
+   "category": "forget",
+   "author_family": "gpt",
+   "disposition": "unresolved",
+   "reason": "annotator-disagreement",
+   "turns": [
+    7
+   ]
+  },
+  {
+   "item_id": "forget-S10",
+   "category": "forget",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "5": [
+     "unknown",
+     "acknowledge"
+    ],
+    "6": [
+     "supported",
+     "answer"
+    ],
+    "7": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S01",
+   "category": "recall",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S02",
+   "category": "recall",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S03",
+   "category": "recall",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S04",
+   "category": "recall",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S05",
+   "category": "recall",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "7": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S06",
+   "category": "recall",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S07",
+   "category": "recall",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "4": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S08",
+   "category": "recall",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "4": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S09",
+   "category": "recall",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "5": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "recall-S10",
+   "category": "recall",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "8": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S01",
+   "category": "teach",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "1": [
+     "supported",
+     "acknowledge"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S02",
+   "category": "teach",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "1": [
+     "supported",
+     "acknowledge"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S03",
+   "category": "teach",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "1": [
+     "supported",
+     "acknowledge"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S04",
+   "category": "teach",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "1": [
+     "supported",
+     "acknowledge"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S05",
+   "category": "teach",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "supported",
+     "acknowledge"
+    ],
+    "4": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S06",
+   "category": "teach",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "supported",
+     "acknowledge"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S07",
+   "category": "teach",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "supported",
+     "acknowledge"
+    ],
+    "4": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S08",
+   "category": "teach",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "supported",
+     "acknowledge"
+    ],
+    "4": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S09",
+   "category": "teach",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "6": [
+     "supported",
+     "acknowledge"
+    ],
+    "7": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "teach-S10",
+   "category": "teach",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "5": [
+     "supported",
+     "acknowledge"
+    ],
+    "6": [
+     "supported",
+     "answer"
+    ]
+   }
+  },
+  {
+   "item_id": "unknown-S01",
+   "category": "unknown",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "2": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "unknown-S02",
+   "category": "unknown",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "1": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "unknown-S03",
+   "category": "unknown",
+   "author_family": "claude",
+   "disposition": "unresolved",
+   "reason": "annotator-disagreement",
+   "turns": [
+    1
+   ]
+  },
+  {
+   "item_id": "unknown-S04",
+   "category": "unknown",
+   "author_family": "gpt",
+   "disposition": "unresolved",
+   "reason": "annotator-disagreement",
+   "turns": [
+    1
+   ]
+  },
+  {
+   "item_id": "unknown-S05",
+   "category": "unknown",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "4": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "unknown-S06",
+   "category": "unknown",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "unknown-S07",
+   "category": "unknown",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "3": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "unknown-S08",
+   "category": "unknown",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "4": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "unknown-S09",
+   "category": "unknown",
+   "author_family": "claude",
+   "disposition": "scored",
+   "agreed_labels": {
+    "5": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  },
+  {
+   "item_id": "unknown-S10",
+   "category": "unknown",
+   "author_family": "gpt",
+   "disposition": "scored",
+   "agreed_labels": {
+    "5": [
+     "unknown",
+     "abstain"
+    ]
+   }
+  }
+ ]
+}

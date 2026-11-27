@@ -1,0 +1,39 @@
+xc-01 turn 6
+```json
+{"epistemic": "supported", "action": "acknowledge", "rationale": "Turn 6 teaches a new fact: the wave-pattern envelope is manuscript envelope number 'เมฆครามหนึ่ง'."}
+```
+
+xc-01 turn 7
+```json
+{"epistemic": "supported", "action": "answer", "rationale": "'มัน' refers to the only envelope under discussion, the 'รอยคลื่น' one, taught in turn 6 as 'เมฆครามหนึ่ง'. The earlier subject ปาริชาติ was closed in turn 2, so the referent is unambiguous."}
+```
+
+xc-02 turn 1
+```json
+{"epistemic": "supported", "action": "acknowledge", "rationale": "A new fact is taught: the 'เส้นรุ้ง' folding box is a portable thread container."}
+```
+
+xc-03 turn 1
+```json
+{"epistemic": "supported", "action": "acknowledge", "rationale": "A new fact is taught: ลานเพชรฝน has exactly 2 stone benches."}
+```
+
+xc-04 turn 3
+```json
+{"epistemic": "supported", "action": "acknowledge", "rationale": "A new fact is taught: ลานใบเมฆ is a seedling-propagation area."}
+```
+
+xc-04 turn 4
+```json
+{"epistemic": "supported", "action": "answer", "rationale": "Turn 3 taught that ลานใบเมฆ is an area for propagating seedlings, so the type of place can be answered."}
+```
+
+xc-05 turn 3
+```json
+{"epistemic": "supported", "action": "acknowledge", "rationale": "A new fact is taught: เกล็ดอรุณ can roll itself into a ball."}
+```
+
+xc-05 turn 4
+```json
+{"epistemic": "supported", "action": "answer", "rationale": "'มัน' refers to the only entity, เกล็ดอรุณ, and what it can do was taught in turn 3: it can roll into a ball."}
+```

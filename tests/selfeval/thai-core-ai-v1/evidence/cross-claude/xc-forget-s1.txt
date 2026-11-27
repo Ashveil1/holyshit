@@ -1,0 +1,64 @@
+xc-01 turn 2
+```json
+{"epistemic": "unknown", "action": "acknowledge"}
+```
+
+xc-01 turn 3
+```json
+{"epistemic": "unknown", "action": "abstain"}
+```
+
+xc-02 turn 4
+```json
+{"epistemic": "unknown", "action": "acknowledge"}
+```
+
+xc-02 turn 5
+```json
+{"epistemic": "supported", "action": "answer"}
+```
+
+xc-02 turn 6
+```json
+{"epistemic": "unknown", "action": "abstain"}
+```
+
+xc-03 turn 6
+```json
+{"epistemic": "unknown", "action": "acknowledge"}
+```
+
+xc-03 turn 7
+```json
+{"epistemic": "unknown", "action": "abstain"}
+```
+
+xc-03 turn 8
+```json
+{"epistemic": "unknown", "action": "abstain"}
+```
+
+xc-04 turn 2
+```json
+{"epistemic": "unknown", "action": "acknowledge"}
+```
+
+xc-04 turn 3
+```json
+{"epistemic": "unknown", "action": "abstain"}
+```
+
+xc-05 turn 3
+```json
+{"epistemic": "unknown", "action": "acknowledge"}
+```
+
+xc-05 turn 4
+```json
+{"epistemic": "supported", "action": "answer"}
+```
+
+xc-05 turn 5
+```json
+{"epistemic": "unknown", "action": "abstain"}
+```

@@ -1,0 +1,1358 @@
+{
+ "id": "thai-core-ai",
+ "version": 1,
+ "kind": "dialogue",
+ "tier": "core",
+ "lang": "th",
+ "status": "AI_AUTHORED_CONTENT_FROZEN",
+ "note": "AI-authored Thai core suite. Not human-validated. Breakage-catching instrument only; no number from this set is a quality claim. Labels: AI เขียน / not human-validated.",
+ "provenance": {
+  "method": "ai-authored",
+  "label": "AI เขียน / not human-validated",
+  "human_validated": false,
+  "annotation_variant": "A",
+  "authors": [
+   {
+    "author_id": "claude-author-01",
+    "family": "claude",
+    "model": "Claude Sonnet 5.5 (Anthropic), self-reported, unverified",
+    "version": "unavailable",
+    "session_date": "2026-11-26"
+   },
+   {
+    "author_id": "gpt-author-01",
+    "family": "gpt",
+    "model": "GPT-6, self-reported, unverified",
+    "version": "unavailable",
+    "session_date": "2026-11-26"
+   }
+  ],
+  "annotators": [
+   {
+    "annotator_id": "gemini-annotator-01",
+    "family": "gemini",
+    "model": "Auto (displayed label, self-reported, unverified)",
+    "version": "unavailable"
+   },
+   {
+    "annotator_id": "gpt-annotator-01",
+    "family": "gpt",
+    "model": "ChatGPT (no model name displayed; Think ON)",
+    "version": "unavailable"
+   },
+   {
+    "annotator_id": "claude-annotator-01",
+    "family": "claude",
+    "model": "Sonnet 5.5 Medium (displayed, self-reported, unverified)",
+    "version": "unavailable"
+   }
+  ],
+  "annotation_sessions": [
+   {
+    "session_id": "gemini-2026-11-27-tc-recall-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-recall",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "15700097219756686148"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-unknown-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-unknown",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5023646737146710990"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-contradiction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-contradiction",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "13411879724663313304"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-ambiguity-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-ambiguity",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5904767321744862989"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-teach-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-teach",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "15537781498078093155"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-forget-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-forget",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "6518116866262729567"
+   },
+   {
+    "session_id": "gemini-2026-11-27-tc-correction-s1",
+    "annotator_id": "gemini-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "tc-correction",
+    "resume_of": null,
+    "displayed_model_label": "Auto",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "14890303479793399805"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-recall-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-recall",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "10943047263067963531"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-unknown-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-unknown",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "654772088964187189"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-contradiction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-contradiction",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5502844348331487918"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-ambiguity-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-ambiguity",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5645751392306214771"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-teach-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-teach",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "1653770162053226495"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-forget-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-forget",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "13183239191643497113"
+   },
+   {
+    "session_id": "gpt-2026-11-27-xg-correction-s1",
+    "annotator_id": "gpt-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xg-correction",
+    "resume_of": null,
+    "displayed_model_label": "ChatGPT (no model name displayed; Think ON)",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "11554817005189324292"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-recall-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-recall",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "1540332732633220712"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-unknown-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-unknown",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "5962872737970349941"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-contradiction-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-contradiction",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "18015693893198993676"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-ambiguity-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-ambiguity",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "2513780482130045842"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-teach-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-teach",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "6727900805343646313"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-forget-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-forget",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "11163846146856793854"
+   },
+   {
+    "session_id": "claude-2026-11-27-xc-correction-s1",
+    "annotator_id": "claude-annotator-01",
+    "session_date": "2026-11-27",
+    "batch_id": "xc-correction",
+    "resume_of": null,
+    "displayed_model_label": "Sonnet 5.5 Medium",
+    "prompt_template_hash": "0ff7e325ac7a98f20a16dce37afc1560e98f5ae1b5127148b8372d24093eccf4",
+    "item_order_seed": "7353624589700266971"
+   }
+  ],
+  "criteria_version": "v1",
+  "criteria_sha256": "241612cab5f3efbec8eee2562e2850680a8a262186132cbe4af8ee6af7a2dd18",
+  "variation_plan_hash": "01d6b719483d2e6f47f0751b3311423ba6cd275948ba6f9bc199283090a130b3",
+  "preflight": {
+   "protocol": "preflight-v2",
+   "gate": "PASS all 7 categories under both reviewers",
+   "evidence": "evidence/preflight/ + evidence/preflight-review/"
+  }
+ },
+ "categories": [
+  "recall",
+  "unknown",
+  "contradiction",
+  "ambiguity",
+  "teach",
+  "forget",
+  "correction"
+ ],
+ "counts": {
+  "items": 70,
+  "per_category": 10,
+  "scored": 63,
+  "unresolved": 7
+ },
+ "items": [
+  {
+   "id": "recall-S01",
+   "category": "recall",
+   "slot": "S01",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-07-t2",
+    "ann-gpt-xg-recall-xg-01-t2"
+   ]
+  },
+  {
+   "id": "recall-S02",
+   "category": "recall",
+   "slot": "S02",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-08-t2",
+    "ann-gpt-xg-recall-xg-03-t2"
+   ]
+  },
+  {
+   "id": "recall-S03",
+   "category": "recall",
+   "slot": "S03",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-01-t2",
+    "ann-gemini-tc-recall-tc-10-t2"
+   ]
+  },
+  {
+   "id": "recall-S04",
+   "category": "recall",
+   "slot": "S04",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-04-t2",
+    "ann-gemini-tc-recall-tc-06-t2"
+   ]
+  },
+  {
+   "id": "recall-S05",
+   "category": "recall",
+   "slot": "S05",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-03-t7",
+    "ann-gemini-tc-recall-tc-02-t7"
+   ]
+  },
+  {
+   "id": "recall-S06",
+   "category": "recall",
+   "slot": "S06",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-05-t3",
+    "ann-gemini-tc-recall-tc-01-t3"
+   ]
+  },
+  {
+   "id": "recall-S07",
+   "category": "recall",
+   "slot": "S07",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-05-t4",
+    "ann-gpt-xg-recall-xg-05-t4"
+   ]
+  },
+  {
+   "id": "recall-S08",
+   "category": "recall",
+   "slot": "S08",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-04-t4",
+    "ann-gpt-xg-recall-xg-04-t4"
+   ]
+  },
+  {
+   "id": "recall-S09",
+   "category": "recall",
+   "slot": "S09",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-recall-tc-09-t5",
+    "ann-gpt-xg-recall-xg-02-t5"
+   ]
+  },
+  {
+   "id": "recall-S10",
+   "category": "recall",
+   "slot": "S10",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-recall-xc-02-t8",
+    "ann-gemini-tc-recall-tc-03-t8"
+   ]
+  },
+  {
+   "id": "unknown-S01",
+   "category": "unknown",
+   "slot": "S01",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-05-t2",
+    "ann-gpt-xg-unknown-xg-02-t2"
+   ]
+  },
+  {
+   "id": "unknown-S02",
+   "category": "unknown",
+   "slot": "S02",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-05-t1",
+    "ann-gemini-tc-unknown-tc-06-t1"
+   ]
+  },
+  {
+   "id": "unknown-S03",
+   "category": "unknown",
+   "slot": "S03",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "unresolved",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-02-t1",
+    "ann-gpt-xg-unknown-xg-05-t1"
+   ],
+   "unresolved_reason": "annotator-disagreement",
+   "unresolved_turns": [
+    1
+   ]
+  },
+  {
+   "id": "unknown-S04",
+   "category": "unknown",
+   "slot": "S04",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "unresolved",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-03-t1",
+    "ann-gemini-tc-unknown-tc-07-t1"
+   ],
+   "unresolved_reason": "annotator-disagreement",
+   "unresolved_turns": [
+    1
+   ]
+  },
+  {
+   "id": "unknown-S05",
+   "category": "unknown",
+   "slot": "S05",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-09-t4",
+    "ann-gpt-xg-unknown-xg-04-t4"
+   ]
+  },
+  {
+   "id": "unknown-S06",
+   "category": "unknown",
+   "slot": "S06",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-01-t3",
+    "ann-gpt-xg-unknown-xg-01-t3"
+   ]
+  },
+  {
+   "id": "unknown-S07",
+   "category": "unknown",
+   "slot": "S07",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-04-t3",
+    "ann-gemini-tc-unknown-tc-03-t3"
+   ]
+  },
+  {
+   "id": "unknown-S08",
+   "category": "unknown",
+   "slot": "S08",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-02-t4",
+    "ann-gemini-tc-unknown-tc-04-t4"
+   ]
+  },
+  {
+   "id": "unknown-S09",
+   "category": "unknown",
+   "slot": "S09",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-unknown-tc-10-t5",
+    "ann-gpt-xg-unknown-xg-03-t5"
+   ]
+  },
+  {
+   "id": "unknown-S10",
+   "category": "unknown",
+   "slot": "S10",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-unknown-xc-01-t5",
+    "ann-gemini-tc-unknown-tc-08-t5"
+   ]
+  },
+  {
+   "id": "contradiction-S01",
+   "category": "contradiction",
+   "slot": "S01",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-03-t2",
+    "ann-gpt-xg-contradiction-xg-01-t2"
+   ]
+  },
+  {
+   "id": "contradiction-S02",
+   "category": "contradiction",
+   "slot": "S02",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-02-t2",
+    "ann-gpt-xg-contradiction-xg-05-t2"
+   ]
+  },
+  {
+   "id": "contradiction-S03",
+   "category": "contradiction",
+   "slot": "S03",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-02-t2",
+    "ann-gemini-tc-contradiction-tc-07-t2"
+   ]
+  },
+  {
+   "id": "contradiction-S04",
+   "category": "contradiction",
+   "slot": "S04",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-03-t2",
+    "ann-gemini-tc-contradiction-tc-04-t2"
+   ]
+  },
+  {
+   "id": "contradiction-S05",
+   "category": "contradiction",
+   "slot": "S05",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-04-t4",
+    "ann-gemini-tc-contradiction-tc-10-t4"
+   ]
+  },
+  {
+   "id": "contradiction-S06",
+   "category": "contradiction",
+   "slot": "S06",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-05-t3",
+    "ann-gemini-tc-contradiction-tc-05-t3"
+   ]
+  },
+  {
+   "id": "contradiction-S07",
+   "category": "contradiction",
+   "slot": "S07",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-09-t3",
+    "ann-gpt-xg-contradiction-xg-03-t3"
+   ]
+  },
+  {
+   "id": "contradiction-S08",
+   "category": "contradiction",
+   "slot": "S08",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-06-t3",
+    "ann-gpt-xg-contradiction-xg-04-t3"
+   ]
+  },
+  {
+   "id": "contradiction-S09",
+   "category": "contradiction",
+   "slot": "S09",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-contradiction-tc-08-t5",
+    "ann-gpt-xg-contradiction-xg-02-t5"
+   ]
+  },
+  {
+   "id": "contradiction-S10",
+   "category": "contradiction",
+   "slot": "S10",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-contradiction-xc-01-t7",
+    "ann-gemini-tc-contradiction-tc-01-t7"
+   ]
+  },
+  {
+   "id": "ambiguity-S01",
+   "category": "ambiguity",
+   "slot": "S01",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-03-t2",
+    "ann-gemini-tc-ambiguity-tc-08-t2"
+   ]
+  },
+  {
+   "id": "ambiguity-S02",
+   "category": "ambiguity",
+   "slot": "S02",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "unresolved",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-04-t2",
+    "ann-gemini-tc-ambiguity-tc-03-t2"
+   ],
+   "unresolved_reason": "annotator-disagreement",
+   "unresolved_turns": [
+    2
+   ]
+  },
+  {
+   "id": "ambiguity-S03",
+   "category": "ambiguity",
+   "slot": "S03",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "unresolved",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-06-t2",
+    "ann-gpt-xg-ambiguity-xg-02-t2"
+   ],
+   "unresolved_reason": "annotator-disagreement",
+   "unresolved_turns": [
+    2
+   ]
+  },
+  {
+   "id": "ambiguity-S04",
+   "category": "ambiguity",
+   "slot": "S04",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-07-t2",
+    "ann-gpt-xg-ambiguity-xg-04-t2"
+   ]
+  },
+  {
+   "id": "ambiguity-S05",
+   "category": "ambiguity",
+   "slot": "S05",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-02-t3",
+    "ann-gpt-xg-ambiguity-xg-03-t3"
+   ]
+  },
+  {
+   "id": "ambiguity-S06",
+   "category": "ambiguity",
+   "slot": "S06",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-05-t3",
+    "ann-gemini-tc-ambiguity-tc-10-t3"
+   ]
+  },
+  {
+   "id": "ambiguity-S07",
+   "category": "ambiguity",
+   "slot": "S07",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-04-t3",
+    "ann-gpt-xg-ambiguity-xg-05-t3"
+   ]
+  },
+  {
+   "id": "ambiguity-S08",
+   "category": "ambiguity",
+   "slot": "S08",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-01-t3",
+    "ann-gemini-tc-ambiguity-tc-05-t3"
+   ]
+  },
+  {
+   "id": "ambiguity-S09",
+   "category": "ambiguity",
+   "slot": "S09",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-ambiguity-tc-01-t3",
+    "ann-gpt-xg-ambiguity-xg-01-t3"
+   ]
+  },
+  {
+   "id": "ambiguity-S10",
+   "category": "ambiguity",
+   "slot": "S10",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-ambiguity-xc-02-t5",
+    "ann-gemini-tc-ambiguity-tc-09-t5"
+   ]
+  },
+  {
+   "id": "teach-S01",
+   "category": "teach",
+   "slot": "S01",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-10-t1",
+    "ann-gpt-xg-teach-xg-03-t1"
+   ]
+  },
+  {
+   "id": "teach-S02",
+   "category": "teach",
+   "slot": "S02",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-01-t1",
+    "ann-gpt-xg-teach-xg-05-t1"
+   ]
+  },
+  {
+   "id": "teach-S03",
+   "category": "teach",
+   "slot": "S03",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-03-t1",
+    "ann-gemini-tc-teach-tc-04-t1"
+   ]
+  },
+  {
+   "id": "teach-S04",
+   "category": "teach",
+   "slot": "S04",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-02-t1",
+    "ann-gemini-tc-teach-tc-03-t1"
+   ]
+  },
+  {
+   "id": "teach-S05",
+   "category": "teach",
+   "slot": "S05",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-05-t3",
+    "ann-gemini-tc-teach-tc-05-t4",
+    "ann-gpt-xg-teach-xg-04-t3",
+    "ann-gpt-xg-teach-xg-04-t4"
+   ]
+  },
+  {
+   "id": "teach-S06",
+   "category": "teach",
+   "slot": "S06",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-02-t3",
+    "ann-gpt-xg-teach-xg-01-t3"
+   ]
+  },
+  {
+   "id": "teach-S07",
+   "category": "teach",
+   "slot": "S07",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-05-t3",
+    "ann-claude-xc-teach-xc-05-t4",
+    "ann-gemini-tc-teach-tc-07-t3",
+    "ann-gemini-tc-teach-tc-07-t4"
+   ]
+  },
+  {
+   "id": "teach-S08",
+   "category": "teach",
+   "slot": "S08",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-04-t3",
+    "ann-claude-xc-teach-xc-04-t4",
+    "ann-gemini-tc-teach-tc-06-t3",
+    "ann-gemini-tc-teach-tc-06-t4"
+   ]
+  },
+  {
+   "id": "teach-S09",
+   "category": "teach",
+   "slot": "S09",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-teach-xc-01-t6",
+    "ann-claude-xc-teach-xc-01-t7",
+    "ann-gemini-tc-teach-tc-09-t6",
+    "ann-gemini-tc-teach-tc-09-t7"
+   ]
+  },
+  {
+   "id": "teach-S10",
+   "category": "teach",
+   "slot": "S10",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-teach-tc-08-t5",
+    "ann-gemini-tc-teach-tc-08-t6",
+    "ann-gpt-xg-teach-xg-02-t5",
+    "ann-gpt-xg-teach-xg-02-t6"
+   ]
+  },
+  {
+   "id": "forget-S01",
+   "category": "forget",
+   "slot": "S01",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-04-t2",
+    "ann-claude-xc-forget-xc-04-t3",
+    "ann-gemini-tc-forget-tc-04-t2",
+    "ann-gemini-tc-forget-tc-04-t3"
+   ]
+  },
+  {
+   "id": "forget-S02",
+   "category": "forget",
+   "slot": "S02",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-07-t2",
+    "ann-gemini-tc-forget-tc-07-t3",
+    "ann-gpt-xg-forget-xg-02-t2",
+    "ann-gpt-xg-forget-xg-02-t3"
+   ]
+  },
+  {
+   "id": "forget-S03",
+   "category": "forget",
+   "slot": "S03",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-06-t2",
+    "ann-gemini-tc-forget-tc-06-t3",
+    "ann-gpt-xg-forget-xg-03-t2",
+    "ann-gpt-xg-forget-xg-03-t3"
+   ]
+  },
+  {
+   "id": "forget-S04",
+   "category": "forget",
+   "slot": "S04",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-01-t2",
+    "ann-claude-xc-forget-xc-01-t3",
+    "ann-gemini-tc-forget-tc-05-t2",
+    "ann-gemini-tc-forget-tc-05-t3"
+   ]
+  },
+  {
+   "id": "forget-S05",
+   "category": "forget",
+   "slot": "S05",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-03-t4",
+    "ann-gemini-tc-forget-tc-03-t5",
+    "ann-gemini-tc-forget-tc-03-t6",
+    "ann-gpt-xg-forget-xg-05-t4",
+    "ann-gpt-xg-forget-xg-05-t5",
+    "ann-gpt-xg-forget-xg-05-t6"
+   ]
+  },
+  {
+   "id": "forget-S06",
+   "category": "forget",
+   "slot": "S06",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-02-t4",
+    "ann-claude-xc-forget-xc-02-t5",
+    "ann-claude-xc-forget-xc-02-t6",
+    "ann-gemini-tc-forget-tc-08-t4",
+    "ann-gemini-tc-forget-tc-08-t5",
+    "ann-gemini-tc-forget-tc-08-t6"
+   ]
+  },
+  {
+   "id": "forget-S07",
+   "category": "forget",
+   "slot": "S07",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-05-t3",
+    "ann-claude-xc-forget-xc-05-t4",
+    "ann-claude-xc-forget-xc-05-t5",
+    "ann-gemini-tc-forget-tc-10-t3",
+    "ann-gemini-tc-forget-tc-10-t4",
+    "ann-gemini-tc-forget-tc-10-t5"
+   ]
+  },
+  {
+   "id": "forget-S08",
+   "category": "forget",
+   "slot": "S08",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-01-t4",
+    "ann-gemini-tc-forget-tc-01-t5",
+    "ann-gemini-tc-forget-tc-01-t6",
+    "ann-gpt-xg-forget-xg-01-t4",
+    "ann-gpt-xg-forget-xg-01-t5",
+    "ann-gpt-xg-forget-xg-01-t6"
+   ]
+  },
+  {
+   "id": "forget-S09",
+   "category": "forget",
+   "slot": "S09",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "unresolved",
+   "annotation_ids": [
+    "ann-claude-xc-forget-xc-03-t6",
+    "ann-claude-xc-forget-xc-03-t7",
+    "ann-claude-xc-forget-xc-03-t8",
+    "ann-gemini-tc-forget-tc-09-t6",
+    "ann-gemini-tc-forget-tc-09-t7",
+    "ann-gemini-tc-forget-tc-09-t8"
+   ],
+   "unresolved_reason": "annotator-disagreement",
+   "unresolved_turns": [
+    7
+   ]
+  },
+  {
+   "id": "forget-S10",
+   "category": "forget",
+   "slot": "S10",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-forget-tc-02-t5",
+    "ann-gemini-tc-forget-tc-02-t6",
+    "ann-gemini-tc-forget-tc-02-t7",
+    "ann-gpt-xg-forget-xg-04-t5",
+    "ann-gpt-xg-forget-xg-04-t6",
+    "ann-gpt-xg-forget-xg-04-t7"
+   ]
+  },
+  {
+   "id": "correction-S01",
+   "category": "correction",
+   "slot": "S01",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-07-t2",
+    "ann-gemini-tc-correction-tc-07-t3",
+    "ann-gpt-xg-correction-xg-05-t2",
+    "ann-gpt-xg-correction-xg-05-t3"
+   ]
+  },
+  {
+   "id": "correction-S02",
+   "category": "correction",
+   "slot": "S02",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-01-t2",
+    "ann-claude-xc-correction-xc-01-t3",
+    "ann-gemini-tc-correction-tc-06-t2",
+    "ann-gemini-tc-correction-tc-06-t3"
+   ]
+  },
+  {
+   "id": "correction-S03",
+   "category": "correction",
+   "slot": "S03",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-02-t2",
+    "ann-claude-xc-correction-xc-02-t3",
+    "ann-gemini-tc-correction-tc-02-t2",
+    "ann-gemini-tc-correction-tc-02-t3"
+   ]
+  },
+  {
+   "id": "correction-S04",
+   "category": "correction",
+   "slot": "S04",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "unresolved",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-03-t2",
+    "ann-gemini-tc-correction-tc-03-t3",
+    "ann-gpt-xg-correction-xg-03-t2",
+    "ann-gpt-xg-correction-xg-03-t3"
+   ],
+   "unresolved_reason": "annotator-disagreement",
+   "unresolved_turns": [
+    2
+   ]
+  },
+  {
+   "id": "correction-S05",
+   "category": "correction",
+   "slot": "S05",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-01-t4",
+    "ann-gemini-tc-correction-tc-01-t5",
+    "ann-gpt-xg-correction-xg-02-t4",
+    "ann-gpt-xg-correction-xg-02-t5"
+   ]
+  },
+  {
+   "id": "correction-S06",
+   "category": "correction",
+   "slot": "S06",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-05-t3",
+    "ann-claude-xc-correction-xc-05-t4",
+    "ann-gemini-tc-correction-tc-10-t3",
+    "ann-gemini-tc-correction-tc-10-t4"
+   ]
+  },
+  {
+   "id": "correction-S07",
+   "category": "correction",
+   "slot": "S07",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-04-t3",
+    "ann-claude-xc-correction-xc-04-t4",
+    "ann-gemini-tc-correction-tc-08-t3",
+    "ann-gemini-tc-correction-tc-08-t4"
+   ]
+  },
+  {
+   "id": "correction-S08",
+   "category": "correction",
+   "slot": "S08",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-09-t3",
+    "ann-gemini-tc-correction-tc-09-t4",
+    "ann-gpt-xg-correction-xg-04-t3",
+    "ann-gpt-xg-correction-xg-04-t4"
+   ]
+  },
+  {
+   "id": "correction-S09",
+   "category": "correction",
+   "slot": "S09",
+   "authored_by": "claude-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "scored",
+   "annotation_ids": [
+    "ann-gemini-tc-correction-tc-04-t5",
+    "ann-gemini-tc-correction-tc-04-t6",
+    "ann-gpt-xg-correction-xg-01-t5",
+    "ann-gpt-xg-correction-xg-01-t6"
+   ]
+  },
+  {
+   "id": "correction-S10",
+   "category": "correction",
+   "slot": "S10",
+   "authored_by": "gpt-author-01",
+   "ai_authored": true,
+   "not_human_validated": true,
+   "annotation_progress": "complete",
+   "disposition": "unresolved",
+   "annotation_ids": [
+    "ann-claude-xc-correction-xc-03-t5",
+    "ann-claude-xc-correction-xc-03-t6",
+    "ann-gemini-tc-correction-tc-05-t5",
+    "ann-gemini-tc-correction-tc-05-t6"
+   ],
+   "unresolved_reason": "annotator-disagreement",
+   "unresolved_turns": [
+    6
+   ]
+  }
+ ]
+}
