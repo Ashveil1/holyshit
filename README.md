@@ -190,6 +190,34 @@ Read `AGENTS.md` before writing `.holy` - a compact reference with all the
 rules, gotchas and the fix loop (`check` -> `interp` -> `build`, errors with
 `--json`). A shorter version is `docs/for-agents.md`.
 
+## A19.1 offline corpus reading lane (experimental, AI-authored)
+
+An agent experiment: reading a pinned offline corpus (Simple English
+Wikipedia dump, converted by `scripts/a19_preprocess.py`) through the
+agent's existing `read corpus <lineage>: <text>` route, bounded and
+crash-safe.
+
+**What it is NOT:** the readings are UNVERIFIED evidence-pipeline
+input. Nothing on this lane is learned knowledge, and no quality or
+comprehension claim is made. The lane measures extraction and storage
+at scale; it never touches accepted facts.
+
+- `scripts/a19_preprocess.py` + `scripts/a19_manifest.py` - pinned
+  wiki->NDJSON converter (redirect resolution, identity sidecars) and
+  the frozen 150-article pilot manifest (145 records + skip log).
+- `agent/corpusdrv.holy` - the bounded ingestion driver (hosted layer;
+  `agent/core.holy` untouched): verified-corpus gate, single read-route
+  entry (injection boundary), skip budget, per-article/per-run byte and
+  tick ceilings, RSS backstop with a monotonic reservation ledger,
+  dedup by (page_id, revision_id), checkpoint bound to the corpus
+  identity, generation-commit store with torn-write fallback and
+  quarantine-on-total-loss (process-kill coverage; the ACTIVE switch is
+  not atomic - hs has no rename/fsync).
+- `bench/a19_dict_benchmark.holy` + `bench/a19_run_benchmark.py` -
+  preflight dict knee/bytes-per-entry measurement that derives the
+  unique-key ceiling K.
+- Tests: `tests/test_agent_corpus_{benchmark,preprocess,driver}.py`.
+
 ## License
 
 Apache License 2.0 - see `LICENSE`. Copyright 2026 Ashveil1.

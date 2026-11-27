@@ -1,0 +1,244 @@
+{
+ "format_contract": "ndjson-utf8-lead-v1",
+ "intermediate_id": "545de7de8623c163d533634216b75342cee646b2be5d7f7ca709e3220d6e7d98",
+ "output_sha256": "545de7de8623c163d533634216b75342cee646b2be5d7f7ca709e3220d6e7d98",
+ "output_bytes": 97303,
+ "output_fnv1a": "0f751b0e",
+ "records": 145,
+ "skipped": [
+  {
+   "page_id": 367832,
+   "title": "Bullet train",
+   "reason": "unresolved redirect page"
+  },
+  {
+   "page_id": 19242,
+   "title": "1155",
+   "reason": "empty lead after stripping (infobox-only or empty page)"
+  },
+  {
+   "page_id": 24588,
+   "title": "1149",
+   "reason": "empty lead after stripping (infobox-only or empty page)"
+  },
+  {
+   "page_id": 83408,
+   "title": "1148",
+   "reason": "empty lead after stripping (infobox-only or empty page)"
+  },
+  {
+   "page_id": 7827,
+   "title": "1153",
+   "reason": "empty lead after stripping (infobox-only or empty page)"
+  }
+ ],
+ "redirect_resolutions": {
+  "1033158": {
+   "target_page_id": 1033157,
+   "chain": [
+    "Rhacophorus borneensis"
+   ]
+  },
+  "333350": {
+   "target_page_id": 325994,
+   "chain": [
+    "Bear (gay slang)"
+   ]
+  },
+  "1114901": {
+   "target_page_id": 1114899,
+   "chain": [
+    "Ranitomeya fantastica"
+   ]
+  },
+  "813831": {
+   "target_page_id": 394860,
+   "chain": [
+    "Greyhound racing"
+   ]
+  },
+  "1034393": {
+   "target_page_id": 1034218,
+   "chain": [
+    "Rhacophorus kio"
+   ]
+  },
+  "1018115": {
+   "target_page_id": 1018114,
+   "chain": [
+    "Theloderma palliatum"
+   ]
+  },
+  "968850": {
+   "target_page_id": 324554,
+   "chain": [
+    "Maneki Neko"
+   ]
+  },
+  "459881": {
+   "target_page_id": 459864,
+   "chain": [
+    "Sphynx cat"
+   ]
+  },
+  "92477": {
+   "target_page_id": 41206,
+   "chain": [
+    "Yusuf Islam"
+   ]
+  },
+  "1003441": {
+   "target_page_id": 1000798,
+   "chain": [
+    "Fjellheisen"
+   ]
+  },
+  "460383": {
+   "target_page_id": 284054,
+   "chain": [
+    "ICC Men's Cricket World Cup"
+   ]
+  },
+  "1238083": {
+   "target_page_id": 11506,
+   "chain": [
+    "Ohio River"
+   ]
+  },
+  "1164514": {
+   "target_page_id": 182719,
+   "chain": [
+    "Ilmenau River"
+   ]
+  },
+  "1247039": {
+   "target_page_id": 1246354,
+   "chain": [
+    "2026 Crans-Montana bar fire"
+   ]
+  },
+  "350229": {
+   "target_page_id": 56560,
+   "chain": [
+    "Gone with the Wind (movie)"
+   ]
+  },
+  "1141086": {
+   "target_page_id": 1140637,
+   "chain": [
+    "Battle of the Indus River"
+   ]
+  },
+  "770559": {
+   "target_page_id": 770552,
+   "chain": [
+    "Qinghai Lake"
+   ]
+  },
+  "122327": {
+   "target_page_id": 121180,
+   "chain": [
+    "Sutlej"
+   ]
+  },
+  "1005336": {
+   "target_page_id": 1005335,
+   "chain": [
+    "Shika Island"
+   ]
+  },
+  "261069": {
+   "target_page_id": 183424,
+   "chain": [
+    "King's Cross station"
+   ]
+  },
+  "732651": {
+   "target_page_id": 606795,
+   "chain": [
+    "Tan Kah Kee MRT station"
+   ]
+  },
+  "1008942": {
+   "target_page_id": 1008941,
+   "chain": [
+    "Tees Transporter Bridge"
+   ]
+  },
+  "600071": {
+   "target_page_id": 422667,
+   "chain": [
+    "New Apostolic Church"
+   ]
+  },
+  "316134": {
+   "target_page_id": 311124,
+   "chain": [
+    "Rye Beach, New Hampshire"
+   ]
+  },
+  "1215242": {
+   "target_page_id": 297375,
+   "chain": [
+    "Derby Silk Mill"
+   ]
+  },
+  "1150901": {
+   "target_page_id": 1150902,
+   "chain": [
+    "American University of the Caribbean"
+   ]
+  },
+  "207428": {
+   "target_page_id": 102258,
+   "chain": [
+    "Home education"
+   ]
+  },
+  "955308": {
+   "target_page_id": 725355,
+   "chain": [
+    "SCP"
+   ]
+  },
+  "522805": {
+   "target_page_id": 61944,
+   "chain": [
+    "Trust"
+   ]
+  },
+  "797828": {
+   "target_page_id": 797825,
+   "chain": [
+    "What Goes On"
+   ]
+  },
+  "1191259": {
+   "target_page_id": 1191255,
+   "chain": [
+    "United States Ambassador to Argentina"
+   ]
+  },
+  "39843": {
+   "target_page_id": 22517,
+   "chain": [
+    "1150s"
+   ]
+  }
+ },
+ "converter": {
+  "name": "a19-wiki-to-ndjson",
+  "version": "1.0.0",
+  "config_sha256": "1a88f5065ce14b3f5f1aeaeb3f2794c82bb3e51bd2f9331f6fb87a3b4ddbfe9a"
+ },
+ "dump": {
+  "dump": "simplewiki-20261101-pages-articles-multistream.xml.bz2",
+  "dump_sha256": "995f57d1d5a6c0bc3ed4b5d690de5cbdbd71109ceb67a7118976c49027db50ca",
+  "dump_bytes": 389720944,
+  "dump_date": "2026-11-01",
+  "index": "simplewiki-20261101-pages-articles-multistream-index.txt.bz2",
+  "index_sha256": "ef7b184b6a6cefe0e37a4ad1a282b64ac67d7739a4640732a476f90dd26ced1d"
+ },
+ "manifest_id": "a19-pilot-150-v1",
+ "manifest_sha256": "e29792ecca9930af8b3fe4511c2881176b9332250f0819b8958a76b9dc014774"
+}

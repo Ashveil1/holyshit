@@ -398,6 +398,50 @@ This is an explicitly labelled EXPERIMENTAL preview, not a release:
   reply; the fetch lives in `agent/fetch.holy`, imported only by the
   repl.
 
+## EXPERIMENTAL: read corpus (offline corpus lineage labels)
+
+The core accepts `read corpus <lineage-id>: <text>`: it ingests the
+text through exactly the same UNVERIFIED evidence pipeline as typed
+`read`, but records the source as `corpus-N` - an OFFLINE CORPUS
+LINEAGE (e.g. `simplewiki-corpus`), never a fetched page. This is the
+evidence-label prerequisite of the bounded offline-reading lane
+(design note A19); no corpus ingestion pipeline exists yet.
+
+- **One corpus = one source, forever:** the registry dedups by
+  lineage id, so a refreshed dump can never fork the lineage or pose
+  as a second source. Session-only, capped at 100 lineages, reset by
+  `clear readings`.
+- **SINGLE_CORPUS label:** a side whose support is entirely one
+  corpus lineage is labelled `SINGLE_CORPUS positive/negative (one
+  corpus lineage, map v1, not independent corroboration)` -
+  distinct from live-source support, still UNVERIFIED, and never
+  MULTI_SOURCE: one corpus never manufactures source diversity.
+- **Publisher-lineage map v1 (additive-only, versioned):**
+  `simplewiki-corpus` and the registrable domain `wikipedia.org`
+  share editorial lineage (group `wikipedia`). A corpus reading plus
+  a fetched page from a mapped domain COLLAPSES INTO ONE diversity
+  group: it shows no MULTI_SOURCE and the fetched page is not counted
+  as a separate registrable domain. A corpus reading plus an
+  UNRELATED domain stays two groups. HTTP-only behavior is unchanged.
+  The map version is recorded in every corpus-involved diversity
+  report; a future map change never reinterprets historical labels.
+- **Eligibility stays conservative:** SOURCE_DIVERSITY_THRESHOLD_MET
+  still requires 2+ distinct registrable DOMAINS - a corpus lineage
+  is not a domain and never counts toward it.
+- **Tests:** corpus-side behavior (registry dedup, SINGLE_CORPUS,
+  corpus+typed and two-lineage MULTI_SOURCE, conservative
+  eligibility, malformed forms, clear-reset) is pinned byte-identical
+  on all 7 execution routes in `tests/test_agent_core.py`
+  (`A19LIN_SCENARIOS`). The mixed corpus+HTTP collapse is pinned by
+  `tests/test_agent_lineage_fetch.py` (standalone harness, like
+  `test_agent_fetch.py` not registered in run_all), which needs a
+  working `tcp_connect`: it SKIPS cleanly where the A18.1 fetch
+  harness itself cannot connect. For that harness,
+  `HS_AGENT_TEST_FETCH=1` also redirects non-loopback hosts to the
+  local fixture server while keeping the normalized URL as the source
+  identity, so a `wikipedia.org` page is served deterministically;
+  production fetch behavior is unchanged.
+
 ## EXPERIMENTAL: pattern candidates (A20, offline, inactive)
 
 `patterns derive FILE` proposes reader-pattern CANDIDATES from an

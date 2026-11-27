@@ -835,6 +835,8 @@ def _ai_annots(s, sess, probs):
         append(probs, "annotation " + a["annotation_id"] + ": timestamp missing")
       if has(a, "role") and not (a["role"] in ["independent", "author-self"]):
         append(probs, "annotation " + a["annotation_id"] + ": role must be independent or author-self")
+      if not (has(a, "turn") and a["turn"] == int(a["turn"])):
+        append(probs, "annotation " + a["annotation_id"] + ": turn must be an integer (the per-(id,turn) rollup keys every record)")
       m[a["annotation_id"]] = a
   return m
 def _ai_item_state(s, it, probs, authmap, annlog, annfam, variant):
@@ -869,41 +871,82 @@ def _ai_item_state(s, it, probs, authmap, annlog, annfam, variant):
         append(probs, iid + ": author-family records on variant B need role author-self (declared NOT independent)")
   if afam in fams and variant == "A":
     append(probs, iid + ": author family " + afam + " must never annotate its own item (family-level exclusion; identity strings are not independence)")
-  if variant == "A":
-    if n == 2 and fams[0] == fams[1]:
-      append(probs, iid + ": the two annotations must come from distinct families")
-    if n > 2:
-      append(probs, iid + ": variant A gives exactly two annotations per item")
+  # critical/ambiguous is an author-declared ITEM-LEVEL flag (spec 4.4 A');
+  # the annotation label value is scored content, never a trigger.
+  amb = false
+  if has(it, "critical") and it["critical"] == true:
+    amb = true
+  if has(it, "ambiguous") and it["ambiguous"] == true:
+    amb = true
   want = "pending"
+  expected = ""
+  reason = ""
   if variant == "A":
-    if n == 1:
+    # A' rollup: two family-distinct records per (id, turn) scored pair;
+    # item agreement is agreement on EVERY scored turn.
+    st = []
+    if has(it, "scored_turns"):
+      st = it["scored_turns"]
+      if len(st) == 0:
+        append(probs, iid + ": scored_turns must declare at least one scored turn")
+      for t in st:
+        if t != int(t):
+          append(probs, iid + ": scored_turns entries must be integers")
+    else:
+      append(probs, iid + ": needs scored_turns (the per-(id,turn) rollup)")
+    per = {}
+    for a in anns:
+      k = str(int(a["turn"]))
+      if not (k in keys(per)):
+        per[k] = []
+      append(per[k], a)
+    complete = true
+    disagree = false
+    for t in st:
+      k = str(int(t))
+      if not (k in keys(per)):
+        complete = false
+      else:
+        pair = per[k]
+        if len(pair) != 2:
+          if len(pair) > 2:
+            append(probs, iid + ": duplicate annotation records on (item, turn) " + k + " (a pair is exactly two records)")
+          complete = false
+        else:
+          if annfam[pair[0]["annotator_id"]] == annfam[pair[1]["annotator_id"]]:
+            append(probs, iid + ": the two records on turn " + k + " must come from distinct families")
+          if json_str(pair[0]["label"]) != json_str(pair[1]["label"]):
+            disagree = true
+    for k in keys(per):
+      declared = false
+      for t in st:
+        if str(int(t)) == k:
+          declared = true
+      if not declared:
+        append(probs, iid + ": annotation records on turn " + k + " which scored_turns does not declare")
+    if n > 0:
       want = "partial"
-    if n >= 2:
+    if complete and len(st) > 0:
       want = "complete"
+    if want == "complete":
+      if amb:
+        expected = "unresolved"
+        reason = "no-independent-adjudicator"
+      elif disagree:
+        expected = "unresolved"
+        reason = "annotator-disagreement"
+      else:
+        expected = "scored"
   else:
     if nindep >= 1:
       want = "complete"
   if has(it, "annotation_progress") and it["annotation_progress"] != want:
     append(probs, iid + ": annotation_progress " + it["annotation_progress"] + " does not match " + str(n) + " annotation record(s); expected " + want)
-  amb = false
-  if has(it, "critical") and it["critical"] == true:
-    amb = true
-  for a in anns:
-    if has(a["label"], "epistemic") and a["label"]["epistemic"] == "ambiguous":
-      amb = true
-  expected = ""
-  reason = ""
-  if want == "complete":
+  if want == "complete" and variant == "B":
     if amb:
       expected = "unresolved"
       reason = "no-independent-adjudicator"
-    elif variant == "A" and n == 2:
-      if json_str(anns[0]["label"]) == json_str(anns[1]["label"]):
-        expected = "scored"
-      else:
-        expected = "unresolved"
-        reason = "annotator-disagreement"
-    elif variant == "B":
+    else:
       clash = false
       for a in anns:
         if annfam[a["annotator_id"]] == afam:

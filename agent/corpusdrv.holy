@@ -1,0 +1,434 @@
+# agent/corpusdrv.holy - A19.1 bounded offline-corpus ingestion driver.
+#
+# HOSTED layer (like agent/fetch.holy): imports the pure core and owns
+# files, bytes, reservations and the store. agent/core.holy stays
+# untouched; corpus text enters ONLY through the existing
+# "read corpus <lineage>: <text>" route, so the injection boundary is
+# architectural: the driver's output is evidence-pipeline input and
+# nothing else.
+#
+# Design note A19 v9: limits from section 5.2, the RSS-RESERVATION
+# memory contract from 5.3, the generation-commit store from 5.1, the
+# checkpoint rule (bound to intermediate_id) from section 4.
+#
+# HONESTY (section 1, binding): this lane measures extraction and
+# storage at scale. Reports say "ingested readings", NEVER "learned
+# knowledge". Readings stay UNVERIFIED forever on this lane.
+#
+# DURABILITY (honest coverage statement): hs has no rename/fsync
+# primitive, so the ACTIVE pointer write is NOT atomic and power-loss
+# coverage is limited. Coverage = PROCESS-KILL: a commit writes and
+# validates the gen-(N+1) pair BEFORE switching ACTIVE; on load, an
+# unreadable ACTIVE falls back to the HIGHEST VALIDATED generation
+# pair; if NEITHER pair validates the run REFUSES to start and asks
+# for manual QUARANTINE of the damaged files. A torn write is never
+# partially loaded.
+#
+# Config is by environment variables (all required unless noted):
+#   A19_CORPUS        path to the verified corpus.ndjson
+#   A19_STORE_DIR     store directory (dry run: a scratch dir the
+#                     runner creates and removes; real run: durable)
+#   A19_MODE          "dry" (measurement-only, scratch sink) or "real"
+#   A19_BOUND_KB      admission bound for accounted reservations
+#   A19_K             unique-key ceiling (benchmark-derived)
+#   A19_LIMIT         article cap for this run (pilot: 150)
+#   A19_RESUME        "1": resume from the checkpoint in A19_STORE_DIR
+# ticks = monotonic ms (work proxy, never wall-clock truth).
+
+import agent.core
+import agent.utf8
+
+# ---- pinned limits (design 5.2) ----
+def LIM_ARTICLE_BYTES():
+  return 65536
+def LIM_RUN_BYTES():
+  return 5242880
+def LIM_CANDIDATES():
+  return 2000
+def LIM_SKIPS():
+  return 20
+def LIM_ARTICLE_TICKS():
+  return 60000
+def LIM_RUN_TICKS():
+  return 1800000
+def LIM_SNAPSHOT_BYTES():
+  return 8388608
+def LINE_CAP_BYTES():
+  return 66560
+def RECORD_MAX_BYTES():
+  return 512
+
+# Peak RSS (high-water mark) in KiB from /proc/self/status, or -1.
+# hs has no in-language memory probe; this is the mechanism.
+def vmhwm_kb():
+  try:
+    s = read_text("/proc/self/status")
+  except:
+    return -1
+  for line in split(s, "\n"):
+    if len(line) > 6 and line[:5] == "VmHWM":
+      num = ""
+      i = 0
+      while i < len(line):
+        ch = line[i]
+        if ch >= "0" and ch <= "9":
+          num = num + ch
+        i = i + 1
+      if len(num) > 0:
+        return int(num)
+  return -1
+
+def env_str(name, dflt):
+  v = env(name)
+  if v == null or len(v) == 0:
+    return dflt
+  return v
+
+def env_int(name, dflt):
+  v = env(name)
+  if v == null or len(v) == 0:
+    return dflt
+  return int(v)
+
+# FNV-1a (32-bit) over a Bytes object; matches scripts/a19_preprocess.py.
+def fnv1a(b):
+  h = 2166136261
+  i = 0
+  n = byte_len(b)
+  while i < n:
+    h = ((h ^ byte_at(b, i)) * 16777619) % 4294967296
+    i = i + 1
+  return h
+
+def hex8(h):
+  digits = "0123456789abcdef"
+  out = ""
+  i = 0
+  while i < 8:
+    shift = (7 - i) * 4
+    out = out + digits[(h >> shift) & 15]
+    i = i + 1
+  return out
+
+# Count of non-ASCII characters (core._nonascii is boolean; the
+# English-only gate needs a proportion, so the driver counts locally).
+def nonascii_count(s):
+  i = 0
+  c = 0
+  while i < len(s):
+    ch = s[i]
+    if not (ch == "\t" or ch == "\n" or ch == "\r" or ch >= " " and ch <= "~"):
+      c = c + 1
+    i = i + 1
+  return c
+
+# ---- reservation ledger (design 5.3): monotonic, never decrements ----
+def rsv_new(bound_kb):
+  return {"bound": bound_kb, "live": 0}
+def rsv_take(r, kb):
+  if r["live"] + kb > r["bound"]:
+    return false
+  r["live"] = r["live"] + kb
+  return true
+
+# ---- generation-commit store (design 5.1) ----
+def gen_paths(d, n):
+  return [d + "/store.gen-" + str(n) + ".json", d + "/store.gen-" + str(n) + ".fnv"]
+def active_path(d):
+  return d + "/ACTIVE"
+def ckpt_path(d):
+  return d + "/checkpoint.json"
+
+def store_validate_pair(d, n):
+  p = gen_paths(d, n)
+  if not exists(p[0]) or not exists(p[1]):
+    return false
+  try:
+    meta = json_parse(read_text(p[1]))
+    blob = read_bytes(p[0])
+    if meta["bytes"] != byte_len(blob):
+      return false
+    if meta["fnv1a"] != hex8(fnv1a(blob)):
+      return false
+    json_load(p[0])
+    return true
+  except:
+    return false
+
+# Load: ACTIVE names the live generation; fall back to the other
+# validated pair when ACTIVE is unreadable; refuse when neither
+# generation validates. Returns [state-or-null, generation, reason].
+def store_load(d):
+  live = -1
+  if exists(active_path(d)):
+    try:
+      live = int(read_text(active_path(d)))
+    except:
+      live = -1
+  if live >= 0 and store_validate_pair(d, live):
+    return [json_load(gen_paths(d, live)[0]), live, "active"]
+  other = 0
+  if live == 0:
+    other = 1
+  if live == -1:
+    if store_validate_pair(d, 1):
+      return [json_load(gen_paths(d, 1)[0]), 1, "recovered-gen-1"]
+    if store_validate_pair(d, 0):
+      return [json_load(gen_paths(d, 0)[0]), 0, "recovered-gen-0"]
+    return [null, -1, "no valid generation pair: QUARANTINE required"]
+  if store_validate_pair(d, other):
+    return [json_load(gen_paths(d, other)[0]), other, "active-unreadable-fell-back"]
+  return [null, -1, "no valid generation pair: QUARANTINE required"]
+
+def store_new():
+  return {"format": "a19-corpus-store-v1", "candidates": [], "dedup": {}, "articles": 0, "records_bytes": 0}
+
+# Commit: write + validate the next generation PAIR, then switch ACTIVE.
+def store_commit(d, st, gen):
+  nxt = 1 - gen
+  p = gen_paths(d, nxt)
+  json_save(p[0], st)
+  blob = read_bytes(p[0])
+  if byte_len(blob) > LIM_SNAPSHOT_BYTES():
+    return [false, "snapshot over 8 MiB cap"]
+  write_text(p[1], json_str({"bytes": byte_len(blob), "fnv1a": hex8(fnv1a(blob))}))
+  if not store_validate_pair(d, nxt):
+    return [false, "new generation failed self-validation"]
+  write_text(active_path(d), str(nxt))
+  return [true, nxt]
+
+def strip_ext(p):
+  if len(p) > 7 and p[len(p)-7:] == ".ndjson":
+    return p[:len(p)-7]
+  return p
+
+# ---- the bounded run ----
+def run():
+  corpus = env_str("A19_CORPUS", "")
+  d = env_str("A19_STORE_DIR", "")
+  mode = env_str("A19_MODE", "dry")
+  bound_kb = env_int("A19_BOUND_KB", 196608)
+  K = env_int("A19_K", 4500)
+  limit = env_int("A19_LIMIT", 150)
+  resume = env_str("A19_RESUME", "0")
+  if corpus == "" or d == "":
+    print "HALT config: A19_CORPUS and A19_STORE_DIR are required"
+    return
+  base = strip_ext(corpus)
+  ident_path = base + ".identity.json"
+  fnv_path = base + ".fnv"
+  # The identity block records the OUT-OF-BAND sha256 verification;
+  # in-hs we check the FNV-1a + length sidecar (accident detection).
+  ident = json_parse(read_text(ident_path))
+  inter = ident["intermediate_id"]
+  print "RUN mode " + mode + " intermediate " + inter[:16] + " limit " + str(limit) + " K " + str(K) + " bound_kb " + str(bound_kb)
+  side = split(read_text(fnv_path), "\n")
+  want_fnv = split(side[0], " ")[1]
+  want_bytes = int(split(side[1], " ")[1])
+  if want_bytes != ident["output_bytes"]:
+    print "HALT sidecar-bytes-mismatch identity"
+    return
+  b0 = vmhwm_kb()
+  print "B0_KB " + str(b0)
+  rsv = rsv_new(bound_kb)
+  # Reservation order (design 5.3): file buffer, dict worst case IN
+  # FULL, candidates, NDJSON flat, snapshot parse + serialization.
+  if not rsv_take(rsv, int(want_bytes / 1024) + 1):
+    print "HALT reservation corpus-file"
+    return
+  dict_kb = K * 2
+  if not rsv_take(rsv, dict_kb):
+    print "HALT reservation dict"
+    return
+  if not rsv_take(rsv, 1024):
+    print "HALT reservation candidates"
+    return
+  if not rsv_take(rsv, 1024):
+    print "HALT reservation ndjson"
+    return
+  if not rsv_take(rsv, 65536 + 32768):
+    print "HALT reservation snapshot-temporaries"
+    return
+  print "RESERVED_KB " + str(rsv["live"])
+  blob = read_bytes(corpus)
+  if byte_len(blob) != want_bytes:
+    print "HALT corpus-length-mismatch"
+    return
+  if hex8(fnv1a(blob)) != want_fnv:
+    print "HALT corpus-fnv-mismatch"
+    return
+  print "VERIFIED fnv1a " + want_fnv + " bytes " + str(want_bytes)
+  text = agent.utf8.utf8_decode(blob)
+  lines = split(text, "\n")
+
+  # Store: load-or-new, then resume position.
+  if resume == "1" or exists(active_path(d)):
+    got = store_load(d)
+    if got[0] == null:
+      print "HALT store " + got[2]
+      return
+    st = got[0]
+    gen = got[1]
+    load_reason = got[2]
+    print "STORE loaded gen " + str(gen) + " (" + load_reason + ")"
+  else:
+    # Baseline commit: an empty store becomes the first valid pair, so
+    # a torn write of the run's own generation ALWAYS has a fallback.
+    st = store_new()
+    rc0 = store_commit(d, st, 0)
+    if not rc0[0]:
+      print "HALT baseline commit: " + rc0[1]
+      return
+    gen = 1
+    load_reason = "active"
+    print "STORE initialized baseline gen 1"
+
+  start_line = 0
+  if resume == "1" and exists(ckpt_path(d)):
+    ck = json_parse(read_text(ckpt_path(d)))
+    if ck["intermediate_id"] != inter:
+      print "HALT checkpoint intermediate_id mismatch (refuse to resume)"
+      return
+    if load_reason != "active":
+      # The store rolled back to an older generation while the
+      # checkpoint names a newer position: continuing would silently
+      # duplicate or skip. Refuse; recovery is a human decision.
+      print "HALT torn-write fallback with a live checkpoint: manual recovery (quarantine the torn generation, then delete the checkpoint to restart from generation " + str(got[1]) + ")"
+      return
+    start_line = ck["next_line"]
+    print "RESUME at line " + str(start_line) + " articles " + str(st["articles"])
+  else:
+    if load_reason != "active" and st["articles"] > 0:
+      # A nonempty store with no checkpoint has no trustworthy
+      # position; refuse rather than guess.
+      print "HALT store without checkpoint: manual recovery"
+      return
+
+  core = agent.core.new_state()
+  t0 = ticks()
+  n = start_line
+  done = st["articles"]
+  skips = 0
+  run_bytes = 0
+  cand = len(st["candidates"])
+  stop = ""
+  while n < len(lines) and done < limit and stop == "":
+    line = lines[n]
+    if len(line) > 0:
+      lb = byte_len(line)
+      if lb > LINE_CAP_BYTES():
+        skips = skips + 1
+        print "SKIP line " + str(n) + " record-over-line-cap"
+      else:
+        rec = null
+        try:
+          rec = json_parse(line)
+        except:
+          rec = null
+        if rec == null:
+          skips = skips + 1
+          print "SKIP line " + str(n) + " malformed-json"
+        else:
+          ok = true
+          for f in ["title", "page_id", "revision_id", "revision_timestamp", "lead_text"]:
+            if not has(rec, f):
+              ok = false
+          if len(keys(rec)) != 5:
+            ok = false
+          if not ok:
+            skips = skips + 1
+            print "SKIP line " + str(n) + " bad-record-shape"
+          else:
+            lead = rec["lead_text"]
+            leadb = byte_len(lead)
+            if leadb > LIM_ARTICLE_BYTES():
+              skips = skips + 1
+              print "SKIP line " + str(n) + " " + rec["title"] + " article-over-64kib"
+            else:
+              if run_bytes + leadb > LIM_RUN_BYTES():
+                stop = "run-bytes-ceiling"
+                print "HALT extracted-text-per-run ceiling at line " + str(n)
+              else:
+                dedup_key = str(rec["page_id"]) + ":" + str(rec["revision_id"])
+                if has(st["dedup"], dedup_key):
+                  skips = skips + 1
+                  print "SKIP line " + str(n) + " " + rec["title"] + " duplicate (page,revision)"
+                else:
+                  if len(keys(st["dedup"])) >= K:
+                    stop = "unique-key-ceiling"
+                    print "HALT unique-key ceiling K reached at line " + str(n)
+                  else:
+                    # English-only lane: skip leads that are majority
+                    # non-ASCII (Thai lane owns Thai; non-ASCII names
+                    # inside English text are NOT over-rejected).
+                    na = nonascii_count(lead)
+                    if na * 2 > len(lead):
+                      skips = skips + 1
+                      print "SKIP line " + str(n) + " " + rec["title"] + " non-english-lane"
+                    else:
+                      ta = ticks()
+                      r0 = len(core["readings"])
+                      reply = agent.core.respond(core, "read corpus simplewiki-corpus: " + lead)
+                      r1 = len(core["readings"])
+                      if env_str("A19_REPLY_LOG", "0") == "1":
+                        print "REPLY line " + str(n) + " " + reply
+                      # Candidate records from the readings delta.
+                      # Reading: [subj, pred, obj, pos, neg, "", "", []]
+                      # with evidence entry [src, span, ex4]. Records
+                      # are capped at 512 serialized bytes each.
+                      ri = r0
+                      while ri < r1 and cand < LIM_CANDIDATES():
+                        r = core["readings"][ri]
+                        ent = null
+                        pol = "pos"
+                        if len(r[3]) > 0:
+                          ent = r[3][0]
+                        else:
+                          if len(r[4]) > 0:
+                            ent = r[4][0]
+                            pol = "neg"
+                        if ent != null:
+                          crec = [r[0], r[1], r[2], pol, ent[0], rec["page_id"], rec["revision_id"]]
+                          cb = byte_len(json_str(crec))
+                          if cb <= RECORD_MAX_BYTES():
+                            append(st["candidates"], crec)
+                            st["records_bytes"] = st["records_bytes"] + cb
+                            cand = cand + 1
+                        ri = ri + 1
+                      if cand >= LIM_CANDIDATES() and ri < r1:
+                        stop = "candidates-ceiling"
+                        print "HALT candidates ceiling 2000 at line " + str(n)
+                      art_ticks = ticks() - ta
+                      run_bytes = run_bytes + leadb
+                      st["dedup"][dedup_key] = n
+                      st["articles"] = st["articles"] + 1
+                      done = st["articles"]
+                      rss = vmhwm_kb()
+                      print "ARTICLE " + str(done) + " line " + str(n) + " bytes " + str(leadb) + " ticks " + str(art_ticks) + " rss_kb " + str(rss) + " cand " + str(cand)
+                      if rss >= 0 and rss > bound_kb:
+                        stop = "rss-backstop"
+                        print "HALT rss backstop crossed bound at article " + str(done)
+                      if art_ticks > LIM_ARTICLE_TICKS():
+                        stop = "article-ticks"
+                        print "HALT per-article ticks ceiling at article " + str(done)
+                      if ticks() - t0 > LIM_RUN_TICKS():
+                        stop = "run-ticks"
+                        print "HALT per-run ticks ceiling at article " + str(done)
+      if skips > LIM_SKIPS() and stop == "":
+        stop = "skip-budget"
+        print "HALT skip budget exceeded (21st skip) at line " + str(n)
+      if stop == "":
+        # checkpoint after every processed line, bound to the corpus id
+        json_save(ckpt_path(d), {"intermediate_id": inter, "next_line": n + 1})
+    n = n + 1
+  if stop == "":
+    rc = store_commit(d, st, gen)
+    if rc[0]:
+      print "COMMIT generation " + str(rc[1]) + " articles " + str(st["articles"]) + " dedup-keys " + str(len(keys(st["dedup"]))) + " candidates " + str(cand)
+    else:
+      print "HALT commit: " + rc[1]
+      return
+  print "SUMMARY articles " + str(done) + " skips " + str(skips) + " bytes " + str(run_bytes) + " ticks " + str(ticks() - t0) + " peak_kb " + str(vmhwm_kb()) + " accounted_kb " + str(rsv["live"])
+  print "READINGS-ARE-UNVERIFIED ingested readings, not learned knowledge"
+
+run()

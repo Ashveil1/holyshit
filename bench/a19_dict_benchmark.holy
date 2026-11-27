@@ -1,0 +1,226 @@
+# bench/a19_dict_benchmark.holy - A19.1 preflight dict benchmark.
+#
+# Design note A19 v9 section 5.2: runs BEFORE any ingestion, in a
+# throwaway process. The TWO measurements are kept separate, in two
+# separate process invocations selected by A19_BENCH_MODE, so the
+# memory probe never contaminates the performance timing:
+#
+#   MODE=knee - PERFORMANCE KNEE (ticks): synthetic distinct keys in
+#     batches, ticks per batch; the knee is the first batch whose
+#     per-insert cost exceeds 4x the median per-insert cost of the
+#     first five batches. A performance signal only; it feeds the
+#     unique-key ceiling and says nothing about bytes. The byte budget
+#     is guarded at batch boundaries (VmHWM).
+#   MODE=mem - BYTES PER ENTRY (memory): the same workload, entries
+#     shaped exactly like the reader's production records - the same
+#     dict structure, keys at the pinned MAXIMUM length (128 bytes),
+#     values at the pinned MAXIMUM record size (512 bytes), every key
+#     AND value distinct so nothing is shared or interned. Peak RSS
+#     (VmHWM) is read from /proc/self/status before EVERY insertion;
+#     fixed-count samples are reported at 10k/50k/100k/200k and at the
+#     stop point, and the worst per-sample step is reported. The
+#     external runner cross-checks with ru_maxrss.
+#
+# v9 self-budget (both modes): budget_kb = B0 + planned_keys
+# (1 KiB/entry, the pinned conservative representation bound); the
+# dict's worst case is RESERVED IN FULL before the first insertion,
+# and measured VmHWM is checked against the budget before every
+# insertion (mem) or at every batch boundary (knee). On ceiling the
+# benchmark STOPS SAFELY and its result is the largest fully measured
+# key count.
+#
+# Stop reasons, reported separately: knee | ticks | memory | complete.
+# ticks = monotonic milliseconds from the runtime's ticks(); a work
+# proxy only, never wall-clock truth.
+#
+# Env knobs (all optional): A19_BENCH_MODE (knee|mem, default knee),
+# A19_BENCH_KEYS (200000), A19_BENCH_BATCH (1000),
+# A19_BENCH_TICKS_MS (600000), A19_BENCH_BUDGET_KB (-1 = derived
+# B0 + planned), A19_BENCH_SAMPLE every N keys (1000, mem mode).
+
+def env_str(name, dflt):
+  v = env(name)
+  if v == null or len(v) == 0:
+    return dflt
+  return v
+
+def env_int(name, dflt):
+  v = env(name)
+  if v == null or len(v) == 0:
+    return dflt
+  return int(v)
+
+# Peak RSS (high-water mark) in KiB from /proc/self/status, or -1 when
+# unreadable. hs has no in-language memory probe; this is the
+# mechanism, and reports say so.
+def vmhwm_kb():
+  try:
+    s = read_text("/proc/self/status")
+  except:
+    return -1
+  for line in split(s, "\n"):
+    if len(line) > 6 and line[:5] == "VmHWM":
+      num = ""
+      i = 0
+      while i < len(line):
+        ch = line[i]
+        if ch >= "0" and ch <= "9":
+          num = num + ch
+        i = i + 1
+      if len(num) > 0:
+        return int(num)
+  return -1
+
+def pad15(i):
+  s = str(i)
+  while len(s) < 15:
+    s = "0" + s
+  return s
+
+# A production-shaped record part: tag + zero-padded serial, padded
+# with filler to exactly `width` bytes (ASCII, so chars == bytes).
+def shaped(n, tag, fill, width):
+  out = tag + pad15(n)
+  while len(out) < width:
+    out = out + fill
+  return out[:width]
+
+# Median of exactly five numbers, no sort builtin needed.
+def median5(a, b, c, d, e):
+  v = [a, b, c, d, e]
+  i = 0
+  while i < 5:
+    j = i + 1
+    while j < 5:
+      if v[j] < v[i]:
+        t = v[i]
+        v[i] = v[j]
+        v[j] = t
+      j = j + 1
+    i = i + 1
+  return v[2]
+
+# MODE=knee: pure insert timing, budget guarded at batch boundaries.
+def run_knee(PLANNED, BATCH, TICKS_BUDGET, budget_kb, b0):
+  d = {}
+  n = 0
+  stop = ""
+  first5 = []
+  t_start = ticks()
+  knee_at = -1
+  med5 = -1
+  while n < PLANNED and stop == "":
+    tb = ticks()
+    target = n + BATCH
+    if target > PLANNED:
+      target = PLANNED
+    while n < target:
+      d[shaped(n, "k", FILL, 128)] = shaped(n, "v", FILL, 512)
+      n = n + 1
+    elapsed = ticks() - tb
+    per_us = elapsed * 1000 / (n - (target - BATCH))
+    # Guard the byte budget at every batch boundary in knee mode.
+    cur = vmhwm_kb()
+    if cur >= 0 and cur > budget_kb:
+      stop = "memory"
+    if stop == "":
+      print "BATCH " + str(n) + " TICKS_MS " + str(elapsed) + " PER_INSERT_US " + str(per_us)
+      if len(first5) < 5:
+        append(first5, per_us)
+      if len(first5) == 5 and med5 < 0:
+        med5 = median5(first5[0], first5[1], first5[2], first5[3], first5[4])
+      if med5 >= 0 and per_us > 4 * med5:
+        knee_at = n
+        stop = "knee"
+      if ticks() - t_start > TICKS_BUDGET:
+        stop = "ticks"
+  if knee_at >= 0:
+    print "KNEE " + str(knee_at)
+  else:
+    print "KNEE none"
+  if stop == "":
+    print "STOP complete AT " + str(n)
+  else:
+    print "STOP " + stop + " AT " + str(n)
+  print "PEAK_KB " + str(vmhwm_kb())
+  print "KEYS " + str(n)
+
+# MODE=mem: the byte budget is checked before EVERY insertion (v9);
+# peak RSS is sampled every SAMPLE_EVERY keys and at the fixed counts.
+def run_mem(PLANNED, BATCH, TICKS_BUDGET, SAMPLE_EVERY, budget_kb, b0):
+  d = {}
+  n = 0
+  stop = ""
+  t_start = ticks()
+  prev_sample = b0
+  worst_step = 0
+  worst_step_at = 0
+  next_fixed = 10000
+  while n < PLANNED and stop == "":
+    cur = vmhwm_kb()
+    if cur >= 0 and cur > budget_kb:
+      stop = "memory"
+    else:
+      d[shaped(n, "k", FILL, 128)] = shaped(n, "v", FILL, 512)
+      n = n + 1
+      if n % SAMPLE_EVERY == 0:
+        step = 0
+        if prev_sample >= 0 and cur >= 0:
+          step = cur - prev_sample
+        if step > worst_step:
+          worst_step = step
+          worst_step_at = n
+        prev_sample = cur
+        if ticks() - t_start > TICKS_BUDGET:
+          stop = "ticks"
+      if n == next_fixed:
+        print "RSS " + str(n) + " KB " + str(cur)
+        if next_fixed < 50000:
+          next_fixed = 50000
+        else:
+          if next_fixed < 100000:
+            next_fixed = 100000
+          else:
+            if next_fixed < 200000:
+              next_fixed = 200000
+            else:
+              next_fixed = -1
+  print "RSS " + str(n) + " KB " + str(vmhwm_kb())
+  print "WORST_STEP_KB " + str(worst_step) + " AT " + str(worst_step_at)
+  if stop == "":
+    print "STOP complete AT " + str(n)
+  else:
+    print "STOP " + stop + " AT " + str(n)
+  print "PEAK_KB " + str(vmhwm_kb())
+  print "KEYS " + str(n)
+
+FILL = "################################################################"
+
+def main():
+  MODE = env_str("A19_BENCH_MODE", "knee")
+  PLANNED = env_int("A19_BENCH_KEYS", 200000)
+  BATCH = env_int("A19_BENCH_BATCH", 1000)
+  TICKS_BUDGET = env_int("A19_BENCH_TICKS_MS", 600000)
+  SAMPLE_EVERY = env_int("A19_BENCH_SAMPLE", 1000)
+  b0 = vmhwm_kb()
+  budget_kb = env_int("A19_BENCH_BUDGET_KB", -1)
+  if budget_kb < 0:
+    budget_kb = b0 + PLANNED
+  print "MODE " + MODE
+  print "B0_KB " + str(b0)
+  print "BUDGET_KB " + str(budget_kb)
+  print "PLANNED " + str(PLANNED) + " BATCH " + str(BATCH) + " TICKS_BUDGET_MS " + str(TICKS_BUDGET)
+  # v9: reserve the dict's conservative worst case IN FULL before the
+  # first insertion; the reservation ledger never decrements.
+  accounted_kb = b0 + PLANNED
+  if accounted_kb > budget_kb:
+    print "STOP memory AT 0"
+    print "PEAK_KB " + str(vmhwm_kb())
+    print "KEYS 0"
+    return
+  if MODE == "mem":
+    run_mem(PLANNED, BATCH, TICKS_BUDGET, SAMPLE_EVERY, budget_kb, b0)
+  else:
+    run_knee(PLANNED, BATCH, TICKS_BUDGET, budget_kb, b0)
+
+main()
