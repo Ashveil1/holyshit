@@ -58,7 +58,7 @@ SUITES = [
     ("test_agent_leakage.py", "A22.4 leakage guard: cutoffs, pre-shadow exclusion, held-out, circular learning"),
     ("test_agent_selfeval.py", "A23.0 self-eval harness: deterministic report, ledger, isolation, contamination"),
     ("test_agent_selfeval_baseline.py", "A23.2 baselines: frozen/rolling, comparability, regression reporting, ops snapshot"),
-    ("test_agent_selfeval_thai.py", "A23.3 Thai dataset format: provenance and adjudication rules"),
+    ("test_agent_selfeval_thai.py", "A23.3 Thai dataset format: owner path + thai-core AI-authored evidence rules"),
     ("test_agent_thai_correct.py", "A25.2 shape-scoped Thai correction through the real native repl"),
     ("test_agent_thai_pron.py", "A25.3 Thai pronoun clarification through the real native repl"),
     ("test_agent_fetch.py", "A18.1 EXPERIMENTAL read-url semantic transcript vs fixture server (interp + native)"),

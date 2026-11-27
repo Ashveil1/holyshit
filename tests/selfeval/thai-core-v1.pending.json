@@ -4,51 +4,48 @@
  "kind": "thai-dataset",
  "lang": "th",
  "tier": "supported",
- "status": "PENDING_OWNER_LABELING",
- "note": "TEMPLATE, no items and no labels. Items are authored in Thai by the owner (never translated from English). Each item needs an origin of authored, at least two independent human annotations, and adjudication; critical or ambiguous items always need an adjudicator who is not an annotator. Future-capability probes go in a separate dataset with tier challenge.",
+ "status": "AI_AUTHORED_DRAFT",
+ "annotation_variant": "A",
+ "note": "TEMPLATE, no items yet. AI-authored held-out breakage instrument (spec v2.5): Claude and GPT author, Gemini is the third annotator family, every item gets two family-distinct annotations neither from its authoring family. This manifest carries ids, counts, metadata and provenance ONLY - the Thai scenario content lives in the separate UTF-8 scenario corpus referenced below. Labels: AI-authored / not human-validated, ALWAYS; results are never a quality claim (breakage-catching only). tier:supported declares capability scope only. Statuses: AI_AUTHORED_DRAFT -> AI_AUTHORED_REVIEW -> AI_AUTHORED_CONTENT_FROZEN; execution eligibility is a separate EXTERNAL record (C19 route parity), never a field here.",
  "provenance": {
-  "method": "owner-authored",
-  "author": "owner"
+  "method": "ai-authored",
+  "human_validated": false,
+  "authors": [],
+  "annotators": [],
+  "annotation_sessions": [],
+  "criteria_version": "PLACEHOLDER: set to the frozen criteria v1 identity after the Phase 1 criteria round (Claude + GPT propose independently, cross-review; disagreement blocks the category)",
+  "variation_plan_hash": "PLACEHOLDER: SHA-256 of the frozen variation plan (64 lowercase hex), pinned before any item exists"
+ },
+ "corpus": {
+  "file": "thai-core-v1.corpus.pending.json",
+  "sha256": "",
+  "note": "The real Thai scenario corpus is a separate UTF-8 data artifact authored, hashed (SHA-256 over canonical JSON: sort_keys, no whitespace, UTF-8) and frozen BEFORE C19. C19 gates EXECUTION only, never authoring or content freezing. sha256 stays empty until the corpus exists."
  },
  "acceptance_criteria": {
-  "recall": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
-  "unknown": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
-  "contradiction": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
-  "ambiguity": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
-  "teach": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
-  "forget": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category",
-  "correction": "TO BE WRITTEN BY THE OWNER: what counts as a semantically acceptable reply for this category"
+  "recall": "PLACEHOLDER: written in the Phase 1 criteria round (Claude + GPT, cross-reviewed), frozen as criteria v1 before any item exists",
+  "unknown": "PLACEHOLDER: written in the Phase 1 criteria round (Claude + GPT, cross-reviewed), frozen as criteria v1 before any item exists",
+  "contradiction": "PLACEHOLDER: written in the Phase 1 criteria round (Claude + GPT, cross-reviewed), frozen as criteria v1 before any item exists",
+  "ambiguity": "PLACEHOLDER: written in the Phase 1 criteria round (Claude + GPT, cross-reviewed), frozen as criteria v1 before any item exists",
+  "teach": "PLACEHOLDER: written in the Phase 1 criteria round (Claude + GPT, cross-reviewed), frozen as criteria v1 before any item exists",
+  "forget": "PLACEHOLDER: written in the Phase 1 criteria round (Claude + GPT, cross-reviewed), frozen as criteria v1 before any item exists",
+  "correction": "PLACEHOLDER: written in the Phase 1 criteria round (Claude + GPT, cross-reviewed), frozen as criteria v1 before any item exists"
  },
  "items": [],
+ "evidence": {
+  "annotation_log": [],
+  "preflight_log": [],
+  "note": "Evidence blocks (annotation_log, preflight_log, overlap_report, exclusion_ledger, freeze_attestation) are added by the pipeline phases. The Gemini preflight needs exactly 5 usable non-corpus examples per category, 5/5 structural, 5/5 instruction, >=4/5 task match, reviewers claude+gpt; reviewer disagreement = fail-pending-reassessment (a new assessment needs an agreed plan and fresh or re-approved examples; the same output is never negotiated into a pass)."
+ },
  "item_example_shape": {
-  "id": "th-0001",
+  "id": "tc-0001",
   "category": "recall",
-  "input": "<Thai text authored by the owner>",
   "origin": "authored",
   "critical": false,
-  "scenario": "optional scenario id",
-  "annotations": [
-   {
-    "annotator": "annotator-1",
-    "role": "primary",
-    "label": {
-     "epistemic": "supported",
-     "action": "answer"
-    }
-   },
-   {
-    "annotator": "annotator-2",
-    "role": "independent",
-    "label": {
-     "epistemic": "supported",
-     "action": "answer"
-    }
-   }
-  ],
-  "adjudication": {
-   "state": "agreed",
-   "by": "",
-   "final": {}
-  }
+  "authored_by": "claude-author-01",
+  "ai_authored": true,
+  "not_human_validated": true,
+  "annotation_progress": "pending",
+  "annotation_ids": [],
+  "_comment": "Thai content NEVER goes in the manifest; the corpus holds setup/dialogue/probes/expected labels keyed by item id. When complete: disposition is scored (annotators agree, not critical/ambiguous) or unresolved with unresolved_reason annotator-disagreement or no-independent-adjudicator (critical/ambiguous items are never scored on the AI path, even on agreement)."
  }
 }
