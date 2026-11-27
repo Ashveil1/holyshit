@@ -127,6 +127,91 @@ def _particle(state):
   if state["register"] == "khrup":
     return "ครับ"
   return "ครับ"
+# R3a Thai front door: fixed-substring frames (the bounded dictionary
+# segmenter lands later in R3; these frames need no segmentation
+# because they split on known relation words).
+# One trailing politeness particle is stripped before parsing. ไหม is
+# a question word, never a particle here.
+_THAI_PARTICLES = ["ครับผม", "นะครับ", "นะคะ", "ครับ", "ค่ะ", "จ้ะ", "นะ", "คะ"]
+def _strip_particle(t):
+  for pc in _THAI_PARTICLES:
+    L = len(t) - len(pc)
+    if L > 0 and t[L:] == pc:
+      return t[:L]
+  return t
+# Split an unspaced Thai proposition on the FIRST relation word;
+# spaced forms win ties by position. Returns [key, rel, obj] or null.
+_THAI_RELS = [" เป็น ", " คือ ", " อยู่ที่ ", " อยู่ใน ", " อยู่ ", " มี ", "เป็น", "คือ", "อยู่", "มี"]
+# Bare-statement subject cap: 40 characters, written as a 40-codepoint
+# Thai literal so the same source means 40 chars on interp (len counts
+# characters) and 120 bytes on the compiled backends (len counts bytes,
+# 3 per Thai char). Exact for pure-Thai subjects; a mixed Thai/ASCII
+# subject of 41-120 bytes would pass on x64 but not interp (no
+# threshold on len can be model-exact for mixed strings: byte ops are
+# outside the core subset).
+_THAI_KEY_CAP = "กกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกกก"
+def _thai_prop_split(t):
+  best = -1
+  brel = ""
+  for r in _THAI_RELS:
+    k = find(t, r)
+    if k > 0 and (best < 0 or k < best):
+      best = k
+      brel = r
+  if best < 0:
+    return null
+  key = t[:best]
+  obj = t[best + len(brel):]
+  rel = brel
+  if rel[:1] == " ":
+    rel = rel[1:]
+  if rel[len(rel) - 1:] == " ":
+    rel = rel[:len(rel) - 1]
+  if rel == "อยู่ที่" or rel == "อยู่ใน":
+    rel = "อยู่"
+  while len(key) > 0 and key[len(key) - 1:] == " ":
+    key = key[:len(key) - 1]
+  while len(obj) > 0 and obj[:1] == " ":
+    obj = obj[1:]
+  if len(key) == 0 or len(obj) == 0:
+    return null
+  return [key, rel, obj]
+# Teach through the existing machinery, with a Thai ack. A quoted name
+# after ชื่อ becomes an alias of the full subject.
+def _thai_teach(state, key, rel, obj):
+  value = rel + " " + obj
+  known = false
+  new = not _has(state, key)
+  if not new:
+    for v in state["facts"][key]:
+      if v == value:
+        known = true
+  _teach_also(state, key, value)
+  q1 = find(key, "“")
+  q2 = find(key, "”")
+  if q1 >= 0 and q2 > q1 + 1:
+    nm = key[q1 + len("“"):q2]
+    if _has(state, key):
+      _cv_inval(state)
+    state["aliases"][nm] = key
+  if known:
+    return "รู้อยู่แล้ว" + _particle(state) + " " + key + " " + value
+  if new:
+    return "จำไว้แล้ว" + _particle(state) + " " + key + " " + value
+  return "เพิ่มไว้แล้ว" + _particle(state) + " " + key + " " + value
+# Unspaced Thai question suffixes, longest first. Returns the asked
+# subject (trailing spaces trimmed) or null.
+_THAI_QSUF = ["เป็นญาติอะไรของผม", "เป็นญาติอะไรของฉัน", "เป็นอะไรกับผม", "เป็นอะไรกับฉัน", "อยู่ที่ไหน", "มีอะไรอยู่", "มีขนสีอะไร", "มีสีอะไร", "เป็นเครื่องอะไร", "สีอะไร", "คืออะไร", "เป็นอะไร", "มีอะไร", "คือใคร", "เท่าไร"]
+def _thai_q_split(m):
+  for sf in _THAI_QSUF:
+    L = len(m) - len(sf)
+    if L > 0 and m[L:] == sf:
+      subj = m[:L]
+      while len(subj) > 0 and subj[len(subj) - 1:] == " ":
+        subj = subj[:len(subj) - 1]
+      if len(subj) > 0:
+        return subj
+  return null
 def _join_th(values):
   n = len(values)
   if n == 1:
@@ -2952,10 +3037,27 @@ def respond(state, line):
       text = text[:len(text) - 1]
     if last == ".":
       text = text[:len(text) - 1]
+  text = _strip_particle(text)
   m = lower_ascii(text)
   state["lang"] = "en"
   if _thai_line(text):
     state["lang"] = "th"
+  if state["lang"] == "th":
+    # R3a front door: teach frames and unspaced question suffixes. A
+    # pronoun subject is NOT recalled here: it falls through to
+    # _pron_clarify below, which owns "which thing do you mean".
+    tp = null
+    if find(m, "จำไว้ว่า") == 0:
+      tp = _thai_prop_split(m[len("จำไว้ว่า"):])
+    if tp == null and find(m, "จำว่า") == 0:
+      tp = _thai_prop_split(m[len("จำว่า"):])
+    if tp == null and find(m, "จำ") == 0 and not (find(m, "จำไว้ว่า") == 0) and not (find(m, "จำว่า") == 0):
+      tp = _thai_prop_split(m[len("จำ"):])
+    if tp != null:
+      return _thai_teach(state, tp[0], tp[1], tp[2])
+    tq = _thai_q_split(m)
+    if tq != null and not _in(tq, _THAI_PRON):
+      return _recall(state, tq)
   if state["pending"] != null:
     r = _pending_reply(state, m)
     if r[0]:
@@ -3289,5 +3391,8 @@ def respond(state, line):
       return "เข้าใจแล้ว" + _particle(state) + " " + phrase + means_p + target
     return "ok, " + phrase + means_p + target
   if state["lang"] == "th":
+    bs = _thai_prop_split(m)
+    if bs != null and len(bs[0]) <= len(_THAI_KEY_CAP) and find(bs[0], " ") < 0 and find(bs[0], ":") < 0:
+      return _thai_teach(state, bs[0], bs[1], bs[2])
     return "ไม่เข้าใจ" + _particle(state)
   return "i do not understand"
