@@ -62,3 +62,17 @@ assert "test_agent_lineage_fetch.py" in quick_selected
 assert os.path.isfile(os.path.join(HERE, "test_agent_lineage_fetch.py"))
 print("1/1 run_all registers agent lineage-fetch exactly once on quick and full paths")
 
+assert names.count("test_agent_corpus_benchmark.py") == 1
+assert "test_agent_corpus_benchmark.py" in quick_selected
+assert os.path.isfile(os.path.join(HERE, "test_agent_corpus_benchmark.py"))
+print("1/1 run_all registers the A19.1 benchmark gate exactly once on quick and full paths")
+
+assert names.count("test_agent_corpus_preprocess.py") == 1
+assert "test_agent_corpus_preprocess.py" in quick_selected
+assert os.path.isfile(os.path.join(HERE, "test_agent_corpus_preprocess.py"))
+print("1/1 run_all registers the A19.1 preprocessing gate exactly once on quick and full paths")
+
+assert names.count("test_agent_corpus_driver.py") == 1
+assert "test_agent_corpus_driver.py" in quick_selected
+assert os.path.isfile(os.path.join(HERE, "test_agent_corpus_driver.py"))
+print("1/1 run_all registers the A19.1 driver gate exactly once on quick and full paths")
