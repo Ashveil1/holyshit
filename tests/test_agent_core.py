@@ -47,7 +47,7 @@ HELP = ("commands: remember <thing> is <fact> | remember <thing> is also "
         "remember <thing> cannot <verb> | does <thing> <verb> <thing> | "
         "can <thing> <verb> | is <thing> needed by <thing> | "
         "remember <thing> is not a <kind> | what do you know | "
-        "what did you forget | what did we talk about | note <text> | notes | "
+        "what did you forget | what did we talk about | where did you learn <thing> | claims | approve <claim-id> | note <text> | notes | "
         "clear notes | mode | mode strict | mode explore | hypotheses | "
         "hypotheses detail | forget hypothesis <thing> is a <kind> | "
         "clear hypotheses | read <text> | readings | readings about <thing> | "
@@ -258,6 +258,181 @@ class Oracle:
         self.test_fetch = False
         self.lang = 'en'
         self.register = 'khrup'
+        self.claims = {}
+        self.claim_order = []
+
+    CLAIM_CAP = 500
+
+    def _src_kind(self, src):
+        if src.startswith('url-'):
+            return 'url'
+        if src.startswith('corpus-'):
+            return 'corpus'
+        return 'text'
+
+    def _src_locator(self, src):
+        k = self._src_kind(src)
+        if k == 'url':
+            n = int(src[4:])
+            if 1 <= n <= len(self.url_srcs):
+                return self.url_srcs[n - 1][0]
+        if k == 'corpus':
+            n = int(src[7:])
+            if 1 <= n <= len(self.corpus_srcs):
+                return self.corpus_srcs[n - 1]
+        return src
+
+    def _claim_find(self, key, value, src, span_text):
+        for cid in self.claim_order:
+            c = self.claims[cid]
+            if (c['key'] == key and c['value'] == value and
+                    c['source_id'] == src and c['span_text'] == span_text):
+                return cid
+        return None
+
+    def _claim_add(self, key, value, src, span_text):
+        if self._claim_find(key, value, src, span_text) is not None:
+            return False
+        if len(self.claim_order) >= self.CLAIM_CAP:
+            return False
+        cid = 'cl-' + str(len(self.claim_order) + 1)
+        self.claims[cid] = {
+            'id': cid, 'key': key, 'value': value, 'polarity': 'pos',
+            'source_id': src, 'kind': self._src_kind(src),
+            'locator': self._src_locator(src), 'revision': '',
+            'span_text': span_text, 'excerpt': span_text[:200],
+            'status': 'claim', 'review_id': '', 'generation_id': 0,
+            'superseded_by': ''}
+        self.claim_order.append(cid)
+        return True
+
+    def _claims_for(self, asked):
+        a = stripart(asked)
+        return [self.claims[cid] for cid in self.claim_order
+                if self.claims[cid]['status'] != 'rolled-back' and
+                (self.claims[cid]['key'] == asked or
+                 stripart(self.claims[cid]['key']) == a)]
+
+    def _claim_reply(self, asked, cl):
+        vals = []
+        for c in cl:
+            if c['value'] not in vals:
+                vals.append(c['value'])
+        if self.lang == 'th':
+            if len(vals) == 1:
+                return (cl[0]['locator'] + ' บอกว่า: ' + cl[0]['key'] + ' ' +
+                        vals[0] + ' (ยังไม่ยืนยัน)')
+            out = 'แหล่งข้อมูลขัดกันเรื่อง ' + asked + ':'
+            for c in cl[:3]:
+                out += ' ' + c['locator'] + ' บอกว่า ' + c['value'] + ';'
+            return out[:-1] + ' (ยังไม่ยืนยัน)'
+        if len(vals) == 1:
+            return (cl[0]['locator'] + ' says: ' + cl[0]['key'] + ' ' +
+                    vals[0] + ' (unverified claim)')
+        out = 'sources disagree on ' + asked + ':'
+        for c in cl[:3]:
+            out += ' ' + c['locator'] + ' says ' + c['value'] + ';'
+        return out[:-1] + ' (unverified claims)'
+
+    def _claim_fact_value(self, v):
+        if v.startswith('is-a '):
+            return v[5:]
+        if v.startswith('is-in '):
+            return 'in ' + v[6:]
+        return v
+
+    def _looks_private(self, t):
+        import re as _re
+        return '@' in t or _re.search(r'\d{9,}', t) is not None
+
+    def _promote(self, cid):
+        if cid not in self.claims:
+            if self.lang == 'th':
+                return 'ไม่รู้จัก' + self._particle() + ' ' + cid
+            return 'i do not know ' + cid
+        c = self.claims[cid]
+        if c['status'] != 'claim':
+            if self.lang == 'th':
+                return cid + ' ไม่ใช่ข้อมูลที่รอตรวจ' + self._particle()
+            return cid + ' is not a pending claim'
+        key = c['key']
+        value = c['value']
+        if value.startswith('means '):
+            if self.lang == 'th':
+                return 'ไม่บันทึกเป็นข้อเท็จจริง' + self._particle() + ': ข้อมูลแบบ means ยังเก็บเป็นข้อมูลที่อ่านมาเท่านั้น'
+            return 'not promoted: means claims stay claims at W1'
+        value = self._claim_fact_value(value)
+        if self._looks_private(key) or self._looks_private(value):
+            if self.lang == 'th':
+                return 'ไม่บันทึกเป็นข้อเท็จจริง' + self._particle() + ': ดูเหมือนข้อมูลส่วนตัว เก็บไว้เป็นข้อมูลที่อ่านมาเท่านั้น'
+            return 'not promoted: private-looking content, kept as a claim'
+        if key in self.facts:
+            if value in self.facts[key]:
+                c['status'] = 'fact'
+                if self.lang == 'th':
+                    return 'รู้อยู่แล้ว' + self._particle() + ' ' + key + ' ' + c['value']
+                return 'already known: ' + key + ' ' + c['value']
+            if self.lang == 'th':
+                return 'ไม่บันทึกเป็นข้อเท็จจริง' + self._particle() + ': ขัดกับที่คุณสอนฉัน เก็บไว้เป็นข้อมูลที่อ่านมา'
+            return 'not promoted: contradicts what you taught me, kept as a claim'
+        self._learn_rel(key, value)
+        self.facts[key] = [value]
+        self.order.append(key)
+        self._cooc_add(key, value)
+        self._slog('taught', key)
+        c['status'] = 'fact'
+        if self.lang == 'th':
+            return ('บันทึกเป็นข้อเท็จจริงแล้ว' + self._particle() + ' ' + key +
+                    ' ' + c['value'] + ' (ที่มา: ' + c['locator'] + ')')
+        return ('promoted ' + cid + ': ' + key + ' ' + c['value'] +
+                ' (source: ' + c['locator'] + ')')
+
+    def _claims_reply(self):
+        pend = [cid for cid in self.claim_order
+                if self.claims[cid]['status'] == 'claim']
+        if not pend:
+            if self.lang == 'th':
+                return 'ไม่มีข้อมูลที่อ่านมารอตรวจ' + self._particle()
+            return 'no pending claims'
+        n = len(pend)
+        lines = []
+        for cid in pend[:20]:
+            c = self.claims[cid]
+            lines.append(cid + ': ' + c['key'] + ' ' + c['value'] +
+                         ' (' + c['locator'] + ')')
+        hd = ('ข้อมูลที่อ่านมารอตรวจ ' + str(n) + ' ข้อ' + self._particle() + ': '
+              if self.lang == 'th' else str(n) + ' pending claims: ')
+        out = hd + '; '.join(lines)
+        if n > 20:
+            out += (' และอีก ' + str(n - 20) + ' ข้อ' if self.lang == 'th'
+                    else ', and ' + str(n - 20) + ' more')
+        return out
+
+    def _provenance_reply(self, asked):
+        out = ''
+        key = self._resolve(asked)
+        if key is not None:
+            promoted = any(
+                self.claims[cid]['status'] == 'fact' and
+                (self.claims[cid]['key'] == key or
+                 stripart(self.claims[cid]['key']) == stripart(key))
+                for cid in self.claim_order)
+            if promoted:
+                out = ('บันทึกจากการอ่าน: ' if self.lang == 'th' else
+                       'promoted from reading: ') + key
+            else:
+                out = ('คุณสอนฉัน: ' if self.lang == 'th' else
+                       'you taught me: ') + key
+        for c in self._claims_for(asked):
+            line = c['id'] + ': ' + c['locator']
+            if c['revision'] != '':
+                line += ' rev ' + c['revision']
+            line += ' ["' + c['excerpt'] + '"]'
+            out = line if out == '' else out + '; ' + line
+        if out == '':
+            return ('ไม่เคยเรียนรู้' + self._particle() + ' ' + asked
+                    if self.lang == 'th' else 'i never learned ' + asked)
+        return out
 
     def _particle(self):
         return 'ครับ'
@@ -783,6 +958,8 @@ class Oracle:
                         else:
                             self.readings.append(
                                 [ex[0], ex[1], ex[2], [entry], [], '', '', []])
+                            self._claim_add(ex[0], ex[1] + ' ' + ex[2],
+                                            src, span)
                         newc += 1
                         rj = len(self.readings) - 1
                     # A19: a later conflicting reading raises an
@@ -1756,6 +1933,12 @@ class Oracle:
             return self._session_reply()
         if m[:23] == 'what do you know about ':
             return self._about_reply(m[23:])
+        if m[:20] == 'where did you learn ':
+            return self._provenance_reply(m[20:])
+        if m == 'claims':
+            return self._claims_reply()
+        if m[:8] == 'approve ':
+            return self._promote(m[8:])
         if m[:9] == 'remember ':
             rest = text[9:]
             mrest = m[9:]
@@ -2138,6 +2321,9 @@ class Oracle:
             if self.lang == 'th':
                 return 'ไม่รู้จัก' + self._particle() + ' ' + asked
             return 'i do not know ' + asked
+        cl = self._claims_for(asked)
+        if cl:
+            return self._claim_reply(asked, cl)
         return self._usage_reply(asked)
 
     def _forget(self, key):
@@ -2982,10 +3168,26 @@ R1A_SCENARIOS = [
      'แมวมด คืออะไร', 'yes', 'แมว คืออะไร'],
     ['ขขขข', 'ม้า เป็น สัตว์ ไหม', 'ม้า คือ สัตว์ หรือไม่'],
 ]
+# W1: persisted claims from reads. Attribution answers name the source,
+# the promote gate (approve cl-N) runs its hard checks, taught facts
+# always win, and provenance answers from the stored snapshot.
+W1_SCENARIOS = [
+    ['read s1: a crow is a bird. a crow lives in a tree', 'claims',
+     'what is a crow', 'approve cl-1', 'what is a crow', 'claims',
+     'where did you learn a crow'],
+    ['read s1: a crow is a bird', 'approve cl-9', 'approve cl-1',
+     'approve cl-1'],
+    ['remember a crow is a mammal', 'read s1: a crow is a bird',
+     'approve cl-1', 'what is a crow'],
+    ['remember a crow is a bird', 'read s1: a crow is a bird',
+     'approve cl-1'],
+    ['read s1: somchai phone is 0812345678', 'claims', 'approve cl-1'],
+    ['read s1: นกฮูก คือ นก', 'นกฮูก คืออะไร', 'where did you learn นกฮูก'],
+]
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
             A15_SCENARIOS + A16_SCENARIOS + A17_SCENARIOS +
             A18_SCENARIOS + A19_SCENARIOS + A19LIN_SCENARIOS +
-            R1A_SCENARIOS):
+            R1A_SCENARIOS + W1_SCENARIOS):
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))

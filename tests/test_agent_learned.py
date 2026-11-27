@@ -139,8 +139,26 @@ def suite(label, argv, env):
         ia = run(argv, reader, d, env)          # approved, not active
         ib = run(argv, reader, e2, env)
         assert ia == ib, 'approved-but-inactive pattern changed the reader'
-        assert (d / 'agent-memory.json').read_text() == \
-            (e2 / 'agent-memory.json').read_text()
+        # Store v6 persists claims from reads, so whole-file bytes now
+        # legitimately differ: d carries base's own claim history and the
+        # session's read claim gets a per-dir id. Isolation means the
+        # non-claims memory (facts/order/aliases/rels/forgotten) is
+        # identical and this session's read produced the same claim
+        # content regardless of the inactive patterns.
+        def split_claims(path):
+            m = json.loads((path / 'agent-memory.json').read_text())
+            claims = m.pop('claims', {})
+            m.pop('claim_order', None)
+            return m, claims
+        md, cd = split_claims(d)
+        me2, ce2 = split_claims(e2)
+        assert md == me2, 'inactive patterns changed non-claims memory'
+        zd = [c for c in cd.values() if c['source_id'] == 'z1']
+        ze2 = [c for c in ce2.values() if c['source_id'] == 'z1']
+        assert len(zd) == len(ze2) == 1, 'session read claim missing'
+        noid = lambda c: {k: v for k, v in c.items() if k != 'id'}
+        assert noid(zd[0]) == noid(ze2[0]), \
+            'inactive patterns changed the read claim content'
         # active pattern: reader replies identical except the appended
         # learned suffix; memory file byte-identical
         d3 = td / 'iso2'
@@ -153,8 +171,12 @@ def suite(label, argv, env):
         strip = re.sub(r'; \d+ learned-pattern readings recorded \(.*?\)',
                        '', i3)
         assert strip == b3, 'active pattern changed reader beyond suffix'
-        assert (d3 / 'agent-memory.json').read_text() == \
-            (e3 / 'agent-memory.json').read_text()
+        # Same v6 split as above: claims history and approvals legitimately
+        # differ (d3 carries base's claims and the activation approvals);
+        # the active pattern must not touch non-claims memory.
+        md3, _ = split_claims(d3)
+        me3, _ = split_claims(e3)
+        assert md3 == me3, 'active pattern changed non-claims memory'
         print('ok %s: activation, fail-closed loader, revocation, isolation'
               % label)
         return res

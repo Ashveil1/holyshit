@@ -11,6 +11,9 @@
 # On-disk format v5: {"facts": {key: [value, ...]}, "order": [...],
 # "aliases": {phrase: key}, "rels": [[subject, predicate, object], ...],
 # "forgotten": [key, ...] (A12 tombstones, capped at 20)}.
+# v6 adds "claims" ({id: claim record}) and "claim_order" ([id, ...])
+# (W1 source-attributed claims; contract docs/agent/w1-claims-contract-v1.md).
+# Files without them (pre-v6) load with empty claims.
 # Files from v0.1/v0.2 (facts values were plain strings, no aliases) load
 # fine: string values are wrapped into one-fact lists and aliases default
 # empty. Files without "rels" (pre-v4) load fine: relation edges are
@@ -57,8 +60,11 @@ def load(path):
       state["forgotten"] = data["forgotten"]
     except:
       state["forgotten"] = []
+    if "claims" in data:
+      state["claims"] = data["claims"]
+      state["claim_order"] = data["claim_order"]
     return state
   except:
     return agent.core.new_state()
 def save(state, path):
-  json_save(path, {"facts": state["facts"], "order": state["order"], "aliases": state["aliases"], "rels": state["rels"], "forgotten": state["forgotten"]})
+  json_save(path, {"facts": state["facts"], "order": state["order"], "aliases": state["aliases"], "rels": state["rels"], "forgotten": state["forgotten"], "claims": state["claims"], "claim_order": state["claim_order"]})

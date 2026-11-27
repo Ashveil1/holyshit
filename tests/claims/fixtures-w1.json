@@ -1,0 +1,744 @@
+{
+  "policy": {
+    "K": 1000,
+    "reserve": 50,
+    "permitted_kinds": [
+      "url",
+      "corpus",
+      "text"
+    ]
+  },
+  "cases": [
+    {
+      "name": "happy promote with review",
+      "store": {
+        "facts": {},
+        "claims": [],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "simple.wikipedia.org",
+            "page_id": "p1"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "a crow",
+          "value": "is a bird",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 10,
+          "span_end": 28,
+          "excerpt": "a crow is a bird",
+          "revision": "r1",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "PROMOTED"
+        ],
+        "facts": {
+          "a crow": {
+            "value": "is a bird",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          }
+        },
+        "claims_count": 1,
+        "generation": 1
+      }
+    },
+    {
+      "name": "dedup no-op adds provenance only",
+      "store": {
+        "facts": {
+          "a crow": {
+            "value": "is a bird",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          }
+        },
+        "claims": [
+          {
+            "id": "cl-1",
+            "key": "a crow",
+            "value": "is a bird",
+            "polarity": "pos",
+            "source_id": "url-1",
+            "span_start": 10,
+            "span_end": 28,
+            "excerpt": "a crow is a bird",
+            "revision": "r1",
+            "status": "fact",
+            "generation_id": 1
+          }
+        ],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "simple.wikipedia.org",
+            "page_id": "p1"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "a crow",
+          "value": "is a bird",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 40,
+          "span_end": 58,
+          "excerpt": "a crow is a bird",
+          "revision": "r1",
+          "review_id": "rev-2",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "DEDUP_NOOP"
+        ],
+        "facts": {
+          "a crow": {
+            "value": "is a bird",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          }
+        },
+        "claims_count": 2,
+        "generation": 2
+      }
+    },
+    {
+      "name": "privacy reject",
+      "store": {
+        "facts": {},
+        "claims": [],
+        "sources": {
+          "text-1": {
+            "kind": "text",
+            "host": "",
+            "page_id": ""
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "somchai phone",
+          "value": "is 081-234-5678",
+          "polarity": "pos",
+          "source_id": "text-1",
+          "span_start": 0,
+          "span_end": 30,
+          "excerpt": "somchai phone is 081-234-5678",
+          "revision": "",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "REJECT_PRIVACY"
+        ],
+        "facts": {},
+        "claims_count": 0,
+        "generation": 0
+      }
+    },
+    {
+      "name": "polarity reject",
+      "store": {
+        "facts": {},
+        "claims": [],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "simple.wikipedia.org",
+            "page_id": "p1"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "a crow",
+          "value": "is not a mammal",
+          "polarity": "neg",
+          "source_id": "url-1",
+          "span_start": 0,
+          "span_end": 25,
+          "excerpt": "a crow is not a mammal",
+          "revision": "r1",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "REJECT_POLARITY"
+        ],
+        "facts": {},
+        "claims_count": 0,
+        "generation": 0
+      }
+    },
+    {
+      "name": "taught wins, dissent recorded",
+      "store": {
+        "facts": {
+          "ลูกแมว": {
+            "value": "is เป็น สัตว์เลี้ยง",
+            "origin": "taught",
+            "rank": 3,
+            "source": ""
+          }
+        },
+        "claims": [],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "simple.wikipedia.org",
+            "page_id": "p9"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "ลูกแมว",
+          "value": "is เป็น สัตว์ป่า",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 5,
+          "span_end": 40,
+          "excerpt": "ลูกแมว is เป็น สัตว์ป่า",
+          "revision": "r1",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "REJECT_TAUGHT_WINS"
+        ],
+        "facts": {
+          "ลูกแมว": {
+            "value": "is เป็น สัตว์เลี้ยง",
+            "origin": "taught",
+            "rank": 3,
+            "source": "",
+            "dissent": [
+              "url-1"
+            ]
+          }
+        },
+        "claims_count": 1,
+        "generation": 0
+      }
+    },
+    {
+      "name": "claim vs equal-rank fact keeps both, conflicted",
+      "store": {
+        "facts": {
+          "pluto": {
+            "value": "is a planet",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          }
+        },
+        "claims": [
+          {
+            "id": "cl-1",
+            "key": "pluto",
+            "value": "is a planet",
+            "polarity": "pos",
+            "source_id": "url-1",
+            "span_start": 0,
+            "span_end": 20,
+            "excerpt": "pluto is a planet",
+            "revision": "r1",
+            "status": "fact",
+            "generation_id": 1
+          }
+        ],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "a.example",
+            "page_id": "p1"
+          },
+          "url-2": {
+            "kind": "url",
+            "host": "b.example",
+            "page_id": "p2"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "pluto",
+          "value": "is a dwarf planet",
+          "polarity": "pos",
+          "source_id": "url-2",
+          "span_start": 3,
+          "span_end": 30,
+          "excerpt": "pluto is a dwarf planet",
+          "revision": "r1",
+          "review_id": "rev-9",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "PROMOTED_CONFLICTED"
+        ],
+        "facts": {
+          "pluto": {
+            "value": "is a planet",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1",
+            "status": "conflicted"
+          }
+        },
+        "claims_count": 2,
+        "generation": 2
+      }
+    },
+    {
+      "name": "higher-rank fact rejects, dissent recorded",
+      "store": {
+        "facts": {
+          "pluto": {
+            "value": "is a dwarf planet",
+            "origin": "promoted",
+            "rank": 2,
+            "source": "url-1+url-2"
+          }
+        },
+        "claims": [],
+        "sources": {
+          "url-3": {
+            "kind": "url",
+            "host": "c.example",
+            "page_id": "p3"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "pluto",
+          "value": "is a planet",
+          "polarity": "pos",
+          "source_id": "url-3",
+          "span_start": 0,
+          "span_end": 20,
+          "excerpt": "pluto is a planet",
+          "revision": "r1",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "REJECT_HIGHER_RANK"
+        ],
+        "facts": {
+          "pluto": {
+            "value": "is a dwarf planet",
+            "origin": "promoted",
+            "rank": 2,
+            "source": "url-1+url-2",
+            "dissent": [
+              "url-3"
+            ]
+          }
+        },
+        "claims_count": 1,
+        "generation": 0
+      }
+    },
+    {
+      "name": "same-page newer revision supersedes with tombstone",
+      "store": {
+        "facts": {
+          "widget": {
+            "value": "supports v1",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          }
+        },
+        "claims": [
+          {
+            "id": "cl-1",
+            "key": "widget",
+            "value": "supports v1",
+            "polarity": "pos",
+            "source_id": "url-1",
+            "span_start": 0,
+            "span_end": 20,
+            "excerpt": "widget supports v1",
+            "revision": "r1",
+            "status": "fact",
+            "generation_id": 1
+          }
+        ],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "a.example",
+            "page_id": "p7"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "widget",
+          "value": "supports v2",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 0,
+          "span_end": 20,
+          "excerpt": "widget supports v2",
+          "revision": "r2",
+          "review_id": "rev-3",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "PROMOTED_SUPERSEDES"
+        ],
+        "facts": {
+          "widget": {
+            "value": "supports v2",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          }
+        },
+        "claims_count": 2,
+        "tombstoned": [
+          "cl-1"
+        ],
+        "generation": 2
+      }
+    },
+    {
+      "name": "two independent sources auto-pass without review",
+      "store": {
+        "facts": {},
+        "claims": [
+          {
+            "id": "cl-1",
+            "key": "a crow",
+            "value": "is a bird",
+            "polarity": "pos",
+            "source_id": "url-1",
+            "span_start": 0,
+            "span_end": 18,
+            "excerpt": "a crow is a bird",
+            "revision": "r1",
+            "status": "claim",
+            "generation_id": 1
+          }
+        ],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "a.example",
+            "page_id": "p1"
+          },
+          "url-2": {
+            "kind": "url",
+            "host": "b.example",
+            "page_id": "p2"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "a crow",
+          "value": "is a bird",
+          "polarity": "pos",
+          "source_id": "url-2",
+          "span_start": 5,
+          "span_end": 23,
+          "excerpt": "a crow is a bird",
+          "revision": "r1",
+          "review_id": "",
+          "review_verdict": ""
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "PROMOTED"
+        ],
+        "facts": {
+          "a crow": {
+            "value": "is a bird",
+            "origin": "promoted",
+            "rank": 2,
+            "source": "url-1+url-2"
+          }
+        },
+        "claims_count": 2,
+        "generation": 2
+      }
+    },
+    {
+      "name": "single source without review stays a claim",
+      "store": {
+        "facts": {},
+        "claims": [],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "a.example",
+            "page_id": "p1"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "a crow",
+          "value": "is a bird",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 0,
+          "span_end": 18,
+          "excerpt": "a crow is a bird",
+          "revision": "r1",
+          "review_id": "",
+          "review_verdict": ""
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "KEPT_AS_CLAIM"
+        ],
+        "facts": {},
+        "claims_count": 1,
+        "generation": 1
+      }
+    },
+    {
+      "name": "cap exceeded aborts whole batch",
+      "policy": {
+        "K": 3,
+        "reserve": 1
+      },
+      "store": {
+        "facts": {},
+        "claims": [],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "a.example",
+            "page_id": "p1"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "k1",
+          "value": "v1",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 0,
+          "span_end": 6,
+          "excerpt": "k1 v1!",
+          "revision": "r1",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        },
+        {
+          "key": "k2",
+          "value": "v2",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 7,
+          "span_end": 13,
+          "excerpt": "k2 v2!",
+          "revision": "r1",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        },
+        {
+          "key": "k3",
+          "value": "v3",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 14,
+          "span_end": 20,
+          "excerpt": "k3 v3!",
+          "revision": "r1",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "CAP_EXCEEDED",
+          "CAP_EXCEEDED",
+          "CAP_EXCEEDED"
+        ],
+        "facts": {},
+        "claims_count": 0,
+        "generation": 0
+      }
+    },
+    {
+      "name": "batch order independence",
+      "store": {
+        "facts": {},
+        "claims": [],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "a.example",
+            "page_id": "p1"
+          },
+          "url-2": {
+            "kind": "url",
+            "host": "b.example",
+            "page_id": "p2"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "b key",
+          "value": "v",
+          "polarity": "pos",
+          "source_id": "url-2",
+          "span_start": 9,
+          "span_end": 15,
+          "excerpt": "b key v",
+          "revision": "r1",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        },
+        {
+          "key": "a key",
+          "value": "v",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 2,
+          "span_end": 8,
+          "excerpt": "a key v",
+          "revision": "r1",
+          "review_id": "rev-1",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "PROMOTED",
+          "PROMOTED"
+        ],
+        "facts": {
+          "a key": {
+            "value": "v",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          },
+          "b key": {
+            "value": "v",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-2"
+          }
+        },
+        "claims_count": 2,
+        "claim_order": [
+          "cl-1:a key",
+          "cl-2:b key"
+        ],
+        "generation": 1
+      }
+    },
+    {
+      "name": "rollback inverse restores the pre-batch store",
+      "store": {
+        "facts": {
+          "widget": {
+            "value": "supports v1",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          }
+        },
+        "claims": [
+          {
+            "id": "cl-1",
+            "key": "widget",
+            "value": "supports v1",
+            "polarity": "pos",
+            "source_id": "url-1",
+            "span_start": 0,
+            "span_end": 20,
+            "excerpt": "widget supports v1",
+            "revision": "r1",
+            "status": "fact",
+            "generation_id": 1
+          }
+        ],
+        "sources": {
+          "url-1": {
+            "kind": "url",
+            "host": "a.example",
+            "page_id": "p7"
+          }
+        }
+      },
+      "batch": [
+        {
+          "key": "widget",
+          "value": "supports v2",
+          "polarity": "pos",
+          "source_id": "url-1",
+          "span_start": 0,
+          "span_end": 20,
+          "excerpt": "widget supports v2",
+          "revision": "r2",
+          "review_id": "rev-3",
+          "review_verdict": "APPROVE_AS_FACT"
+        }
+      ],
+      "expect": {
+        "verdicts": [
+          "PROMOTED_SUPERSEDES"
+        ],
+        "facts": {
+          "widget": {
+            "value": "supports v2",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          }
+        },
+        "claims_count": 2,
+        "generation": 2,
+        "rollback_generation": 2,
+        "facts_after_rollback": {
+          "widget": {
+            "value": "supports v1",
+            "origin": "promoted",
+            "rank": 1,
+            "source": "url-1"
+          }
+        },
+        "active_claims_after_rollback": 1
+      }
+    }
+  ]
+}

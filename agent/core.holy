@@ -69,7 +69,7 @@ def _cv_inval(state):
   state["cvgen"] = state["cvgen"] + 1
 def new_state():
   # mode is session-only (like notes): strict unless the user explores.
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": [], "readings": [], "read_src": {}, "read_n": 0, "url_srcs": [], "corpus_srcs": [], "test_fetch": false, "cvinst": 0, "cvgen": 0, "lang": "en", "register": "khrup"}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": [], "readings": [], "read_src": {}, "read_n": 0, "url_srcs": [], "corpus_srcs": [], "test_fetch": false, "cvinst": 0, "cvgen": 0, "lang": "en", "register": "khrup", "claims": {}, "claim_order": []}
 def _has(state, key):
   # O(1) membership; keyset mirrors order exactly (built from it on
   # load, maintained on teach/forget), including for hand-edited files.
@@ -684,6 +684,9 @@ def _recall(state, asked):
     if state["lang"] == "th":
       return "ไม่รู้จัก" + _particle(state) + " " + asked
     return "i do not know " + asked
+  cl = _claims_for(state, asked)
+  if len(cl) > 0:
+    return _claim_reply(state, asked, cl)
   return _usage_reply(state, asked)
 def _forget(state, key):
   if not _has(state, key):
@@ -1417,6 +1420,223 @@ def _read_text(state, rest):
     state["read_n"] = state["read_n"] + 1
     src = "read-" + str(state["read_n"])
   return _read_ingest(state, src, body, false)
+# W1 claims (contract docs/agent/w1-claims-contract-v1.md): readings from
+# an authorized read persist as source-attributed CLAIMS. A claim is
+# never plain truth; answers name the source. Promotion to accepted
+# fact goes through the fixture-frozen gate, not this path.
+_CLAIM_CAP = 500
+def _src_kind(src):
+  if len(src) > 4 and src[:4] == "url-":
+    return "url"
+  if len(src) > 7 and src[:7] == "corpus-":
+    return "corpus"
+  return "text"
+def _src_locator(state, src):
+  k = _src_kind(src)
+  if k == "url":
+    n = int(src[4:])
+    if n >= 1 and n <= len(state["url_srcs"]):
+      return state["url_srcs"][n - 1][0]
+  if k == "corpus":
+    n = int(src[7:])
+    if n >= 1 and n <= len(state["corpus_srcs"]):
+      return state["corpus_srcs"][n - 1]
+  return src
+def _claim_find(state, key, value, src, span_text):
+  for cid in state["claim_order"]:
+    c = state["claims"][cid]
+    if c["key"] == key and c["value"] == value and c["source_id"] == src and c["span_text"] == span_text:
+      return cid
+  return null
+def _claim_add(state, key, value, src, span_text):
+  if _claim_find(state, key, value, src, span_text) != null:
+    return false
+  if len(state["claim_order"]) >= _CLAIM_CAP:
+    return false
+  cid = "cl-" + str(len(state["claim_order"]) + 1)
+  ex = span_text
+  if len(ex) > 200:
+    ex = ex[:200]
+  state["claims"][cid] = {"id": cid, "key": key, "value": value, "polarity": "pos", "source_id": src, "kind": _src_kind(src), "locator": _src_locator(state, src), "revision": "", "span_text": span_text, "excerpt": ex, "status": "claim", "review_id": "", "generation_id": 0, "superseded_by": ""}
+  append(state["claim_order"], cid)
+  return true
+# Claims whose key matches (article-stripped both sides), claim order.
+def _claims_for(state, asked):
+  out = []
+  a = _stripart(asked)
+  for cid in state["claim_order"]:
+    c = state["claims"][cid]
+    if c["status"] != "rolled-back" and (c["key"] == asked or _stripart(c["key"]) == a):
+      append(out, c)
+  return out
+# Source-attributed claim answer. Never plain truth: the source is
+# named and the claim is labeled unverified. Conflicting values are
+# surfaced, never silently picked.
+def _claim_reply(state, asked, cl):
+  vals = []
+  for c in cl:
+    if not _in(c["value"], vals):
+      append(vals, c["value"])
+  if state["lang"] == "th":
+    if len(vals) == 1:
+      return cl[0]["locator"] + " บอกว่า: " + cl[0]["key"] + " " + vals[0] + " (ยังไม่ยืนยัน)"
+    out = "แหล่งข้อมูลขัดกันเรื่อง " + asked + ":"
+    i = 0
+    for c in cl:
+      if i < 3:
+        out = out + " " + c["locator"] + " บอกว่า " + c["value"] + ";"
+      i = i + 1
+    return out[:len(out) - 1] + " (ยังไม่ยืนยัน)"
+  if len(vals) == 1:
+    return cl[0]["locator"] + " says: " + cl[0]["key"] + " " + vals[0] + " (unverified claim)"
+  out = "sources disagree on " + asked + ":"
+  i = 0
+  for c in cl:
+    if i < 3:
+      out = out + " " + c["locator"] + " says " + c["value"] + ";"
+    i = i + 1
+  return out[:len(out) - 1] + " (unverified claims)"
+# W1 promote gate (contract section 4, runtime subset): "approve cl-N"
+# is the recorded review verdict APPROVE_AS_FACT; the typist is the
+# reviewer (the owner, or an adapter filing a completed review). Hard
+# checks first; taught facts always win; promotion goes through the
+# same indexing a teach would, so answers and forget work unchanged.
+# Map a claim value to the taught-fact shape: "is-a V" files like
+# "remember X is V", "is-in V" like "remember X is in V". "means V"
+# claims are not promotable at W1 (means is an alias, not a fact).
+def _claim_fact_value(v):
+  if len(v) > 5 and v[:5] == "is-a ":
+    return v[5:]
+  if len(v) > 6 and v[:6] == "is-in ":
+    return "in " + v[6:]
+  return v
+def _looks_private(t):
+  if find(t, "@") >= 0:
+    return true
+  run = 0
+  i = 0
+  while i < len(t):
+    c = t[i]
+    if c >= "0" and c <= "9":
+      run = run + 1
+      if run >= 9:
+        return true
+    else:
+      run = 0
+    i = i + 1
+  return false
+def _promote(state, cid):
+  if not (cid in state["claims"]):
+    if state["lang"] == "th":
+      return "ไม่รู้จัก" + _particle(state) + " " + cid
+    return "i do not know " + cid
+  c = state["claims"][cid]
+  if c["status"] != "claim":
+    if state["lang"] == "th":
+      return cid + " ไม่ใช่ข้อมูลที่รอตรวจ" + _particle(state)
+    return cid + " is not a pending claim"
+  key = c["key"]
+  value = c["value"]
+  if len(value) > 6 and value[:6] == "means ":
+    if state["lang"] == "th":
+      return "ไม่บันทึกเป็นข้อเท็จจริง" + _particle(state) + ": ข้อมูลแบบ means ยังเก็บเป็นข้อมูลที่อ่านมาเท่านั้น"
+    return "not promoted: means claims stay claims at W1"
+  value = _claim_fact_value(value)
+  if _looks_private(key) or _looks_private(value):
+    if state["lang"] == "th":
+      return "ไม่บันทึกเป็นข้อเท็จจริง" + _particle(state) + ": ดูเหมือนข้อมูลส่วนตัว เก็บไว้เป็นข้อมูลที่อ่านมาเท่านั้น"
+    return "not promoted: private-looking content, kept as a claim"
+  if _has(state, key):
+    known = false
+    for v in state["facts"][key]:
+      if v == value:
+        known = true
+    if known:
+      c["status"] = "fact"
+      if state["lang"] == "th":
+        return "รู้อยู่แล้ว" + _particle(state) + " " + key + " " + c["value"]
+      return "already known: " + key + " " + c["value"]
+    if state["lang"] == "th":
+      return "ไม่บันทึกเป็นข้อเท็จจริง" + _particle(state) + ": ขัดกับที่คุณสอนฉัน เก็บไว้เป็นข้อมูลที่อ่านมา"
+    return "not promoted: contradicts what you taught me, kept as a claim"
+  bare = _learn_rel(state, key, value)
+  state["facts"][key] = [value]
+  _cv_inval(state)
+  append(state["order"], key)
+  _index_key(state, key)
+  _cooc_add(state, key, value)
+  _slog(state, "taught", key)
+  c["status"] = "fact"
+  if state["lang"] == "th":
+    return "บันทึกเป็นข้อเท็จจริงแล้ว" + _particle(state) + " " + key + " " + c["value"] + " (ที่มา: " + c["locator"] + ")"
+  return "promoted " + cid + ": " + key + " " + c["value"] + " (source: " + c["locator"] + ")"
+def _claims_reply(state):
+  pend = []
+  for cid in state["claim_order"]:
+    if state["claims"][cid]["status"] == "claim":
+      append(pend, cid)
+  if len(pend) == 0:
+    if state["lang"] == "th":
+      return "ไม่มีข้อมูลที่อ่านมารอตรวจ" + _particle(state)
+    return "no pending claims"
+  n = len(pend)
+  out = ""
+  i = 0
+  while i < n and i < 20:
+    c = state["claims"][pend[i]]
+    line = pend[i] + ": " + c["key"] + " " + c["value"] + " (" + c["locator"] + ")"
+    if out == "":
+      out = line
+    else:
+      out = out + "; " + line
+    i = i + 1
+  if state["lang"] == "th":
+    hd = "ข้อมูลที่อ่านมารอตรวจ " + str(n) + " ข้อ" + _particle(state) + ": "
+  else:
+    hd = str(n) + " pending claims: "
+  out = hd + out
+  if n > 20:
+    if state["lang"] == "th":
+      out = out + " และอีก " + str(n - 20) + " ข้อ"
+    else:
+      out = out + ", and " + str(n - 20) + " more"
+  return out
+# "where did you learn X": provenance from the stored records, never a
+# refetch. Taught facts say so; claims list source, span and excerpt.
+def _provenance_reply(state, asked):
+  out = ""
+  key = _resolve(state, asked)
+  if key != null:
+    promoted = false
+    for cid in state["claim_order"]:
+      pc = state["claims"][cid]
+      if pc["status"] == "fact" and (pc["key"] == key or _stripart(pc["key"]) == _stripart(key)):
+        promoted = true
+    if promoted:
+      if state["lang"] == "th":
+        out = "บันทึกจากการอ่าน: " + key
+      else:
+        out = "promoted from reading: " + key
+    else:
+      if state["lang"] == "th":
+        out = "คุณสอนฉัน: " + key
+      else:
+        out = "you taught me: " + key
+  cl = _claims_for(state, asked)
+  for c in cl:
+    line = c["id"] + ": " + c["locator"]
+    if c["revision"] != "":
+      line = line + " rev " + c["revision"]
+    line = line + " [\"" + c["excerpt"] + "\"]"
+    if out == "":
+      out = line
+    else:
+      out = out + "; " + line
+  if out == "":
+    if state["lang"] == "th":
+      return "ไม่เคยเรียนรู้" + _particle(state) + " " + asked
+    return "i never learned " + asked
+  return out
 # Shared ingestion path for typed reads and (A18) fetched pages. The
 # 64KB cap for fetched text is applied by agent/fetch.holy BEFORE
 # this point (byte ops cannot live in the core: the self-interpreter
@@ -1555,6 +1775,7 @@ def _read_ingest(state, src, body, truncated):
               append(state["readings"], [ex[0], ex[1], ex[2], [], [entry], "", "", []])
             else:
               append(state["readings"], [ex[0], ex[1], ex[2], [entry], [], "", "", []])
+              _claim_add(state, ex[0], ex[1] + " " + ex[2], src, span)
             newc = newc + 1
             rj = len(state["readings"]) - 1
         # A19: a later conflicting reading raises an evidence-review
@@ -2715,7 +2936,7 @@ def _else_reply(state):
   if len(facts) <= 1:
     return "that is all i know about " + state["topic"]
   return "about " + state["topic"] + ": " + _join(facts[1:])
-_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | note <text> | notes | clear notes | mode | mode strict | mode explore | hypotheses | hypotheses detail | forget hypothesis <thing> is a <kind> | clear hypotheses | read <text> | readings | readings about <thing> | readings detail | forget reading <thing> is a <kind> | clear readings | read url <url> (experimental, repl shell only) | read corpus <lineage>: <text> (offline corpus readings, UNVERIFIED) | list | say <text> | help"
+_HELP = "commands: remember <thing> is <fact> | remember <thing> is also <fact> | remember <thing> has <part> | remember <thing> เป็น <kind> | no, <thing> is <fact> | what is <thing> | do you know <thing> | what does <thing> mean | is <thing> in <thing> | is <thing> a <thing> | is <thing> <thing> | where is <thing> | what do you know about <thing> | how is <thing> | how about <thing> | <thing> คืออะไร | <thing> หมายความว่าอะไร | <thing> อยู่ไหน | <thing> เป็น <thing> ไหม | <thing> คือ <thing> หรือไม่ | and <thing> | what else | what about it | <phrase> means <thing> | forget <thing> | forget it | remember <thing> needs/can/uses/produces/causes <thing> | remember <thing> cannot <verb> | does <thing> <verb> <thing> | can <thing> <verb> | is <thing> needed by <thing> | remember <thing> is not a <kind> | what do you know | what did you forget | what did we talk about | where did you learn <thing> | claims | approve <claim-id> | note <text> | notes | clear notes | mode | mode strict | mode explore | hypotheses | hypotheses detail | forget hypothesis <thing> is a <kind> | clear hypotheses | read <text> | readings | readings about <thing> | readings detail | forget reading <thing> is a <kind> | clear readings | read url <url> (experimental, repl shell only) | read corpus <lineage>: <text> (offline corpus readings, UNVERIFIED) | list | say <text> | help"
 # One line in, one reply out. Rules are checked in a fixed order and the
 # first match wins; anything unrecognized gets the honest fallback.
 def respond(state, line):
@@ -2877,6 +3098,12 @@ def respond(state, line):
     return _session_reply(state)
   if m[:23] == "what do you know about ":
     return _about_reply(state, m[23:])
+  if m[:20] == "where did you learn ":
+    return _provenance_reply(state, m[20:])
+  if m == "claims":
+    return _claims_reply(state)
+  if m[:8] == "approve ":
+    return _promote(state, m[8:])
   if m[:9] == "remember ":
     rest = text[9:]
     mrest = m[9:]
