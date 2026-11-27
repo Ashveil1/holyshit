@@ -69,7 +69,7 @@ def _cv_inval(state):
   state["cvgen"] = state["cvgen"] + 1
 def new_state():
   # mode is session-only (like notes): strict unless the user explores.
-  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": [], "readings": [], "read_src": {}, "read_n": 0, "url_srcs": [], "corpus_srcs": [], "test_fetch": false, "cvinst": 0, "cvgen": 0}
+  return {"facts": {}, "order": [], "aliases": {}, "notes": [], "topic": null, "pending": null, "windex": {}, "nw": {}, "keyset": {}, "rels": [], "cooc": {}, "relset": {}, "relby": {}, "forgotten": [], "session": [], "mode": "strict", "hypotheses": [], "hyp_retired": [], "readings": [], "read_src": {}, "read_n": 0, "url_srcs": [], "corpus_srcs": [], "test_fetch": false, "cvinst": 0, "cvgen": 0, "lang": "en", "register": "khrup"}
 def _has(state, key):
   # O(1) membership; keyset mirrors order exactly (built from it on
   # load, maintained on teach/forget), including for hand-edited files.
@@ -107,6 +107,38 @@ def _nonascii(s):
       return true
     i = i + 1
   return false
+# R1: Thai reply twins. Reply language follows the INPUT language: a
+# line with non-ASCII text and NO ASCII letters is Thai-framed; mixed
+# lines (English frame, Thai noun) keep the English route unchanged.
+# Route-safe: only single-element compares, no byte slicing (a proper
+# Thai detector lands with the R3 front door - disclosed limitation).
+def _thai_line(s):
+  if not _nonascii(s):
+    return false
+  i = 0
+  while i < len(s):
+    c = s[i]
+    if c >= "a" and c <= "z" or c >= "A" and c <= "Z":
+      return false
+    i = i + 1
+  return true
+# G3 register slot: one value today (khrup), user-set later.
+def _particle(state):
+  if state["register"] == "khrup":
+    return "ครับ"
+  return "ครับ"
+def _join_th(values):
+  n = len(values)
+  if n == 1:
+    return values[0]
+  if n == 2:
+    return values[0] + " และ " + values[1]
+  out = values[0]
+  i = 1
+  while i < n - 1:
+    out = out + ", " + values[i]
+    i = i + 1
+  return out + " และ " + values[n - 1]
 # Non-ASCII tokens (Thai has no spaces or case) also match by substring:
 # one side found inside the other counts as a match. Two guards keep it
 # honest and byte/char-model independent (interp counts characters, the
@@ -237,13 +269,19 @@ def _teach(state, key, value):
   _cooc_add(state, key, value)
   _slog(state, "taught", key)
   suffix = ""
+  tsuffix = ""
   if bare:
     suffix = " (filed as a kind-of)"
+    tsuffix = " (บันทึกเป็นชนิด)"
   if _has(state, key):
+    if state["lang"] == "th":
+      return "แก้ไว้แล้ว" + _particle(state) + " " + key + " คือ " + value + tsuffix
     return "updated " + key + " is " + value + suffix
   _cv_inval(state)
   append(state["order"], key)
   _index_key(state, key)
+  if state["lang"] == "th":
+    return "จำไว้แล้ว" + _particle(state) + " " + key + " คือ " + value + tsuffix
   return "remembered " + key + " is " + value + suffix
 # A25.2: shape-scoped Thai correction "no, <thing> <marker> <value>".
 # Replaces only the thing's existing facts of the SAME Thai shape
@@ -292,8 +330,10 @@ def _teach_also(state, key, value):
   state["topic"] = key
   bare = _learn_rel(state, key, value)
   suffix = ""
+  tsuffix = ""
   if bare:
     suffix = " (filed as a kind-of)"
+    tsuffix = " (บันทึกเป็นชนิด)"
   if not _has(state, key):
     state["facts"][key] = [value]
     _cv_inval(state)
@@ -301,13 +341,19 @@ def _teach_also(state, key, value):
     _index_key(state, key)
     _cooc_add(state, key, value)
     _slog(state, "taught", key)
+    if state["lang"] == "th":
+      return "จำไว้แล้ว" + _particle(state) + " " + key + " คือ " + value + tsuffix
     return "remembered " + key + " is " + value + suffix
   for v in state["facts"][key]:
     if v == value:
+      if state["lang"] == "th":
+        return "รู้อยู่แล้ว" + _particle(state) + " " + key + " คือ " + value + tsuffix
       return "i already know that " + key + " is " + value + suffix
   append(state["facts"][key], value)
   _cooc_add(state, key, value)
   _slog(state, "taught", key)
+  if state["lang"] == "th":
+    return "เพิ่มไว้แล้ว" + _particle(state) + " " + key + " คือ " + value + tsuffix + _isa_contra_warn(state, key, value)
   return "added: " + key + " is " + value + suffix + _isa_contra_warn(state, key, value)
 # A13 additive rule: kind-of-shaped values (a/an/bare/negations/เป็น)
 # ADD to an existing thing; shaped values (in/has/คือ/หมายความว่า/อยู่)
@@ -454,6 +500,8 @@ def _usage_reply(state, asked):
             merged[u] = c
             append(morder, u)
   if len(morder) == 0:
+    if state["lang"] == "th":
+      return "ไม่รู้จัก" + _particle(state) + " " + asked
     return "i do not know " + asked
   i = 0
   while i < len(morder):
@@ -473,6 +521,8 @@ def _usage_reply(state, asked):
   while i < len(morder) and i < 3:
     append(top, morder[i])
     i = i + 1
+  if state["lang"] == "th":
+    return "ไม่เคยถูกสอน" + _particle(state) + " " + asked + " แต่จากการใช้ " + asked + " น่าจะเกี่ยวกับ " + _join_th(top)
   return "i was never taught " + asked + ", but from how you used it, " + asked + " seems related to " + _join(top)
 # Keys whose words match the asked word w, exactly mirroring _wmatch:
 # - exact word hits come straight from the index;
@@ -569,11 +619,32 @@ def _values_glue(values):
   if len(plain) == 0:
     return " " + _join(relv)
   return " is " + _join(plain) + " and " + _join(relv)
+# A taught Thai relation value already carries its own "คือ " lead;
+# the Thai reply drops it once instead of saying it twice.
+def _th_val(v):
+  if find(v, "คือ ") == 0:
+    return v[len("คือ "):]
+  return v
+def _values_glue_th(values):
+  plain = []
+  relv = []
+  for v in values:
+    if _relvalue(v):
+      append(relv, v)
+    if not _relvalue(v):
+      append(plain, _th_val(v))
+  if len(relv) == 0:
+    return " คือ " + _join_th(plain)
+  if len(plain) == 0:
+    return " " + _join_th(relv)
+  return " คือ " + _join_th(plain) + " และ " + _join_th(relv)
 def _recall(state, asked):
   key = _resolve(state, asked)
   if key != null:
     state["topic"] = key
     _slog(state, "asked", key)
+    if state["lang"] == "th":
+      return "รู้" + _particle(state) + " " + key + _values_glue_th(state["facts"][key])
     return "i know " + key + _values_glue(state["facts"][key])
   both = _candidates(state, asked)
   cands = both[0]
@@ -606,12 +677,18 @@ def _recall(state, asked):
     while i < len(cands):
       joined = joined + ", " + cands[i]
       i = i + 1
+    if state["lang"] == "th":
+      return "หมายถึง " + joined + " ใช่ไหม" + _particle(state) + "?"
     return "did you mean " + joined + "?"
   if len(cands) > 3:
+    if state["lang"] == "th":
+      return "ไม่รู้จัก" + _particle(state) + " " + asked
     return "i do not know " + asked
   return _usage_reply(state, asked)
 def _forget(state, key):
   if not _has(state, key):
+    if state["lang"] == "th":
+      return "ไม่รู้จัก" + _particle(state) + " " + key
     return "i do not know " + key
   for v in state["facts"][key]:
     _cooc_remove(state, key, v)
@@ -642,11 +719,15 @@ def _forget(state, key):
   if len(state["forgotten"]) > 20:
     state["forgotten"] = state["forgotten"][len(state["forgotten"]) - 20:]
   _slog(state, "forgot", key)
+  if state["lang"] == "th":
+    return "ลืมแล้ว" + _particle(state) + " " + key
   return "forgot " + key
 def _list_reply(state):
   order = state["order"]
   n = len(order)
   if n == 0:
+    if state["lang"] == "th":
+      return "ยังไม่รู้อะไรเลย" + _particle(state)
     return "i know nothing yet"
   joined = order[0]
   i = 1
@@ -654,6 +735,8 @@ def _list_reply(state):
     joined = joined + ", " + order[i]
     i = i + 1
   if n == 1:
+    if state["lang"] == "th":
+      return "รู้ 1 อย่าง" + _particle(state) + ": " + joined
     return "i know 1 thing: " + joined
   # A12: cap the dump - past 50 keys, say how many more instead of
   # listing them all.
@@ -663,7 +746,11 @@ def _list_reply(state):
     while i < 50:
       cut = cut + ", " + order[i]
       i = i + 1
+    if state["lang"] == "th":
+      return "รู้ " + str(n) + " อย่าง" + _particle(state) + ": " + cut + " และอีก " + str(n - 50) + " อย่าง"
     return "i know " + str(n) + " things: " + cut + ", and " + str(n - 50) + " more"
+  if state["lang"] == "th":
+    return "รู้ " + str(n) + " อย่าง" + _particle(state) + ": " + joined
   return "i know " + str(n) + " things: " + joined
 # A12: bounded self-knowledge. Every answer says its own limits.
 def _know_reply(state):
@@ -2556,6 +2643,8 @@ def _mean_reply(state, x, sep):
     if e[0] == x and e[1] == "means":
       append(defs, e[2])
   if len(defs) > 0:
+    if state["lang"] == "th":
+      return x + sep + _join_th(defs)
     return x + sep + _join(defs)
   return _recall(state, x)
 # A25.3: Thai pronoun / demonstrative as the whole subject of a supported
@@ -2643,6 +2732,9 @@ def respond(state, line):
     if last == ".":
       text = text[:len(text) - 1]
   m = lower_ascii(text)
+  state["lang"] = "en"
+  if _thai_line(text):
+    state["lang"] = "th"
   if state["pending"] != null:
     r = _pending_reply(state, m)
     if r[0]:
@@ -2966,5 +3058,9 @@ def respond(state, line):
       if phrase not in state["aliases"] or state["aliases"][phrase] != target:
         _cv_inval(state)
       state["aliases"][phrase] = target
+    if state["lang"] == "th":
+      return "เข้าใจแล้ว" + _particle(state) + " " + phrase + means_p + target
     return "ok, " + phrase + means_p + target
+  if state["lang"] == "th":
+    return "ไม่เข้าใจ" + _particle(state)
   return "i do not understand"

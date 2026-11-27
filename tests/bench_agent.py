@@ -69,7 +69,7 @@ DIALOGUE = [
     ('yes', 'i know red car is fast', 'clarify'),
     ('what about it', 'i know red car is fast', 'recall'),
     ('what is สัตว์', 'did you mean สัตว์เลี้ยง?', 'clarify'),
-    ('สัตว์เลี้ยง', 'i know สัตว์เลี้ยง is pet', 'clarify'),
+    ('สัตว์เลี้ยง', 'รู้ครับ สัตว์เลี้ยง คือ pet', 'clarify'),
     ('what is the moon', 'i do not know the moon', 'miss'),
     ('what is ดวงจันทร์', 'i do not know ดวงจันทร์', 'miss'),
     ('what is the capital of thailand',
@@ -84,7 +84,8 @@ DIALOGUE = [
      'open'),
     ('what else', 'that is all i know about bangkok', 'chain'),
     ('and my cat', 'i know my cat is milo', 'chain'),
-    ('แมว คืออะไร', 'i know แมว is สัตว์เลี้ยง', 'open'),
+    # R1: pure-Thai lines get the Thai twin reply.
+    ('แมว คืออะไร', 'รู้ครับ แมว คือ สัตว์เลี้ยง', 'open'),
     ('remember paris is in france', 'remembered paris is in france', 'teach'),
     ('remember france is in europe', 'remembered france is in europe', 'teach'),
     ('is paris in europe', 'yes: paris is in france, france is in europe',
