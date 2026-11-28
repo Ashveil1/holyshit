@@ -49,6 +49,9 @@ print("1/1 run_all registers agent fetch bounded transport exactly once on the f
 assert names.count("test_json_str_routes.py") == 1
 assert "test_json_str_routes.py" in quick_selected
 assert os.path.isfile(os.path.join(HERE, "test_json_str_routes.py"))
+assert names.count("test_str_cmp_routes.py") == 1
+assert "test_str_cmp_routes.py" in quick_selected
+assert os.path.isfile(os.path.join(HERE, "test_str_cmp_routes.py"))
 print("1/1 run_all registers json_str 7-route parity exactly once on quick and full paths")
 
 assert names.count("test_shell_disk.py") == 1

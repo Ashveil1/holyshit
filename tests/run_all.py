@@ -98,6 +98,7 @@ SUITES = [
     ("test_json_chunks.py", "JSON shared-chunk encoder byte and depth boundaries"),
     ("test_jsonbytes.py", "JSON non-ASCII byte offsets, escaping and error surfaces"),
     ("test_json_str_routes.py", "json_str CPython ensure_ascii contract byte-identical on all routes"),
+    ("test_str_cmp_routes.py", "C24 string compare (6 ops) unsigned UTF-8 order byte-identical on all routes"),
     ("test_rawbytes.py", "read_mem raw-byte path pins current per-backend divergence"),
     ("test_bytes_type.py", "Bytes stage 1: read_bytes and byte_* on Bytes (interp only)"),
     ("test_irx64_text_errors.py", "IR direct text errors keep source lines; alias/arity/native gaps pinned"),
