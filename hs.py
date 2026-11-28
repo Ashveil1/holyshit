@@ -1546,9 +1546,13 @@ class Gen:
             parts.append(f"typedef struct {{ {'; '.join(fdecls)}; }} {self.struct_cname(sname)};")
         if HS_STRUCTS:
             parts.append("")
-        vol = "volatile " if self.try_used else ""
+        # File-scope statics never need volatile for longjmp safety:
+        # setjmp clobber rules apply only to automatic locals of the
+        # setjmp function. Qualifying these globals volatile made the
+        # hs_reg_attr(...) calls below discard the qualifier, which
+        # stricter toolchains reject.
         for cp, n in sorted(self.gnames):
-            parts.append(f"static {vol}Val {cp + cname('hsG_', n)} = {{T_UNBOUND}};")
+            parts.append(f"static Val {cp + cname('hsG_', n)} = {{T_UNBOUND}};")
         for mod in self.modules:
             for n, typ in sorted(mod.scope.utypes.items()):
                 parts.append(f"static {self.sctype(typ)} {mod.cprefix + cname('hsUG_', n)} = {UZERO.get(typ, '0')};")
