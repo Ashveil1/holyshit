@@ -17,6 +17,11 @@ non-loopback hosts to the local fixture server while keeping the
 normalized URL as the source identity, so a 'wikipedia.org' page is
 served locally.
 
+Isolation: the repl persists agent-memory.json in its cwd, so every
+repl subprocess (environment probe, interp route, native route) runs
+from its own fresh temporary directory. The repo working tree is never
+touched and each route starts from an empty memory store.
+
 Runs the script through two routes:
   1. python3 interp.py agent/repl.holy   (reference interpreter)
   2. natively compiled agent/repl.holy   (hs.py build; needs
@@ -33,7 +38,6 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MEMFILE = os.path.join(ROOT, "agent-memory.json")
 
 CMDS = ('read corpus simplewiki-corpus: robots are machines\n'
         'read url http://wikipedia.org:{PORT}/clean\n'
@@ -74,71 +78,61 @@ def check(label, got):
 
 
 def main():
-    # the repl persists agent-memory.json in its cwd; run both routes
-    # against a clean memory file and restore whatever was there
-    backup = None
-    if os.path.exists(MEMFILE):
-        backup = open(MEMFILE, "rb").read()
-        os.remove(MEMFILE)
     srv, port = start_server()
     try:
         cmds = CMDS.replace("{PORT}", str(port))
         env = dict(os.environ, HS_AGENT_TEST_FETCH="1",
                     # harness-only: the fixture server is loopback;
                     # same netguard exemption as test_agent_fetch.py
-                    HS_ALLOW_PRIVATE_NET="1")
+                    HS_ALLOW_PRIVATE_NET="1",
+                    # repl subprocesses run from a fresh temp cwd, so
+                    # agent.core resolves through the module search path
+                    HSPATH=ROOT)
 
         # Environment probe: some sandboxes cannot tcp_connect at all
         # (the pinned A18.1 test_agent_fetch.py fails the same way
         # there). Skip cleanly instead of pinning a transcript no real
         # run produced.
-        probe = run([sys.executable, os.path.join(ROOT, "interp.py"),
-                     os.path.join(ROOT, "agent", "repl.holy")],
-                    "read url http://127.0.0.1:%d/clean\nquit\n" % port,
-                    env, ROOT)
+        with tempfile.TemporaryDirectory() as td:
+            probe = run([sys.executable, os.path.join(ROOT, "interp.py"),
+                         os.path.join(ROOT, "agent", "repl.holy")],
+                        "read url http://127.0.0.1:%d/clean\nquit\n" % port,
+                        env, td)
         if "connect failed" in probe.stdout:
             print("skip: tcp_connect unavailable in this environment"
                   " (read url probe could not reach the local fixture"
                   " server); run where test_agent_fetch.py passes")
             return
-        if os.path.exists(MEMFILE):
-            os.remove(MEMFILE)
         if not EXPECTED:
-            r = run([sys.executable, os.path.join(ROOT, "interp.py"),
-                     os.path.join(ROOT, "agent", "repl.holy")],
-                    cmds, env, ROOT)
+            with tempfile.TemporaryDirectory() as td:
+                r = run([sys.executable, os.path.join(ROOT, "interp.py"),
+                         os.path.join(ROOT, "agent", "repl.holy")],
+                        cmds, env, td)
             raise AssertionError(
                 "EXPECTED transcript not pinned yet; verified actual "
                 "was:\n" + norm(r.stdout, port))
 
-        r = run([sys.executable, os.path.join(ROOT, "interp.py"),
-                 os.path.join(ROOT, "agent", "repl.holy")], cmds, env, ROOT)
-        assert r.returncode == 0, (r.returncode, r.stderr[-2000:])
-        check("interp", norm(r.stdout, port))
-        if os.path.exists(MEMFILE):
-            os.remove(MEMFILE)
+        with tempfile.TemporaryDirectory() as td:
+            r = run([sys.executable, os.path.join(ROOT, "interp.py"),
+                     os.path.join(ROOT, "agent", "repl.holy")], cmds, env, td)
+            assert r.returncode == 0, (r.returncode, r.stderr[-2000:])
+            check("interp", norm(r.stdout, port))
 
         with tempfile.TemporaryDirectory() as td:
             binpath = os.path.join(td, "agentrepl")
             b = subprocess.run([sys.executable, os.path.join(ROOT, "hs.py"),
                                 "build", os.path.join(ROOT, "agent", "repl.holy"),
                                 "-o", binpath],
-                               capture_output=True, text=True, env=dict(os.environ))
+                               capture_output=True, text=True, env=env)
             assert b.returncode == 0, (
                 "native build failed (CPATH/LIBRARY_PATH gc toolchain "
                 "env needed, same as tests/test_agent_core.py): "
                 + b.stderr[-2000:])
-            r = run([binpath], cmds, env, ROOT)
+            r = run([binpath], cmds, env, td)
             assert r.returncode == 0, (r.returncode, r.stderr[-2000:])
             check("native", norm(r.stdout, port))
-            if os.path.exists(MEMFILE):
-                os.remove(MEMFILE)
     finally:
         srv.kill()
-        if backup is not None:
-            open(MEMFILE, "wb").write(backup)
-        elif os.path.exists(MEMFILE):
-            os.remove(MEMFILE)
     print("all agent.lineage-fetch semantic tests passed")
 
 
