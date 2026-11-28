@@ -1,0 +1,1019 @@
+{
+ "suite": "thai-core-ai",
+ "version": 1,
+ "label": "AI-authored / not human-validated",
+ "corpus_sha256": "923dfd3d1ea48a80aacacd38ec24bb1da8c26879cddb95104a0338ff9e6606e2",
+ "harness": "scripts/thai-core-harness.py",
+ "harness_sha256": "5ef5c06573ccb721d3c406c4ec8d04ba3c65d88299487af3ae391f024f07f89a",
+ "examinee_build": "3ca8c6f-r3a-guarded2",
+ "items": [
+  {
+   "id": "recall-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณวันเพ็ญ เป็น ป้าของผม\nรู้ครับ คุณวันเพ็ญ คือ เป็น ป้าของผม\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ นกแก้วชื่อปิ่นโต มี สีเขียว\nรู้ครับ นกแก้วชื่อปิ่นโต คือ มี สีเขียว\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ โรงเพาะกล้าชื่อ “หอรุ้งพฤกษ์” อยู่ ในหุบผาม่านหมอก\nรู้ครับ โรงเพาะกล้าชื่อ “หอรุ้งพฤกษ์” คือ อยู่ ในหุบผาม่านหมอก\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ โหลแก้วลายเกลียว มี ลูกแก้วลายดาว 3 ลูกเท่านั้น\nรู้ครับ โหลแก้วลายเกลียว คือ มี ลูกแก้วลายดาว 3 ลูกเท่านั้น\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ภัณฑารักษ์ชื่อ “วรเมธ” มี สมุดจัดแสดง 1 เล่มเท่านั้น\nไม่เข้าใจครับ\nจำไว้แล้วครับ ขนมแผ่นอบชื่อ “กรอบละออง” เป็น ขนมธัญพืช\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 7,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ กล่องเก็บแผ่นพิมพ์ลายเกลียว มี ฝาทองแดง 1 ชิ้นเท่านั้น\nจำไว้แล้วครับ คนชื่อ “ภัทรเมฆ” มี ส่วนสูง 164 เซนติเมตร\nไม่เคยถูกสอนครับ คนชื่อ “ภัทรเมฆ” สูง แต่จากการใช้ คนชื่อ “ภัทรเมฆ” สูง น่าจะเกี่ยวกับ มี, ส่วนสูง และ 164\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ กระต่ายชื่อปุยฝ้าย อยู่ ในกรงหลังบ้าน\nจำไว้แล้วครับ ปุยฝ้าย เป็น กระต่ายพันธุ์ฮอลแลนด์ลอป\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ร้านขนมดาวกระจาย มี เตาอบหนึ่งเครื่อง\nจำไว้แล้วครับ ร้านซักรีดสุขใจ มี เครื่องซักผ้าสามเครื่อง\nเพิ่มไว้แล้วครับ ร้านขนมดาวกระจาย อยู่ ใกล้ตลาด\nรู้ครับ ร้านขนมดาวกระจาย คือ มี เตาอบหนึ่งเครื่อง และ อยู่ ใกล้ตลาด\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ม้าเหล็ก อยู่ ในโรงรถ\nเพิ่มไว้แล้วครับ ม้าเหล็ก เป็น จักรยานแม่บ้าน\nเพิ่มไว้แล้วครับ ม้าเหล็ก มี ตะกร้าหนึ่งใบ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "recall-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ช่างทำเครื่องปั้นชื่อ “ศิวกร” มี ผ้ากันเปื้อน 2 ผืนเท่านั้น\nไม่เข้าใจครับ\nจำไว้แล้วครับ ขนมแผ่นอบชื่อ “กรอบพราย” เป็น ขนมธัญพืช\nเพิ่มไว้แล้วครับ ขนมแผ่นอบชื่อ “กรอบพราย” อยู่ ในโหลแก้วฝาสีขาว\nเพิ่มไว้แล้วครับ ขนมแผ่นอบชื่อ “กรอบพราย” มี รสเค็มอมหวาน\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 8,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ลุงเสริม อยู่ ที่ตลาด\nรู้ครับ ลุงเสริม คือ อยู่ ที่ตลาด\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่รู้จักครับ กิ้งก่าชื่อ “เกล็ดเมฆ”\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณสุนีย์ เป็น เพื่อนร่วมงานของฉัน เรื่องคุณสุนีย์มีแค่นี้\nจำไว้แล้วครับ ต่อไป เป็น เรื่องอาหาร จำไว้ว่าซุปเมฆาเป็นอาหารเช้า\nจำไว้แล้วครับ มัน อยู่ ในครัวหลังบ้าน\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณสมพร อยู่ ที่ห้องสมุด\nเพิ่มไว้แล้วครับ คุณสมพร เป็น น้องสาวของฉัน\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ กวางชื่อ “กิ่งเงิน” อาศัย อยู่ ในป่าไผ่\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ศาลาพักชื่อ “ศาลากลีบคราม” มี ม้านั่งไม้ 2 ตัวเท่านั้น\nจำไว้แล้วครับ ลานปั้นดินชื่อ “ลานเม็ดแก้ว” มี โต๊ะปั้นดิน 2 ตัวเท่านั้น\nเพิ่มไว้แล้วครับ ลานปั้นดินชื่อ “ลานเม็ดแก้ว” เป็น พื้นที่ทำงานกลางแจ้ง\nรู้ครับ ลานปั้นดินชื่อ “ลานเม็ดแก้ว” คือ มี โต๊ะปั้นดิน 2 ตัวเท่านั้น และ เป็น พื้นที่ทำงานกลางแจ้ง\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ภาพฝัน เป็น กล้องฟิล์ม\nจำไว้แล้วครับ มัน อยู่ ในตู้กระจก\nไม่เข้าใจครับ\nจำไว้แล้วครับ พี่ภูมิ มี สายคล้องคอหนึ่งเส้น\nรู้ครับ ภาพฝัน คือ เป็น กล้องฟิล์ม\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "unknown-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ตู้เก็บอุปกรณ์รุ่น “ลายเมฆ” อยู่ ในห้องเตรียมงาน\nเพิ่มไว้แล้วครับ ตู้เก็บอุปกรณ์รุ่น “ลายเมฆ” เป็น ตู้ไม้\nเพิ่มไว้แล้วครับ ตู้เก็บอุปกรณ์รุ่น “ลายเมฆ” มี บานพับ 2 ชิ้นเท่านั้น\nไม่เข้าใจครับ\nไม่รู้จักครับ ขนมอบชื่อ “กรอบราตรี” มีระดับความเผ็ด\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณทองสุก เป็น พี่ชายของผม\nเพิ่มไว้แล้วครับ คุณทองสุก เป็น ลุงของผม\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ม้าชื่อลมหนาว มี สีดำ\nเพิ่มไว้แล้วครับ ม้าชื่อลมหนาว มี สีขาว\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ตอนนี้ลานส่องเงา อยู่ ที่สวนก้อนเมฆ\nเพิ่มไว้แล้วครับ ตอนนี้ลานส่องเงา อยู่ ที่ลานหินสีคราม\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ กล่องจัดชุดรุ่น “เส้นแสง” มี ป้ายตราประจำตัวคำว่า “แสงดิน” เพียง 1 ป้ายเท่านั้น\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ผู้ตรวจเอกสารชื่อ “ปิยดล” มี แฟ้มสีเทา 1 แฟ้มเท่านั้น\nไม่เข้าใจครับ\nจำไว้แล้วครับ ขนมกรอบชื่อ “กรอบละไม” เป็น ขนมอบ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ รถเข็นรุ่น “ลายคลื่น” มี ตะกร้าผ้า 1 ใบเท่านั้น\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ เป็ดชื่อน้ำใส อยู่ ที่บ่อหลังบ้าน\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ร้านเย็บผ้าดอกแก้ว มี จักรเย็บสามเครื่อง\nจำไว้แล้วครับ ร้านซ่อมนาฬิกาลุงเกรียง มี เครื่องขัดหนึ่งเครื่อง\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ พลับพลา เป็น ของที่ระลึก\nเพิ่มไว้แล้วครับ พลับพลา อยู่ ในลิ้นชักโต๊ะทำงาน\nเพิ่มไว้แล้วครับ พลับพลา มี สายสะพายหนึ่งเส้น\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "contradiction-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ช่างทำเครื่องปั้นชื่อ “อิศรา” มี ผ้ากันเปื้อน 2 ผืนเท่านั้น\nไม่เข้าใจครับ\nจำไว้แล้วครับ น้ำแกงข้นชื่อ “แกงเม็ดดาว” เป็น แกงถั่ว\nเพิ่มไว้แล้วครับ น้ำแกงข้นชื่อ “แกงเม็ดดาว” อยู่ ในหม้อดินสีดำ\nเพิ่มไว้แล้วครับ น้ำแกงข้นชื่อ “แกงเม็ดดาว” มี ระดับความเผ็ด 1 จาก 5 \nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 7,
+     "expected": [
+      "contradicted",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nไม่รู้จักครับ หน้าของนักวาดชื่อ “อรอุมา”\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ฉัน มี เทปสองอย่าง คือเทปกาวกับเทปคาสเซ็ต\nไม่รู้จักครับ เทป\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ซุปลูกแก้วของร้านครัวพิมพ์ เป็น อาหารเรียกน้ำย่อย\nจำไว้แล้วครับ ซุปลูกแก้วของร้านเตาถ่านลุงสิน เป็น อาหารจานหลัก\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คนชื่อ “ธาริน” ซึ่งดูแลห้องจัดแสดงทำงาน เป็น ช่างอนุรักษ์ภาพ\nจำไว้แล้วครับ คนชื่อ “ธาริน” ซึ่งดูแลสวนทดลองทำงาน เป็น ผู้เพาะเมล็ด\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณปราณี เป็น เพื่อนบ้านของฉัน เรื่องคุณปราณีมีแค่นี้\nจำไว้แล้วครับ ต่อไป เป็น เรื่องสัตว์ จำไว้ว่าวัวชื่อทองคำกับควายชื่อสายฟ้าอยู่ในคอกเดียวกัน\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ หออ่านเงียบชื่อ “หอเกล็ดหมอก” อยู่ ในอาคารชั้นบน\nจำไว้แล้วครับ ลานซ้อมหุ่นชื่อ “ลานคลื่นแก้ว” อยู่ ที่ด้านหลังของเรือนกระจก\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ มีโคมไฟชื่อดวงดาวสองโคม โคมหนึ่ง อยู่ ในห้องนั่งเล่น อีกโคมอยู่ในห้องนอน\nจำไว้แล้วครับ ดวงดาวในห้องนั่งเล่น มี ขนาดใหญ่ ส่วนดวงดาวในห้องนอนมีขนาดเล็ก\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ambiguity-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ขนมอบชื่อ “กรอบตะวัน” เป็น ขนมอบกรอบ\nจำไว้แล้วครับ ขนมอบชื่อ “กรอบตะวัน” แตก เป็น ชิ้นได้ง่าย\nจำไว้แล้วครับ ขนมต้มชื่อ “เม็ดจันทร์” เป็น ขนมแป้งนึ่ง\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "ambiguous",
+      "clarify"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณศิริพร เป็น หลานสาวของฉัน\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ แมวชื่อมะลิ มี ลูกสามตัว\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ลานกิจกรรมชื่อ “ลานเพชรฝน” มี ม้านั่งหิน 2 ตัวเท่านั้น\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ กล่องพับรุ่น “เส้นรุ้ง” เป็น ภาชนะเก็บเส้นด้ายแบบพกพา\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 1,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ พี่ชัช เป็น เพื่อนบ้านของฉัน เรื่องพี่ชัชมีแค่นี้\nไม่เข้าใจครับ\nจำไว้แล้วครับ ขนมกลีบเมฆ เป็น ของว่าง\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณอรุณ เป็น น้องชายของผม\nเพิ่มไว้แล้วครับ คุณอรุณ อยู่ ที่ตลาด\nจำไว้แล้วครับ ช่างซ่อมจักรยานประจำหมู่บ้าน คือ คุณอนันต์\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ตัวนิ่มชื่อ “เกล็ดอรุณ” เป็น สัตว์เลี้ยงลูกด้วยนม\nเพิ่มไว้แล้วครับ ตัวนิ่มชื่อ “เกล็ดอรุณ” อยู่ ในคอกไม้ด้านตะวันออก\nจำไว้แล้วครับ ตัวนิ่มชื่อ “เกล็ดอรุณ” ม้วนตัว เป็น ก้อนได้\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ รถเข็นรุ่น “ลายใบไม้” มี ล้อไม้ 4 ล้อเท่านั้น\nจำไว้แล้วครับ ลานเพาะกล้าชื่อ “ลานใบเมฆ” อยู่ ที่ด้านข้างของเรือนเก็บดิน\nเพิ่มไว้แล้วครับ ลานเพาะกล้าชื่อ “ลานใบเมฆ” เป็น พื้นที่สำหรับเพาะต้นกล้า\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ นักทำแผนที่ชื่อ “ปาริชาติ” มี แผ่นใส 2 แผ่นเท่านั้น\nไม่เข้าใจครับ\nจำไว้แล้วครับ ซองเอกสารลาย “รอยคลื่น” อยู่ ในตู้เก็บเอกสารชั้นบน\nเพิ่มไว้แล้วครับ ซองเอกสารลาย “รอยคลื่น” มี แถบผ้ารัด 2 เส้นเท่านั้น\nเพิ่มไว้แล้วครับ ซองเอกสารลาย “รอยคลื่น” เป็น ซองเก็บแผ่นแบบพิมพ์\nเพิ่มไว้แล้วครับ ซองเอกสารลาย “รอยคลื่น” คือ ซองต้นฉบับหมายเลข “เมฆครามหนึ่ง”\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 7,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "teach-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ขนมสายธาร เป็น ขนมไทย\nเพิ่มไว้แล้วครับ ขนมสายธาร มี ไส้ถั่วอย่างเดียว\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nเพิ่มไว้แล้วครับ ขนมสายธาร อยู่ ในตู้เย็นหลังร้าน\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คนชื่อ “ปุณณภพ” เป็น ลูกพี่ลูกน้องของเจ้าของร้าน\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ แมวชื่อมะม่วง มี สีส้ม\nไม่เข้าใจครับ\nรู้ครับ แมวชื่อมะม่วง คือ มี สีส้ม\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ร้านกาแฟลมเย็น อยู่ ที่หัวมุมถนน\nไม่เข้าใจครับ\nรู้ครับ ร้านกาแฟลมเย็น คือ อยู่ ที่หัวมุมถนน\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S04",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ กระเป๋าเครื่องมือรุ่น “เม็ดดาว” มี ตลับหมึก 1 ตลับเท่านั้น\nไม่เข้าใจครับ\nรู้ครับ กระเป๋าเครื่องมือรุ่น “เม็ดดาว” คือ มี ตลับหมึก 1 ตลับเท่านั้น\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ พี่ธนู เป็น เพื่อนสมัยเรียนของฉัน เรื่องพี่ธนูมีแค่นี้\nไม่เข้าใจครับ\nจำไว้แล้วครับ ข้าวยำพรานป่า อยู่ ในตู้กับข้าว\nไม่เข้าใจครับ\nรู้ครับ ข้าวยำพรานป่า คือ อยู่ ในตู้กับข้าว\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nไม่เข้าใจครับ\nจำไว้แล้วครับ คนชื่อ “นาริน” อยู่ ที่หอพักสายหมอก\nเพิ่มไว้แล้วครับ คนชื่อ “นาริน” มี กล่องใส่แผนที่ 1 ใบเท่านั้น\nไม่เข้าใจครับ\nรู้ครับ คนชื่อ “นาริน” คือ อยู่ ที่หอพักสายหมอก และ มี กล่องใส่แผนที่ 1 ใบเท่านั้น\nไม่เคยถูกสอนครับ คนชื่อ “นาริน” อายุ แต่จากการใช้ คนชื่อ “นาริน” อายุ น่าจะเกี่ยวกับ อยู่, ที่หอพักสายหมอก และ มี\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ตุ่นชื่อ “เกล็ดอำพัน” เป็น สัตว์เลี้ยงลูกด้วยนม\nเพิ่มไว้แล้วครับ ตุ่นชื่อ “เกล็ดอำพัน” อยู่ ในโพรงไม้\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nไม่รู้จักครับ แล้วมัน\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ร้านซ่อมจักรยานลุงพันธ์ มี เครื่องเติมลมหนึ่งเครื่อง\nเพิ่มไว้แล้วครับ ร้านซ่อมจักรยานลุงพันธ์ อยู่ ที่ปากซอย\nจำไว้แล้วครับ ร้านตัดผมบัวผัน มี กระจกสามบาน\nไม่เข้าใจครับ\nรู้ครับ ร้านซ่อมจักรยานลุงพันธ์ คือ มี เครื่องเติมลมหนึ่งเครื่อง และ อยู่ ที่ปากซอย\nรู้ครับ ร้านซ่อมจักรยานลุงพันธ์ คือ มี เครื่องเติมลมหนึ่งเครื่อง และ อยู่ ที่ปากซอย\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "forget-S10",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณสมาน เป็น พี่เขยของผมครับ เรื่องคุณสมานมีแค่นี้\nจำไว้แล้วครับ ขอเปลี่ยนเรื่อง เป็น อาหารนะครับ จำไว้ว่าแกงฟักข้าวสายลมเป็นอาหารมื้อเย็น\nจำไว้แล้วครับ แกงฟักข้าวสายลม มี รสเผ็ด\nเพิ่มไว้แล้วครับ แกงฟักข้าวสายลม อยู่ ในตู้เย็น\nไม่เข้าใจครับ\nรู้ครับ แกงฟักข้าวสายลม คือ มี รสเผ็ด และ อยู่ ในตู้เย็น\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "unknown",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    },
+    {
+     "turn": 7,
+     "expected": [
+      "unknown",
+      "abstain"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S01",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณกัญญา เป็น พี่สาวของฉัน\nไม่เข้าใจครับ\nรู้ครับ คุณกัญญา คือ เป็น พี่สาวของฉัน\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S02",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ กระต่ายชื่อ “ปุยเมฆ” มี ขนสีขาว\nไม่เข้าใจครับ\nรู้ครับ กระต่ายชื่อ “ปุยเมฆ” คือ มี ขนสีขาว\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S03",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ลานตรวจแบบชื่อ “ลานหินแก้ว” มี ขนาด 24 ตารางเมตร\nไม่เข้าใจครับ\nไม่เคยถูกสอนครับ ลานตรวจแบบชื่อ “ลานหินแก้ว” มีขนาด แต่จากการใช้ ลานตรวจแบบชื่อ “ลานหินแก้ว” มีขนาด น่าจะเกี่ยวกับ มี, ขนาด และ ตารางเมตร\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 2,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S05",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คุณนิตยา เป็น เพื่อนร่วมชั้นของผมครับ เรื่องคุณนิตยามีแค่นี้\nไม่เข้าใจครับ\nจำไว้แล้วครับ ข้าวห่อใบบัวสายหยุด เป็น ของว่าง\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S06",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ คนชื่อ “กฤติน” มี เหรียญตราประจำตัวสีเงิน 1 เหรียญเท่านั้น\nจำไว้แล้วครับ รถเข็นรุ่น “ลายกังหัน” มี ล้อไม้ 4 ล้อเท่านั้น\nไม่เข้าใจครับ\nไม่เคยถูกสอนครับ คนชื่อ “กฤติน” มีเหรียญตราประจำตัว แต่จากการใช้ คนชื่อ “กฤติน” มีเหรียญตราประจำตัว น่าจะเกี่ยวกับ มี, เหรียญตราประจำตัวสีเงิน และ เหรียญเท่านั้น\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S07",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ ตัวนิ่มชื่อ “เกล็ดขาว” เป็น สัตว์เลี้ยงลูกด้วยนม\nเพิ่มไว้แล้วครับ ตัวนิ่มชื่อ “เกล็ดขาว” อยู่ ในโพรงหิน\nไม่เข้าใจครับ\nไม่รู้จักครับ แล้วมัน\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S08",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ จำนวนห้องพักของโรงแรมกลีบบัว มี สิบห้อง\nจำไว้แล้วครับ จำนวนห้องพักของโรงแรมริมนา มี ยี่สิบห้อง\nไม่เข้าใจครับ\nจำไว้แล้วครับ โรงแรมกลีบบัว มี ห้องพักกี่ห้อง\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 3,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 4,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "correction-S09",
+   "stdout": "holyshit agent v0.17 - type 'help' for commands, 'quit' to leave\nจำไว้แล้วครับ พี่เอก เป็น ลูกพี่ลูกน้องของฉันค่ะ เรื่องพี่เอกมีแค่นี้\nจำไว้แล้วครับ ขอเปลี่ยน เป็น เรื่องของใช้นะคะ จำไว้ว่าพายุหมุนเป็นรถเข็นขายของ\nจำไว้แล้วครับ พายุหมุน อยู่ ในโรงเก็บของ\nเพิ่มไว้แล้วครับ พายุหมุน มี ล้อสี่ล้อ\nไม่เข้าใจครับ\nไม่เข้าใจครับ\nbye\n",
+   "scored_turns": [
+    {
+     "turn": 5,
+     "expected": [
+      "supported",
+      "acknowledge"
+     ]
+    },
+    {
+     "turn": 6,
+     "expected": [
+      "supported",
+      "answer"
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -201,6 +201,63 @@ def _th_val(v):
     return v[len('คือ '):] if v.startswith('คือ ') else v
 
 
+THAI_PARTICLES = ['ครับผม', 'นะครับ', 'นะคะ', 'ครับ', 'ค่ะ', 'จ้ะ', 'นะ', 'คะ']
+
+
+def strip_particle(t):
+    for pc in THAI_PARTICLES:
+        if len(t) > len(pc) and t.endswith(pc):
+            return t[:-len(pc)]
+    return t
+
+
+THAI_RELS = [' เป็น ', ' คือ ', ' อยู่ที่ ', ' อยู่ใน ', ' อยู่ ', ' มี ',
+             'เป็น', 'คือ', 'อยู่', 'มี']
+
+
+def thai_prop_split(t):
+    best = -1
+    brel = ''
+    for r in THAI_RELS:
+        k = t.find(r)
+        if k > 0 and (best < 0 or k < best):
+            best = k
+            brel = r
+    if best < 0:
+        return None
+    key = t[:best].rstrip(' ')
+    obj = t[best + len(brel):].lstrip(' ')
+    rel = brel.strip(' ')
+    if rel in ('อยู่ที่', 'อยู่ใน'):
+        rel = 'อยู่'
+    if not key or not obj:
+        return None
+    return [key, rel, obj]
+
+
+# Mirrors _THAI_PRON in agent/core.holy: pronoun subjects skip the
+# unspaced-question front door (core routes them to pronoun clarify).
+THAI_PRON = ["มัน", "เขา", "เธอ", "อันนี้", "อันนั้น", "ตัวนี้", "ตัวนั้น",
+             "ตัว นี้", "ตัว นั้น", "คนนี้", "คนนั้น", "คน นี้", "คน นั้น",
+             "ที่นี่", "ที่นั่น", "ที่ นี่", "ที่ นั่น", "นี่", "นั่น", "โน่น"]
+# Mirrors _THAI_QMARK in agent/core.holy: question markers that keep a
+# bare statement from being absorbed as a fact.
+THAI_QMARK = ["ไหม", "อะไร", "ไหน", "ใคร", "เท่าไร", "หรือ", "อย่างไร"]
+THAI_QSUF = ['เป็นญาติอะไรของผม', 'เป็นญาติอะไรของฉัน', 'เป็นอะไรกับผม',
+             'เป็นอะไรกับฉัน', 'อยู่ที่ไหน', 'มีอะไรอยู่', 'มีขนสีอะไร',
+             'มีสีอะไร', 'เป็นเครื่องอะไร', 'คืออะไร', 'คือใคร',
+             'สีอะไร', 'เป็นอะไร', 'มีอะไร', 'เท่าไร']
+
+
+def thai_q_split(m):
+    for sf in THAI_QSUF:
+        if len(m) > len(sf) and m.endswith(sf):
+            subj = m[:-len(sf)].rstrip(' ')
+            if subj:
+                return subj
+    return None
+
+
 def thai_line(s):
     if not nonascii(s):
         return False
@@ -436,6 +493,21 @@ class Oracle:
 
     def _particle(self):
         return 'ครับ'
+
+    def _thai_teach(self, key, rel, obj):
+        value = rel + ' ' + obj
+        new = key not in self.facts
+        known = (not new) and value in self.facts[key]
+        self._teach_also(key, value)
+        q1 = key.find('“')
+        q2 = key.find('”')
+        if q1 >= 0 and q2 > q1 + 1:
+            self.aliases[key[q1 + len('“'):q2]] = key
+        if known:
+            return 'รู้อยู่แล้ว' + self._particle() + ' ' + key + ' ' + value
+        if new:
+            return 'จำไว้แล้ว' + self._particle() + ' ' + key + ' ' + value
+        return 'เพิ่มไว้แล้ว' + self._particle() + ' ' + key + ' ' + value
 
     # --- A10 usage counting, mirroring core.holy ---
     def _cooc_add(self, key, value):
@@ -1793,8 +1865,24 @@ class Oracle:
             text = text[:-1]
         if text and text[-1] == '.':
             text = text[:-1]
+        text = strip_particle(text)
         m = lower_ascii(text)
         self.lang = 'th' if thai_line(text) else 'en'
+        if self.lang == 'th':
+            tp = None
+            if m.startswith('จำไว้ว่า'):
+                tp = thai_prop_split(m[len('จำไว้ว่า'):])
+            if tp is None and m.startswith('จำว่า'):
+                tp = thai_prop_split(m[len('จำว่า'):])
+            if (tp is None and m.startswith('จำ') and
+                    not m.startswith('จำไว้ว่า') and
+                    not m.startswith('จำว่า')):
+                tp = thai_prop_split(m[len('จำ'):])
+            if tp is not None:
+                return self._thai_teach(tp[0], tp[1], tp[2])
+            tq = thai_q_split(m)
+            if tq is not None and tq not in THAI_PRON:
+                return self._recall(tq)
         if self.pending is not None:
             handled, reply = self._pending_reply(m)
             if handled:
@@ -2090,6 +2178,13 @@ class Oracle:
                 return 'เข้าใจแล้ว' + self._particle() + ' ' + phrase + means_p + target
             return 'ok, ' + phrase + means_p + target
         if self.lang == 'th':
+            bs = thai_prop_split(m)
+            if (bs is not None and len(bs[0]) <= 40 and
+                    ' ' not in bs[0] and ':' not in bs[0] and
+                    bs[0] not in THAI_PRON and 'ไม่' not in bs[0] and
+                    'อย่า' not in bs[0] and 'ลบ' not in bs[0] and
+                    not any(qm in bs[2] for qm in THAI_QMARK)):
+                return self._thai_teach(bs[0], bs[1], bs[2])
             return 'ไม่เข้าใจ' + self._particle()
         return 'i do not understand'
 
@@ -3184,10 +3279,26 @@ W1_SCENARIOS = [
     ['read s1: somchai phone is 0812345678', 'claims', 'approve cl-1'],
     ['read s1: นกฮูก คือ นก', 'นกฮูก คืออะไร', 'where did you learn นกฮูก'],
 ]
+# R3a: Thai grammar frames (fixed-substring front door): particle
+# strip, จำไว้ว่า teach with ชื่อ-alias, unspaced question suffixes,
+# guarded bare-statement teach.
+R3A_SCENARIOS = [
+    ['จำไว้ว่าคุณวันเพ็ญเป็นป้าของผมครับ', 'คุณวันเพ็ญเป็นอะไรกับผมครับ'],
+    ['จำไว้ว่านกแก้วชื่อปิ่นโตมีสีเขียว', 'นกแก้วชื่อปิ่นโตมีสีอะไร',
+     'นกแก้วชื่อปิ่นโตมีสีเขียวค่ะ'],
+    ['จำไว้ว่าโรงเพาะกล้าชื่อ “หอรุ้งพฤกษ์” อยู่ในหุบผาม่านหมอก',
+     'หอรุ้งพฤกษ์อยู่ที่ไหน', 'where did you learn หอรุ้งพฤกษ์'],
+    ['จำไว้ว่าลุงเสริมอยู่ที่ตลาดครับ', 'ลุงเสริมเป็นอะไรกับผมครับ',
+     'ลุงเสริมอยู่ที่ไหนครับ'],
+    ['ม้าชื่อลมหนาวมีสีดำค่ะ', 'ม้าชื่อลมหนาวมีสีขาวค่ะ',
+     'ม้าชื่อลมหนาวมีสีอะไรคะ'],
+    ['ขอแก้ไขข้อมูลเดิม: คุณกัญญาเป็นน้องสาวของฉัน',
+     'ปุ๊กปิ๊กไม่ใช่เครื่องชั่งอาหาร แต่เป็นเครื่องจับเวลา'],
+]
 for _sc in (A13_SCENARIOS + A14_SCENARIOS + A141_SCENARIOS +
             A15_SCENARIOS + A16_SCENARIOS + A17_SCENARIOS +
             A18_SCENARIOS + A19_SCENARIOS + A19LIN_SCENARIOS +
-            R1A_SCENARIOS + W1_SCENARIOS):
+            R1A_SCENARIOS + W1_SCENARIOS + R3A_SCENARIOS):
     _o = Oracle()
     _lines = list(_sc)
     sessions.append((_lines, [_o.respond(l) for l in _lines], _o))
