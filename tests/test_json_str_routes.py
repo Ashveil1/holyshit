@@ -72,7 +72,7 @@ for _ in range(200):
     x = (48271 * x + 12345) % 2147483648
     lcg_lines.append(J([x, pool[x % len(pool)]]))
 s = "กขc def🙂"
-for _ in range(8):
+for _ in range(13):
     s = s + s
 oracle['21'] = J(s)
 oracle['22'] = J([0.1] * 400)

@@ -37,10 +37,13 @@ while i < 200:
   print "20|" + json_str([x, v])
   i = i + 1
 
-# buffer growth: long string (doubling) and a wide list
+# buffer growth: long string (doubling) and a wide list. 2^13 is also the
+# js_quote regression pin: the old per-char-concat encoder needed O(n^2)
+# arena bytes (~28GB here, OOM-killed on ast-x64); the parts-list encoder
+# builds this in ~240KB of output and a few MB of parts.
 s = "กขc def🙂"
 i = 0
-while i < 8:
+while i < 13:
   s = s + s
   i = i + 1
 print "21|" + json_str(s)

@@ -106,29 +106,37 @@ def js_codepoint(cp):
 # ---------- json_str: encode ----------
 
 def js_quote(s):
-  out = "\""
+  # parts-list builder, not per-char `out = out + ...`: x64 routes compile
+  # this helper with an arena allocator that never reclaims, so per-char
+  # concat keeps every intermediate string alive and a 61KB input blew up to
+  # ~1.8GB (n^2/2 bytes) on ast-x64. Plain runs are flushed as slices, so
+  # allocation stays O(output + escapes).
+  parts = ["\""]
+  run = 0
   i = 0
   n = byte_len(s)
   while i < n:
     b = byte_at(s, i)
+    esc = ""
+    estart = i
     if b == 34:
-      out = out + "\\\""
+      esc = "\\\""
     elif b == 92:
-      out = out + "\\\\"
+      esc = "\\\\"
     elif b == 10:
-      out = out + "\\n"
+      esc = "\\n"
     elif b == 13:
-      out = out + "\\r"
+      esc = "\\r"
     elif b == 9:
-      out = out + "\\t"
+      esc = "\\t"
     elif b == 8:
-      out = out + "\\b"
+      esc = "\\b"
     elif b == 12:
-      out = out + "\\f"
+      esc = "\\f"
     elif b < 32 or b == 127:
-      out = out + js_u16(b)
+      esc = js_u16(b)
     elif b < 128:
-      out = out + s[i]
+      esc = ""
     else:
       # multi-byte UTF-8: decode to a code point, then escape it. i ends on
       # the last continuation byte so the loop tail steps past the sequence.
@@ -145,9 +153,17 @@ def js_quote(s):
         i = i + 1
         cp = cp + (byte_at(s, i) - 128) * pow64(need - 1 - k)
         k = k + 1
-      out = out + js_codepoint(cp)
+      esc = js_codepoint(cp)
+    if esc != "":
+      if estart > run:
+        append(parts, s[run:estart])
+      append(parts, esc)
+      run = i + 1
     i = i + 1
-  return out + "\""
+  if n > run:
+    append(parts, s[run:n])
+  append(parts, "\"")
+  return join("", parts)
 
 def js_nan_inf(v):
   # json.dumps(allow_nan=False) refuses these. The text matches the
