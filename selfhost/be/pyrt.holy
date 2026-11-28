@@ -657,6 +657,12 @@ def py_f64bits(v):
     m = 0.0 - m
   if m == 0:
     return [0, 0, 0, 0, 0, 0, 0, sign * 128]
+  # Non-finite values never converge in the scale loops below (inf / 2
+  # is still inf), so they need their bit patterns up front.
+  if m != m:
+    return [0, 0, 0, 0, 0, 0, 248, 127 + sign * 128]
+  if m / 2.0 == m:
+    return [0, 0, 0, 0, 0, 0, 240, 127 + sign * 128]
   e = 0
   while m >= 2.0:
     m = m / 2.0

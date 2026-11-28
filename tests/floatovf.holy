@@ -1,0 +1,10 @@
+# Bare overflowing and edge float literals. The hosted seed compiler once
+# hung on any literal beyond the double range: py_f64bits scaled inf by
+# halving forever while turning the constant into bytes. Pin the compile
+# AND the runtime value of the overflow, underflow and finite edges.
+print 1e999
+print 0 - 1e999
+print 1e308
+print 1e-999
+print 1.5e999 + 1
+print 2.5, 0.1
