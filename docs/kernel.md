@@ -225,10 +225,12 @@ User code reaches the VFS through the same syscall numbers as Linux (paths are
 - `kernel/uush.holy` = a real ring-3 shell (`help echo cat ls mkdir rm write
   run exit`), talking to the kernel through `scall()`, newly added to the x64
   backend (hosted only - in ring 0 a `syscall` would return into ring 3 wrongly)
-- Programs loaded by the kernel always see an empty `argv()`: `build_frame`
-  plants argc=0 and argv[0]=NULL on top of the stack because the hosted
-  `_start` reads argc from `[rsp]` following the Linux layout - without it the
-  first user instruction would read an unmapped word and fault
+- The boot program sees an empty `argv()`: `build_frame` plants argc=0 and
+  argv[0]=NULL on top of the stack because the hosted `_start` reads argc
+  from `[rsp]` following the Linux layout - without it the first user
+  instruction would read an unmapped word and fault. `exec` lays the shell
+  line's words out for real instead (`argv_stack`, bounded like the klinux
+  startup vectors), so an exec'd program reads its arguments with `argv()`
 - tests: `kiotest` (direct sys_open/read/write/close/copy_out without typing
   keys = deterministic), `kushtest` + two real shell sessions
   (`help`/`ls`/`cat`/backspace/`write`/`rm`/`exit` and `exec`)

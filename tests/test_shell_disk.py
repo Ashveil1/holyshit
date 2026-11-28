@@ -47,12 +47,16 @@ def boot(d, args, script, shot):
         cmd('qmp_capabilities')
         def h(c):
             r = cmd('human-monitor-command', {'command-line': c}); assert not r, (c, r)
-        for line, expect in script:
-            n = out().count('sh> ')
+        for step in script:
+            line, expect = step[:2]; prompt = step[2] if len(step) > 2 else 'sh> '
+            n = out().count(prompt)
             for ch in line: h('sendkey '+KEYMAP.get(ch, ch)); time.sleep(0.6)
             h('sendkey ret')
             wait_for(lambda: expect in out(), 'output of '+line, 40)
-            wait_for(lambda: out().count('sh> ') > n, 'prompt after '+line, 40)
+            # prompt wait is 120s: respawn steps reload uush and re-enter
+            # user mode, which under TCG (no KVM) on a loaded box can take
+            # tens of seconds; a longer wait never fails a healthy run
+            wait_for(lambda: out().count(prompt) > n, 'prompt after '+line, 120)
             time.sleep(0.5)
         text = out(); assert 'EXC ' not in text, text[-2000:]
         h('screendump '+str(d/(shot+'.ppm')))
